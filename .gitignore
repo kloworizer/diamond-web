@@ -1,0 +1,37 @@
+# Django
+*.log
+*.pot
+*.pyc
+__pycache__/
+db.sqlite3
+media/
+staticfiles/
+local_settings.py
+
+# Virtualenv
+venv/
+ENV/
+env/
+.venv/
+.env/
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Coverage reports
+htmlcov/
+.coverage
+.tox/
+.nox/
+.cache/
+
+# Migrations (optional, if you want to ignore them)
+# **/migrations/*.pyc
+# **/migrations/__pycache__/

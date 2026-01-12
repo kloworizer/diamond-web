@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Diamond Web</title>
+</head>
+<body>
+    <h1>Welcome to Diamond Web!</h1>
+
+    {% if user.is_authenticated %}
+        <p>Hello, <strong>{{ user.username }}</strong>! You are logged in.</p>
+        <form action="{% url 'logout' %}" method="post">
+            {% csrf_token %}
+            <button type="submit">Logout</button>
+        </form>
+    {% else %}
+        <p>You are not logged in.</p>
+        <a href="{% url 'login' %}">Click here to Login</a>
+    {% endif %}
+</body>
+</html>
