@@ -28,9 +28,9 @@ Setelah selesai mengembangkan, Anda dapat membuat pull request ke repo utama.
 1. **Buat dan aktifkan virtual environment:**
 
     ```bash
-    python -m venv venv
-    source venv/bin/activate  # Linux/Mac
-    venv\Scripts\activate     # Windows
+    python -m venv .venv
+    source .venv/bin/activate  # Linux/Mac
+    .venv\Scripts\activate     # Windows
     ```
 
 2. **Install dependensi:**
