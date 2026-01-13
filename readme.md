@@ -1,13 +1,20 @@
 # Diamond
 
-Repositori ini berisi proyek Django. Ikuti langkah-langkah berikut untuk mengkloning, mengatur, dan menjalankan server pengembangan.
+Repositori ini berisi proyek Django. Ikuti langkah-langkah berikut untuk mengatur dan menjalankan server pengembangan.
 
-## Cara Clone Repository
+## Cara Fork Repository
+
+Agar dapat berkontribusi, lakukan *fork* ke akun GitHub Anda, lalu clone dari repo hasil fork tersebut:
 
 ```bash
-git clone https://github.com/kloworizer/diamond-web.git
+# Klik tombol 'Fork' di halaman repo utama: https://github.com/kloworizer/diamond-web
+# Setelah fork, clone repo dari akun Anda sendiri
+
+git clone https://github.com/<username-anda>/diamond-web.git
 cd diamond-web
 ```
+
+Setelah selesai mengembangkan, Anda dapat membuat pull request ke repo utama.
 
 ## Setup Proyek Django
 
