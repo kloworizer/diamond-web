@@ -8,6 +8,7 @@ class KategoriILAP(models.Model):
         verbose_name = "Kategori ILAP"
         verbose_name_plural = "Kategori ILAP"
         db_table = "kategori_ilap"
+        ordering = ["id_kategori"]
 
     def __str__(self):
         return f"{self.id_kategori} - {self.nama_kategori}"
