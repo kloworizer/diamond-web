@@ -27,15 +27,34 @@
             </ul>
 
             <!-- Group 2: User Account (Right Aligned) -->
-            <ul class="navbar-nav ms-auto">
+            <ul class="navbar-nav ms-auto align-items-lg-center">
                 {% if user.is_authenticated %}
+                    <!-- Notifications Dropdown -->
+                    <li class="nav-item dropdown me-2">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Notifications 
+                            {% if unread_count > 0 %}
+                                <span class="badge bg-danger">{{ unread_count }}</span>
+                            {% endif %}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            {% for notif in unread_notifications %}
+                                <li><a class="dropdown-item" href="{% url 'mark_notification_read' notif.pk %}">
+                                    <strong>{{ notif.title }}</strong><br>
+                                    <small>{{ notif.message }}</small>
+                                </a></li>
+                            {% empty %}
+                                <li><span class="dropdown-item text-muted">No new notifications</span></li>
+                            {% endfor %}
+                        </ul>
+                    </li>
                     <li class="nav-item">
                         <span class="navbar-text me-3">Hi, {{ user.username }}</span>
                     </li>
                     <li class="nav-item">
                         <form action="{% url 'logout' %}" method="post" class="d-inline">
                             {% csrf_token %}
-                            <button type="submit" class="btn btn-outline-light btn-sm mt-1">Logout</button>
+                            <button type="submit" class="btn btn-outline-light btn-sm">Logout</button>
                         </form>
                     </li>
                 {% else %}
