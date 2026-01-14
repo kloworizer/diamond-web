@@ -12,7 +12,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
-from dotenv import load_dotenv  # Import dotenv
+from dotenv import load_dotenv
+from django.contrib.messages import constants as messages
 
 # Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -72,6 +73,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'diamond_web.context_processors.notifications',
             ],
         },
     },
@@ -149,3 +151,11 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # django-tables2 settings
 DJANGO_TABLES2_TEMPLATE = "django_tables2/bootstrap5.html"
+
+MESSAGE_TAGS = {
+    messages.DEBUG: 'secondary',
+    messages.INFO: 'info',
+    messages.SUCCESS: 'success',
+    messages.WARNING: 'warning',
+    messages.ERROR: 'danger',
+}
