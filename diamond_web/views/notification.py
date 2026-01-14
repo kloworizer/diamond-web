@@ -1,9 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from .models import Notification
-
-def home(request):
-    return render(request, 'home.html')
+from ..models import Notification
 
 @login_required
 def mark_notification_read(request, pk):
