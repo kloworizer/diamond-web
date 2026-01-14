@@ -10,11 +10,13 @@ urlpatterns = [
 
     # Kategori ILAP URLs
     path('kategori-ilap/', views.KategoriILAPListView.as_view(), name='kategori_ilap_list'),
+    path('kategori-ilap/data/', views.kategori_ilap_data, name='kategori_ilap_data'),
     path('kategori-ilap/create/', views.KategoriILAPCreateView.as_view(), name='kategori_ilap_create'),
     path('kategori-ilap/<str:pk>/update/', views.KategoriILAPUpdateView.as_view(), name='kategori_ilap_update'),
     path('kategori-ilap/<str:pk>/delete/', views.KategoriILAPDeleteView.as_view(), name='kategori_ilap_delete'),
     # ILAP URLs
     path('ilap/', views.ILAPListView.as_view(), name='ilap_list'),
+    path('ilap/data/', views.ilap_data, name='ilap_data'),
     path('ilap/create/', views.ILAPCreateView.as_view(), name='ilap_create'),
     path('ilap/<str:pk>/update/', views.ILAPUpdateView.as_view(), name='ilap_update'),
     path('ilap/<str:pk>/delete/', views.ILAPDeleteView.as_view(), name='ilap_delete'),
