@@ -149,13 +149,17 @@ def kategori_ilap_data(request):
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
-    search_value = request.GET.get('search[value]', '').strip()
 
     qs = KategoriILAP.objects.all()
     records_total = qs.count()
 
-    if search_value:
-        qs = qs.filter(nama_kategori__icontains=search_value) | qs.filter(id_kategori__icontains=search_value)
+    # Column-specific filtering
+    columns_search = request.GET.getlist('columns_search[]')
+    if columns_search:
+        if columns_search[0]:  # ID Kategori
+            qs = qs.filter(id_kategori__icontains=columns_search[0])
+        if len(columns_search) > 1 and columns_search[1]:  # Nama Kategori
+            qs = qs.filter(nama_kategori__icontains=columns_search[1])
 
     records_filtered = qs.count()
 
@@ -182,8 +186,8 @@ def kategori_ilap_data(request):
         data.append({
             'id_kategori': obj.id_kategori,
             'nama_kategori': obj.nama_kategori,
-            'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('kategori_ilap_update', args=[obj.pk])}'>Edit</button>"
-                       f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('kategori_ilap_delete', args=[obj.pk])}'>Delete</button>"
+            'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('kategori_ilap_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
+                       f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('kategori_ilap_delete', args=[obj.pk])}' title='Delete'><i class='ri-delete-bin-line'></i></button>"
         })
 
     return JsonResponse({

@@ -16,13 +16,18 @@
                 <th>Nama Kategori</th>
                 <th>Actions</th>
             </tr>
+            <tr id="column-search-row">
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search ID" data-column="0" /></th>
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search Nama" data-column="1" /></th>
+                <th></th>
+            </tr>
         </thead>
         <tbody></tbody>
     </table>
 
     <!-- Modal for Create/Edit/Delete -->
     <div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="crudModalLabel">Form</h5>
@@ -46,9 +51,21 @@
         $(document).ready(function() {
             table = $('#kategori-table').DataTable({
                 serverSide: true,
+                layout: {
+                    topStart: null,
+                    topEnd: null
+                },
                 ajax: {
                     url: ajaxUrl,
-                    dataSrc: 'data'
+                    dataSrc: 'data',
+                    data: function(d) {
+                        // Add column search values
+                        d.columns_search = [];
+                        $('#column-search-row input').each(function(i) {
+                            d.columns_search[i] = $(this).val();
+                        });
+                        return d;
+                    }
                 },
                 pageLength: 10,
                 columns: [
@@ -58,7 +75,13 @@
                 ],
                 columnDefs: [
                     { targets: 2, render: function(data, type, row, meta) { return data; } }
-                ]
+                ],
+                order: [[0, 'asc']]
+            });
+
+            // Add individual column search
+            $('#column-search-row input').on('keyup change', function() {
+                table.ajax.reload();
             });
 
             // Handle modal hide to prevent aria-hidden conflicts
