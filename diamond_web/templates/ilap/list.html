@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% load render_table from django_tables2 %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>ILAP</h2>
+    
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-auto">
+                    {{ filter.form.nama_ilap|as_crispy_field }}
+                </div>
+                <div class="col-auto align-self-end">
+                    <button type="submit" class="btn btn-primary">Cari</button>
+                    <a href="{% url 'ilap_create' %}" class="btn btn-success">Tambah</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% render_table table %}
+</div>
+{% endblock %}
