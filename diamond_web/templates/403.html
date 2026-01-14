@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block title %}Forbidden - 403{% endblock %}
+
+{% block content %}
+<div class="container" style="text-align: center; padding: 50px;">
+    <h1 class="display-1">403</h1>
+    <h2>Permission Denied</h2>
+    <p class="lead">
+        You do not have permission to view this page.
+    </p>
+    <a href="{% url 'login' %}" class="btn btn-secondary">Log In</a>
+</div>
+{% endblock %}
