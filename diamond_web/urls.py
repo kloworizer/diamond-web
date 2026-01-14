@@ -7,4 +7,10 @@ urlpatterns = [
     path('notifications/read/<int:pk>/', views.mark_notification_read, name='mark_notification_read'),
     path('password_change/', auth_views.PasswordChangeView.as_view(template_name='registration/change_password_form.html', success_url=reverse_lazy('user_password_change_done')), name='user_password_change'),
     path('password_change/done/', auth_views.PasswordChangeDoneView.as_view(template_name='registration/change_password_done.html'), name='user_password_change_done'),
+
+    # Kategori ILAP URLs
+    path('kategori-ilap/', views.KategoriILAPListView.as_view(), name='kategori_ilap_list'),
+    path('kategori-ilap/create/', views.KategoriILAPCreateView.as_view(), name='kategori_ilap_create'),
+    path('kategori-ilap/<str:pk>/update/', views.KategoriILAPUpdateView.as_view(), name='kategori_ilap_update'),
+    path('kategori-ilap/<str:pk>/delete/', views.KategoriILAPDeleteView.as_view(), name='kategori_ilap_delete'),
 ]
