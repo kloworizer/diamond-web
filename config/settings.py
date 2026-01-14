@@ -44,8 +44,7 @@ INSTALLED_APPS = [
     "diamond_web",
     "crispy_forms",
     "crispy_bootstrap5",
-    "django_tables2",
-    "django_filters",
+    
     "import_export",
 ]
 
@@ -147,8 +146,7 @@ LOGOUT_REDIRECT_URL = "/"
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
-# django-tables2 settings
-DJANGO_TABLES2_TEMPLATE = "django_tables2/bootstrap5.html"
+# (Removed django-tables2 and django-filter settings)
 
 MESSAGE_TAGS = {
     messages.DEBUG: "secondary",
