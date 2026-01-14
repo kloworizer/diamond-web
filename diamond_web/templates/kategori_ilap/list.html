@@ -3,9 +3,8 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Kategori ILAP</h2>
-    
-    <div class="mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Kategori ILAP</h2>
         <button type="button" class="btn btn-success" data-action="create">Tambah</button>
     </div>
 
@@ -17,8 +16,10 @@
                 <th>Actions</th>
             </tr>
             <tr id="column-search-row">
-                <th><input type="text" class="form-control form-control-sm" placeholder="Search ID" data-column="0" /></th>
-                <th><input type="text" class="form-control form-control-sm" placeholder="Search Nama" data-column="1" /></th>
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search ID" data-column="0" />
+                </th>
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search Nama" data-column="1" />
+                </th>
                 <th></th>
             </tr>
         </thead>
@@ -44,11 +45,11 @@
 
 {% block scripts %}
 <script>
-    (function() {
+    (function () {
         const ajaxUrl = "{% url 'kategori_ilap_data' %}";
         let table;
-        
-        $(document).ready(function() {
+
+        $(document).ready(function () {
             table = $('#kategori-table').DataTable({
                 serverSide: true,
                 layout: {
@@ -58,10 +59,10 @@
                 ajax: {
                     url: ajaxUrl,
                     dataSrc: 'data',
-                    data: function(d) {
+                    data: function (d) {
                         // Add column search values
                         d.columns_search = [];
-                        $('#column-search-row input').each(function(i) {
+                        $('#column-search-row input').each(function (i) {
                             d.columns_search[i] = $(this).val();
                         });
                         return d;
@@ -74,24 +75,24 @@
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [
-                    { targets: 2, render: function(data, type, row, meta) { return data; } }
+                    { targets: 2, render: function (data, type, row, meta) { return data; } }
                 ],
                 order: [[0, 'asc']]
             });
 
             // Add individual column search
-            $('#column-search-row input').on('keyup change', function() {
+            $('#column-search-row input').on('keyup change', function () {
                 table.ajax.reload();
             });
 
             // Handle modal hide to prevent aria-hidden conflicts
             const modalElement = document.getElementById('crudModal');
-            modalElement.addEventListener('hidden.bs.modal', function() {
+            modalElement.addEventListener('hidden.bs.modal', function () {
                 // Reset modal body
                 document.getElementById('modalBody').innerHTML = '';
             });
-            
-            modalElement.addEventListener('hide.bs.modal', function() {
+
+            modalElement.addEventListener('hide.bs.modal', function () {
                 // Clear focus from form elements
                 const focusedElement = document.activeElement;
                 if (focusedElement && modalElement.contains(focusedElement)) {
@@ -100,25 +101,25 @@
             });
 
             // Handle create button
-            $('[data-action="create"]').on('click', function() {
+            $('[data-action="create"]').on('click', function () {
                 loadModal('{% url "kategori_ilap_create" %}', 'Tambah Kategori ILAP');
             });
 
             // Handle edit/delete buttons (delegated event)
-            $(document).on('click', '[data-action="edit"]', function(e) {
+            $(document).on('click', '[data-action="edit"]', function (e) {
                 e.preventDefault();
                 const url = $(this).data('url');
                 loadModal(url, 'Edit Kategori ILAP');
             });
 
-            $(document).on('click', '[data-action="delete"]', function(e) {
+            $(document).on('click', '[data-action="delete"]', function (e) {
                 e.preventDefault();
                 const url = $(this).data('url');
                 loadModal(url, 'Hapus Kategori ILAP');
             });
 
             // Handle form submission
-            $(document).on('submit', '#modalBody form', function(e) {
+            $(document).on('submit', '#modalBody form', function (e) {
                 e.preventDefault();
                 const form = $(this);
                 const url = form.attr('action');
@@ -130,7 +131,7 @@
                     data: formData,
                     processData: false,
                     contentType: false,
-                    success: function(response) {
+                    success: function (response) {
                         if (response.success) {
                             $('#crudModal').modal('hide');
                             table.ajax.reload();
@@ -139,7 +140,7 @@
                             $('#modalBody').html(response.html);
                         }
                     },
-                    error: function(xhr) {
+                    error: function (xhr) {
                         showAlert('danger', 'Terjadi kesalahan. Silakan coba lagi.');
                     }
                 });
@@ -155,10 +156,10 @@
                 url: url,
                 type: 'GET',
                 data: { ajax: '1' },
-                success: function(response) {
+                success: function (response) {
                     $('#modalBody').html(response.html || response);
                 },
-                error: function() {
+                error: function () {
                     $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');
                 }
             });
