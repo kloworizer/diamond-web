@@ -1,15 +1,12 @@
-{% extends "base.html" %}
-
-{% block content %}
-<div class="container mt-4">
-    <div class="alert alert-danger">
-        <h4>Are you sure you want to delete "{{ object }}"?</h4>
-        <p>This action cannot be undone.</p>
-        <form method="post">
-            {% csrf_token %}
+<div class="alert alert-danger">
+    <h5>Delete Confirmation</h5>
+    <p>Are you sure you want to delete "<strong>{{ object }}</strong>"?</p>
+    <p class="text-muted small">This action cannot be undone.</p>
+    <form method="post" action="{{ form_action }}" class="mt-3">
+        {% csrf_token %}
+        <div class="modal-footer mt-3 border-top pt-3">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             <button type="submit" class="btn btn-danger">Confirm Delete</button>
-            <a href="{% url 'kategori_ilap_list' %}" class="btn btn-secondary">Cancel</a>
-        </form>
-    </div>
+        </div>
+    </form>
 </div>
-{% endblock %}
