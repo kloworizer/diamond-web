@@ -70,9 +70,16 @@ Akses aplikasi di [http://localhost:8000](http://localhost:8000).
 |---|---:|---|
 | django-crispy-forms | 2.5 | Aplikasi Django untuk merapikan dan memudahkan pembuatan layout form. |
 | crispy-bootstrap5 | 2025.6 | Template pack untuk `django-crispy-forms` agar form dirender menggunakan gaya Bootstrap 5. |
-| django-tables2 | 2.8.0 | Membantu merender tabel dari QuerySet dengan fitur paging, sorting, dan styling. |
-| django-filter | 25.2 | Menyediakan mekanisme filter untuk QuerySet pada views dan integrasi dengan Django REST/CBV. |
 | django-import-export | 4.4.0 | Memudahkan impor dan ekspor data (CSV, Excel, dsb.) lewat admin Django. |
+
+### Frontend Libraries
+
+| Library | Versi | Keterangan |
+|---|---:|---|
+| DataTables | 2.3.6 | Library JavaScript untuk tabel interaktif dengan fitur server-side processing, paging, sorting, dan column filtering. |
+| Bootstrap | 5.3.3 | Framework CSS untuk styling dan komponen UI. |
+| Remix Icon | 4.6.0 | Icon library untuk ikon modern dan konsisten. |
+| jQuery | 3.7.1 | Library JavaScript untuk manipulasi DOM dan AJAX requests. |
 
 
 ## Panduan Kolaborasi
