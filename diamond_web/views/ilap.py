@@ -6,6 +6,7 @@ from urllib.parse import quote_plus, unquote_plus
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.db.models import Max
 
 from ..models.ilap import ILAP
 from ..forms.ilap import ILAPForm
@@ -29,6 +30,32 @@ class ILAPListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
             except Exception:
                 pass
         return super().get(request, *args, **kwargs)
+
+
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name='Admin').exists())
+@require_GET
+def get_next_ilap_id(request):
+    """Get next id_ilap for a given category."""
+    kategori_id = request.GET.get('kategori_id')
+    if not kategori_id:
+        return JsonResponse({'error': 'kategori_id is required'}, status=400)
+    
+    # Get the last id_ilap for this category
+    last_ilap = ILAP.objects.filter(id_ilap__startswith=kategori_id).order_by('-id_ilap').first()
+    
+    if last_ilap:
+        # Extract the numeric part and increment
+        last_number = int(last_ilap.id_ilap[len(kategori_id):])
+        next_number = last_number + 1
+    else:
+        # First entry for this category
+        next_number = 1
+    
+    # Format with 3 digits
+    next_id = f"{kategori_id}{next_number:03d}"
+    
+    return JsonResponse({'next_id': next_id})
 
 
 @login_required
@@ -111,6 +138,12 @@ class ILAPCreateView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
         return self.render_to_response(self.get_context_data(form=form))
 
     def form_valid(self, form):
+        # Manually set id_ilap since it's disabled
+        if not form.instance.pk:
+            id_ilap = self.request.POST.get('id_ilap')
+            if id_ilap:
+                form.instance.id_ilap = id_ilap
+        
         self.object = form.save()
         if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
@@ -137,6 +170,8 @@ class ILAPUpdateView(LoginRequiredMixin, AdminRequiredMixin, UpdateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('ilap_update', args=[self.object.pk])
+        context['original_id_ilap'] = self.object.id_ilap
+        context['original_id_kategori'] = self.object.id_kategori.id_kategori
         return context
 
     def get(self, request, *args, **kwargs):

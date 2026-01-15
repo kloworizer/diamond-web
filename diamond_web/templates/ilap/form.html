@@ -7,3 +7,51 @@
         <button type="submit" class="btn btn-success">Save</button>
     </div>
 </form>
+
+<script>
+(function() {
+    const kategoriSelect = document.querySelector('#id_id_kategori');
+    const ilapInput = document.querySelector('#id_id_ilap');
+    
+    // Get original values for edit mode
+    const originalIdIlap = '{{ original_id_ilap|default:"" }}';
+    const originalIdKategori = '{{ original_id_kategori|default:"" }}';
+    const isEditMode = originalIdIlap !== '';
+    
+    if (kategoriSelect && ilapInput) {
+        kategoriSelect.addEventListener('change', function() {
+            const kategoriId = this.value;
+            
+            if (kategoriId) {
+                // In edit mode, if switching back to original category, restore original id_ilap
+                if (isEditMode && kategoriId === originalIdKategori) {
+                    ilapInput.removeAttribute('readonly');
+                    ilapInput.value = originalIdIlap;
+                    ilapInput.setAttribute('readonly', 'readonly');
+                } else {
+                    // Fetch next id_ilap for new or different category
+                    fetch('{% url "get_next_ilap_id" %}?kategori_id=' + encodeURIComponent(kategoriId))
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.next_id) {
+                                ilapInput.removeAttribute('readonly');
+                                ilapInput.value = data.next_id;
+                                ilapInput.setAttribute('readonly', 'readonly');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching next id_ilap:', error);
+                        });
+                }
+            } else {
+                ilapInput.value = '';
+            }
+        });
+        
+        // Trigger change event if category already selected on load (create mode only)
+        if (!isEditMode && !ilapInput.value && kategoriSelect.value) {
+            kategoriSelect.dispatchEvent(new Event('change'));
+        }
+    }
+})();
+</script>
