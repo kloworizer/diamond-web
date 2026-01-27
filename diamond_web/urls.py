@@ -35,6 +35,12 @@ urlpatterns = [
     path('jenis-tabel/create/', views.JenisTabelCreateView.as_view(), name='jenis_tabel_create'),
     path('jenis-tabel/<int:pk>/update/', views.JenisTabelUpdateView.as_view(), name='jenis_tabel_update'),
     path('jenis-tabel/<int:pk>/delete/', views.JenisTabelDeleteView.as_view(), name='jenis_tabel_delete'),
+    # Periode Pengiriman URLs
+    path('periode-pengiriman/', views.PeriodePengirimanListView.as_view(), name='periode_pengiriman_list'),
+    path('periode-pengiriman/data/', views.periode_pengiriman_data, name='periode_pengiriman_data'),
+    path('periode-pengiriman/create/', views.PeriodePengirimanCreateView.as_view(), name='periode_pengiriman_create'),
+    path('periode-pengiriman/<int:pk>/update/', views.PeriodePengirimanUpdateView.as_view(), name='periode_pengiriman_update'),
+    path('periode-pengiriman/<int:pk>/delete/', views.PeriodePengirimanDeleteView.as_view(), name='periode_pengiriman_delete'),
     # ILAP URLs
     path('ilap/', views.ILAPListView.as_view(), name='ilap_list'),
     path('ilap/data/', views.ilap_data, name='ilap_data'),

@@ -82,6 +82,19 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
+            name='PeriodePengiriman',
+            fields=[
+                ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('deskripsi', models.CharField(max_length=50, verbose_name='Deskripsi')),
+            ],
+            options={
+                'verbose_name': 'Periode Pengiriman',
+                'verbose_name_plural': 'Periode Pengiriman',
+                'db_table': 'periode_pengiriman',
+                'ordering': ['id'],
+            },
+        ),
+        migrations.CreateModel(
             name='Notification',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),

@@ -5,3 +5,4 @@ from .ilap import *
 from .jenis_tabel import *
 from .kategori_wilayah import *
 from .klasifikasi_tabel import *
+from .periode_pengiriman import *
