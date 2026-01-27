@@ -156,6 +156,11 @@ MESSAGE_TAGS = {
     messages.ERROR: "danger",
 }
 
+# Session settings: 30 minutes
+SESSION_COOKIE_AGE = 30 * 60  # 30 minutes (in seconds)
+SESSION_SAVE_EVERY_REQUEST = True  # refresh session expiry on each request
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+
 if DEBUG:
     INSTALLED_APPS += ["debug_toolbar"]
     MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]

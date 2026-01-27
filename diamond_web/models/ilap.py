@@ -2,7 +2,8 @@ from django.db import models
 from .kategori_ilap import KategoriILAP
 
 class ILAP(models.Model):
-    id_ilap = models.CharField(max_length=5, primary_key=True, verbose_name="ID ILAP")
+    id = models.AutoField(primary_key=True, verbose_name="ID")
+    id_ilap = models.CharField(max_length=5, unique=True, verbose_name="ID ILAP")
     id_kategori = models.ForeignKey(
         KategoriILAP,
         on_delete=models.CASCADE,

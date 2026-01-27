@@ -12,7 +12,7 @@ from ..forms.kategori_ilap import KategoriILAPForm
 
 class AdminRequiredMixin(UserPassesTestMixin):
     def test_func(self):
-        return self.request.user.groups.filter(name='Admin').exists()
+        return self.request.user.groups.filter(name__in=['admin', 'admin_p3de']).exists()
 
 class KategoriILAPListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
     template_name = 'kategori_ilap/list.html'
@@ -138,7 +138,7 @@ class KategoriILAPDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView)
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name='Admin').exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def kategori_ilap_data(request):
     """Server-side processing for DataTables.
