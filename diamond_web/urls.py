@@ -48,4 +48,10 @@ urlpatterns = [
     path('ilap/create/', views.ILAPCreateView.as_view(), name='ilap_create'),
     path('ilap/<str:pk>/update/', views.ILAPUpdateView.as_view(), name='ilap_update'),
     path('ilap/<str:pk>/delete/', views.ILAPDeleteView.as_view(), name='ilap_delete'),
+    # Jenis Data ILAP URLs
+    path('jenis-data-ilap/', views.JenisDataILAPListView.as_view(), name='jenis_data_ilap_list'),
+    path('jenis-data-ilap/data/', views.jenis_data_ilap_data, name='jenis_data_ilap_data'),
+    path('jenis-data-ilap/create/', views.JenisDataILAPCreateView.as_view(), name='jenis_data_ilap_create'),
+    path('jenis-data-ilap/<int:pk>/update/', views.JenisDataILAPUpdateView.as_view(), name='jenis_data_ilap_update'),
+    path('jenis-data-ilap/<int:pk>/delete/', views.JenisDataILAPDeleteView.as_view(), name='jenis_data_ilap_delete'),
 ]

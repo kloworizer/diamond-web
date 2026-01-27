@@ -105,4 +105,27 @@ class Migration(migrations.Migration):
                 ('recipient', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='notifications', to=settings.AUTH_USER_MODEL)),
             ],
         ),
+        migrations.CreateModel(
+            name='JenisDataILAP',
+            fields=[
+                ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('id_jenis_data', models.CharField(max_length=7, verbose_name='ID Jenis Data')),
+                ('id_sub_jenis_data', models.CharField(max_length=9, verbose_name='ID Sub Jenis Data')),
+                ('nama_jenis_data', models.CharField(max_length=255, verbose_name='Nama Jenis Data')),
+                ('nama_sub_jenis_data', models.CharField(max_length=255, verbose_name='Nama Sub Jenis Data')),
+                ('nama_tabel_I', models.CharField(max_length=255, verbose_name='Nama Tabel I')),
+                ('nama_tabel_U', models.CharField(max_length=255, verbose_name='Nama Tabel U')),
+                ('id_kategori_ilap', models.ForeignKey(db_column='id_kategori_ilap', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.KategoriIlap', verbose_name='Kategori ILAP')),
+                ('id_ilap', models.ForeignKey(db_column='id_ilap', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.ILAP', verbose_name='ILAP')),
+                ('id_jenis_tabel', models.ForeignKey(db_column='id_jenis_tabel', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.JenisTabel', verbose_name='Jenis Tabel')),
+                ('id_kategori_wilayah', models.ForeignKey(db_column='id_kategori_wilayah', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.KategoriWilayah', verbose_name='Kategori Wilayah')),
+                ('id_klasifikasi_tabel', models.ForeignKey(db_column='id_klasifikasi_tabel', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.KlasifikasiTabel', verbose_name='Klasifikasi Tabel')),
+            ],
+            options={
+                'verbose_name': 'Jenis Data ILAP',
+                'verbose_name_plural': 'Jenis Data ILAP',
+                'db_table': 'jenis_data_ilap',
+                'ordering': ['id'],
+            },
+        ),
     ]
