@@ -98,94 +98,73 @@
                 if (focusedElement && modalElement.contains(focusedElement)) {
                     focusedElement.blur();
                 }
+            });            // Handle create button
+            $('[data-action="create"]').on('click', function () {
+                loadModal('{% url "periode_pengiriman_create" %}', 'Tambah Periode Pengiriman');
             });
 
-            // Delegated event listener for dynamically generated buttons
-            $(document).on('click', '[data-action]', function () {
-                const action = $(this).data('action');
+            // Handle edit/delete buttons (delegated event)
+            $(document).on('click', '[data-action="edit"]', function (e) {
+                e.preventDefault();
                 const url = $(this).data('url');
-                let modalTitle = '';
-                let ajaxUrl = '';
+                loadModal(url, 'Edit Periode Pengiriman');
+            });
 
-                if (action === 'create') {
-                    modalTitle = 'Tambah Periode Pengiriman';
-                    ajaxUrl = "{% url 'periode_pengiriman_create' %}?ajax=1";
-                } else if (action === 'edit') {
-                    modalTitle = 'Edit Periode Pengiriman';
-                    ajaxUrl = url + '?ajax=1';
-                } else if (action === 'delete') {
-                    modalTitle = 'Delete Periode Pengiriman';
-                    ajaxUrl = url + '?ajax=1';
-                }
-
-                if (ajaxUrl) {
-                    $('#crudModalLabel').text(modalTitle);
-                    $('#modalBody').html('<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>');
-
-                    const crudModal = new bootstrap.Modal(document.getElementById('crudModal'));
-                    crudModal.show();
-
-                    $.ajax({
-                        url: ajaxUrl,
-                        method: 'GET',
-                        success: function (response) {
-                            $('#modalBody').html(response.html);
-                        },
-                        error: function (xhr, status, error) {
-                            $('#modalBody').html('<div class="alert alert-danger">Error loading form.</div>');
-                        }
-                    });
-                }
+            $(document).on('click', '[data-action="delete"]', function (e) {
+                e.preventDefault();
+                const url = $(this).data('url');
+                loadModal(url, 'Hapus Periode Pengiriman');
             });
 
             // Handle form submission
-            $(document).on('submit', '.form-modal', function (e) {
+            $(document).on('submit', '#modalBody form', function (e) {
                 e.preventDefault();
                 const form = $(this);
+                const url = form.attr('action');
                 const formData = new FormData(form[0]);
 
                 $.ajax({
-                    url: form.attr('action'),
-                    method: 'POST',
+                    url: url,
+                    type: 'POST',
                     data: formData,
                     processData: false,
                     contentType: false,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
                     success: function (response) {
                         if (response.success) {
-                            // Show success message
-                            const alertHtml = `<div class="alert alert-success alert-dismissible fade show" role="alert">
-                                ${response.message}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>`;
-                            $('.container.mt-4').prepend(alertHtml);
-
-                            // Close modal
-                            const crudModalElement = document.getElementById('crudModal');
-                            const crudModal = bootstrap.Modal.getInstance(crudModalElement);
-                            crudModal.hide();
-
-                            // Reload table
+                            $('#crudModal').modal('hide');
                             table.ajax.reload();
-
-                            // Auto-dismiss alert after 3 seconds
-                            setTimeout(function () {
-                                $('.alert').fadeOut('slow', function () { $(this).remove(); });
-                            }, 3000);
+                            showAlert('success', response.message);
                         } else {
-                            // Re-render form with errors
                             $('#modalBody').html(response.html);
                         }
                     },
-                    error: function (xhr, status, error) {
-                        $('#modalBody').html('<div class="alert alert-danger">An error occurred.</div>');
+                    error: function (xhr) {
+                        showAlert('danger', 'Terjadi kesalahan. Silakan coba lagi.');
                     }
                 });
-            });
+            });        });
 
-        });
+        function loadModal(url, title) {
+            $('#crudModalLabel').text(title);
+            $('#modalBody').html('<div class="text-center"><div class="spinner-border" role="status"></div></div>');
+            $('#crudModal').modal('show');
+
+            $.ajax({
+                url: url,
+                type: 'GET',
+                data: { ajax: '1' },
+                success: function (response) {
+                    $('#modalBody').html(response.html || response);
+                },
+                error: function () {
+                    $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');
+                }
+            });
+        }
+
+        function showAlert(type, message) {
+            showToast(type === 'success' ? 'Success' : 'Error', message, type);
+        }
     })();
 </script>
 {% endblock %}
