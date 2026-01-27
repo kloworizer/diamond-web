@@ -17,6 +17,18 @@ urlpatterns = [
     path('kategori-ilap/create/', views.KategoriILAPCreateView.as_view(), name='kategori_ilap_create'),
     path('kategori-ilap/<str:pk>/update/', views.KategoriILAPUpdateView.as_view(), name='kategori_ilap_update'),
     path('kategori-ilap/<str:pk>/delete/', views.KategoriILAPDeleteView.as_view(), name='kategori_ilap_delete'),
+    # Kategori Wilayah URLs
+    path('kategori-wilayah/', views.KategoriWilayahListView.as_view(), name='kategori_wilayah_list'),
+    path('kategori-wilayah/data/', views.kategori_wilayah_data, name='kategori_wilayah_data'),
+    path('kategori-wilayah/create/', views.KategoriWilayahCreateView.as_view(), name='kategori_wilayah_create'),
+    path('kategori-wilayah/<int:pk>/update/', views.KategoriWilayahUpdateView.as_view(), name='kategori_wilayah_update'),
+    path('kategori-wilayah/<int:pk>/delete/', views.KategoriWilayahDeleteView.as_view(), name='kategori_wilayah_delete'),
+    # Jenis Tabel URLs
+    path('jenis-tabel/', views.JenisTabelListView.as_view(), name='jenis_tabel_list'),
+    path('jenis-tabel/data/', views.jenis_tabel_data, name='jenis_tabel_data'),
+    path('jenis-tabel/create/', views.JenisTabelCreateView.as_view(), name='jenis_tabel_create'),
+    path('jenis-tabel/<int:pk>/update/', views.JenisTabelUpdateView.as_view(), name='jenis_tabel_update'),
+    path('jenis-tabel/<int:pk>/delete/', views.JenisTabelDeleteView.as_view(), name='jenis_tabel_delete'),
     # ILAP URLs
     path('ilap/', views.ILAPListView.as_view(), name='ilap_list'),
     path('ilap/data/', views.ilap_data, name='ilap_data'),
