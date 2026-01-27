@@ -4,27 +4,27 @@
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">ILAP</h2>
+        <h2 class="mb-0">Periode Jenis Data</h2>
         <button type="button" class="btn btn-success" data-action="create">Tambah</button>
     </div>
 
-    <table id="ilap-table" class="table table-striped" style="width:100%">
+    <table id="periode-jenis-data-table" class="table table-striped" style="width:100%">
         <thead>
             <tr>
-                <th>Kategori Wilayah</th>
-                <th>ID ILAP</th>
-                <th>Kategori</th>
-                <th>Nama ILAP</th>
+                <th>Sub Jenis Data ILAP</th>
+                <th>Periode Pengiriman</th>
+                <th>Start Date</th>
+                <th>End Date</th>
                 <th>Actions</th>
             </tr>
             <tr id="column-search-row">
-                <th><input type="text" class="form-control form-control-sm" placeholder="Search Wilayah" data-column="0" />
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search Sub Jenis Data" data-column="0" />
                 </th>
-                <th><input type="text" class="form-control form-control-sm" placeholder="Search ID" data-column="1" />
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search Periode" data-column="1" />
                 </th>
-                <th><input type="text" class="form-control form-control-sm" placeholder="Search Kategori"
-                        data-column="2" /></th>
-                <th><input type="text" class="form-control form-control-sm" placeholder="Search Nama" data-column="3" />
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search Start Date" data-column="2" />
+                </th>
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search End Date" data-column="3" />
                 </th>
                 <th></th>
             </tr>
@@ -52,11 +52,11 @@
 {% block scripts %}
 <script>
     (function () {
-        const ajaxUrl = "{% url 'ilap_data' %}";
+        const ajaxUrl = "{% url 'periode_jenis_data_data' %}";
         let table;
 
         $(document).ready(function () {
-            table = $('#ilap-table').DataTable({
+            table = $('#periode-jenis-data-table').DataTable({
                 serverSide: true,
                 layout: {
                     topStart: null,
@@ -76,16 +76,16 @@
                 },
                 pageLength: 10,
                 columns: [
-                    { data: 'kategori_wilayah' },
-                    { data: 'id_ilap' },
-                    { data: 'id_kategori' },
-                    { data: 'nama_ilap' },
+                    { data: 'sub_jenis_data_ilap' },
+                    { data: 'periode_pengiriman' },
+                    { data: 'start_date' },
+                    { data: 'end_date' },
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [
                     { targets: 4, render: function (data, type, row, meta) { return data; } }
                 ],
-                order: [[1, 'asc']]
+                order: [[0, 'asc']]
             });
 
             // Add individual column search
@@ -110,20 +110,20 @@
 
             // Handle create button
             $('[data-action="create"]').on('click', function () {
-                loadModal('{% url "ilap_create" %}', 'Tambah ILAP');
+                loadModal('{% url "periode_jenis_data_create" %}', 'Tambah Periode Jenis Data');
             });
 
             // Handle edit/delete buttons (delegated event)
             $(document).on('click', '[data-action="edit"]', function (e) {
                 e.preventDefault();
                 const url = $(this).data('url');
-                loadModal(url, 'Edit ILAP');
+                loadModal(url, 'Edit Periode Jenis Data');
             });
 
             $(document).on('click', '[data-action="delete"]', function (e) {
                 e.preventDefault();
                 const url = $(this).data('url');
-                loadModal(url, 'Hapus ILAP');
+                loadModal(url, 'Hapus Periode Jenis Data');
             });
 
             // Handle form submission

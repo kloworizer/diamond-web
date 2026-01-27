@@ -35,6 +35,12 @@ urlpatterns = [
     path('jenis-tabel/create/', views.JenisTabelCreateView.as_view(), name='jenis_tabel_create'),
     path('jenis-tabel/<int:pk>/update/', views.JenisTabelUpdateView.as_view(), name='jenis_tabel_update'),
     path('jenis-tabel/<int:pk>/delete/', views.JenisTabelDeleteView.as_view(), name='jenis_tabel_delete'),
+    # Periode Pengiriman URLs
+    path('periode-pengiriman/', views.PeriodePengirimanListView.as_view(), name='periode_pengiriman_list'),
+    path('periode-pengiriman/data/', views.periode_pengiriman_data, name='periode_pengiriman_data'),
+    path('periode-pengiriman/create/', views.PeriodePengirimanCreateView.as_view(), name='periode_pengiriman_create'),
+    path('periode-pengiriman/<int:pk>/update/', views.PeriodePengirimanUpdateView.as_view(), name='periode_pengiriman_update'),
+    path('periode-pengiriman/<int:pk>/delete/', views.PeriodePengirimanDeleteView.as_view(), name='periode_pengiriman_delete'),
     # ILAP URLs
     path('ilap/', views.ILAPListView.as_view(), name='ilap_list'),
     path('ilap/data/', views.ilap_data, name='ilap_data'),
@@ -42,4 +48,16 @@ urlpatterns = [
     path('ilap/create/', views.ILAPCreateView.as_view(), name='ilap_create'),
     path('ilap/<str:pk>/update/', views.ILAPUpdateView.as_view(), name='ilap_update'),
     path('ilap/<str:pk>/delete/', views.ILAPDeleteView.as_view(), name='ilap_delete'),
+    # Jenis Data ILAP URLs
+    path('jenis-data-ilap/', views.JenisDataILAPListView.as_view(), name='jenis_data_ilap_list'),
+    path('jenis-data-ilap/data/', views.jenis_data_ilap_data, name='jenis_data_ilap_data'),
+    path('jenis-data-ilap/create/', views.JenisDataILAPCreateView.as_view(), name='jenis_data_ilap_create'),
+    path('jenis-data-ilap/<int:pk>/update/', views.JenisDataILAPUpdateView.as_view(), name='jenis_data_ilap_update'),
+    path('jenis-data-ilap/<int:pk>/delete/', views.JenisDataILAPDeleteView.as_view(), name='jenis_data_ilap_delete'),
+    # Periode Jenis Data URLs
+    path('periode-jenis-data/', views.PeriodeJenisDataListView.as_view(), name='periode_jenis_data_list'),
+    path('periode-jenis-data/data/', views.periode_jenis_data_data, name='periode_jenis_data_data'),
+    path('periode-jenis-data/create/', views.PeriodeJenisDataCreateView.as_view(), name='periode_jenis_data_create'),
+    path('periode-jenis-data/<int:pk>/update/', views.PeriodeJenisDataUpdateView.as_view(), name='periode_jenis_data_update'),
+    path('periode-jenis-data/<int:pk>/delete/', views.PeriodeJenisDataDeleteView.as_view(), name='periode_jenis_data_delete'),
 ]

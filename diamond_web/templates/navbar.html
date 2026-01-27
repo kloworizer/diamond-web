@@ -11,11 +11,11 @@
         <div class="collapse navbar-collapse" id="mainNavbar">
             <!-- Group 1: Main Navigation (Left Aligned) -->
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                {% if user|has_group:"admin" %}
+                {% if user|has_group:"admin_p3de" %}
                 <!-- Dropdown Group -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        Kelola Referensi
+                        Kelola Referensi P3DE
                     </a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="/kategori-ilap/">Kelola Kategori ILAP</a></li>
@@ -23,7 +23,9 @@
                         <li><a class="dropdown-item" href="/jenis-tabel/">Kelola Jenis Tabel</a></li>
                         <li><a class="dropdown-item" href="/kategori-wilayah/">Kelola Kategori Wilayah</a></li>
                         <li><a class="dropdown-item" href="/klasifikasi-tabel/">Kelola Klasifikasi Tabel</a></li>
-                        <li><a class="dropdown-item" href="#">Kelola Jenis Data ILAP</a></li>
+                        <li><a class="dropdown-item" href="/periode-pengiriman/">Kelola Periode Pengiriman</a></li>
+                        <li><a class="dropdown-item" href="/jenis-data-ilap/">Kelola Jenis Data ILAP</a></li>
+                        <li><a class="dropdown-item" href="/periode-jenis-data/">Kelola Periode Jenis Data ILAP</a></li>
                     </ul>
                 </li>
                 {% endif %}

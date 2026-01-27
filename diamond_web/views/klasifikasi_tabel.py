@@ -9,6 +9,7 @@ from django.views.decorators.http import require_GET
 
 from ..models.klasifikasi_tabel import KlasifikasiTabel
 from ..forms.klasifikasi_tabel import KlasifikasiTabelForm
+from .mixins import AjaxFormMixin
 
 class AdminRequiredMixin(UserPassesTestMixin):
     def test_func(self):
@@ -29,11 +30,12 @@ class KlasifikasiTabelListView(LoginRequiredMixin, AdminRequiredMixin, TemplateV
                 pass
         return super().get(request, *args, **kwargs)
 
-class KlasifikasiTabelCreateView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
+class KlasifikasiTabelCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
     model = KlasifikasiTabel
     form_class = KlasifikasiTabelForm
     template_name = 'klasifikasi_tabel/form.html'
     success_url = reverse_lazy('klasifikasi_tabel_list')
+    success_message = 'Klasifikasi Tabel "{object}" created successfully.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -43,34 +45,14 @@ class KlasifikasiTabelCreateView(LoginRequiredMixin, AdminRequiredMixin, CreateV
     def get(self, request, *args, **kwargs):
         self.object = None
         form = self.get_form()
-        if request.GET.get('ajax'):
-            from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), request=request)
-            return JsonResponse({'html': html})
-        return self.render_to_response(self.get_context_data(form=form))
+        return self.render_form_response(form)
 
-    def form_valid(self, form):
-        self.object = form.save()
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'message': f'Klasifikasi Tabel "{self.object}" created successfully.'
-            })
-        messages.success(self.request, f'Klasifikasi Tabel "{self.object}" created successfully.')
-        return super().form_valid(form)
-
-    def form_invalid(self, form):
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), self.request)
-            return JsonResponse({'success': False, 'html': html})
-        return super().form_invalid(form)
-
-class KlasifikasiTabelUpdateView(LoginRequiredMixin, AdminRequiredMixin, UpdateView):
+class KlasifikasiTabelUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
     model = KlasifikasiTabel
     form_class = KlasifikasiTabelForm
     template_name = 'klasifikasi_tabel/form.html'
     success_url = reverse_lazy('klasifikasi_tabel_list')
+    success_message = 'Klasifikasi Tabel "{object}" updated successfully.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -80,28 +62,7 @@ class KlasifikasiTabelUpdateView(LoginRequiredMixin, AdminRequiredMixin, UpdateV
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
         form = self.get_form()
-        if request.GET.get('ajax'):
-            from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), request=request)
-            return JsonResponse({'html': html})
-        return self.render_to_response(self.get_context_data(form=form))
-
-    def form_valid(self, form):
-        self.object = form.save()
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'message': f'Klasifikasi Tabel "{self.object}" updated successfully.'
-            })
-        messages.success(self.request, f'Klasifikasi Tabel "{self.object}" updated successfully.')
-        return super().form_valid(form)
-
-    def form_invalid(self, form):
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), self.request)
-            return JsonResponse({'success': False, 'html': html})
-        return super().form_invalid(form)
+        return self.render_form_response(form)
 
 class KlasifikasiTabelDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
     model = KlasifikasiTabel

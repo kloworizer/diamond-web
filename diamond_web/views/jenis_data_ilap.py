@@ -7,16 +7,16 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_GET
 
-from ..models.kategori_wilayah import KategoriWilayah
-from ..forms.kategori_wilayah import KategoriWilayahForm
+from ..models.jenis_data_ilap import JenisDataILAP
+from ..forms.jenis_data_ilap import JenisDataILAPForm
 from .mixins import AjaxFormMixin
 
 class AdminRequiredMixin(UserPassesTestMixin):
     def test_func(self):
         return self.request.user.groups.filter(name__in=['admin', 'admin_p3de']).exists()
 
-class KategoriWilayahListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
-    template_name = 'kategori_wilayah/list.html'
+class JenisDataILAPListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
+    template_name = 'jenis_data_ilap/list.html'
 
     def get(self, request, *args, **kwargs):
         # If redirected after delete, show success message from query params
@@ -25,21 +25,21 @@ class KategoriWilayahListView(LoginRequiredMixin, AdminRequiredMixin, TemplateVi
         if deleted and name:
             try:
                 name = unquote_plus(name)
-                messages.success(request, f'Kategori "{name}" deleted successfully.')
+                messages.success(request, f'Jenis Data "{name}" deleted successfully.')
             except Exception:
                 pass
         return super().get(request, *args, **kwargs)
 
-class KategoriWilayahCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
-    model = KategoriWilayah
-    form_class = KategoriWilayahForm
-    template_name = 'kategori_wilayah/form.html'
-    success_url = reverse_lazy('kategori_wilayah_list')
-    success_message = 'Kategori "{object}" created successfully.'
+class JenisDataILAPCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
+    model = JenisDataILAP
+    form_class = JenisDataILAPForm
+    template_name = 'jenis_data_ilap/form.html'
+    success_url = reverse_lazy('jenis_data_ilap_list')
+    success_message = 'Jenis Data "{object}" created successfully.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['form_action'] = reverse('kategori_wilayah_create')
+        context['form_action'] = reverse('jenis_data_ilap_create')
         return context
 
     def get(self, request, *args, **kwargs):
@@ -47,16 +47,16 @@ class KategoriWilayahCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxForm
         form = self.get_form()
         return self.render_form_response(form)
 
-class KategoriWilayahUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
-    model = KategoriWilayah
-    form_class = KategoriWilayahForm
-    template_name = 'kategori_wilayah/form.html'
-    success_url = reverse_lazy('kategori_wilayah_list')
-    success_message = 'Kategori "{object}" updated successfully.'
+class JenisDataILAPUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
+    model = JenisDataILAP
+    form_class = JenisDataILAPForm
+    template_name = 'jenis_data_ilap/form.html'
+    success_url = reverse_lazy('jenis_data_ilap_list')
+    success_message = 'Jenis Data "{object}" updated successfully.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['form_action'] = reverse('kategori_wilayah_update', args=[self.object.pk])
+        context['form_action'] = reverse('jenis_data_ilap_update', args=[self.object.pk])
         return context
 
     def get(self, request, *args, **kwargs):
@@ -64,14 +64,14 @@ class KategoriWilayahUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxForm
         form = self.get_form()
         return self.render_form_response(form)
 
-class KategoriWilayahDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
-    model = KategoriWilayah
-    template_name = 'kategori_wilayah/confirm_delete.html'
-    success_url = reverse_lazy('kategori_wilayah_list')
+class JenisDataILAPDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+    model = JenisDataILAP
+    template_name = 'jenis_data_ilap/confirm_delete.html'
+    success_url = reverse_lazy('jenis_data_ilap_list')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['form_action'] = reverse('kategori_wilayah_delete', args=[self.object.pk])
+        context['form_action'] = reverse('jenis_data_ilap_delete', args=[self.object.pk])
         return context
 
     def get(self, request, *args, **kwargs):
@@ -89,9 +89,9 @@ class KategoriWilayahDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteVi
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': f'Kategori "{name}" deleted successfully.'
+                'message': f'Jenis Data "{name}" deleted successfully.'
             })
-        messages.success(request, f'Kategori "{name}" deleted successfully.')
+        messages.success(request, f'Jenis Data "{name}" deleted successfully.')
         return JsonResponse({'success': True, 'redirect': self.success_url})
 
     def post(self, request, *args, **kwargs):
@@ -101,7 +101,7 @@ class KategoriWilayahDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteVi
 @login_required
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
-def kategori_wilayah_data(request):
+def jenis_data_ilap_data(request):
     """Server-side processing for DataTables.
 
     Accepts DataTables parameters: draw, start, length, search[value], order[0][column], order[0][dir]
@@ -111,23 +111,39 @@ def kategori_wilayah_data(request):
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
 
-    qs = KategoriWilayah.objects.all()
+    qs = JenisDataILAP.objects.select_related(
+        'id_kategori_ilap',
+        'id_ilap',
+        'id_jenis_tabel',
+        'id_klasifikasi_tabel'
+    ).all()
     records_total = qs.count()
 
     # Column-specific filtering
     columns_search = request.GET.getlist('columns_search[]')
     if columns_search:
-        if columns_search[0]:  # ID
-            qs = qs.filter(id__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:  # Deskripsi
-            qs = qs.filter(deskripsi__icontains=columns_search[1])
+        if columns_search[0]:  # ID Sub Jenis Data
+            qs = qs.filter(id_sub_jenis_data__icontains=columns_search[0])
+        if len(columns_search) > 1 and columns_search[1]:  # Jenis Tabel
+            qs = qs.filter(id_jenis_tabel__deskripsi__icontains=columns_search[1])
+        if len(columns_search) > 2 and columns_search[2]:  # Klasifikasi Tabel
+            qs = qs.filter(id_klasifikasi_tabel__deskripsi__icontains=columns_search[2])
+        if len(columns_search) > 3 and columns_search[3]:  # Kategori ILAP
+            qs = qs.filter(id_kategori_ilap__nama_kategori__icontains=columns_search[3])
+        if len(columns_search) > 4 and columns_search[4]:  # ILAP
+            qs = qs.filter(id_ilap__nama_ilap__icontains=columns_search[4])
+        if len(columns_search) > 5 and columns_search[5]:  # Nama Jenis Data
+            qs = qs.filter(nama_jenis_data__icontains=columns_search[5])
+        if len(columns_search) > 6 and columns_search[6]:  # Nama Sub Jenis Data
+            qs = qs.filter(nama_sub_jenis_data__icontains=columns_search[6])
 
     records_filtered = qs.count()
 
     # ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id', 'deskripsi']
+    columns = ['id_sub_jenis_data', 'id_jenis_tabel__deskripsi', 'id_klasifikasi_tabel__deskripsi', 
+               'id_kategori_ilap__nama_kategori', 'id_ilap__nama_ilap', 'nama_jenis_data', 'nama_sub_jenis_data']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -145,10 +161,15 @@ def kategori_wilayah_data(request):
     data = []
     for obj in qs_page:
         data.append({
-            'id': obj.id,
-            'deskripsi': obj.deskripsi,
-            'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('kategori_wilayah_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
-                       f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('kategori_wilayah_delete', args=[obj.pk])}' title='Delete'><i class='ri-delete-bin-line'></i></button>"
+            'id_sub_jenis_data': obj.id_sub_jenis_data,
+            'jenis_tabel': str(obj.id_jenis_tabel),
+            'klasifikasi_tabel': str(obj.id_klasifikasi_tabel),
+            'kategori_ilap': str(obj.id_kategori_ilap),
+            'ilap': str(obj.id_ilap),
+            'nama_jenis_data': obj.nama_jenis_data,
+            'nama_sub_jenis_data': obj.nama_sub_jenis_data,
+            'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('jenis_data_ilap_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
+                       f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('jenis_data_ilap_delete', args=[obj.pk])}' title='Delete'><i class='ri-delete-bin-line'></i></button>"
         })
 
     return JsonResponse({

@@ -3,7 +3,7 @@ from django.db import models
 class KategoriILAP(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="ID")
     id_kategori = models.CharField(max_length=2, unique=True, verbose_name="ID Kategori")
-    nama_kategori = models.CharField(max_length=50, verbose_name="Nama Kategori")
+    nama_kategori = models.CharField(max_length=50, unique=True, verbose_name="Nama Kategori")
 
     class Meta:
         verbose_name = "Kategori ILAP"
@@ -12,4 +12,4 @@ class KategoriILAP(models.Model):
         ordering = ["id_kategori"]
 
     def __str__(self):
-        return f"{self.id_kategori} - {self.nama_kategori}"
+        return self.nama_kategori
