@@ -12,4 +12,4 @@ class KategoriILAP(models.Model):
         ordering = ["id_kategori"]
 
     def __str__(self):
-        return f"{self.id_kategori} - {self.nama_kategori}"
+        return self.nama_kategori
