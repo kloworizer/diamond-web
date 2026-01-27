@@ -134,7 +134,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
                 ('start_date', models.DateField(verbose_name='Start Date')),
                 ('end_date', models.DateField(blank=True, default=None, null=True, verbose_name='End Date')),
-                ('id_jenis_data_ilap', models.ForeignKey(db_column='id_jenis_data_ilap', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.JenisDataILAP', verbose_name='Jenis Data ILAP')),
+                ('id_sub_jenis_data_ilap', models.ForeignKey(db_column='id_sub_jenis_data_ilap', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.JenisDataILAP', verbose_name='Sub Jenis Data ILAP')),
                 ('id_periode_pengiriman', models.ForeignKey(db_column='id_periode_pengiriman', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.PeriodePengiriman', verbose_name='Periode Pengiriman')),
             ],
             options={
