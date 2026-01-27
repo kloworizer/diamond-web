@@ -10,6 +10,7 @@ from django.db.models import Max
 
 from ..models.ilap import ILAP
 from ..forms.ilap import ILAPForm
+from .mixins import AjaxFormMixin
 
 
 class AdminRequiredMixin(UserPassesTestMixin):
@@ -117,11 +118,12 @@ def ilap_data(request):
     })
 
 
-class ILAPCreateView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
+class ILAPCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
     model = ILAP
     form_class = ILAPForm
     template_name = 'ilap/form.html'
     success_url = reverse_lazy('ilap_list')
+    success_message = 'ILAP "{object}" created successfully.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -131,11 +133,7 @@ class ILAPCreateView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
     def get(self, request, *args, **kwargs):
         self.object = None
         form = self.get_form()
-        if request.GET.get('ajax'):
-            from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), request=request)
-            return JsonResponse({'html': html})
-        return self.render_to_response(self.get_context_data(form=form))
+        return self.render_form_response(form)
 
     def form_valid(self, form):
         # Manually set id_ilap since it's disabled
@@ -143,29 +141,15 @@ class ILAPCreateView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
             id_ilap = self.request.POST.get('id_ilap')
             if id_ilap:
                 form.instance.id_ilap = id_ilap
-        
-        self.object = form.save()
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'message': f'ILAP "{self.object}" created successfully.'
-            })
-        messages.success(self.request, f'ILAP "{self.object}" created successfully.')
         return super().form_valid(form)
 
-    def form_invalid(self, form):
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), self.request)
-            return JsonResponse({'success': False, 'html': html})
-        return super().form_invalid(form)
 
-
-class ILAPUpdateView(LoginRequiredMixin, AdminRequiredMixin, UpdateView):
+class ILAPUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
     model = ILAP
     form_class = ILAPForm
     template_name = 'ilap/form.html'
     success_url = reverse_lazy('ilap_list')
+    success_message = 'ILAP "{object}" updated successfully.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -177,28 +161,7 @@ class ILAPUpdateView(LoginRequiredMixin, AdminRequiredMixin, UpdateView):
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
         form = self.get_form()
-        if request.GET.get('ajax'):
-            from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), request=request)
-            return JsonResponse({'html': html})
-        return self.render_to_response(self.get_context_data(form=form))
-
-    def form_valid(self, form):
-        self.object = form.save()
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'message': f'ILAP "{self.object}" updated successfully.'
-            })
-        messages.success(self.request, f'ILAP "{self.object}" updated successfully.')
-        return super().form_valid(form)
-
-    def form_invalid(self, form):
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), self.request)
-            return JsonResponse({'success': False, 'html': html})
-        return super().form_invalid(form)
+        return self.render_form_response(form)
 
 
 class ILAPDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):

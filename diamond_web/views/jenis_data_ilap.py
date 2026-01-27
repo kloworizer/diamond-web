@@ -9,6 +9,7 @@ from django.views.decorators.http import require_GET
 
 from ..models.jenis_data_ilap import JenisDataILAP
 from ..forms.jenis_data_ilap import JenisDataILAPForm
+from .mixins import AjaxFormMixin
 
 class AdminRequiredMixin(UserPassesTestMixin):
     def test_func(self):
@@ -29,11 +30,12 @@ class JenisDataILAPListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView
                 pass
         return super().get(request, *args, **kwargs)
 
-class JenisDataILAPCreateView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
+class JenisDataILAPCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
     model = JenisDataILAP
     form_class = JenisDataILAPForm
     template_name = 'jenis_data_ilap/form.html'
     success_url = reverse_lazy('jenis_data_ilap_list')
+    success_message = 'Jenis Data "{object}" created successfully.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -43,34 +45,14 @@ class JenisDataILAPCreateView(LoginRequiredMixin, AdminRequiredMixin, CreateView
     def get(self, request, *args, **kwargs):
         self.object = None
         form = self.get_form()
-        if request.GET.get('ajax'):
-            from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), request=request)
-            return JsonResponse({'html': html})
-        return self.render_to_response(self.get_context_data(form=form))
+        return self.render_form_response(form)
 
-    def form_valid(self, form):
-        self.object = form.save()
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'message': f'Jenis Data "{self.object}" created successfully.'
-            })
-        messages.success(self.request, f'Jenis Data "{self.object}" created successfully.')
-        return super().form_valid(form)
-
-    def form_invalid(self, form):
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), self.request)
-            return JsonResponse({'success': False, 'html': html})
-        return super().form_invalid(form)
-
-class JenisDataILAPUpdateView(LoginRequiredMixin, AdminRequiredMixin, UpdateView):
+class JenisDataILAPUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
     model = JenisDataILAP
     form_class = JenisDataILAPForm
     template_name = 'jenis_data_ilap/form.html'
     success_url = reverse_lazy('jenis_data_ilap_list')
+    success_message = 'Jenis Data "{object}" updated successfully.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -80,28 +62,7 @@ class JenisDataILAPUpdateView(LoginRequiredMixin, AdminRequiredMixin, UpdateView
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
         form = self.get_form()
-        if request.GET.get('ajax'):
-            from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), request=request)
-            return JsonResponse({'html': html})
-        return self.render_to_response(self.get_context_data(form=form))
-
-    def form_valid(self, form):
-        self.object = form.save()
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'message': f'Jenis Data "{self.object}" updated successfully.'
-            })
-        messages.success(self.request, f'Jenis Data "{self.object}" updated successfully.')
-        return super().form_valid(form)
-
-    def form_invalid(self, form):
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), self.request)
-            return JsonResponse({'success': False, 'html': html})
-        return super().form_invalid(form)
+        return self.render_form_response(form)
 
 class JenisDataILAPDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
     model = JenisDataILAP

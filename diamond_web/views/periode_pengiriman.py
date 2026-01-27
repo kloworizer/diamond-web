@@ -9,6 +9,7 @@ from django.views.decorators.http import require_GET
 
 from ..models.periode_pengiriman import PeriodePengiriman
 from ..forms.periode_pengiriman import PeriodePengirimanForm
+from .mixins import AjaxFormMixin
 
 class AdminRequiredMixin(UserPassesTestMixin):
     def test_func(self):
@@ -29,11 +30,12 @@ class PeriodePengirimanListView(LoginRequiredMixin, AdminRequiredMixin, Template
                 pass
         return super().get(request, *args, **kwargs)
 
-class PeriodePengirimanCreateView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
+class PeriodePengirimanCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
     model = PeriodePengiriman
     form_class = PeriodePengirimanForm
     template_name = 'periode_pengiriman/form.html'
     success_url = reverse_lazy('periode_pengiriman_list')
+    success_message = 'Periode Pengiriman "{object}" created successfully.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -43,34 +45,14 @@ class PeriodePengirimanCreateView(LoginRequiredMixin, AdminRequiredMixin, Create
     def get(self, request, *args, **kwargs):
         self.object = None
         form = self.get_form()
-        if request.GET.get('ajax'):
-            from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), request=request)
-            return JsonResponse({'html': html})
-        return self.render_to_response(self.get_context_data(form=form))
+        return self.render_form_response(form)
 
-    def form_valid(self, form):
-        self.object = form.save()
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'message': f'Periode Pengiriman "{self.object}" created successfully.'
-            })
-        messages.success(self.request, f'Periode Pengiriman "{self.object}" created successfully.')
-        return super().form_valid(form)
-
-    def form_invalid(self, form):
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), self.request)
-            return JsonResponse({'success': False, 'html': html})
-        return super().form_invalid(form)
-
-class PeriodePengirimanUpdateView(LoginRequiredMixin, AdminRequiredMixin, UpdateView):
+class PeriodePengirimanUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
     model = PeriodePengiriman
     form_class = PeriodePengirimanForm
     template_name = 'periode_pengiriman/form.html'
     success_url = reverse_lazy('periode_pengiriman_list')
+    success_message = 'Periode Pengiriman "{object}" updated successfully.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -80,28 +62,7 @@ class PeriodePengirimanUpdateView(LoginRequiredMixin, AdminRequiredMixin, Update
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
         form = self.get_form()
-        if request.GET.get('ajax'):
-            from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), request=request)
-            return JsonResponse({'html': html})
-        return self.render_to_response(self.get_context_data(form=form))
-
-    def form_valid(self, form):
-        self.object = form.save()
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'message': f'Periode Pengiriman "{self.object}" updated successfully.'
-            })
-        messages.success(self.request, f'Periode Pengiriman "{self.object}" updated successfully.')
-        return super().form_valid(form)
-
-    def form_invalid(self, form):
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), self.request)
-            return JsonResponse({'success': False, 'html': html})
-        return super().form_invalid(form)
+        return self.render_form_response(form)
 
 class PeriodePengirimanDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
     model = PeriodePengiriman
