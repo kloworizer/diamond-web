@@ -44,4 +44,4 @@ class JenisDataILAP(models.Model):
         ordering = ["id"]
 
     def __str__(self):
-        return f"{self.id_jenis_data} - {self.nama_jenis_data}"
+        return f"{self.id_sub_jenis_data} - {self.nama_sub_jenis_data}"

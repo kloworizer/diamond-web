@@ -4,11 +4,11 @@ from .periode_pengiriman import PeriodePengiriman
 
 class PeriodeJenisData(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="ID")
-    id_jenis_data_ilap = models.ForeignKey(
+    id_sub_jenis_data_ilap = models.ForeignKey(
         JenisDataILAP,
         on_delete=models.CASCADE,
-        db_column="id_jenis_data_ilap",
-        verbose_name="Jenis Data ILAP"
+        db_column="id_sub_jenis_data_ilap",
+        verbose_name="Sub Jenis Data ILAP"
     )
     id_periode_pengiriman = models.ForeignKey(
         PeriodePengiriman,
@@ -26,4 +26,4 @@ class PeriodeJenisData(models.Model):
         ordering = ["id"]
 
     def __str__(self):
-        return f"{self.id_jenis_data_ilap} - {self.id_periode_pengiriman}"
+        return f"{self.id_sub_jenis_data_ilap} - {self.id_periode_pengiriman}"
