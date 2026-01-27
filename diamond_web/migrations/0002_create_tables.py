@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
                 ('id_kategori', models.CharField(max_length=2, unique=True, verbose_name='ID Kategori')),
-                ('nama_kategori', models.CharField(max_length=50, verbose_name='Nama Kategori')),
+                ('nama_kategori', models.CharField(max_length=50, unique=True, verbose_name='Nama Kategori')),
             ],
             options={
                 'verbose_name': 'Kategori ILAP',
@@ -46,7 +46,7 @@ class Migration(migrations.Migration):
             name='JenisTabel',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
-                ('deskripsi', models.CharField(max_length=50, verbose_name='Deskripsi')),
+                ('deskripsi', models.CharField(max_length=50, unique=True, verbose_name='Deskripsi')),
             ],
             options={
                 'verbose_name': 'Jenis Tabel',
@@ -59,7 +59,7 @@ class Migration(migrations.Migration):
             name='KategoriWilayah',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
-                ('deskripsi', models.CharField(max_length=50, verbose_name='Deskripsi')),
+                ('deskripsi', models.CharField(max_length=50, unique=True, verbose_name='Deskripsi')),
             ],
             options={
                 'verbose_name': 'Kategori Wilayah',
@@ -72,7 +72,7 @@ class Migration(migrations.Migration):
             name='KlasifikasiTabel',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
-                ('deskripsi', models.CharField(max_length=50, verbose_name='Deskripsi')),
+                ('deskripsi', models.CharField(max_length=50, unique=True, verbose_name='Deskripsi')),
             ],
             options={
                 'verbose_name': 'Klasifikasi Tabel',
@@ -85,7 +85,7 @@ class Migration(migrations.Migration):
             name='PeriodePengiriman',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
-                ('deskripsi', models.CharField(max_length=50, verbose_name='Deskripsi')),
+                ('deskripsi', models.CharField(max_length=50, unique=True, verbose_name='Deskripsi')),
             ],
             options={
                 'verbose_name': 'Periode Pengiriman',
