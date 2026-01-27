@@ -14,7 +14,7 @@ from ..forms.ilap import ILAPForm
 
 class AdminRequiredMixin(UserPassesTestMixin):
     def test_func(self):
-        return self.request.user.groups.filter(name='Admin').exists()
+        return self.request.user.groups.filter(name__in=['admin', 'admin_p3de']).exists()
 
 
 class ILAPListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
@@ -33,7 +33,7 @@ class ILAPListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name='Admin').exists())
+@user_passes_test(lambda u: u.groups.filter(name='admin').exists())
 @require_GET
 def get_next_ilap_id(request):
     """Get next id_ilap for a given category."""
@@ -59,7 +59,7 @@ def get_next_ilap_id(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name='Admin').exists())
+@user_passes_test(lambda u: u.groups.filter(name='admin').exists())
 @require_GET
 def ilap_data(request):
     """Server-side processing for ILAP DataTables."""
