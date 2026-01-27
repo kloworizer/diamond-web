@@ -33,7 +33,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('id_ilap', models.CharField(max_length=5, unique=True, verbose_name='ID ILAP')),
                 ('nama_ilap', models.CharField(max_length=150, verbose_name='Nama ILAP')),
-                ('id_kategori', models.ForeignKey(db_column='id_kategori', to_field='id_kategori', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.KategoriIlap', verbose_name='ID Kategori')),
+                ('id_kategori', models.ForeignKey(db_column='id_kategori', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.KategoriIlap', verbose_name='ID Kategori')),
             ],
             options={
                 'verbose_name': 'ILAP',
