@@ -11,4 +11,4 @@ class JenisTabel(models.Model):
         ordering = ["id"]
 
     def __str__(self):
-        return f"{self.id} - {self.deskripsi}"
+        return self.deskripsi
