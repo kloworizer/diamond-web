@@ -6,6 +6,7 @@ class ILAP(models.Model):
     id_ilap = models.CharField(max_length=5, unique=True, verbose_name="ID ILAP")
     id_kategori = models.ForeignKey(
         KategoriILAP,
+        to_field="id_kategori",
         on_delete=models.CASCADE,
         db_column="id_kategori",
         verbose_name="ID Kategori"
