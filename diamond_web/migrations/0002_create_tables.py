@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='KategoriIlap',
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
                 ('id_kategori', models.CharField(max_length=2, unique=True, verbose_name='ID Kategori')),
                 ('nama_kategori', models.CharField(max_length=50, verbose_name='Nama Kategori')),
             ],
@@ -30,7 +30,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='ILAP',
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
                 ('id_ilap', models.CharField(max_length=5, unique=True, verbose_name='ID ILAP')),
                 ('nama_ilap', models.CharField(max_length=150, verbose_name='Nama ILAP')),
                 ('id_kategori', models.ForeignKey(db_column='id_kategori', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.KategoriIlap', verbose_name='ID Kategori')),
@@ -40,6 +40,45 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'ILAP',
                 'db_table': 'ilap',
                 'ordering': ['id_ilap'],
+            },
+        ),
+        migrations.CreateModel(
+            name='JenisTabel',
+            fields=[
+                ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('deskripsi', models.CharField(max_length=50, verbose_name='Deskripsi')),
+            ],
+            options={
+                'verbose_name': 'Jenis Tabel',
+                'verbose_name_plural': 'Jenis Tabel',
+                'db_table': 'jenis_tabel',
+                'ordering': ['id'],
+            },
+        ),
+        migrations.CreateModel(
+            name='KategoriWilayah',
+            fields=[
+                ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('deskripsi', models.CharField(max_length=50, verbose_name='Deskripsi')),
+            ],
+            options={
+                'verbose_name': 'Kategori Wilayah',
+                'verbose_name_plural': 'Kategori Wilayah',
+                'db_table': 'kategori_wilayah',
+                'ordering': ['id'],
+            },
+        ),
+        migrations.CreateModel(
+            name='KlasifikasiTabel',
+            fields=[
+                ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('deskripsi', models.CharField(max_length=50, verbose_name='Deskripsi')),
+            ],
+            options={
+                'verbose_name': 'Klasifikasi Tabel',
+                'verbose_name_plural': 'Klasifikasi Tabel',
+                'db_table': 'klasifikasi_tabel',
+                'ordering': ['id'],
             },
         ),
         migrations.CreateModel(
