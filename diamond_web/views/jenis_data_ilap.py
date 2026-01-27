@@ -113,8 +113,8 @@ def jenis_data_ilap_data(request):
 
     qs = JenisDataILAP.objects.select_related(
         'id_kategori_ilap',
-        'id_ilap',        'id_jenis_tabel',
-        'id_kategori_wilayah',
+        'id_ilap',
+        'id_jenis_tabel',
         'id_klasifikasi_tabel'
     ).all()
     records_total = qs.count()
@@ -122,30 +122,24 @@ def jenis_data_ilap_data(request):
     # Column-specific filtering
     columns_search = request.GET.getlist('columns_search[]')
     if columns_search:
-        if columns_search[0]:  # ID Jenis Data
-            qs = qs.filter(id_jenis_data__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:  # ID Sub Jenis Data
-            qs = qs.filter(id_sub_jenis_data__icontains=columns_search[1])
-        if len(columns_search) > 2 and columns_search[2]:  # Nama Jenis Data
-            qs = qs.filter(nama_jenis_data__icontains=columns_search[2])
-        if len(columns_search) > 3 and columns_search[3]:  # Nama Sub Jenis Data
-            qs = qs.filter(nama_sub_jenis_data__icontains=columns_search[3])
-        if len(columns_search) > 4 and columns_search[4]:  # Nama Tabel I
-            qs = qs.filter(nama_tabel_I__icontains=columns_search[4])
-        if len(columns_search) > 5 and columns_search[5]:  # Nama Tabel U
-            qs = qs.filter(nama_tabel_U__icontains=columns_search[5])
-        if len(columns_search) > 6 and columns_search[6]:  # Kategori ILAP
-            qs = qs.filter(id_kategori_ilap__nama_kategori__icontains=columns_search[6])
-        if len(columns_search) > 7 and columns_search[7]:  # ILAP
-            qs = qs.filter(id_ilap__nama_ilap__icontains=columns_search[7])
+        if columns_search[0]:  # ID Sub Jenis Data
+            qs = qs.filter(id_sub_jenis_data__icontains=columns_search[0])
+        if len(columns_search) > 1 and columns_search[1]:  # Jenis Tabel
+            qs = qs.filter(id_jenis_tabel__deskripsi__icontains=columns_search[1])
+        if len(columns_search) > 2 and columns_search[2]:  # Klasifikasi Tabel
+            qs = qs.filter(id_klasifikasi_tabel__deskripsi__icontains=columns_search[2])
+        if len(columns_search) > 3 and columns_search[3]:  # Kategori ILAP
+            qs = qs.filter(id_kategori_ilap__nama_kategori__icontains=columns_search[3])
+        if len(columns_search) > 4 and columns_search[4]:  # ILAP
+            qs = qs.filter(id_ilap__nama_ilap__icontains=columns_search[4])
 
     records_filtered = qs.count()
 
     # ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id_jenis_data', 'id_sub_jenis_data', 'nama_jenis_data', 'nama_sub_jenis_data', 
-               'nama_tabel_I', 'nama_tabel_U', 'id_kategori_ilap__nama_kategori', 'id_ilap__nama_ilap']
+    columns = ['id_sub_jenis_data', 'id_jenis_tabel__deskripsi', 'id_klasifikasi_tabel__deskripsi', 
+               'id_kategori_ilap__nama_kategori', 'id_ilap__nama_ilap']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -163,17 +157,11 @@ def jenis_data_ilap_data(request):
     data = []
     for obj in qs_page:
         data.append({
-            'id_jenis_data': obj.id_jenis_data,
             'id_sub_jenis_data': obj.id_sub_jenis_data,
-            'nama_jenis_data': obj.nama_jenis_data,
-            'nama_sub_jenis_data': obj.nama_sub_jenis_data,
-            'nama_tabel_I': obj.nama_tabel_I,
-            'nama_tabel_U': obj.nama_tabel_U,
+            'jenis_tabel': str(obj.id_jenis_tabel),
+            'klasifikasi_tabel': str(obj.id_klasifikasi_tabel),
             'kategori_ilap': str(obj.id_kategori_ilap),
             'ilap': str(obj.id_ilap),
-            'jenis_tabel': str(obj.id_jenis_tabel),
-            'kategori_wilayah': str(obj.id_kategori_wilayah),
-            'klasifikasi_tabel': str(obj.id_klasifikasi_tabel),
             'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('jenis_data_ilap_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
                        f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('jenis_data_ilap_delete', args=[obj.pk])}' title='Delete'><i class='ri-delete-bin-line'></i></button>"
         })

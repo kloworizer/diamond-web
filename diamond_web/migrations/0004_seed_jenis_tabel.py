@@ -30,7 +30,7 @@ def unseed_jenis_tabel(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("diamond_web", "0004_seed_ilap"),
+        ("diamond_web", "0003_seed_kategori_ilap"),
     ]
 
     operations = [

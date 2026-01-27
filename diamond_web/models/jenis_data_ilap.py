@@ -2,7 +2,6 @@ from django.db import models
 from .kategori_ilap import KategoriILAP
 from .ilap import ILAP
 from .jenis_tabel import JenisTabel
-from .kategori_wilayah import KategoriWilayah
 from .klasifikasi_tabel import KlasifikasiTabel
 
 class JenisDataILAP(models.Model):
@@ -30,12 +29,6 @@ class JenisDataILAP(models.Model):
         on_delete=models.CASCADE,
         db_column="id_jenis_tabel",
         verbose_name="Jenis Tabel"
-    )
-    id_kategori_wilayah = models.ForeignKey(
-        KategoriWilayah,
-        on_delete=models.CASCADE,
-        db_column="id_kategori_wilayah",
-        verbose_name="Kategori Wilayah"
     )
     id_klasifikasi_tabel = models.ForeignKey(
         KlasifikasiTabel,
