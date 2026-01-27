@@ -1,7 +1,61 @@
-# Generated squashed initial migration for diamond_web
-from django.conf import settings
-from django.db import migrations, models
-import django.db.models.deletion
+# Generated squashed initial migration - Create groups and superuser
+
+from django.db import migrations
+
+
+def create_groups_and_superuser(apps, schema_editor):
+    """
+    Creates all groups and a superuser 'admin' with password 'admin'.
+    Groups created: admin, admin_p3de, admin_pide, admin_pmde, kasi_p3de, kasi_pide, user_p3de, user_pide, user_pmde
+    """
+    User = apps.get_model("auth", "User")
+    Group = apps.get_model("auth", "Group")
+
+    # Groups to create
+    group_names = [
+        "admin",
+        "admin_p3de",
+        "admin_pide",
+        "admin_pmde",
+        "kasi_p3de",
+        "kasi_pide",
+        "user_p3de",
+        "user_pide",
+        "user_pmde",
+    ]
+
+    for name in group_names:
+        Group.objects.get_or_create(name=name)
+
+    # Create admin superuser if not exists
+    if not User.objects.filter(username="admin").exists():
+        admin_user = User.objects.create_superuser("admin", "admin@diamond.pde", "admin")
+    else:
+        admin_user = User.objects.get(username="admin")
+    
+    # Add admin user to all groups
+    admin_user.groups.set(Group.objects.filter(name__in=group_names))
+
+
+def delete_groups_and_superuser(apps, schema_editor):
+    """Removes all groups and the admin superuser."""
+    User = apps.get_model("auth", "User")
+    Group = apps.get_model("auth", "Group")
+
+    group_names = [
+        "admin",
+        "admin_p3de",
+        "admin_pide",
+        "admin_pmde",
+        "kasi_p3de",
+        "kasi_pide",
+        "user_p3de",
+        "user_pide",
+        "user_pmde",
+    ]
+
+    Group.objects.filter(name__in=group_names).delete()
+    User.objects.filter(username="admin").delete()
 
 
 class Migration(migrations.Migration):
@@ -9,46 +63,9 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        ("auth", "0012_alter_user_first_name_max_length"),
     ]
 
     operations = [
-        migrations.CreateModel(
-            name='Notification',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('title', models.CharField(max_length=255)),
-                ('message', models.TextField()),
-                ('is_read', models.BooleanField(default=False)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('recipient', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='notifications', to=settings.AUTH_USER_MODEL)),
-            ],
-        ),
-        migrations.CreateModel(
-            name='KategoriIlap',
-            fields=[
-                ('id_kategori', models.CharField(max_length=2, primary_key=True, serialize=False, verbose_name='ID Kategori')),
-                ('nama_kategori', models.CharField(max_length=50, verbose_name='Nama Kategori')),
-            ],
-            options={
-                'verbose_name': 'Kategori ILAP',
-                'verbose_name_plural': 'Kategori ILAP',
-                'db_table': 'kategori_ilap',
-                'ordering': ['id_kategori'],
-            },
-        ),
-        migrations.CreateModel(
-            name='ILAP',
-            fields=[
-                ('id_ilap', models.CharField(max_length=5, primary_key=True, serialize=False, verbose_name='ID ILAP')),
-                ('nama_ilap', models.CharField(max_length=150, verbose_name='Nama ILAP')),
-                ('id_kategori', models.ForeignKey(db_column='id_kategori', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.KategoriIlap', verbose_name='ID Kategori')),
-            ],
-            options={
-                'verbose_name': 'ILAP',
-                'verbose_name_plural': 'ILAP',
-                'db_table': 'ilap',
-                'ordering': ['id_ilap'],
-            },
-        ),
+        migrations.RunPython(create_groups_and_superuser, reverse_code=delete_groups_and_superuser),
     ]
