@@ -33,7 +33,7 @@ def unseed_klasifikasi_tabel(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("diamond_web", "0006_seed_kategori_wilayah"),
+        ("diamond_web", "0006_seed_ilap"),
     ]
 
     operations = [

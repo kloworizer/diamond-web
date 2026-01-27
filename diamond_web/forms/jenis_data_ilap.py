@@ -12,7 +12,6 @@ class JenisDataILAPForm(forms.ModelForm):
             'id_sub_jenis_data',
             'nama_sub_jenis_data',
             'id_jenis_tabel',
-            'id_kategori_wilayah',
             'id_klasifikasi_tabel'
         ]
 
