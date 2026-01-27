@@ -16,7 +16,8 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='KategoriIlap',
             fields=[
-                ('id_kategori', models.CharField(max_length=2, primary_key=True, serialize=False, verbose_name='ID Kategori')),
+                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id_kategori', models.CharField(max_length=2, unique=True, verbose_name='ID Kategori')),
                 ('nama_kategori', models.CharField(max_length=50, verbose_name='Nama Kategori')),
             ],
             options={
@@ -29,7 +30,8 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='ILAP',
             fields=[
-                ('id_ilap', models.CharField(max_length=5, primary_key=True, serialize=False, verbose_name='ID ILAP')),
+                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id_ilap', models.CharField(max_length=5, unique=True, verbose_name='ID ILAP')),
                 ('nama_ilap', models.CharField(max_length=150, verbose_name='Nama ILAP')),
                 ('id_kategori', models.ForeignKey(db_column='id_kategori', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.KategoriIlap', verbose_name='ID Kategori')),
             ],
