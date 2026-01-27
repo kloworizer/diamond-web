@@ -8,11 +8,9 @@ class JenisDataILAPForm(forms.ModelForm):
             'id_kategori_ilap',
             'id_ilap',
             'id_jenis_data',
-            'id_sub_jenis_data',
             'nama_jenis_data',
+            'id_sub_jenis_data',
             'nama_sub_jenis_data',
-            'nama_tabel_I',
-            'nama_tabel_U',
             'id_jenis_tabel',
             'id_kategori_wilayah',
             'id_klasifikasi_tabel'
