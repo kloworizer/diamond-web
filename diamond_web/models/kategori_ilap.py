@@ -1,7 +1,8 @@
 from django.db import models
 
 class KategoriILAP(models.Model):
-    id_kategori = models.CharField(max_length=2, primary_key=True, verbose_name="ID Kategori")
+    id = models.AutoField(primary_key=True, verbose_name="ID")
+    id_kategori = models.CharField(max_length=2, unique=True, verbose_name="ID Kategori")
     nama_kategori = models.CharField(max_length=50, verbose_name="Nama Kategori")
 
     class Meta:
