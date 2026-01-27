@@ -17,6 +17,12 @@ urlpatterns = [
     path('kategori-ilap/create/', views.KategoriILAPCreateView.as_view(), name='kategori_ilap_create'),
     path('kategori-ilap/<str:pk>/update/', views.KategoriILAPUpdateView.as_view(), name='kategori_ilap_update'),
     path('kategori-ilap/<str:pk>/delete/', views.KategoriILAPDeleteView.as_view(), name='kategori_ilap_delete'),
+    # Klasifikasi Tabel URLs
+    path('klasifikasi-tabel/', views.KlasifikasiTabelListView.as_view(), name='klasifikasi_tabel_list'),
+    path('klasifikasi-tabel/data/', views.klasifikasi_tabel_data, name='klasifikasi_tabel_data'),
+    path('klasifikasi-tabel/create/', views.KlasifikasiTabelCreateView.as_view(), name='klasifikasi_tabel_create'),
+    path('klasifikasi-tabel/<int:pk>/update/', views.KlasifikasiTabelUpdateView.as_view(), name='klasifikasi_tabel_update'),
+    path('klasifikasi-tabel/<int:pk>/delete/', views.KlasifikasiTabelDeleteView.as_view(), name='klasifikasi_tabel_delete'),
     # Kategori Wilayah URLs
     path('kategori-wilayah/', views.KategoriWilayahListView.as_view(), name='kategori_wilayah_list'),
     path('kategori-wilayah/data/', views.kategori_wilayah_data, name='kategori_wilayah_data'),
