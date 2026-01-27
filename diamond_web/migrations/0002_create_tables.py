@@ -69,6 +69,19 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
+            name='KlasifikasiTabel',
+            fields=[
+                ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('deskripsi', models.CharField(max_length=50, verbose_name='Deskripsi')),
+            ],
+            options={
+                'verbose_name': 'Klasifikasi Tabel',
+                'verbose_name_plural': 'Klasifikasi Tabel',
+                'db_table': 'klasifikasi_tabel',
+                'ordering': ['id'],
+            },
+        ),
+        migrations.CreateModel(
             name='Notification',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
