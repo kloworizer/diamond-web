@@ -30,7 +30,7 @@ def unseed_kategori_wilayah(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("diamond_web", "0005_seed_jenis_tabel"),
+        ("diamond_web", "0004_seed_jenis_tabel"),
     ]
 
     operations = [
