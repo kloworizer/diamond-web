@@ -1,9 +1,12 @@
 from django.urls import path, reverse_lazy
 from django.contrib.auth import views as auth_views
 from . import views
+from .views.general import keep_alive, session_expired
 
 urlpatterns = [
     path('', views.home, name='home'),
+    path('keep-alive/', keep_alive, name='keep_alive'),
+    path('session-expired/', session_expired, name='session_expired'),
     path('notifications/read/<int:pk>/', views.mark_notification_read, name='mark_notification_read'),
     path('password_change/', auth_views.PasswordChangeView.as_view(template_name='registration/change_password_form.html', success_url=reverse_lazy('user_password_change_done')), name='user_password_change'),
     path('password_change/done/', auth_views.PasswordChangeDoneView.as_view(template_name='registration/change_password_done.html'), name='user_password_change_done'),

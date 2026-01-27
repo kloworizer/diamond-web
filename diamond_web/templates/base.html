@@ -70,6 +70,238 @@
                 }
             }
         });
+
+        // CSRF helper for AJAX POSTs (from Django docs)
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    // Does this cookie string begin with the name we want?
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        const csrftoken = getCookie('csrftoken');
+
+        // Keep-alive behavior & session warning modal (automatic keep-alive + server-side logout on expiry)
+        (function() {
+            const SESSION_SECONDS = 30 * 60; // must match server SESSION_COOKIE_AGE
+            const WARNING_SECONDS = 60; // show warning 60s before expiry
+            const KEEP_ALIVE_INTERVAL = 10 * 60 * 1000; // POST keep-alive every 10 minutes
+            let expiryTimestamp = Date.now() + SESSION_SECONDS * 1000; // optimistic local expiry
+            let warningTimeoutId, timeoutId, keepAliveIntervalId;
+            let modalShown = false;
+
+            function scheduleTimers() {
+                clearTimers();
+                const msUntilExpiry = expiryTimestamp - Date.now();
+                if (msUntilExpiry <= 0) {
+                    onSessionExpired();
+                    return;
+                }
+                const msUntilWarning = msUntilExpiry - (WARNING_SECONDS * 1000);
+                if (msUntilWarning > 0) {
+                    warningTimeoutId = setTimeout(onShowWarning, msUntilWarning);
+                } else {
+                    // show warning immediately if already within warning window
+                    onShowWarning();
+                }
+                timeoutId = setTimeout(onSessionExpired, msUntilExpiry);
+                
+                // Start/restart automatic keep-alive POSTs
+                startKeepAliveInterval();
+            }
+
+            function clearTimers() {
+                if (warningTimeoutId) clearTimeout(warningTimeoutId);
+                if (timeoutId) clearTimeout(timeoutId);
+                if (keepAliveIntervalId) clearInterval(keepAliveIntervalId);
+            }
+
+            function startKeepAliveInterval() {
+                if (keepAliveIntervalId) clearInterval(keepAliveIntervalId);
+                // POST keep-alive periodically to extend session
+                keepAliveIntervalId = setInterval(() => {
+                    sendKeepAlive();
+                }, KEEP_ALIVE_INTERVAL);
+            }
+
+            function sendKeepAlive() {
+                // Silently extend session via POST to keep-alive endpoint
+                fetch('{% url "keep_alive" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrftoken,
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({}),
+                }).then(r => {
+                    if (r.ok) return r.json();
+                    throw new Error('keep-alive failed');
+                }).then(data => {
+                    if (data.ok && data.expiry) {
+                        // Update local expiry based on server response
+                        expiryTimestamp = Date.now() + data.expiry * 1000;
+                        // Reschedule warning/timeout to account for fresh expiry
+                        scheduleTimers();
+                    }
+                }).catch(err => {
+                    // keep-alive error; will let normal timeout flow catch it
+                    console.warn('keep-alive failed:', err);
+                });
+            }
+
+            function onShowWarning() {
+                if (modalShown) return;
+                modalShown = true;
+                
+                // show modal with countdown
+                const modalHtml = `
+                <div class="modal fade" id="sessionWarningModal" tabindex="-1" aria-hidden="true">
+                  <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title">Session expiring</h5>
+                      </div>
+                      <div class="modal-body">
+                        <p>Your session will expire in <span id="sessionCountdown">${WARNING_SECONDS}</span> seconds of inactivity.</p>
+                        <p>Session will be automatically kept alive while you are active.</p>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                const modalEl = document.getElementById('sessionWarningModal');
+                const bsModal = new bootstrap.Modal(modalEl, {backdrop: 'static'});
+                bsModal.show();
+
+                const countdownEl = document.getElementById('sessionCountdown');
+                let remaining = Math.max(0, Math.floor((expiryTimestamp - Date.now()) / 1000));
+                const countdownInterval = setInterval(() => {
+                    remaining = Math.max(0, Math.floor((expiryTimestamp - Date.now()) / 1000));
+                    countdownEl.textContent = remaining;
+                    if (remaining <= 0) {
+                        clearInterval(countdownInterval);
+                    }
+                }, 1000);
+
+                // remove modal from DOM when hidden
+                modalEl.addEventListener('hidden.bs.modal', () => {
+                    clearInterval(countdownInterval);
+                    document.getElementById('sessionWarningModal')?.remove();
+                    modalShown = false;
+                });
+            }
+
+            function onSessionExpired() {
+                // clear timers and call server-side logout endpoint, then redirect
+                clearTimers();
+                showToast('Session', 'Your session has expired. Logging out.', 'info');
+                
+                // POST to session-expired endpoint to log out server-side
+                fetch('{% url "session_expired" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrftoken,
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({}),
+                }).then(() => {
+                    // Redirect to login with next to current path
+                    const next = encodeURIComponent(window.location.pathname + window.location.search);
+                    window.location.href = '/accounts/login/?next=' + next;
+                }).catch(() => {
+                    // Redirect even if logout endpoint fails
+                    const next = encodeURIComponent(window.location.pathname + window.location.search);
+                    window.location.href = '/accounts/login/?next=' + next;
+                });
+            }
+
+            // Reset expiryTimestamp on user activity (avoid accidental expiry while active)
+            function onUserActivity() {
+                // optimistic: extend local expiry
+                expiryTimestamp = Date.now() + SESSION_SECONDS * 1000;
+                scheduleTimers();
+            }
+
+            ['mousemove','mousedown','keydown','touchstart','scroll'].forEach(evt => document.addEventListener(evt, onUserActivity, {passive: true}));
+
+            // Initialize timers
+            scheduleTimers();
+
+            // Global AJAX / fetch wrapper to handle 401 responses and redirect to login
+            const origFetch = window.fetch;
+            window.fetch = function() {
+                return origFetch.apply(this, arguments).then(response => {
+                    if (response.status === 401 || response.status === 403) {
+                        // Session likely expired; redirect to login preserving next
+                        const next = encodeURIComponent(window.location.pathname + window.location.search);
+                        window.location.href = '/accounts/login/?next=' + next;
+                        return Promise.reject(new Error('Unauthorized')); 
+                    }
+                    return response;
+                });
+            };
+
+        })();
+
+        // Inactivity timeout (30 minutes) - fallback client side for pages without modal
+        (function() {
+            const TIMEOUT_SECONDS = 30 * 60; // 30 minutes
+            let timerId;
+
+            function startTimer() {
+                clearTimer();
+                timerId = setTimeout(onTimeout, TIMEOUT_SECONDS * 1000);
+            }
+
+            function clearTimer() {
+                if (timerId) {
+                    clearTimeout(timerId);
+                }
+            }
+
+            function onUserEvent() {
+                // reset timer on user activity
+                startTimer();
+            }
+
+            function onTimeout() {
+                // Optional: show a toast informing the user
+                try {
+                    showToast('Session', 'Your session has timed out. Redirecting to the homepage.', 'info');
+                } catch (e) {
+                    console.warn('Could not show toast before redirect:', e);
+                }
+
+                // Redirect to homepage (root)
+                window.location.href = '/';
+            }
+
+            // Events that count as activity
+            const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
+            events.forEach(evt => document.addEventListener(evt, onUserEvent, {passive: true}));
+
+            // Start timer when page loads
+            document.addEventListener('DOMContentLoaded', startTimer);
+
+            // Also start immediately in case DOMContentLoaded already fired
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                startTimer();
+            }
+        })();
     </script>
     {% block scripts %}{% endblock %}
 </body>
