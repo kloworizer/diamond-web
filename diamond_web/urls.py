@@ -54,4 +54,10 @@ urlpatterns = [
     path('jenis-data-ilap/create/', views.JenisDataILAPCreateView.as_view(), name='jenis_data_ilap_create'),
     path('jenis-data-ilap/<int:pk>/update/', views.JenisDataILAPUpdateView.as_view(), name='jenis_data_ilap_update'),
     path('jenis-data-ilap/<int:pk>/delete/', views.JenisDataILAPDeleteView.as_view(), name='jenis_data_ilap_delete'),
+    # Periode Jenis Data URLs
+    path('periode-jenis-data/', views.PeriodeJenisDataListView.as_view(), name='periode_jenis_data_list'),
+    path('periode-jenis-data/data/', views.periode_jenis_data_data, name='periode_jenis_data_data'),
+    path('periode-jenis-data/create/', views.PeriodeJenisDataCreateView.as_view(), name='periode_jenis_data_create'),
+    path('periode-jenis-data/<int:pk>/update/', views.PeriodeJenisDataUpdateView.as_view(), name='periode_jenis_data_update'),
+    path('periode-jenis-data/<int:pk>/delete/', views.PeriodeJenisDataDeleteView.as_view(), name='periode_jenis_data_delete'),
 ]
