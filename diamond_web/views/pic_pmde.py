@@ -120,7 +120,10 @@ def pic_pmde_data(request):
         if columns_search[0]:  # Sub Jenis Data ILAP
             qs = qs.filter(id_sub_jenis_data_ilap__nama_sub_jenis_data__icontains=columns_search[0])
         if len(columns_search) > 1 and columns_search[1]:  # User
-            qs = qs.filter(id_user__username__icontains=columns_search[1])
+            from django.db.models import Q
+            qs = qs.filter(Q(id_user__username__icontains=columns_search[1]) | 
+                           Q(id_user__first_name__icontains=columns_search[1]) |
+                           Q(id_user__last_name__icontains=columns_search[1]))
         if len(columns_search) > 2 and columns_search[2]:  # Start Date
             qs = qs.filter(start_date__icontains=columns_search[2])
         if len(columns_search) > 3 and columns_search[3]:  # End Date
@@ -148,9 +151,10 @@ def pic_pmde_data(request):
 
     data = []
     for obj in qs_page:
+        user_display = f"{obj.id_user.first_name} {obj.id_user.last_name}".strip() or obj.id_user.username
         data.append({
             'sub_jenis_data_ilap': str(obj.id_sub_jenis_data_ilap),
-            'user': obj.id_user.username,
+            'user': user_display,
             'start_date': obj.start_date.strftime('%Y-%m-%d') if obj.start_date else '',
             'end_date': obj.end_date.strftime('%Y-%m-%d') if obj.end_date else '',
             'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('pic_pmde_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
