@@ -158,14 +158,30 @@ def seed_ilap(apps, schema_editor):
     """Seeds the ILAP table with initial data."""
     ILAP = apps.get_model("diamond_web", "ILAP")
     KategoriIlap = apps.get_model("diamond_web", "KategoriIlap")
+    KategoriWilayah = apps.get_model("diamond_web", "KategoriWilayah")
+    
+    # Get the kategori_wilayah objects
+    internasional = KategoriWilayah.objects.get(deskripsi="Internasional")
+    regional = KategoriWilayah.objects.get(deskripsi="Regional")
+    nasional = KategoriWilayah.objects.get(deskripsi="Nasional")
     
     for item in ILAP_DATA:
         kategori = KategoriIlap.objects.get(id_kategori=item["id_kategori"])
+        
+        # Determine kategori_wilayah based on id_kategori
+        if item["id_kategori"] == "EI":
+            kategori_wilayah = internasional
+        elif item["id_kategori"] in ["PV", "PD"]:
+            kategori_wilayah = regional
+        else:
+            kategori_wilayah = nasional
+        
         ILAP.objects.get_or_create(
             id_ilap=item["id_ilap"],
             defaults={
                 "id_kategori": kategori,
-                "nama_ilap": item["nama_ilap"]
+                "nama_ilap": item["nama_ilap"],
+                "id_kategori_wilayah": kategori_wilayah
             }
         )
 
@@ -180,7 +196,7 @@ def unseed_ilap(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("diamond_web", "0003_seed_kategori_ilap"),
+        ("diamond_web", "0005_seed_kategori_wilayah"),
     ]
 
     operations = [
