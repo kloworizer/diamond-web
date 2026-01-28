@@ -18,11 +18,13 @@ Including another URLconf
 from django.conf import settings
 from django.contrib import admin
 from django.urls import path, include
+from schema_graph.views import Schema
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("diamond_web.urls")),
     path("accounts/", include("django.contrib.auth.urls")),
+    path("schema/", Schema.as_view()),
 ]
 
 if settings.DEBUG:
