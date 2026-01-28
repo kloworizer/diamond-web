@@ -75,6 +75,12 @@ urlpatterns = [
     path('pic-p3de/<int:pk>/delete/', views.PICP3DEDeleteView.as_view(), name='pic_p3de_delete'),
 
     # === PIDE Section ===
+    # Nama Tabel URLs
+    path('nama-tabel/', views.NamaTabelListView.as_view(), name='nama_tabel_list'),
+    path('nama-tabel/data/', views.nama_tabel_data, name='nama_tabel_data'),
+    path('nama-tabel/create/', views.NamaTabelCreateView.as_view(), name='nama_tabel_create'),
+    path('nama-tabel/<int:pk>/update/', views.NamaTabelUpdateView.as_view(), name='nama_tabel_update'),
+    path('nama-tabel/<int:pk>/delete/', views.NamaTabelDeleteView.as_view(), name='nama_tabel_delete'),
     # PIC PIDE URLs
     path('pic-pide/', views.PICPIDEListView.as_view(), name='pic_pide_list'),
     path('pic-pide/data/', views.pic_pide_data, name='pic_pide_data'),
