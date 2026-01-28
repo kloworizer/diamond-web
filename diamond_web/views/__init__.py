@@ -9,3 +9,4 @@ from .klasifikasi_tabel import *
 from .klasifikasi_jenis_data import *
 from .periode_pengiriman import *
 from .periode_jenis_data import *
+from .pic_p3de import *

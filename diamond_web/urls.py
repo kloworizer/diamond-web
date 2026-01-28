@@ -66,4 +66,10 @@ urlpatterns = [
     path('periode-jenis-data/create/', views.PeriodeJenisDataCreateView.as_view(), name='periode_jenis_data_create'),
     path('periode-jenis-data/<int:pk>/update/', views.PeriodeJenisDataUpdateView.as_view(), name='periode_jenis_data_update'),
     path('periode-jenis-data/<int:pk>/delete/', views.PeriodeJenisDataDeleteView.as_view(), name='periode_jenis_data_delete'),
+    # PIC P3DE URLs
+    path('pic-p3de/', views.PICP3DEListView.as_view(), name='pic_p3de_list'),
+    path('pic-p3de/data/', views.pic_p3de_data, name='pic_p3de_data'),
+    path('pic-p3de/create/', views.PICP3DECreateView.as_view(), name='pic_p3de_create'),
+    path('pic-p3de/<int:pk>/update/', views.PICP3DEUpdateView.as_view(), name='pic_p3de_update'),
+    path('pic-p3de/<int:pk>/delete/', views.PICP3DEDeleteView.as_view(), name='pic_p3de_delete'),
 ]
