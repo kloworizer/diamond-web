@@ -23,6 +23,12 @@ urlpatterns = [
     path('klasifikasi-tabel/create/', views.KlasifikasiTabelCreateView.as_view(), name='klasifikasi_tabel_create'),
     path('klasifikasi-tabel/<int:pk>/update/', views.KlasifikasiTabelUpdateView.as_view(), name='klasifikasi_tabel_update'),
     path('klasifikasi-tabel/<int:pk>/delete/', views.KlasifikasiTabelDeleteView.as_view(), name='klasifikasi_tabel_delete'),
+    # Klasifikasi Jenis Data URLs
+    path('klasifikasi-jenis-data/', views.KlasifikasiJenisDataListView.as_view(), name='klasifikasi_jenis_data_list'),
+    path('klasifikasi-jenis-data/data/', views.klasifikasi_jenis_data_data, name='klasifikasi_jenis_data_data'),
+    path('klasifikasi-jenis-data/create/', views.KlasifikasiJenisDataCreateView.as_view(), name='klasifikasi_jenis_data_create'),
+    path('klasifikasi-jenis-data/<int:pk>/update/', views.KlasifikasiJenisDataUpdateView.as_view(), name='klasifikasi_jenis_data_update'),
+    path('klasifikasi-jenis-data/<int:pk>/delete/', views.KlasifikasiJenisDataDeleteView.as_view(), name='klasifikasi_jenis_data_delete'),
     # Kategori Wilayah URLs
     path('kategori-wilayah/', views.KategoriWilayahListView.as_view(), name='kategori_wilayah_list'),
     path('kategori-wilayah/data/', views.kategori_wilayah_data, name='kategori_wilayah_data'),
