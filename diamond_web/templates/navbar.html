@@ -29,7 +29,29 @@
                         <li><a class="dropdown-item" href="/klasifikasi-jenis-data/">Kelola Klasifikasi Jenis Data ILAP</a></li>
                         <li><a class="dropdown-item" href="/periode-jenis-data/">Kelola Periode Jenis Data ILAP</a></li>
                         <li><a class="dropdown-item" href="/#/">Kelola Data Prioritas</a></li>
-                        <li><a class="dropdown-item" href="/pic-p3de/">Kelola Periode Jenis Data ILAP</a></li>
+                        <li><a class="dropdown-item" href="/pic-p3de/">Kelola PIC P3DE</a></li>
+                    </ul>
+                </li>
+                {% endif %}
+                {% if user|has_group:"admin_pide" %}
+                <!-- Dropdown Group -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Kelola Referensi PIDE
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="/pic-pide/">Kelola PIC PIDE</a></li>
+                    </ul>
+                </li>
+                {% endif %}
+                {% if user|has_group:"admin_pide" %}
+                <!-- Dropdown Group -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Kelola Referensi PMDE
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="/pic-pide/">Kelola PIC PMDE</a></li>
                     </ul>
                 </li>
                 {% endif %}
