@@ -158,4 +158,52 @@ class Migration(migrations.Migration):
                 'ordering': ['id'],
             },
         ),
+        migrations.CreateModel(
+            name='PICP3DE',
+            fields=[
+                ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('start_date', models.DateField(verbose_name='Start Date')),
+                ('end_date', models.DateField(blank=True, default=None, null=True, verbose_name='End Date')),
+                ('id_sub_jenis_data_ilap', models.ForeignKey(db_column='id_sub_jenis_data_ilap', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.JenisDataILAP', verbose_name='Sub Jenis Data ILAP')),
+                ('id_user', models.ForeignKey(db_column='id_user', on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL, verbose_name='User')),
+            ],
+            options={
+                'verbose_name': 'PIC P3DE',
+                'verbose_name_plural': 'PIC P3DE',
+                'db_table': 'pic_p3de',
+                'ordering': ['id'],
+            },
+        ),
+        migrations.CreateModel(
+            name='PICPIDE',
+            fields=[
+                ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('start_date', models.DateField(verbose_name='Start Date')),
+                ('end_date', models.DateField(blank=True, default=None, null=True, verbose_name='End Date')),
+                ('id_sub_jenis_data_ilap', models.ForeignKey(db_column='id_sub_jenis_data_ilap', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.JenisDataILAP', verbose_name='Sub Jenis Data ILAP')),
+                ('id_user', models.ForeignKey(db_column='id_user', on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL, verbose_name='User')),
+            ],
+            options={
+                'verbose_name': 'PIC PIDE',
+                'verbose_name_plural': 'PIC PIDE',
+                'db_table': 'pic_pide',
+                'ordering': ['id'],
+            },
+        ),
+        migrations.CreateModel(
+            name='PICPMDE',
+            fields=[
+                ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('start_date', models.DateField(verbose_name='Start Date')),
+                ('end_date', models.DateField(blank=True, default=None, null=True, verbose_name='End Date')),
+                ('id_sub_jenis_data_ilap', models.ForeignKey(db_column='id_sub_jenis_data_ilap', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.JenisDataILAP', verbose_name='Sub Jenis Data ILAP')),
+                ('id_user', models.ForeignKey(db_column='id_user', on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL, verbose_name='User')),
+            ],
+            options={
+                'verbose_name': 'PIC PMDE',
+                'verbose_name_plural': 'PIC PMDE',
+                'db_table': 'pic_pmde',
+                'ordering': ['id'],
+            },
+        ),
     ]

@@ -8,3 +8,6 @@ from .klasifikasi_tabel import KlasifikasiTabel
 from .klasifikasi_jenis_data import KlasifikasiJenisData
 from .periode_pengiriman import PeriodePengiriman
 from .periode_jenis_data import PeriodeJenisData
+from .pic_p3de import PICP3DE
+from .pic_pide import PICPIDE
+from .pic_pmde import PICPMDE
