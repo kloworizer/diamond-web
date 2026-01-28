@@ -87,6 +87,12 @@ urlpatterns = [
     path('pic-pide/create/', views.PICPIDECreateView.as_view(), name='pic_pide_create'),
     path('pic-pide/<int:pk>/update/', views.PICPIDEUpdateView.as_view(), name='pic_pide_update'),
     path('pic-pide/<int:pk>/delete/', views.PICPIDEDeleteView.as_view(), name='pic_pide_delete'),
+    # Durasi Jatuh Tempo PIDE URLs
+    path('durasi-jatuh-tempo-pide/', views.DurasiJatuhTempoPIDEListView.as_view(), name='durasi_jatuh_tempo_pide_list'),
+    path('durasi-jatuh-tempo-pide/data/', views.durasi_jatuh_tempo_pide_data, name='durasi_jatuh_tempo_pide_data'),
+    path('durasi-jatuh-tempo-pide/create/', views.DurasiJatuhTempoPIDECreateView.as_view(), name='durasi_jatuh_tempo_pide_create'),
+    path('durasi-jatuh-tempo-pide/<int:pk>/update/', views.DurasiJatuhTempoPIDEUpdateView.as_view(), name='durasi_jatuh_tempo_pide_update'),
+    path('durasi-jatuh-tempo-pide/<int:pk>/delete/', views.DurasiJatuhTempoPIDEDeleteView.as_view(), name='durasi_jatuh_tempo_pide_delete'),
 
     # === PMDE Section ===
     # PIC PMDE URLs
@@ -95,4 +101,11 @@ urlpatterns = [
     path('pic-pmde/create/', views.PICPMDECreateView.as_view(), name='pic_pmde_create'),
     path('pic-pmde/<int:pk>/update/', views.PICPMDEUpdateView.as_view(), name='pic_pmde_update'),
     path('pic-pmde/<int:pk>/delete/', views.PICPMDEDeleteView.as_view(), name='pic_pmde_delete'),
+
+    # Durasi Jatuh Tempo PMDE URLs
+    path('durasi-jatuh-tempo-pmde/', views.DurasiJatuhTempoPMDEListView.as_view(), name='durasi_jatuh_tempo_pmde_list'),
+    path('durasi-jatuh-tempo-pmde/data/', views.durasi_jatuh_tempo_pmde_data, name='durasi_jatuh_tempo_pmde_data'),
+    path('durasi-jatuh-tempo-pmde/create/', views.DurasiJatuhTempoPMDECreateView.as_view(), name='durasi_jatuh_tempo_pmde_create'),
+    path('durasi-jatuh-tempo-pmde/<int:pk>/update/', views.DurasiJatuhTempoPMDEUpdateView.as_view(), name='durasi_jatuh_tempo_pmde_update'),
+    path('durasi-jatuh-tempo-pmde/<int:pk>/delete/', views.DurasiJatuhTempoPMDEDeleteView.as_view(), name='durasi_jatuh_tempo_pmde_delete'),
 ]
