@@ -119,13 +119,27 @@ class Migration(migrations.Migration):
                 ('id_kategori_ilap', models.ForeignKey(db_column='id_kategori_ilap', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.KategoriIlap', verbose_name='Kategori ILAP')),
                 ('id_ilap', models.ForeignKey(db_column='id_ilap', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.ILAP', verbose_name='ILAP')),
                 ('id_jenis_tabel', models.ForeignKey(db_column='id_jenis_tabel', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.JenisTabel', verbose_name='Jenis Tabel')),
-                ('id_klasifikasi_tabel', models.ForeignKey(db_column='id_klasifikasi_tabel', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.KlasifikasiTabel', verbose_name='Klasifikasi Tabel')),
             ],
             options={
                 'verbose_name': 'Jenis Data ILAP',
                 'verbose_name_plural': 'Jenis Data ILAP',
                 'db_table': 'jenis_data_ilap',
                 'ordering': ['id'],
+            },
+        ),
+        migrations.CreateModel(
+            name='KlasifikasiJenisData',
+            fields=[
+                ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('id_jenis_data_ilap', models.ForeignKey(db_column='id_jenis_data_ilap', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.JenisDataILAP', verbose_name='Jenis Data ILAP')),
+                ('id_klasifikasi_tabel', models.ForeignKey(db_column='id_klasifikasi_tabel', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.KlasifikasiTabel', verbose_name='Klasifikasi Tabel')),
+            ],
+            options={
+                'verbose_name': 'Klasifikasi Jenis Data',
+                'verbose_name_plural': 'Klasifikasi Jenis Data',
+                'db_table': 'klasifikasi_jenis_data',
+                'ordering': ['id'],
+                'unique_together': [['id_jenis_data_ilap', 'id_klasifikasi_tabel']],
             },
         ),
         migrations.CreateModel(
