@@ -1,0 +1,15 @@
+# Development requirements
+-r base.txt
+
+# Development and debugging tools
+attrs==25.4.0
+cattrs==25.3.0
+django-debug-toolbar==6.1.0
+django-schema-graph==3.1.0
+
+# Optional: Add other dev tools as needed
+# django-extensions
+# ipython
+# pytest
+# pytest-django
+# coverage

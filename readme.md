@@ -25,36 +25,58 @@ Setelah selesai mengembangkan, Anda dapat membuat pull request ke repo utama.
 
 ## Setup Proyek Django
 
+### Struktur Requirements dan Settings
+
+Proyek ini menggunakan pemisahan antara konfigurasi development dan production:
+
+```
+requirements/
+├── base.txt     # Dependencies umum untuk semua environment
+├── dev.txt      # Dependencies khusus development
+└── prod.txt     # Dependencies khusus production
+
+config/settings/
+├── base.py      # Settings umum
+├── dev.py       # Settings development
+└── prod.py      # Settings production
+```
+
+### Langkah Setup Development
+
 1. **Buat dan aktifkan virtual environment:**
 
     ```bash
     python -m venv .venv
-    source .venv/bin/activate  # Linux/Mac
     .venv\Scripts\activate     # Windows
+    source .venv/bin/activate  # Linux/Mac
     ```
 
-2. **Install dependensi:**
+2. **Install dependensi development:**
 
     ```bash
-    pip install -r requirements.txt
+    pip install -r requirements/dev.txt
     ```
 
-3. **Jalankan migrasi database:**
+3. **Buat file .env untuk konfigurasi lokal:**
+
+    ```bash
+    copy .env.example .env  # Windows
+    cp .env.example .env    # Linux/Mac
+    ```
+
+    Edit file `.env` dan sesuaikan nilai-nilainya:
+    ```
+    SECRET_KEY=your-secret-key-here
+    DEBUG=True
+    ALLOWED_HOSTS=127.0.0.1,localhost
+    DJANGO_SETTINGS_MODULE=config.settings.dev
+    ```
+
+4. **Jalankan migrasi database:**
 
     ```bash
     python manage.py migrate
     ```
-
-## Membuat file .env lokal
-
-Buat file `.env` untuk konfigurasi lokal dengan menyalin dari contoh berikut:
-
-```bash
-copy .env-example .env  # Windows
-cp .env-example .env    # Linux/Mac
-```
-
-Edit file `.env` sesuai kebutuhan konfigurasi lokal Anda.
 
 ## Menjalankan Server Development
 
@@ -64,6 +86,43 @@ python manage.py runserver
 
 Akses aplikasi di [http://localhost:8000](http://localhost:8000).
 
+### Menjalankan dengan Settings Spesifik
+
+Secara default, `manage.py` menggunakan `config.settings.dev`. Untuk menggunakan settings lain:
+
+```bash
+# Gunakan settings production
+python manage.py runserver --settings=config.settings.prod
+
+# Atau set environment variable
+$env:DJANGO_SETTINGS_MODULE="config.settings.prod"  # Windows PowerShell
+export DJANGO_SETTINGS_MODULE=config.settings.prod  # Linux/Mac
+```
+
+## Tools Development
+
+### Django Schema Graph (Database ERD)
+
+**Django Schema Graph** hanya tersedia di environment development untuk memvisualisasikan struktur database.
+
+#### Cara Mengakses:
+
+1. Pastikan server development berjalan:
+   ```bash
+   python manage.py runserver
+   ```
+
+2. Akses schema graph melalui browser:
+   - URL: [http://localhost:8000/schema/](http://localhost:8000/schema/)
+
+3. Fitur yang tersedia:
+   - Visualisasi tabel dan relasi antar model
+   - Filter berdasarkan aplikasi
+   - Zoom in/out diagram
+   - Export diagram
+
+**Catatan:** Tool ini tidak tersedia di production untuk alasan keamanan dan performa.
+
 ## Daftar library
 
 | Library | Versi | Keterangan |
@@ -71,6 +130,13 @@ Akses aplikasi di [http://localhost:8000](http://localhost:8000).
 | django-crispy-forms | 2.5 | Aplikasi Django untuk merapikan dan memudahkan pembuatan layout form. |
 | crispy-bootstrap5 | 2025.6 | Template pack untuk `django-crispy-forms` agar form dirender menggunakan gaya Bootstrap 5. |
 | django-import-export | 4.4.0 | Memudahkan impor dan ekspor data (CSV, Excel, dsb.) lewat admin Django. |
+
+### Development Tools
+
+| Library | Versi | Keterangan |
+|---|---:|---|
+| django-debug-toolbar | 6.1.0 | Toolbar debugging untuk development yang menampilkan informasi SQL queries, performance, dan lainnya. |
+| django-schema-graph | 3.1.0 | Tools untuk memvisualisasikan struktur database dalam bentuk diagram ERD interaktif. |
 
 ### Frontend Libraries
 
