@@ -10,6 +10,7 @@ from django.db.models import Max
 
 from ..models.ilap import ILAP
 from ..forms.ilap import ILAPForm
+from .mixins import AjaxFormMixin
 
 
 class AdminRequiredMixin(UserPassesTestMixin):
@@ -67,24 +68,26 @@ def ilap_data(request):
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
 
-    qs = ILAP.objects.select_related('id_kategori').all()
+    qs = ILAP.objects.select_related('id_kategori', 'id_kategori_wilayah').all()
     records_total = qs.count()
 
     # Column-specific filtering
     columns_search = request.GET.getlist('columns_search[]')
     if columns_search:
-        if columns_search[0]:  # ID ILAP
-            qs = qs.filter(id_ilap__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:  # ID Kategori
-            qs = qs.filter(id_kategori__id_kategori__icontains=columns_search[1])
-        if len(columns_search) > 2 and columns_search[2]:  # Nama ILAP
-            qs = qs.filter(nama_ilap__icontains=columns_search[2])
+        if columns_search[0]:  # Kategori Wilayah
+            qs = qs.filter(id_kategori_wilayah__deskripsi__icontains=columns_search[0])
+        if len(columns_search) > 1 and columns_search[1]:  # ID ILAP
+            qs = qs.filter(id_ilap__icontains=columns_search[1])
+        if len(columns_search) > 2 and columns_search[2]:  # ID Kategori
+            qs = qs.filter(id_kategori__id_kategori__icontains=columns_search[2])
+        if len(columns_search) > 3 and columns_search[3]:  # Nama ILAP
+            qs = qs.filter(nama_ilap__icontains=columns_search[3])
 
     records_filtered = qs.count()
 
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id_ilap', 'id_kategori__nama_kategori', 'nama_ilap']
+    columns = ['id_kategori_wilayah__deskripsi', 'id_ilap', 'id_kategori__nama_kategori', 'nama_ilap']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -102,6 +105,7 @@ def ilap_data(request):
     data = []
     for obj in qs_page:
         data.append({
+            'kategori_wilayah': str(obj.id_kategori_wilayah),
             'id_ilap': obj.id_ilap,
             'id_kategori': str(obj.id_kategori),
             'nama_ilap': obj.nama_ilap,
@@ -117,11 +121,12 @@ def ilap_data(request):
     })
 
 
-class ILAPCreateView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
+class ILAPCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
     model = ILAP
     form_class = ILAPForm
     template_name = 'ilap/form.html'
     success_url = reverse_lazy('ilap_list')
+    success_message = 'ILAP "{object}" created successfully.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -131,11 +136,7 @@ class ILAPCreateView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
     def get(self, request, *args, **kwargs):
         self.object = None
         form = self.get_form()
-        if request.GET.get('ajax'):
-            from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), request=request)
-            return JsonResponse({'html': html})
-        return self.render_to_response(self.get_context_data(form=form))
+        return self.render_form_response(form)
 
     def form_valid(self, form):
         # Manually set id_ilap since it's disabled
@@ -143,29 +144,15 @@ class ILAPCreateView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
             id_ilap = self.request.POST.get('id_ilap')
             if id_ilap:
                 form.instance.id_ilap = id_ilap
-        
-        self.object = form.save()
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'message': f'ILAP "{self.object}" created successfully.'
-            })
-        messages.success(self.request, f'ILAP "{self.object}" created successfully.')
         return super().form_valid(form)
 
-    def form_invalid(self, form):
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), self.request)
-            return JsonResponse({'success': False, 'html': html})
-        return super().form_invalid(form)
 
-
-class ILAPUpdateView(LoginRequiredMixin, AdminRequiredMixin, UpdateView):
+class ILAPUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
     model = ILAP
     form_class = ILAPForm
     template_name = 'ilap/form.html'
     success_url = reverse_lazy('ilap_list')
+    success_message = 'ILAP "{object}" updated successfully.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -177,28 +164,7 @@ class ILAPUpdateView(LoginRequiredMixin, AdminRequiredMixin, UpdateView):
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
         form = self.get_form()
-        if request.GET.get('ajax'):
-            from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), request=request)
-            return JsonResponse({'html': html})
-        return self.render_to_response(self.get_context_data(form=form))
-
-    def form_valid(self, form):
-        self.object = form.save()
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'message': f'ILAP "{self.object}" updated successfully.'
-            })
-        messages.success(self.request, f'ILAP "{self.object}" updated successfully.')
-        return super().form_valid(form)
-
-    def form_invalid(self, form):
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            from django.template.loader import render_to_string
-            html = render_to_string(self.template_name, self.get_context_data(form=form), self.request)
-            return JsonResponse({'success': False, 'html': html})
-        return super().form_invalid(form)
+        return self.render_form_response(form)
 
 
 class ILAPDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):

@@ -27,7 +27,7 @@ class ILAPForm(forms.ModelForm):
     
     class Meta:
         model = ILAP
-        fields = ['id_kategori', 'id_ilap', 'nama_ilap']
+        fields = ['id_kategori', 'id_ilap', 'nama_ilap', 'id_kategori_wilayah']
         widgets = {
             'id_ilap': forms.TextInput(attrs={'readonly': 'readonly'}),
         }
