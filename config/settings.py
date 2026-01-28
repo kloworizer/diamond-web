@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     "diamond_web",
     "crispy_forms",
     "crispy_bootstrap5",
-    
+    'schema_graph',
     "import_export",
 ]
 
