@@ -11,8 +11,7 @@ class JenisDataILAPForm(forms.ModelForm):
             'nama_jenis_data',
             'id_sub_jenis_data',
             'nama_sub_jenis_data',
-            'id_jenis_tabel',
-            'id_klasifikasi_tabel'
+            'id_jenis_tabel'
         ]
 
     def __init__(self, *args, **kwargs):
