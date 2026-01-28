@@ -13,7 +13,7 @@ from .mixins import AjaxFormMixin
 
 class AdminRequiredMixin(UserPassesTestMixin):
     def test_func(self):
-        return self.request.user.groups.filter(name__in=['admin', 'admin_p3de']).exists()
+        return self.request.user.groups.filter(name__in=['admin', 'admin_pmde']).exists()
 
 class PICPMDEListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
     template_name = 'pic_pmde/list.html'
@@ -99,7 +99,7 @@ class PICPMDEDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde']).exists())
 @require_GET
 def pic_pmde_data(request):
     """Server-side processing for DataTables.

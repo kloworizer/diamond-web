@@ -72,6 +72,7 @@ urlpatterns = [
     path('pic-p3de/data/', views.pic_p3de_data, name='pic_p3de_data'),
     path('pic-p3de/create/', views.PICP3DECreateView.as_view(), name='pic_p3de_create'),
     path('pic-p3de/<int:pk>/update/', views.PICP3DEUpdateView.as_view(), name='pic_p3de_update'),
+    path('pic-p3de/<int:pk>/delete/', views.PICP3DEDeleteView.as_view(), name='pic_p3de_delete'),
 
     # === PIDE Section ===
     # PIC PIDE URLs
@@ -82,7 +83,6 @@ urlpatterns = [
     path('pic-pide/<int:pk>/delete/', views.PICPIDEDeleteView.as_view(), name='pic_pide_delete'),
 
     # === PMDE Section ===
-    path('pic-pide/<int:pk>/delete/', views.PICPIDEDeleteView.as_view(), name='pic_pide_delete'),
     # PIC PMDE URLs
     path('pic-pmde/', views.PICPMDEListView.as_view(), name='pic_pmde_list'),
     path('pic-pmde/data/', views.pic_pmde_data, name='pic_pmde_data'),
