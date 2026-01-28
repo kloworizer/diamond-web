@@ -10,3 +10,4 @@ from .periode_jenis_data import PeriodeJenisDataForm
 from .pic_p3de import PICP3DEForm
 from .pic_pide import PICPIDEForm
 from .pic_pmde import PICPMDEForm
+from .durasi_jatuh_tempo import DurasiJatuhTempoForm

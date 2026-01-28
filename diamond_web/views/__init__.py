@@ -12,3 +12,5 @@ from .periode_jenis_data import *
 from .pic_p3de import *
 from .pic_pide import *
 from .pic_pmde import *
+from .nama_tabel import *
+from .durasi_jatuh_tempo import *

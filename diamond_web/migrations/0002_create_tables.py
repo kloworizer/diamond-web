@@ -10,6 +10,7 @@ class Migration(migrations.Migration):
     dependencies = [
         ("diamond_web", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        ("auth", "0012_alter_user_first_name_max_length"),
     ]
 
     operations = [
@@ -203,6 +204,23 @@ class Migration(migrations.Migration):
                 'verbose_name': 'PIC PMDE',
                 'verbose_name_plural': 'PIC PMDE',
                 'db_table': 'pic_pmde',
+                'ordering': ['id'],
+            },
+        ),
+        migrations.CreateModel(
+            name='DurasiJatuhTempo',
+            fields=[
+                ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('durasi', models.IntegerField(verbose_name='Durasi')),
+                ('start_date', models.DateField(verbose_name='Start Date')),
+                ('end_date', models.DateField(blank=True, default=None, null=True, verbose_name='End Date')),
+                ('id_sub_jenis_data', models.ForeignKey(db_column='id_sub_jenis_data', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.JenisDataILAP', verbose_name='Sub Jenis Data ILAP')),
+                ('seksi', models.ForeignKey(db_column='seksi', on_delete=django.db.models.deletion.CASCADE, to='auth.Group', verbose_name='Seksi')),
+            ],
+            options={
+                'verbose_name': 'Durasi Jatuh Tempo',
+                'verbose_name_plural': 'Durasi Jatuh Tempo',
+                'db_table': 'durasi_jatuh_tempo',
                 'ordering': ['id'],
             },
         ),
