@@ -136,6 +136,9 @@ urlpatterns = [
     # Rekam Hasil Penelitian (Record Research Results) - Step 2
     path('tiket/<int:pk>/rekam-hasil-penelitian/', views.RekamHasilPenelitianView.as_view(), name='rekam_hasil_penelitian'),
     
+    # Kirim Tiket (Send Tiket) - Step 3
+    path('tiket/kirim-tiket/', views.KirimTiketView.as_view(), name='kirim_tiket'),
+    
     # Future workflow steps can be added here:
     # path('tiket/teliti/create/', views.TiketTelitiCreateView.as_view(), name='tiket_teliti_create'),
     # path('tiket/kirim-pide/create/', views.TiketKirimPIDECreateView.as_view(), name='tiket_kirim_pide_create'),
