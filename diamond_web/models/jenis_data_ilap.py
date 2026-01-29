@@ -30,12 +30,6 @@ class JenisDataILAP(models.Model):
         db_column="id_jenis_tabel",
         verbose_name="Jenis Tabel"
     )
-    id_klasifikasi_tabel = models.ForeignKey(
-        KlasifikasiTabel,
-        on_delete=models.CASCADE,
-        db_column="id_klasifikasi_tabel",
-        verbose_name="Klasifikasi Tabel"
-    )
 
     class Meta:
         verbose_name = "Jenis Data ILAP"
