@@ -1,6 +1,6 @@
 from django.urls import reverse_lazy, reverse
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.views.generic import CreateView, TemplateView
+from django.views.generic import CreateView, TemplateView, DetailView
 from django.contrib import messages
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -104,6 +104,29 @@ class TiketCreateView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
         return super().form_invalid(form)
 
 
+class TiketDetailView(LoginRequiredMixin, AdminRequiredMixin, DetailView):
+    model = Tiket
+    template_name = 'tiket/detail.html'
+    context_object_name = 'tiket'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['tiket_actions'] = TiketAction.objects.filter(id_tiket=self.object).select_related('id_user').order_by('-timestamp')
+        context['tiket_pics'] = TiketPIC.objects.filter(id_tiket=self.object).select_related('id_user').order_by('-timestamp')
+        
+        # Status labels
+        status_labels = {
+            1: 'Direkam',
+            2: 'Diteliti',
+            3: 'Dikirim ke PIDE',
+            4: 'Dibatalkan',
+            5: 'Dikembalikan'
+        }
+        context['status_label'] = status_labels.get(self.object.status, '-')
+        context['page_title'] = f'Detail Tiket {self.object.nomor_tiket}'
+        return context
+
+
 @login_required
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
@@ -172,7 +195,7 @@ def tiket_data(request):
             'status': status_labels.get(obj.status, '-'),
             'tgl_terima_vertikal': obj.tgl_terima_vertikal.strftime('%Y-%m-%d %H:%M') if obj.tgl_terima_vertikal else '-',
             'tgl_terima_dip': obj.tgl_terima_dip.strftime('%Y-%m-%d %H:%M') if obj.tgl_terima_dip else '-',
-            'actions': f"<button class='btn btn-sm btn-info' data-action='view' data-id='{obj.pk}' title='View'><i class='ri-eye-line'></i></button>"
+            'actions': f"<a href='{reverse('tiket_detail', args=[obj.pk])}' class='btn btn-sm btn-info' title='View'><i class='ri-eye-line'></i></a>"
         })
 
     return JsonResponse({
