@@ -2,14 +2,6 @@ from django.urls import path, reverse_lazy
 from django.contrib.auth import views as auth_views
 from . import views
 from .views.general import keep_alive, session_expired
-from .jenis_prioritas_data import (
-    JenisPrioritasDataListView,
-    JenisPrioritasDataCreateView,
-    JenisPrioritasDataUpdateView,
-    JenisPrioritasDataDeleteView,
-    jenis_prioritas_data_data
-)   
-
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -76,15 +68,11 @@ urlpatterns = [
     path('periode-jenis-data/<int:pk>/update/', views.PeriodeJenisDataUpdateView.as_view(), name='periode_jenis_data_update'),
     path('periode-jenis-data/<int:pk>/delete/', views.PeriodeJenisDataDeleteView.as_view(), name='periode_jenis_data_delete'),
     # Jenis Prioritas Data URLs
-    path('jenis-prioritas-data/', JenisPrioritasDataListView.as_view(), name='jenis_prioritas_data_list'),
+    path('jenis-prioritas-data/', views.JenisPrioritasDataListView.as_view(), name='jenis_prioritas_data_list'),
     path('jenis-prioritas-data/data/', views.jenis_prioritas_data_data, name='jenis_prioritas_data_data'),
     path('jenis-prioritas-data/create/', views.JenisPrioritasDataCreateView.as_view(), name='jenis_prioritas_data_create'),
     path('jenis-prioritas-data/<int:pk>/update/', views.JenisPrioritasDataUpdateView.as_view(), name='jenis_prioritas_data_update'),
     path('jenis-prioritas-data/<int:pk>/delete/', views.JenisPrioritasDataDeleteView.as_view(), name='jenis_prioritas_data_delete'),
-    # Notification URLs
-]
-
-
     # PIC P3DE URLs
     path('pic-p3de/', views.PICP3DEListView.as_view(), name='pic_p3de_list'),
     path('pic-p3de/data/', views.pic_p3de_data, name='pic_p3de_data'),
