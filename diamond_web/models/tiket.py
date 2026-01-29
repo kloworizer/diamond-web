@@ -4,6 +4,7 @@ from .periode_jenis_data import PeriodeJenisData
 
 class Tiket(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="ID")
+    nomor_tiket = models.CharField(max_length=17, null=True, blank=True, verbose_name="Nomor Tiket")
     id_periode_data = models.ForeignKey(
         PeriodeJenisData,
         on_delete=models.CASCADE,

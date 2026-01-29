@@ -15,3 +15,4 @@ from .pic_pide import *
 from .pic_pmde import *
 from .nama_tabel import *
 from .durasi_jatuh_tempo import *
+from .tiket import *
