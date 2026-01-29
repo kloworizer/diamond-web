@@ -120,4 +120,5 @@ urlpatterns = [
     path('tiket/', views.TiketListView.as_view(), name='tiket_list'),
     path('tiket/data/', views.tiket_data, name='tiket_data'),
     path('tiket/create/', views.TiketCreateView.as_view(), name='tiket_create'),
+    path('tiket/<int:pk>/', views.TiketDetailView.as_view(), name='tiket_detail'),
 ]
