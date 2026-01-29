@@ -79,6 +79,12 @@ urlpatterns = [
     path('pic-p3de/create/', views.PICP3DECreateView.as_view(), name='pic_p3de_create'),
     path('pic-p3de/<int:pk>/update/', views.PICP3DEUpdateView.as_view(), name='pic_p3de_update'),
     path('pic-p3de/<int:pk>/delete/', views.PICP3DEDeleteView.as_view(), name='pic_p3de_delete'),
+    # Tanda Terima Data URLs
+    path('tanda-terima-data/', views.TandaTerimaDataListView.as_view(), name='tanda_terima_data_list'),
+    path('tanda-terima-data/data/', views.tanda_terima_data_data, name='tanda_terima_data_data'),
+    path('tanda-terima-data/create/', views.TandaTerimaDataCreateView.as_view(), name='tanda_terima_data_create'),
+    path('tanda-terima-data/<int:pk>/update/', views.TandaTerimaDataUpdateView.as_view(), name='tanda_terima_data_update'),
+    path('tanda-terima-data/<int:pk>/delete/', views.TandaTerimaDataDeleteView.as_view(), name='tanda_terima_data_delete'),
 
     # === PIDE Section ===
     # Nama Tabel URLs

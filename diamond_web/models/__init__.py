@@ -13,6 +13,8 @@ from .pic_p3de import PICP3DE
 from .pic_pide import PICPIDE
 from .pic_pmde import PICPMDE
 from .durasi_jatuh_tempo import DurasiJatuhTempo
+from .tanda_terima_data import TandaTerimaData
+from .detil_tanda_terima import DetilTandaTerima
 from .tiket import Tiket
 from .tiket_action import TiketAction
 from .tiket_pic import TiketPIC
