@@ -1,5 +1,5 @@
 from django.urls import reverse_lazy, reverse
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import CreateView, UpdateView, DeleteView, TemplateView
 from django.contrib import messages
 from urllib.parse import quote_plus, unquote_plus
@@ -9,11 +9,7 @@ from django.views.decorators.http import require_GET
 
 from ..models.jenis_data_ilap import JenisDataILAP
 from ..forms.jenis_data_ilap import JenisDataILAPForm
-from .mixins import AjaxFormMixin
-
-class AdminRequiredMixin(UserPassesTestMixin):
-    def test_func(self):
-        return self.request.user.groups.filter(name__in=['admin', 'admin_p3de']).exists()
+from .mixins import AjaxFormMixin, AdminRequiredMixin
 
 class JenisDataILAPListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
     template_name = 'jenis_data_ilap/list.html'
@@ -113,7 +109,7 @@ def jenis_data_ilap_data(request):
 
     qs = JenisDataILAP.objects.select_related(
         'id_ilap',
-        'id_ilap__id_kategori_ilap',
+        'id_ilap__id_kategori',
         'id_jenis_tabel'
     ).all()
     records_total = qs.count()
@@ -126,7 +122,7 @@ def jenis_data_ilap_data(request):
         if len(columns_search) > 1 and columns_search[1]:  # Jenis Tabel
             qs = qs.filter(id_jenis_tabel__deskripsi__icontains=columns_search[1])
         if len(columns_search) > 2 and columns_search[2]:  # Kategori ILAP
-            qs = qs.filter(id_ilap__id_kategori_ilap__nama_kategori__icontains=columns_search[2])
+            qs = qs.filter(id_ilap__id_kategori__nama_kategori__icontains=columns_search[2])
         if len(columns_search) > 3 and columns_search[3]:  # ILAP
             qs = qs.filter(id_ilap__nama_ilap__icontains=columns_search[3])
         if len(columns_search) > 4 and columns_search[4]:  # Nama Jenis Data
@@ -139,7 +135,7 @@ def jenis_data_ilap_data(request):
     # ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id_sub_jenis_data', 'id_jenis_tabel__deskripsi', 'id_ilap__id_kategori_ilap__nama_kategori', 
+    columns = ['id_sub_jenis_data', 'id_jenis_tabel__deskripsi', 'id_ilap__id_kategori__nama_kategori', 
                'id_ilap__nama_ilap', 'nama_jenis_data', 'nama_sub_jenis_data']
     if order_col_index is not None:
         try:
@@ -160,7 +156,7 @@ def jenis_data_ilap_data(request):
         data.append({
             'id_sub_jenis_data': obj.id_sub_jenis_data,
             'jenis_tabel': str(obj.id_jenis_tabel),
-            'kategori_ilap': str(obj.id_ilap.id_kategori_ilap),
+            'kategori_ilap': str(obj.id_ilap.id_kategori),
             'ilap': str(obj.id_ilap),
             'nama_jenis_data': obj.nama_jenis_data,
             'nama_sub_jenis_data': obj.nama_sub_jenis_data,

@@ -1,6 +1,13 @@
 from django.contrib import messages
 from django.http import JsonResponse
 from django.template.loader import render_to_string
+from django.contrib.auth.mixins import UserPassesTestMixin
+
+
+class AdminRequiredMixin(UserPassesTestMixin):
+    """Mixin to restrict access to admin users."""
+    def test_func(self):
+        return self.request.user.groups.filter(name__in=['admin', 'admin_p3de']).exists()
 
 
 class AjaxFormMixin:

@@ -1,5 +1,5 @@
 from django.urls import reverse_lazy, reverse
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import CreateView, UpdateView, DeleteView, TemplateView
 from django.contrib import messages
 from django.http import JsonResponse
@@ -8,11 +8,7 @@ from django.views.decorators.http import require_GET
 
 from ..models.jenis_data_ilap import JenisDataILAP
 from ..forms.nama_tabel import NamaTabelForm
-from .mixins import AjaxFormMixin
-
-class AdminRequiredMixin(UserPassesTestMixin):
-    def test_func(self):
-        return self.request.user.groups.filter(name__in=['admin', 'admin_p3de']).exists()
+from .mixins import AjaxFormMixin, AdminRequiredMixin
 
 class NamaTabelListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
     template_name = 'nama_tabel/list.html'
@@ -106,7 +102,7 @@ def nama_tabel_data(request):
 
     qs = JenisDataILAP.objects.select_related(
         'id_ilap',
-        'id_ilap__id_kategori_ilap',
+        'id_ilap__id_kategori',
         'id_jenis_tabel'
     ).all()
     records_total = qs.count()

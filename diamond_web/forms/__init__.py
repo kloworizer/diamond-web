@@ -2,6 +2,7 @@ from .kategori_ilap import KategoriILAPForm
 from .ilap import ILAPForm
 from .jenis_data_ilap import JenisDataILAPForm
 from .jenis_tabel import JenisTabelForm
+from .jenis_prioritas_data import JenisPrioritasDataForm
 from .kategori_wilayah import KategoriWilayahForm
 from .klasifikasi_tabel import KlasifikasiTabelForm
 from .klasifikasi_jenis_data import KlasifikasiJenisDataForm
@@ -11,3 +12,5 @@ from .pic_p3de import PICP3DEForm
 from .pic_pide import PICPIDEForm
 from .pic_pmde import PICPMDEForm
 from .durasi_jatuh_tempo import DurasiJatuhTempoForm
+from .nama_tabel import NamaTabelForm
+from .tiket import TiketForm

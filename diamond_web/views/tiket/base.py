@@ -3,15 +3,11 @@ Base classes for tiket workflow steps.
 """
 
 from django.views.generic import CreateView, DetailView
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.db import transaction
 
-
-class AdminRequiredMixin(UserPassesTestMixin):
-    """Mixin to restrict access to admin users."""
-    def test_func(self):
-        return self.request.user.groups.filter(name__in=['admin', 'admin_p3de']).exists()
+from ..mixins import AdminRequiredMixin
 
 
 class WorkflowStepMixin:
