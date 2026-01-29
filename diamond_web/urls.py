@@ -126,7 +126,6 @@ urlpatterns = [
     
     # Rekam (Record) Workflow Step - Step 1
     path('tiket/rekam/create/', views.TiketRekamCreateView.as_view(), name='tiket_rekam_create'),
-    path('tiket/rekam/<int:pk>/', views.TiketRekamDetailView.as_view(), name='tiket_rekam_detail'),
     
     # Future workflow steps can be added here:
     # path('tiket/teliti/create/', views.TiketTelitiCreateView.as_view(), name='tiket_teliti_create'),

@@ -3,13 +3,12 @@
 from datetime import datetime
 from django.urls import reverse_lazy, reverse
 from django.contrib import messages
-from django.http import JsonResponse
 
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
 from ...models.tiket_pic import TiketPIC
 from ...forms.tiket import TiketForm
-from .base import WorkflowStepCreateView, WorkflowStepDetailView
+from .base import WorkflowStepCreateView
 
 
 class TiketRekamCreateView(WorkflowStepCreateView):
@@ -17,7 +16,10 @@ class TiketRekamCreateView(WorkflowStepCreateView):
     model = Tiket
     form_class = TiketForm
     template_name = 'tiket/workflows/rekam/form.html'
-    success_url = reverse_lazy('tiket_list')
+    
+    def get_success_url(self):
+        """Redirect to detail view after successful creation."""
+        return reverse('tiket_detail', kwargs={'pk': self.object.pk})
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -69,7 +71,7 @@ class TiketRekamCreateView(WorkflowStepCreateView):
             return self.get_json_response(
                 success=True,
                 message=f'Tiket "{nomor_tiket}" created successfully.',
-                redirect=self.success_url
+                redirect=self.get_success_url()
             )
         else:
             messages.success(
@@ -77,31 +79,3 @@ class TiketRekamCreateView(WorkflowStepCreateView):
                 f'Tiket "{nomor_tiket}" created successfully.'
             )
             return None
-
-
-class TiketRekamDetailView(WorkflowStepDetailView):
-    """Detail view for viewing a tiket after Rekam step."""
-    model = Tiket
-    template_name = 'tiket/workflows/rekam/detail.html'
-    context_object_name = 'tiket'
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['tiket_actions'] = TiketAction.objects.filter(
-            id_tiket=self.object
-        ).select_related('id_user').order_by('-timestamp')
-        context['tiket_pics'] = TiketPIC.objects.filter(
-            id_tiket=self.object
-        ).select_related('id_user').order_by('-timestamp')
-        
-        status_labels = {
-            1: 'Direkam',
-            2: 'Diteliti',
-            3: 'Dikirim ke PIDE',
-            4: 'Dibatalkan',
-            5: 'Dikembalikan'
-        }
-        context['status_label'] = status_labels.get(self.object.status, '-')
-        context['page_title'] = f'Detail Tiket {self.object.nomor_tiket}'
-        context['workflow_step'] = 'rekam'
-        return context

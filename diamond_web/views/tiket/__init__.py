@@ -1,10 +1,10 @@
 """Tiket workflow views"""
 from .list import TiketListView, tiket_data
-from .rekam import TiketRekamCreateView, TiketRekamDetailView
+from .rekam import TiketRekamCreateView
+from .detail import TiketDetailView
 
 # Backward compatibility
 TiketCreateView = TiketRekamCreateView
-TiketDetailView = TiketRekamDetailView
 
 __all__ = [
     'TiketListView',
@@ -12,5 +12,4 @@ __all__ = [
     'TiketCreateView',
     'TiketDetailView',
     'TiketRekamCreateView',
-    'TiketRekamDetailView',
 ]
