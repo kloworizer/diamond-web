@@ -1,5 +1,5 @@
 from django.urls import reverse_lazy, reverse
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import CreateView, UpdateView, DeleteView, TemplateView
 from django.contrib import messages
 from urllib.parse import quote_plus, unquote_plus
@@ -10,12 +10,7 @@ from django.db.models import Max
 
 from ..models.ilap import ILAP
 from ..forms.ilap import ILAPForm
-from .mixins import AjaxFormMixin
-
-
-class AdminRequiredMixin(UserPassesTestMixin):
-    def test_func(self):
-        return self.request.user.groups.filter(name__in=['admin', 'admin_p3de']).exists()
+from .mixins import AjaxFormMixin, AdminRequiredMixin
 
 
 class ILAPListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
