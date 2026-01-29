@@ -2,9 +2,10 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
     <div class="container">
         <a class="navbar-brand" href="{% url 'home' %}">Diamond Web</a>
-        
+
         <!-- Mobile Toggle Button -->
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar"
+            aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
 
@@ -14,17 +15,24 @@
                 {% if user|has_group:"admin_p3de" %}
                 <!-- Dropdown Group -->
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
                         Kelola Referensi P3DE
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="/kategori-ilap/">Kelola Kategori ILAP</a></li>
-                        <li><a class="dropdown-item" href="/ilap/">Kelola ILAP</a></li>
-                        <li><a class="dropdown-item" href="/jenis-tabel/">Kelola Jenis Tabel</a></li>
-                        <li><a class="dropdown-item" href="/kategori-wilayah/">Kelola Kategori Wilayah</a></li>
-                        <li><a class="dropdown-item" href="/klasifikasi-tabel/">Kelola Klasifikasi Tabel</a></li>
-                        <li><a class="dropdown-item" href="/periode-pengiriman/">Kelola Periode Pengiriman</a></li>
+                        <li><a class="dropdown-item" href="/kategori-ilap/">Kelola Referensi Kategori ILAP</a></li>
+                        <li><a class="dropdown-item" href="/ilap/">Kelola Referensi ILAP</a></li>
+                        <li><a class="dropdown-item" href="/jenis-tabel/">Kelola Referensi Jenis Tabel</a></li>
+                        <li><a class="dropdown-item" href="/kategori-wilayah/">Kelola Referensi Kategori Wilayah</a>
+                        </li>
+                        <li><a class="dropdown-item" href="/klasifikasi-tabel/">Kelola Referensi Klasifikasi Tabel</a>
+                        </li>
+                        <li><a class="dropdown-item" href="/periode-pengiriman/">Kelola Referensi Periode Pengiriman</a>
+                        </li>
+                        <hr>
                         <li><a class="dropdown-item" href="/jenis-data-ilap/">Kelola Jenis Data ILAP</a></li>
+                        <li><a class="dropdown-item" href="/klasifikasi-jenis-data/">Kelola Klasifikasi Jenis Data
+                                ILAP</a></li>
                         <li><a class="dropdown-item" href="/periode-jenis-data/">Kelola Periode Jenis Data ILAP</a></li>
                          <li><a class="dropdown-item" href="/jenis-prioritas-data/">Kelola Jenis Prioritas Data</a></li>
                     </ul>
@@ -35,44 +43,48 @@
             <!-- Group 2: User Account (Right Aligned) -->
             <ul class="navbar-nav ms-auto align-items-lg-center">
                 {% if user.is_authenticated %}
-                    <!-- Notifications Dropdown -->
-                    <li class="nav-item dropdown me-2">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="ri-notification-3-line"></i>
-                            {% if unread_count > 0 %}
-                                <span class="badge bg-danger">{{ unread_count }}</span>
-                            {% endif %}
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            {% for notif in unread_notifications %}
-                                <li><a class="dropdown-item" href="{% url 'mark_notification_read' notif.pk %}">
-                                    <strong>{{ notif.title }}</strong><br>
-                                    <small>{{ notif.message }}</small>
-                                </a></li>
-                            {% empty %}
-                                <li><span class="dropdown-item text-muted">No new notifications</span></li>
-                            {% endfor %}
-                        </ul>
-                    </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            Hi, {{ user.username }}
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="{% url 'user_password_change' %}">Ubah Password</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <form action="{% url 'logout' %}" method="post" class="d-inline w-100">
-                                    {% csrf_token %}
-                                    <button type="submit" class="dropdown-item">Logout</button>
-                                </form>
-                            </li>
-                        </ul>
-                    </li>
+                <!-- Notifications Dropdown -->
+                <li class="nav-item dropdown me-2">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                        <i class="ri-notification-3-line"></i>
+                        {% if unread_count > 0 %}
+                        <span class="badge bg-danger">{{ unread_count }}</span>
+                        {% endif %}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        {% for notif in unread_notifications %}
+                        <li><a class="dropdown-item" href="{% url 'mark_notification_read' notif.pk %}">
+                                <strong>{{ notif.title }}</strong><br>
+                                <small>{{ notif.message }}</small>
+                            </a></li>
+                        {% empty %}
+                        <li><span class="dropdown-item text-muted">No new notifications</span></li>
+                        {% endfor %}
+                    </ul>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                        Hi, {{ user.username }}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{% url 'user_password_change' %}">Ubah Password</a></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li>
+                            <form action="{% url 'logout' %}" method="post" class="d-inline w-100">
+                                {% csrf_token %}
+                                <button type="submit" class="dropdown-item">Logout</button>
+                            </form>
+                        </li>
+                    </ul>
+                </li>
                 {% else %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'login' %}">Login</a>
-                    </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'login' %}">Login</a>
+                </li>
                 {% endif %}
             </ul>
         </div>

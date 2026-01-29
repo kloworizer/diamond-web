@@ -4,25 +4,26 @@
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">Jenis Data ILAP</h2>
+        <h2 class="mb-0">Nama Tabel</h2>
         <button type="button" class="btn btn-success" data-action="create">Tambah</button>
-    </div>    <table id="jenis-data-table" class="table table-striped" style="width:100%">
+    </div>
+
+    <table id="nama-tabel-table" class="table table-striped" style="width:100%">
         <thead>
             <tr>
                 <th>ID Sub Jenis Data</th>
-                <th>Jenis Tabel</th>
-                <th>Kategori ILAP</th>
-                <th>ILAP</th>
                 <th>Nama Jenis Data</th>
                 <th>Nama Sub Jenis Data</th>
+                <th>Nama Tabel I</th>
+                <th>Nama Tabel U</th>
                 <th>Actions</th>
-            </tr>            <tr id="column-search-row">
+            </tr>
+            <tr id="column-search-row">
                 <th><input type="text" class="form-control form-control-sm" placeholder="Search" data-column="0" /></th>
                 <th><input type="text" class="form-control form-control-sm" placeholder="Search" data-column="1" /></th>
                 <th><input type="text" class="form-control form-control-sm" placeholder="Search" data-column="2" /></th>
                 <th><input type="text" class="form-control form-control-sm" placeholder="Search" data-column="3" /></th>
                 <th><input type="text" class="form-control form-control-sm" placeholder="Search" data-column="4" /></th>
-                <th><input type="text" class="form-control form-control-sm" placeholder="Search" data-column="5" /></th>
                 <th></th>
             </tr>
         </thead>
@@ -31,7 +32,7 @@
 
     <!-- Modal for Create/Edit/Delete -->
     <div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="crudModalLabel">Form</h5>
@@ -49,11 +50,11 @@
 {% block scripts %}
 <script>
     (function () {
-        const ajaxUrl = "{% url 'jenis_data_ilap_data' %}";
+        const ajaxUrl = "{% url 'nama_tabel_data' %}";
         let table;
 
         $(document).ready(function () {
-            table = $('#jenis-data-table').DataTable({
+            table = $('#nama-tabel-table').DataTable({
                 serverSide: true,
                 layout: {
                     topStart: null,
@@ -69,18 +70,19 @@
                             d.columns_search[i] = $(this).val();
                         });
                         return d;
-                    }                },                pageLength: 10,
+                    }
+                },
+                pageLength: 10,
                 columns: [
                     { data: 'id_sub_jenis_data' },
-                    { data: 'jenis_tabel' },
-                    { data: 'kategori_ilap' },
-                    { data: 'ilap' },
                     { data: 'nama_jenis_data' },
                     { data: 'nama_sub_jenis_data' },
+                    { data: 'nama_tabel_I' },
+                    { data: 'nama_tabel_U' },
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [
-                    { targets: 6, render: function (data, type, row, meta) { return data; } }
+                    { targets: 5, render: function (data, type, row, meta) { return data; } }
                 ],
                 order: [[0, 'asc']],
                 scrollX: true
@@ -108,20 +110,20 @@
 
             // Handle create button
             $('[data-action="create"]').on('click', function () {
-                loadModal('{% url "jenis_data_ilap_create" %}', 'Tambah Jenis Data ILAP');
+                loadModal('{% url "nama_tabel_create" %}', 'Tambah Nama Tabel');
             });
 
             // Handle edit/delete buttons (delegated event)
             $(document).on('click', '[data-action="edit"]', function (e) {
                 e.preventDefault();
                 const url = $(this).data('url');
-                loadModal(url, 'Edit Jenis Data ILAP');
+                loadModal(url, 'Edit Nama Tabel');
             });
 
             $(document).on('click', '[data-action="delete"]', function (e) {
                 e.preventDefault();
                 const url = $(this).data('url');
-                loadModal(url, 'Hapus Jenis Data ILAP');
+                loadModal(url, 'Hapus Nama Tabel');
             });
 
             // Handle form submission

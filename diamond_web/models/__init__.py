@@ -5,5 +5,10 @@ from .jenis_data_ilap import JenisDataILAP
 from .jenis_tabel import JenisTabel
 from .kategori_wilayah import KategoriWilayah
 from .klasifikasi_tabel import KlasifikasiTabel
+from .klasifikasi_jenis_data import KlasifikasiJenisData
 from .periode_pengiriman import PeriodePengiriman
 from .periode_jenis_data import PeriodeJenisData
+from .pic_p3de import PICP3DE
+from .pic_pide import PICPIDE
+from .pic_pmde import PICPMDE
+from .durasi_jatuh_tempo import DurasiJatuhTempo

@@ -1,0 +1,10 @@
+# Production requirements
+-r base.txt
+
+# Production-specific packages
+# gunicorn  # WSGI HTTP Server for UNIX
+# psycopg2-binary  # PostgreSQL adapter
+# whitenoise  # Static file serving
+# sentry-sdk  # Error tracking
+# redis  # Caching backend
+# celery  # Task queue (if needed)
