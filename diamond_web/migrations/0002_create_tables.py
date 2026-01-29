@@ -144,4 +144,5 @@ class Migration(migrations.Migration):
                 'ordering': ['id'],
             },
         ),
-    ]
+        
+    ] 
