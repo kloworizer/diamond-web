@@ -57,6 +57,12 @@
                                             <span class="badge bg-primary">Direkam</span>
                                         {% elif action.action == 2 %}
                                             <span class="badge bg-secondary">Diteliti</span>
+                                        {% elif action.action == 3 %}
+                                            <span class="badge bg-warning">Dikirim ke PIDE</span>
+                                        {% elif action.action == 4 %}
+                                            <span class="badge bg-danger">Dibatalkan</span>
+                                        {% elif action.action == 5 %}
+                                            <span class="badge bg-info">Dikembalikan</span>
                                         {% else %}
                                             <span class="badge bg-secondary">{{ action.action }}</span>
                                         {% endif %}
