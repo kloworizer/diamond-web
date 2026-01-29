@@ -12,5 +12,6 @@ from .pic_p3de import PICP3DEForm
 from .pic_pide import PICPIDEForm
 from .pic_pmde import PICPMDEForm
 from .durasi_jatuh_tempo import DurasiJatuhTempoForm
+from .tanda_terima_data import TandaTerimaDataForm
 from .nama_tabel import NamaTabelForm
 from .tiket import TiketForm

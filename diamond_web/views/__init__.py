@@ -11,6 +11,7 @@ from .periode_pengiriman import *
 from .periode_jenis_data import *
 from .jenis_prioritas_data import *
 from .pic_p3de import *
+from .tanda_terima_data import *
 from .pic_pide import *
 from .pic_pmde import *
 from .nama_tabel import *
