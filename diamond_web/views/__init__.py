@@ -8,3 +8,4 @@ from .kategori_wilayah import *
 from .klasifikasi_tabel import *
 from .periode_pengiriman import *
 from .periode_jenis_data import *
+from .jenis_prioritas_data import *

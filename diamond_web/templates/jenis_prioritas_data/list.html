@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0"> Jenis Prioritas Data</h2>
+        <button type="button" class="btn btn-success" data-action="create">Tambah</button>
+    </div>
+
+    <table id="jenis-prioritas-data-table" class="table table-striped" style="width:100%">
+        <thead>
+            <tr>
+                <th>Sub Jenis Data ILAP</th>
+                <th>No ND</th>
+                <th>tahun</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Actions</th>
+            </tr>
+            <tr id="column-search-row">
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search Sub Jenis Data" data-column="0" />
+                </th>
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search No ND" data-column="1" />
+                </th>
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search Tahun" data-column="2" />
+                </th>
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search Start Date" data-column="3" />
+                </th>
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search End Date" data-column="4" />
+                </th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <!-- Modal for Create/Edit/Delete -->
+    <div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="crudModalLabel">Form</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="modalBody">
+                    <!-- Content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        const ajaxUrl = "{% url 'jenis_prioritas_data_data' %}";
+        let table;
+
+        $(document).ready(function () {
+            table = $('#jenis-prioritas-data-table').DataTable({
+                serverSide: true,
+                layout: {
+                    topStart: null,
+                    topEnd: null
+                },
+                ajax: {
+                    url: ajaxUrl,
+                    dataSrc: 'data',
+                    data: function (d) {
+                        // Add column search values
+                        d.columns_search = [];
+                        $('#column-search-row input').each(function (i) {
+                            d.columns_search[i] = $(this).val();
+                        });
+                        return d;
+                    }
+                },
+                pageLength: 10,
+                columns: [
+                    { data: 'sub_jenis_data_ilap' },
+                    { data: 'no_nd' },
+                    { data: 'tahun' },
+                    { data: 'start_date' },
+                    { data: 'end_date' },
+                    { data: 'actions', orderable: false, searchable: false }
+                ],
+                columnDefs: [
+                    { targets: 5, render: function (data, type, row, meta) { return data; } }
+                ],
+                order: [[0, 'asc']]
+            });
+
+            // Add individual column search
+            $('#column-search-row input').on('keyup change', function () {
+                table.ajax.reload();
+            });
+
+            // Handle modal hide to prevent aria-hidden conflicts
+            const modalElement = document.getElementById('crudModal');
+            modalElement.addEventListener('hidden.bs.modal', function () {
+                // Reset modal body
+                document.getElementById('modalBody').innerHTML = '';
+            });
+
+            modalElement.addEventListener('hide.bs.modal', function () {
+                // Clear focus from form elements
+                const focusedElement = document.activeElement;
+                if (focusedElement && modalElement.contains(focusedElement)) {
+                    focusedElement.blur();
+                }
+            });
+
+            // Handle create button
+            $('[data-action="create"]').on('click', function () {
+                loadModal('{% url "jenis_prioritas_data_create" %}', 'Tambah Jenis Prioritas Data');
+            });
+
+            // Handle edit/delete buttons (delegated event)
+            $(document).on('click', '[data-action="edit"]', function (e) {
+                e.preventDefault();
+                const url = $(this).data('url');
+                loadModal(url, 'Edit Jenis Prioritas Data');
+            });
+
+            $(document).on('click', '[data-action="delete"]', function (e) {
+                e.preventDefault();
+                const url = $(this).data('url');
+                loadModal(url, 'Hapus Jenis Prioritas Data');
+            });
+
+            // Handle form submission
+            $(document).on('submit', '#modalBody form', function (e) {
+                e.preventDefault();
+                const form = $(this);
+                const url = form.attr('action');
+                const formData = new FormData(form[0]);
+
+                $.ajax({
+                    url: url,
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (response) {
+                        if (response.success) {
+                            $('#crudModal').modal('hide');
+                            table.ajax.reload();
+                            showAlert('success', response.message);
+                        } else {
+                            $('#modalBody').html(response.html);
+                        }
+                    },
+                    error: function (xhr) {
+                        showAlert('danger', 'Terjadi kesalahan. Silakan coba lagi.');
+                    }
+                });
+            });
+        });
+
+        function loadModal(url, title) {
+            $('#crudModalLabel').text(title);
+            $('#modalBody').html('<div class="text-center"><div class="spinner-border" role="status"></div></div>');
+            $('#crudModal').modal('show');
+
+            $.ajax({
+                url: url,
+                type: 'GET',
+                data: { ajax: '1' },
+                success: function (response) {
+                    $('#modalBody').html(response.html || response);
+                },
+                error: function () {
+                    $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');
+                }
+            });
+        }
+
+        function showAlert(type, message) {
+            showToast(type === 'success' ? 'Success' : 'Error', message, type);
+        }
+    })();
+</script>
+{% endblock %}
