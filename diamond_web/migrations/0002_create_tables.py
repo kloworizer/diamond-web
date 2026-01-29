@@ -159,6 +159,8 @@ class Migration(migrations.Migration):
                 'ordering': ['id'],
             },
         ),
+        
+    ] 
         migrations.CreateModel(
             name='PICP3DE',
             fields=[

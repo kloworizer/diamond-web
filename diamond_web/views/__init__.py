@@ -9,6 +9,7 @@ from .klasifikasi_tabel import *
 from .klasifikasi_jenis_data import *
 from .periode_pengiriman import *
 from .periode_jenis_data import *
+from .jenis_prioritas_data import *
 from .pic_p3de import *
 from .pic_pide import *
 from .pic_pmde import *
