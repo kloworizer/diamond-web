@@ -5,7 +5,6 @@ class JenisDataILAPForm(forms.ModelForm):
     class Meta:
         model = JenisDataILAP
         fields = [
-            'id_kategori_ilap',
             'id_ilap',
             'id_jenis_data',
             'nama_jenis_data',

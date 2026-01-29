@@ -1,17 +1,10 @@
 from django.db import models
-from .kategori_ilap import KategoriILAP
 from .ilap import ILAP
 from .jenis_tabel import JenisTabel
 from .klasifikasi_tabel import KlasifikasiTabel
 
 class JenisDataILAP(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="ID")
-    id_kategori_ilap = models.ForeignKey(
-        KategoriILAP,
-        on_delete=models.CASCADE,
-        db_column="id_kategori_ilap",
-        verbose_name="Kategori ILAP"
-    )
     id_ilap = models.ForeignKey(
         ILAP,
         on_delete=models.CASCADE,

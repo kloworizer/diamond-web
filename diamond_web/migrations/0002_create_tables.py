@@ -117,7 +117,6 @@ class Migration(migrations.Migration):
                 ('nama_sub_jenis_data', models.CharField(max_length=255, verbose_name='Nama Sub Jenis Data')),
                 ('nama_tabel_I', models.CharField(max_length=255, verbose_name='Nama Tabel I')),
                 ('nama_tabel_U', models.CharField(max_length=255, verbose_name='Nama Tabel U')),
-                ('id_kategori_ilap', models.ForeignKey(db_column='id_kategori_ilap', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.KategoriIlap', verbose_name='Kategori ILAP')),
                 ('id_ilap', models.ForeignKey(db_column='id_ilap', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.ILAP', verbose_name='ILAP')),
                 ('id_jenis_tabel', models.ForeignKey(db_column='id_jenis_tabel', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.JenisTabel', verbose_name='Jenis Tabel')),
             ],

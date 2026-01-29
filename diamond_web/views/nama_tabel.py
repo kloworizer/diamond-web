@@ -105,8 +105,8 @@ def nama_tabel_data(request):
     length = int(request.GET.get('length', '10'))
 
     qs = JenisDataILAP.objects.select_related(
-        'id_kategori_ilap',
         'id_ilap',
+        'id_ilap__id_kategori_ilap',
         'id_jenis_tabel'
     ).all()
     records_total = qs.count()

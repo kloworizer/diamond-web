@@ -12,3 +12,4 @@ from .pic_p3de import PICP3DE
 from .pic_pide import PICPIDE
 from .pic_pmde import PICPMDE
 from .durasi_jatuh_tempo import DurasiJatuhTempo
+from .tiket import Tiket
