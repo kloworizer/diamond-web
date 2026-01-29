@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">{{ page_title }}</h2>
+    </div>
+
+    <!-- Tiket Information -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Informasi Tiket</h5>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <p><strong>Nomor Tiket:</strong> {{ tiket.nomor_tiket }}</p>
+                    <p><strong>Status:</strong> <span class="badge bg-info">{{ status_label }}</span></p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Periode Jenis Data:</strong> {{ tiket.id_periode_data }}</p>
+                    <p><strong>Periode:</strong> {{ tiket.periode }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Tahun:</strong> {{ tiket.tahun }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tiket Actions History -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Riwayat Aksi</h5>
+        </div>
+        <div class="card-body">
+            {% if tiket_actions %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Tanggal/Waktu</th>
+                                <th>User</th>
+                                <th>Aksi</th>
+                                <th>Catatan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for action in tiket_actions %}
+                                <tr>
+                                    <td>{{ action.timestamp|date:"d/m/Y H:i:s" }}</td>
+                                    <td>{{ action.id_user.get_full_name|default:action.id_user.username }}</td>
+                                    <td>
+                                        {% if action.action == 1 %}
+                                            <span class="badge bg-primary">Direkam</span>
+                                        {% elif action.action == 2 %}
+                                            <span class="badge bg-secondary">Diteliti</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ action.action }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ action.catatan }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted">Tidak ada riwayat aksi.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Tiket PIC Assignment -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">PIC (Penanggung Jawab)</h5>
+        </div>
+        <div class="card-body">
+            {% if tiket_pics %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Tanggal/Waktu</th>
+                                <th>User</th>
+                                <th>Role</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pic in tiket_pics %}
+                                <tr>
+                                    <td>{{ pic.timestamp|date:"d/m/Y H:i:s" }}</td>
+                                    <td>{{ pic.id_user.get_full_name|default:pic.id_user.username }}</td>
+                                    <td>
+                                        {% if pic.role == 1 %}
+                                            <span class="badge bg-success">Primary PIC</span>
+                                        {% else %}
+                                            <span class="badge bg-info">{{ pic.role }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted">Tidak ada PIC yang ditugaskan.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="d-flex gap-2 mb-4">
+        <a href="{% url 'tiket_list' %}" class="btn btn-secondary">Kembali ke Daftar</a>
+    </div>
+</div>
+{% endblock %}
