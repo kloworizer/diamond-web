@@ -13,6 +13,17 @@
             <!-- Group 1: Main Navigation (Left Aligned) -->
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 {% if user|has_group:"admin_p3de" %}
+                <!-- Dropdown Group: P3DE -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                        P3DE
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'tiket_list' %}">Daftar Tiket</a></li>
+                        <li><a class="dropdown-item" href="{% url 'tiket_create' %}">Rekam Penerimaan Data</a></li>
+                    </ul>
+                </li>
                 <!-- Dropdown Group -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"

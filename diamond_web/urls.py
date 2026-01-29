@@ -114,4 +114,10 @@ urlpatterns = [
     path('durasi-jatuh-tempo-pmde/create/', views.DurasiJatuhTempoPMDECreateView.as_view(), name='durasi_jatuh_tempo_pmde_create'),
     path('durasi-jatuh-tempo-pmde/<int:pk>/update/', views.DurasiJatuhTempoPMDEUpdateView.as_view(), name='durasi_jatuh_tempo_pmde_update'),
     path('durasi-jatuh-tempo-pmde/<int:pk>/delete/', views.DurasiJatuhTempoPMDEDeleteView.as_view(), name='durasi_jatuh_tempo_pmde_delete'),
+
+    # === Tiket Workflow ===
+    # Tiket URLs
+    path('tiket/', views.TiketListView.as_view(), name='tiket_list'),
+    path('tiket/data/', views.tiket_data, name='tiket_data'),
+    path('tiket/create/', views.TiketCreateView.as_view(), name='tiket_create'),
 ]

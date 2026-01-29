@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Daftar Tiket</h2>
+    </div>
+
+    <table id="tiket-table" class="table table-striped" style="width:100%">
+        <thead>
+            <tr>
+                <th>Nomor Tiket</th>
+                <th>Periode Jenis Data</th>
+                <th>Periode</th>
+                <th>Tahun</th>
+                <th>Status</th>
+                <th>Tgl Terima Vertikal</th>
+                <th>Tgl Terima DIP</th>
+                <th>Actions</th>
+            </tr>
+            <tr id="column-search-row">
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search Nomor" data-column="0" /></th>
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search Periode Jenis Data" data-column="1" /></th>
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search Periode" data-column="2" /></th>
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search Tahun" data-column="3" /></th>
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search Status" data-column="4" /></th>
+                <th></th>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        const ajaxUrl = "{% url 'tiket_data' %}";
+        let table;
+
+        $(document).ready(function () {
+            table = $('#tiket-table').DataTable({
+                serverSide: true,
+                layout: {
+                    topStart: null,
+                    topEnd: null
+                },
+                ajax: {
+                    url: ajaxUrl,
+                    dataSrc: 'data',
+                    data: function (d) {
+                        // Add column search values
+                        d.columns_search = [];
+                        $('#column-search-row input').each(function (i) {
+                            d.columns_search[i] = $(this).val();
+                        });
+                        return d;
+                    }
+                },
+                pageLength: 10,
+                columns: [
+                    { data: 'nomor_tiket' },
+                    { data: 'periode_jenis_data' },
+                    { data: 'periode' },
+                    { data: 'tahun' },
+                    { data: 'status' },
+                    { data: 'tgl_terima_vertikal' },
+                    { data: 'tgl_terima_dip' },
+                    { data: 'actions', orderable: false, searchable: false }
+                ],
+                columnDefs: [
+                    { targets: 7, render: function (data, type, row, meta) { return data; } }
+                ],
+                order: [[0, 'desc']]
+            });
+
+            // Add individual column search
+            $('#column-search-row input').on('keyup change', function () {
+                table.ajax.reload();
+            });
+        });
+    })();
+</script>
+{% endblock %}
