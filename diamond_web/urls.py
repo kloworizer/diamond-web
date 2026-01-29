@@ -116,9 +116,19 @@ urlpatterns = [
     path('durasi-jatuh-tempo-pmde/<int:pk>/delete/', views.DurasiJatuhTempoPMDEDeleteView.as_view(), name='durasi_jatuh_tempo_pmde_delete'),
 
     # === Tiket Workflow ===
-    # Tiket URLs
+    # List view (shared across all workflow steps)
     path('tiket/', views.TiketListView.as_view(), name='tiket_list'),
     path('tiket/data/', views.tiket_data, name='tiket_data'),
+    
+    # Legacy URLs - kept for backward compatibility
     path('tiket/create/', views.TiketCreateView.as_view(), name='tiket_create'),
     path('tiket/<int:pk>/', views.TiketDetailView.as_view(), name='tiket_detail'),
+    
+    # Rekam (Record) Workflow Step - Step 1
+    path('tiket/rekam/create/', views.TiketRekamCreateView.as_view(), name='tiket_rekam_create'),
+    path('tiket/rekam/<int:pk>/', views.TiketRekamDetailView.as_view(), name='tiket_rekam_detail'),
+    
+    # Future workflow steps can be added here:
+    # path('tiket/teliti/create/', views.TiketTelitiCreateView.as_view(), name='tiket_teliti_create'),
+    # path('tiket/kirim-pide/create/', views.TiketKirimPIDECreateView.as_view(), name='tiket_kirim_pide_create'),
 ]
