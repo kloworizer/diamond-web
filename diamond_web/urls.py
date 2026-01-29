@@ -79,6 +79,12 @@ urlpatterns = [
     path('pic-p3de/create/', views.PICP3DECreateView.as_view(), name='pic_p3de_create'),
     path('pic-p3de/<int:pk>/update/', views.PICP3DEUpdateView.as_view(), name='pic_p3de_update'),
     path('pic-p3de/<int:pk>/delete/', views.PICP3DEDeleteView.as_view(), name='pic_p3de_delete'),
+    # Tanda Terima Data URLs
+    path('tanda-terima-data/', views.TandaTerimaDataListView.as_view(), name='tanda_terima_data_list'),
+    path('tanda-terima-data/data/', views.tanda_terima_data_data, name='tanda_terima_data_data'),
+    path('tanda-terima-data/create/', views.TandaTerimaDataCreateView.as_view(), name='tanda_terima_data_create'),
+    path('tanda-terima-data/<int:pk>/update/', views.TandaTerimaDataUpdateView.as_view(), name='tanda_terima_data_update'),
+    path('tanda-terima-data/<int:pk>/delete/', views.TandaTerimaDataDeleteView.as_view(), name='tanda_terima_data_delete'),
 
     # === PIDE Section ===
     # Nama Tabel URLs
@@ -114,4 +120,26 @@ urlpatterns = [
     path('durasi-jatuh-tempo-pmde/create/', views.DurasiJatuhTempoPMDECreateView.as_view(), name='durasi_jatuh_tempo_pmde_create'),
     path('durasi-jatuh-tempo-pmde/<int:pk>/update/', views.DurasiJatuhTempoPMDEUpdateView.as_view(), name='durasi_jatuh_tempo_pmde_update'),
     path('durasi-jatuh-tempo-pmde/<int:pk>/delete/', views.DurasiJatuhTempoPMDEDeleteView.as_view(), name='durasi_jatuh_tempo_pmde_delete'),
+
+    # === Tiket Workflow ===
+    # List view (shared across all workflow steps)
+    path('tiket/', views.TiketListView.as_view(), name='tiket_list'),
+    path('tiket/data/', views.tiket_data, name='tiket_data'),
+    
+    # Legacy URLs - kept for backward compatibility
+    path('tiket/create/', views.TiketCreateView.as_view(), name='tiket_create'),
+    path('tiket/<int:pk>/', views.TiketDetailView.as_view(), name='tiket_detail'),
+    
+    # Rekam (Record) Workflow Step - Step 1
+    path('tiket/rekam/create/', views.TiketRekamCreateView.as_view(), name='tiket_rekam_create'),
+    
+    # Rekam Hasil Penelitian (Record Research Results) - Step 2
+    path('tiket/<int:pk>/rekam-hasil-penelitian/', views.RekamHasilPenelitianView.as_view(), name='rekam_hasil_penelitian'),
+    
+    # Kirim Tiket (Send Tiket) - Step 3
+    path('tiket/kirim-tiket/', views.KirimTiketView.as_view(), name='kirim_tiket'),
+    
+    # Future workflow steps can be added here:
+    # path('tiket/teliti/create/', views.TiketTelitiCreateView.as_view(), name='tiket_teliti_create'),
+    # path('tiket/kirim-pide/create/', views.TiketKirimPIDECreateView.as_view(), name='tiket_kirim_pide_create'),
 ]

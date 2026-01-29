@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">{{ page_title|default:"Kirim Tiket" }}</h2>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="post" action="{% url 'kirim_tiket' %}" id="kirim-tiket-form">
+                {% csrf_token %}
+                
+                <!-- Form Fields -->
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="{{ form.nomor_nd_nadine.id_for_label }}" class="form-label">
+                                {{ form.nomor_nd_nadine.label }}
+                            </label>
+                            {{ form.nomor_nd_nadine }}
+                            {% if form.nomor_nd_nadine.errors %}
+                                <small class="text-danger d-block">
+                                    {{ form.nomor_nd_nadine.errors.0 }}
+                                </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="{{ form.tgl_nadine.id_for_label }}" class="form-label">
+                                {{ form.tgl_nadine.label }}
+                            </label>
+                            {{ form.tgl_nadine }}
+                            {% if form.tgl_nadine.errors %}
+                                <small class="text-danger d-block">
+                                    {{ form.tgl_nadine.errors.0 }}
+                                </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="{{ form.tgl_kirim_pide.id_for_label }}" class="form-label">
+                                {{ form.tgl_kirim_pide.label }}
+                            </label>
+                            {{ form.tgl_kirim_pide }}
+                            {% if form.tgl_kirim_pide.errors %}
+                                <small class="text-danger d-block">
+                                    {{ form.tgl_kirim_pide.errors.0 }}
+                                </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tiket Selection -->
+                <div class="mb-3">
+                    <label class="form-label">
+                        <strong>Pilih Tiket</strong>
+                        <span class="text-danger">*</span>
+                    </label>
+                    <div style="max-height: 400px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px; border-radius: 4px;">
+                        {% for tiket in tikets %}
+                            <div class="form-check">
+                                <input class="form-check-input tiket-checkbox" type="checkbox" name="tiket-select" 
+                                       value="{{ tiket.id }}" id="tiket_{{ tiket.id }}" data-tiket-id="{{ tiket.id }}">
+                                <label class="form-check-label" for="tiket_{{ tiket.id }}">
+                                    ID: {{ tiket.id }} | Nomor: {{ tiket.nomor_tiket }} | Periode: {{ tiket.periode }}/{{ tiket.tahun }}
+                                </label>
+                            </div>
+                        {% empty %}
+                            <p class="text-muted">Tidak ada tiket tersedia</p>
+                        {% endfor %}
+                    </div>
+                    {% if form.tiket_ids.errors %}
+                        <small class="text-danger d-block mt-2">
+                            {{ form.tiket_ids.errors.0 }}
+                        </small>
+                    {% endif %}
+                </div>
+
+                {{ form.tiket_ids }}
+
+                <!-- Hidden input to store selected tiket IDs -->
+                <input type="hidden" id="tiket-ids-input" name="tiket_ids" value="">
+
+                <div class="mt-3 d-flex justify-content-end gap-2">
+                    <a href="{% url 'tiket_list' %}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-success">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tiketCheckboxes = document.querySelectorAll('.tiket-checkbox');
+    const tiketIdsInput = document.getElementById('tiket-ids-input');
+    
+    // Update hidden input when checkboxes change
+    tiketCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            updateTiketIds();
+        });
+    });
+    
+    function updateTiketIds() {
+        const selectedIds = Array.from(tiketCheckboxes)
+            .filter(checkbox => checkbox.checked)
+            .map(checkbox => checkbox.value)
+            .join(',');
+        
+        tiketIdsInput.value = selectedIds;
+    }
+    
+    // Form submission validation
+    document.getElementById('kirim-tiket-form').addEventListener('submit', function(e) {
+        const selectedIds = tiketIdsInput.value.trim();
+        
+        if (!selectedIds) {
+            e.preventDefault();
+            alert('Please select at least one tiket');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}
