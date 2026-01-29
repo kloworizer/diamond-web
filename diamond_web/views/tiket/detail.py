@@ -9,7 +9,7 @@ from .base import WorkflowStepDetailView
 class TiketDetailView(WorkflowStepDetailView):
     """Detail view for viewing a tiket."""
     model = Tiket
-    template_name = 'tiket/workflows/rekam/detail.html'
+    template_name = 'tiket/tiket_detail.html'
     context_object_name = 'tiket'
     
     def get_context_data(self, **kwargs):

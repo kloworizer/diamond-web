@@ -15,7 +15,7 @@ class TiketRekamCreateView(WorkflowStepCreateView):
     """Create view for Rekam Tiket workflow step."""
     model = Tiket
     form_class = TiketForm
-    template_name = 'tiket/workflows/rekam/form.html'
+    template_name = 'tiket/rekam_tiket_form.html'
     
     def get_success_url(self):
         """Redirect to detail view after successful creation."""

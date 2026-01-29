@@ -16,7 +16,7 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UpdateView):
     """View for recording research results (Rekam Hasil Penelitian)."""
     model = Tiket
     form_class = RekamHasilPenelitianForm
-    template_name = 'tiket/workflows/rekam_hasil_penelitian/form.html'
+    template_name = 'tiket/rekam_hasil_penelitian_form.html'
     
     def get_success_url(self):
         """Redirect back to tiket detail after saving."""

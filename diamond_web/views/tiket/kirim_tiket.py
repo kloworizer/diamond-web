@@ -17,7 +17,7 @@ from ..mixins import AdminRequiredMixin
 class KirimTiketView(LoginRequiredMixin, AdminRequiredMixin, FormView):
     """View for Kirim Tiket workflow step."""
     form_class = KirimTiketForm
-    template_name = 'tiket/workflows/kirim_tiket/form.html'
+    template_name = 'tiket/kirim_tiket_form.html'
     success_url = reverse_lazy('tiket_list')
     
     def get_context_data(self, **kwargs):
