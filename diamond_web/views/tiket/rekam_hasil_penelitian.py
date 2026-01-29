@@ -31,20 +31,23 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UpdateView):
 
     def form_valid(self, form):
         """Handle form submission to update tiket status and create action record."""
+        # Get current timestamp to use for both tiket and action
+        now = datetime.now()
+        
         # Update the tiket with new baris_p3de value
         self.object = form.save(commit=False)
         self.object.status = 2  # Change status to "Diteliti"
-        self.object.tgl_teliti = datetime.now()
+        self.object.tgl_teliti = now
         self.object.save()
         
         # Get catatan from form
         catatan = form.cleaned_data.get('catatan', 'Hasil penelitian direkam')
         
-        # Create tiket_action entry for audit trail
+        # Create tiket_action entry for audit trail with same timestamp
         TiketAction.objects.create(
             id_tiket=self.object,
             id_user=self.request.user,
-            timestamp=datetime.now(),
+            timestamp=now,
             action=2,
             catatan=catatan
         )
