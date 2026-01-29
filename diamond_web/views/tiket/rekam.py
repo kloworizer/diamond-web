@@ -1,9 +1,9 @@
 """Rekam Tiket Workflow Step - Step 1: Record/Register"""
 
+from datetime import datetime
 from django.urls import reverse_lazy, reverse
 from django.contrib import messages
 from django.http import JsonResponse
-from django.utils import timezone
 
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
@@ -32,7 +32,7 @@ class TiketRekamCreateView(WorkflowStepCreateView):
         id_sub_jenis_data = periode_jenis_data.id_sub_jenis_data_ilap.id_sub_jenis_data
         
         # Generate nomor_tiket: id_sub_jenis_data + yymmdd + 3 digit sequence
-        today = timezone.now().date()
+        today = datetime.now().date()
         yymmdd = today.strftime('%y%m%d')
         
         nomor_tiket_prefix = f"{id_sub_jenis_data}{yymmdd}"
@@ -51,7 +51,7 @@ class TiketRekamCreateView(WorkflowStepCreateView):
         TiketAction.objects.create(
             id_tiket=self.object,
             id_user=self.request.user,
-            timestamp=timezone.now(),
+            timestamp=datetime.now(),
             action=1,
             catatan="tiket direkam"
         )
@@ -60,7 +60,7 @@ class TiketRekamCreateView(WorkflowStepCreateView):
         TiketPIC.objects.create(
             id_tiket=self.object,
             id_user=self.request.user,
-            timestamp=timezone.now(),
+            timestamp=datetime.now(),
             role=1
         )
         
