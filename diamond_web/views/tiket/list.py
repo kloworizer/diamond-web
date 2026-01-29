@@ -68,7 +68,10 @@ def tiket_data(request):
         2: 'Diteliti',
         3: 'Dikirim ke PIDE',
         4: 'Dibatalkan',
-        5: 'Dikembalikan'
+        5: 'Dikembalikan',
+        6: 'Identifikasi',
+        7: 'Pengendalian Mutu',
+        8: 'Selesai'
     }
     
     for obj in qs_page:

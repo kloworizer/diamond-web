@@ -2,6 +2,7 @@
 from .list import TiketListView, tiket_data
 from .rekam import TiketRekamCreateView
 from .detail import TiketDetailView
+from .rekam_hasil_penelitian import RekamHasilPenelitianView
 
 # Backward compatibility
 TiketCreateView = TiketRekamCreateView
@@ -12,4 +13,5 @@ __all__ = [
     'TiketCreateView',
     'TiketDetailView',
     'TiketRekamCreateView',
+    'RekamHasilPenelitianView',
 ]

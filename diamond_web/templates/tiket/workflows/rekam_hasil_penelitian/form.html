@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">{{ page_title }}</h2>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Rekam Hasil Penelitian</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ form_action }}">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    {{ form.baris_p3de.label_tag }}
+                    {{ form.baris_p3de }}
+                    {% if form.baris_p3de.errors %}
+                        <div class="text-danger">{{ form.baris_p3de.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    {{ form.catatan.label_tag }}
+                    {{ form.catatan }}
+                    {% if form.catatan.errors %}
+                        <div class="text-danger">{{ form.catatan.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success">Simpan</button>
+                    <a href="{% url 'tiket_detail' tiket.pk %}" class="btn btn-secondary">Batal</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

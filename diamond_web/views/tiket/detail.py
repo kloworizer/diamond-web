@@ -26,7 +26,10 @@ class TiketDetailView(WorkflowStepDetailView):
             2: 'Diteliti',
             3: 'Dikirim ke PIDE',
             4: 'Dibatalkan',
-            5: 'Dikembalikan'
+            5: 'Dikembalikan',
+            6: 'Identifikasi',
+            7: 'Pengendalian Mutu',
+            8: 'Selesai'
         }
         context['status_label'] = status_labels.get(self.object.status, '-')
         context['page_title'] = f'Detail Tiket {self.object.nomor_tiket}'
@@ -37,7 +40,10 @@ class TiketDetailView(WorkflowStepDetailView):
             2: 'teliti',
             3: 'kirim_pide',
             4: 'batal',
-            5: 'kembali'
+            5: 'kembali',
+            6: 'identifikasi',
+            7: 'pengendalian_mutu',
+            8: 'selesai'
         }
         context['workflow_step'] = workflow_steps.get(self.object.status, 'rekam')
         return context
