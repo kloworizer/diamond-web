@@ -53,19 +53,7 @@
                                     <td>{{ action.timestamp|date:"d/m/Y H:i:s" }}</td>
                                     <td>{{ action.id_user.get_full_name|default:action.id_user.username }}</td>
                                     <td>
-                                        {% if action.action == 1 %}
-                                            <span class="badge bg-primary">Direkam</span>
-                                        {% elif action.action == 2 %}
-                                            <span class="badge bg-secondary">Diteliti</span>
-                                        {% elif action.action == 3 %}
-                                            <span class="badge bg-warning">Dikirim ke PIDE</span>
-                                        {% elif action.action == 4 %}
-                                            <span class="badge bg-danger">Dibatalkan</span>
-                                        {% elif action.action == 5 %}
-                                            <span class="badge bg-info">Dikembalikan</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">{{ action.action }}</span>
-                                        {% endif %}
+                                        <span class="badge {{ action.badge_class }}">{{ action.badge_label }}</span>
                                     </td>
                                     <td>{{ action.catatan }}</td>
                                 </tr>
@@ -101,11 +89,7 @@
                                     <td>{{ pic.timestamp|date:"d/m/Y H:i:s" }}</td>
                                     <td>{{ pic.id_user.get_full_name|default:pic.id_user.username }}</td>
                                     <td>
-                                        {% if pic.role == 1 %}
-                                            <span class="badge bg-success">Primary PIC</span>
-                                        {% else %}
-                                            <span class="badge bg-info">{{ pic.role }}</span>
-                                        {% endif %}
+                                        <span class="badge {{ pic.badge_class }}">{{ pic.badge_label }}</span>
                                     </td>
                                 </tr>
                             {% endfor %}
