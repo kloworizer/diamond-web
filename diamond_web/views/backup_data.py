@@ -1,0 +1,161 @@
+from django.urls import reverse_lazy, reverse
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic import CreateView, UpdateView, DeleteView, TemplateView
+from django.contrib import messages
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.views.decorators.http import require_GET
+
+from ..models.backup_data import BackupData
+from ..forms.backup_data import BackupDataForm
+from .mixins import AjaxFormMixin, AdminRequiredMixin
+
+class BackupDataListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
+    template_name = 'backup_data/list.html'
+
+class BackupDataCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
+    model = BackupData
+    form_class = BackupDataForm
+    template_name = 'backup_data/form.html'
+    success_url = reverse_lazy('backup_data_list')
+    success_message = 'Data Backup berhasil direkam.'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form_action'] = reverse('backup_data_create')
+        context['page_title'] = 'Rekam Backup Data'
+        return context
+
+    def form_valid(self, form):
+        form.instance.id_user = self.request.user
+        return super().form_valid(form)
+
+    def get(self, request, *args, **kwargs):
+        self.object = None
+        form = self.get_form()
+        return self.render_form_response(form)
+
+class BackupDataUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
+    model = BackupData
+    form_class = BackupDataForm
+    template_name = 'backup_data/form.html'
+    success_url = reverse_lazy('backup_data_list')
+    success_message = 'Data Backup berhasil diperbarui.'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form_action'] = reverse('backup_data_update', args=[self.object.pk])
+        context['page_title'] = 'Edit Data Backup'
+        return context
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        return self.render_form_response(form)
+
+class BackupDataDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+    model = BackupData
+    template_name = 'backup_data/confirm_delete.html'
+    success_url = reverse_lazy('backup_data_list')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form_action'] = reverse('backup_data_delete', args=[self.object.pk])
+        return context
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if request.GET.get('ajax'):
+            from django.template.loader import render_to_string
+            html = render_to_string(self.template_name, self.get_context_data(object=self.object), request=request)
+            return JsonResponse({'html': html})
+        return self.render_to_response(self.get_context_data())
+
+    def delete(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        self.object.delete()
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'message': 'Data Backup berhasil dihapus.'
+            })
+        messages.success(request, 'Data Backup berhasil dihapus.')
+        return JsonResponse({'success': True, 'redirect': self.success_url})
+
+    def post(self, request, *args, **kwargs):
+        return self.delete(request, *args, **kwargs)
+
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@require_GET
+def backup_data_data(request):
+    """Server-side processing for DataTables."""
+    draw = int(request.GET.get('draw', '1'))
+    start = int(request.GET.get('start', '0'))
+    length = int(request.GET.get('length', '10'))
+
+    qs = BackupData.objects.select_related('id_user', 'id_tiket').all()
+    records_total = qs.count()
+
+    # Column-specific filtering
+    columns_search = request.GET.getlist('columns_search[]')
+    if columns_search:
+        if columns_search[0]:  # No Tiket
+            qs = qs.filter(id_tiket__nomor_tiket__icontains=columns_search[0])
+        if len(columns_search) > 1 and columns_search[1]:  # Lokasi Backup
+            qs = qs.filter(lokasi_backup__icontains=columns_search[1])
+        if len(columns_search) > 2 and columns_search[2]:  # Status Tiket (Search by integer status or skip)
+            qs = qs.filter(id_tiket__status__icontains=columns_search[2])
+
+    records_filtered = qs.count()
+
+    # Ordering
+    order_col_index = request.GET.get('order[0][column]')
+    order_dir = request.GET.get('order[0][dir]', 'asc')
+    columns = ['id_tiket__nomor_tiket', 'lokasi_backup', 'id_tiket__status', 'id_user__username']
+    
+    if order_col_index is not None:
+        try:
+            idx = int(order_col_index)
+            col = columns[idx] if idx < len(columns) else 'id'
+            if order_dir == 'desc':
+                col = '-' + col
+            qs = qs.order_by(col)
+        except Exception:
+            qs = qs.order_by('-created_at')
+    else:
+        qs = qs.order_by('-created_at')
+
+    qs_page = qs[start:start + length]
+
+    data = []
+    status_labels = {
+        1: 'Direkam',
+        2: 'Diteliti',
+        3: 'Dikirim ke PIDE',
+        4: 'Dibatalkan',
+        5: 'Dikembalikan',
+        6: 'Identifikasi',
+        7: 'Pengendalian Mutu',
+        8: 'Selesai'
+    }
+
+    for obj in qs_page:
+        status_tiket = status_labels.get(obj.id_tiket.status, '-') if obj.id_tiket else '-'
+        user_name = obj.id_user.username if obj.id_user else '-'
+        
+        data.append({
+            'no_tiket': obj.id_tiket.nomor_tiket if obj.id_tiket else '-',
+            'lokasi_backup': obj.lokasi_backup,
+            'status_tiket': status_tiket,
+            'user': user_name,
+            'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('backup_data_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
+                       f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('backup_data_delete', args=[obj.pk])}' title='Delete'><i class='ri-delete-bin-line'></i></button>"
+        })
+
+    return JsonResponse({
+        'draw': draw,
+        'recordsTotal': records_total,
+        'recordsFiltered': records_filtered,
+        'data': data,
+    })
