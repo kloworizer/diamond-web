@@ -74,6 +74,7 @@ def seed_users(apps, schema_editor):
             user = User.objects.create_user(
                 username=username,
                 email=email,
+                password=username,
                 first_name=name.split()[0] if len(name.split()) > 0 else name,
                 last_name=name.split()[1] if len(name.split()) > 1 else "",
             )
