@@ -1,6 +1,6 @@
 """Tiket workflow views"""
 from .list import TiketListView, tiket_data
-from .rekam import TiketRekamCreateView
+from .rekam_tiket import TiketRekamCreateView
 from .detail import TiketDetailView
 from .rekam_hasil_penelitian import RekamHasilPenelitianView
 from .kirim_tiket import KirimTiketView

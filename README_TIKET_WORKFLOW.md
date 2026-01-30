@@ -98,7 +98,7 @@ diamond_web/views/
 │   └── tiket/
 │       ├── __init__.py
 │       ├── list.py (NEW - Shared list)
-│       ├── rekam.py (NEW - Step 1 ✅)
+│       ├── rekam_tiket.py (NEW - Step 1 ✅)
 │       └── [teliti.py] (Ready ⏳)
 └── [kirim_pide.py] (Ready ⏳)
 ```
@@ -129,7 +129,7 @@ urls.py - MODIFIED
 
 | Step | Name | Status | File | Docs |
 |------|------|--------|------|------|
-| 1 | Rekam (Record) | ✅ Complete | `rekam.py` | [Guide](TIKET_WORKFLOW_DEVELOPER_GUIDE.md) |
+| 1 | Rekam (Record) | ✅ Complete | `rekam_tiket.py` | [Guide](TIKET_WORKFLOW_DEVELOPER_GUIDE.md) |
 | 2 | Teliti (Review) | ⏳ Ready | Example in guide | [Guide](TIKET_WORKFLOW_DEVELOPER_GUIDE.md) |
 | 3 | Kirim PIDE (Send) | ⏳ Ready | Example in guide | [Guide](TIKET_WORKFLOW_DEVELOPER_GUIDE.md) |
 
@@ -258,7 +258,7 @@ To add a new workflow step:
 For issues or questions:
 1. Check relevant documentation file
 2. Review diagrams for visual understanding
-3. Look at existing implementations (e.g., rekam.py)
+3. Look at existing implementations (e.g., rekam_tiket.py)
 4. Consult FAQ in appropriate guide
 
 ---
@@ -267,7 +267,7 @@ For issues or questions:
 
 For direct link to code:
 - Base Classes: [base.py](diamond_web/views/workflows/base.py)
-- Rekam Step: [rekam.py](diamond_web/views/workflows/tiket/rekam.py)
+- Rekam Step: [rekam_tiket.py](diamond_web/views/tiket/rekam_tiket.py)
 - Views Entry: [tiket.py](diamond_web/views/tiket.py)
 - URLs: [urls.py](diamond_web/urls.py)
 
