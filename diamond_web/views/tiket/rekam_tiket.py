@@ -1,12 +1,16 @@
 """Rekam Tiket Workflow Step - Step 1: Record/Register"""
 
 from datetime import datetime
-from django.urls import reverse_lazy, reverse
+from django.urls import reverse
 from django.contrib import messages
+from django.db.models import Q
 
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
 from ...models.tiket_pic import TiketPIC
+from ...models.pic_p3de import PICP3DE
+from ...models.pic_pide import PICPIDE
+from ...models.pic_pmde import PICPMDE
 from ...forms.tiket import TiketForm
 from .base import WorkflowStepCreateView
 
@@ -65,6 +69,28 @@ class TiketRekamCreateView(WorkflowStepCreateView):
             timestamp=datetime.now(),
             role=1
         )
+
+        # Assign related PICs (P3DE, PIDE, PMDE) for the same sub jenis data
+        active_filter = Q(start_date__lte=today) & (Q(end_date__isnull=True) | Q(end_date__gte=today))
+        additional_pics = []
+
+        for role_value, pic_qs in (
+            (2, PICP3DE.objects.filter(id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap)),
+            (3, PICPIDE.objects.filter(id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap)),
+            (4, PICPMDE.objects.filter(id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap)),
+        ):
+            for pic in pic_qs.filter(active_filter):
+                additional_pics.append(
+                    TiketPIC(
+                        id_tiket=self.object,
+                        id_user=pic.id_user,
+                        timestamp=datetime.now(),
+                        role=role_value
+                    )
+                )
+
+        if additional_pics:
+            TiketPIC.objects.bulk_create(additional_pics)
         
         # Return response
         if self.is_ajax_request():
