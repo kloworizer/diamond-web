@@ -3,6 +3,9 @@ from django.contrib.auth import views as auth_views
 from . import views
 from .views.general import keep_alive, session_expired
 
+import sys
+print("--- Loading diamond_web/urls.py ---", file=sys.stderr)
+
 urlpatterns = [
     path('', views.home, name='home'),
     path('keep-alive/', keep_alive, name='keep_alive'),
@@ -121,6 +124,12 @@ urlpatterns = [
     path('durasi-jatuh-tempo-pmde/<int:pk>/update/', views.DurasiJatuhTempoPMDEUpdateView.as_view(), name='durasi_jatuh_tempo_pmde_update'),
     path('durasi-jatuh-tempo-pmde/<int:pk>/delete/', views.DurasiJatuhTempoPMDEDeleteView.as_view(), name='durasi_jatuh_tempo_pmde_delete'),
 
+    # Backup Data URLs
+    path('backup-data/', views.BackupDataListView.as_view(), name='backup_data_list'),
+    path('backup-data/data/', views.backup_data_data, name='backup_data_data'),
+    path('backup-data/create/', views.BackupDataCreateView.as_view(), name='backup_data_create'),
+    path('backup-data/<int:pk>/update/', views.BackupDataUpdateView.as_view(), name='backup_data_update'),
+    path('backup-data/<int:pk>/delete/', views.BackupDataDeleteView.as_view(), name='backup_data_delete'),
     # === Tiket Workflow ===
     # List view (shared across all workflow steps)
     path('tiket/', views.TiketListView.as_view(), name='tiket_list'),
