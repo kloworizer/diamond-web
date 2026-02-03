@@ -14,6 +14,9 @@ urlpatterns = [
     path('password_change/', auth_views.PasswordChangeView.as_view(template_name='registration/change_password_form.html', success_url=reverse_lazy('user_password_change_done')), name='user_password_change'),
     path('password_change/done/', auth_views.PasswordChangeDoneView.as_view(template_name='registration/change_password_done.html'), name='user_password_change_done'),
 
+    # === new_login Section ===
+    # path('new-login/', views.new_login, name='new_login'), #masih eror
+
     # === P3DE Section ===
     # Kategori ILAP URLs
     path('kategori-ilap/', views.KategoriILAPListView.as_view(), name='kategori_ilap_list'),
