@@ -15,12 +15,10 @@ class BackupData(models.Model):
     
     # Audit trail
     id_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, verbose_name="Dilakukan Oleh")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Waktu Rekam")
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'backup_data'
-        ordering = ['-created_at']
+        ordering = ['id']
 
     def __str__(self):
         return f"Backup {self.id_tiket.nomor_tiket} - {self.created_at.strftime('%Y-%m-%d')}"
