@@ -60,7 +60,7 @@ class KirimTiketView(LoginRequiredMixin, AdminRequiredMixin, FormView):
                     tiket.nomor_nd_nadine = nomor_nd_nadine
                     tiket.tgl_nadine = tgl_nadine
                     tiket.tgl_kirim_pide = tgl_kirim_pide
-                    tiket.status = 3  # Change status to 3
+                    tiket.status = 4  # Change status to 4
                     tiket.save()
                     
                     # Record tiket_action for audit trail
@@ -68,7 +68,7 @@ class KirimTiketView(LoginRequiredMixin, AdminRequiredMixin, FormView):
                         id_tiket=tiket,
                         id_user=self.request.user,
                         timestamp=datetime.now(),
-                        action=3,  # Action 3 for "Kirim"
+                        action=4,  # Action 4 for "Kirim"
                         catatan="tiket dikirim ke nadine/pide"
                     )
                 

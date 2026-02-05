@@ -65,13 +65,14 @@ def tiket_data(request):
     data = []
     status_labels = {
         1: 'Direkam',
-        2: 'Diteliti',
-        3: 'Dikirim ke PIDE',
-        4: 'Dibatalkan',
-        5: 'Dikembalikan',
-        6: 'Identifikasi',
-        7: 'Pengendalian Mutu',
-        8: 'Selesai'
+        2: 'Backup direkam',
+        3: 'Diteliti',
+        4: 'Dikirim ke PIDE',
+        5: 'Dibatalkan',
+        6: 'Dikembalikan',
+        7: 'Identifikasi',
+        8: 'Pengendalian Mutu',
+        9: 'Selesai'
     }
     
     for obj in qs_page:

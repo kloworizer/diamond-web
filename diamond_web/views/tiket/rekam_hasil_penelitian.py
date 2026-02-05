@@ -36,7 +36,7 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UpdateView):
         
         # Update the tiket with new baris_p3de value
         self.object = form.save(commit=False)
-        self.object.status = 2  # Change status to "Diteliti"
+        self.object.status = 3  # Change status to "Diteliti"
         self.object.tgl_teliti = now
         self.object.save()
         
@@ -48,7 +48,7 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UpdateView):
             id_tiket=self.object,
             id_user=self.request.user,
             timestamp=now,
-            action=2,
+            action=3,
             catatan=catatan
         )
         
