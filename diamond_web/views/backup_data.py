@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.urls import reverse_lazy, reverse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import CreateView, UpdateView, DeleteView, TemplateView
@@ -7,8 +8,21 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_GET
 
 from ..models.backup_data import BackupData
+from ..models.tiket_action import TiketAction
 from ..forms.backup_data import BackupDataForm
 from .mixins import AjaxFormMixin, AdminRequiredMixin
+
+
+def create_tiket_action(tiket, user, catatan):
+    if not tiket:
+        return
+    TiketAction.objects.create(
+        id_tiket=tiket,
+        id_user=user,
+        timestamp=datetime.now(),
+        action=tiket.status,
+        catatan=catatan
+    )
 
 class BackupDataListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
     template_name = 'backup_data/list.html'
@@ -28,7 +42,9 @@ class BackupDataCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin
 
     def form_valid(self, form):
         form.instance.id_user = self.request.user
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        create_tiket_action(self.object.id_tiket, self.request.user, "backup data direkam")
+        return response
 
     def get(self, request, *args, **kwargs):
         self.object = None
@@ -48,10 +64,16 @@ class BackupDataUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin
         context['page_title'] = 'Edit Data Backup'
         return context
 
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        create_tiket_action(self.object.id_tiket, self.request.user, "backup data diperbarui")
+        return response
+
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
         form = self.get_form()
         return self.render_form_response(form)
+
 
 class BackupDataDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
     model = BackupData
@@ -104,15 +126,13 @@ def backup_data_data(request):
             qs = qs.filter(id_tiket__nomor_tiket__icontains=columns_search[0])
         if len(columns_search) > 1 and columns_search[1]:  # Lokasi Backup
             qs = qs.filter(lokasi_backup__icontains=columns_search[1])
-        if len(columns_search) > 2 and columns_search[2]:  # Status Tiket (Search by integer status or skip)
-            qs = qs.filter(id_tiket__status__icontains=columns_search[2])
 
     records_filtered = qs.count()
 
     # Ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id_tiket__nomor_tiket', 'lokasi_backup', 'id_tiket__status', 'id_user__username']
+    columns = ['id_tiket__nomor_tiket', 'lokasi_backup', 'id_user__username']
     
     if order_col_index is not None:
         try:
@@ -129,25 +149,12 @@ def backup_data_data(request):
     qs_page = qs[start:start + length]
 
     data = []
-    status_labels = {
-        1: 'Direkam',
-        2: 'Diteliti',
-        3: 'Dikirim ke PIDE',
-        4: 'Dibatalkan',
-        5: 'Dikembalikan',
-        6: 'Identifikasi',
-        7: 'Pengendalian Mutu',
-        8: 'Selesai'
-    }
-
     for obj in qs_page:
-        status_tiket = status_labels.get(obj.id_tiket.status, '-') if obj.id_tiket else '-'
         user_name = obj.id_user.username if obj.id_user else '-'
         
         data.append({
             'no_tiket': obj.id_tiket.nomor_tiket if obj.id_tiket else '-',
             'lokasi_backup': obj.lokasi_backup,
-            'status_tiket': status_tiket,
             'user': user_name,
             'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('backup_data_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
                        f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('backup_data_delete', args=[obj.pk])}' title='Delete'><i class='ri-delete-bin-line'></i></button>"
