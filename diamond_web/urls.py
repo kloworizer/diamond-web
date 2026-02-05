@@ -147,6 +147,9 @@ urlpatterns = [
     
     # Rekam Hasil Penelitian (Record Research Results) - Step 2
     path('tiket/<int:pk>/rekam-hasil-penelitian/', views.RekamHasilPenelitianView.as_view(), name='rekam_hasil_penelitian'),
+
+    # Batalkan Tiket (Cancel Tiket)
+    path('tiket/<int:pk>/batalkan/', views.BatalkanTiketView.as_view(), name='batalkan_tiket'),
     
     # Kirim Tiket (Send Tiket) - Step 3
     path('tiket/kirim-tiket/', views.KirimTiketView.as_view(), name='kirim_tiket'),
