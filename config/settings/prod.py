@@ -5,19 +5,20 @@ Production settings.
 from .base import *
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
 # Allow hosts from environment variable (required in production)
-# Default to PythonAnywhere domain if not provided
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.getenv("ALLOWED_HOSTS", "diamondweb.pythonanywhere.com").split(",")
+    for host in os.getenv("ALLOWED_HOSTS", "").split(",")
     if host.strip()
 ]
 
-# CSRF trusted origins for HTTPS
+# CSRF trusted origins for HTTPS (read from environment)
 CSRF_TRUSTED_ORIGINS = [
-    "https://diamondweb.pythonanywhere.com",
+    origin.strip()
+    for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
 ]
 
 # Database
