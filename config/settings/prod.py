@@ -8,7 +8,17 @@ from .base import *
 DEBUG = False
 
 # Allow hosts from environment variable (required in production)
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
+# Default to PythonAnywhere domain if not provided
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv("ALLOWED_HOSTS", "diamondweb.pythonanywhere.com").split(",")
+    if host.strip()
+]
+
+# CSRF trusted origins for HTTPS
+CSRF_TRUSTED_ORIGINS = [
+    "https://diamondweb.pythonanywhere.com",
+]
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
@@ -49,12 +59,16 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 
+# Proxy/SSL settings for PythonAnywhere
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
+
 # HSTS settings (uncomment when you're ready)
 # SECURE_HSTS_SECONDS = 31536000  # 1 year
 # SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 # SECURE_HSTS_PRELOAD = True
 
-# Logging configuration for production
+# Logging configuration for production (console-only for PythonAnywhere)
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -65,12 +79,6 @@ LOGGING = {
         },
     },
     "handlers": {
-        "file": {
-            "level": "ERROR",
-            "class": "logging.FileHandler",
-            "filename": BASE_DIR / "logs" / "django.log",
-            "formatter": "verbose",
-        },
         "console": {
             "level": "INFO",
             "class": "logging.StreamHandler",
@@ -78,12 +86,12 @@ LOGGING = {
         },
     },
     "root": {
-        "handlers": ["console", "file"],
+        "handlers": ["console"],
         "level": "INFO",
     },
     "loggers": {
         "django": {
-            "handlers": ["console", "file"],
+            "handlers": ["console"],
             "level": "INFO",
             "propagate": False,
         },
