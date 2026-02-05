@@ -105,7 +105,7 @@
     <!-- Action Buttons -->
     <div class="d-flex gap-2 mb-4">
         <a href="{% url 'tiket_list' %}" class="btn btn-secondary">Kembali ke Daftar</a>
-        {% if tiket.status == 1 %}
+        {% if tiket.status == 2 %}
             <a href="{% url 'rekam_hasil_penelitian' tiket.pk %}" class="btn btn-primary">Rekam Hasil Penelitian</a>
         {% endif %}
     </div>

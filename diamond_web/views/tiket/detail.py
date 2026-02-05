@@ -18,24 +18,26 @@ class TiketDetailView(WorkflowStepDetailView):
         # Define status labels and badge classes
         status_labels = {
             1: 'Direkam',
-            2: 'Diteliti',
-            3: 'Dikirim ke PIDE',
-            4: 'Dibatalkan',
-            5: 'Dikembalikan',
-            6: 'Identifikasi',
-            7: 'Pengendalian Mutu',
-            8: 'Selesai'
+            2: 'Backup direkam',
+            3: 'Diteliti',
+            4: 'Dikirim ke PIDE',
+            5: 'Dibatalkan',
+            6: 'Dikembalikan',
+            7: 'Identifikasi',
+            8: 'Pengendalian Mutu',
+            9: 'Selesai'
         }
         
         action_badges = {
             1: {'label': 'Direkam', 'class': 'bg-primary'},
-            2: {'label': 'Diteliti', 'class': 'bg-secondary'},
-            3: {'label': 'Dikirim ke PIDE', 'class': 'bg-warning'},
-            4: {'label': 'Dibatalkan', 'class': 'bg-danger'},
-            5: {'label': 'Dikembalikan', 'class': 'bg-info'},
-            6: {'label': 'Identifikasi', 'class': 'bg-info'},
-            7: {'label': 'Pengendalian Mutu', 'class': 'bg-secondary'},
-            8: {'label': 'Selesai', 'class': 'bg-success'}
+            2: {'label': 'Backup direkam', 'class': 'bg-info'},
+            3: {'label': 'Diteliti', 'class': 'bg-secondary'},
+            4: {'label': 'Dikirim ke PIDE', 'class': 'bg-warning'},
+            5: {'label': 'Dibatalkan', 'class': 'bg-danger'},
+            6: {'label': 'Dikembalikan', 'class': 'bg-info'},
+            7: {'label': 'Identifikasi', 'class': 'bg-info'},
+            8: {'label': 'Pengendalian Mutu', 'class': 'bg-secondary'},
+            9: {'label': 'Selesai', 'class': 'bg-success'}
         }
         
         role_badges = {
@@ -73,13 +75,14 @@ class TiketDetailView(WorkflowStepDetailView):
         # Get workflow step based on status
         workflow_steps = {
             1: 'rekam',
-            2: 'teliti',
-            3: 'kirim_pide',
-            4: 'batal',
-            5: 'kembali',
-            6: 'identifikasi',
-            7: 'pengendalian_mutu',
-            8: 'selesai'
+            2: 'backup',
+            3: 'teliti',
+            4: 'kirim_pide',
+            5: 'batal',
+            6: 'kembali',
+            7: 'identifikasi',
+            8: 'pengendalian_mutu',
+            9: 'selesai'
         }
         context['workflow_step'] = workflow_steps.get(self.object.status, 'rekam')
         return context
