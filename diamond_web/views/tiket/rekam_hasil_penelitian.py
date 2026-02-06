@@ -18,6 +18,12 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UpdateView):
     form_class = RekamHasilPenelitianForm
     template_name = 'tiket/rekam_hasil_penelitian_form.html'
     
+    def get_template_names(self):
+        """Return modal template for AJAX requests."""
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return ['tiket/rekam_hasil_penelitian_modal_form.html']
+        return [self.template_name]
+    
     def get_success_url(self):
         """Redirect back to tiket detail after saving."""
         return reverse('tiket_detail', kwargs={'pk': self.object.pk})
@@ -36,7 +42,7 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UpdateView):
         
         # Update the tiket with new baris_p3de value
         self.object = form.save(commit=False)
-        self.object.status = 3  # Change status to "Diteliti"
+        self.object.status = 4  # Change status to "Diteliti"
         self.object.tgl_teliti = now
         self.object.save()
         
@@ -48,9 +54,13 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UpdateView):
             id_tiket=self.object,
             id_user=self.request.user,
             timestamp=now,
-            action=3,
+            action=4,
             catatan=catatan
         )
+        
+        # Check if AJAX request
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': True})
         
         # Return response
         messages.success(

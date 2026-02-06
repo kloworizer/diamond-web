@@ -5,6 +5,7 @@ from ...models.tiket_action import TiketAction
 from ...models.tiket_pic import TiketPIC
 from ...models.jenis_prioritas_data import JenisPrioritasData
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
+from ...models.detil_tanda_terima import DetilTandaTerima
 from .base import WorkflowStepDetailView
 
 
@@ -14,6 +15,34 @@ class TiketDetailView(WorkflowStepDetailView):
     template_name = 'tiket/tiket_detail.html'
     context_object_name = 'tiket'
     
+    def _format_periode(self, deskripsi_periode, periode, tahun):
+        """Format periode based on deskripsi periode type."""
+        bulan_names = [
+            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        ]
+        
+        if deskripsi_periode == 'Harian':
+            return f'Hari {periode} - {tahun}'
+        elif deskripsi_periode == 'Mingguan':
+            return f'Minggu {periode} - {tahun}'
+        elif deskripsi_periode == '2 Mingguan':
+            return f'2 Minggu {periode} - {tahun}'
+        elif deskripsi_periode == 'Bulanan':
+            if 1 <= periode <= 12:
+                return f'{bulan_names[periode - 1]} {tahun}'
+            return f'Bulan {periode} - {tahun}'
+        elif deskripsi_periode == 'Triwulanan':
+            return f'Triwulan {periode} - {tahun}'
+        elif deskripsi_periode == 'Kuartal':
+            return f'Kuartal {periode} - {tahun}'
+        elif deskripsi_periode == 'Semester':
+            return f'Semester {periode} - {tahun}'
+        elif deskripsi_periode == 'Tahunan':
+            return str(tahun)
+        else:
+            return f'{periode} - {tahun}'
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
@@ -21,37 +50,40 @@ class TiketDetailView(WorkflowStepDetailView):
         status_labels = {
             1: 'Direkam',
             2: 'Backup direkam',
-            3: 'Diteliti',
-            4: 'Dikirim ke PIDE',
-            5: 'Dibatalkan',
-            6: 'Dikembalikan',
+            3: 'Tanda Terima dibuat',
+            4: 'Diteliti',
+            5: 'Dikembalikan',
+            6: 'Dikirim ke PIDE',
             7: 'Identifikasi',
             8: 'Pengendalian Mutu',
-            9: 'Selesai'
+            9: 'Dibatalkan',
+            10: 'Selesai'
         }
         
         status_badge_classes = {
             1: 'bg-primary',
             2: 'bg-info',
-            3: 'bg-secondary',
-            4: 'bg-warning text-dark',
-            5: 'bg-danger',
-            6: 'bg-info',
+            3: 'bg-success',
+            4: 'bg-secondary',
+            5: 'bg-info',
+            6: 'bg-warning text-dark',
             7: 'bg-info',
             8: 'bg-secondary',
-            9: 'bg-success'
+            9: 'bg-danger',
+            10: 'bg-success'
         }
         
         action_badges = {
             1: {'label': 'Direkam', 'class': 'bg-primary'},
             2: {'label': 'Backup direkam', 'class': 'bg-info'},
-            3: {'label': 'Diteliti', 'class': 'bg-secondary'},
-            4: {'label': 'Dikirim ke PIDE', 'class': 'bg-warning'},
-            5: {'label': 'Dibatalkan', 'class': 'bg-danger'},
-            6: {'label': 'Dikembalikan', 'class': 'bg-info'},
+            3: {'label': 'Tanda Terima dibuat', 'class': 'bg-success'},
+            4: {'label': 'Diteliti', 'class': 'bg-secondary'},
+            5: {'label': 'Dikembalikan', 'class': 'bg-info'},
+            6: {'label': 'Dikirim ke PIDE', 'class': 'bg-warning'},
             7: {'label': 'Identifikasi', 'class': 'bg-info'},
             8: {'label': 'Pengendalian Mutu', 'class': 'bg-secondary'},
-            9: {'label': 'Selesai', 'class': 'bg-success'}
+            9: {'label': 'Dibatalkan', 'class': 'bg-danger'},
+            10: {'label': 'Selesai', 'class': 'bg-success'}
         }
         
         role_badges = {
@@ -80,6 +112,13 @@ class TiketDetailView(WorkflowStepDetailView):
             id_sub_jenis_data_ilap=jenis_data
         ).exists()
         
+        # Format periode based on deskripsi
+        periode_formatted = self._format_periode(
+            periode_jenis_data.id_periode_pengiriman.deskripsi,
+            self.object.periode,
+            self.object.tahun
+        )
+        
         # Prepare ILAP information
         context['ilap_info'] = {
             'nama_ilap': ilap.nama_ilap,
@@ -92,6 +131,9 @@ class TiketDetailView(WorkflowStepDetailView):
             'has_prioritas': 'Ya' if has_prioritas else 'Tidak',
             'klasifikasi': klasifikasi_items,
         }
+        
+        # Add formatted periode to context
+        context['periode_formatted'] = periode_formatted
         
         # Get actions and enrich with badge info
         tiket_actions = TiketAction.objects.filter(
@@ -113,8 +155,18 @@ class TiketDetailView(WorkflowStepDetailView):
             pic.badge_label = badge['label']
             pic.badge_class = badge['class']
         
+        # Backup data list
+        backups = self.object.backups.select_related('id_user').all().order_by('-id')
+
+        # Tanda terima list for this tiket
+        tanda_terima_items = DetilTandaTerima.objects.filter(
+            id_tiket=self.object
+        ).select_related('id_tanda_terima', 'id_tanda_terima__id_ilap', 'id_tanda_terima__id_perekam').order_by('-id')
+
         context['tiket_actions'] = tiket_actions
         context['tiket_pics'] = tiket_pics
+        context['backup_list'] = backups
+        context['tanda_terima_items'] = tanda_terima_items
         context['status_label'] = status_labels.get(self.object.status, '-')
         context['status_badge_class'] = status_badge_classes.get(self.object.status, 'bg-secondary')
         context['page_title'] = f'Detail Tiket {self.object.nomor_tiket}'
@@ -123,13 +175,14 @@ class TiketDetailView(WorkflowStepDetailView):
         workflow_steps = {
             1: 'rekam',
             2: 'backup',
-            3: 'teliti',
-            4: 'kirim_pide',
-            5: 'batal',
-            6: 'kembali',
+            3: 'tanda_terima',
+            4: 'teliti',
+            5: 'kembali',
+            6: 'kirim_pide',
             7: 'identifikasi',
             8: 'pengendalian_mutu',
-            9: 'selesai'
+            9: 'batal',
+            10: 'selesai'
         }
         context['workflow_step'] = workflow_steps.get(self.object.status, 'rekam')
         return context

@@ -1,9 +1,9 @@
 <form method="post" action="{{ form_action }}">
     {% csrf_token %}
     <div class="modal-body">
-        <div class="alert alert-warning mb-3">
+        <div class="alert alert-info mb-3">
             <i class="ri-information-line me-2"></i>
-            <strong>Informasi:</strong> Rekam lokasi backup data untuk tiket ini.
+            <strong>Informasi:</strong> Isikan hasil penelitian untuk tiket ini.
         </div>
         
         {% if form.non_field_errors %}
@@ -33,7 +33,7 @@
     </div>
     <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-        <button type="submit" class="btn btn-warning">
+        <button type="submit" class="btn btn-primary">
             <i class="ri-save-line me-1"></i>Simpan
         </button>
     </div>

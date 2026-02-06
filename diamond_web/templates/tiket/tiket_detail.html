@@ -30,6 +30,73 @@
     <div class="row">
         <!-- Main Content -->
         <div class="col-lg-8">
+            <!-- Tiket Information Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="ri-ticket-2-line me-2"></i>Informasi Tiket</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Nomor Tiket</label>
+                                <p class="fw-bold mb-0 fs-5 text-primary">{{ tiket.nomor_tiket }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Periode</label>
+                                <p class="fw-semibold mb-0">
+                                    <span class="badge bg-dark">{{ periode_formatted }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Terima Vertikal</label>
+                                <p class="fw-semibold mb-0">
+                                    {% if tiket.tgl_terima_vertikal %}
+                                        <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_terima_vertikal|date:"d/m/Y H:i" }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Terima DIP</label>
+                                <p class="fw-semibold mb-0">
+                                    {% if tiket.tgl_terima_dip %}
+                                        <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_terima_dip|date:"d/m/Y H:i" }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        {% if tiket.id_jenis_prioritas_data %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Jenis Prioritas Data</label>
+                                <p class="fw-semibold mb-0">
+                                    <span class="badge bg-warning text-dark">{{ tiket.id_jenis_prioritas_data }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.nomor_nd_nadine %}
+                        <div class="col-12">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Nomor ND Nadine</label>
+                                <p class="fw-semibold mb-0">{{ tiket.nomor_nd_nadine }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
             <!-- ILAP Information Card -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-primary text-white">
@@ -86,9 +153,9 @@
                                 <label class="text-muted small mb-1">Jenis Prioritas</label>
                                 <p class="fw-semibold mb-0">
                                     {% if ilap_info.has_prioritas == 'Ya' %}
-                                        <span class="badge bg-success">Ya</span>
+                                    <span class="badge bg-success">Ya</span>
                                     {% else %}
-                                        <span class="badge bg-secondary">Tidak</span>
+                                    <span class="badge bg-secondary">Tidak</span>
                                     {% endif %}
                                 </p>
                             </div>
@@ -99,82 +166,9 @@
                                 <label class="text-muted small mb-1">Klasifikasi</label>
                                 <div class="d-flex flex-wrap gap-2">
                                     {% for klas in ilap_info.klasifikasi %}
-                                        <span class="badge bg-info">{{ klas }}</span>
+                                    <span class="badge bg-info">{{ klas }}</span>
                                     {% endfor %}
                                 </div>
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tiket Information Card -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0"><i class="ri-ticket-2-line me-2"></i>Informasi Tiket</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Nomor Tiket</label>
-                                <p class="fw-bold mb-0 fs-5 text-primary">{{ tiket.nomor_tiket }}</p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Periode</label>
-                                <p class="fw-semibold mb-0">
-                                    <span class="badge bg-dark">{{ tiket.periode }}</span>
-                                </p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tahun</label>
-                                <p class="fw-semibold mb-0">{{ tiket.tahun }}</p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Terima Vertikal</label>
-                                <p class="fw-semibold mb-0">
-                                    {% if tiket.tgl_terima_vertikal %}
-                                        <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_terima_vertikal|date:"d/m/Y H:i" }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Terima DIP</label>
-                                <p class="fw-semibold mb-0">
-                                    {% if tiket.tgl_terima_dip %}
-                                        <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_terima_dip|date:"d/m/Y H:i" }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-                        {% if tiket.id_jenis_prioritas_data %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Jenis Prioritas Data</label>
-                                <p class="fw-semibold mb-0">
-                                    <span class="badge bg-warning text-dark">{{ tiket.id_jenis_prioritas_data }}</span>
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.nomor_nd_nadine %}
-                        <div class="col-12">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Nomor ND Nadine</label>
-                                <p class="fw-semibold mb-0">{{ tiket.nomor_nd_nadine }}</p>
                             </div>
                         </div>
                         {% endif %}
@@ -189,34 +183,112 @@
                 </div>
                 <div class="card-body">
                     {% if tiket_actions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th><i class="ri-time-line me-1"></i>Tanggal/Waktu</th>
+                                    <th><i class="ri-user-line me-1"></i>User</th>
+                                    <th><i class="ri-edit-line me-1"></i>Aksi</th>
+                                    <th><i class="ri-file-text-line me-1"></i>Catatan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for action in tiket_actions %}
+                                <tr>
+                                    <td class="text-nowrap">{{ action.timestamp|date:"d/m/Y H:i:s" }}</td>
+                                    <td>{{ action.id_user.get_full_name|default:action.id_user.username }}</td>
+                                    <td>
+                                        <span class="badge {{ action.badge_class }}">{{ action.badge_label }}</span>
+                                    </td>
+                                    <td>{{ action.catatan|default:"-" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="ri-information-line fs-1"></i>
+                        <p class="mb-0">Tidak ada riwayat aksi.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Backup Data Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="ri-save-2-line me-2"></i>Backup Data</h5>
+                </div>
+                <div class="card-body">
+                    {% if backup_list %}
                         <div class="table-responsive">
                             <table class="table table-hover">
                                 <thead class="table-light">
                                     <tr>
-                                        <th><i class="ri-time-line me-1"></i>Tanggal/Waktu</th>
+                                        <th><i class="ri-folder-2-line me-1"></i>Lokasi Backup</th>
                                         <th><i class="ri-user-line me-1"></i>User</th>
-                                        <th><i class="ri-edit-line me-1"></i>Aksi</th>
-                                        <th><i class="ri-file-text-line me-1"></i>Catatan</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for action in tiket_actions %}
+                                    {% for backup in backup_list %}
                                         <tr>
-                                            <td class="text-nowrap">{{ action.timestamp|date:"d/m/Y H:i:s" }}</td>
-                                            <td>{{ action.id_user.get_full_name|default:action.id_user.username }}</td>
+                                            <td>{{ backup.lokasi_backup }}</td>
                                             <td>
-                                                <span class="badge {{ action.badge_class }}">{{ action.badge_label }}</span>
+                                                {% if backup.id_user %}
+                                                    {{ backup.id_user.get_full_name|default:backup.id_user.username }}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
                                             </td>
-                                            <td>{{ action.catatan|default:"-" }}</td>
                                         </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
                     {% else %}
-                        <div class="text-center py-4 text-muted">
-                            <i class="ri-information-line fs-1"></i>
-                            <p class="mb-0">Tidak ada riwayat aksi.</p>
+                        <div class="text-center py-3 text-muted">
+                            <i class="ri-information-line fs-4"></i>
+                            <p class="mb-0">Belum ada data backup.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Tanda Terima Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="ri-file-list-2-line me-2"></i>Tanda Terima</h5>
+                </div>
+                <div class="card-body">
+                    {% if tanda_terima_items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th><i class="ri-hashtag me-1"></i>Nomor</th>
+                                        <th><i class="ri-calendar-line me-1"></i>Tanggal</th>
+                                        <th><i class="ri-file-text-line me-1"></i>Deskripsi</th>
+                                        <th><i class="ri-user-line me-1"></i>Perekam</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in tanda_terima_items %}
+                                        <tr>
+                                            <td>{{ item.id_tanda_terima.nomor_tanda_terima }}</td>
+                                            <td>{{ item.id_tanda_terima.tanggal_tanda_terima|date:"d/m/Y H:i" }}</td>
+                                            <td>{{ item.id_tanda_terima.deskripsi }}</td>
+                                            <td>{{ item.id_tanda_terima.id_perekam.get_full_name|default:item.id_tanda_terima.id_perekam.username }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3 text-muted">
+                            <i class="ri-information-line fs-4"></i>
+                            <p class="mb-0">Belum ada tanda terima.</p>
                         </div>
                     {% endif %}
                 </div>
@@ -232,28 +304,25 @@
                 </div>
                 <div class="card-body">
                     {% if tiket_pics %}
-                        <div class="list-group list-group-flush">
-                            {% for pic in tiket_pics %}
-                                <div class="list-group-item px-0 py-3">
-                                    <div class="d-flex justify-content-between align-items-start">
-                                        <div class="flex-grow-1">
-                                            <div class="fw-semibold mb-1">
-                                                <i class="ri-user-3-line me-1"></i>{{ pic.id_user.get_full_name|default:pic.id_user.username }}
-                                            </div>
-                                            <small class="text-muted">
-                                                <i class="ri-time-line me-1"></i>{{ pic.timestamp|date:"d/m/Y H:i" }}
-                                            </small>
-                                        </div>
-                                        <span class="badge {{ pic.badge_class }} ms-2">{{ pic.badge_label }}</span>
+                    <div class="list-group list-group-flush">
+                        {% for pic in tiket_pics %}
+                        <div class="list-group-item px-0 py-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="fw-semibold mb-1">
+                                        <i class="ri-user-3-line me-1"></i>{{ pic.id_user.get_full_name|default:pic.id_user.username }}
                                     </div>
                                 </div>
-                            {% endfor %}
+                                <span class="badge {{ pic.badge_class }} ms-2">{{ pic.badge_label }}</span>
+                            </div>
                         </div>
+                        {% endfor %}
+                    </div>
                     {% else %}
-                        <div class="text-center py-4 text-muted">
-                            <i class="ri-user-unfollow-line fs-1"></i>
-                            <p class="mb-0 small">Tidak ada PIC yang ditugaskan.</p>
-                        </div>
+                    <div class="text-center py-4 text-muted">
+                        <i class="ri-user-unfollow-line fs-1"></i>
+                        <p class="mb-0 small">Tidak ada PIC yang ditugaskan.</p>
+                    </div>
                     {% endif %}
                 </div>
             </div>
@@ -265,18 +334,19 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <a href="{% url 'tiket_list' %}" class="btn btn-outline-secondary">
-                            <i class="ri-arrow-left-line me-1"></i>Kembali ke Daftar
-                        </a>
-                        {% if tiket.status == 2 %}
-                            <a href="{% url 'rekam_hasil_penelitian' tiket.pk %}" class="btn btn-primary">
+                        {% if tiket.status < 6 %}
+                            <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#rekamBackupDataModal">
+                                <i class="ri-save-line me-1"></i>Rekam Backup Data
+                            </button>
+                            <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#createTandaTerimaModal">
+                                <i class="ri-file-list-2-line me-1"></i>Buat Tanda Terima
+                            </button>
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rekamHasilPenelitianModal">
                                 <i class="ri-file-edit-line me-1"></i>Rekam Hasil Penelitian
-                            </a>
-                        {% endif %}
-                        {% if tiket.status != 5 and tiket.status != 9 %}
-                            <a href="{% url 'batalkan_tiket' tiket.pk %}" class="btn btn-danger">
+                            </button>
+                            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
                                 <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
-                            </a>
+                            </button>
                         {% endif %}
                     </div>
                 </div>
@@ -285,54 +355,326 @@
     </div>
 </div>
 
+<!-- Rekam Backup Data Modal -->
+<div class="modal fade" id="rekamBackupDataModal" tabindex="-1" aria-labelledby="rekamBackupDataModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="rekamBackupDataModalLabel">Rekam Backup Data untuk Tiket {{ tiket.nomor_tiket }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div id="backup-data-form-container">
+                <!-- Form will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tanda Terima Modal -->
+<div class="modal fade" id="createTandaTerimaModal" tabindex="-1" aria-labelledby="createTandaTerimaModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createTandaTerimaModalLabel">Buat Tanda Terima untuk Tiket {{ tiket.nomor_tiket }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div id="tanda-terima-form-container">
+                <!-- Form will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Batalkan Tiket Modal -->
+<div class="modal fade" id="batalkanTiketModal" tabindex="-1" aria-labelledby="batalkanTiketModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="batalkanTiketModalLabel">Batalkan Tiket {{ tiket.nomor_tiket }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div id="batalkan-tiket-form-container">
+                <!-- Form will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rekam Hasil Penelitian Modal -->
+<div class="modal fade" id="rekamHasilPenelitianModal" tabindex="-1" aria-labelledby="rekamHasilPenelitianModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="rekamHasilPenelitianModalLabel">Rekam Hasil Penelitian untuk Tiket {{ tiket.nomor_tiket }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div id="rekam-hasil-penelitian-form-container">
+                <!-- Form will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
-.info-group {
-    padding: 0.5rem;
-    border-left: 3px solid #dee2e6;
-    background-color: #f8f9fa;
-    border-radius: 4px;
-}
+    .info-group {
+        padding: 0.5rem;
+        border-left: 3px solid #dee2e6;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+    }
 
-.info-group:hover {
-    background-color: #e9ecef;
-    border-left-color: #0d6efd;
-    transition: all 0.2s ease;
-}
+    .info-group:hover {
+        background-color: #e9ecef;
+        border-left-color: #0d6efd;
+        transition: all 0.2s ease;
+    }
 
-.card {
-    border: none;
-    transition: transform 0.2s ease;
-}
+    .card {
+        border: none;
+        transition: transform 0.2s ease;
+    }
 
-.card:hover {
-    transform: translateY(-2px);
-}
+    .card:hover {
+        transform: translateY(-2px);
+    }
 
-.card-header {
-    border-bottom: 2px solid rgba(255,255,255,0.2);
-}
+    .card-header {
+        border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    }
 
-.badge {
-    font-weight: 500;
-    padding: 0.35em 0.65em;
-}
+    .badge {
+        font-weight: 500;
+        padding: 0.35em 0.65em;
+    }
 
-.list-group-item {
-    border-left: 3px solid transparent;
-    transition: all 0.2s ease;
-}
+    .list-group-item {
+        border-left: 3px solid transparent;
+        transition: all 0.2s ease;
+    }
 
-.list-group-item:hover {
-    border-left-color: #0d6efd;
-    background-color: #f8f9fa;
-}
+    .list-group-item:hover {
+        border-left-color: #0d6efd;
+        background-color: #f8f9fa;
+    }
 
-.table-hover tbody tr:hover {
-    background-color: rgba(13, 110, 253, 0.05);
-}
+    .table-hover tbody tr:hover {
+        background-color: rgba(13, 110, 253, 0.05);
+    }
 
-.shadow-sm {
-    box-shadow: 0 .125rem .25rem rgba(0,0,0,.075)!important;
-}
+    .shadow-sm {
+        box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .075) !important;
+    }
 </style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const rekamBackupDataModal = document.getElementById('rekamBackupDataModal');
+        if (rekamBackupDataModal) {
+            rekamBackupDataModal.addEventListener('show.bs.modal', function () {
+                const formContainer = document.getElementById('backup-data-form-container');
+                formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-warning" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                fetch('{% url "backup_data_from_tiket_create" tiket.pk %}')
+                    .then(response => response.text())
+                    .then(html => {
+                        formContainer.innerHTML = html;
+
+                        // Handle form submission
+                        const form = formContainer.querySelector('form');
+                        if (form) {
+                            form.addEventListener('submit', function (e) {
+                                e.preventDefault();
+                                const formData = new FormData(form);
+
+                                fetch(form.action, {
+                                    method: 'POST',
+                                    body: formData,
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
+                                })
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            bootstrap.Modal.getInstance(rekamBackupDataModal).hide();
+                                            location.reload();
+                                        } else {
+                                            formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error:', error);
+                                        alert('Terjadi kesalahan saat menyimpan data.');
+                                    });
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading form:', error);
+                        formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
+                    });
+            });
+        }
+
+        const tandaTerimaModal = document.getElementById('createTandaTerimaModal');
+        if (tandaTerimaModal) {
+            tandaTerimaModal.addEventListener('show.bs.modal', function () {
+                const formContainer = document.getElementById('tanda-terima-form-container');
+                formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                fetch('{% url "tanda_terima_data_from_tiket_create" tiket.pk %}')
+                    .then(response => response.text())
+                    .then(html => {
+                        formContainer.innerHTML = html;
+
+                        // Handle form submission
+                        const form = formContainer.querySelector('form');
+                        if (form) {
+                            form.addEventListener('submit', function (e) {
+                                e.preventDefault();
+                                const formData = new FormData(form);
+
+                                fetch(form.action, {
+                                    method: 'POST',
+                                    body: formData,
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
+                                })
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            bootstrap.Modal.getInstance(tandaTerimaModal).hide();
+                                            location.reload();
+                                        } else {
+                                            // Handle form errors - the mixin returns 'html' not 'form_html'
+                                            formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error:', error);
+                                        alert('Terjadi kesalahan saat menyimpan data.');
+                                    });
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading form:', error);
+                        formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
+                    });
+            });
+        }
+
+        const batalkanTiketModal = document.getElementById('batalkanTiketModal');
+        if (batalkanTiketModal) {
+            batalkanTiketModal.addEventListener('show.bs.modal', function () {
+                const formContainer = document.getElementById('batalkan-tiket-form-container');
+                formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-danger" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                fetch('{% url "batalkan_tiket" tiket.pk %}', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => response.text())
+                    .then(html => {
+                        formContainer.innerHTML = html;
+
+                        // Handle form submission
+                        const form = formContainer.querySelector('form');
+                        if (form) {
+                            form.addEventListener('submit', function (e) {
+                                e.preventDefault();
+                                const formData = new FormData(form);
+
+                                fetch(form.action, {
+                                    method: 'POST',
+                                    body: formData
+                                })
+                                    .then(response => {
+                                        if (response.ok && response.redirected) {
+                                            bootstrap.Modal.getInstance(batalkanTiketModal).hide();
+                                            location.reload();
+                                        } else {
+                                            return response.text();
+                                        }
+                                    })
+                                    .then(html => {
+                                        if (html) {
+                                            formContainer.innerHTML = html;
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error:', error);
+                                        alert('Terjadi kesalahan saat membatalkan tiket.');
+                                    });
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading form:', error);
+                        formContainer.innerHTML = '<div class="alert alert-danger m-3">Gagal memuat form</div>';
+                    });
+            });
+        }
+
+        const rekamHasilPenelitianModal = document.getElementById('rekamHasilPenelitianModal');
+        if (rekamHasilPenelitianModal) {
+            rekamHasilPenelitianModal.addEventListener('show.bs.modal', function () {
+                const formContainer = document.getElementById('rekam-hasil-penelitian-form-container');
+                formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                fetch('{% url "rekam_hasil_penelitian" tiket.pk %}', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => response.text())
+                    .then(html => {
+                        formContainer.innerHTML = html;
+
+                        // Handle form submission
+                        const form = formContainer.querySelector('form');
+                        if (form) {
+                            form.addEventListener('submit', function (e) {
+                                e.preventDefault();
+                                const formData = new FormData(form);
+
+                                fetch(form.action, {
+                                    method: 'POST',
+                                    body: formData,
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
+                                })
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            bootstrap.Modal.getInstance(rekamHasilPenelitianModal).hide();
+                                            location.reload();
+                                        } else {
+                                            formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error:', error);
+                                        alert('Terjadi kesalahan saat menyimpan data.');
+                                    });
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading form:', error);
+                        formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
+                    });
+            });
+        }
+    });
+</script>
 {% endblock %}
