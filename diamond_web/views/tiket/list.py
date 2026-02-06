@@ -4,17 +4,21 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.decorators.http import require_GET
 from django.views.generic import TemplateView
+from django.contrib.auth.mixins import UserPassesTestMixin
 from django.http import JsonResponse
 from django.urls import reverse
 
 from ...models.tiket import Tiket
-from ..mixins import ActiveTiketPICListRequiredMixin, can_access_tiket_list
+from ..mixins import can_access_tiket_list
 from ...constants.tiket_status import STATUS_LABELS
 
 
-class TiketListView(LoginRequiredMixin, ActiveTiketPICListRequiredMixin, TemplateView):
+class TiketListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     """Display list of all tikets with DataTables integration."""
     template_name = 'tiket/list.html'
+
+    def test_func(self):
+        return can_access_tiket_list(self.request.user)
 
 
 @login_required

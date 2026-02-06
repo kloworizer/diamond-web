@@ -34,6 +34,12 @@ class UserP3DERequiredMixin(UserPassesTestMixin):
     def test_func(self):
         return self.request.user.groups.filter(name__in=['admin', 'user_p3de']).exists()
 
+    def handle_no_permission(self):
+        request = getattr(self, "request", None)
+        if request is not None and request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JsonResponse({"success": False, "message": "Forbidden"}, status=403)
+        return super().handle_no_permission()
+
 
 class ActiveTiketPICRequiredMixin(UserPassesTestMixin):
     """Mixin to restrict access to admin or active PIC assigned to tiket."""
@@ -66,15 +72,20 @@ def can_access_tiket_list(user):
         return False
     if user.is_superuser or user.groups.filter(name='admin').exists():
         return True
-    if user.groups.filter(name='user_p3de').exists():
+    if user.groups.filter(name__in=['user_p3de', 'user_pide', 'user_pmde']).exists():
         return True
-    return has_active_tiket_pic(user)
+    return TiketPIC.objects.filter(id_user=user).exists()
 
 
 class ActiveTiketPICListRequiredMixin(UserPassesTestMixin):
-    """Mixin to restrict list access to admin/superuser, user_p3de, or any active PIC."""
+    """Mixin to restrict access to admin/superuser or any active PIC."""
     def test_func(self):
-        return can_access_tiket_list(self.request.user)
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser or user.groups.filter(name='admin').exists():
+            return True
+        return TiketPIC.objects.filter(id_user=user, active=True).exists()
 
 
 class UserFormKwargsMixin:

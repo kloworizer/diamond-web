@@ -15,10 +15,10 @@ from ..models.tiket_action import TiketAction
 from ..models.tiket_pic import TiketPIC
 from ..models.tiket import Tiket
 from ..forms.tanda_terima_data import TandaTerimaDataForm
-from .mixins import AjaxFormMixin, ActiveTiketPICListRequiredMixin, UserP3DERequiredMixin, can_access_tiket_list
+from .mixins import AjaxFormMixin, UserP3DERequiredMixin
 
 
-class TandaTerimaDataListView(LoginRequiredMixin, ActiveTiketPICListRequiredMixin, TemplateView):
+class TandaTerimaDataListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView):
     template_name = 'tanda_terima_data/list.html'
 
     def get(self, request, *args, **kwargs):
@@ -34,7 +34,7 @@ class TandaTerimaDataListView(LoginRequiredMixin, ActiveTiketPICListRequiredMixi
 
 
 @login_required
-@user_passes_test(lambda u: can_access_tiket_list(u))
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
 @require_GET
 def tanda_terima_data_data(request):
     """Server-side processing for Tanda Terima Data DataTables."""
