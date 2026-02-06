@@ -20,6 +20,7 @@ class TandaTerimaData(models.Model):
         db_column="id_perekam",
         verbose_name="Perekam"
     )
+    active = models.BooleanField(default=True, verbose_name="Active")
 
     class Meta:
         verbose_name = "Tanda Terima Data"
