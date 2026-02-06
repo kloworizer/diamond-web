@@ -335,15 +335,21 @@
                 <div class="card-body">
                     <div class="d-grid gap-2">
                         {% if tiket.status < 6 %}
-                            <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#rekamBackupDataModal">
-                                <i class="ri-save-line me-1"></i>Rekam Backup Data
-                            </button>
-                            <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#createTandaTerimaModal">
-                                <i class="ri-file-list-2-line me-1"></i>Buat Tanda Terima
-                            </button>
-                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rekamHasilPenelitianModal">
-                                <i class="ri-file-edit-line me-1"></i>Rekam Hasil Penelitian
-                            </button>
+                            {% if not backup_list %}
+                                <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#rekamBackupDataModal">
+                                    <i class="ri-save-line me-1"></i>Rekam Backup Data
+                                </button>
+                            {% endif %}
+                            {% if not tanda_terima_items %}
+                                <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#createTandaTerimaModal">
+                                    <i class="ri-file-list-2-line me-1"></i>Buat Tanda Terima
+                                </button>
+                            {% endif %}
+                            {% if backup_list and tanda_terima_items %}
+                                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rekamHasilPenelitianModal">
+                                    <i class="ri-file-edit-line me-1"></i>Rekam Hasil Penelitian
+                                </button>
+                            {% endif %}
                             <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
                                 <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
                             </button>
