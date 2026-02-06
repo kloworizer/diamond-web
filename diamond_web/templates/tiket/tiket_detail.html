@@ -86,10 +86,34 @@
                         </div>
                         {% endif %}
                         {% if tiket.nomor_nd_nadine %}
-                        <div class="col-12">
+                        <div class="col-md-4">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Nomor ND Nadine</label>
                                 <p class="fw-semibold mb-0">{{ tiket.nomor_nd_nadine }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Nadine</label>
+                                <p class="fw-semibold mb-0">
+                                    {% if tiket.tgl_nadine %}
+                                        <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_nadine|date:"d/m/Y H:i" }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Kirim PIDE</label>
+                                <p class="fw-semibold mb-0">
+                                    {% if tiket.tgl_kirim_pide %}
+                                        <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_kirim_pide|date:"d/m/Y H:i" }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </p>
                             </div>
                         </div>
                         {% endif %}
@@ -333,28 +357,61 @@
                     <h5 class="mb-0"><i class="ri-settings-3-line me-2"></i>Aksi</h5>
                 </div>
                 <div class="card-body">
-                    <div class="d-grid gap-2">
                         {% if tiket.status < 6 %}
-                            {% if not backup_list %}
+                        {% if not backup_list and not tanda_terima_items %}
+                            <div class="d-grid gap-2">
                                 <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#rekamBackupDataModal">
                                     <i class="ri-save-line me-1"></i>Rekam Backup Data
                                 </button>
-                            {% endif %}
-                            {% if not tanda_terima_items %}
                                 <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#createTandaTerimaModal">
                                     <i class="ri-file-list-2-line me-1"></i>Buat Tanda Terima
                                 </button>
-                            {% endif %}
-                            {% if backup_list and tanda_terima_items %}
+                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
+                                    <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
+                                </button>
+                            </div>
+                        {% elif not backup_list %}
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#rekamBackupDataModal">
+                                    <i class="ri-save-line me-1"></i>Rekam Backup Data
+                                </button>
+                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
+                                    <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
+                                </button>
+                            </div>
+                        {% elif not tanda_terima_items %}
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#createTandaTerimaModal">
+                                    <i class="ri-file-list-2-line me-1"></i>Buat Tanda Terima
+                                </button>
+                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
+                                    <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
+                                </button>
+                            </div>
+                            {% elif backup_list and tanda_terima_items %}
+                            <div class="d-grid gap-2">
                                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rekamHasilPenelitianModal">
                                     <i class="ri-file-edit-line me-1"></i>Rekam Hasil Penelitian
                                 </button>
-                            {% endif %}
-                            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
-                                <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
-                            </button>
+                                {% if tiket.status == 4 %}
+                                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#kirimTiketModal">
+                                        <i class="ri-send-plane-line me-1"></i>Kirim Tiket ke PIDE
+                                    </button>
+                                {% endif %}
+                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
+                                    <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
+                                </button>
+                            </div>
+                        {% else %}
+                            <div class="text-center text-muted py-2">
+                                <i class="ri-information-line me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
+                            </div>
                         {% endif %}
-                    </div>
+                    {% else %}
+                        <div class="text-center text-muted py-2">
+                            <i class="ri-information-line me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -421,6 +478,21 @@
                     aria-label="Close"></button>
             </div>
             <div id="rekam-hasil-penelitian-form-container">
+                <!-- Form will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Kirim Tiket Modal -->
+<div class="modal fade" id="kirimTiketModal" tabindex="-1" aria-labelledby="kirimTiketModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="kirimTiketModalLabel">Kirim Tiket ke PIDE {{ tiket.nomor_tiket }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div id="kirim-tiket-form-container">
                 <!-- Form will be loaded here -->
             </div>
         </div>
@@ -681,6 +753,57 @@
                     });
             });
         }
+
+            const kirimTiketModal = document.getElementById('kirimTiketModal');
+            if (kirimTiketModal) {
+                kirimTiketModal.addEventListener('show.bs.modal', function () {
+                    const formContainer = document.getElementById('kirim-tiket-form-container');
+                    formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-success" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                    fetch('{% url "kirim_tiket_from_tiket" tiket.pk %}', {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                        .then(response => response.text())
+                        .then(html => {
+                            formContainer.innerHTML = html;
+
+                            const form = formContainer.querySelector('form');
+                            if (form) {
+                                form.addEventListener('submit', function (e) {
+                                    e.preventDefault();
+                                    const formData = new FormData(form);
+
+                                    fetch(form.action, {
+                                        method: 'POST',
+                                        body: formData,
+                                        headers: {
+                                            'X-Requested-With': 'XMLHttpRequest'
+                                        }
+                                    })
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            if (data.success) {
+                                                bootstrap.Modal.getInstance(kirimTiketModal).hide();
+                                                location.reload();
+                                            } else if (data.errors) {
+                                                formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
+                                            }
+                                        })
+                                        .catch(error => {
+                                            console.error('Error:', error);
+                                            alert('Terjadi kesalahan saat mengirim tiket.');
+                                        });
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error loading form:', error);
+                            formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
+                        });
+                });
+            }
     });
 </script>
 {% endblock %}

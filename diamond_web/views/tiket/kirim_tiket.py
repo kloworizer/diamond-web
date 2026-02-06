@@ -5,7 +5,7 @@ from django.views.generic import FormView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.http import JsonResponse
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 from django.db import transaction
 
 from ...models.tiket import Tiket
@@ -19,13 +19,33 @@ class KirimTiketView(LoginRequiredMixin, AdminRequiredMixin, FormView):
     form_class = KirimTiketForm
     template_name = 'tiket/kirim_tiket_form.html'
     success_url = reverse_lazy('tiket_list')
+
+    def get_template_names(self):
+        """Return modal template for AJAX requests."""
+        if self.is_ajax_request():
+            return ['tiket/kirim_tiket_modal_form.html']
+        return [self.template_name]
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        tiket_pk = self.kwargs.get('tiket_pk')
         context['page_title'] = 'Kirim Tiket'
         context['workflow_step'] = 'kirim_tiket'
-        context['tikets'] = Tiket.objects.all()
+        if tiket_pk:
+            tiket = Tiket.objects.get(pk=tiket_pk)
+            context['single_tiket'] = tiket
+            context['form_action'] = reverse('kirim_tiket_from_tiket', kwargs={'tiket_pk': tiket_pk})
+        else:
+            context['tikets'] = Tiket.objects.all()
+            context['form_action'] = reverse('kirim_tiket')
         return context
+
+    def get_initial(self):
+        initial = super().get_initial()
+        tiket_pk = self.kwargs.get('tiket_pk')
+        if tiket_pk:
+            initial['tiket_ids'] = str(tiket_pk)
+        return initial
     
     def is_ajax_request(self):
         """Check if the request is an AJAX request."""
