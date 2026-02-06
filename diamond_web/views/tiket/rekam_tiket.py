@@ -17,6 +17,7 @@ from ...models.jenis_prioritas_data import JenisPrioritasData
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ...forms.tiket import TiketForm
 from .base import WorkflowStepCreateView
+from ..mixins import UserFormKwargsMixin
 
 logger = logging.getLogger(__name__)
 
@@ -35,43 +36,45 @@ class ILAPPeriodeDataAPIView(View):
             pide_group = Group.objects.get(name='user_pide')
             pmde_group = Group.objects.get(name='user_pmde')
             
-            # Get all JenisDataILAP IDs that have:
-            # 1. PIC P3DE assigned
+            # Get only valid PeriodeJenisData for the given ILAP with:
+            # 1. Active PIC P3DE
             # 2. Active PIDE durasi
             # 3. Active PMDE durasi
-            from ...models.jenis_data_ilap import JenisDataILAP
-            
-            # JenisData with active PIC P3DE (no end_date)
-            jenis_data_with_pic = JenisDataILAP.objects.filter(
-                pic__tipe=PIC.TipePIC.P3DE,
-                pic__start_date__lte=today,
-                pic__end_date__isnull=True
-            ).values_list('id_sub_jenis_data', flat=True).distinct()
-            
-            # JenisData with active PIDE durasi
-            jenis_data_with_pide = JenisDataILAP.objects.filter(
-                durasijatuhtempo__seksi=pide_group,
-                durasijatuhtempo__start_date__lte=today
-            ).filter(
-                Q(durasijatuhtempo__end_date__isnull=True) | Q(durasijatuhtempo__end_date__gte=today)
-            ).values_list('id_sub_jenis_data', flat=True).distinct()
-            
-            # JenisData with active PMDE durasi
-            jenis_data_with_pmde = JenisDataILAP.objects.filter(
-                durasijatuhtempo__seksi=pmde_group,
-                durasijatuhtempo__start_date__lte=today
-            ).filter(
-                Q(durasijatuhtempo__end_date__isnull=True) | Q(durasijatuhtempo__end_date__gte=today)
-            ).values_list('id_sub_jenis_data', flat=True).distinct()
-            
-            # Get intersection - JenisData that have ALL three requirements
-            valid_jenis_data_ids = set(jenis_data_with_pic) & set(jenis_data_with_pide) & set(jenis_data_with_pmde)
-            
-            # Get only valid periode jenis data for the given ILAP
             periode_data_list = PeriodeJenisData.objects.filter(
                 id_sub_jenis_data_ilap__id_ilap_id=ilap_id,
-                id_sub_jenis_data_ilap__id_sub_jenis_data__in=valid_jenis_data_ids
-            ).select_related(
+            ).filter(
+                Q(
+                    id_sub_jenis_data_ilap__durasijatuhtempo__seksi=pide_group,
+                    id_sub_jenis_data_ilap__durasijatuhtempo__start_date__lte=today,
+                    id_sub_jenis_data_ilap__durasijatuhtempo__end_date__isnull=True
+                ) |
+                Q(
+                    id_sub_jenis_data_ilap__durasijatuhtempo__seksi=pide_group,
+                    id_sub_jenis_data_ilap__durasijatuhtempo__start_date__lte=today,
+                    id_sub_jenis_data_ilap__durasijatuhtempo__end_date__gte=today
+                )
+            ).filter(
+                Q(
+                    id_sub_jenis_data_ilap__durasijatuhtempo__seksi=pmde_group,
+                    id_sub_jenis_data_ilap__durasijatuhtempo__start_date__lte=today,
+                    id_sub_jenis_data_ilap__durasijatuhtempo__end_date__isnull=True
+                ) |
+                Q(
+                    id_sub_jenis_data_ilap__durasijatuhtempo__seksi=pmde_group,
+                    id_sub_jenis_data_ilap__durasijatuhtempo__start_date__lte=today,
+                    id_sub_jenis_data_ilap__durasijatuhtempo__end_date__gte=today
+                )
+            )
+
+            if not (request.user.is_superuser or request.user.groups.filter(name='admin').exists()):
+                periode_data_list = periode_data_list.filter(
+                    id_sub_jenis_data_ilap__pic__tipe=PIC.TipePIC.P3DE,
+                    id_sub_jenis_data_ilap__pic__start_date__lte=today,
+                    id_sub_jenis_data_ilap__pic__end_date__isnull=True,
+                    id_sub_jenis_data_ilap__pic__id_user=request.user
+                )
+
+            periode_data_list = periode_data_list.select_related(
                 'id_sub_jenis_data_ilap__id_ilap__id_kategori',
                 'id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
                 'id_sub_jenis_data_ilap__id_jenis_tabel',
@@ -191,7 +194,59 @@ class CheckJenisPrioritasAPIView(View):
             }, status=400)
 
 
-class TiketRekamCreateView(WorkflowStepCreateView):
+class CheckTiketExistsAPIView(View):
+    """API view to check if tiket already exists for sub jenis data, periode, and tahun."""
+
+    def get(self, request):
+        try:
+            periode_data_id = request.GET.get('periode_data_id')
+            periode = request.GET.get('periode')
+            tahun = request.GET.get('tahun')
+
+            if not (periode_data_id and periode and tahun):
+                return JsonResponse({'success': False, 'error': 'Missing parameters'}, status=400)
+
+            periode_data = PeriodeJenisData.objects.select_related('id_sub_jenis_data_ilap').get(pk=periode_data_id)
+            id_sub_jenis_data = periode_data.id_sub_jenis_data_ilap.id_sub_jenis_data
+
+            existing_qs = Tiket.objects.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_sub_jenis_data=id_sub_jenis_data,
+                periode=int(periode),
+                tahun=int(tahun)
+            )
+            existing_numbers = list(existing_qs.values_list('nomor_tiket', flat=True))
+            exists = len(existing_numbers) > 0
+
+            return JsonResponse({'success': True, 'exists': exists, 'nomor_tiket': existing_numbers})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+class PreviewNomorTiketAPIView(View):
+    """API view to preview generated nomor tiket based on selected periode data."""
+
+    def get(self, request):
+        try:
+            periode_data_id = request.GET.get('periode_data_id')
+            if not periode_data_id:
+                return JsonResponse({'success': False, 'error': 'Missing periode_data_id'}, status=400)
+
+            periode_data = PeriodeJenisData.objects.select_related('id_sub_jenis_data_ilap').get(pk=periode_data_id)
+            id_sub_jenis_data = periode_data.id_sub_jenis_data_ilap.id_sub_jenis_data
+
+            today = datetime.now().date()
+            yymmdd = today.strftime('%y%m%d')
+            nomor_tiket_prefix = f"{id_sub_jenis_data}{yymmdd}"
+            count = Tiket.objects.filter(nomor_tiket__startswith=nomor_tiket_prefix).count()
+            sequence = str(count + 1).zfill(3)
+            nomor_tiket = f"{nomor_tiket_prefix}{sequence}"
+
+            return JsonResponse({'success': True, 'nomor_tiket': nomor_tiket})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+class TiketRekamCreateView(UserFormKwargsMixin, WorkflowStepCreateView):
     """Create view for Rekam Tiket workflow step."""
     model = Tiket
     form_class = TiketForm
@@ -297,22 +352,30 @@ class TiketRekamCreateView(WorkflowStepCreateView):
                 catatan="tiket direkam"
             )
             
-            # Create tiket_pic entry to assign to current user
-            TiketPIC.objects.create(
-                id_tiket=self.object,
+            # Create tiket_pic entry for current user if not already active P3DE PIC for this data
+            current_user_is_p3de_pic = PIC.objects.filter(
+                tipe=PIC.TipePIC.P3DE,
+                id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap,
                 id_user=self.request.user,
-                timestamp=datetime.now(),
-                role=1
-            )
+                start_date__lte=today,
+                end_date__isnull=True
+            ).exists()
+            if not current_user_is_p3de_pic:
+                TiketPIC.objects.create(
+                    id_tiket=self.object,
+                    id_user=self.request.user,
+                    timestamp=datetime.now(),
+                    role=TiketPIC.Role.P3DE
+                )
 
             # Assign related active PICs (no end_date) for the same sub jenis data
             active_filter = Q(start_date__lte=today) & Q(end_date__isnull=True)
             additional_pics = []
 
             for role_value, tipe in (
-                (2, PIC.TipePIC.P3DE),
-                (3, PIC.TipePIC.PIDE),
-                (4, PIC.TipePIC.PMDE),
+                (TiketPIC.Role.P3DE, PIC.TipePIC.P3DE),
+                (TiketPIC.Role.PIDE, PIC.TipePIC.PIDE),
+                (TiketPIC.Role.PMDE, PIC.TipePIC.PMDE),
             ):
                 pic_qs = PIC.objects.filter(
                     tipe=tipe,

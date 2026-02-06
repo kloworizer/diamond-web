@@ -8,16 +8,17 @@ from django.http import JsonResponse
 from django.urls import reverse
 
 from ...models.tiket import Tiket
-from ..mixins import UserP3DERequiredMixin
+from ..mixins import ActiveTiketPICListRequiredMixin, can_access_tiket_list
+from ...constants.tiket_status import STATUS_LABELS
 
 
-class TiketListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView):
+class TiketListView(LoginRequiredMixin, ActiveTiketPICListRequiredMixin, TemplateView):
     """Display list of all tikets with DataTables integration."""
     template_name = 'tiket/list.html'
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
+@user_passes_test(lambda u: can_access_tiket_list(u))
 @require_GET
 def tiket_data(request):
     """Server-side processing for DataTables."""
@@ -26,6 +27,10 @@ def tiket_data(request):
     length = int(request.GET.get('length', '10'))
 
     qs = Tiket.objects.select_related('id_periode_data__id_sub_jenis_data_ilap').all()
+    if not request.user.groups.filter(name='admin').exists() and not request.user.is_superuser:
+        qs = qs.filter(
+            tiketpic__id_user=request.user
+        ).distinct()
     records_total = qs.count()
 
     # Column-specific filtering
@@ -63,19 +68,6 @@ def tiket_data(request):
     qs_page = qs[start:start + length]
 
     data = []
-    status_labels = {
-        1: 'Direkam',
-        2: 'Backup direkam',
-        3: 'Tanda Terima dibuat',
-        4: 'Diteliti',
-        5: 'Dikembalikan',
-        6: 'Dikirim ke PIDE',
-        7: 'Identifikasi',
-        8: 'Pengendalian Mutu',
-        9: 'Dibatalkan',
-        10: 'Selesai'
-    }
-    
     for obj in qs_page:
         data.append({
             'id': obj.id,
@@ -83,7 +75,7 @@ def tiket_data(request):
             'periode_jenis_data': str(obj.id_periode_data) if obj.id_periode_data else '-',
             'periode': str(obj.periode) if obj.periode else '-',
             'tahun': str(obj.tahun) if obj.tahun else '-',
-            'status': status_labels.get(obj.status, '-'),
+            'status': STATUS_LABELS.get(obj.status, '-'),
             'actions': f"<a href='{reverse('tiket_detail', args=[obj.pk])}' class='btn btn-sm btn-info' title='View'><i class='ri-eye-line'></i></a>"
         })
 

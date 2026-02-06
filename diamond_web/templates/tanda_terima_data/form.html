@@ -1,11 +1,6 @@
 <form method="post" action="{{ form_action }}">
     {% csrf_token %}
     <div class="modal-body">
-        <div class="alert alert-info mb-3">
-            <i class="ri-information-line me-2"></i>
-            <strong>Informasi:</strong> Buat tanda terima untuk tiket ini.
-        </div>
-        
         {% if form.non_field_errors %}
             <div class="alert alert-danger mb-3">
                 {% for error in form.non_field_errors %}
@@ -41,21 +36,6 @@
             {% endif %}
             {% if form.nomor_tanda_terima.help_text %}
                 <small class="text-muted d-block mt-1">{{ form.nomor_tanda_terima.help_text|safe }}</small>
-            {% endif %}
-        </div>
-        
-        <div class="mb-3">
-            {{ form.deskripsi.label_tag }}
-            {{ form.deskripsi }}
-            {% if form.deskripsi.errors %}
-                <small class="text-danger d-block mt-1">
-                    {% for error in form.deskripsi.errors %}
-                        {{ error }}
-                    {% endfor %}
-                </small>
-            {% endif %}
-            {% if form.deskripsi.help_text %}
-                <small class="text-muted d-block mt-1">{{ form.deskripsi.help_text|safe }}</small>
             {% endif %}
         </div>
 
@@ -96,6 +76,21 @@
             {% endif %}
         </div>
         {% endif %}
+
+        <div class="mb-3">
+            {{ form.deskripsi.label_tag }}
+            {{ form.deskripsi }}
+            {% if form.deskripsi.errors %}
+                <small class="text-danger d-block mt-1">
+                    {% for error in form.deskripsi.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </small>
+            {% endif %}
+            {% if form.deskripsi.help_text %}
+                <small class="text-muted d-block mt-1">{{ form.deskripsi.help_text|safe }}</small>
+            {% endif %}
+        </div>
     </div>
     <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>

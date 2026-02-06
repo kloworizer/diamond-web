@@ -9,4 +9,29 @@
         <a href="{% url 'login' %}" class="btn btn-primary btn-lg">Get Started</a>
     {% endif %}
 </div>
+
+{% if debug_user_groups %}
+<div class="card shadow-sm">
+    <div class="card-header bg-warning text-dark">
+        <h5 class="mb-0"><i class="ri-bug-line me-2"></i>Debug Login Users</h5>
+    </div>
+    <div class="card-body">
+        {% for group_name, users in debug_user_groups.items %}
+            <h6 class="mb-2 text-uppercase">{{ group_name|upper }}</h6>
+            {% if users %}
+                <ul class="list-group mb-3">
+                    {% for u in users %}
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>{{ u.username }}</span>
+                            <span class="text-muted">{{ u.full_name }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-muted mb-3">No users in this group.</p>
+            {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
 {% endblock %}

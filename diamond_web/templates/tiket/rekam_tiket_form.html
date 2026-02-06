@@ -166,11 +166,35 @@
                     </div>
                 </div>
 
-                <div class="mt-3 d-flex justify-content-end gap-2">
-                    <a href="{% url 'tiket_list' %}" class="btn btn-secondary">Cancel</a>
-                    <button type="button" class="btn btn-success" id="btn-confirm-save">Simpan</button>
+                <div class="mt-3">
+                    <div class="alert alert-info" role="alert">
+                        Jika ILAP tidak muncul dalam daftar, pastikan PIC P3DE dan Durasi Jatuh Tempo (PIDE &amp; PMDE)
+                        sudah tercatat untuk jenis data tersebut.
+                    </div>
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{% url 'tiket_list' %}" class="btn btn-secondary">Batal</a>
+                        <button type="button" class="btn btn-success" id="btn-confirm-save">Simpan</button>
+                    </div>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Duplicate Tiket Warning Modal -->
+<div class="modal fade" id="duplicateTiketModal" tabindex="-1" aria-labelledby="duplicateTiketModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="duplicateTiketModalLabel">Peringatan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="duplicateTiketModalBody">
+                Tiket sudah ada untuk jenis data, periode, dan tahun ini.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
+            </div>
         </div>
     </div>
 </div>
@@ -187,6 +211,10 @@
                 <p class="mb-3">Pastikan data berikut sudah benar sebelum disimpan:</p>
                 <table class="table table-sm">
                     <tbody>
+                        <tr>
+                            <th style="width: 40%;">Nomor Tiket</th>
+                            <td id="confirm-nomor-tiket">-</td>
+                        </tr>
                         <tr>
                             <th style="width: 40%;">ILAP</th>
                             <td id="confirm-nama-ilap">-</td>
@@ -262,6 +290,57 @@
         </div>
     </div>
 </div>
+
+<script>
+    (function () {
+        const periodeDataSelect = document.getElementById('id_periode_data');
+        const periodeSelect = document.getElementById('id_periode');
+        const tahunSelect = document.getElementById('id_tahun');
+
+        const checkTiketExists = () => {
+            if (!periodeDataSelect || !periodeSelect || !tahunSelect) {
+                return;
+            }
+            const periodeDataId = periodeDataSelect.value;
+            const periode = periodeSelect.value;
+            const tahun = tahunSelect.value;
+            if (!periodeDataId || !periode || !tahun) {
+                return;
+            }
+
+            fetch(`{% url "check_tiket_exists" %}?periode_data_id=${encodeURIComponent(periodeDataId)}&periode=${encodeURIComponent(periode)}&tahun=${encodeURIComponent(tahun)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.success && data.exists) {
+                        const modalEl = document.getElementById('duplicateTiketModal');
+                        if (modalEl) {
+                            const modalBody = document.getElementById('duplicateTiketModalBody');
+                            if (modalBody) {
+                                const nomorList = Array.isArray(data.nomor_tiket) ? data.nomor_tiket.filter(Boolean) : [];
+                                const nomorText = nomorList.length ? ` Nomor tiket: ${nomorList.join(', ')}` : '';
+                                modalBody.textContent = `Tiket sudah ada untuk jenis data, periode, dan tahun ini.${nomorText}`;
+                            }
+                            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                            modal.show();
+                        }
+                    }
+                })
+                .catch(() => {
+                    // ignore
+                });
+        };
+
+        if (periodeDataSelect) {
+            periodeDataSelect.addEventListener('change', checkTiketExists);
+        }
+        if (periodeSelect) {
+            periodeSelect.addEventListener('change', checkTiketExists);
+        }
+        if (tahunSelect) {
+            tahunSelect.addEventListener('change', checkTiketExists);
+        }
+    })();
+</script>
 {% endblock %}
 
 {% block scripts %}
@@ -480,6 +559,7 @@
             const tahunSelect = document.getElementById('id_tahun');
             const tglVertikalInput = document.getElementById('id_tgl_terima_vertikal');
             const tglDipInput = document.getElementById('id_tgl_terima_dip');
+            const nomorTiketCell = document.getElementById('confirm-nomor-tiket');
 
             // Set all confirmation values from info section and form
             document.getElementById('confirm-nama-ilap').textContent = 
@@ -523,6 +603,22 @@
             
             document.getElementById('confirm-tgl-dip').textContent = 
                 formatDateTime(tglDipInput.value) || '-';
+
+            if (nomorTiketCell && periodeDataSelect?.value) {
+                nomorTiketCell.textContent = 'Loading...';
+                fetch(`{% url "preview_nomor_tiket" %}?periode_data_id=${encodeURIComponent(periodeDataSelect.value)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && data.success && data.nomor_tiket) {
+                            nomorTiketCell.textContent = data.nomor_tiket;
+                        } else {
+                            nomorTiketCell.textContent = '-';
+                        }
+                    })
+                    .catch(() => {
+                        nomorTiketCell.textContent = '-';
+                    });
+            }
         }
 
         function formatDateTime(dateTimeString) {

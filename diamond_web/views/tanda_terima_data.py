@@ -188,6 +188,11 @@ class TandaTerimaDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxF
         context['form_action'] = reverse('tanda_terima_data_create')
         return context
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
     def get(self, request, *args, **kwargs):
         self.object = None
         form = self.get_form()

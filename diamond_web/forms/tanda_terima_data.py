@@ -6,6 +6,7 @@ from ..models.tanda_terima_data import TandaTerimaData
 from ..models.tiket import Tiket
 from ..models.ilap import ILAP
 from ..models.detil_tanda_terima import DetilTandaTerima
+from ..models.pic import PIC
 
 
 class TiketCheckboxSelectMultiple(forms.CheckboxSelectMultiple):
@@ -41,6 +42,7 @@ class TandaTerimaDataForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
         tiket_pk = kwargs.pop('tiket_pk', None)
         super().__init__(*args, **kwargs)
         for field_name, field in self.fields.items():
@@ -85,6 +87,16 @@ class TandaTerimaDataForm(forms.ModelForm):
             ilap_ids = ILAP.objects.filter(
                 jenisdatailap__periodejenisdata__tiket__id__in=available_tiket_ids
             ).values_list('id', flat=True).distinct()
+
+            # Restrict ILAP to active PIC for non-admin users
+            if self.user and not (self.user.is_superuser or self.user.groups.filter(name='admin').exists()):
+                today = timezone.now().date()
+                pic_ilap_ids = PIC.objects.filter(
+                    id_user=self.user,
+                    start_date__lte=today,
+                    end_date__isnull=True
+                ).values_list('id_sub_jenis_data_ilap__id_ilap_id', flat=True).distinct()
+                ilap_ids = [ilap_id for ilap_id in ilap_ids if ilap_id in set(pic_ilap_ids)]
             self.fields['id_ilap'].queryset = ILAP.objects.filter(id__in=ilap_ids)
 
             # Bind tiket list to selected ILAP when form is bound

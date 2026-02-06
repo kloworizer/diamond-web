@@ -32,6 +32,7 @@ class TiketForm(forms.ModelForm):
         }
         
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
         # Get today's date for active durasi filtering
@@ -47,10 +48,18 @@ class TiketForm(forms.ModelForm):
         # 3. Active PMDE durasi
         from ..models.jenis_data_ilap import JenisDataILAP
         
-        # JenisData with PIC P3DE
-        jenis_data_with_pic = JenisDataILAP.objects.filter(
-            pic__tipe=PIC.TipePIC.P3DE
-        ).values_list('id_sub_jenis_data', flat=True).distinct()
+        # JenisData with PIC P3DE (restricted to current user if not admin)
+        if self.user and (self.user.is_superuser or self.user.groups.filter(name='admin').exists()):
+            jenis_data_with_pic = JenisDataILAP.objects.values_list(
+                'id_sub_jenis_data', flat=True
+            ).distinct()
+        else:
+            jenis_data_with_pic = JenisDataILAP.objects.filter(
+                pic__tipe=PIC.TipePIC.P3DE,
+                pic__start_date__lte=today,
+                pic__end_date__isnull=True,
+                pic__id_user=self.user
+            ).values_list('id_sub_jenis_data', flat=True).distinct()
         
         # JenisData with active PIDE durasi
         jenis_data_with_pide = JenisDataILAP.objects.filter(

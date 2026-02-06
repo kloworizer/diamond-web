@@ -45,6 +45,14 @@
                         </div>
                         <div class="col-md-6">
                             <div class="info-group">
+                                <label class="text-muted small mb-1">Status Tiket</label>
+                                <p class="fw-semibold mb-0">
+                                    <span class="badge {{ status_badge_class }}">{{ status_label }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
                                 <label class="text-muted small mb-1">Periode</label>
                                 <p class="fw-semibold mb-0">
                                     <span class="badge bg-dark">{{ periode_formatted }}</span>
@@ -75,16 +83,18 @@
                                 </p>
                             </div>
                         </div>
-                        {% if tiket.id_jenis_prioritas_data %}
                         <div class="col-md-6">
                             <div class="info-group">
-                                <label class="text-muted small mb-1">Jenis Prioritas Data</label>
+                                <label class="text-muted small mb-1">Data Prioritas</label>
                                 <p class="fw-semibold mb-0">
-                                    <span class="badge bg-warning text-dark">{{ tiket.id_jenis_prioritas_data }}</span>
+                                    {% if tiket.id_jenis_prioritas_data %}
+                                    <span class="badge bg-success">Ya</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Tidak</span>
+                                    {% endif %}
                                 </p>
                             </div>
                         </div>
-                        {% endif %}
                         {% if tiket.nomor_nd_nadine %}
                         <div class="col-md-4">
                             <div class="info-group">

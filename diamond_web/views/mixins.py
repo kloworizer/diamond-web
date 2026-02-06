@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.template.loader import render_to_string
 from django.contrib.auth.mixins import UserPassesTestMixin
+from ..models.tiket_pic import TiketPIC
 
 
 class AdminRequiredMixin(UserPassesTestMixin):
@@ -32,6 +33,56 @@ class UserP3DERequiredMixin(UserPassesTestMixin):
     """Mixin to restrict access to admin and user_p3de users."""
     def test_func(self):
         return self.request.user.groups.filter(name__in=['admin', 'user_p3de']).exists()
+
+
+class ActiveTiketPICRequiredMixin(UserPassesTestMixin):
+    """Mixin to restrict access to admin or active PIC assigned to tiket."""
+    def test_func(self):
+        user = self.request.user
+        if user.is_authenticated and (user.is_superuser or user.groups.filter(name='admin').exists()):
+            return True
+        tiket = getattr(self, 'object', None)
+        if tiket is None:
+            try:
+                tiket = self.get_object()
+            except Exception:
+                return False
+        return TiketPIC.objects.filter(
+            id_tiket=tiket,
+            id_user=user,
+            active=True,
+            role__in=[TiketPIC.Role.P3DE, TiketPIC.Role.PIDE, TiketPIC.Role.PMDE]
+        ).exists()
+
+
+def has_active_tiket_pic(user):
+    if not user or not user.is_authenticated:
+        return False
+    return TiketPIC.objects.filter(id_user=user, active=True).exists()
+
+
+def can_access_tiket_list(user):
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser or user.groups.filter(name='admin').exists():
+        return True
+    if user.groups.filter(name='user_p3de').exists():
+        return True
+    return has_active_tiket_pic(user)
+
+
+class ActiveTiketPICListRequiredMixin(UserPassesTestMixin):
+    """Mixin to restrict list access to admin/superuser, user_p3de, or any active PIC."""
+    def test_func(self):
+        return can_access_tiket_list(self.request.user)
+
+
+class UserFormKwargsMixin:
+    """Mixin to pass request user into form kwargs."""
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
 
 
 class AjaxFormMixin:

@@ -5,14 +5,17 @@ from ...models.tiket_action import TiketAction
 from ...models.tiket_pic import TiketPIC
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ...models.detil_tanda_terima import DetilTandaTerima
+from ...constants.tiket_status import STATUS_LABELS, STATUS_BADGE_CLASSES
 from .base import WorkflowStepDetailView
+from ..mixins import ActiveTiketPICRequiredMixin
 
 
-class TiketDetailView(WorkflowStepDetailView):
+class TiketDetailView(ActiveTiketPICRequiredMixin, WorkflowStepDetailView):
     """Detail view for viewing a tiket."""
     model = Tiket
     template_name = 'tiket/tiket_detail.html'
     context_object_name = 'tiket'
+
     
     def _format_periode(self, deskripsi_periode, periode, tahun):
         """Format periode based on deskripsi periode type."""
@@ -45,33 +48,6 @@ class TiketDetailView(WorkflowStepDetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        # Define status labels and badge classes
-        status_labels = {
-            1: 'Direkam',
-            2: 'Backup direkam',
-            3: 'Tanda Terima dibuat',
-            4: 'Diteliti',
-            5: 'Dikembalikan',
-            6: 'Dikirim ke PIDE',
-            7: 'Identifikasi',
-            8: 'Pengendalian Mutu',
-            9: 'Dibatalkan',
-            10: 'Selesai'
-        }
-        
-        status_badge_classes = {
-            1: 'bg-primary',
-            2: 'bg-info',
-            3: 'bg-success',
-            4: 'bg-secondary',
-            5: 'bg-info',
-            6: 'bg-warning text-dark',
-            7: 'bg-info',
-            8: 'bg-secondary',
-            9: 'bg-danger',
-            10: 'bg-success'
-        }
-        
         action_badges = {
             1: {'label': 'Direkam', 'class': 'bg-primary'},
             2: {'label': 'Backup direkam', 'class': 'bg-info'},
@@ -86,10 +62,9 @@ class TiketDetailView(WorkflowStepDetailView):
         }
         
         role_badges = {
-            1: {'label': 'Admin', 'class': 'bg-success'},
-            2: {'label': 'P3DE', 'class': 'bg-primary'},
-            3: {'label': 'PIDE', 'class': 'bg-info'},
-            4: {'label': 'PMDE', 'class': 'bg-warning text-dark'}
+            1: {'label': 'P3DE', 'class': 'bg-primary'},
+            2: {'label': 'PIDE', 'class': 'bg-info'},
+            3: {'label': 'PMDE', 'class': 'bg-warning text-dark'}
         }
         
         # Get related data
@@ -151,7 +126,7 @@ class TiketDetailView(WorkflowStepDetailView):
         tiket_pics = TiketPIC.objects.filter(
             id_tiket=self.object
         ).select_related('id_user').order_by('-timestamp')
-        
+
         for pic in tiket_pics:
             badge = role_badges.get(pic.role, {'label': str(pic.role), 'class': 'bg-info'})
             pic.badge_label = badge['label']
@@ -174,8 +149,8 @@ class TiketDetailView(WorkflowStepDetailView):
         context['tiket_pics'] = tiket_pics
         context['backup_list'] = backups
         context['tanda_terima_items'] = tanda_terima_items
-        context['status_label'] = status_labels.get(self.object.status, '-')
-        context['status_badge_class'] = status_badge_classes.get(self.object.status, 'bg-secondary')
+        context['status_label'] = STATUS_LABELS.get(self.object.status, '-')
+        context['status_badge_class'] = STATUS_BADGE_CLASSES.get(self.object.status, 'bg-secondary')
         context['page_title'] = f'Detail Tiket {self.object.nomor_tiket}'
         
         # Get workflow step based on status
