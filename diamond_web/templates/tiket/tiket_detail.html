@@ -1,116 +1,338 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">{{ page_title }}</h2>
-    </div>
-
-    <!-- Tiket Information -->
-    <div class="card mb-4">
-        <div class="card-header bg-light">
-            <h5 class="mb-0">Informasi Tiket</h5>
-        </div>
-        <div class="card-body">
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <p><strong>Nomor Tiket:</strong> {{ tiket.nomor_tiket }}</p>
-                    <p><strong>Status:</strong> <span class="badge bg-info">{{ status_label }}</span></p>
+<div class="container-fluid mt-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="ri-file-list-3-line me-2"></i>{{ page_title }}
+                    </h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                            <li class="breadcrumb-item"><a href="{% url 'tiket_list' %}">Tiket</a></li>
+                            <li class="breadcrumb-item active">{{ tiket.nomor_tiket }}</li>
+                        </ol>
+                    </nav>
                 </div>
-                <div class="col-md-6">
-                    <p><strong>Periode Jenis Data:</strong> {{ tiket.id_periode_data }}</p>
-                    <p><strong>Periode:</strong> {{ tiket.periode }}</p>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-6">
-                    <p><strong>Tahun:</strong> {{ tiket.tahun }}</p>
+                <div>
+                    <span class="badge {{ status_badge_class }} fs-6 px-3 py-2">
+                        <i class="ri-checkbox-circle-line me-1"></i>{{ status_label }}
+                    </span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Tiket Actions History -->
-    <div class="card mb-4">
-        <div class="card-header bg-light">
-            <h5 class="mb-0">Riwayat Aksi</h5>
-        </div>
-        <div class="card-body">
-            {% if tiket_actions %}
-                <div class="table-responsive">
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Tanggal/Waktu</th>
-                                <th>User</th>
-                                <th>Aksi</th>
-                                <th>Catatan</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for action in tiket_actions %}
-                                <tr>
-                                    <td>{{ action.timestamp|date:"d/m/Y H:i:s" }}</td>
-                                    <td>{{ action.id_user.get_full_name|default:action.id_user.username }}</td>
-                                    <td>
-                                        <span class="badge {{ action.badge_class }}">{{ action.badge_label }}</span>
-                                    </td>
-                                    <td>{{ action.catatan }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- ILAP Information Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="ri-database-2-line me-2"></i>Informasi ILAP</h5>
                 </div>
-            {% else %}
-                <p class="text-muted">Tidak ada riwayat aksi.</p>
-            {% endif %}
-        </div>
-    </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Nama ILAP</label>
+                                <p class="fw-semibold mb-0">{{ ilap_info.nama_ilap }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Kategori ILAP</label>
+                                <p class="fw-semibold mb-0">{{ ilap_info.kategori_ilap }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Kategori Wilayah</label>
+                                <p class="fw-semibold mb-0">{{ ilap_info.kategori_wilayah }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Jenis Tabel</label>
+                                <p class="fw-semibold mb-0">{{ ilap_info.jenis_tabel }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">ID Sub Jenis Data</label>
+                                <p class="fw-semibold mb-0">
+                                    <span class="badge bg-secondary">{{ ilap_info.id_sub_jenis_data }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Nama Sub Jenis Data</label>
+                                <p class="fw-semibold mb-0">{{ ilap_info.nama_sub_jenis_data }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Deskripsi Periode</label>
+                                <p class="fw-semibold mb-0">{{ ilap_info.deskripsi_periode }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Jenis Prioritas</label>
+                                <p class="fw-semibold mb-0">
+                                    {% if ilap_info.has_prioritas == 'Ya' %}
+                                        <span class="badge bg-success">Ya</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Tidak</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        {% if ilap_info.klasifikasi %}
+                        <div class="col-12">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Klasifikasi</label>
+                                <div class="d-flex flex-wrap gap-2">
+                                    {% for klas in ilap_info.klasifikasi %}
+                                        <span class="badge bg-info">{{ klas }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
 
-    <!-- Tiket PIC Assignment -->
-    <div class="card mb-4">
-        <div class="card-header bg-light">
-            <h5 class="mb-0">PIC (Penanggung Jawab)</h5>
+            <!-- Tiket Information Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="ri-ticket-2-line me-2"></i>Informasi Tiket</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Nomor Tiket</label>
+                                <p class="fw-bold mb-0 fs-5 text-primary">{{ tiket.nomor_tiket }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Periode</label>
+                                <p class="fw-semibold mb-0">
+                                    <span class="badge bg-dark">{{ tiket.periode }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tahun</label>
+                                <p class="fw-semibold mb-0">{{ tiket.tahun }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Terima Vertikal</label>
+                                <p class="fw-semibold mb-0">
+                                    {% if tiket.tgl_terima_vertikal %}
+                                        <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_terima_vertikal|date:"d/m/Y H:i" }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Terima DIP</label>
+                                <p class="fw-semibold mb-0">
+                                    {% if tiket.tgl_terima_dip %}
+                                        <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_terima_dip|date:"d/m/Y H:i" }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        {% if tiket.id_jenis_prioritas_data %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Jenis Prioritas Data</label>
+                                <p class="fw-semibold mb-0">
+                                    <span class="badge bg-warning text-dark">{{ tiket.id_jenis_prioritas_data }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.nomor_nd_nadine %}
+                        <div class="col-12">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Nomor ND Nadine</label>
+                                <p class="fw-semibold mb-0">{{ tiket.nomor_nd_nadine }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tiket Actions History -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="ri-history-line me-2"></i>Riwayat Aksi</h5>
+                </div>
+                <div class="card-body">
+                    {% if tiket_actions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th><i class="ri-time-line me-1"></i>Tanggal/Waktu</th>
+                                        <th><i class="ri-user-line me-1"></i>User</th>
+                                        <th><i class="ri-edit-line me-1"></i>Aksi</th>
+                                        <th><i class="ri-file-text-line me-1"></i>Catatan</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for action in tiket_actions %}
+                                        <tr>
+                                            <td class="text-nowrap">{{ action.timestamp|date:"d/m/Y H:i:s" }}</td>
+                                            <td>{{ action.id_user.get_full_name|default:action.id_user.username }}</td>
+                                            <td>
+                                                <span class="badge {{ action.badge_class }}">{{ action.badge_label }}</span>
+                                            </td>
+                                            <td>{{ action.catatan|default:"-" }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4 text-muted">
+                            <i class="ri-information-line fs-1"></i>
+                            <p class="mb-0">Tidak ada riwayat aksi.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-            {% if tiket_pics %}
-                <div class="table-responsive">
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Tanggal/Waktu</th>
-                                <th>User</th>
-                                <th>Role</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- PIC Assignment Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="ri-team-line me-2"></i>PIC (Penanggung Jawab)</h5>
+                </div>
+                <div class="card-body">
+                    {% if tiket_pics %}
+                        <div class="list-group list-group-flush">
                             {% for pic in tiket_pics %}
-                                <tr>
-                                    <td>{{ pic.timestamp|date:"d/m/Y H:i:s" }}</td>
-                                    <td>{{ pic.id_user.get_full_name|default:pic.id_user.username }}</td>
-                                    <td>
-                                        <span class="badge {{ pic.badge_class }}">{{ pic.badge_label }}</span>
-                                    </td>
-                                </tr>
+                                <div class="list-group-item px-0 py-3">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="fw-semibold mb-1">
+                                                <i class="ri-user-3-line me-1"></i>{{ pic.id_user.get_full_name|default:pic.id_user.username }}
+                                            </div>
+                                            <small class="text-muted">
+                                                <i class="ri-time-line me-1"></i>{{ pic.timestamp|date:"d/m/Y H:i" }}
+                                            </small>
+                                        </div>
+                                        <span class="badge {{ pic.badge_class }} ms-2">{{ pic.badge_label }}</span>
+                                    </div>
+                                </div>
                             {% endfor %}
-                        </tbody>
-                    </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4 text-muted">
+                            <i class="ri-user-unfollow-line fs-1"></i>
+                            <p class="mb-0 small">Tidak ada PIC yang ditugaskan.</p>
+                        </div>
+                    {% endif %}
                 </div>
-            {% else %}
-                <p class="text-muted">Tidak ada PIC yang ditugaskan.</p>
-            {% endif %}
-        </div>
-    </div>
+            </div>
 
-    <!-- Action Buttons -->
-    <div class="d-flex gap-2 mb-4">
-        <a href="{% url 'tiket_list' %}" class="btn btn-secondary">Kembali ke Daftar</a>
-        {% if tiket.status == 2 %}
-            <a href="{% url 'rekam_hasil_penelitian' tiket.pk %}" class="btn btn-primary">Rekam Hasil Penelitian</a>
-        {% endif %}
-        {% if tiket.status != 5 and tiket.status != 9 %}
-            <a href="{% url 'batalkan_tiket' tiket.pk %}" class="btn btn-danger">Batalkan Tiket</a>
-        {% endif %}
+            <!-- Action Buttons -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="ri-settings-3-line me-2"></i>Aksi</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'tiket_list' %}" class="btn btn-outline-secondary">
+                            <i class="ri-arrow-left-line me-1"></i>Kembali ke Daftar
+                        </a>
+                        {% if tiket.status == 2 %}
+                            <a href="{% url 'rekam_hasil_penelitian' tiket.pk %}" class="btn btn-primary">
+                                <i class="ri-file-edit-line me-1"></i>Rekam Hasil Penelitian
+                            </a>
+                        {% endif %}
+                        {% if tiket.status != 5 and tiket.status != 9 %}
+                            <a href="{% url 'batalkan_tiket' tiket.pk %}" class="btn btn-danger">
+                                <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<style>
+.info-group {
+    padding: 0.5rem;
+    border-left: 3px solid #dee2e6;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.info-group:hover {
+    background-color: #e9ecef;
+    border-left-color: #0d6efd;
+    transition: all 0.2s ease;
+}
+
+.card {
+    border: none;
+    transition: transform 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.card-header {
+    border-bottom: 2px solid rgba(255,255,255,0.2);
+}
+
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+}
+
+.list-group-item {
+    border-left: 3px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.list-group-item:hover {
+    border-left-color: #0d6efd;
+    background-color: #f8f9fa;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+.shadow-sm {
+    box-shadow: 0 .125rem .25rem rgba(0,0,0,.075)!important;
+}
+</style>
 {% endblock %}
