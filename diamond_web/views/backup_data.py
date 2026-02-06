@@ -161,7 +161,7 @@ def backup_data_data(request):
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
 
-    qs = BackupData.objects.select_related('id_user', 'id_tiket').all()
+    qs = BackupData.objects.select_related('id_user', 'id_tiket').filter(id_tiket__status__lt=6)
     records_total = qs.count()
 
     # Column-specific filtering

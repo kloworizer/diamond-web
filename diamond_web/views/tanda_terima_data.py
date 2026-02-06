@@ -40,7 +40,9 @@ def tanda_terima_data_data(request):
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
 
-    qs = TandaTerimaData.objects.select_related('id_ilap', 'id_perekam').all()
+    qs = TandaTerimaData.objects.select_related('id_ilap', 'id_perekam').filter(
+        detil_items__id_tiket__status__lt=6
+    ).distinct()
     records_total = qs.count()
 
     # Column-specific filtering
