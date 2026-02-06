@@ -138,6 +138,9 @@ urlpatterns = [
     path('tiket/', views.TiketListView.as_view(), name='tiket_list'),
     path('tiket/data/', views.tiket_data, name='tiket_data'),
     
+    # API endpoints
+    path('api/ilap/<int:ilap_id>/periode-jenis-data/', views.ILAPPeriodeDataAPIView.as_view(), name='api_ilap_periode_jenis_data'),
+    
     # Legacy URLs - kept for backward compatibility
     path('tiket/create/', views.TiketCreateView.as_view(), name='tiket_create'),
     path('tiket/<int:pk>/', views.TiketDetailView.as_view(), name='tiket_detail'),

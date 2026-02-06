@@ -1,6 +1,9 @@
 """Tiket workflow views"""
 from .list import TiketListView, tiket_data
-from .rekam_tiket import TiketRekamCreateView
+from .rekam_tiket import (
+    TiketRekamCreateView,
+    ILAPPeriodeDataAPIView
+)
 from .detail import TiketDetailView
 from .rekam_hasil_penelitian import RekamHasilPenelitianView
 from .batalkan_tiket import BatalkanTiketView
@@ -15,6 +18,7 @@ __all__ = [
     'TiketCreateView',
     'TiketDetailView',
     'TiketRekamCreateView',
+    'ILAPPeriodeDataAPIView',
     'RekamHasilPenelitianView',
     'BatalkanTiketView',
     'KirimTiketView',

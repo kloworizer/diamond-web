@@ -4,6 +4,8 @@ from datetime import datetime
 from django.urls import reverse
 from django.contrib import messages
 from django.db.models import Q
+from django.http import JsonResponse
+from django.views import View
 
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
@@ -11,8 +13,106 @@ from ...models.tiket_pic import TiketPIC
 from ...models.pic_p3de import PICP3DE
 from ...models.pic_pide import PICPIDE
 from ...models.pic_pmde import PICPMDE
+from ...models.periode_jenis_data import PeriodeJenisData
+from ...models.jenis_prioritas_data import JenisPrioritasData
+from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ...forms.tiket import TiketForm
 from .base import WorkflowStepCreateView
+
+
+class ILAPPeriodeDataAPIView(View):
+    """API view to fetch periode jenis data for a specific ILAP."""
+    
+    def get(self, request, ilap_id):
+        try:
+            # Get all periode jenis data for the given ILAP
+            periode_data_list = PeriodeJenisData.objects.filter(
+                id_sub_jenis_data_ilap__id_ilap_id=ilap_id
+            ).select_related(
+                'id_sub_jenis_data_ilap__id_ilap__id_kategori',
+                'id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
+                'id_sub_jenis_data_ilap__id_jenis_tabel',
+                'id_periode_pengiriman'
+            ).distinct()
+            
+            data = []
+            for pd in periode_data_list:
+                jenis_data = pd.id_sub_jenis_data_ilap
+                ilap = jenis_data.id_ilap
+
+                try:
+                    klasifikasi_text = ', '.join([
+                        item.id_klasifikasi_tabel.deskripsi
+                        for item in KlasifikasiJenisData.objects.filter(
+                            id_jenis_data_ilap=jenis_data
+                        ).select_related('id_klasifikasi_tabel')
+                    ]) or '-'
+                except Exception:
+                    klasifikasi_text = '-'
+
+                try:
+                    has_prioritas = JenisPrioritasData.objects.filter(
+                        id_sub_jenis_data_ilap=jenis_data
+                    ).exists()
+                    jenis_prioritas_text = 'Ya' if has_prioritas else 'Tidak'
+                except Exception:
+                    jenis_prioritas_text = '-'
+
+                try:
+                    pic_p3de = ', '.join([
+                        (pic.id_user.get_full_name().strip() or pic.id_user.username)
+                        for pic in PICP3DE.objects.filter(
+                            id_sub_jenis_data_ilap=jenis_data
+                        ).select_related('id_user')[:3]
+                    ]) or '-'
+                except Exception:
+                    pic_p3de = '-'
+
+                try:
+                    pic_pide = ', '.join([
+                        (pic.id_user.get_full_name().strip() or pic.id_user.username)
+                        for pic in PICPIDE.objects.filter(
+                            id_sub_jenis_data_ilap=jenis_data
+                        ).select_related('id_user')[:3]
+                    ]) or '-'
+                except Exception:
+                    pic_pide = '-'
+
+                try:
+                    pic_pmde = ', '.join([
+                        (pic.id_user.get_full_name().strip() or pic.id_user.username)
+                        for pic in PICPMDE.objects.filter(
+                            id_sub_jenis_data_ilap=jenis_data
+                        ).select_related('id_user')[:3]
+                    ]) or '-'
+                except Exception:
+                    pic_pmde = '-'
+
+                data.append({
+                    'id': pd.id,
+                    'id_sub_jenis_data': jenis_data.id_sub_jenis_data,
+                    'nama_sub_jenis_data': jenis_data.nama_sub_jenis_data,
+                    'nama_ilap': ilap.nama_ilap,
+                    'kategori_ilap': ilap.id_kategori.nama_kategori if ilap.id_kategori else '-',
+                    'kategori_wilayah': ilap.id_kategori_wilayah.deskripsi if ilap.id_kategori_wilayah else '-',
+                    'jenis_tabel': jenis_data.id_jenis_tabel.deskripsi if jenis_data.id_jenis_tabel else '-',
+                    'jenis_prioritas': jenis_prioritas_text,
+                    'klasifikasi': klasifikasi_text,
+                    'deskripsi_periode': pd.id_periode_pengiriman.deskripsi,
+                    'pic_p3de': pic_p3de,
+                    'pic_pide': pic_pide,
+                    'pic_pmde': pic_pmde
+                })
+            
+            return JsonResponse({
+                'success': True,
+                'data': data
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=400)
 
 
 class TiketRekamCreateView(WorkflowStepCreateView):
