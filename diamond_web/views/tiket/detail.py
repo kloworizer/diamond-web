@@ -3,7 +3,6 @@
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
 from ...models.tiket_pic import TiketPIC
-from ...models.jenis_prioritas_data import JenisPrioritasData
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ...models.detil_tanda_terima import DetilTandaTerima
 from .base import WorkflowStepDetailView
@@ -107,10 +106,8 @@ class TiketDetailView(WorkflowStepDetailView):
         except Exception:
             klasifikasi_items = []
         
-        # Check if has prioritas
-        has_prioritas = JenisPrioritasData.objects.filter(
-            id_sub_jenis_data_ilap=jenis_data
-        ).exists()
+        # Jenis prioritas from tiket (transaction)
+        jenis_prioritas_text = 'Ya' if self.object.id_jenis_prioritas_data else 'Tidak'
         
         # Format periode based on deskripsi
         periode_formatted = self._format_periode(
@@ -128,7 +125,7 @@ class TiketDetailView(WorkflowStepDetailView):
             'nama_sub_jenis_data': jenis_data.nama_sub_jenis_data,
             'jenis_tabel': jenis_data.id_jenis_tabel.deskripsi if jenis_data.id_jenis_tabel else '-',
             'deskripsi_periode': periode_jenis_data.id_periode_pengiriman.deskripsi,
-            'has_prioritas': 'Ya' if has_prioritas else 'Tidak',
+            'jenis_prioritas': jenis_prioritas_text,
             'klasifikasi': klasifikasi_items,
         }
         

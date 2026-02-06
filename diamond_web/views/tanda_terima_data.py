@@ -7,6 +7,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime, parse_date
 
 from ..models.tanda_terima_data import TandaTerimaData
 from ..models.detil_tanda_terima import DetilTandaTerima
@@ -92,6 +93,40 @@ def tanda_terima_data_data(request):
         'recordsTotal': records_total,
         'recordsFiltered': records_filtered,
         'data': data,
+    })
+
+
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
+@require_GET
+def tanda_terima_next_number(request):
+    """Return next nomor_tanda_terima based on selected tanggal_tanda_terima year."""
+    tanggal_param = request.GET.get('tanggal')
+    tanggal = parse_datetime(tanggal_param) if tanggal_param else None
+    if tanggal is None and tanggal_param:
+        tanggal = parse_date(tanggal_param)
+
+    tahun = (tanggal or timezone.now()).year
+    suffix = f"/{tahun}"
+
+    existing_numbers = TandaTerimaData.objects.filter(
+        nomor_tanda_terima__endswith=suffix
+    ).values_list('nomor_tanda_terima', flat=True)
+
+    max_seq = 0
+    for nomor in existing_numbers:
+        try:
+            seq_part = nomor.split('/')[0]
+            max_seq = max(max_seq, int(seq_part))
+        except Exception:
+            continue
+
+    next_seq = max_seq + 1
+    nomor_tanda_terima = f"{str(next_seq).zfill(5)}/{tahun}"
+
+    return JsonResponse({
+        'success': True,
+        'nomor_tanda_terima': nomor_tanda_terima
     })
 
 
@@ -229,6 +264,15 @@ class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxF
             DetilTandaTerima.objects.create(
                 id_tanda_terima=self.object,
                 id_tiket=tiket
+            )
+
+            # Record tiket_action for audit trail
+            TiketAction.objects.create(
+                id_tiket=tiket,
+                id_user=self.request.user,
+                timestamp=timezone.now(),
+                action=3,
+                catatan='Tanda terima diubah'
             )
         
         return response
