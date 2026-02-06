@@ -47,7 +47,7 @@ def tiket_data(request):
     # ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['nomor_tiket', 'id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data', 'periode', 'tahun', 'status']
+    columns = ['id', 'nomor_tiket', 'id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data', 'periode', 'tahun', 'status']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -77,6 +77,7 @@ def tiket_data(request):
     
     for obj in qs_page:
         data.append({
+            'id': obj.id,
             'nomor_tiket': obj.nomor_tiket or '-',
             'periode_jenis_data': str(obj.id_periode_data) if obj.id_periode_data else '-',
             'periode': str(obj.periode) if obj.periode else '-',
