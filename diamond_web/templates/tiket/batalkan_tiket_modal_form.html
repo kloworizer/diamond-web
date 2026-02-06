@@ -1,0 +1,25 @@
+{% load crispy_forms_tags %}
+<form method="post" action="{{ form_action }}">
+    {% csrf_token %}
+    <div class="modal-body">
+        <div class="alert alert-warning">
+            <i class="ri-alert-line me-2"></i>
+            <strong>Perhatian:</strong> Anda akan membatalkan tiket <strong>{{ tiket.nomor_tiket }}</strong>. 
+            Tindakan ini tidak dapat dibatalkan.
+        </div>
+        
+        <div class="mb-3">
+            {{ form.catatan.label_tag }}
+            {{ form.catatan }}
+            {% if form.catatan.errors %}
+                <div class="text-danger">{{ form.catatan.errors }}</div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="submit" class="btn btn-danger">
+            <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
+        </button>
+    </div>
+</form>

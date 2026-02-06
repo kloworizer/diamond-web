@@ -89,6 +89,7 @@ urlpatterns = [
     path('tanda-terima-data/', views.TandaTerimaDataListView.as_view(), name='tanda_terima_data_list'),
     path('tanda-terima-data/data/', views.tanda_terima_data_data, name='tanda_terima_data_data'),
     path('tanda-terima-data/create/', views.TandaTerimaDataCreateView.as_view(), name='tanda_terima_data_create'),
+    path('tanda-terima-data/from-tiket/<int:tiket_pk>/create/', views.TandaTerimaDataFromTiketCreateView.as_view(), name='tanda_terima_data_from_tiket_create'),
     path('tanda-terima-data/<int:pk>/update/', views.TandaTerimaDataUpdateView.as_view(), name='tanda_terima_data_update'),
     path('tanda-terima-data/<int:pk>/delete/', views.TandaTerimaDataDeleteView.as_view(), name='tanda_terima_data_delete'),
 
@@ -131,6 +132,7 @@ urlpatterns = [
     path('backup-data/', views.BackupDataListView.as_view(), name='backup_data_list'),
     path('backup-data/data/', views.backup_data_data, name='backup_data_data'),
     path('backup-data/create/', views.BackupDataCreateView.as_view(), name='backup_data_create'),
+    path('backup-data/from-tiket/<int:tiket_pk>/create/', views.BackupDataFromTiketCreateView.as_view(), name='backup_data_from_tiket_create'),
     path('backup-data/<int:pk>/update/', views.BackupDataUpdateView.as_view(), name='backup_data_update'),
     path('backup-data/<int:pk>/delete/', views.BackupDataDeleteView.as_view(), name='backup_data_delete'),
     # === Tiket Workflow ===

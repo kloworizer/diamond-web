@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_GET
 
 from ..models.backup_data import BackupData
+from ..models.tiket import Tiket
 from ..models.tiket_action import TiketAction
 from ..forms.backup_data import BackupDataForm
 from .mixins import AjaxFormMixin, AdminRequiredMixin
@@ -50,6 +51,50 @@ class BackupDataCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin
         self.object = None
         form = self.get_form()
         return self.render_form_response(form)
+
+class BackupDataFromTiketCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
+    """Create Backup Data from a specific Tiket."""
+    model = BackupData
+    form_class = BackupDataForm
+    template_name = 'backup_data/form.html'
+    success_message = 'Data Backup berhasil direkam.'
+
+    def get_success_url(self):
+        return reverse('tiket_detail', kwargs={'pk': self.kwargs['tiket_pk']})
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['tiket_pk'] = self.kwargs.get('tiket_pk')
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form_action'] = reverse('backup_data_from_tiket_create', kwargs={'tiket_pk': self.kwargs['tiket_pk']})
+        context['page_title'] = f'Rekam Backup Data'
+        context['tiket'] = Tiket.objects.get(pk=self.kwargs['tiket_pk'])
+        return context
+
+    def form_valid(self, form):
+        form.instance.id_user = self.request.user
+        # Set the tiket from the tiket_pk
+        tiket = Tiket.objects.get(pk=self.kwargs['tiket_pk'])
+        form.instance.id_tiket = tiket
+        self.object = form.save()
+        
+        # Update tiket status to 2 (Backup direkam)
+        tiket.status = 2
+        tiket.save()
+        
+        # Record tiket_action for audit trail
+        TiketAction.objects.create(
+            id_tiket=tiket,
+            id_user=self.request.user,
+            timestamp=datetime.now(),
+            action=2,
+            catatan="backup data direkam"
+        )
+        
+        return AjaxFormMixin.form_valid(self, form)
 
 class BackupDataUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
     model = BackupData

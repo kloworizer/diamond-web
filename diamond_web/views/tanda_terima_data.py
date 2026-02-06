@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from ..models.tanda_terima_data import TandaTerimaData
 from ..models.detil_tanda_terima import DetilTandaTerima
+from ..models.tiket_action import TiketAction
 from ..forms.tanda_terima_data import TandaTerimaDataForm
 from .mixins import AjaxFormMixin, AdminRequiredMixin
 
@@ -125,6 +126,76 @@ class TandaTerimaDataCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxForm
             )
         
         return response
+
+
+class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
+    """Create Tanda Terima Data from a specific Tiket."""
+    model = TandaTerimaData
+    form_class = TandaTerimaDataForm
+    template_name = 'tanda_terima_data/form.html'
+    success_message = 'Tanda Terima Data "{object}" created successfully.'
+
+    def get_success_url(self):
+        return reverse('tiket_detail', kwargs={'pk': self.kwargs['tiket_pk']})
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['tiket_pk'] = self.kwargs.get('tiket_pk')
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form_action'] = reverse('tanda_terima_data_from_tiket_create', args=[self.kwargs['tiket_pk']])
+        from ..models.tiket import Tiket
+        context['tiket'] = Tiket.objects.get(pk=self.kwargs['tiket_pk'])
+        return context
+
+    def get(self, request, *args, **kwargs):
+        self.object = None
+        form = self.get_form()
+        return self.render_form_response(form)
+
+    def form_valid(self, form):
+        from ..models.tiket import Tiket
+        
+        # Set the logged-in user as id_perekam
+        form.instance.id_perekam = self.request.user
+        # Ensure ILAP is set from tiket for single-tiket flow
+        tiket = Tiket.objects.get(pk=self.kwargs['tiket_pk'])
+        if tiket.id_periode_data:
+            form.instance.id_ilap = tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap
+        
+        # Save the form (this sets self.object)
+        self.object = form.save()
+        
+        # Create DetilTandaTerima for the specific tiket
+        DetilTandaTerima.objects.create(
+            id_tanda_terima=self.object,
+            id_tiket=tiket
+        )
+
+        # Update tiket status and record action
+        tiket.status = 3
+        tiket.save()
+        TiketAction.objects.create(
+            id_tiket=tiket,
+            id_user=self.request.user,
+            timestamp=timezone.now(),
+            action=3,
+            catatan='Tanda terima dibuat'
+        )
+        
+        # Now handle the response (AJAX or redirect)
+        message = self.get_success_message(form)
+        if self.is_ajax():
+            payload = {"success": True}
+            if message:
+                payload["message"] = message
+            return JsonResponse(payload)
+        if message:
+            messages.success(self.request, message)
+        from django.http import HttpResponseRedirect
+        return HttpResponseRedirect(self.get_success_url())
 
 
 class TandaTerimaDataUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):

@@ -17,6 +17,12 @@ class BatalkanTiketView(LoginRequiredMixin, UpdateView):
     form_class = BatalkanTiketForm
     template_name = 'tiket/batalkan_tiket_form.html'
 
+    def get_template_names(self):
+        """Return modal template for AJAX requests."""
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return ['tiket/batalkan_tiket_modal_form.html']
+        return [self.template_name]
+
     def get_success_url(self):
         """Redirect back to tiket detail after saving."""
         return reverse('tiket_detail', kwargs={'pk': self.object.pk})
@@ -33,7 +39,7 @@ class BatalkanTiketView(LoginRequiredMixin, UpdateView):
         now = datetime.now()
 
         self.object = form.save(commit=False)
-        self.object.status = 5  # Change status to "Dibatalkan"
+        self.object.status = 9  # Change status to "Dibatalkan"
         self.object.tgl_dibatalkan = now
         self.object.save()
 
@@ -43,7 +49,7 @@ class BatalkanTiketView(LoginRequiredMixin, UpdateView):
             id_tiket=self.object,
             id_user=self.request.user,
             timestamp=now,
-            action=5,
+            action=9,
             catatan=catatan
         )
 
