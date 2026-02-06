@@ -26,9 +26,49 @@ class ILAPPeriodeDataAPIView(View):
     
     def get(self, request, ilap_id):
         try:
-            # Get all periode jenis data for the given ILAP
+            from django.contrib.auth.models import Group
+            from datetime import datetime
+            
+            today = datetime.now().date()
+            
+            # Get PIDE and PMDE groups
+            pide_group = Group.objects.get(name='user_pide')
+            pmde_group = Group.objects.get(name='user_pmde')
+            
+            # Get all JenisDataILAP IDs that have:
+            # 1. PIC P3DE assigned
+            # 2. Active PIDE durasi
+            # 3. Active PMDE durasi
+            from ...models.jenis_data_ilap import JenisDataILAP
+            
+            # JenisData with PIC P3DE
+            jenis_data_with_pic = JenisDataILAP.objects.filter(
+                pic__tipe=PIC.TipePIC.P3DE
+            ).values_list('id_sub_jenis_data', flat=True).distinct()
+            
+            # JenisData with active PIDE durasi
+            jenis_data_with_pide = JenisDataILAP.objects.filter(
+                durasijatuhtempo__seksi=pide_group,
+                durasijatuhtempo__start_date__lte=today
+            ).filter(
+                Q(durasijatuhtempo__end_date__isnull=True) | Q(durasijatuhtempo__end_date__gte=today)
+            ).values_list('id_sub_jenis_data', flat=True).distinct()
+            
+            # JenisData with active PMDE durasi
+            jenis_data_with_pmde = JenisDataILAP.objects.filter(
+                durasijatuhtempo__seksi=pmde_group,
+                durasijatuhtempo__start_date__lte=today
+            ).filter(
+                Q(durasijatuhtempo__end_date__isnull=True) | Q(durasijatuhtempo__end_date__gte=today)
+            ).values_list('id_sub_jenis_data', flat=True).distinct()
+            
+            # Get intersection - JenisData that have ALL three requirements
+            valid_jenis_data_ids = set(jenis_data_with_pic) & set(jenis_data_with_pide) & set(jenis_data_with_pmde)
+            
+            # Get only valid periode jenis data for the given ILAP
             periode_data_list = PeriodeJenisData.objects.filter(
-                id_sub_jenis_data_ilap__id_ilap_id=ilap_id
+                id_sub_jenis_data_ilap__id_ilap_id=ilap_id,
+                id_sub_jenis_data_ilap__id_sub_jenis_data__in=valid_jenis_data_ids
             ).select_related(
                 'id_sub_jenis_data_ilap__id_ilap__id_kategori',
                 'id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',

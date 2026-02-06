@@ -1,8 +1,11 @@
 from django import forms
+from django.db.models import Q, Exists, OuterRef
+from django.contrib.auth.models import Group
 from ..models.tiket import Tiket
 from ..models.periode_jenis_data import PeriodeJenisData
 from ..models.ilap import ILAP
 from ..models.pic import PIC
+from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from datetime import datetime
 
 class TiketForm(forms.ModelForm):
@@ -31,10 +34,51 @@ class TiketForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        # Customize ILAP dropdown (only ILAP with P3DE PIC)
+        # Get today's date for active durasi filtering
+        today = datetime.now().date()
+        
+        # Get PIDE and PMDE groups
+        pide_group = Group.objects.get(name='user_pide')
+        pmde_group = Group.objects.get(name='user_pmde')
+        
+        # Get all JenisDataILAP IDs that have:
+        # 1. PIC P3DE assigned
+        # 2. Active PIDE durasi
+        # 3. Active PMDE durasi
+        from ..models.jenis_data_ilap import JenisDataILAP
+        
+        # JenisData with PIC P3DE
+        jenis_data_with_pic = JenisDataILAP.objects.filter(
+            pic__tipe=PIC.TipePIC.P3DE
+        ).values_list('id_sub_jenis_data', flat=True).distinct()
+        
+        # JenisData with active PIDE durasi
+        jenis_data_with_pide = JenisDataILAP.objects.filter(
+            durasijatuhtempo__seksi=pide_group,
+            durasijatuhtempo__start_date__lte=today
+        ).filter(
+            Q(durasijatuhtempo__end_date__isnull=True) | Q(durasijatuhtempo__end_date__gte=today)
+        ).values_list('id_sub_jenis_data', flat=True).distinct()
+        
+        # JenisData with active PMDE durasi
+        jenis_data_with_pmde = JenisDataILAP.objects.filter(
+            durasijatuhtempo__seksi=pmde_group,
+            durasijatuhtempo__start_date__lte=today
+        ).filter(
+            Q(durasijatuhtempo__end_date__isnull=True) | Q(durasijatuhtempo__end_date__gte=today)
+        ).values_list('id_sub_jenis_data', flat=True).distinct()
+        
+        # Get intersection - JenisData that have ALL three requirements
+        valid_jenis_data_ids = set(jenis_data_with_pic) & set(jenis_data_with_pide) & set(jenis_data_with_pmde)
+        
+        # Get valid PeriodeJenisData IDs
+        valid_periode_ids = PeriodeJenisData.objects.filter(
+            id_sub_jenis_data_ilap__id_sub_jenis_data__in=valid_jenis_data_ids
+        ).values_list('id', flat=True)
+        
+        # Show only ILAPs that have at least one valid PeriodeJenisData
         self.fields['id_ilap'].queryset = ILAP.objects.filter(
-            jenisdatailap__pic__tipe=PIC.TipePIC.P3DE,
-            jenisdatailap__periodejenisdata__isnull=False
+            jenisdatailap__periodejenisdata__id__in=valid_periode_ids
         ).select_related(
             'id_kategori', 'id_kategori_wilayah'
         ).distinct()
@@ -66,6 +110,8 @@ class TiketForm(forms.ModelForm):
             self.fields['id_ilap'].initial = self.instance.id_periode_data.id_sub_jenis_data_ilap.id_ilap
 
         if ilap_id:
+            # Only show valid periode jenis data for the selected ILAP
             self.fields['id_periode_data'].queryset = PeriodeJenisData.objects.filter(
+                id__in=valid_periode_ids,
                 id_sub_jenis_data_ilap__id_ilap_id=ilap_id
-            ).select_related('id_sub_jenis_data_ilap')
+            ).select_related('id_sub_jenis_data_ilap').distinct()
