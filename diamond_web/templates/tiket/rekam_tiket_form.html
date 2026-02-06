@@ -3,11 +3,29 @@
 
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">{{ page_title|default:"Rekam Penerimaan Data" }}</h2>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="ri-file-add-line me-2"></i>{{ page_title|default:"Rekam Penerimaan Data" }}
+                    </h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                            <li class="breadcrumb-item"><a href="{% url 'tiket_list' %}">Tiket</a></li>
+                            <li class="breadcrumb-item active">Rekam Tiket Baru</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="card">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="ri-file-list-3-line me-2"></i>Form Rekam Tiket</h5>
+        </div>
         <div class="card-body">
             <form method="post" action="{{ form_action }}" id="tiket-rekam-form">
                 {% csrf_token %}
@@ -37,53 +55,69 @@
                 </div>
 
                 <!-- Jenis Data Information Section -->
-                <div id="jenis-data-info" class="alert alert-light border" style="display: none;">
-                    <h6 class="mb-3">Informasi Jenis Data ILAP</h6>
-                    <div class="row">
+                <div id="jenis-data-info" class="card border-primary mb-4" style="display: none;">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="ri-information-line me-2"></i>Informasi Jenis Data ILAP</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
                         <div class="col-md-6">
-                            <div class="mb-2">
-                                <strong>ILAP:</strong> <span id="info-nama-ilap">-</span>
+                            <div class="info-group mb-2">
+                                <label class="text-muted small mb-1">ILAP</label>
+                                <p class="fw-semibold mb-0" id="info-nama-ilap">-</p>
                             </div>
-                            <div class="mb-2">
-                                <strong>Kategori ILAP:</strong> <span id="info-kategori-ilap">-</span>
+                            <div class="info-group mb-2">
+                                <label class="text-muted small mb-1">Kategori ILAP</label>
+                                <p class="fw-semibold mb-0" id="info-kategori-ilap">-</p>
                             </div>
-                            <div class="mb-2">
-                                <strong>Kategori Wilayah:</strong> <span id="info-kategori-wilayah">-</span>
+                            <div class="info-group mb-2">
+                                <label class="text-muted small mb-1">Kategori Wilayah</label>
+                                <p class="fw-semibold mb-0" id="info-kategori-wilayah">-</p>
                             </div>
-                            <div class="mb-2">
-                                <strong>Jenis Tabel:</strong> <span id="info-jenis-tabel">-</span>
+                            <div class="info-group mb-2">
+                                <label class="text-muted small mb-1">Jenis Tabel</label>
+                                <p class="fw-semibold mb-0" id="info-jenis-tabel">-</p>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="mb-2">
-                                <strong>Jenis Prioritas Data:</strong> <span id="info-jenis-prioritas">-</span>
+                            <div class="info-group mb-2">
+                                <label class="text-muted small mb-1">Klasifikasi Jenis Data</label>
+                                <p class="fw-semibold mb-0" id="info-klasifikasi">-</p>
                             </div>
-                            <div class="mb-2">
-                                <strong>Klasifikasi Jenis Data:</strong> <span id="info-klasifikasi">-</span>
-                            </div>
-                            <div class="mb-2">
-                                <strong>Deskripsi Periode:</strong> <span id="info-deskripsi-periode">-</span>
+                            <div class="info-group mb-2">
+                                <label class="text-muted small mb-1">Deskripsi Periode</label>
+                                <p class="fw-semibold mb-0" id="info-deskripsi-periode">-</p>
                             </div>
                         </div>
                     </div>
-                    <div class="mt-3">
-                        <strong>PIC:</strong>
-                        <div class="mt-2">
-                            <div class="mb-2">
-                                <strong>P3DE:</strong> <span id="info-pic-p3de">-</span>
+                    <div class="card-footer bg-light">
+                        <strong><i class="ri-team-line me-2"></i>PIC (Penanggung Jawab)</strong>
+                        <div class="row g-2 mt-2">
+                            <div class="col-md-4">
+                                <div class="info-group">
+                                    <label class="text-muted small mb-1">P3DE</label>
+                                    <p class="fw-semibold mb-0" id="info-pic-p3de">-</p>
+                                </div>
                             </div>
-                            <div class="mb-2">
-                                <strong>PIDE:</strong> <span id="info-pic-pide">-</span>
+                            <div class="col-md-4">
+                                <div class="info-group">
+                                    <label class="text-muted small mb-1">PIDE</label>
+                                    <p class="fw-semibold mb-0" id="info-pic-pide">-</p>
+                                </div>
                             </div>
-                            <div class="mb-2">
-                                <strong>PMDE:</strong> <span id="info-pic-pmde">-</span>
+                            <div class="col-md-4">
+                                <div class="info-group">
+                                    <label class="text-muted small mb-1">PMDE</label>
+                                    <p class="fw-semibold mb-0" id="info-pic-pmde">-</p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
+                </div>
 
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="mb-3">
                             <label for="{{ form.periode.id_for_label }}" class="form-label">{{ form.periode.label }}</label>
                             {{ form.periode }}
@@ -92,13 +126,21 @@
                             {% endif %}
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="mb-3">
                             <label for="{{ form.tahun.id_for_label }}" class="form-label">{{ form.tahun.label }}</label>
                             {{ form.tahun }}
                             {% if form.tahun.errors %}
                                 <div class="invalid-feedback d-block">{{ form.tahun.errors }}</div>
                             {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Jenis Prioritas Data</label>
+                            <div class="info-group d-flex align-items-center justify-content-center" style="height: 38px;">
+                                <span id="info-jenis-prioritas" class="badge bg-secondary">-</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -338,9 +380,46 @@
             });
         }
 
+        function checkJenisPrioritas() {
+            const periodeDataSelect = document.getElementById('id_periode_data');
+            const tahunSelect = document.getElementById('id_tahun');
+            const prioritasSpan = document.getElementById('info-jenis-prioritas');
+            
+            if (!periodeDataSelect || !tahunSelect || !prioritasSpan) return;
+            
+            const periodeDataId = periodeDataSelect.value;
+            const tahun = tahunSelect.value;
+            
+            // If either field is empty, don't check
+            if (!periodeDataId || !tahun) {
+                return;
+            }
+            
+            // Get jenis_data_id from the cached data
+            const selectedData = periodeDataCache[periodeDataId];
+            if (!selectedData || !selectedData.jenis_data_id) return;
+            
+            // Call API to check prioritas
+            const url = `/api/check-jenis-prioritas/${selectedData.jenis_data_id}/${tahun}/`;
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    prioritasSpan.textContent = data.has_prioritas ? 'Ya' : 'Tidak';
+                    // Update badge styling
+                    prioritasSpan.className = 'badge ' + (data.has_prioritas ? 'bg-success' : 'bg-secondary');
+                })
+                .catch(error => {
+                    console.error('Error checking jenis prioritas:', error);
+                    prioritasSpan.textContent = '-';
+                    prioritasSpan.className = 'badge bg-secondary';
+                });
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             const ilapSelect = document.getElementById('id_ilap');
             const periodeDataSelect = document.getElementById('id_periode_data');
+            const tahunSelect = document.getElementById('id_tahun');
             const form = document.getElementById('tiket-rekam-form');
             const btnConfirm = document.getElementById('btn-confirm-save');
             const btnSubmit = document.getElementById('btn-submit-form');
@@ -351,12 +430,19 @@
             }
 
             if (periodeDataSelect) {
-                periodeDataSelect.addEventListener('change', updateJenisDataInfo);
+                periodeDataSelect.addEventListener('change', function() {
+                    updateJenisDataInfo();
+                    checkJenisPrioritas();
+                });
                 
                 // Trigger on page load if there's a selected value
                 if (periodeDataSelect.value) {
                     updateJenisDataInfo();
                 }
+            }
+
+            if (tahunSelect) {
+                tahunSelect.addEventListener('change', checkJenisPrioritas);
             }
 
             // Handle confirmation button click
@@ -455,4 +541,59 @@
         }
     })();
 </script>
+
+<style>
+.info-group {
+    padding: 0.5rem;
+    border-left: 3px solid #dee2e6;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.info-group:hover {
+    background-color: #e9ecef;
+    border-left-color: #0d6efd;
+    transition: all 0.2s ease;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 .125rem .25rem rgba(0,0,0,.075);
+    transition: transform 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.15);
+}
+
+.alert-light {
+    border-left: 3px solid #0d6efd;
+    background-color: #f8f9fa;
+}
+
+.alert-light:hover {
+    background-color: #e9ecef;
+    transition: all 0.2s ease;
+}
+
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.btn {
+    transition: all 0.2s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 .25rem .5rem rgba(0,0,0,.15);
+}
+</style>
 {% endblock %}

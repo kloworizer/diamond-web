@@ -135,8 +135,7 @@ class ILAPPeriodeDataAPIView(View):
                 data.append({
                     'id': pd.id,
                     'id_sub_jenis_data': jenis_data.id_sub_jenis_data,
-                    'nama_sub_jenis_data': jenis_data.nama_sub_jenis_data,
-                    'nama_ilap': ilap.nama_ilap,
+                    'nama_sub_jenis_data': jenis_data.nama_sub_jenis_data,                    'jenis_data_id': jenis_data.id_sub_jenis_data,                    'nama_ilap': ilap.nama_ilap,
                     'kategori_ilap': ilap.id_kategori.nama_kategori if ilap.id_kategori else '-',
                     'kategori_wilayah': ilap.id_kategori_wilayah.deskripsi if ilap.id_kategori_wilayah else '-',
                     'jenis_tabel': jenis_data.id_jenis_tabel.deskripsi if jenis_data.id_jenis_tabel else '-',
@@ -151,6 +150,31 @@ class ILAPPeriodeDataAPIView(View):
             return JsonResponse({
                 'success': True,
                 'data': data
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=400)
+
+
+class CheckJenisPrioritasAPIView(View):
+    """API view to check if jenis prioritas data exists for a given jenis data and tahun."""
+    
+    def get(self, request, jenis_data_id, tahun):
+        try:
+            from ...models.jenis_data_ilap import JenisDataILAP
+            
+            # Check if jenis prioritas exists for this jenis data and tahun
+            # jenis_data_id is a string like 'KM0330101'
+            has_prioritas = JenisPrioritasData.objects.filter(
+                id_sub_jenis_data_ilap__id_sub_jenis_data=jenis_data_id,
+                tahun=str(tahun)
+            ).exists()
+            
+            return JsonResponse({
+                'success': True,
+                'has_prioritas': has_prioritas
             })
         except Exception as e:
             return JsonResponse({
@@ -197,13 +221,12 @@ class TiketRekamCreateView(WorkflowStepCreateView):
             self.object.nomor_tiket = nomor_tiket
             self.object.status = 1
             
-            # Set id_jenis_prioritas_data based on tgl_terima_dip date range
-            if self.object.tgl_terima_dip:
-                tgl_terima_dip = self.object.tgl_terima_dip.date()
+            # Set id_jenis_prioritas_data based on tahun from form
+            tahun = form.cleaned_data.get('tahun')
+            if tahun:
                 jenis_prioritas = JenisPrioritasData.objects.filter(
                     id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap,
-                    start_date__lte=tgl_terima_dip,
-                    end_date__gte=tgl_terima_dip
+                    tahun=str(tahun)
                 ).first()
                 if jenis_prioritas:
                     self.object.id_jenis_prioritas_data = jenis_prioritas
