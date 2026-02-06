@@ -56,9 +56,9 @@ def tiket_data(request):
                 col = '-' + col
             qs = qs.order_by(col)
         except Exception:
-            qs = qs.order_by('-id')
+            qs = qs.order_by('id')
     else:
-        qs = qs.order_by('-id')
+        qs = qs.order_by('id')
 
     qs_page = qs[start:start + length]
 
