@@ -11,9 +11,7 @@ import logging
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
 from ...models.tiket_pic import TiketPIC
-from ...models.pic_p3de import PICP3DE
-from ...models.pic_pide import PICPIDE
-from ...models.pic_pmde import PICPMDE
+from ...models.pic import PIC
 from ...models.periode_jenis_data import PeriodeJenisData
 from ...models.jenis_prioritas_data import JenisPrioritasData
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
@@ -64,7 +62,8 @@ class ILAPPeriodeDataAPIView(View):
                 try:
                     pic_p3de = ', '.join([
                         (pic.id_user.get_full_name().strip() or pic.id_user.username)
-                        for pic in PICP3DE.objects.filter(
+                        for pic in PIC.objects.filter(
+                            tipe=PIC.TipePIC.P3DE,
                             id_sub_jenis_data_ilap=jenis_data
                         ).select_related('id_user')[:3]
                     ]) or '-'
@@ -74,7 +73,8 @@ class ILAPPeriodeDataAPIView(View):
                 try:
                     pic_pide = ', '.join([
                         (pic.id_user.get_full_name().strip() or pic.id_user.username)
-                        for pic in PICPIDE.objects.filter(
+                        for pic in PIC.objects.filter(
+                            tipe=PIC.TipePIC.PIDE,
                             id_sub_jenis_data_ilap=jenis_data
                         ).select_related('id_user')[:3]
                     ]) or '-'
@@ -84,7 +84,8 @@ class ILAPPeriodeDataAPIView(View):
                 try:
                     pic_pmde = ', '.join([
                         (pic.id_user.get_full_name().strip() or pic.id_user.username)
-                        for pic in PICPMDE.objects.filter(
+                        for pic in PIC.objects.filter(
+                            tipe=PIC.TipePIC.PMDE,
                             id_sub_jenis_data_ilap=jenis_data
                         ).select_related('id_user')[:3]
                     ]) or '-'
@@ -202,9 +203,17 @@ class TiketRekamCreateView(WorkflowStepCreateView):
             
             # Check if both required durasi fields are set
             if not pide_durasi_found:
-                raise ValueError("Durasi Jatuh Tempo PIDE (active) not found for this data type")
+                raise ValueError(
+                    f"Durasi Jatuh Tempo PIDE (active) not found for data type: "
+                    f"{periode_jenis_data.id_sub_jenis_data_ilap.nama_sub_jenis_data}. "
+                    f"Please configure Durasi Jatuh Tempo for PIDE before creating tickets."
+                )
             if not pmde_durasi_found:
-                raise ValueError("Durasi Jatuh Tempo PMDE (active) not found for this data type")
+                raise ValueError(
+                    f"Durasi Jatuh Tempo PMDE (active) not found for data type: "
+                    f"{periode_jenis_data.id_sub_jenis_data_ilap.nama_sub_jenis_data}. "
+                    f"Please configure Durasi Jatuh Tempo for PMDE before creating tickets."
+                )
             
             self.object.save()
             
@@ -229,11 +238,15 @@ class TiketRekamCreateView(WorkflowStepCreateView):
             active_filter = Q(start_date__lte=today) & (Q(end_date__isnull=True) | Q(end_date__gte=today))
             additional_pics = []
 
-            for role_value, pic_qs in (
-                (2, PICP3DE.objects.filter(id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap)),
-                (3, PICPIDE.objects.filter(id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap)),
-                (4, PICPMDE.objects.filter(id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap)),
+            for role_value, tipe in (
+                (2, PIC.TipePIC.P3DE),
+                (3, PIC.TipePIC.PIDE),
+                (4, PIC.TipePIC.PMDE),
             ):
+                pic_qs = PIC.objects.filter(
+                    tipe=tipe,
+                    id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap
+                )
                 for pic in pic_qs.filter(active_filter):
                     additional_pics.append(
                         TiketPIC(
@@ -263,47 +276,4 @@ class TiketRekamCreateView(WorkflowStepCreateView):
         except Exception as e:
             # Pass exception to be handled by form_valid's exception handler
             raise
-        
-        # Create tiket_pic entry to assign to current user
-        TiketPIC.objects.create(
-            id_tiket=self.object,
-            id_user=self.request.user,
-            timestamp=datetime.now(),
-            role=1
-        )
 
-        # Assign related PICs (P3DE, PIDE, PMDE) for the same sub jenis data
-        active_filter = Q(start_date__lte=today) & (Q(end_date__isnull=True) | Q(end_date__gte=today))
-        additional_pics = []
-
-        for role_value, pic_qs in (
-            (2, PICP3DE.objects.filter(id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap)),
-            (3, PICPIDE.objects.filter(id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap)),
-            (4, PICPMDE.objects.filter(id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap)),
-        ):
-            for pic in pic_qs.filter(active_filter):
-                additional_pics.append(
-                    TiketPIC(
-                        id_tiket=self.object,
-                        id_user=pic.id_user,
-                        timestamp=datetime.now(),
-                        role=role_value
-                    )
-                )
-
-        if additional_pics:
-            TiketPIC.objects.bulk_create(additional_pics)
-        
-        # Return response
-        if self.is_ajax_request():
-            return self.get_json_response(
-                success=True,
-                message=f'Tiket "{nomor_tiket}" created successfully.',
-                redirect=self.get_success_url()
-            )
-        else:
-            messages.success(
-                self.request,
-                f'Tiket "{nomor_tiket}" created successfully.'
-            )
-            return None

@@ -2,6 +2,7 @@ from django import forms
 from ..models.tiket import Tiket
 from ..models.periode_jenis_data import PeriodeJenisData
 from ..models.ilap import ILAP
+from ..models.pic import PIC
 from datetime import datetime
 
 class TiketForm(forms.ModelForm):
@@ -32,7 +33,7 @@ class TiketForm(forms.ModelForm):
         
         # Customize ILAP dropdown (only ILAP with P3DE PIC)
         self.fields['id_ilap'].queryset = ILAP.objects.filter(
-            jenisdatailap__picp3de__isnull=False,
+            jenisdatailap__pic__tipe=PIC.TipePIC.P3DE,
             jenisdatailap__periodejenisdata__isnull=False
         ).select_related(
             'id_kategori', 'id_kategori_wilayah'
