@@ -9,7 +9,7 @@ from django.views.decorators.http import require_GET
 
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from ..forms.durasi_jatuh_tempo import DurasiJatuhTempoForm
-from .mixins import AjaxFormMixin, AdminRequiredMixin
+from .mixins import AjaxFormMixin
 
 # ========== PIDE Section ==========
 

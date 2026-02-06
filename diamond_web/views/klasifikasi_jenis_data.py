@@ -9,9 +9,9 @@ from django.views.decorators.http import require_GET
 
 from ..models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ..forms.klasifikasi_jenis_data import KlasifikasiJenisDataForm
-from .mixins import AjaxFormMixin, AdminRequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
 
-class KlasifikasiJenisDataListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
+class KlasifikasiJenisDataListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
     template_name = 'klasifikasi_jenis_data/list.html'
 
     def get(self, request, *args, **kwargs):
@@ -26,7 +26,7 @@ class KlasifikasiJenisDataListView(LoginRequiredMixin, AdminRequiredMixin, Templ
                 pass
         return super().get(request, *args, **kwargs)
 
-class KlasifikasiJenisDataCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
+class KlasifikasiJenisDataCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
     model = KlasifikasiJenisData
     form_class = KlasifikasiJenisDataForm
     template_name = 'klasifikasi_jenis_data/form.html'
@@ -43,7 +43,7 @@ class KlasifikasiJenisDataCreateView(LoginRequiredMixin, AdminRequiredMixin, Aja
         form = self.get_form()
         return self.render_form_response(form)
 
-class KlasifikasiJenisDataUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
+class KlasifikasiJenisDataUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
     model = KlasifikasiJenisData
     form_class = KlasifikasiJenisDataForm
     template_name = 'klasifikasi_jenis_data/form.html'
@@ -60,7 +60,7 @@ class KlasifikasiJenisDataUpdateView(LoginRequiredMixin, AdminRequiredMixin, Aja
         form = self.get_form()
         return self.render_form_response(form)
 
-class KlasifikasiJenisDataDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+class KlasifikasiJenisDataDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     model = KlasifikasiJenisData
     template_name = 'klasifikasi_jenis_data/confirm_delete.html'
     success_url = reverse_lazy('klasifikasi_jenis_data_list')

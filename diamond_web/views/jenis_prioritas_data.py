@@ -9,8 +9,8 @@ from django.views.decorators.http import require_GET
 
 from ..models.jenis_prioritas_data import JenisPrioritasData
 from ..forms.jenis_prioritas_data import JenisPrioritasDataForm
-from .mixins import AjaxFormMixin, AdminRequiredMixin
-class JenisPrioritasDataListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
+class JenisPrioritasDataListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
     template_name = 'jenis_prioritas_data/list.html'
 
     def get(self, request, *args, **kwargs):
@@ -25,7 +25,7 @@ class JenisPrioritasDataListView(LoginRequiredMixin, AdminRequiredMixin, Templat
                 pass
         return super().get(request, *args, **kwargs)
 
-class JenisPrioritasDataCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
+class JenisPrioritasDataCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
     model = JenisPrioritasData
     form_class = JenisPrioritasDataForm
     template_name = 'jenis_prioritas_data/form.html'
@@ -42,7 +42,7 @@ class JenisPrioritasDataCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxF
         form = self.get_form()
         return self.render_form_response(form)
 
-class JenisPrioritasDataUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
+class JenisPrioritasDataUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
     model = JenisPrioritasData
     form_class = JenisPrioritasDataForm
     template_name = 'jenis_prioritas_data/form.html'
@@ -59,7 +59,7 @@ class JenisPrioritasDataUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxF
         form = self.get_form()
         return self.render_form_response(form)
 
-class JenisPrioritasDataDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+class JenisPrioritasDataDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     model = JenisPrioritasData
     template_name = 'jenis_prioritas_data/confirm_delete.html'
     success_url = reverse_lazy('jenis_prioritas_data_list')

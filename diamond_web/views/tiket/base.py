@@ -8,7 +8,7 @@ from django.http import JsonResponse
 from django.db import transaction
 import logging
 
-from ..mixins import AdminRequiredMixin
+from ..mixins import UserP3DERequiredMixin
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class WorkflowStepMixin:
         return self.request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
 
-class WorkflowStepCreateView(LoginRequiredMixin, AdminRequiredMixin, WorkflowStepMixin, CreateView):
+class WorkflowStepCreateView(LoginRequiredMixin, UserP3DERequiredMixin, WorkflowStepMixin, CreateView):
     """Base create view for workflow steps."""
     
     def form_valid(self, form):
@@ -89,6 +89,6 @@ class WorkflowStepCreateView(LoginRequiredMixin, AdminRequiredMixin, WorkflowSte
         return self.form_invalid(form)
 
 
-class WorkflowStepDetailView(LoginRequiredMixin, AdminRequiredMixin, DetailView):
+class WorkflowStepDetailView(LoginRequiredMixin, UserP3DERequiredMixin, DetailView):
     """Base detail view for workflow steps."""
     pass

@@ -221,7 +221,7 @@
                                 {% for action in tiket_actions %}
                                 <tr>
                                     <td class="text-nowrap">{{ action.timestamp|date:"d/m/Y H:i:s" }}</td>
-                                    <td>{{ action.id_user.get_full_name|default:action.id_user.username }}</td>
+                                    <td>{{ action.user_display }}</td>
                                     <td>
                                         <span class="badge {{ action.badge_class }}">{{ action.badge_label }}</span>
                                     </td>
@@ -334,7 +334,7 @@
                             <div class="d-flex justify-content-between align-items-start">
                                 <div class="flex-grow-1">
                                     <div class="fw-semibold mb-1">
-                                        <i class="ri-user-3-line me-1"></i>{{ pic.id_user.get_full_name|default:pic.id_user.username }}
+                                        <i class="ri-user-3-line me-1"></i>{{ pic.user_display }}
                                     </div>
                                 </div>
                                 <span class="badge {{ pic.badge_class }} ms-2">{{ pic.badge_label }}</span>

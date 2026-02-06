@@ -12,10 +12,10 @@ from ..models.tanda_terima_data import TandaTerimaData
 from ..models.detil_tanda_terima import DetilTandaTerima
 from ..models.tiket_action import TiketAction
 from ..forms.tanda_terima_data import TandaTerimaDataForm
-from .mixins import AjaxFormMixin, AdminRequiredMixin
+from .mixins import AjaxFormMixin, UserP3DERequiredMixin
 
 
-class TandaTerimaDataListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
+class TandaTerimaDataListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView):
     template_name = 'tanda_terima_data/list.html'
 
     def get(self, request, *args, **kwargs):
@@ -31,7 +31,7 @@ class TandaTerimaDataListView(LoginRequiredMixin, AdminRequiredMixin, TemplateVi
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name='admin').exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
 @require_GET
 def tanda_terima_data_data(request):
     """Server-side processing for Tanda Terima Data DataTables."""
@@ -95,7 +95,7 @@ def tanda_terima_data_data(request):
     })
 
 
-class TandaTerimaDataCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
+class TandaTerimaDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxFormMixin, CreateView):
     model = TandaTerimaData
     form_class = TandaTerimaDataForm
     template_name = 'tanda_terima_data/form.html'
@@ -128,7 +128,7 @@ class TandaTerimaDataCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxForm
         return response
 
 
-class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
+class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxFormMixin, CreateView):
     """Create Tanda Terima Data from a specific Tiket."""
     model = TandaTerimaData
     form_class = TandaTerimaDataForm
@@ -198,7 +198,7 @@ class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, AdminRequiredMixin,
         return HttpResponseRedirect(self.get_success_url())
 
 
-class TandaTerimaDataUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
+class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxFormMixin, UpdateView):
     model = TandaTerimaData
     form_class = TandaTerimaDataForm
     template_name = 'tanda_terima_data/form.html'
@@ -234,7 +234,7 @@ class TandaTerimaDataUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxForm
         return response
 
 
-class TandaTerimaDataDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+class TandaTerimaDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, DeleteView):
     model = TandaTerimaData
     template_name = 'tanda_terima_data/confirm_delete.html'
     success_url = reverse_lazy('tanda_terima_data_list')

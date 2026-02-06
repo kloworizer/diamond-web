@@ -11,7 +11,7 @@ from ..models.backup_data import BackupData
 from ..models.tiket import Tiket
 from ..models.tiket_action import TiketAction
 from ..forms.backup_data import BackupDataForm
-from .mixins import AjaxFormMixin, AdminRequiredMixin
+from .mixins import AjaxFormMixin, UserP3DERequiredMixin
 
 
 def create_tiket_action(tiket, user, catatan):
@@ -25,10 +25,10 @@ def create_tiket_action(tiket, user, catatan):
         catatan=catatan
     )
 
-class BackupDataListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
+class BackupDataListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView):
     template_name = 'backup_data/list.html'
 
-class BackupDataCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
+class BackupDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxFormMixin, CreateView):
     model = BackupData
     form_class = BackupDataForm
     template_name = 'backup_data/form.html'
@@ -52,7 +52,7 @@ class BackupDataCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin
         form = self.get_form()
         return self.render_form_response(form)
 
-class BackupDataFromTiketCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
+class BackupDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxFormMixin, CreateView):
     """Create Backup Data from a specific Tiket."""
     model = BackupData
     form_class = BackupDataForm
@@ -96,7 +96,7 @@ class BackupDataFromTiketCreateView(LoginRequiredMixin, AdminRequiredMixin, Ajax
         
         return AjaxFormMixin.form_valid(self, form)
 
-class BackupDataUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
+class BackupDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxFormMixin, UpdateView):
     model = BackupData
     form_class = BackupDataForm
     template_name = 'backup_data/form.html'
@@ -120,7 +120,7 @@ class BackupDataUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin
         return self.render_form_response(form)
 
 
-class BackupDataDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+class BackupDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, DeleteView):
     model = BackupData
     template_name = 'backup_data/confirm_delete.html'
     success_url = reverse_lazy('backup_data_list')
@@ -153,7 +153,7 @@ class BackupDataDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
         return self.delete(request, *args, **kwargs)
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
 @require_GET
 def backup_data_data(request):
     """Server-side processing for DataTables."""

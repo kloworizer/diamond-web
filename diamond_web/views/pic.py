@@ -9,10 +9,10 @@ from django.views.decorators.http import require_GET
 
 from ..models.pic import PIC
 from ..forms.pic import PICForm
-from .mixins import AjaxFormMixin, AdminRequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, AdminPIDERequiredMixin, AdminPMDERequiredMixin
 
 
-class PICListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
+class PICListView(LoginRequiredMixin, TemplateView):
     """Base list view for all PIC types"""
     template_name = 'pic/list.html'
     tipe = None
@@ -42,7 +42,7 @@ class PICListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
         return super().get(request, *args, **kwargs)
 
 
-class PICCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
+class PICCreateView(LoginRequiredMixin, AjaxFormMixin, CreateView):
     """Base create view for all PIC types"""
     model = PIC
     form_class = PICForm
@@ -90,7 +90,7 @@ class PICCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, Creat
         return self.render_form_response(form)
 
 
-class PICUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
+class PICUpdateView(LoginRequiredMixin, AjaxFormMixin, UpdateView):
     """Base update view for all PIC types"""
     model = PIC
     form_class = PICForm
@@ -145,7 +145,7 @@ class PICUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, Updat
         return qs
 
 
-class PICDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+class PICDeleteView(LoginRequiredMixin, DeleteView):
     """Base delete view for all PIC types"""
     model = PIC
     template_name = 'pic/confirm_delete.html'
@@ -209,62 +209,62 @@ class PICDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
 
 
 # Concrete views for each PIC type
-class PICP3DEListView(PICListView):
+class PICP3DEListView(AdminP3DERequiredMixin, PICListView):
     tipe = PIC.TipePIC.P3DE
     template_name = 'pic_p3de/list.html'  # Keep old template for backward compatibility
 
 
-class PICP3DECreateView(PICCreateView):
+class PICP3DECreateView(AdminP3DERequiredMixin, PICCreateView):
     tipe = PIC.TipePIC.P3DE
     template_name = 'pic_p3de/form.html'
 
 
-class PICP3DEUpdateView(PICUpdateView):
+class PICP3DEUpdateView(AdminP3DERequiredMixin, PICUpdateView):
     tipe = PIC.TipePIC.P3DE
     template_name = 'pic_p3de/form.html'
 
 
-class PICP3DEDeleteView(PICDeleteView):
+class PICP3DEDeleteView(AdminP3DERequiredMixin, PICDeleteView):
     tipe = PIC.TipePIC.P3DE
     template_name = 'pic_p3de/confirm_delete.html'
 
 
-class PICPIDEListView(PICListView):
+class PICPIDEListView(AdminPIDERequiredMixin, PICListView):
     tipe = PIC.TipePIC.PIDE
     template_name = 'pic_pide/list.html'
 
 
-class PICPIDECreateView(PICCreateView):
+class PICPIDECreateView(AdminPIDERequiredMixin, PICCreateView):
     tipe = PIC.TipePIC.PIDE
     template_name = 'pic_pide/form.html'
 
 
-class PICPIDEUpdateView(PICUpdateView):
+class PICPIDEUpdateView(AdminPIDERequiredMixin, PICUpdateView):
     tipe = PIC.TipePIC.PIDE
     template_name = 'pic_pide/form.html'
 
 
-class PICPIDEDeleteView(PICDeleteView):
+class PICPIDEDeleteView(AdminPIDERequiredMixin, PICDeleteView):
     tipe = PIC.TipePIC.PIDE
     template_name = 'pic_pide/confirm_delete.html'
 
 
-class PICPMDEListView(PICListView):
+class PICPMDEListView(AdminPMDERequiredMixin, PICListView):
     tipe = PIC.TipePIC.PMDE
     template_name = 'pic_pmde/list.html'
 
 
-class PICPMDECreateView(PICCreateView):
+class PICPMDECreateView(AdminPMDERequiredMixin, PICCreateView):
     tipe = PIC.TipePIC.PMDE
     template_name = 'pic_pmde/form.html'
 
 
-class PICPMDEUpdateView(PICUpdateView):
+class PICPMDEUpdateView(AdminPMDERequiredMixin, PICUpdateView):
     tipe = PIC.TipePIC.PMDE
     template_name = 'pic_pmde/form.html'
 
 
-class PICPMDEDeleteView(PICDeleteView):
+class PICPMDEDeleteView(AdminPMDERequiredMixin, PICDeleteView):
     tipe = PIC.TipePIC.PMDE
     template_name = 'pic_pmde/confirm_delete.html'
 

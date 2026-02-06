@@ -144,6 +144,11 @@ class TiketDetailView(WorkflowStepDetailView):
             badge = action_badges.get(action.action, {'label': str(action.action), 'class': 'bg-secondary'})
             action.badge_label = badge['label']
             action.badge_class = badge['class']
+            full_name = (action.id_user.get_full_name() or '').strip()
+            action.user_display = (
+                f"{action.id_user.username} - {full_name}"
+                if full_name else action.id_user.username
+            )
         
         # Get PICs and enrich with badge info
         tiket_pics = TiketPIC.objects.filter(
@@ -154,6 +159,11 @@ class TiketDetailView(WorkflowStepDetailView):
             badge = role_badges.get(pic.role, {'label': str(pic.role), 'class': 'bg-info'})
             pic.badge_label = badge['label']
             pic.badge_class = badge['class']
+            full_name = (pic.id_user.get_full_name() or '').strip()
+            pic.user_display = (
+                f"{pic.id_user.username} - {full_name}"
+                if full_name else pic.id_user.username
+            )
         
         # Backup data list
         backups = self.object.backups.select_related('id_user').all().order_by('-id')

@@ -41,9 +41,11 @@ class ILAPPeriodeDataAPIView(View):
             # 3. Active PMDE durasi
             from ...models.jenis_data_ilap import JenisDataILAP
             
-            # JenisData with PIC P3DE
+            # JenisData with active PIC P3DE (no end_date)
             jenis_data_with_pic = JenisDataILAP.objects.filter(
-                pic__tipe=PIC.TipePIC.P3DE
+                pic__tipe=PIC.TipePIC.P3DE,
+                pic__start_date__lte=today,
+                pic__end_date__isnull=True
             ).values_list('id_sub_jenis_data', flat=True).distinct()
             
             # JenisData with active PIDE durasi
@@ -104,7 +106,9 @@ class ILAPPeriodeDataAPIView(View):
                         (pic.id_user.get_full_name().strip() or pic.id_user.username)
                         for pic in PIC.objects.filter(
                             tipe=PIC.TipePIC.P3DE,
-                            id_sub_jenis_data_ilap=jenis_data
+                            id_sub_jenis_data_ilap=jenis_data,
+                            start_date__lte=today,
+                            end_date__isnull=True
                         ).select_related('id_user')[:3]
                     ]) or '-'
                 except Exception:
@@ -115,7 +119,9 @@ class ILAPPeriodeDataAPIView(View):
                         (pic.id_user.get_full_name().strip() or pic.id_user.username)
                         for pic in PIC.objects.filter(
                             tipe=PIC.TipePIC.PIDE,
-                            id_sub_jenis_data_ilap=jenis_data
+                            id_sub_jenis_data_ilap=jenis_data,
+                            start_date__lte=today,
+                            end_date__isnull=True
                         ).select_related('id_user')[:3]
                     ]) or '-'
                 except Exception:
@@ -126,7 +132,9 @@ class ILAPPeriodeDataAPIView(View):
                         (pic.id_user.get_full_name().strip() or pic.id_user.username)
                         for pic in PIC.objects.filter(
                             tipe=PIC.TipePIC.PMDE,
-                            id_sub_jenis_data_ilap=jenis_data
+                            id_sub_jenis_data_ilap=jenis_data,
+                            start_date__lte=today,
+                            end_date__isnull=True
                         ).select_related('id_user')[:3]
                     ]) or '-'
                 except Exception:
@@ -297,8 +305,8 @@ class TiketRekamCreateView(WorkflowStepCreateView):
                 role=1
             )
 
-            # Assign related PICs (P3DE, PIDE, PMDE) for the same sub jenis data
-            active_filter = Q(start_date__lte=today) & (Q(end_date__isnull=True) | Q(end_date__gte=today))
+            # Assign related active PICs (no end_date) for the same sub jenis data
+            active_filter = Q(start_date__lte=today) & Q(end_date__isnull=True)
             additional_pics = []
 
             for role_value, tipe in (

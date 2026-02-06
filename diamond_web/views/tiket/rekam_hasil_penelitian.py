@@ -10,9 +10,10 @@ from django.http import JsonResponse
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
 from ...forms.rekam_hasil_penelitian import RekamHasilPenelitianForm
+from ..mixins import UserP3DERequiredMixin
 
 
-class RekamHasilPenelitianView(LoginRequiredMixin, UpdateView):
+class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, UpdateView):
     """View for recording research results (Rekam Hasil Penelitian)."""
     model = Tiket
     form_class = RekamHasilPenelitianForm
