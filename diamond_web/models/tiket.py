@@ -1,5 +1,7 @@
 from django.db import models
 from .periode_jenis_data import PeriodeJenisData
+from .jenis_prioritas_data import JenisPrioritasData
+from .durasi_jatuh_tempo import DurasiJatuhTempo
 
 
 class Tiket(models.Model):
@@ -10,6 +12,14 @@ class Tiket(models.Model):
         on_delete=models.CASCADE,
         db_column="id_periode_data",
         verbose_name="Periode Jenis Data"
+    )
+    id_jenis_prioritas_data = models.ForeignKey(
+        JenisPrioritasData,
+        on_delete=models.CASCADE,
+        db_column="id_jenis_prioritas_data",
+        verbose_name="Jenis Prioritas Data",
+        null=True,
+        blank=True
     )
     periode = models.IntegerField(null=True, blank=True, verbose_name="Periode")
     tahun = models.IntegerField(null=True, blank=True, verbose_name="Tahun")
@@ -23,12 +33,30 @@ class Tiket(models.Model):
     tgl_kirim_pide = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Kirim PIDE")
     tgl_dibatalkan = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Dibatalkan")
     tgl_dikembalikan = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Dikembalikan")
+    id_durasi_jatuh_tempo_pide = models.ForeignKey(
+        DurasiJatuhTempo,
+        on_delete=models.CASCADE,
+        db_column="id_durasi_jatuh_tempo_pide",
+        verbose_name="Durasi Jatuh Tempo PIDE",
+        null=True,
+        blank=True,
+        related_name='durasi_jatuh_tempo_pide_tikets'
+    )
     baris_i = models.IntegerField(null=True, blank=True, verbose_name="Baris I")
     baris_u = models.IntegerField(null=True, blank=True, verbose_name="Baris U")
     baris_res = models.IntegerField(null=True, blank=True, verbose_name="Baris Res")
     baris_cde = models.IntegerField(null=True, blank=True, verbose_name="Baris CDE")
     tgl_transfer = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Transfer")
     tgl_rematch = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Rematch")
+    id_durasi_jatuh_tempo_pmde = models.ForeignKey(
+        DurasiJatuhTempo,
+        on_delete=models.CASCADE,
+        db_column="id_durasi_jatuh_tempo_pmde",
+        verbose_name="Durasi Jatuh Tempo PMDE",
+        null=True,
+        blank=True,
+        related_name='durasi_jatuh_tempo_pmde_tikets'
+    )
     sudah_qc = models.IntegerField(null=True, blank=True, verbose_name="Sudah QC")
     belum_qc = models.IntegerField(null=True, blank=True, verbose_name="Belum QC")
     lolos_qc = models.IntegerField(null=True, blank=True, verbose_name="Lolos QC")

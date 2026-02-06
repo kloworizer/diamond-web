@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.db.models import Q
 from django.http import JsonResponse
 from django.views import View
+import logging
 
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
@@ -18,6 +19,8 @@ from ...models.jenis_prioritas_data import JenisPrioritasData
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ...forms.tiket import TiketForm
 from .base import WorkflowStepCreateView
+
+logger = logging.getLogger(__name__)
 
 
 class ILAPPeriodeDataAPIView(View):
@@ -134,33 +137,132 @@ class TiketRekamCreateView(WorkflowStepCreateView):
 
     def perform_workflow_action(self, form):
         """Implement the Rekam workflow logic."""
-        periode_jenis_data = form.cleaned_data['id_periode_data']
-        id_sub_jenis_data = periode_jenis_data.id_sub_jenis_data_ilap.id_sub_jenis_data
-        
-        # Generate nomor_tiket: id_sub_jenis_data + yymmdd + 3 digit sequence
-        today = datetime.now().date()
-        yymmdd = today.strftime('%y%m%d')
-        
-        nomor_tiket_prefix = f"{id_sub_jenis_data}{yymmdd}"
-        count = Tiket.objects.filter(nomor_tiket__startswith=nomor_tiket_prefix).count()
-        sequence = str(count + 1).zfill(3)
-        
-        nomor_tiket = f"{nomor_tiket_prefix}{sequence}"
-        
-        # Save the tiket with status = 1 (Direkam)
-        self.object = form.save(commit=False)
-        self.object.nomor_tiket = nomor_tiket
-        self.object.status = 1
-        self.object.save()
-        
-        # Create tiket_action entry for audit trail
-        TiketAction.objects.create(
-            id_tiket=self.object,
-            id_user=self.request.user,
-            timestamp=datetime.now(),
-            action=1,
-            catatan="tiket direkam"
-        )
+        try:
+            periode_jenis_data = form.cleaned_data['id_periode_data']
+            id_sub_jenis_data = periode_jenis_data.id_sub_jenis_data_ilap.id_sub_jenis_data
+            
+            # Generate nomor_tiket: id_sub_jenis_data + yymmdd + 3 digit sequence
+            today = datetime.now().date()
+            yymmdd = today.strftime('%y%m%d')
+            
+            nomor_tiket_prefix = f"{id_sub_jenis_data}{yymmdd}"
+            count = Tiket.objects.filter(nomor_tiket__startswith=nomor_tiket_prefix).count()
+            sequence = str(count + 1).zfill(3)
+            
+            nomor_tiket = f"{nomor_tiket_prefix}{sequence}"
+            
+            # Save the tiket with status = 1 (Direkam)
+            self.object = form.save(commit=False)
+            self.object.nomor_tiket = nomor_tiket
+            self.object.status = 1
+            
+            # Set id_jenis_prioritas_data based on tgl_terima_dip date range
+            if self.object.tgl_terima_dip:
+                tgl_terima_dip = self.object.tgl_terima_dip.date()
+                jenis_prioritas = JenisPrioritasData.objects.filter(
+                    id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap,
+                    start_date__lte=tgl_terima_dip,
+                    end_date__gte=tgl_terima_dip
+                ).first()
+                if jenis_prioritas:
+                    self.object.id_jenis_prioritas_data = jenis_prioritas
+            
+            # Set id_durasi_jatuh_tempo_pide (active PIDE group)
+            from django.contrib.auth.models import Group
+            pide_durasi_found = False
+            try:
+                pide_group = Group.objects.get(name='user_pide')
+                # Try to find active durasi (no end_date or within date range)
+                durasi_pide = periode_jenis_data.id_sub_jenis_data_ilap.durasijatuhtempo_set.filter(
+                    seksi=pide_group
+                ).filter(
+                    Q(end_date__isnull=True) | Q(start_date__lte=today, end_date__gte=today)
+                ).first()
+                if durasi_pide:
+                    self.object.id_durasi_jatuh_tempo_pide = durasi_pide
+                    pide_durasi_found = True
+            except Group.DoesNotExist:
+                pass
+            
+            # Set id_durasi_jatuh_tempo_pmde (active PMDE group)
+            pmde_durasi_found = False
+            try:
+                pmde_group = Group.objects.get(name='user_pmde')
+                # Try to find active durasi (no end_date or within date range)
+                durasi_pmde = periode_jenis_data.id_sub_jenis_data_ilap.durasijatuhtempo_set.filter(
+                    seksi=pmde_group
+                ).filter(
+                    Q(end_date__isnull=True) | Q(start_date__lte=today, end_date__gte=today)
+                ).first()
+                if durasi_pmde:
+                    self.object.id_durasi_jatuh_tempo_pmde = durasi_pmde
+                    pmde_durasi_found = True
+            except Group.DoesNotExist:
+                pass
+            
+            # Check if both required durasi fields are set
+            if not pide_durasi_found:
+                raise ValueError("Durasi Jatuh Tempo PIDE (active) not found for this data type")
+            if not pmde_durasi_found:
+                raise ValueError("Durasi Jatuh Tempo PMDE (active) not found for this data type")
+            
+            self.object.save()
+            
+            # Create tiket_action entry for audit trail
+            TiketAction.objects.create(
+                id_tiket=self.object,
+                id_user=self.request.user,
+                timestamp=datetime.now(),
+                action=1,
+                catatan="tiket direkam"
+            )
+            
+            # Create tiket_pic entry to assign to current user
+            TiketPIC.objects.create(
+                id_tiket=self.object,
+                id_user=self.request.user,
+                timestamp=datetime.now(),
+                role=1
+            )
+
+            # Assign related PICs (P3DE, PIDE, PMDE) for the same sub jenis data
+            active_filter = Q(start_date__lte=today) & (Q(end_date__isnull=True) | Q(end_date__gte=today))
+            additional_pics = []
+
+            for role_value, pic_qs in (
+                (2, PICP3DE.objects.filter(id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap)),
+                (3, PICPIDE.objects.filter(id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap)),
+                (4, PICPMDE.objects.filter(id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap)),
+            ):
+                for pic in pic_qs.filter(active_filter):
+                    additional_pics.append(
+                        TiketPIC(
+                            id_tiket=self.object,
+                            id_user=pic.id_user,
+                            timestamp=datetime.now(),
+                            role=role_value
+                        )
+                    )
+
+            if additional_pics:
+                TiketPIC.objects.bulk_create(additional_pics)
+            
+            # Return response
+            if self.is_ajax_request():
+                return self.get_json_response(
+                    success=True,
+                    message=f'Tiket "{nomor_tiket}" created successfully.',
+                    redirect=self.get_success_url()
+                )
+            else:
+                messages.success(
+                    self.request,
+                    f'Tiket "{nomor_tiket}" created successfully.'
+                )
+                return None
+        except Exception as e:
+            # Pass exception to be handled by form_valid's exception handler
+            raise
         
         # Create tiket_pic entry to assign to current user
         TiketPIC.objects.create(

@@ -30,8 +30,9 @@ class TiketForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        # Customize ILAP dropdown (only ILAP with periode jenis data)
+        # Customize ILAP dropdown (only ILAP with P3DE PIC)
         self.fields['id_ilap'].queryset = ILAP.objects.filter(
+            jenisdatailap__picp3de__isnull=False,
             jenisdatailap__periodejenisdata__isnull=False
         ).select_related(
             'id_kategori', 'id_kategori_wilayah'
