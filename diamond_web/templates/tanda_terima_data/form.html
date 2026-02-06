@@ -15,6 +15,21 @@
         {% endif %}
         
         <div class="mb-3">
+            {{ form.tanggal_tanda_terima.label_tag }}
+            {{ form.tanggal_tanda_terima }}
+            {% if form.tanggal_tanda_terima.errors %}
+                <small class="text-danger d-block mt-1">
+                    {% for error in form.tanggal_tanda_terima.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </small>
+            {% endif %}
+            {% if form.tanggal_tanda_terima.help_text %}
+                <small class="text-muted d-block mt-1">{{ form.tanggal_tanda_terima.help_text|safe }}</small>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
             {{ form.nomor_tanda_terima.label_tag }}
             {{ form.nomor_tanda_terima }}
             {% if form.nomor_tanda_terima.errors %}
@@ -30,20 +45,20 @@
         </div>
         
         <div class="mb-3">
-            {{ form.tanggal_tanda_terima.label_tag }}
-            {{ form.tanggal_tanda_terima }}
-            {% if form.tanggal_tanda_terima.errors %}
+            {{ form.deskripsi.label_tag }}
+            {{ form.deskripsi }}
+            {% if form.deskripsi.errors %}
                 <small class="text-danger d-block mt-1">
-                    {% for error in form.tanggal_tanda_terima.errors %}
+                    {% for error in form.deskripsi.errors %}
                         {{ error }}
                     {% endfor %}
                 </small>
             {% endif %}
-            {% if form.tanggal_tanda_terima.help_text %}
-                <small class="text-muted d-block mt-1">{{ form.tanggal_tanda_terima.help_text|safe }}</small>
+            {% if form.deskripsi.help_text %}
+                <small class="text-muted d-block mt-1">{{ form.deskripsi.help_text|safe }}</small>
             {% endif %}
         </div>
-        
+
         <div class="mb-3">
             {{ form.id_ilap.label_tag }}
             {{ form.id_ilap }}
@@ -56,21 +71,6 @@
             {% endif %}
             {% if form.id_ilap.help_text %}
                 <small class="text-muted d-block mt-1">{{ form.id_ilap.help_text|safe }}</small>
-            {% endif %}
-        </div>
-        
-        <div class="mb-3">
-            {{ form.deskripsi.label_tag }}
-            {{ form.deskripsi }}
-            {% if form.deskripsi.errors %}
-                <small class="text-danger d-block mt-1">
-                    {% for error in form.deskripsi.errors %}
-                        {{ error }}
-                    {% endfor %}
-                </small>
-            {% endif %}
-            {% if form.deskripsi.help_text %}
-                <small class="text-muted d-block mt-1">{{ form.deskripsi.help_text|safe }}</small>
             {% endif %}
         </div>
         
@@ -104,3 +104,34 @@
         </button>
     </div>
 </form>
+
+<script>
+    (function () {
+        const tanggalInput = document.getElementById('id_tanggal_tanda_terima');
+        const nomorInput = document.getElementById('id_nomor_tanda_terima');
+
+        if (!tanggalInput || !nomorInput) {
+            return;
+        }
+
+        const updateNomor = () => {
+            const tanggalValue = tanggalInput.value;
+            if (!tanggalValue) {
+                return;
+            }
+
+            fetch(`{% url "tanda_terima_next_number" %}?tanggal=${encodeURIComponent(tanggalValue)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.success && data.nomor_tanda_terima) {
+                        nomorInput.value = data.nomor_tanda_terima;
+                    }
+                })
+                .catch(() => {
+                    // ignore
+                });
+        };
+
+        tanggalInput.addEventListener('change', updateNomor);
+    })();
+</script>

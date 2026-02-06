@@ -48,7 +48,11 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Update
         self.object.save()
         
         # Get catatan from form
-        catatan = form.cleaned_data.get('catatan', 'Hasil penelitian direkam')
+        is_update = bool(self.object.pk)
+        catatan = form.cleaned_data.get(
+            'catatan',
+            'Hasil penelitian diubah' if is_update else 'Hasil penelitian direkam'
+        )
         
         # Create tiket_action entry for audit trail with same timestamp
         TiketAction.objects.create(

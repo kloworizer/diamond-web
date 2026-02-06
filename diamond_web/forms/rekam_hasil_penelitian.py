@@ -6,7 +6,6 @@ class RekamHasilPenelitianForm(forms.ModelForm):
     """Form for recording research results."""
     catatan = forms.CharField(
         label='Catatan',
-        initial='Hasil penelitian direkam',
         widget=forms.Textarea(attrs={
             'class': 'form-control',
             'placeholder': 'Masukkan catatan tambahan',
@@ -32,4 +31,7 @@ class RekamHasilPenelitianForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['baris_p3de'].required = True
+        if not self.fields['catatan'].initial:
+            default_catatan = 'Hasil penelitian diubah' if self.instance and self.instance.tgl_teliti else 'Hasil penelitian direkam'
+            self.fields['catatan'].initial = default_catatan
 

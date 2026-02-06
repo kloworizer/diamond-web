@@ -21,7 +21,7 @@ def create_tiket_action(tiket, user, catatan):
         id_tiket=tiket,
         id_user=user,
         timestamp=datetime.now(),
-        action=tiket.status,
+        action=2,
         catatan=catatan
     )
 

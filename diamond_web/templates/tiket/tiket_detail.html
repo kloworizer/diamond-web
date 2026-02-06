@@ -176,7 +176,7 @@
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Jenis Prioritas</label>
                                 <p class="fw-semibold mb-0">
-                                    {% if ilap_info.has_prioritas == 'Ya' %}
+                                    {% if ilap_info.jenis_prioritas == 'Ya' %}
                                     <span class="badge bg-success">Ya</span>
                                     {% else %}
                                     <span class="badge bg-secondary">Tidak</span>
@@ -390,8 +390,8 @@
                             </div>
                             {% elif backup_list and tanda_terima_items %}
                             <div class="d-grid gap-2">
-                                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rekamHasilPenelitianModal">
-                                    <i class="ri-file-edit-line me-1"></i>Rekam Hasil Penelitian
+                                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rekamHasilPenelitianModal" data-action="edit">
+                                    <i class="ri-file-edit-line me-1"></i>{% if tiket.tgl_teliti %}Ubah Hasil Penelitian{% else %}Rekam Hasil Penelitian{% endif %}
                                 </button>
                                 {% if tiket.status == 4 %}
                                     <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#kirimTiketModal">
@@ -581,7 +581,8 @@
                                     .then(data => {
                                         if (data.success) {
                                             bootstrap.Modal.getInstance(rekamBackupDataModal).hide();
-                                            location.reload();
+                                            showToast('Success', data.message || 'Backup data berhasil disimpan.', 'success');
+                                            setTimeout(() => location.reload(), 800);
                                         } else {
                                             formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
                                         }
@@ -610,6 +611,7 @@
                     .then(response => response.text())
                     .then(html => {
                         formContainer.innerHTML = html;
+                        attachNomorTandaTerimaHandler(formContainer);
 
                         // Handle form submission
                         const form = formContainer.querySelector('form');
@@ -629,10 +631,12 @@
                                     .then(data => {
                                         if (data.success) {
                                             bootstrap.Modal.getInstance(tandaTerimaModal).hide();
-                                            location.reload();
+                                            showToast('Success', data.message || 'Tanda terima berhasil dibuat.', 'success');
+                                            setTimeout(() => location.reload(), 800);
                                         } else {
                                             // Handle form errors - the mixin returns 'html' not 'form_html'
                                             formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
+                                            attachNomorTandaTerimaHandler(formContainer);
                                         }
                                     })
                                     .catch(error => {
@@ -678,7 +682,8 @@
                                     .then(response => {
                                         if (response.ok && response.redirected) {
                                             bootstrap.Modal.getInstance(batalkanTiketModal).hide();
-                                            location.reload();
+                                            showToast('Success', 'Tiket berhasil dibatalkan.', 'success');
+                                            setTimeout(() => location.reload(), 800);
                                         } else {
                                             return response.text();
                                         }
@@ -735,7 +740,8 @@
                                     .then(data => {
                                         if (data.success) {
                                             bootstrap.Modal.getInstance(rekamHasilPenelitianModal).hide();
-                                            location.reload();
+                                            showToast('Success', data.message || 'Hasil penelitian berhasil disimpan.', 'success');
+                                            setTimeout(() => location.reload(), 800);
                                         } else {
                                             formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
                                         }
@@ -786,7 +792,8 @@
                                         .then(data => {
                                             if (data.success) {
                                                 bootstrap.Modal.getInstance(kirimTiketModal).hide();
-                                                location.reload();
+                                                showToast('Success', data.message || 'Tiket berhasil dikirim.', 'success');
+                                                setTimeout(() => location.reload(), 800);
                                             } else if (data.errors) {
                                                 formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
                                             }
@@ -804,6 +811,34 @@
                         });
                 });
             }
+
+        function attachNomorTandaTerimaHandler(container) {
+            const tanggalInput = container.querySelector('#id_tanggal_tanda_terima');
+            const nomorInput = container.querySelector('#id_nomor_tanda_terima');
+            if (!tanggalInput || !nomorInput) {
+                return;
+            }
+
+            const updateNomor = () => {
+                const tanggalValue = tanggalInput.value;
+                if (!tanggalValue) {
+                    return;
+                }
+
+                fetch(`{% url "tanda_terima_next_number" %}?tanggal=${encodeURIComponent(tanggalValue)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && data.success && data.nomor_tanda_terima) {
+                            nomorInput.value = data.nomor_tanda_terima;
+                        }
+                    })
+                    .catch(() => {
+                        // ignore
+                    });
+            };
+
+            tanggalInput.addEventListener('change', updateNomor);
+        }
     });
 </script>
 {% endblock %}
