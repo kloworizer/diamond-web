@@ -159,6 +159,7 @@ urlpatterns = [
     
     # Kirim Tiket (Send Tiket) - Step 3
     path('tiket/kirim-tiket/', views.KirimTiketView.as_view(), name='kirim_tiket'),
+    path('tiket/<int:tiket_pk>/kirim-pide/', views.KirimTiketView.as_view(), name='kirim_tiket_from_tiket'),
     
     # Future workflow steps can be added here:
     # path('tiket/teliti/create/', views.TiketTelitiCreateView.as_view(), name='tiket_teliti_create'),
