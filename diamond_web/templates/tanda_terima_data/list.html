@@ -4,7 +4,15 @@
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">Tanda Terima Data</h2>
+        <div>
+            <h2 class="mb-1">Tanda Terima Data</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                    <li class="breadcrumb-item active">Daftar Tanda Terima Data</li>
+                </ol>
+            </nav>
+        </div>
         <button type="button" class="btn btn-success" data-action="create">Tambah</button>
     </div>
 

@@ -12,12 +12,13 @@ from django.utils.dateparse import parse_datetime, parse_date
 from ..models.tanda_terima_data import TandaTerimaData
 from ..models.detil_tanda_terima import DetilTandaTerima
 from ..models.tiket_action import TiketAction
+from ..models.tiket_pic import TiketPIC
 from ..models.tiket import Tiket
 from ..forms.tanda_terima_data import TandaTerimaDataForm
-from .mixins import AjaxFormMixin, UserP3DERequiredMixin
+from .mixins import AjaxFormMixin, ActiveTiketPICListRequiredMixin, UserP3DERequiredMixin, can_access_tiket_list
 
 
-class TandaTerimaDataListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView):
+class TandaTerimaDataListView(LoginRequiredMixin, ActiveTiketPICListRequiredMixin, TemplateView):
     template_name = 'tanda_terima_data/list.html'
 
     def get(self, request, *args, **kwargs):
@@ -33,7 +34,7 @@ class TandaTerimaDataListView(LoginRequiredMixin, UserP3DERequiredMixin, Templat
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
+@user_passes_test(lambda u: can_access_tiket_list(u))
 @require_GET
 def tanda_terima_data_data(request):
     """Server-side processing for Tanda Terima Data DataTables."""
@@ -42,6 +43,11 @@ def tanda_terima_data_data(request):
     length = int(request.GET.get('length', '10'))
 
     qs = TandaTerimaData.objects.select_related('id_ilap', 'id_perekam').all()
+    if not request.user.is_superuser and not request.user.groups.filter(name='admin').exists():
+        qs = qs.filter(
+            detil_items__id_tiket__tiketpic__id_user=request.user,
+            detil_items__id_tiket__tiketpic__role=TiketPIC.Role.P3DE
+        ).distinct()
     records_total = qs.count()
 
     # Column-specific filtering
