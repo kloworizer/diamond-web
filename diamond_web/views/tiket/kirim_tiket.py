@@ -11,10 +11,10 @@ from django.db import transaction
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
 from ...forms.kirim_tiket import KirimTiketForm
-from ..mixins import AdminRequiredMixin
+from ..mixins import UserP3DERequiredMixin
 
 
-class KirimTiketView(LoginRequiredMixin, AdminRequiredMixin, FormView):
+class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
     """View for Kirim Tiket workflow step."""
     form_class = KirimTiketForm
     template_name = 'tiket/kirim_tiket_form.html'

@@ -7,7 +7,31 @@ from django.contrib.auth.mixins import UserPassesTestMixin
 class AdminRequiredMixin(UserPassesTestMixin):
     """Mixin to restrict access to admin users."""
     def test_func(self):
+        return self.request.user.groups.filter(name='admin').exists()
+
+
+class AdminP3DERequiredMixin(UserPassesTestMixin):
+    """Mixin to restrict access to admin and admin_p3de users."""
+    def test_func(self):
         return self.request.user.groups.filter(name__in=['admin', 'admin_p3de']).exists()
+
+
+class AdminPIDERequiredMixin(UserPassesTestMixin):
+    """Mixin to restrict access to admin and admin_pide users."""
+    def test_func(self):
+        return self.request.user.groups.filter(name__in=['admin', 'admin_pide']).exists()
+
+
+class AdminPMDERequiredMixin(UserPassesTestMixin):
+    """Mixin to restrict access to admin and admin_pmde users."""
+    def test_func(self):
+        return self.request.user.groups.filter(name__in=['admin', 'admin_pmde']).exists()
+
+
+class UserP3DERequiredMixin(UserPassesTestMixin):
+    """Mixin to restrict access to admin and user_p3de users."""
+    def test_func(self):
+        return self.request.user.groups.filter(name__in=['admin', 'user_p3de']).exists()
 
 
 class AjaxFormMixin:

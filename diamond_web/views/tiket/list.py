@@ -8,16 +8,16 @@ from django.http import JsonResponse
 from django.urls import reverse
 
 from ...models.tiket import Tiket
-from .base import AdminRequiredMixin
+from ..mixins import UserP3DERequiredMixin
 
 
-class TiketListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
+class TiketListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView):
     """Display list of all tikets with DataTables integration."""
     template_name = 'tiket/list.html'
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
 @require_GET
 def tiket_data(request):
     """Server-side processing for DataTables."""

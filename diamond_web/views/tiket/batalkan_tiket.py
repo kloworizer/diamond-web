@@ -9,9 +9,10 @@ from django.contrib import messages
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
 from ...forms.batalkan_tiket import BatalkanTiketForm
+from ..mixins import UserP3DERequiredMixin
 
 
-class BatalkanTiketView(LoginRequiredMixin, UpdateView):
+class BatalkanTiketView(LoginRequiredMixin, UserP3DERequiredMixin, UpdateView):
     """View for canceling a tiket (Batalkan Tiket)."""
     model = Tiket
     form_class = BatalkanTiketForm

@@ -12,7 +12,7 @@
         <div class="collapse navbar-collapse" id="mainNavbar">
             <!-- Group 1: Main Navigation (Left Aligned) -->
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                {% if user|has_group:"admin_p3de" %}
+                {% if user|has_group:"admin" or user|has_group:"user_p3de" %}
                 <!-- Dropdown Group: P3DE -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
@@ -27,6 +27,8 @@
                         <li><a class="dropdown-item" href="{% url 'kirim_tiket' %}">Kirim Tiket</a></li>
                     </ul>
                 </li>
+                {% endif %}
+                {% if user|has_group:"admin" or user|has_group:"admin_p3de" %}
                 <!-- Dropdown Group -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
@@ -53,7 +55,7 @@
                     </ul>
                 </li>
                 {% endif %}
-                {% if user|has_group:"admin_pide" %}
+                {% if user|has_group:"admin" or user|has_group:"admin_pide" %}
                 <!-- Dropdown Group -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
@@ -68,7 +70,7 @@
                     </ul>
                 </li>
                 {% endif %}
-                {% if user|has_group:"admin_pide" %}
+                {% if user|has_group:"admin" or user|has_group:"admin_pmde" %}
                 <!-- Dropdown Group -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
@@ -110,7 +112,7 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
                         aria-expanded="false">
-                        Hi, {{ user.username }}
+                        Hi, {{ user.username }}{% if user.get_full_name %} - {{ user.get_full_name }}{% endif %}
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><a class="dropdown-item" href="{% url 'user_password_change' %}">Ubah Password</a></li>
