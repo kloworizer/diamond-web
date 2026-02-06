@@ -12,6 +12,7 @@ from django.utils.dateparse import parse_datetime, parse_date
 from ..models.tanda_terima_data import TandaTerimaData
 from ..models.detil_tanda_terima import DetilTandaTerima
 from ..models.tiket_action import TiketAction
+from ..models.tiket import Tiket
 from ..forms.tanda_terima_data import TandaTerimaDataForm
 from .mixins import AjaxFormMixin, UserP3DERequiredMixin
 
@@ -40,9 +41,7 @@ def tanda_terima_data_data(request):
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
 
-    qs = TandaTerimaData.objects.select_related('id_ilap', 'id_perekam').filter(
-        detil_items__id_tiket__status__lt=6
-    ).distinct()
+    qs = TandaTerimaData.objects.select_related('id_ilap', 'id_perekam').all()
     records_total = qs.count()
 
     # Column-specific filtering
@@ -58,12 +57,18 @@ def tanda_terima_data_data(request):
             qs = qs.filter(deskripsi__icontains=columns_search[3])
         if len(columns_search) > 4 and columns_search[4]:  # Perekam
             qs = qs.filter(id_perekam__username__icontains=columns_search[4])
+        if len(columns_search) > 5 and columns_search[5]:  # Status
+            status_value = columns_search[5].strip().lower()
+            if status_value in ['dibatalkan', 'batal', 'false', '0']:
+                qs = qs.filter(active=False)
+            elif status_value in ['aktif', 'active', 'true', '1']:
+                qs = qs.filter(active=True)
 
     records_filtered = qs.count()
 
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['nomor_tanda_terima', 'tanggal_tanda_terima', 'id_ilap__nama_ilap', 'deskripsi', 'id_perekam__username']
+    columns = ['nomor_tanda_terima', 'tanggal_tanda_terima', 'id_ilap__nama_ilap', 'deskripsi', 'id_perekam__username', 'active']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -79,15 +84,27 @@ def tanda_terima_data_data(request):
     qs_page = qs[start:start + length]
 
     data = []
+    from django.db.models import Q
+
     for obj in qs_page:
+        status_text = 'Aktif' if obj.active else 'Dibatalkan'
+        actions_html = ""
+        can_edit = obj.detil_items.filter(
+            Q(id_tiket__status__lt=6) | Q(id_tiket__status__isnull=True)
+        ).exists()
+        if obj.active is not False and can_edit:
+            actions_html = (
+                f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('tanda_terima_data_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
+                f"<button class='btn btn-sm btn-warning' data-action='delete' data-url='{reverse('tanda_terima_data_delete', args=[obj.pk])}' title='Batalkan'><i class='ri-close-circle-line'></i></button>"
+            )
         data.append({
             'nomor_tanda_terima': obj.nomor_tanda_terima,
             'tanggal_tanda_terima': obj.tanggal_tanda_terima.strftime('%Y-%m-%d %H:%M'),
             'id_ilap': str(obj.id_ilap),
             'deskripsi': obj.deskripsi,
             'id_perekam': obj.id_perekam.username,
-            'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('tanda_terima_data_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
-                       f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('tanda_terima_data_delete', args=[obj.pk])}' title='Delete'><i class='ri-delete-bin-line'></i></button>"
+            'status': status_text,
+            'actions': actions_html
         })
 
     return JsonResponse({
@@ -132,6 +149,33 @@ def tanda_terima_next_number(request):
     })
 
 
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
+@require_GET
+def tanda_terima_tikets_by_ilap(request):
+    """Return available tikets for a given ILAP (status < 6 and not assigned)."""
+    ilap_id = request.GET.get('ilap_id')
+    if not ilap_id:
+        return JsonResponse({'success': False, 'error': 'ilap_id is required'}, status=400)
+
+    available_tikets = Tiket.objects.filter(
+        status__lt=6,
+        id_periode_data__id_sub_jenis_data_ilap__id_ilap_id=ilap_id
+    ).exclude(
+        id__in=DetilTandaTerima.objects.values_list('id_tiket_id', flat=True)
+    ).order_by('nomor_tiket')
+
+    data = [
+        {
+            'id': t.id,
+            'label': t.nomor_tiket or f"Tiket {t.id}"
+        }
+        for t in available_tikets
+    ]
+
+    return JsonResponse({'success': True, 'data': data})
+
+
 class TandaTerimaDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxFormMixin, CreateView):
     model = TandaTerimaData
     form_class = TandaTerimaDataForm
@@ -160,6 +204,18 @@ class TandaTerimaDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxF
             DetilTandaTerima.objects.create(
                 id_tanda_terima=self.object,
                 id_tiket=tiket
+            )
+
+            if tiket.status is None or tiket.status < 3:
+                tiket.status = 3
+                tiket.save(update_fields=['status'])
+
+            TiketAction.objects.create(
+                id_tiket=tiket,
+                id_user=self.request.user,
+                timestamp=timezone.now(),
+                action=3,
+                catatan='Tanda terima dibuat'
             )
         
         return response
@@ -268,6 +324,10 @@ class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxF
                 id_tiket=tiket
             )
 
+            if tiket.status is None or tiket.status < 3:
+                tiket.status = 3
+                tiket.save(update_fields=['status'])
+
             # Record tiket_action for audit trail
             TiketAction.objects.create(
                 id_tiket=tiket,
@@ -301,13 +361,15 @@ class TandaTerimaDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, Delet
     def delete(self, request, *args, **kwargs):
         self.object = self.get_object()
         name = str(self.object)
-        self.object.delete()
+        if self.object.active:
+            self.object.active = False
+            self.object.save(update_fields=['active'])
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': f'Tanda Terima Data "{name}" deleted successfully.'
+                'message': f'Tanda Terima Data "{name}" dibatalkan.'
             })
-        messages.success(request, f'Tanda Terima Data "{name}" deleted successfully.')
+        messages.success(request, f'Tanda Terima Data "{name}" dibatalkan.')
         return JsonResponse({'success': True, 'redirect': self.success_url})
 
     def post(self, request, *args, **kwargs):

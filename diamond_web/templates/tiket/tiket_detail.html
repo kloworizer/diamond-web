@@ -611,7 +611,7 @@
                     .then(response => response.text())
                     .then(html => {
                         formContainer.innerHTML = html;
-                        attachNomorTandaTerimaHandler(formContainer);
+                        attachTandaTerimaHandlers(formContainer);
 
                         // Handle form submission
                         const form = formContainer.querySelector('form');
@@ -636,7 +636,7 @@
                                         } else {
                                             // Handle form errors - the mixin returns 'html' not 'form_html'
                                             formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
-                                            attachNomorTandaTerimaHandler(formContainer);
+                                            attachTandaTerimaHandlers(formContainer);
                                         }
                                     })
                                     .catch(error => {
@@ -812,32 +812,70 @@
                 });
             }
 
-        function attachNomorTandaTerimaHandler(container) {
+        function attachTandaTerimaHandlers(container) {
             const tanggalInput = container.querySelector('#id_tanggal_tanda_terima');
             const nomorInput = container.querySelector('#id_nomor_tanda_terima');
-            if (!tanggalInput || !nomorInput) {
-                return;
+            const ilapInput = container.querySelector('#id_id_ilap');
+            const tiketContainer = container.querySelector('#tiket-checkbox-container');
+
+            if (tanggalInput && nomorInput) {
+                const updateNomor = () => {
+                    const tanggalValue = tanggalInput.value;
+                    if (!tanggalValue) {
+                        return;
+                    }
+
+                    fetch(`{% url "tanda_terima_next_number" %}?tanggal=${encodeURIComponent(tanggalValue)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data && data.success && data.nomor_tanda_terima) {
+                                nomorInput.value = data.nomor_tanda_terima;
+                            }
+                        })
+                        .catch(() => {
+                            // ignore
+                        });
+                };
+
+                tanggalInput.addEventListener('change', updateNomor);
             }
 
-            const updateNomor = () => {
-                const tanggalValue = tanggalInput.value;
-                if (!tanggalValue) {
-                    return;
-                }
+            if (ilapInput && tiketContainer && !ilapInput.disabled) {
+                const renderTikets = (items) => {
+                    if (!items || items.length === 0) {
+                        tiketContainer.innerHTML = '<div class="text-muted">Tidak ada tiket tersedia.</div>';
+                        return;
+                    }
+                    tiketContainer.innerHTML = items.map((item) => {
+                        return `
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="tiket_ids" value="${item.id}" id="tiket-${item.id}">
+                                <label class="form-check-label" for="tiket-${item.id}">${item.label}</label>
+                            </div>
+                        `;
+                    }).join('');
+                };
 
-                fetch(`{% url "tanda_terima_next_number" %}?tanggal=${encodeURIComponent(tanggalValue)}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data && data.success && data.nomor_tanda_terima) {
-                            nomorInput.value = data.nomor_tanda_terima;
-                        }
-                    })
-                    .catch(() => {
-                        // ignore
-                    });
-            };
+                const loadTiketsByIlap = () => {
+                    const ilapId = ilapInput.value;
+                    if (!ilapId) {
+                        tiketContainer.innerHTML = '<div class="text-muted">Pilih ILAP terlebih dahulu.</div>';
+                        return;
+                    }
+                    fetch(`{% url "tanda_terima_tikets_by_ilap" %}?ilap_id=${encodeURIComponent(ilapId)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data && data.success) {
+                                renderTikets(data.data || []);
+                            }
+                        })
+                        .catch(() => {
+                            // ignore
+                        });
+                };
 
-            tanggalInput.addEventListener('change', updateNomor);
+                ilapInput.addEventListener('change', loadTiketsByIlap);
+            }
         }
     });
 </script>

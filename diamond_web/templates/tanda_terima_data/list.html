@@ -16,6 +16,7 @@
                 <th>ILAP</th>
                 <th>Deskripsi</th>
                 <th>Perekam</th>
+                <th>Status</th>
                 <th>Actions</th>
             </tr>
             <tr id="column-search-row">
@@ -24,6 +25,7 @@
                 <th><input type="text" class="form-control form-control-sm" placeholder="Search ILAP" data-column="2" /></th>
                 <th><input type="text" class="form-control form-control-sm" placeholder="Search Deskripsi" data-column="3" /></th>
                 <th><input type="text" class="form-control form-control-sm" placeholder="Search Perekam" data-column="4" /></th>
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search Status" data-column="5" /></th>
                 <th></th>
             </tr>
         </thead>
@@ -79,10 +81,11 @@
                     { data: 'id_ilap' },
                     { data: 'deskripsi' },
                     { data: 'id_perekam' },
+                    { data: 'status' },
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [
-                    { targets: 5, render: function (data, type, row, meta) { return data; } }
+                    { targets: 6, render: function (data, type, row, meta) { return data; } }
                 ],
                 order: [[1, 'desc']]
             });
@@ -165,6 +168,7 @@
                 data: { ajax: '1' },
                 success: function (response) {
                     $('#modalBody').html(response.html || response);
+                    initTandaTerimaForm(document.getElementById('modalBody'));
                 },
                 error: function () {
                     $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');
@@ -174,6 +178,75 @@
 
         function showAlert(type, message) {
             showToast(type === 'success' ? 'Success' : 'Error', message, type);
+        }
+
+        function initTandaTerimaForm(container) {
+            if (!container) {
+                return;
+            }
+            const tanggalInput = container.querySelector('#id_tanggal_tanda_terima');
+            const nomorInput = container.querySelector('#id_nomor_tanda_terima');
+            const ilapInput = container.querySelector('#id_id_ilap');
+            const tiketContainer = container.querySelector('#tiket-checkbox-container');
+
+            if (tanggalInput && nomorInput) {
+                const updateNomor = () => {
+                    const tanggalValue = tanggalInput.value;
+                    if (!tanggalValue) {
+                        return;
+                    }
+
+                    fetch(`{% url "tanda_terima_next_number" %}?tanggal=${encodeURIComponent(tanggalValue)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data && data.success && data.nomor_tanda_terima) {
+                                nomorInput.value = data.nomor_tanda_terima;
+                            }
+                        })
+                        .catch(() => {
+                            // ignore
+                        });
+                };
+
+                tanggalInput.addEventListener('change', updateNomor);
+            }
+
+            if (ilapInput && tiketContainer && !ilapInput.disabled) {
+                const renderTikets = (items) => {
+                    if (!items || items.length === 0) {
+                        tiketContainer.innerHTML = '<div class="text-muted">Tidak ada tiket tersedia.</div>';
+                        return;
+                    }
+                    tiketContainer.innerHTML = items.map((item) => {
+                        return `
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="tiket_ids" value="${item.id}" id="tiket-${item.id}">
+                                <label class="form-check-label" for="tiket-${item.id}">${item.label}</label>
+                            </div>
+                        `;
+                    }).join('');
+                };
+
+                const loadTiketsByIlap = () => {
+                    const ilapId = ilapInput.value;
+                    if (!ilapId) {
+                        tiketContainer.innerHTML = '<div class="text-muted">Pilih ILAP terlebih dahulu.</div>';
+                        return;
+                    }
+                    fetch(`{% url "tanda_terima_tikets_by_ilap" %}?ilap_id=${encodeURIComponent(ilapId)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data && data.success) {
+                                renderTikets(data.data || []);
+                            }
+                        })
+                        .catch(() => {
+                            // ignore
+                        });
+                };
+
+                ilapInput.addEventListener('change', loadTiketsByIlap);
+            }
         }
     })();
 </script>
