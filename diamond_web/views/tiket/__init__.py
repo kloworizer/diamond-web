@@ -2,7 +2,8 @@
 from .list import TiketListView, tiket_data
 from .rekam_tiket import (
     TiketRekamCreateView,
-    ILAPPeriodeDataAPIView
+    ILAPPeriodeDataAPIView,
+    CheckJenisPrioritasAPIView
 )
 from .detail import TiketDetailView
 from .rekam_hasil_penelitian import RekamHasilPenelitianView
@@ -19,6 +20,7 @@ __all__ = [
     'TiketDetailView',
     'TiketRekamCreateView',
     'ILAPPeriodeDataAPIView',
+    'CheckJenisPrioritasAPIView',
     'RekamHasilPenelitianView',
     'BatalkanTiketView',
     'KirimTiketView',
