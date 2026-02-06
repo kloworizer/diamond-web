@@ -184,28 +184,18 @@
                         </div>
                         <div class="col-md-6">
                             <div class="info-group">
-                                <label class="text-muted small mb-1">Jenis Prioritas</label>
-                                <p class="fw-semibold mb-0">
-                                    {% if ilap_info.jenis_prioritas == 'Ya' %}
-                                    <span class="badge bg-success">Ya</span>
-                                    {% else %}
-                                    <span class="badge bg-secondary">Tidak</span>
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-                        {% if ilap_info.klasifikasi %}
-                        <div class="col-12">
-                            <div class="info-group">
                                 <label class="text-muted small mb-1">Klasifikasi</label>
+                                {% if ilap_info.klasifikasi %}
                                 <div class="d-flex flex-wrap gap-2">
                                     {% for klas in ilap_info.klasifikasi %}
                                     <span class="badge bg-info">{{ klas }}</span>
                                     {% endfor %}
                                 </div>
+                                {% else %}
+                                <p class="fw-semibold mb-0">-</p>
+                                {% endif %}
                             </div>
                         </div>
-                        {% endif %}
                     </div>
                 </div>
             </div>
