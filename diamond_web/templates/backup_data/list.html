@@ -19,17 +19,15 @@
     <table id="backup-data-table" class="table table-striped" style="width:100%">
         <thead>
             <tr>
+                <th class="d-none">ID</th>
                 <th>No Tiket</th>
                 <th>Lokasi Backup</th>
-                <th>User Perekam</th>
                 <th>Actions</th>
             </tr>
             <tr id="column-search-row">
-                <th><input type="text" class="form-control form-control-sm" placeholder="Search No Tiket" data-column="0" />
-                </th>
-                <th><input type="text" class="form-control form-control-sm" placeholder="Search Lokasi" data-column="1" />
-                </th>
-                <th><input type="text" class="form-control form-control-sm" placeholder="Search User" data-column="2" /></th>
+                <th class="d-none"></th>
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search No Tiket" data-column="1" /></th>
+                <th><input type="text" class="form-control form-control-sm" placeholder="Search Lokasi" data-column="2" /></th>
                 <th></th>
             </tr>
         </thead>
@@ -80,9 +78,9 @@
                 },
                 pageLength: 10,
                 columns: [
+                    { data: 'id', visible: false, searchable: false },
                     { data: 'no_tiket' },
                     { data: 'lokasi_backup' },
-                    { data: 'user' },
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [
