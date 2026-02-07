@@ -16,8 +16,7 @@ class DetilTandaTerima(models.Model):
         Tiket,
         on_delete=models.CASCADE,
         db_column="id_tiket",
-        verbose_name="Tiket",
-        unique=True
+        verbose_name="Tiket"
     )
 
     class Meta:

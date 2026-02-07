@@ -40,7 +40,7 @@
         <tbody></tbody>
     </table>
 
-    <!-- Modal for Create/Edit/Delete -->
+    <!-- Modal for Create/Edit/Batalkan -->
     <div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -123,7 +123,7 @@
                 loadModal('{% url "tanda_terima_data_create" %}', 'Tambah Tanda Terima Data');
             });
 
-            // Handle edit/delete buttons (delegated event)
+            // Handle edit/batalkan buttons (delegated event)
             $(document).on('click', '[data-action="edit"]', function (e) {
                 e.preventDefault();
                 const url = $(this).data('url');
@@ -133,7 +133,7 @@
             $(document).on('click', '[data-action="delete"]', function (e) {
                 e.preventDefault();
                 const url = $(this).data('url');
-                loadModal(url, 'Hapus Tanda Terima Data');
+                loadModal(url, 'Batalkan Tanda Terima Data');
             });
 
             // Handle form submission
@@ -186,7 +186,7 @@
                     },
                     error: function (xhr) {
                         const message = xhr.responseText || 'Terjadi kesalahan. Silakan coba lagi.';
-                        showAlert('danger', message);
+                        showAlert('warning', message);
                     }
                 });
             });
@@ -206,7 +206,7 @@
                     initTandaTerimaForm(document.getElementById('modalBody'));
                 },
                 error: function () {
-                    $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');
+                    $('#modalBody').html('<div class="alert alert-warning">Gagal memuat form.</div>');
                 }
             });
         }

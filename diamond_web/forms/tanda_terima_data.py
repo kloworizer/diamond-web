@@ -91,17 +91,19 @@ class TandaTerimaDataForm(forms.ModelForm):
                 ).first()
 
             if ilap_id:
-                used_tiket_ids = set(DetilTandaTerima.objects.exclude(
-                    id_tanda_terima_id=self.instance.pk
-                ).values_list('id_tiket_id', flat=True))
-                
+                # Only exclude tiket linked to an active tanda terima FOR THIS ILAP
+                used_tiket_ids = set(DetilTandaTerima.objects.filter(
+                    id_tanda_terima__active=True,
+                    id_tanda_terima__id_ilap_id=ilap_id
+                ).exclude(id_tanda_terima_id=self.instance.pk).values_list('id_tiket_id', flat=True))
+
                 available_qs = Tiket.objects.filter(
                     status__lt=6,
                     id_periode_data__id_sub_jenis_data_ilap__id_ilap_id=ilap_id
                 ).exclude(id__in=used_tiket_ids)
-                
+
                 existing_qs = Tiket.objects.filter(id__in=self._existing_tiket_ids)
-                
+
                 # SET QUERYSET FIRST before initial!
                 self.fields['tiket_ids'].queryset = (available_qs | existing_qs).distinct()
             else:
@@ -114,10 +116,14 @@ class TandaTerimaDataForm(forms.ModelForm):
             self._disabled_tiket_ids |= self._existing_tiket_ids
         else:
             # Create flow: limit ILAP to those with available tikets
+            # Only exclude tiket linked to an active tanda terima (active=1)
+            active_tanda_terima_ids = TandaTerimaData.objects.filter(active=True).values_list('id', flat=True)
             available_tiket_ids = Tiket.objects.filter(
                 status__lt=6
             ).exclude(
-                id__in=DetilTandaTerima.objects.values_list('id_tiket_id', flat=True)
+                id__in=DetilTandaTerima.objects.filter(
+                    id_tanda_terima_id__in=active_tanda_terima_ids
+                ).values_list('id_tiket_id', flat=True)
             ).values_list('id', flat=True)
             ilap_ids = ILAP.objects.filter(
                 jenisdatailap__periodejenisdata__tiket__id__in=available_tiket_ids
@@ -132,11 +138,15 @@ class TandaTerimaDataForm(forms.ModelForm):
             # Bind tiket list to selected ILAP when form is bound
             selected_ilap = self.data.get('id_ilap') if self.is_bound else None
             if selected_ilap:
+                # Only exclude tiket linked to an active tanda terima FOR THIS ILAP
                 tiket_qs = Tiket.objects.filter(
                     status__lt=6,
                     id_periode_data__id_sub_jenis_data_ilap__id_ilap_id=selected_ilap
                 ).exclude(
-                    id__in=DetilTandaTerima.objects.values_list('id_tiket_id', flat=True)
+                    id__in=DetilTandaTerima.objects.filter(
+                        id_tanda_terima__active=True,
+                        id_tanda_terima__id_ilap_id=selected_ilap
+                    ).values_list('id_tiket_id', flat=True)
                 )
                 if self.user and not (self.user.is_superuser or self.user.groups.filter(name='admin').exists()):
                     tiket_qs = tiket_qs.filter(
@@ -175,10 +185,19 @@ class TandaTerimaDataForm(forms.ModelForm):
         if not tiket_ids:
             raise ValidationError('Minimal satu tiket harus dipilih.')
 
-        # Get available tikets (exclude those already used in OTHER tanda terimas)
-        other_tanda_terima_tikets = DetilTandaTerima.objects.exclude(
-            id_tanda_terima=self.instance
-        ).values_list('id_tiket_id', flat=True)
+        # Get available tikets (exclude those already used in OTHER active tanda terimas)
+        # Only exclude tiket from active tanda terima for the same ILAP
+        ilap_id = self.cleaned_data.get('id_ilap')
+        if self.instance.pk:
+            other_tanda_terima_tikets = DetilTandaTerima.objects.filter(
+                id_tanda_terima__active=True,
+                id_tanda_terima__id_ilap_id=ilap_id
+            ).exclude(id_tanda_terima=self.instance).values_list('id_tiket_id', flat=True)
+        else:
+            other_tanda_terima_tikets = DetilTandaTerima.objects.filter(
+                id_tanda_terima__active=True,
+                id_tanda_terima__id_ilap_id=ilap_id
+            ).values_list('id_tiket_id', flat=True)
         
         available_ids = set(
             Tiket.objects.filter(status__lt=6)

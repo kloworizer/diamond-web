@@ -159,7 +159,7 @@ def tanda_terima_next_number(request):
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
 @require_GET
 def tanda_terima_tikets_by_ilap(request):
-    """Return available tikets for a given ILAP (status < 6 and not assigned to other tanda terima)."""
+    """Return available tikets for a given ILAP (status < 6 and not assigned to active tanda terima for that ILAP)."""
     ilap_id = request.GET.get('ilap_id')
     tanda_terima_id = request.GET.get('tanda_terima_id')  # Optional, for edit mode
     
@@ -177,9 +177,12 @@ def tanda_terima_tikets_by_ilap(request):
         except (ValueError, TypeError):
             pass
 
-    # Get tikets assigned to OTHER tanda terima (exclude current one if editing)
+    # Get tikets assigned to active tanda terima for THIS ILAP (exclude current one if editing)
     other_assigned_tiket_ids = set(
-        DetilTandaTerima.objects.exclude(
+        DetilTandaTerima.objects.filter(
+            id_tanda_terima__active=True,
+            id_tanda_terima__id_ilap_id=ilap_id
+        ).exclude(
             id_tanda_terima_id=tanda_terima_id
         ).values_list('id_tiket_id', flat=True)
     )
@@ -433,11 +436,24 @@ class TandaTerimaDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, Delet
         return self.render_to_response(self.get_context_data())
 
     def delete(self, request, *args, **kwargs):
+        from django.utils import timezone
         self.object = self.get_object()
         name = str(self.object)
         if self.object.active:
             self.object.active = False
             self.object.save(update_fields=['active'])
+
+            # Add TiketAction for all tiket in this tanda terima
+            detil_items = self.object.detil_items.select_related('id_tiket').all()
+            for detil in detil_items:
+                TiketAction.objects.create(
+                    id_tiket=detil.id_tiket,
+                    id_user=request.user,
+                    timestamp=timezone.now(),
+                    action=3,
+                    catatan='Tanda terima dibatalkan'
+                )
+
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
