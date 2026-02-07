@@ -97,15 +97,14 @@ def tanda_terima_data_data(request):
         can_edit = obj.detil_items.filter(
             Q(id_tiket__status__lt=6) | Q(id_tiket__status__isnull=True)
         ).exists()
-        actions_html = (
-            f"<button class='btn btn-sm btn-info me-1' data-action='view' data-url='{reverse('tanda_terima_data_view', args=[obj.pk])}' title='Detail'><i class='ri-eye-line'></i></button>"
-            f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('tanda_terima_data_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
-        )
-        if obj.active is not False and can_edit:
-            actions_html += (
-                f"<button class='btn btn-sm btn-warning' data-action='delete' data-url='{reverse('tanda_terima_data_delete', args=[obj.pk])}' title='Batalkan'><i class='ri-close-circle-line'></i></button>"
-            )
+        actions_html = f"<button class='btn btn-sm btn-info me-1' data-action='view' data-url='{reverse('tanda_terima_data_view', args=[obj.pk])}' title='Detail'><i class='ri-eye-line'></i></button>"
+        # Hide edit button if tanda terima is dibatalkan
+        if obj.active:
+            actions_html += f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('tanda_terima_data_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
+        if obj.active and can_edit:
+            actions_html += f"<button class='btn btn-sm btn-warning' data-action='delete' data-url='{reverse('tanda_terima_data_delete', args=[obj.pk])}' title='Batalkan'><i class='ri-close-circle-line'></i></button>"
         data.append({
+            'id': obj.pk,
             'nomor_tanda_terima': obj.nomor_tanda_terima,
             'tanggal_tanda_terima': obj.tanggal_tanda_terima.strftime('%Y-%m-%d %H:%M'),
             'id_ilap': str(obj.id_ilap),
@@ -351,6 +350,9 @@ class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxF
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
+        # Prevent edit if any tiket in this tanda terima is dibatalkan
+        if not self.object.active or self.object.detil_items.filter(id_tiket__status__gte=6).exists():
+            return JsonResponse({'success': False, 'message': 'Tanda terima atau tiket sudah dibatalkan, tidak dapat diedit.', 'html': '<div class="alert alert-warning">Tanda terima atau tiket sudah dibatalkan, tidak dapat diedit.</div>'})
         form = self.get_form()
         return self.render_form_response(form)
     

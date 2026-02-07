@@ -366,41 +366,30 @@
                 </div>
                 <div class="card-body">
                         {% if tiket.status < 6 %}
-                        {% if not backup_list and not tanda_terima_items %}
                             <div class="d-grid gap-2">
-                                <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#rekamBackupDataModal">
-                                    <i class="ri-save-line me-1"></i>Rekam Backup Data
-                                </button>
-                                <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#createTandaTerimaModal">
-                                    <i class="ri-file-list-2-line me-1"></i>Buat Tanda Terima
-                                </button>
-                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
-                                    <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
-                                </button>
-                            </div>
-                        {% elif not backup_list %}
-                            <div class="d-grid gap-2">
-                                <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#rekamBackupDataModal">
-                                    <i class="ri-save-line me-1"></i>Rekam Backup Data
-                                </button>
-                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
-                                    <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
-                                </button>
-                            </div>
-                        {% elif not tanda_terima_items %}
-                            <div class="d-grid gap-2">
-                                <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#createTandaTerimaModal">
-                                    <i class="ri-file-list-2-line me-1"></i>Buat Tanda Terima
-                                </button>
-                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
-                                    <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
-                                </button>
-                            </div>
-                            {% elif backup_list and tanda_terima_items %}
-                            <div class="d-grid gap-2">
-                                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rekamHasilPenelitianModal" data-action="edit">
-                                    <i class="ri-file-edit-line me-1"></i>{% if tiket.tgl_teliti %}Ubah Hasil Penelitian{% else %}Rekam Hasil Penelitian{% endif %}
-                                </button>
+                                {% if not backup_list %}
+                                    <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#rekamBackupDataModal">
+                                        <i class="ri-save-line me-1"></i>Rekam Backup Data
+                                    </button>
+                                {% endif %}
+                                {% if tanda_terima_items %}
+                                    {% with last_item=tanda_terima_items|dictsort:'id_tanda_terima.active'|last %}
+                                        {% if not last_item.id_tanda_terima.active %}
+                                            <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#createTandaTerimaModal">
+                                                <i class="ri-file-list-2-line me-1"></i>Buat Tanda Terima
+                                            </button>
+                                        {% endif %}
+                                        {% if backup_list and last_item.id_tanda_terima.active %}
+                                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rekamHasilPenelitianModal" data-action="edit">
+                                                <i class="ri-file-edit-line me-1"></i>{% if tiket.tgl_teliti %}Ubah Hasil Penelitian{% else %}Rekam Hasil Penelitian{% endif %}
+                                            </button>
+                                        {% endif %}
+                                    {% endwith %}
+                                {% else %}
+                                    <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#createTandaTerimaModal">
+                                        <i class="ri-file-list-2-line me-1"></i>Buat Tanda Terima
+                                    </button>
+                                {% endif %}
                                 {% if tiket.status == 4 %}
                                     <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#kirimTiketModal">
                                         <i class="ri-send-plane-line me-1"></i>Kirim Tiket ke PIDE
@@ -415,11 +404,6 @@
                                 <i class="ri-information-line me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
                             </div>
                         {% endif %}
-                    {% else %}
-                        <div class="text-center text-muted py-2">
-                            <i class="ri-information-line me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
-                        </div>
-                    {% endif %}
                 </div>
             </div>
         </div>

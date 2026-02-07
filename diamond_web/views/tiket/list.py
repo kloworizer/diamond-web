@@ -73,12 +73,43 @@ def tiket_data(request):
 
     data = []
     for obj in qs_page:
+        # Get nama_ilap and nama_sub_jenis_data from related models
+        nama_ilap = '-'
+        nama_sub_jenis_data = '-'
+        if obj.id_periode_data and obj.id_periode_data.id_sub_jenis_data_ilap:
+            jenis_data_ilap = obj.id_periode_data.id_sub_jenis_data_ilap
+            if jenis_data_ilap.id_ilap:
+                nama_ilap = jenis_data_ilap.id_ilap.nama_ilap
+            nama_sub_jenis_data = jenis_data_ilap.nama_sub_jenis_data
+
+        # Format periode (e.g. Januari 2026, Semester 1 2026)
+        periode_formatted = '-'
+        if obj.id_periode_data and obj.id_periode_data.id_periode_pengiriman:
+            periode_desc = obj.id_periode_data.id_periode_pengiriman.deskripsi
+            tahun = str(obj.tahun) if obj.tahun else '-'
+            if periode_desc.lower() == 'bulanan' and obj.periode:
+                # Map periode number to month name
+                bulan_map = {
+                    1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni',
+                    7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
+                }
+                bulan = bulan_map.get(obj.periode, f'Bulan {obj.periode}')
+                periode_formatted = f"{bulan} {tahun}"
+            elif 'semester' in periode_desc.lower() and obj.periode:
+                periode_formatted = f"Semester {obj.periode} {tahun}"
+            elif 'triwulan' in periode_desc.lower() and obj.periode:
+                periode_formatted = f"Triwulan {obj.periode} {tahun}"
+            elif 'mingguan' in periode_desc.lower() and obj.periode:
+                periode_formatted = f"Minggu {obj.periode} {tahun}"
+            else:
+                periode_formatted = f"{periode_desc} {tahun}"
+
         data.append({
             'id': obj.id,
             'nomor_tiket': obj.nomor_tiket or '-',
-            'periode_jenis_data': str(obj.id_periode_data) if obj.id_periode_data else '-',
-            'periode': str(obj.periode) if obj.periode else '-',
-            'tahun': str(obj.tahun) if obj.tahun else '-',
+            'nama_ilap': nama_ilap,
+            'nama_sub_jenis_data': nama_sub_jenis_data,
+            'periode_formatted': periode_formatted,
             'status': STATUS_LABELS.get(obj.status, '-'),
             'actions': f"<a href='{reverse('tiket_detail', args=[obj.pk])}' class='btn btn-sm btn-info' title='View'><i class='ri-eye-line'></i></a>"
         })
