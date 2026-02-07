@@ -67,6 +67,20 @@ def has_active_tiket_pic(user):
     return TiketPIC.objects.filter(id_user=user, active=True).exists()
 
 
+def get_active_p3de_ilap_ids(user):
+    if not user or not user.is_authenticated:
+        return []
+    return TiketPIC.objects.filter(
+        id_user=user,
+        active=True,
+        role=TiketPIC.Role.P3DE,
+        id_tiket__id_periode_data__id_sub_jenis_data_ilap__id_ilap__isnull=False
+    ).values_list(
+        'id_tiket__id_periode_data__id_sub_jenis_data_ilap__id_ilap_id',
+        flat=True
+    ).distinct()
+
+
 def can_access_tiket_list(user):
     if not user or not user.is_authenticated:
         return False

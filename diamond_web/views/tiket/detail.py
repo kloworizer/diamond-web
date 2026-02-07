@@ -1,16 +1,18 @@
 """Tiket Detail View"""
 
+from django.views.generic import DetailView
+from django.contrib.auth.mixins import LoginRequiredMixin
+
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
 from ...models.tiket_pic import TiketPIC
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ...models.detil_tanda_terima import DetilTandaTerima
 from ...constants.tiket_status import STATUS_LABELS, STATUS_BADGE_CLASSES
-from .base import WorkflowStepDetailView
 from ..mixins import ActiveTiketPICRequiredMixin
 
 
-class TiketDetailView(ActiveTiketPICRequiredMixin, WorkflowStepDetailView):
+class TiketDetailView(LoginRequiredMixin, ActiveTiketPICRequiredMixin, DetailView):
     """Detail view for viewing a tiket."""
     model = Tiket
     template_name = 'tiket/tiket_detail.html'

@@ -4,7 +4,7 @@ from django.contrib.auth.models import Group
 from ..models.tiket import Tiket
 from ..models.periode_jenis_data import PeriodeJenisData
 from ..models.ilap import ILAP
-from ..models.pic import PIC
+from ..views.mixins import get_active_p3de_ilap_ids
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from datetime import datetime
 
@@ -48,17 +48,15 @@ class TiketForm(forms.ModelForm):
         # 3. Active PMDE durasi
         from ..models.jenis_data_ilap import JenisDataILAP
         
-        # JenisData with PIC P3DE (restricted to current user if not admin)
+        # JenisData with active P3DE PIC assignments (restricted to current user if not admin)
         if self.user and (self.user.is_superuser or self.user.groups.filter(name='admin').exists()):
             jenis_data_with_pic = JenisDataILAP.objects.values_list(
                 'id_sub_jenis_data', flat=True
             ).distinct()
         else:
+            allowed_ilap_ids = set(get_active_p3de_ilap_ids(self.user))
             jenis_data_with_pic = JenisDataILAP.objects.filter(
-                pic__tipe=PIC.TipePIC.P3DE,
-                pic__start_date__lte=today,
-                pic__end_date__isnull=True,
-                pic__id_user=self.user
+                id_ilap_id__in=allowed_ilap_ids
             ).values_list('id_sub_jenis_data', flat=True).distinct()
         
         # JenisData with active PIDE durasi

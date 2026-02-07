@@ -1,6 +1,6 @@
-<form method="post" action="{{ form_action }}">
+<form method="post" action="{{ form_action }}" {% if tanda_terima_id %}data-tanda-terima-id="{{ tanda_terima_id }}"{% endif %}>
     {% csrf_token %}
-    <div class="modal-body">
+    <div class="modal-body" {% if tanda_terima_id %}data-tanda-terima-id="{{ tanda_terima_id }}"{% endif %}>
         {% if form.non_field_errors %}
             <div class="alert alert-danger mb-3">
                 {% for error in form.non_field_errors %}
@@ -99,79 +99,3 @@
         </button>
     </div>
 </form>
-
-<script>
-    (function () {
-        const tanggalInput = document.getElementById('id_tanggal_tanda_terima');
-        const nomorInput = document.getElementById('id_nomor_tanda_terima');
-        const ilapInput = document.getElementById('id_id_ilap');
-        const tiketContainer = document.getElementById('tiket-checkbox-container');
-
-        if (!tanggalInput || !nomorInput) {
-            return;
-        }
-
-        const updateNomor = () => {
-            const tanggalValue = tanggalInput.value;
-            if (!tanggalValue) {
-                return;
-            }
-
-            fetch(`{% url "tanda_terima_next_number" %}?tanggal=${encodeURIComponent(tanggalValue)}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data && data.success && data.nomor_tanda_terima) {
-                        nomorInput.value = data.nomor_tanda_terima;
-                    }
-                })
-                .catch(() => {
-                    // ignore
-                });
-        };
-
-        tanggalInput.addEventListener('change', updateNomor);
-
-        const renderTikets = (items) => {
-            if (!tiketContainer) {
-                return;
-            }
-            if (!items || items.length === 0) {
-                tiketContainer.innerHTML = '<div class="text-muted">Tidak ada tiket tersedia.</div>';
-                return;
-            }
-            tiketContainer.innerHTML = items.map((item) => {
-                return `
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="tiket_ids" value="${item.id}" id="tiket-${item.id}">
-                        <label class="form-check-label" for="tiket-${item.id}">${item.label}</label>
-                    </div>
-                `;
-            }).join('');
-        };
-
-        const loadTiketsByIlap = () => {
-            if (!ilapInput || !tiketContainer) {
-                return;
-            }
-            const ilapId = ilapInput.value;
-            if (!ilapId) {
-                tiketContainer.innerHTML = '<div class="text-muted">Pilih ILAP terlebih dahulu.</div>';
-                return;
-            }
-            fetch(`{% url "tanda_terima_tikets_by_ilap" %}?ilap_id=${encodeURIComponent(ilapId)}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data && data.success) {
-                        renderTikets(data.data || []);
-                    }
-                })
-                .catch(() => {
-                    // ignore
-                });
-        };
-
-        if (ilapInput && !ilapInput.disabled) {
-            ilapInput.addEventListener('change', loadTiketsByIlap);
-        }
-    })();
-</script>

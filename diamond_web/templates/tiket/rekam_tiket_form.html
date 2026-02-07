@@ -296,6 +296,7 @@
         const periodeDataSelect = document.getElementById('id_periode_data');
         const periodeSelect = document.getElementById('id_periode');
         const tahunSelect = document.getElementById('id_tahun');
+        const duplicateModalEl = document.getElementById('duplicateTiketModal');
 
         const checkTiketExists = () => {
             if (!periodeDataSelect || !periodeSelect || !tahunSelect) {
@@ -320,6 +321,9 @@
                                 const nomorText = nomorList.length ? ` Nomor tiket: ${nomorList.join(', ')}` : '';
                                 modalBody.textContent = `Tiket sudah ada untuk jenis data, periode, dan tahun ini.${nomorText}`;
                             }
+                            modalEl.removeAttribute('aria-hidden');
+                            modalEl.setAttribute('aria-hidden', 'false');
+                            modalEl.inert = false;
                             const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
                             modal.show();
                         }
@@ -338,6 +342,26 @@
         }
         if (tahunSelect) {
             tahunSelect.addEventListener('change', checkTiketExists);
+        }
+
+        if (duplicateModalEl) {
+            duplicateModalEl.addEventListener('show.bs.modal', function () {
+                duplicateModalEl.removeAttribute('aria-hidden');
+                duplicateModalEl.inert = false;
+            });
+            duplicateModalEl.addEventListener('shown.bs.modal', function () {
+                const button = duplicateModalEl.querySelector('.modal-footer button');
+                if (button) {
+                    button.focus();
+                }
+            });
+            duplicateModalEl.addEventListener('hidden.bs.modal', function () {
+                if (duplicateModalEl.contains(document.activeElement)) {
+                    document.activeElement.blur();
+                }
+                duplicateModalEl.setAttribute('aria-hidden', 'true');
+                duplicateModalEl.inert = true;
+            });
         }
     })();
 </script>

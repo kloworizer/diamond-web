@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import CreateView, UpdateView, DeleteView, TemplateView
 from django.contrib import messages
 from urllib.parse import quote_plus, unquote_plus
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseRedirect
 from django.views.decorators.http import require_GET
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils import timezone
@@ -159,22 +159,45 @@ def tanda_terima_next_number(request):
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
 @require_GET
 def tanda_terima_tikets_by_ilap(request):
-    """Return available tikets for a given ILAP (status < 6 and not assigned)."""
+    """Return available tikets for a given ILAP (status < 6 and not assigned to other tanda terima)."""
     ilap_id = request.GET.get('ilap_id')
+    tanda_terima_id = request.GET.get('tanda_terima_id')  # Optional, for edit mode
+    
     if not ilap_id:
         return JsonResponse({'success': False, 'error': 'ilap_id is required'}, status=400)
 
+    # Get existing tikets if editing
+    existing_tiket_ids = set()
+    if tanda_terima_id:
+        try:
+            existing_tiket_ids = set(
+                DetilTandaTerima.objects.filter(id_tanda_terima_id=int(tanda_terima_id))
+                .values_list('id_tiket_id', flat=True)
+            )
+        except (ValueError, TypeError):
+            pass
+
+    # Get tikets assigned to OTHER tanda terima (exclude current one if editing)
+    other_assigned_tiket_ids = set(
+        DetilTandaTerima.objects.exclude(
+            id_tanda_terima_id=tanda_terima_id
+        ).values_list('id_tiket_id', flat=True)
+    )
+
+    # Get available tikets
     available_tikets = Tiket.objects.filter(
         status__lt=6,
         id_periode_data__id_sub_jenis_data_ilap__id_ilap_id=ilap_id
     ).exclude(
-        id__in=DetilTandaTerima.objects.values_list('id_tiket_id', flat=True)
+        id__in=other_assigned_tiket_ids
     ).order_by('nomor_tiket')
 
     data = [
         {
             'id': t.id,
-            'label': t.nomor_tiket or f"Tiket {t.id}"
+            'label': t.nomor_tiket or f"Tiket {t.id}",
+            'selected': t.id in existing_tiket_ids,
+            'disabled': t.id in existing_tiket_ids  # Disable existing tikets
         }
         for t in available_tikets
     ]
@@ -245,6 +268,7 @@ class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMix
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['tiket_pk'] = self.kwargs.get('tiket_pk')
+        kwargs['user'] = self.request.user
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -309,9 +333,15 @@ class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxF
     success_url = reverse_lazy('tanda_terima_data_list')
     success_message = 'Tanda Terima Data "{object}" updated successfully.'
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('tanda_terima_data_update', args=[self.object.pk])
+        context['tanda_terima_id'] = self.object.pk  # Pass ID for edit mode
         return context
 
     def get(self, request, *args, **kwargs):
@@ -320,35 +350,68 @@ class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxF
         return self.render_form_response(form)
     
     def form_valid(self, form):
-        response = super().form_valid(form)
+        # Save the form first (this is done by the parent UpdateView)
+        self.object = form.save()
         
-        # Update tiket selections
-        tiket_ids = form.cleaned_data.get('tiket_ids', [])
-        
-        # Delete existing detil items
-        DetilTandaTerima.objects.filter(id_tanda_terima=self.object).delete()
-        
-        # Create new detil items
-        for tiket in tiket_ids:
-            DetilTandaTerima.objects.create(
-                id_tanda_terima=self.object,
-                id_tiket=tiket
+        try:
+            # Update tiket selections
+            tiket_ids = form.cleaned_data.get('tiket_ids', [])
+            
+            # Get existing tiket IDs before deletion
+            existing_tiket_ids = set(
+                DetilTandaTerima.objects.filter(id_tanda_terima=self.object)
+                .values_list('id_tiket_id', flat=True)
             )
+            
+            # Delete existing detil items
+            DetilTandaTerima.objects.filter(id_tanda_terima=self.object).delete()
+            
+            # Create new detil items and update tiket status
+            for tiket in tiket_ids:
+                DetilTandaTerima.objects.create(
+                    id_tanda_terima=self.object,
+                    id_tiket=tiket
+                )
 
-            if tiket.status is None or tiket.status < 3:
-                tiket.status = 3
-                tiket.save(update_fields=['status'])
+                # Update status and create action only for newly added tikets
+                is_new_tiket = tiket.id not in existing_tiket_ids
+                
+                if tiket.status is None or tiket.status < 3:
+                    tiket.status = 3
+                    tiket.save(update_fields=['status'])
 
-            # Record tiket_action for audit trail
-            TiketAction.objects.create(
-                id_tiket=tiket,
-                id_user=self.request.user,
-                timestamp=timezone.now(),
-                action=3,
-                catatan='Tanda terima diubah'
-            )
-        
-        return response
+                # Record tiket_action for audit trail (only for newly added tikets)
+                if is_new_tiket:
+                    TiketAction.objects.create(
+                        id_tiket=tiket,
+                        id_user=self.request.user,
+                        timestamp=timezone.now(),
+                        action=3,
+                        catatan='Tanda terima dibuat'
+                    )
+            
+            # Return AJAX response
+            message = self.get_success_message(form)
+            if self.is_ajax():
+                payload = {"success": True}
+                if message:
+                    payload["message"] = message
+                return JsonResponse(payload)
+            
+            # Return non-AJAX response
+            messages.success(self.request, message)
+            return HttpResponseRedirect(self.get_success_url())
+            
+        except Exception as e:
+            # Return error response
+            if self.is_ajax():
+                return JsonResponse({
+                    'success': False,
+                    'message': str(e),
+                    'html': f'<div class="alert alert-danger"><strong>Error:</strong> {str(e)}</div>'
+                }, status=200)
+            else:
+                raise
 
 
 class TandaTerimaDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, DeleteView):

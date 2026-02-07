@@ -552,8 +552,32 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        const setupModalAria = (modalEl) => {
+            if (!modalEl) {
+                return;
+            }
+            modalEl.addEventListener('show.bs.modal', function () {
+                modalEl.removeAttribute('aria-hidden');
+                modalEl.inert = false;
+            });
+            modalEl.addEventListener('shown.bs.modal', function () {
+                const button = modalEl.querySelector('.modal-footer button');
+                if (button) {
+                    button.focus();
+                }
+            });
+            modalEl.addEventListener('hidden.bs.modal', function () {
+                if (modalEl.contains(document.activeElement)) {
+                    document.activeElement.blur();
+                }
+                modalEl.setAttribute('aria-hidden', 'true');
+                modalEl.inert = true;
+            });
+        };
+
         const rekamBackupDataModal = document.getElementById('rekamBackupDataModal');
         if (rekamBackupDataModal) {
+            setupModalAria(rekamBackupDataModal);
             rekamBackupDataModal.addEventListener('show.bs.modal', function () {
                 const formContainer = document.getElementById('backup-data-form-container');
                 formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-warning" role="status"><span class="visually-hidden">Loading...</span></div></div>';
@@ -603,6 +627,7 @@
 
         const tandaTerimaModal = document.getElementById('createTandaTerimaModal');
         if (tandaTerimaModal) {
+            setupModalAria(tandaTerimaModal);
             tandaTerimaModal.addEventListener('show.bs.modal', function () {
                 const formContainer = document.getElementById('tanda-terima-form-container');
                 formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
@@ -655,6 +680,7 @@
 
         const batalkanTiketModal = document.getElementById('batalkanTiketModal');
         if (batalkanTiketModal) {
+            setupModalAria(batalkanTiketModal);
             batalkanTiketModal.addEventListener('show.bs.modal', function () {
                 const formContainer = document.getElementById('batalkan-tiket-form-container');
                 formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-danger" role="status"><span class="visually-hidden">Loading...</span></div></div>';
@@ -709,6 +735,7 @@
 
         const rekamHasilPenelitianModal = document.getElementById('rekamHasilPenelitianModal');
         if (rekamHasilPenelitianModal) {
+            setupModalAria(rekamHasilPenelitianModal);
             rekamHasilPenelitianModal.addEventListener('show.bs.modal', function () {
                 const formContainer = document.getElementById('rekam-hasil-penelitian-form-container');
                 formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
@@ -762,6 +789,7 @@
 
             const kirimTiketModal = document.getElementById('kirimTiketModal');
             if (kirimTiketModal) {
+                setupModalAria(kirimTiketModal);
                 kirimTiketModal.addEventListener('show.bs.modal', function () {
                     const formContainer = document.getElementById('kirim-tiket-form-container');
                     formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-success" role="status"><span class="visually-hidden">Loading...</span></div></div>';

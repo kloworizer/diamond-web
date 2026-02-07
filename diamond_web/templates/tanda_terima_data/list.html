@@ -143,23 +143,50 @@
                 const url = form.attr('action');
                 const formData = new FormData(form[0]);
 
+                // Add disabled fields to FormData (they're not included by default)
+                // For checkbox groups, append values without deleting to preserve new selections
+                form.find('input:disabled, select:disabled, textarea:disabled').each(function () {
+                    const name = $(this).attr('name');
+                    if (!name) {
+                        return;
+                    }
+
+                    const $field = $(this);
+                    const value = $field.val();
+
+                    if ($field.is(':checkbox')) {
+                        if (this.checked) {
+                            formData.append(name, value);
+                        }
+                        return;
+                    }
+
+                    // Single-value fields: replace existing value
+                    formData.delete(name);
+                    formData.append(name, value);
+                });
+
                 $.ajax({
                     url: url,
                     type: 'POST',
                     data: formData,
                     processData: false,
                     contentType: false,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
                     success: function (response) {
                         if (response.success) {
                             $('#crudModal').modal('hide');
                             table.ajax.reload();
-                            showAlert('success', response.message);
+                            showAlert('success', response.message || 'Data saved successfully.');
                         } else {
                             $('#modalBody').html(response.html);
                         }
                     },
                     error: function (xhr) {
-                        showAlert('danger', 'Terjadi kesalahan. Silakan coba lagi.');
+                        const message = xhr.responseText || 'Terjadi kesalahan. Silakan coba lagi.';
+                        showAlert('danger', message);
                     }
                 });
             });
@@ -219,17 +246,21 @@
                 tanggalInput.addEventListener('change', updateNomor);
             }
 
-            if (ilapInput && tiketContainer && !ilapInput.disabled) {
+            if (ilapInput && tiketContainer) {
                 const renderTikets = (items) => {
                     if (!items || items.length === 0) {
                         tiketContainer.innerHTML = '<div class="text-muted">Tidak ada tiket tersedia.</div>';
                         return;
                     }
                     tiketContainer.innerHTML = items.map((item) => {
+                        const disabledAttr = item.disabled ? 'disabled' : '';
+                        const checkedAttr = item.selected ? 'checked' : '';
                         return `
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="tiket_ids" value="${item.id}" id="tiket-${item.id}">
-                                <label class="form-check-label" for="tiket-${item.id}">${item.label}</label>
+                                <input class="form-check-input" type="checkbox" name="tiket_ids" value="${item.id}" id="tiket-${item.id}" ${checkedAttr} ${disabledAttr}>
+                                <label class="form-check-label" for="tiket-${item.id}" ${item.disabled ? 'style="opacity: 0.6; cursor: not-allowed;"' : ''}>
+                                    ${item.label}
+                                </label>
                             </div>
                         `;
                     }).join('');
@@ -241,19 +272,33 @@
                         tiketContainer.innerHTML = '<div class="text-muted">Pilih ILAP terlebih dahulu.</div>';
                         return;
                     }
-                    fetch(`{% url "tanda_terima_tikets_by_ilap" %}?ilap_id=${encodeURIComponent(ilapId)}`)
+                    // Get tanda_terima_id from form data attribute
+                    const form = container.querySelector('form');
+                    const tandaTerimaId = form && form.dataset.tandaTerimaId ? form.dataset.tandaTerimaId : '';
+                    
+                    const params = new URLSearchParams({
+                        ilap_id: ilapId,
+                        ...(tandaTerimaId && { tanda_terima_id: tandaTerimaId })
+                    });
+                    fetch(`{% url "tanda_terima_tikets_by_ilap" %}?${params}`)
                         .then(response => response.json())
                         .then(data => {
                             if (data && data.success) {
                                 renderTikets(data.data || []);
                             }
                         })
-                        .catch(() => {
+                        .catch(err => {
                             // ignore
                         });
                 };
 
-                ilapInput.addEventListener('change', loadTiketsByIlap);
+                // For edit mode: if ILAP is disabled, load tikets on init
+                if (ilapInput.disabled && ilapInput.value) {
+                    loadTiketsByIlap();
+                } else if (!ilapInput.disabled) {
+                    // For create mode: listen to ILAP changes
+                    ilapInput.addEventListener('change', loadTiketsByIlap);
+                }
             }
         }
     })();

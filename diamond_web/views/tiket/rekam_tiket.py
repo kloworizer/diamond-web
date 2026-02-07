@@ -3,7 +3,10 @@
 from datetime import datetime
 from django.urls import reverse
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Q
+from django.views.generic import CreateView
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.views import View
 import logging
@@ -16,8 +19,7 @@ from ...models.periode_jenis_data import PeriodeJenisData
 from ...models.jenis_prioritas_data import JenisPrioritasData
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ...forms.tiket import TiketForm
-from .base import WorkflowStepCreateView
-from ..mixins import UserFormKwargsMixin
+from ..mixins import UserFormKwargsMixin, UserP3DERequiredMixin, get_active_p3de_ilap_ids
 
 logger = logging.getLogger(__name__)
 
@@ -67,12 +69,13 @@ class ILAPPeriodeDataAPIView(View):
             )
 
             if not (request.user.is_superuser or request.user.groups.filter(name='admin').exists()):
-                periode_data_list = periode_data_list.filter(
-                    id_sub_jenis_data_ilap__pic__tipe=PIC.TipePIC.P3DE,
-                    id_sub_jenis_data_ilap__pic__start_date__lte=today,
-                    id_sub_jenis_data_ilap__pic__end_date__isnull=True,
-                    id_sub_jenis_data_ilap__pic__id_user=request.user
-                )
+                allowed_ilap_ids = set(get_active_p3de_ilap_ids(request.user))
+                if allowed_ilap_ids:
+                    periode_data_list = periode_data_list.filter(
+                        id_sub_jenis_data_ilap__id_ilap_id__in=allowed_ilap_ids
+                    )
+                else:
+                    periode_data_list = periode_data_list.none()
 
             periode_data_list = periode_data_list.select_related(
                 'id_sub_jenis_data_ilap__id_ilap__id_kategori',
@@ -246,7 +249,7 @@ class PreviewNomorTiketAPIView(View):
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
-class TiketRekamCreateView(UserFormKwargsMixin, WorkflowStepCreateView):
+class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKwargsMixin, CreateView):
     """Create view for Rekam Tiket workflow step."""
     model = Tiket
     form_class = TiketForm
@@ -263,151 +266,124 @@ class TiketRekamCreateView(UserFormKwargsMixin, WorkflowStepCreateView):
         context['workflow_step'] = 'rekam'
         return context
 
-    def perform_workflow_action(self, form):
-        """Implement the Rekam workflow logic."""
+    def form_valid(self, form):
         try:
             periode_jenis_data = form.cleaned_data['id_periode_data']
             id_sub_jenis_data = periode_jenis_data.id_sub_jenis_data_ilap.id_sub_jenis_data
-            
-            # Generate nomor_tiket: id_sub_jenis_data + yymmdd + 3 digit sequence
             today = datetime.now().date()
-            yymmdd = today.strftime('%y%m%d')
-            
-            nomor_tiket_prefix = f"{id_sub_jenis_data}{yymmdd}"
-            count = Tiket.objects.filter(nomor_tiket__startswith=nomor_tiket_prefix).count()
-            sequence = str(count + 1).zfill(3)
-            
-            nomor_tiket = f"{nomor_tiket_prefix}{sequence}"
-            
-            # Save the tiket with status = 1 (Direkam)
-            self.object = form.save(commit=False)
-            self.object.nomor_tiket = nomor_tiket
-            self.object.status = 1
-            
-            # Set id_jenis_prioritas_data based on tahun from form
-            tahun = form.cleaned_data.get('tahun')
-            if tahun:
-                jenis_prioritas = JenisPrioritasData.objects.filter(
-                    id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap,
-                    tahun=str(tahun)
-                ).first()
-                if jenis_prioritas:
-                    self.object.id_jenis_prioritas_data = jenis_prioritas
-            
-            # Set id_durasi_jatuh_tempo_pide (active PIDE group)
-            from django.contrib.auth.models import Group
-            pide_durasi_found = False
-            try:
-                pide_group = Group.objects.get(name='user_pide')
-                # Try to find active durasi (no end_date or within date range)
-                durasi_pide = periode_jenis_data.id_sub_jenis_data_ilap.durasijatuhtempo_set.filter(
-                    seksi=pide_group
-                ).filter(
-                    Q(end_date__isnull=True) | Q(start_date__lte=today, end_date__gte=today)
-                ).first()
-                if durasi_pide:
-                    self.object.id_durasi_jatuh_tempo_pide = durasi_pide
-                    pide_durasi_found = True
-            except Group.DoesNotExist:
-                pass
-            
-            # Set id_durasi_jatuh_tempo_pmde (active PMDE group)
-            pmde_durasi_found = False
-            try:
-                pmde_group = Group.objects.get(name='user_pmde')
-                # Try to find active durasi (no end_date or within date range)
-                durasi_pmde = periode_jenis_data.id_sub_jenis_data_ilap.durasijatuhtempo_set.filter(
-                    seksi=pmde_group
-                ).filter(
-                    Q(end_date__isnull=True) | Q(start_date__lte=today, end_date__gte=today)
-                ).first()
-                if durasi_pmde:
-                    self.object.id_durasi_jatuh_tempo_pmde = durasi_pmde
-                    pmde_durasi_found = True
-            except Group.DoesNotExist:
-                pass
-            
-            # Check if both required durasi fields are set
-            if not pide_durasi_found:
-                raise ValueError(
-                    f"Durasi Jatuh Tempo PIDE (active) not found for data type: "
-                    f"{periode_jenis_data.id_sub_jenis_data_ilap.nama_sub_jenis_data}. "
-                    f"Please configure Durasi Jatuh Tempo for PIDE before creating tickets."
-                )
-            if not pmde_durasi_found:
-                raise ValueError(
-                    f"Durasi Jatuh Tempo PMDE (active) not found for data type: "
-                    f"{periode_jenis_data.id_sub_jenis_data_ilap.nama_sub_jenis_data}. "
-                    f"Please configure Durasi Jatuh Tempo for PMDE before creating tickets."
-                )
-            
-            self.object.save()
-            
-            # Create tiket_action entry for audit trail
-            TiketAction.objects.create(
-                id_tiket=self.object,
-                id_user=self.request.user,
-                timestamp=datetime.now(),
-                action=1,
-                catatan="tiket direkam"
-            )
-            
-            # Create tiket_pic entry for current user if not already active P3DE PIC for this data
-            current_user_is_p3de_pic = PIC.objects.filter(
-                tipe=PIC.TipePIC.P3DE,
-                id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap,
-                id_user=self.request.user,
-                start_date__lte=today,
-                end_date__isnull=True
-            ).exists()
-            if not current_user_is_p3de_pic:
-                TiketPIC.objects.create(
+
+            nomor_tiket = self._generate_nomor_tiket(id_sub_jenis_data, today)
+
+            with transaction.atomic():
+                self.object = form.save(commit=False)
+                self.object.nomor_tiket = nomor_tiket
+                self.object.status = 1
+
+                tahun = form.cleaned_data.get('tahun')
+                if tahun:
+                    jenis_prioritas = JenisPrioritasData.objects.filter(
+                        id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap,
+                        tahun=str(tahun)
+                    ).first()
+                    if jenis_prioritas:
+                        self.object.id_jenis_prioritas_data = jenis_prioritas
+
+                self._set_durasi_fields(periode_jenis_data, today)
+                self.object.save()
+
+                TiketAction.objects.create(
                     id_tiket=self.object,
                     id_user=self.request.user,
                     timestamp=datetime.now(),
-                    role=TiketPIC.Role.P3DE
+                    action=1,
+                    catatan="tiket direkam"
                 )
 
-            # Assign related active PICs (no end_date) for the same sub jenis data
-            active_filter = Q(start_date__lte=today) & Q(end_date__isnull=True)
-            additional_pics = []
+                self._assign_tiket_pics(periode_jenis_data, today)
 
-            for role_value, tipe in (
-                (TiketPIC.Role.P3DE, PIC.TipePIC.P3DE),
-                (TiketPIC.Role.PIDE, PIC.TipePIC.PIDE),
-                (TiketPIC.Role.PMDE, PIC.TipePIC.PMDE),
-            ):
-                pic_qs = PIC.objects.filter(
-                    tipe=tipe,
-                    id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap
-                )
-                for pic in pic_qs.filter(active_filter):
-                    additional_pics.append(
-                        TiketPIC(
-                            id_tiket=self.object,
-                            id_user=pic.id_user,
-                            timestamp=datetime.now(),
-                            role=role_value
-                        )
+            messages.success(self.request, f'Tiket "{nomor_tiket}" created successfully.')
+            return super().form_valid(form)
+        except Exception as exc:
+            form.add_error(None, str(exc))
+            return self.form_invalid(form)
+
+    def _generate_nomor_tiket(self, id_sub_jenis_data, today):
+        yymmdd = today.strftime('%y%m%d')
+        nomor_tiket_prefix = f"{id_sub_jenis_data}{yymmdd}"
+        count = Tiket.objects.filter(nomor_tiket__startswith=nomor_tiket_prefix).count()
+        sequence = str(count + 1).zfill(3)
+        return f"{nomor_tiket_prefix}{sequence}"
+
+    def _set_durasi_fields(self, periode_jenis_data, today):
+        from django.contrib.auth.models import Group
+
+        pide_group = Group.objects.get(name='user_pide')
+        pmde_group = Group.objects.get(name='user_pmde')
+
+        durasi_pide = periode_jenis_data.id_sub_jenis_data_ilap.durasijatuhtempo_set.filter(
+            seksi=pide_group
+        ).filter(
+            Q(end_date__isnull=True) | Q(start_date__lte=today, end_date__gte=today)
+        ).first()
+        if not durasi_pide:
+            raise ValueError(
+                f"Durasi Jatuh Tempo PIDE (active) not found for data type: "
+                f"{periode_jenis_data.id_sub_jenis_data_ilap.nama_sub_jenis_data}. "
+                f"Please configure Durasi Jatuh Tempo for PIDE before creating tickets."
+            )
+        self.object.id_durasi_jatuh_tempo_pide = durasi_pide
+
+        durasi_pmde = periode_jenis_data.id_sub_jenis_data_ilap.durasijatuhtempo_set.filter(
+            seksi=pmde_group
+        ).filter(
+            Q(end_date__isnull=True) | Q(start_date__lte=today, end_date__gte=today)
+        ).first()
+        if not durasi_pmde:
+            raise ValueError(
+                f"Durasi Jatuh Tempo PMDE (active) not found for data type: "
+                f"{periode_jenis_data.id_sub_jenis_data_ilap.nama_sub_jenis_data}. "
+                f"Please configure Durasi Jatuh Tempo for PMDE before creating tickets."
+            )
+        self.object.id_durasi_jatuh_tempo_pmde = durasi_pmde
+
+    def _assign_tiket_pics(self, periode_jenis_data, today):
+        current_user_is_p3de_pic = PIC.objects.filter(
+            tipe=PIC.TipePIC.P3DE,
+            id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap,
+            id_user=self.request.user,
+            start_date__lte=today,
+            end_date__isnull=True
+        ).exists()
+        if not current_user_is_p3de_pic:
+            TiketPIC.objects.create(
+                id_tiket=self.object,
+                id_user=self.request.user,
+                timestamp=datetime.now(),
+                role=TiketPIC.Role.P3DE
+            )
+
+        active_filter = Q(start_date__lte=today) & Q(end_date__isnull=True)
+        additional_pics = []
+
+        for role_value, tipe in (
+            (TiketPIC.Role.P3DE, PIC.TipePIC.P3DE),
+            (TiketPIC.Role.PIDE, PIC.TipePIC.PIDE),
+            (TiketPIC.Role.PMDE, PIC.TipePIC.PMDE),
+        ):
+            pic_qs = PIC.objects.filter(
+                tipe=tipe,
+                id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap
+            )
+            for pic in pic_qs.filter(active_filter):
+                additional_pics.append(
+                    TiketPIC(
+                        id_tiket=self.object,
+                        id_user=pic.id_user,
+                        timestamp=datetime.now(),
+                        role=role_value
                     )
+                )
 
-            if additional_pics:
-                TiketPIC.objects.bulk_create(additional_pics)
-            
-            # Return response
-            if self.is_ajax_request():
-                return self.get_json_response(
-                    success=True,
-                    message=f'Tiket "{nomor_tiket}" created successfully.',
-                    redirect=self.get_success_url()
-                )
-            else:
-                messages.success(
-                    self.request,
-                    f'Tiket "{nomor_tiket}" created successfully.'
-                )
-                return None
-        except Exception as e:
-            # Pass exception to be handled by form_valid's exception handler
-            raise
+        if additional_pics:
+            TiketPIC.objects.bulk_create(additional_pics)
 
