@@ -94,13 +94,15 @@ def tanda_terima_data_data(request):
 
     for obj in qs_page:
         status_text = 'Aktif' if obj.active else 'Dibatalkan'
-        actions_html = ""
         can_edit = obj.detil_items.filter(
             Q(id_tiket__status__lt=6) | Q(id_tiket__status__isnull=True)
         ).exists()
+        actions_html = (
+            f"<button class='btn btn-sm btn-info me-1' data-action='view' data-url='{reverse('tanda_terima_data_view', args=[obj.pk])}' title='Detail'><i class='ri-eye-line'></i></button>"
+            f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('tanda_terima_data_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
+        )
         if obj.active is not False and can_edit:
-            actions_html = (
-                f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('tanda_terima_data_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
+            actions_html += (
                 f"<button class='btn btn-sm btn-warning' data-action='delete' data-url='{reverse('tanda_terima_data_delete', args=[obj.pk])}' title='Batalkan'><i class='ri-close-circle-line'></i></button>"
             )
         data.append({

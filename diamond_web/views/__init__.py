@@ -15,4 +15,5 @@ from .nama_tabel import *
 from .durasi_jatuh_tempo import *
 from .backup_data import *
 from .tanda_terima_data import *
+from .tanda_terima_data_view import TandaTerimaDataViewOnly
 from .tiket import *

@@ -1,0 +1,34 @@
+<div class="modal-body">
+    <h5>Detail Tanda Terima Data</h5>
+    <dl class="row mb-3">
+        <dt class="col-sm-4">Nomor Tanda Terima</dt>
+        <dd class="col-sm-8">{{ tanda_terima.nomor_tanda_terima }}</dd>
+        <dt class="col-sm-4">Tanggal</dt>
+        <dd class="col-sm-8">{{ tanda_terima.tanggal_tanda_terima|date:"d/m/Y H:i" }}</dd>
+        <dt class="col-sm-4">ILAP</dt>
+        <dd class="col-sm-8">{{ tanda_terima.id_ilap }}</dd>
+        <dt class="col-sm-4">Deskripsi</dt>
+        <dd class="col-sm-8">{{ tanda_terima.deskripsi }}</dd>
+        <dt class="col-sm-4">Status</dt>
+        <dd class="col-sm-8">
+            {% if not tanda_terima.active %}
+                <span class="badge bg-danger">Dibatalkan</span>
+            {% else %}
+                <span class="badge bg-success">Aktif</span>
+            {% endif %}
+        </dd>
+    </dl>
+    <h6>Daftar Tiket</h6>
+    <ul class="list-group mb-3">
+        {% for detil in detil_items %}
+            <li class="list-group-item">
+                {{ detil.id_tiket.nomor_tiket }}{{ detil.id_tiket.get_status_display|default:'' }}
+            </li>
+        {% empty %}
+            <li class="list-group-item text-muted">Tidak ada tiket.</li>
+        {% endfor %}
+    </ul>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+</div>

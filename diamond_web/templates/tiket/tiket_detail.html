@@ -295,6 +295,7 @@
                                         <th><i class="ri-calendar-line me-1"></i>Tanggal</th>
                                         <th><i class="ri-file-text-line me-1"></i>Deskripsi</th>
                                         <th><i class="ri-user-line me-1"></i>Perekam</th>
+                                        <th><i class="ri-close-circle-line me-1"></i>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -304,6 +305,13 @@
                                             <td>{{ item.id_tanda_terima.tanggal_tanda_terima|date:"d/m/Y H:i" }}</td>
                                             <td>{{ item.id_tanda_terima.deskripsi }}</td>
                                             <td>{{ item.id_tanda_terima.id_perekam.get_full_name|default:item.id_tanda_terima.id_perekam.username }}</td>
+                                            <td>
+                                                {% if not item.id_tanda_terima.active %}
+                                                    <span class="badge bg-danger">Dibatalkan</span>
+                                                {% else %}
+                                                    <span class="badge bg-success">Aktif</span>
+                                                {% endif %}
+                                            </td>
                                         </tr>
                                     {% endfor %}
                                 </tbody>
