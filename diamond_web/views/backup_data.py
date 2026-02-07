@@ -35,6 +35,12 @@ class BackupDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxFormMi
     success_url = reverse_lazy('backup_data_list')
     success_message = 'Data Backup berhasil direkam.'
 
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('backup_data_create')
@@ -44,7 +50,19 @@ class BackupDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxFormMi
     def form_valid(self, form):
         form.instance.id_user = self.request.user
         response = super().form_valid(form)
-        create_tiket_action(self.object.id_tiket, self.request.user, "backup data direkam")
+        tiket = self.object.id_tiket
+        # Set tiket status to 2 (Backup direkam)
+        if tiket.status != 2:
+            tiket.status = 2
+            tiket.save(update_fields=["status"])
+        # Add TiketAction for backup
+        TiketAction.objects.create(
+            id_tiket=tiket,
+            id_user=self.request.user,
+            timestamp=datetime.now(),
+            action=2,
+            catatan="backup data direkam"
+        )
         return response
 
     def get(self, request, *args, **kwargs):
@@ -119,6 +137,15 @@ class BackupDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxFormMi
         form = self.get_form()
         return self.render_form_response(form)
 
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        # If id_tiket is disabled, add its value back to POST data before form validation
+        if self.object and 'id_tiket' not in request.POST:
+            data = request.POST.copy()
+            data['id_tiket'] = str(self.object.id_tiket_id)
+            request.POST = data
+        return super().post(request, *args, **kwargs)
+
 
 class BackupDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, DeleteView):
     model = BackupData
@@ -140,7 +167,13 @@ class BackupDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, DeleteView
 
     def delete(self, request, *args, **kwargs):
         self.object = self.get_object()
+        tiket = self.object.id_tiket
+        user = request.user
+        # Delete the backup data
         self.object.delete()
+        # Audit trail: add TiketAction
+        from .backup_data import create_tiket_action
+        create_tiket_action(tiket, user, "backup data dihapus")
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
@@ -161,7 +194,7 @@ def backup_data_data(request):
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
 
-    qs = BackupData.objects.select_related('id_user', 'id_tiket').filter(id_tiket__status__lt=6)
+    qs = BackupData.objects.select_related('id_user', 'id_tiket')
     records_total = qs.count()
 
     # Column-specific filtering
@@ -177,8 +210,8 @@ def backup_data_data(request):
     # Ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id_tiket__nomor_tiket', 'lokasi_backup', 'id_user__username']
-    
+    columns = ['id', 'id_tiket__nomor_tiket', 'lokasi_backup']
+
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -187,22 +220,27 @@ def backup_data_data(request):
                 col = '-' + col
             qs = qs.order_by(col)
         except Exception:
-            qs = qs.order_by('-created_at')
+            qs = qs.order_by('-id')
     else:
-        qs = qs.order_by('-created_at')
+        qs = qs.order_by('-id')
 
     qs_page = qs[start:start + length]
 
     data = []
     for obj in qs_page:
         user_name = obj.id_user.username if obj.id_user else '-'
-        
+        actions = ''
+        if obj.id_tiket and obj.id_tiket.status is not None and obj.id_tiket.status < 6:
+            actions = (
+                f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('backup_data_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
+                f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('backup_data_delete', args=[obj.pk])}' title='Delete'><i class='ri-delete-bin-line'></i></button>"
+            )
         data.append({
+            'id': obj.pk,
             'no_tiket': obj.id_tiket.nomor_tiket if obj.id_tiket else '-',
             'lokasi_backup': obj.lokasi_backup,
             'user': user_name,
-            'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('backup_data_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
-                       f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('backup_data_delete', args=[obj.pk])}' title='Delete'><i class='ri-delete-bin-line'></i></button>"
+            'actions': actions
         })
 
     return JsonResponse({
