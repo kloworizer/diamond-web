@@ -52,8 +52,8 @@ class TiketDetailView(LoginRequiredMixin, ActiveTiketPICRequiredMixin, DetailVie
         
         action_badges = {
             1: {'label': 'Direkam', 'class': 'bg-primary'},
-            2: {'label': 'Backup direkam', 'class': 'bg-info'},
-            3: {'label': 'Tanda Terima dibuat', 'class': 'bg-success'},
+            2: {'label': 'Backup', 'class': 'bg-info'},
+            3: {'label': 'Tanda Terima', 'class': 'bg-success'},
             4: {'label': 'Diteliti', 'class': 'bg-secondary'},
             5: {'label': 'Dikembalikan', 'class': 'bg-info'},
             6: {'label': 'Dikirim ke PIDE', 'class': 'bg-warning'},

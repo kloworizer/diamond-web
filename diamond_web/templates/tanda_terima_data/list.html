@@ -130,11 +130,18 @@
                 loadModal(url, 'Edit Tanda Terima Data');
             });
 
+            $(document).on('click', '[data-action="view"]', function (e) {
+                e.preventDefault();
+                const url = $(this).data('url');
+                loadModal(url, 'Detail Tanda Terima Data');
+            });
+
             $(document).on('click', '[data-action="delete"]', function (e) {
                 e.preventDefault();
                 const url = $(this).data('url');
                 loadModal(url, 'Batalkan Tanda Terima Data');
             });
+
 
             // Handle form submission
             $(document).on('submit', '#modalBody form', function (e) {
