@@ -390,10 +390,14 @@
                                         <i class="ri-file-list-2-line me-1"></i>Buat Tanda Terima
                                     </button>
                                 {% endif %}
-                                {% if tiket.status == 4 %}
-                                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#kirimTiketModal">
-                                        <i class="ri-send-plane-line me-1"></i>Kirim Tiket ke PIDE
-                                    </button>
+                                {% if tanda_terima_items %}
+                                    {% with last_item=tanda_terima_items|dictsort:'id_tanda_terima.active'|last %}
+                                        {% if tiket.status == 4 or tiket.tgl_teliti and backup_list and last_item.id_tanda_terima.active %}
+                                            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#kirimTiketModal">
+                                                <i class="ri-send-plane-line me-1"></i>Kirim Tiket ke PIDE
+                                            </button>
+                                        {% endif %}
+                                    {% endwith %}
                                 {% endif %}
                                 <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
                                     <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
