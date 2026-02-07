@@ -99,8 +99,8 @@ def tanda_terima_data_data(request):
         ).exists()
         actions_html = f"<button class='btn btn-sm btn-info me-1' data-action='view' data-url='{reverse('tanda_terima_data_view', args=[obj.pk])}' title='Detail'><i class='ri-eye-line'></i></button>"
         # Hide edit button if tanda terima is dibatalkan
-        if obj.active:
-            actions_html += f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('tanda_terima_data_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
+        # if obj.active:
+        #     actions_html += f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('tanda_terima_data_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
         if obj.active and can_edit:
             actions_html += f"<button class='btn btn-sm btn-warning' data-action='delete' data-url='{reverse('tanda_terima_data_delete', args=[obj.pk])}' title='Batalkan'><i class='ri-close-circle-line'></i></button>"
         data.append({
