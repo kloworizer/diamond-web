@@ -12,10 +12,10 @@ from ...models.tiket_action import TiketAction
 from ...models.tiket_pic import TiketPIC
 from ...forms.rekam_hasil_penelitian import RekamHasilPenelitianForm
 from ...constants.tiket_action_types import TiketActionType
-from ..mixins import UserP3DERequiredMixin, ActiveTiketPICRequiredForEditMixin
+from ..mixins import UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin
 
 
-class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketPICRequiredForEditMixin, UpdateView):
+class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, UpdateView):
     """View for recording research results (Rekam Hasil Penelitian)."""
     model = Tiket
     form_class = RekamHasilPenelitianForm
@@ -26,7 +26,8 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Active
         return TiketPIC.objects.filter(
             id_tiket=tiket,
             id_user=self.request.user,
-            active=True
+            active=True,
+            role=TiketPIC.Role.P3DE
         ).exists()
     template_name = 'tiket/rekam_hasil_penelitian_form.html'
     

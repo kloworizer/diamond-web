@@ -13,7 +13,7 @@ from ..models.tiket_action import TiketAction
 from ..models.tiket_pic import TiketPIC
 from ..forms.backup_data import BackupDataForm
 from ..constants.tiket_action_types import BackupActionType
-from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketPICRequiredForEditMixin
+from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin
 
 
 def create_tiket_action(tiket, user, catatan, action_type):
@@ -80,7 +80,7 @@ class BackupDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxFormMi
         form = self.get_form()
         return self.render_form_response(form)
 
-class BackupDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketPICRequiredForEditMixin, AjaxFormMixin, CreateView):
+class BackupDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, AjaxFormMixin, CreateView):
     """Create Backup Data from a specific Tiket."""
     model = BackupData
     form_class = BackupDataForm
@@ -90,21 +90,7 @@ class BackupDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMixin, A
     def get_success_url(self):
         return reverse('tiket_detail', kwargs={'pk': self.kwargs['tiket_pk']})
     
-    def test_func(self):
-        """Check if user is active PIC for this tiket"""
-        from ..models.tiket import Tiket
-        tiket_pk = self.kwargs.get('tiket_pk')
-        if not tiket_pk:
-            return False
-        try:
-            tiket = Tiket.objects.get(pk=tiket_pk)
-            return TiketPIC.objects.filter(
-                id_tiket=tiket,
-                id_user=self.request.user,
-                active=True
-            ).exists()
-        except Tiket.DoesNotExist:
-            return False
+    # Authentication/authorization handled by ActiveTiketP3DERequiredForEditMixin
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -140,23 +126,14 @@ class BackupDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMixin, A
         
         return AjaxFormMixin.form_valid(self, form)
 
-class BackupDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketPICRequiredForEditMixin, AjaxFormMixin, UpdateView):
+class BackupDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, AjaxFormMixin, UpdateView):
     model = BackupData
     form_class = BackupDataForm
     template_name = 'backup_data/form.html'
     success_url = reverse_lazy('backup_data_list')
     success_message = 'Data Backup berhasil diperbarui.'
     
-    def test_func(self):
-        """Check if user is active PIC for the tiket associated with this backup data"""
-        backup_data = self.get_object()
-        if not backup_data.id_tiket:
-            return False
-        return TiketPIC.objects.filter(
-            id_tiket=backup_data.id_tiket,
-            id_user=self.request.user,
-            active=True
-        ).exists()
+    # Authentication/authorization handled by ActiveTiketP3DERequiredForEditMixin
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -184,21 +161,12 @@ class BackupDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTike
         return super().post(request, *args, **kwargs)
 
 
-class BackupDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketPICRequiredForEditMixin, DeleteView):
+class BackupDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, DeleteView):
     model = BackupData
     template_name = 'backup_data/confirm_delete.html'
     success_url = reverse_lazy('backup_data_list')
     
-    def test_func(self):
-        """Check if user is active PIC for the tiket associated with this backup data"""
-        backup_data = self.get_object()
-        if not backup_data.id_tiket:
-            return False
-        return TiketPIC.objects.filter(
-            id_tiket=backup_data.id_tiket,
-            id_user=self.request.user,
-            active=True
-        ).exists()
+    # Authentication/authorization handled by ActiveTiketP3DERequiredForEditMixin
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
