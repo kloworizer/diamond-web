@@ -1,11 +1,6 @@
 <form method="post" action="{{ form_action }}" id="kirim-tiket-modal-form">
     {% csrf_token %}
     <div class="modal-body">
-        <div class="alert alert-info mb-3">
-            <i class="ri-information-line me-2"></i>
-            <strong>Informasi:</strong> Kirim tiket <strong>{{ single_tiket.nomor_tiket }}</strong> ke PIDE/NADINE.
-        </div>
-
         {% if form.non_field_errors %}
             <div class="alert alert-danger mb-3">
                 {% for error in form.non_field_errors %}

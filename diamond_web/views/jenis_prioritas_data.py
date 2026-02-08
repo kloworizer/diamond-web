@@ -20,7 +20,7 @@ class JenisPrioritasDataListView(LoginRequiredMixin, AdminP3DERequiredMixin, Tem
         if deleted and name:
             try:
                 name = unquote_plus(name)
-                messages.success(request, f'Jenis Prioritas Data "{name}" deleted successfully.')
+                messages.success(request, f'Jenis Prioritas Data "{name}" berhasil dihapus.')
             except Exception:
                 pass
         return super().get(request, *args, **kwargs)
@@ -30,7 +30,7 @@ class JenisPrioritasDataCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, A
     form_class = JenisPrioritasDataForm
     template_name = 'jenis_prioritas_data/form.html'
     success_url = reverse_lazy('jenis_prioritas_data_list')
-    success_message = 'Jenis Prioritas Data "{object}" created successfully.'
+    success_message = 'Jenis Prioritas Data "{object}" berhasil dibuat.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -47,7 +47,7 @@ class JenisPrioritasDataUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, A
     form_class = JenisPrioritasDataForm
     template_name = 'jenis_prioritas_data/form.html'
     success_url = reverse_lazy('jenis_prioritas_data_list')
-    success_message = 'Jenis Prioritas Data "{object}" updated successfully.'
+    success_message = 'Jenis Prioritas Data "{object}" berhasil diperbarui.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -84,9 +84,9 @@ class JenisPrioritasDataDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, D
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': f'Jenis Prioritas Data "{name}" deleted successfully.'
+                'message': f'Jenis Prioritas Data "{name}" berhasil dihapus.'
             })
-        messages.success(request, f'Jenis Prioritas Data "{name}" deleted successfully.')
+        messages.success(request, f'Jenis Prioritas Data "{name}" berhasil dihapus.')
         return JsonResponse({'success': True, 'redirect': self.success_url})
 
     def post(self, request, *args, **kwargs):

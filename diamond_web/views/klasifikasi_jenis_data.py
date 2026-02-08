@@ -21,7 +21,7 @@ class KlasifikasiJenisDataListView(LoginRequiredMixin, AdminP3DERequiredMixin, T
         if deleted and name:
             try:
                 name = unquote_plus(name)
-                messages.success(request, f'Klasifikasi Jenis Data "{name}" deleted successfully.')
+                messages.success(request, f'Klasifikasi Jenis Data "{name}" berhasil dihapus.')
             except Exception:
                 pass
         return super().get(request, *args, **kwargs)
@@ -31,7 +31,7 @@ class KlasifikasiJenisDataCreateView(LoginRequiredMixin, AdminP3DERequiredMixin,
     form_class = KlasifikasiJenisDataForm
     template_name = 'klasifikasi_jenis_data/form.html'
     success_url = reverse_lazy('klasifikasi_jenis_data_list')
-    success_message = 'Klasifikasi Jenis Data "{object}" created successfully.'
+    success_message = 'Klasifikasi Jenis Data "{object}" berhasil dibuat.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -48,7 +48,7 @@ class KlasifikasiJenisDataUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin,
     form_class = KlasifikasiJenisDataForm
     template_name = 'klasifikasi_jenis_data/form.html'
     success_url = reverse_lazy('klasifikasi_jenis_data_list')
-    success_message = 'Klasifikasi Jenis Data "{object}" updated successfully.'
+    success_message = 'Klasifikasi Jenis Data "{object}" berhasil diperbarui.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -85,9 +85,9 @@ class KlasifikasiJenisDataDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin,
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': f'Klasifikasi Jenis Data "{name}" deleted successfully.'
+                'message': f'Klasifikasi Jenis Data "{name}" berhasil dihapus.'
             })
-        messages.success(request, f'Klasifikasi Jenis Data "{name}" deleted successfully.')
+        messages.success(request, f'Klasifikasi Jenis Data "{name}" berhasil dihapus.')
         return JsonResponse({'success': True, 'redirect': self.success_url})
 
     def post(self, request, *args, **kwargs):

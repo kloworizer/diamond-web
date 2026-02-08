@@ -26,7 +26,7 @@ class DurasiJatuhTempoPIDEListView(LoginRequiredMixin, AdminPIDERequiredMixin, T
         if deleted and name:
             try:
                 name = unquote_plus(name)
-                messages.success(request, f'Durasi Jatuh Tempo "{name}" deleted successfully.')
+                messages.success(request, f'Durasi Jatuh Tempo "{name}" berhasil dihapus.')
             except Exception:
                 pass
         return super().get(request, *args, **kwargs)
@@ -36,7 +36,7 @@ class DurasiJatuhTempoPIDECreateView(LoginRequiredMixin, AdminPIDERequiredMixin,
     form_class = DurasiJatuhTempoForm
     template_name = 'durasi_jatuh_tempo/form.html'
     success_url = reverse_lazy('durasi_jatuh_tempo_pide_list')
-    success_message = 'Durasi Jatuh Tempo "{object}" created successfully.'
+    success_message = 'Durasi Jatuh Tempo "{object}" berhasil dibuat.'
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -58,7 +58,7 @@ class DurasiJatuhTempoPIDEUpdateView(LoginRequiredMixin, AdminPIDERequiredMixin,
     form_class = DurasiJatuhTempoForm
     template_name = 'durasi_jatuh_tempo/form.html'
     success_url = reverse_lazy('durasi_jatuh_tempo_pide_list')
-    success_message = 'Durasi Jatuh Tempo "{object}" updated successfully.'
+    success_message = 'Durasi Jatuh Tempo "{object}" berhasil diperbarui.'
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -100,9 +100,9 @@ class DurasiJatuhTempoPIDEDeleteView(LoginRequiredMixin, AdminPIDERequiredMixin,
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': f'Durasi Jatuh Tempo "{name}" deleted successfully.'
+                'message': f'Durasi Jatuh Tempo "{name}" berhasil dihapus.'
             })
-        messages.success(request, f'Durasi Jatuh Tempo "{name}" deleted successfully.')
+        messages.success(request, f'Durasi Jatuh Tempo "{name}" berhasil dihapus.')
         return JsonResponse({'success': True, 'redirect': self.success_url})
 
     def post(self, request, *args, **kwargs):
@@ -187,7 +187,7 @@ class DurasiJatuhTempoPMDEListView(LoginRequiredMixin, AdminPMDERequiredMixin, T
         if deleted and name:
             try:
                 name = unquote_plus(name)
-                messages.success(request, f'Durasi Jatuh Tempo "{name}" deleted successfully.')
+                messages.success(request, f'Durasi Jatuh Tempo "{name}" berhasil dihapus.')
             except Exception:
                 pass
         return super().get(request, *args, **kwargs)
@@ -197,7 +197,7 @@ class DurasiJatuhTempoPMDECreateView(LoginRequiredMixin, AdminPMDERequiredMixin,
     form_class = DurasiJatuhTempoForm
     template_name = 'durasi_jatuh_tempo/form.html'
     success_url = reverse_lazy('durasi_jatuh_tempo_pmde_list')
-    success_message = 'Durasi Jatuh Tempo "{object}" created successfully.'
+    success_message = 'Durasi Jatuh Tempo "{object}" berhasil dibuat.'
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -219,7 +219,7 @@ class DurasiJatuhTempoPMDEUpdateView(LoginRequiredMixin, AdminPMDERequiredMixin,
     form_class = DurasiJatuhTempoForm
     template_name = 'durasi_jatuh_tempo/form.html'
     success_url = reverse_lazy('durasi_jatuh_tempo_pmde_list')
-    success_message = 'Durasi Jatuh Tempo "{object}" updated successfully.'
+    success_message = 'Durasi Jatuh Tempo "{object}" berhasil diperbarui.'
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -261,9 +261,9 @@ class DurasiJatuhTempoPMDEDeleteView(LoginRequiredMixin, AdminPMDERequiredMixin,
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': f'Durasi Jatuh Tempo "{name}" deleted successfully.'
+                'message': f'Durasi Jatuh Tempo "{name}" berhasil dihapus.'
             })
-        messages.success(request, f'Durasi Jatuh Tempo "{name}" deleted successfully.')
+        messages.success(request, f'Durasi Jatuh Tempo "{name}" berhasil dihapus.')
         return JsonResponse({'success': True, 'redirect': self.success_url})
 
     def post(self, request, *args, **kwargs):

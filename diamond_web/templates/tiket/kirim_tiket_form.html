@@ -74,7 +74,6 @@
                     </div>
                 </div>
 
-                {% if tikets %}
                 <!-- Tiket Selection -->
                 <div class="mb-3">
                     <label class="form-label">
@@ -91,7 +90,7 @@
                                 </label>
                             </div>
                         {% empty %}
-                            <p class="text-muted">Tidak ada tiket tersedia</p>
+                            <p class="text-muted" id="no-tiket-text">Tidak ada tiket tersedia</p>
                         {% endfor %}
                     </div>
                     {% if form.tiket_ids.errors %}
@@ -100,7 +99,7 @@
                         </small>
                     {% endif %}
                 </div>
-                {% endif %}
+                
 
                 <!-- Hidden input to store selected tiket IDs -->
                 <input type="hidden" id="tiket-ids-input" name="tiket_ids" value="{{ form.tiket_ids.value|default:'' }}">
@@ -119,6 +118,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const tiketCheckboxes = document.querySelectorAll('.tiket-checkbox');
     const tiketIdsInput = document.querySelector('input[name="tiket_ids"][type="hidden"]');
     const form = document.getElementById('kirim-tiket-form');
+    const submitButton = document.querySelector('#kirim-tiket-form button[type="submit"]');
+    const noTiketText = document.getElementById('no-tiket-text');
     
     if (!tiketIdsInput) {
         console.error('Hidden input for tiket_ids not found');
@@ -142,6 +143,19 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     // Initialize hidden input from any pre-checked boxes
     updateTiketIds();
+    // If there are no tiket checkboxes available, show info and disable submit
+    if (tiketCheckboxes.length === 0) {
+        if (noTiketText) {
+            // make message more visible
+            noTiketText.classList.remove('text-muted');
+            noTiketText.classList.add('text-warning');
+            noTiketText.innerText = 'Tidak ada tiket tersedia. Tidak dapat menyimpan.';
+        }
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.classList.add('disabled');
+        }
+    }
     
     // Form submission validation
     if (form) {

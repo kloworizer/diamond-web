@@ -11,7 +11,9 @@ from django.db import transaction
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
 from ...models.tiket_pic import TiketPIC
+from ...models.notification import Notification
 from ...forms.kirim_tiket import KirimTiketForm
+from django.utils.html import format_html
 from ...constants.tiket_action_types import TiketActionType
 from ..mixins import UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin
 
@@ -43,7 +45,7 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DER
             # Filter tikets for checkbox: status < 4, backup True, tanda_terima True, and logged user is active PIC P3DE
             from ...models.tiket_pic import TiketPIC
             tikets = Tiket.objects.filter(
-                status__lt=4,
+                status__in=[2, 3],
                 backup=True,
                 tanda_terima=True,
                 tiketpic__active=True,
@@ -130,6 +132,36 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DER
                         action=TiketActionType.DIKIRIM_KE_PIDE,
                         catatan="tiket dikirim ke PIDE"
                     )
+
+                    # Send notification to all active PIDE PICs for this tiket
+                    pide_pics = TiketPIC.objects.filter(
+                        id_tiket=tiket,
+                        role=TiketPIC.Role.PIDE,
+                        active=True
+                    ).select_related('id_user')
+                    # Build URLs: full URL (unused) and path-only for anchor href
+                    try:
+                        _ = self.request.build_absolute_uri(reverse('tiket_detail', kwargs={'pk': tiket.pk}))
+                    except Exception:
+                        _ = reverse('tiket_detail', kwargs={'pk': tiket.pk})
+                    detail_path = reverse('tiket_detail', kwargs={'pk': tiket.pk})
+                    sender_name = (self.request.user.get_full_name() or self.request.user.username).strip()
+                    link_text = tiket.nomor_tiket or str(tiket.pk)
+                    # Use format_html to safely escape values and produce a SafeString
+                    notif_message = format_html(
+                        'ada tiket baru nomor <a href="{}">{}</a> yang dikirim dari P3DE oleh {}',
+                        detail_path,
+                        link_text,
+                        sender_name
+                    )
+                    for pic in pide_pics:
+                        recipient = pic.id_user
+                        # Avoid duplicate notifications per recipient for the same tiket
+                        Notification.objects.create(
+                            recipient=recipient,
+                            title='Tiket baru',
+                            message=notif_message
+                        )
                 
                 message = f'Berhasil memperbarui {len(tikets)} tiket dan mengirim ke PIDE.'
                 
