@@ -8,15 +8,15 @@ from django.views.decorators.http import require_GET
 
 from ..models.jenis_tabel import JenisTabel
 from ..forms.jenis_tabel import JenisTabelForm
-from .mixins import AjaxFormMixin, AdminRequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
 
-class JenisTabelListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
+class JenisTabelListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
     template_name = 'jenis_tabel/list.html'
 
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
 
-class JenisTabelCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
+class JenisTabelCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
     model = JenisTabel
     form_class = JenisTabelForm
     template_name = 'jenis_tabel/form.html'
@@ -33,7 +33,7 @@ class JenisTabelCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin
         form = self.get_form()
         return self.render_form_response(form)
 
-class JenisTabelUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
+class JenisTabelUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
     model = JenisTabel
     form_class = JenisTabelForm
     template_name = 'jenis_tabel/form.html'
@@ -50,7 +50,7 @@ class JenisTabelUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin
         form = self.get_form()
         return self.render_form_response(form)
 
-class JenisTabelDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+class JenisTabelDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     model = JenisTabel
     template_name = 'jenis_tabel/confirm_delete.html'
     success_url = reverse_lazy('jenis_tabel_list')

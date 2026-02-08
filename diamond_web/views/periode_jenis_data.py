@@ -9,9 +9,9 @@ from django.views.decorators.http import require_GET
 
 from ..models.periode_jenis_data import PeriodeJenisData
 from ..forms.periode_jenis_data import PeriodeJenisDataForm
-from .mixins import AjaxFormMixin, AdminRequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
 
-class PeriodeJenisDataListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
+class PeriodeJenisDataListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
     template_name = 'periode_jenis_data/list.html'
 
     def get(self, request, *args, **kwargs):
@@ -26,7 +26,7 @@ class PeriodeJenisDataListView(LoginRequiredMixin, AdminRequiredMixin, TemplateV
                 pass
         return super().get(request, *args, **kwargs)
 
-class PeriodeJenisDataCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
+class PeriodeJenisDataCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
     model = PeriodeJenisData
     form_class = PeriodeJenisDataForm
     template_name = 'periode_jenis_data/form.html'
@@ -43,7 +43,7 @@ class PeriodeJenisDataCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFor
         form = self.get_form()
         return self.render_form_response(form)
 
-class PeriodeJenisDataUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
+class PeriodeJenisDataUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
     model = PeriodeJenisData
     form_class = PeriodeJenisDataForm
     template_name = 'periode_jenis_data/form.html'
@@ -60,7 +60,7 @@ class PeriodeJenisDataUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFor
         form = self.get_form()
         return self.render_form_response(form)
 
-class PeriodeJenisDataDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+class PeriodeJenisDataDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     model = PeriodeJenisData
     template_name = 'periode_jenis_data/confirm_delete.html'
     success_url = reverse_lazy('periode_jenis_data_list')

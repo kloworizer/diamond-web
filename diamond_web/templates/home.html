@@ -1,12 +1,77 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="p-5 mb-4 bg-white border rounded-3">
-    <h1>Welcome to Diamond Web!</h1>
-    <p class="lead">This is a Django project styled with Bootstrap 5.</p>
-    <hr>
-    {% if not user.is_authenticated %}
-        <a href="{% url 'login' %}" class="btn btn-primary btn-lg">Get Started</a>
+<div class="container py-4">
+    {% if user.is_authenticated %}
+    <div class="row align-items-center mb-4">
+        <div class="col-md-12">
+            <div class="bg-white p-4 rounded shadow-sm">
+                <div class="d-flex align-items-center">
+                    <i class="ri-shield-user-line text-primary fs-2 me-3"></i>
+                    <div>
+                        <h2 class="h4 mb-1">Selamat datang kembali{% if user.get_full_name %}, {{ user.get_full_name }}{% endif %}!</h2>
+                        <p class="mb-0 text-muted">Ringkasan cepat ruang kerja dan tugas yang menunggu.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        {% if is_p3de %}
+        <div class="col-lg-6">
+            {% include 'task_to_do.html' %}
+        </div>
+        {% endif %}
+
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-secondary text-white d-flex align-items-center">
+                    <i class="ri-information-line me-2"></i>
+                    <h6 class="mb-0">Status</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">Sistem berjalan normal.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if debug_user_groups %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="ri-bug-line me-2"></i>Debug Login Users</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for group_name, users in debug_user_groups.items %}
+                            <div class="col-md-4 mb-3">
+                                <h6 class="mb-2 text-uppercase small">{{ group_name|upper }}</h6>
+                                {% if users %}
+                                    <ul class="list-group">
+                                        {% for u in users %}
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <div class="fw-semibold">{{ u.username }}</div>
+                                                    <small class="text-muted">{{ u.full_name }}</small>
+                                                </div>
+                                                <i class="ri-user-3-line text-secondary"></i>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p class="text-muted mb-0">Tidak ada pengguna di grup ini.</p>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     {% endif %}
 </div>
 {% endblock %}

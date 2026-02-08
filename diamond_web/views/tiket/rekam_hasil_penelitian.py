@@ -9,14 +9,33 @@ from django.http import JsonResponse
 
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
+from ...models.tiket_pic import TiketPIC
 from ...forms.rekam_hasil_penelitian import RekamHasilPenelitianForm
+from ...constants.tiket_action_types import TiketActionType
+from ..mixins import UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin
 
 
-class RekamHasilPenelitianView(LoginRequiredMixin, UpdateView):
+class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, UpdateView):
     """View for recording research results (Rekam Hasil Penelitian)."""
     model = Tiket
     form_class = RekamHasilPenelitianForm
+    
+    def test_func(self):
+        """Check if user is active PIC for this tiket"""
+        tiket = self.get_object()
+        return TiketPIC.objects.filter(
+            id_tiket=tiket,
+            id_user=self.request.user,
+            active=True,
+            role=TiketPIC.Role.P3DE
+        ).exists()
     template_name = 'tiket/rekam_hasil_penelitian_form.html'
+    
+    def get_template_names(self):
+        """Return modal template for AJAX requests."""
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return ['tiket/rekam_hasil_penelitian_modal_form.html']
+        return [self.template_name]
     
     def get_success_url(self):
         """Redirect back to tiket detail after saving."""
@@ -36,21 +55,29 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UpdateView):
         
         # Update the tiket with new baris_p3de value
         self.object = form.save(commit=False)
-        self.object.status = 3  # Change status to "Diteliti"
+        self.object.status = 2  # Change status to "Diteliti"
         self.object.tgl_teliti = now
         self.object.save()
         
         # Get catatan from form
-        catatan = form.cleaned_data.get('catatan', 'Hasil penelitian direkam')
+        is_update = bool(self.object.pk)
+        catatan = form.cleaned_data.get(
+            'catatan',
+            'Hasil penelitian diubah' if is_update else 'Hasil penelitian direkam'
+        )
         
         # Create tiket_action entry for audit trail with same timestamp
         TiketAction.objects.create(
             id_tiket=self.object,
             id_user=self.request.user,
             timestamp=now,
-            action=3,
+            action=TiketActionType.DITELITI,
             catatan=catatan
         )
+        
+        # Check if AJAX request
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': True})
         
         # Return response
         messages.success(

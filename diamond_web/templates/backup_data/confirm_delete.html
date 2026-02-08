@@ -1,0 +1,11 @@
+<div class="alert alert-warning">
+    <h5>Hapus Backup Data</h5>
+    <p>Apakah Anda yakin ingin menghapus backup data untuk tiket <strong>{{ object.id_tiket.nomor_tiket }}</strong>?</p>
+    <form method="post" action="{{ form_action }}" class="mt-3">
+        {% csrf_token %}
+        <div class="modal-footer mt-3 border-top pt-3">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+            <button type="submit" class="btn btn-danger">Konfirmasi Hapus</button>
+        </div>
+    </form>
+</div>

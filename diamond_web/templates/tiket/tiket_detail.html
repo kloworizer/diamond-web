@@ -1,116 +1,940 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">{{ page_title }}</h2>
-    </div>
-
-    <!-- Tiket Information -->
-    <div class="card mb-4">
-        <div class="card-header bg-light">
-            <h5 class="mb-0">Informasi Tiket</h5>
-        </div>
-        <div class="card-body">
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <p><strong>Nomor Tiket:</strong> {{ tiket.nomor_tiket }}</p>
-                    <p><strong>Status:</strong> <span class="badge bg-info">{{ status_label }}</span></p>
+<div class="container-fluid mt-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="ri-file-list-3-line me-2"></i>{{ page_title }}
+                    </h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                            <li class="breadcrumb-item"><a href="{% url 'tiket_list' %}">Tiket</a></li>
+                            <li class="breadcrumb-item active">{{ tiket.nomor_tiket }}</li>
+                        </ol>
+                    </nav>
                 </div>
-                <div class="col-md-6">
-                    <p><strong>Periode Jenis Data:</strong> {{ tiket.id_periode_data }}</p>
-                    <p><strong>Periode:</strong> {{ tiket.periode }}</p>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-6">
-                    <p><strong>Tahun:</strong> {{ tiket.tahun }}</p>
+                <div>
+                    <span class="badge {{ status_badge_class }} fs-6 px-3 py-2">
+                        <i class="ri-checkbox-circle-line me-1"></i>{{ status_label }}
+                    </span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Tiket Actions History -->
-    <div class="card mb-4">
-        <div class="card-header bg-light">
-            <h5 class="mb-0">Riwayat Aksi</h5>
-        </div>
-        <div class="card-body">
-            {% if tiket_actions %}
-                <div class="table-responsive">
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Tanggal/Waktu</th>
-                                <th>User</th>
-                                <th>Aksi</th>
-                                <th>Catatan</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for action in tiket_actions %}
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Tiket Information Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="ri-ticket-2-line me-2"></i>Informasi Tiket</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Nomor Tiket</label>
+                                <p class="fw-bold mb-0 fs-5 text-primary">{{ tiket.nomor_tiket }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Status Tiket</label>
+                                <p class="fw-semibold mb-0">
+                                    <span class="badge {{ status_badge_class }}">{{ status_label }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Periode</label>
+                                <p class="fw-semibold mb-0">
+                                    <span class="badge bg-dark">{{ periode_formatted }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Data Prioritas</label>
+                                <p class="fw-semibold mb-0">
+                                    {% if tiket.id_jenis_prioritas_data %}
+                                    <span class="badge bg-success">Ya</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Tidak</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Terima DIP</label>
+                                <p class="fw-semibold mb-0">
+                                    {% if tiket.tgl_terima_dip %}
+                                        <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_terima_dip|date:"d/m/Y H:i" }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Terima Vertikal</label>
+                                <p class="fw-semibold mb-0">
+                                    {% if tiket.tgl_terima_vertikal %}
+                                        <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_terima_vertikal|date:"d/m/Y H:i" }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        {% if tiket.nomor_nd_nadine %}
+                        <div class="col-md-4">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Nomor ND Nadine</label>
+                                <p class="fw-semibold mb-0">{{ tiket.nomor_nd_nadine }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Nadine</label>
+                                <p class="fw-semibold mb-0">
+                                    {% if tiket.tgl_nadine %}
+                                        <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_nadine|date:"d/m/Y H:i" }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Kirim PIDE</label>
+                                <p class="fw-semibold mb-0">
+                                    {% if tiket.tgl_kirim_pide %}
+                                        <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_kirim_pide|date:"d/m/Y H:i" }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- ILAP Information Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="ri-database-2-line me-2"></i>Informasi ILAP</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Nama ILAP</label>
+                                <p class="fw-semibold mb-0">{{ ilap_info.nama_ilap }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Kategori ILAP</label>
+                                <p class="fw-semibold mb-0">{{ ilap_info.kategori_ilap }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Kategori Wilayah</label>
+                                <p class="fw-semibold mb-0">{{ ilap_info.kategori_wilayah }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Jenis Tabel</label>
+                                <p class="fw-semibold mb-0">{{ ilap_info.jenis_tabel }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">ID Sub Jenis Data</label>
+                                <p class="fw-semibold mb-0">
+                                    <span class="badge bg-secondary">{{ ilap_info.id_sub_jenis_data }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Nama Sub Jenis Data</label>
+                                <p class="fw-semibold mb-0">{{ ilap_info.nama_sub_jenis_data }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Deskripsi Periode</label>
+                                <p class="fw-semibold mb-0">{{ ilap_info.deskripsi_periode }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Klasifikasi</label>
+                                {% if ilap_info.klasifikasi %}
+                                <div class="d-flex flex-wrap gap-2">
+                                    {% for klas in ilap_info.klasifikasi %}
+                                    <span class="badge bg-info">{{ klas }}</span>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <p class="fw-semibold mb-0">-</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tiket Actions History -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="ri-history-line me-2"></i>Riwayat Aksi</h5>
+                </div>
+                <div class="card-body">
+                    {% if tiket_actions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
                                 <tr>
-                                    <td>{{ action.timestamp|date:"d/m/Y H:i:s" }}</td>
-                                    <td>{{ action.id_user.get_full_name|default:action.id_user.username }}</td>
+                                    <th><i class="ri-time-line me-1"></i>Tanggal/Waktu</th>
+                                    <th><i class="ri-user-line me-1"></i>User</th>
+                                    <th><i class="ri-edit-line me-1"></i>Status Tiket</th>
+                                    <th><i class="ri-file-text-line me-1"></i>Catatan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for action in tiket_actions %}
+                                <tr>
+                                    <td class="text-nowrap">{{ action.timestamp|date:"d/m/Y H:i:s" }}</td>
+                                    <td>{{ action.user_display }}</td>
                                     <td>
                                         <span class="badge {{ action.badge_class }}">{{ action.badge_label }}</span>
                                     </td>
-                                    <td>{{ action.catatan }}</td>
+                                    <td>{{ action.catatan|default:"-" }}</td>
                                 </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="ri-information-line fs-1"></i>
+                        <p class="mb-0">Tidak ada riwayat aksi.</p>
+                    </div>
+                    {% endif %}
                 </div>
-            {% else %}
-                <p class="text-muted">Tidak ada riwayat aksi.</p>
-            {% endif %}
-        </div>
-    </div>
+            </div>
 
-    <!-- Tiket PIC Assignment -->
-    <div class="card mb-4">
-        <div class="card-header bg-light">
-            <h5 class="mb-0">PIC (Penanggung Jawab)</h5>
-        </div>
-        <div class="card-body">
-            {% if tiket_pics %}
-                <div class="table-responsive">
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Tanggal/Waktu</th>
-                                <th>User</th>
-                                <th>Role</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for pic in tiket_pics %}
-                                <tr>
-                                    <td>{{ pic.timestamp|date:"d/m/Y H:i:s" }}</td>
-                                    <td>{{ pic.id_user.get_full_name|default:pic.id_user.username }}</td>
-                                    <td>
-                                        <span class="badge {{ pic.badge_class }}">{{ pic.badge_label }}</span>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+            <!-- Backup Data Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="ri-save-2-line me-2"></i>Backup Data</h5>
                 </div>
-            {% else %}
-                <p class="text-muted">Tidak ada PIC yang ditugaskan.</p>
-            {% endif %}
-        </div>
-    </div>
+                <div class="card-body">
+                    {% if backup_list %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th><i class="ri-folder-2-line me-1"></i>Lokasi Backup</th>
+                                        <th><i class="ri-user-line me-1"></i>User</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for backup in backup_list %}
+                                        <tr>
+                                            <td>{{ backup.lokasi_backup }}</td>
+                                            <td>
+                                                {% if backup.id_user %}
+                                                    {{ backup.id_user.get_full_name|default:backup.id_user.username }}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3 text-muted">
+                            <i class="ri-information-line fs-4"></i>
+                            <p class="mb-0">Belum ada data backup.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
 
-    <!-- Action Buttons -->
-    <div class="d-flex gap-2 mb-4">
-        <a href="{% url 'tiket_list' %}" class="btn btn-secondary">Kembali ke Daftar</a>
-        {% if tiket.status == 2 %}
-            <a href="{% url 'rekam_hasil_penelitian' tiket.pk %}" class="btn btn-primary">Rekam Hasil Penelitian</a>
-        {% endif %}
-        {% if tiket.status != 5 and tiket.status != 9 %}
-            <a href="{% url 'batalkan_tiket' tiket.pk %}" class="btn btn-danger">Batalkan Tiket</a>
-        {% endif %}
+            <!-- Tanda Terima Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="ri-file-list-2-line me-2"></i>Tanda Terima</h5>
+                </div>
+                <div class="card-body">
+                    {% if tanda_terima_items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th><i class="ri-hashtag me-1"></i>Nomor</th>
+                                        <th><i class="ri-calendar-line me-1"></i>Tanggal</th>
+                                        <th><i class="ri-file-text-line me-1"></i>Deskripsi</th>
+                                        <th><i class="ri-user-line me-1"></i>Perekam</th>
+                                        <th><i class="ri-close-circle-line me-1"></i>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in tanda_terima_items %}
+                                        <tr>
+                                            <td>{{ item.id_tanda_terima.nomor_tanda_terima }}</td>
+                                            <td>{{ item.id_tanda_terima.tanggal_tanda_terima|date:"d/m/Y H:i" }}</td>
+                                            <td>{{ item.id_tanda_terima.deskripsi }}</td>
+                                            <td>{{ item.id_tanda_terima.id_perekam.get_full_name|default:item.id_tanda_terima.id_perekam.username }}</td>
+                                            <td>
+                                                {% if not item.id_tanda_terima.active %}
+                                                    <span class="badge bg-danger">Dibatalkan</span>
+                                                {% else %}
+                                                    <span class="badge bg-success">Aktif</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3 text-muted">
+                            <i class="ri-information-line fs-4"></i>
+                            <p class="mb-0">Belum ada tanda terima.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- PIC Assignment Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="ri-team-line me-2"></i>PIC (Penanggung Jawab)</h5>
+                </div>
+                <div class="card-body">
+                    {% if tiket_pics %}
+                    <div class="list-group list-group-flush">
+                        {% comment %}Group by role: show role header once, then list users under it{% endcomment %}
+                        {% for pic in tiket_pics %}
+                            {% ifchanged pic.badge_label %}
+                            <div class="list-group-item px-0 py-2 bg-light">
+                                <div class="fw-semibold text-uppercase small">
+                                    <span class="badge {{ pic.badge_class }}">{{ pic.badge_label }}</span>
+                                </div>
+                            </div>
+                            {% endifchanged %}
+
+                            <div class="list-group-item px-0 py-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="small text-muted">
+                                        {% if pic.timestamp %}
+                                            <i class="ri-time-line me-1"></i>{{ pic.timestamp|date:"d/m/Y H:i" }}
+                                        {% else %}
+                                            &nbsp;
+                                        {% endif %}
+                                    </div>
+                                    <div class="small">
+                                        {% if pic.is_pic_active %}
+                                            <span class="badge bg-success">Aktif</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Tidak Aktif</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="fw-semibold mt-1"> <i class="ri-user-3-line me-1"></i>{{ pic.user_display }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="ri-user-unfollow-line fs-1"></i>
+                        <p class="mb-0 small">Tidak ada PIC yang ditugaskan.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="ri-settings-3-line me-2"></i>Aksi</h5>
+                </div>
+                <div class="card-body">
+                    {% if not user_is_active_pic %}
+                    <div class="alert alert-info mb-0">
+                        <i class="ri-information-line me-2"></i>Anda bukan PIC aktif untuk tiket ini. Anda hanya dapat melihat, tidak dapat melakukan perubahan.
+                    </div>
+                    {% else %}
+                        <!-- Main action buttons: visible if tiket not dikirim ke pide (4), dibatalkan (7), or selesai (8) -->
+                        {% if tiket.status != 4 and tiket.status != 7 and tiket.status != 8 %}
+                            <div class="d-grid gap-2">
+                                <!-- Rekam Backup button: show if backup not yet recorded -->
+                                {% if not tiket.backup %}
+                                    <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#rekamBackupDataModal">
+                                        <i class="ri-save-line me-1"></i>Rekam Backup Data
+                                    </button>
+                                {% endif %}
+                                
+                                <!-- Rekam Tanda Terima button: show if tanda terima not yet recorded -->
+                                {% if not tiket.tanda_terima %}
+                                    <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#createTandaTerimaModal">
+                                        <i class="ri-file-list-2-line me-1"></i>Rekam Tanda Terima
+                                    </button>
+                                {% endif %}
+                                
+                                <!-- Rekam Hasil Penelitian button: show if backup and tanda terima both recorded -->
+                                {% if tiket.backup and tiket.tanda_terima %}
+                                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rekamHasilPenelitianModal" data-action="edit">
+                                        <i class="ri-file-edit-line me-1"></i>{% if tiket.tgl_teliti %}Ubah Hasil Penelitian{% else %}Rekam Hasil Penelitian{% endif %}
+                                    </button>
+                                {% endif %}
+                                
+                                <!-- Kirim Tiket ke PIDE button: show if backup, tanda terima, and penelitian all completed -->
+                                {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti %}
+                                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#kirimTiketModal">
+                                        <i class="ri-send-plane-line me-1"></i>Kirim Tiket ke PIDE
+                                    </button>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <!-- No actions available for finalized tikets -->
+                            <div class="text-center text-muted py-2">
+                                <i class="ri-information-line me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Batalkan Tiket button: always available if tiket not yet sent to PIDE (status < 4) -->
+                        {% if tiket.status < 4 %}
+                            <button type="button" class="btn btn-danger mt-2 w-100" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
+                                <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
+                            </button>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<!-- Rekam Backup Data Modal -->
+<div class="modal fade" id="rekamBackupDataModal" tabindex="-1" aria-labelledby="rekamBackupDataModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="rekamBackupDataModalLabel">Rekam Backup Data untuk Tiket {{ tiket.nomor_tiket }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div id="backup-data-form-container">
+                <!-- Form will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tanda Terima Modal -->
+<div class="modal fade" id="createTandaTerimaModal" tabindex="-1" aria-labelledby="createTandaTerimaModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createTandaTerimaModalLabel">Buat Tanda Terima untuk Tiket {{ tiket.nomor_tiket }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div id="tanda-terima-form-container">
+                <!-- Form will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Batalkan Tiket Modal -->
+<div class="modal fade" id="batalkanTiketModal" tabindex="-1" aria-labelledby="batalkanTiketModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="batalkanTiketModalLabel">Batalkan Tiket {{ tiket.nomor_tiket }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div id="batalkan-tiket-form-container">
+                <!-- Form will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rekam Hasil Penelitian Modal -->
+<div class="modal fade" id="rekamHasilPenelitianModal" tabindex="-1" aria-labelledby="rekamHasilPenelitianModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="rekamHasilPenelitianModalLabel">Rekam Hasil Penelitian untuk Tiket {{ tiket.nomor_tiket }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div id="rekam-hasil-penelitian-form-container">
+                <!-- Form will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Kirim Tiket Modal -->
+<div class="modal fade" id="kirimTiketModal" tabindex="-1" aria-labelledby="kirimTiketModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="kirimTiketModalLabel">Kirim Tiket ke PIDE {{ tiket.nomor_tiket }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div id="kirim-tiket-form-container">
+                <!-- Form will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .info-group {
+        padding: 0.5rem;
+        border-left: 3px solid #dee2e6;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+    }
+
+    .info-group:hover {
+        background-color: #e9ecef;
+        border-left-color: #0d6efd;
+        transition: all 0.2s ease;
+    }
+
+    .card {
+        border: none;
+        transition: transform 0.2s ease;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+    }
+
+    .card-header {
+        border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .badge {
+        font-weight: 500;
+        padding: 0.35em 0.65em;
+    }
+
+    .list-group-item {
+        border-left: 3px solid transparent;
+        transition: all 0.2s ease;
+    }
+
+    .list-group-item:hover {
+        border-left-color: #0d6efd;
+        background-color: #f8f9fa;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+
+    .shadow-sm {
+        box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .075) !important;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const setupModalAria = (modalEl) => {
+            if (!modalEl) {
+                return;
+            }
+            modalEl.addEventListener('show.bs.modal', function () {
+                modalEl.removeAttribute('aria-hidden');
+                modalEl.inert = false;
+            });
+            modalEl.addEventListener('shown.bs.modal', function () {
+                const button = modalEl.querySelector('.modal-footer button');
+                if (button) {
+                    button.focus();
+                }
+            });
+            modalEl.addEventListener('hidden.bs.modal', function () {
+                if (modalEl.contains(document.activeElement)) {
+                    document.activeElement.blur();
+                }
+                modalEl.setAttribute('aria-hidden', 'true');
+                modalEl.inert = true;
+            });
+        };
+
+        const rekamBackupDataModal = document.getElementById('rekamBackupDataModal');
+        if (rekamBackupDataModal) {
+            setupModalAria(rekamBackupDataModal);
+            rekamBackupDataModal.addEventListener('show.bs.modal', function () {
+                const formContainer = document.getElementById('backup-data-form-container');
+                formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-warning" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                fetch('{% url "backup_data_from_tiket_create" tiket.pk %}')
+                    .then(response => response.text())
+                    .then(html => {
+                        formContainer.innerHTML = html;
+
+                        // Handle form submission
+                        const form = formContainer.querySelector('form');
+                        if (form) {
+                            form.addEventListener('submit', function (e) {
+                                e.preventDefault();
+                                const formData = new FormData(form);
+
+                                fetch(form.action, {
+                                    method: 'POST',
+                                    body: formData,
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
+                                })
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            bootstrap.Modal.getInstance(rekamBackupDataModal).hide();
+                                            showToast(data.message || 'Backup data berhasil disimpan.', 'success');
+                                            setTimeout(() => location.reload(), 800);
+                                        } else {
+                                            showToast(data.message || 'Gagal menyimpan backup data.', 'danger');
+                                            formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error:', error);
+                                        showToast('Terjadi kesalahan saat menyimpan data.', 'danger');
+                                    });
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading form:', error);
+                        showToast('Gagal memuat form.', 'danger');
+                        formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
+                    });
+            });
+        }
+
+        const tandaTerimaModal = document.getElementById('createTandaTerimaModal');
+        if (tandaTerimaModal) {
+            setupModalAria(tandaTerimaModal);
+            tandaTerimaModal.addEventListener('show.bs.modal', function () {
+                const formContainer = document.getElementById('tanda-terima-form-container');
+                formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                fetch('{% url "tanda_terima_data_from_tiket_create" tiket.pk %}')
+                    .then(response => response.text())
+                    .then(html => {
+                        formContainer.innerHTML = html;
+                        attachTandaTerimaHandlers(formContainer);
+
+                        // Handle form submission
+                        const form = formContainer.querySelector('form');
+                        if (form) {
+                            form.addEventListener('submit', function (e) {
+                                e.preventDefault();
+                                const formData = new FormData(form);
+
+                                fetch(form.action, {
+                                    method: 'POST',
+                                    body: formData,
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
+                                })
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            bootstrap.Modal.getInstance(tandaTerimaModal).hide();
+                                            showToast(data.message || 'Tanda terima berhasil dibuat.', 'success');
+                                            setTimeout(() => location.reload(), 800);
+                                        } else {
+                                            // Handle form errors - the mixin returns 'html' not 'form_html'
+                                            showToast(data.message || 'Gagal membuat tanda terima.', 'danger');
+                                            formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
+                                            attachTandaTerimaHandlers(formContainer);
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error:', error);
+                                        showToast('Terjadi kesalahan saat menyimpan data.', 'danger');
+                                    });
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading form:', error);
+                        showToast('Gagal memuat form.', 'danger');
+                        formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
+                    });
+            });
+        }
+
+        const batalkanTiketModal = document.getElementById('batalkanTiketModal');
+        if (batalkanTiketModal) {
+            setupModalAria(batalkanTiketModal);
+            batalkanTiketModal.addEventListener('show.bs.modal', function () {
+                const formContainer = document.getElementById('batalkan-tiket-form-container');
+                formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-danger" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                fetch('{% url "batalkan_tiket" tiket.pk %}', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => response.text())
+                    .then(html => {
+                        formContainer.innerHTML = html;
+
+                        // Handle form submission
+                        const form = formContainer.querySelector('form');
+                        if (form) {
+                            form.addEventListener('submit', function (e) {
+                                e.preventDefault();
+                                const formData = new FormData(form);
+
+                                fetch(form.action, {
+                                    method: 'POST',
+                                    body: formData
+                                })
+                                    .then(response => {
+                                        if (response.ok && response.redirected) {
+                                            bootstrap.Modal.getInstance(batalkanTiketModal).hide();
+                                            showToast('Tiket berhasil dibatalkan.', 'success');
+                                            setTimeout(() => location.reload(), 800);
+                                        } else {
+                                            showToast('Gagal membatalkan tiket.', 'danger');
+                                            return response.text();
+                                        }
+                                    })
+                                    .then(html => {
+                                        if (html) {
+                                            formContainer.innerHTML = html;
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error:', error);
+                                        showToast('Terjadi kesalahan saat membatalkan tiket.', 'danger');
+                                    });
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading form:', error);
+                        showToast('Gagal memuat form.', 'danger');
+                        formContainer.innerHTML = '<div class="alert alert-danger m-3">Gagal memuat form</div>';
+                    });
+            });
+        }
+
+        const rekamHasilPenelitianModal = document.getElementById('rekamHasilPenelitianModal');
+        if (rekamHasilPenelitianModal) {
+            setupModalAria(rekamHasilPenelitianModal);
+            rekamHasilPenelitianModal.addEventListener('show.bs.modal', function () {
+                const formContainer = document.getElementById('rekam-hasil-penelitian-form-container');
+                formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                fetch('{% url "rekam_hasil_penelitian" tiket.pk %}', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => response.text())
+                    .then(html => {
+                        formContainer.innerHTML = html;
+
+                        // Handle form submission
+                        const form = formContainer.querySelector('form');
+                        if (form) {
+                            form.addEventListener('submit', function (e) {
+                                e.preventDefault();
+                                const formData = new FormData(form);
+
+                                fetch(form.action, {
+                                    method: 'POST',
+                                    body: formData,
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
+                                })
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            bootstrap.Modal.getInstance(rekamHasilPenelitianModal).hide();
+                                            showToast(data.message || 'Hasil penelitian berhasil disimpan.', 'success');
+                                            setTimeout(() => location.reload(), 800);
+                                        } else {
+                                            showToast(data.message || 'Gagal menyimpan hasil penelitian.', 'danger');
+                                            formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error:', error);
+                                        showToast('Terjadi kesalahan saat menyimpan data.', 'danger');
+                                    });
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading form:', error);
+                        showToast('Gagal memuat form.', 'danger');
+                        formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
+                    });
+            });
+        }
+
+            const kirimTiketModal = document.getElementById('kirimTiketModal');
+            if (kirimTiketModal) {
+                setupModalAria(kirimTiketModal);
+                kirimTiketModal.addEventListener('show.bs.modal', function () {
+                    const formContainer = document.getElementById('kirim-tiket-form-container');
+                    formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-success" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                    fetch('{% url "kirim_tiket_from_tiket" tiket.pk %}', {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                        .then(response => response.text())
+                        .then(html => {
+                            formContainer.innerHTML = html;
+
+                            const form = formContainer.querySelector('form');
+                            if (form) {
+                                form.addEventListener('submit', function (e) {
+                                    e.preventDefault();
+                                    const formData = new FormData(form);
+
+                                    fetch(form.action, {
+                                        method: 'POST',
+                                        body: formData,
+                                        headers: {
+                                            'X-Requested-With': 'XMLHttpRequest'
+                                        }
+                                    })
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            if (data.success) {
+                                                bootstrap.Modal.getInstance(kirimTiketModal).hide();
+                                                showToast(data.message || 'Tiket berhasil dikirim.', 'success');
+                                                setTimeout(() => location.reload(), 800);
+                                            } else if (data.errors) {
+                                                showToast(data.message || 'Gagal mengirim tiket.', 'danger');
+                                                formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
+                                            }
+                                        })
+                                        .catch(error => {
+                                            console.error('Error:', error);
+                                            showToast('Terjadi kesalahan saat mengirim tiket.', 'danger');
+                                        });
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error loading form:', error);
+                            formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
+                        });
+                });
+            }
+
+        function attachTandaTerimaHandlers(container) {
+            const tanggalInput = container.querySelector('#id_tanggal_tanda_terima');
+            const nomorInput = container.querySelector('#id_nomor_tanda_terima');
+            const ilapInput = container.querySelector('#id_id_ilap');
+            const tiketContainer = container.querySelector('#tiket-checkbox-container');
+
+            if (tanggalInput && nomorInput) {
+                const updateNomor = () => {
+                    const tanggalValue = tanggalInput.value;
+                    if (!tanggalValue) {
+                        return;
+                    }
+
+                    fetch(`{% url "tanda_terima_next_number" %}?tanggal=${encodeURIComponent(tanggalValue)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data && data.success && data.nomor_tanda_terima) {
+                                nomorInput.value = data.nomor_tanda_terima;
+                            }
+                        })
+                        .catch(() => {
+                            // ignore
+                        });
+                };
+
+                tanggalInput.addEventListener('change', updateNomor);
+            }
+
+            if (ilapInput && tiketContainer && !ilapInput.disabled) {
+                const renderTikets = (items) => {
+                    if (!items || items.length === 0) {
+                        tiketContainer.innerHTML = '<div class="text-muted">Tidak ada tiket tersedia.</div>';
+                        return;
+                    }
+                    tiketContainer.innerHTML = items.map((item) => {
+                        return `
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="tiket_ids" value="${item.id}" id="tiket-${item.id}">
+                                <label class="form-check-label" for="tiket-${item.id}">${item.label}</label>
+                            </div>
+                        `;
+                    }).join('');
+                };
+
+                const loadTiketsByIlap = () => {
+                    const ilapId = ilapInput.value;
+                    if (!ilapId) {
+                        tiketContainer.innerHTML = '<div class="text-muted">Pilih ILAP terlebih dahulu.</div>';
+                        return;
+                    }
+                    fetch(`{% url "tanda_terima_tikets_by_ilap" %}?ilap_id=${encodeURIComponent(ilapId)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data && data.success) {
+                                renderTikets(data.data || []);
+                            }
+                        })
+                        .catch(() => {
+                            // ignore
+                        });
+                };
+
+                ilapInput.addEventListener('change', loadTiketsByIlap);
+            }
+        }
+    });
+</script>
 {% endblock %}

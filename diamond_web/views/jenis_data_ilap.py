@@ -9,9 +9,9 @@ from django.views.decorators.http import require_GET
 
 from ..models.jenis_data_ilap import JenisDataILAP
 from ..forms.jenis_data_ilap import JenisDataILAPForm
-from .mixins import AjaxFormMixin, AdminRequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
 
-class JenisDataILAPListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
+class JenisDataILAPListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
     template_name = 'jenis_data_ilap/list.html'
 
     def get(self, request, *args, **kwargs):
@@ -26,7 +26,7 @@ class JenisDataILAPListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView
                 pass
         return super().get(request, *args, **kwargs)
 
-class JenisDataILAPCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
+class JenisDataILAPCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
     model = JenisDataILAP
     form_class = JenisDataILAPForm
     template_name = 'jenis_data_ilap/form.html'
@@ -43,7 +43,7 @@ class JenisDataILAPCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMi
         form = self.get_form()
         return self.render_form_response(form)
 
-class JenisDataILAPUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
+class JenisDataILAPUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
     model = JenisDataILAP
     form_class = JenisDataILAPForm
     template_name = 'jenis_data_ilap/form.html'
@@ -60,7 +60,7 @@ class JenisDataILAPUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMi
         form = self.get_form()
         return self.render_form_response(form)
 
-class JenisDataILAPDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+class JenisDataILAPDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     model = JenisDataILAP
     template_name = 'jenis_data_ilap/confirm_delete.html'
     success_url = reverse_lazy('jenis_data_ilap_list')

@@ -9,9 +9,9 @@ from django.views.decorators.http import require_GET
 
 from ..models.periode_pengiriman import PeriodePengiriman
 from ..forms.periode_pengiriman import PeriodePengirimanForm
-from .mixins import AjaxFormMixin, AdminRequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
 
-class PeriodePengirimanListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
+class PeriodePengirimanListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
     template_name = 'periode_pengiriman/list.html'
 
     def get(self, request, *args, **kwargs):
@@ -26,7 +26,7 @@ class PeriodePengirimanListView(LoginRequiredMixin, AdminRequiredMixin, Template
                 pass
         return super().get(request, *args, **kwargs)
 
-class PeriodePengirimanCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
+class PeriodePengirimanCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
     model = PeriodePengiriman
     form_class = PeriodePengirimanForm
     template_name = 'periode_pengiriman/form.html'
@@ -43,7 +43,7 @@ class PeriodePengirimanCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFo
         form = self.get_form()
         return self.render_form_response(form)
 
-class PeriodePengirimanUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
+class PeriodePengirimanUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
     model = PeriodePengiriman
     form_class = PeriodePengirimanForm
     template_name = 'periode_pengiriman/form.html'
@@ -60,7 +60,7 @@ class PeriodePengirimanUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFo
         form = self.get_form()
         return self.render_form_response(form)
 
-class PeriodePengirimanDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+class PeriodePengirimanDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     model = PeriodePengiriman
     template_name = 'periode_pengiriman/confirm_delete.html'
     success_url = reverse_lazy('periode_pengiriman_list')

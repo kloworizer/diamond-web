@@ -8,14 +8,33 @@ from django.contrib import messages
 
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
+from ...models.tiket_pic import TiketPIC
 from ...forms.batalkan_tiket import BatalkanTiketForm
+from ...constants.tiket_action_types import TiketActionType
+from ..mixins import UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin
 
 
-class BatalkanTiketView(LoginRequiredMixin, UpdateView):
+class BatalkanTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, UpdateView):
     """View for canceling a tiket (Batalkan Tiket)."""
     model = Tiket
     form_class = BatalkanTiketForm
     template_name = 'tiket/batalkan_tiket_form.html'
+    
+    def test_func(self):
+        """Check if user is active PIC for this tiket"""
+        tiket = self.get_object()
+        return TiketPIC.objects.filter(
+            id_tiket=tiket,
+            id_user=self.request.user,
+            active=True,
+            role=TiketPIC.Role.P3DE
+        ).exists()
+
+    def get_template_names(self):
+        """Return modal template for AJAX requests."""
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return ['tiket/batalkan_tiket_modal_form.html']
+        return [self.template_name]
 
     def get_success_url(self):
         """Redirect back to tiket detail after saving."""
@@ -33,7 +52,7 @@ class BatalkanTiketView(LoginRequiredMixin, UpdateView):
         now = datetime.now()
 
         self.object = form.save(commit=False)
-        self.object.status = 5  # Change status to "Dibatalkan"
+        self.object.status = 7  # Change status to "Dibatalkan"
         self.object.tgl_dibatalkan = now
         self.object.save()
 
@@ -43,7 +62,7 @@ class BatalkanTiketView(LoginRequiredMixin, UpdateView):
             id_tiket=self.object,
             id_user=self.request.user,
             timestamp=now,
-            action=5,
+            action=TiketActionType.DIBATALKAN,
             catatan=catatan
         )
 

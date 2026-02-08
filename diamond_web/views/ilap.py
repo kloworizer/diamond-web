@@ -10,10 +10,10 @@ from django.db.models import Max
 
 from ..models.ilap import ILAP
 from ..forms.ilap import ILAPForm
-from .mixins import AjaxFormMixin, AdminRequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
 
 
-class ILAPListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
+class ILAPListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
     template_name = 'ilap/list.html'
 
     def get(self, request, *args, **kwargs):
@@ -29,7 +29,7 @@ class ILAPListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name='admin').exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def get_next_ilap_id(request):
     """Get next id_ilap for a given category."""
@@ -55,7 +55,7 @@ def get_next_ilap_id(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name='admin').exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def ilap_data(request):
     """Server-side processing for ILAP DataTables."""
@@ -116,12 +116,12 @@ def ilap_data(request):
     })
 
 
-class ILAPCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
+class ILAPCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
     model = ILAP
     form_class = ILAPForm
     template_name = 'ilap/form.html'
     success_url = reverse_lazy('ilap_list')
-    success_message = 'ILAP "{object}" created successfully.'
+    success_message = 'ILAP "{object}" berhasil dibuat.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -142,12 +142,12 @@ class ILAPCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, Crea
         return super().form_valid(form)
 
 
-class ILAPUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
+class ILAPUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
     model = ILAP
     form_class = ILAPForm
     template_name = 'ilap/form.html'
     success_url = reverse_lazy('ilap_list')
-    success_message = 'ILAP "{object}" updated successfully.'
+    success_message = 'ILAP "{object}" berhasil diperbarui.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -162,7 +162,7 @@ class ILAPUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, Upda
         return self.render_form_response(form)
 
 
-class ILAPDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+class ILAPDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     model = ILAP
     template_name = 'ilap/confirm_delete.html'
     success_url = reverse_lazy('ilap_list')
@@ -187,9 +187,9 @@ class ILAPDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': f'ILAP "{name}" deleted successfully.'
+                'message': f'ILAP "{name}" berhasil dihapus.'
             })
-        messages.success(request, f'ILAP "{name}" deleted successfully.')
+        messages.success(request, f'ILAP "{name}" berhasil dihapus.')
         return JsonResponse({'success': True, 'redirect': self.success_url})
 
     def post(self, request, *args, **kwargs):

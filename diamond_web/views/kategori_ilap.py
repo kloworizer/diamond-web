@@ -9,9 +9,9 @@ from django.views.decorators.http import require_GET
 
 from ..models.kategori_ilap import KategoriILAP
 from ..forms.kategori_ilap import KategoriILAPForm
-from .mixins import AjaxFormMixin, AdminRequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
 
-class KategoriILAPListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
+class KategoriILAPListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
     template_name = 'kategori_ilap/list.html'
 
     def get(self, request, *args, **kwargs):
@@ -26,7 +26,7 @@ class KategoriILAPListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView)
                 pass
         return super().get(request, *args, **kwargs)
 
-class KategoriILAPCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
+class KategoriILAPCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
     model = KategoriILAP
     form_class = KategoriILAPForm
     template_name = 'kategori_ilap/form.html'
@@ -43,7 +43,7 @@ class KategoriILAPCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMix
         form = self.get_form()
         return self.render_form_response(form)
 
-class KategoriILAPUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
+class KategoriILAPUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
     model = KategoriILAP
     form_class = KategoriILAPForm
     template_name = 'kategori_ilap/form.html'
@@ -60,7 +60,7 @@ class KategoriILAPUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMix
         form = self.get_form()
         return self.render_form_response(form)
 
-class KategoriILAPDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+class KategoriILAPDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     model = KategoriILAP
     template_name = 'kategori_ilap/confirm_delete.html'
     success_url = reverse_lazy('kategori_ilap_list')

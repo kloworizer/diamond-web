@@ -1,0 +1,57 @@
+<div class="card">
+    <div class="card-header d-flex align-items-center bg-white">
+        <i class="ri-list-check-3-line fs-4 text-primary me-3"></i>
+        <div>
+            <h5 class="mb-0">Ringkasan Tugas</h5>
+            <small class="text-muted">Ringkasan cepat tiket yang menunggu tindakan Anda</small>
+        </div>
+    </div>
+    <div class="list-group list-group-flush">
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <i class="ri-database-2-line text-info me-3 fs-5"></i>
+                <div>
+                    <div class="fw-semibold">Rekam Backup Data</div>
+                    <small class="text-muted">Backup belum direkam</small>
+                </div>
+            </div>
+            <span class="badge bg-info rounded-pill">{{ tiket_summary.rekam_backup_data }}</span>
+        </div>
+
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <i class="ri-file-text-line text-success me-3 fs-5"></i>
+                <div>
+                    <div class="fw-semibold">Buat Tanda Terima</div>
+                    <small class="text-muted">Tanda terima belum dibuat</small>
+                </div>
+            </div>
+            <span class="badge bg-success rounded-pill">{{ tiket_summary.buat_tanda_terima }}</span>
+        </div>
+
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <i class="ri-archive-line text-warning me-3 fs-5"></i>
+                <div>
+                    <div class="fw-semibold">Rekam Hasil Penelitian</div>
+                    <small class="text-muted">Hasil penelitian belum direkam</small>
+                </div>
+            </div>
+            <span class="badge bg-warning text-dark rounded-pill">{{ tiket_summary.rekam_hasil_penelitian }}</span>
+        </div>
+
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <i class="ri-send-plane-line text-danger me-3 fs-5"></i>
+                <div>
+                    <div class="fw-semibold">Kirim ke PIDE</div>
+                    <small class="text-muted">Belum dikirim ke PIDE</small>
+                </div>
+            </div>
+            <span class="badge bg-danger rounded-pill">{{ tiket_summary.kirim_ke_pide }}</span>
+        </div>
+    </div>
+    <div class="card-footer text-muted small">
+        <i class="ri-information-line me-1"></i> Jumlah menunjukkan tiket yang ditugaskan kepada Anda.
+    </div>
+</div>

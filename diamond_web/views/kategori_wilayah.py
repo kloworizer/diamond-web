@@ -9,9 +9,9 @@ from django.views.decorators.http import require_GET
 
 from ..models.kategori_wilayah import KategoriWilayah
 from ..forms.kategori_wilayah import KategoriWilayahForm
-from .mixins import AjaxFormMixin, AdminRequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
 
-class KategoriWilayahListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
+class KategoriWilayahListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
     template_name = 'kategori_wilayah/list.html'
 
     def get(self, request, *args, **kwargs):
@@ -26,7 +26,7 @@ class KategoriWilayahListView(LoginRequiredMixin, AdminRequiredMixin, TemplateVi
                 pass
         return super().get(request, *args, **kwargs)
 
-class KategoriWilayahCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
+class KategoriWilayahCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
     model = KategoriWilayah
     form_class = KategoriWilayahForm
     template_name = 'kategori_wilayah/form.html'
@@ -43,7 +43,7 @@ class KategoriWilayahCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxForm
         form = self.get_form()
         return self.render_form_response(form)
 
-class KategoriWilayahUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
+class KategoriWilayahUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
     model = KategoriWilayah
     form_class = KategoriWilayahForm
     template_name = 'kategori_wilayah/form.html'
@@ -60,7 +60,7 @@ class KategoriWilayahUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxForm
         form = self.get_form()
         return self.render_form_response(form)
 
-class KategoriWilayahDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+class KategoriWilayahDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     model = KategoriWilayah
     template_name = 'kategori_wilayah/confirm_delete.html'
     success_url = reverse_lazy('kategori_wilayah_list')

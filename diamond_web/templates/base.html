@@ -33,14 +33,21 @@
     <script src="//cdn.datatables.net/2.3.6/js/dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/2.3.6/js/dataTables.bootstrap5.js"></script>
     <script>
-        // Helper function to show toast notifications
-        function showToast(title, message, type = 'info') {
+        // Standard toast notification function with Indonesian titles
+        function showToast(message, type = 'info', title = null) {
             const toastId = 'toast-' + Date.now();
-            const bgClass = type === 'success' ? 'bg-success' : type === 'danger' ? 'bg-danger' : 'bg-info';
+            const bgClass = type === 'success' ? 'bg-success' : type === 'danger' ? 'bg-danger' : type === 'warning' ? 'bg-warning' : 'bg-info';
+            const defaultTitles = {
+                'success': 'Berhasil',
+                'danger': 'Kesalahan',
+                'warning': 'Peringatan',
+                'info': 'Informasi'
+            };
+            const displayTitle = title || defaultTitles[type] || 'Pemberitahuan';
             const toastHtml = `
                 <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
                     <div class="toast-header ${bgClass} text-white">
-                        <strong class="me-auto">${title}</strong>
+                        <strong class="me-auto">${displayTitle}</strong>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
                     </div>
                     <div class="toast-body">
@@ -63,7 +70,7 @@
                 try {
                     const messages = JSON.parse(messagesJson.dataset.messages);
                     messages.forEach(msg => {
-                        showToast(msg.level, msg.message, msg.tags || 'info');
+                        showToast(msg.message, msg.tags || 'info');
                     });
                 } catch (e) {
                     console.error('Error parsing messages:', e);
@@ -207,7 +214,7 @@
             function onSessionExpired() {
                 // clear timers and call server-side logout endpoint, then redirect
                 clearTimers();
-                showToast('Session', 'Your session has expired. Logging out.', 'info');
+                showToast('Sesi Anda telah berakhir. Keluar.', 'info', 'Sesi');
                 
                 // POST to session-expired endpoint to log out server-side
                 fetch('{% url "session_expired" %}', {
@@ -281,7 +288,7 @@
             function onTimeout() {
                 // Optional: show a toast informing the user
                 try {
-                    showToast('Session', 'Your session has timed out. Redirecting to the homepage.', 'info');
+                    showToast('Sesi Anda telah habis. Mengalihkan ke beranda.', 'info', 'Sesi');
                 } catch (e) {
                     console.warn('Could not show toast before redirect:', e);
                 }
