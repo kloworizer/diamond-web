@@ -16,7 +16,7 @@ from ..models.tiket_pic import TiketPIC
 from ..models.tiket import Tiket
 from ..forms.tanda_terima_data import TandaTerimaDataForm
 from ..constants.tiket_action_types import TandaTerimaActionType
-from .mixins import AjaxFormMixin, UserP3DERequiredMixin
+from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketPICRequiredForEditMixin
 
 
 class TandaTerimaDataListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView):
@@ -98,12 +98,23 @@ def tanda_terima_data_data(request):
         can_edit = obj.detil_items.filter(
             Q(id_tiket__status__lt=8) | Q(id_tiket__status__isnull=True)
         ).exists()
-        actions_html = f"<button class='btn btn-sm btn-info me-1' data-action='view' data-url='{reverse('tanda_terima_data_view', args=[obj.pk])}' title='Detail'><i class='ri-eye-line'></i></button>"
-        # Hide edit button if tanda terima is dibatalkan
-        # if obj.active:
-        #     actions_html += f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('tanda_terima_data_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
-        if obj.active and can_edit:
+        
+        # Check if user is active PIC for any tiket in this tanda terima
+        is_active_pic = TiketPIC.objects.filter(
+            id_tiket__detiltandaterima__id_tanda_terima=obj,
+            id_user=request.user,
+            active=True
+        ).exists()
+        
+        actions_html = ''
+        # Show view button only for active PIC
+        if is_active_pic:
+            actions_html = f"<button class='btn btn-sm btn-info me-1' data-action='view' data-url='{reverse('tanda_terima_data_view', args=[obj.pk])}' title='Detail'><i class='ri-eye-line'></i></button>"
+        
+        # Show delete button only for active PIC when tanda terima is active
+        if obj.active and can_edit and is_active_pic:
             actions_html += f"<button class='btn btn-sm btn-warning' data-action='delete' data-url='{reverse('tanda_terima_data_delete', args=[obj.pk])}' title='Batalkan'><i class='ri-close-circle-line'></i></button>"
+        
         data.append({
             'id': obj.pk,
             'nomor_tanda_terima': obj.nomor_tanda_terima,
@@ -258,7 +269,7 @@ class TandaTerimaDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxF
         return response
 
 
-class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxFormMixin, CreateView):
+class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketPICRequiredForEditMixin, AjaxFormMixin, CreateView):
     """Create Tanda Terima Data from a specific Tiket."""
     model = TandaTerimaData
     form_class = TandaTerimaDataForm
@@ -267,6 +278,21 @@ class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMix
 
     def get_success_url(self):
         return reverse('tiket_detail', kwargs={'pk': self.kwargs['tiket_pk']})
+    
+    def test_func(self):
+        """Check if user is active PIC for this tiket"""
+        tiket_pk = self.kwargs.get('tiket_pk')
+        if not tiket_pk:
+            return False
+        try:
+            tiket = Tiket.objects.get(pk=tiket_pk)
+            return TiketPIC.objects.filter(
+                id_tiket=tiket,
+                id_user=self.request.user,
+                active=True
+            ).exists()
+        except Tiket.DoesNotExist:
+            return False
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -329,12 +355,21 @@ class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMix
         return HttpResponseRedirect(self.get_success_url())
 
 
-class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxFormMixin, UpdateView):
+class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketPICRequiredForEditMixin, AjaxFormMixin, UpdateView):
     model = TandaTerimaData
     form_class = TandaTerimaDataForm
     template_name = 'tanda_terima_data/form.html'
     success_url = reverse_lazy('tanda_terima_data_list')
     success_message = 'Tanda Terima Data "{object}" updated successfully.'
+    
+    def test_func(self):
+        """Check if user is active PIC for any tiket in this tanda terima"""
+        tanda_terima = self.get_object()
+        return TiketPIC.objects.filter(
+            id_tiket__detiltandaterima__id_tanda_terima=tanda_terima,
+            id_user=self.request.user,
+            active=True
+        ).exists()
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -418,10 +453,19 @@ class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxF
                 raise
 
 
-class TandaTerimaDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, DeleteView):
+class TandaTerimaDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketPICRequiredForEditMixin, DeleteView):
     model = TandaTerimaData
     template_name = 'tanda_terima_data/confirm_delete.html'
     success_url = reverse_lazy('tanda_terima_data_list')
+    
+    def test_func(self):
+        """Check if user is active PIC for any tiket in this tanda terima"""
+        tanda_terima = self.get_object()
+        return TiketPIC.objects.filter(
+            id_tiket__detiltandaterima__id_tanda_terima=tanda_terima,
+            id_user=self.request.user,
+            active=True
+        ).exists()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -470,11 +514,20 @@ class TandaTerimaDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, Delet
         return self.delete(request, *args, **kwargs)
 
 
-class TandaTerimaDataViewOnly(LoginRequiredMixin, DetailView):
+class TandaTerimaDataViewOnly(LoginRequiredMixin, ActiveTiketPICRequiredForEditMixin, DetailView):
     """Display tanda terima data details with related tiket information."""
     model = TandaTerimaData
     template_name = 'tanda_terima_data/view.html'
     context_object_name = 'tanda_terima'
+    
+    def test_func(self):
+        """Check if user is active PIC for any tiket in this tanda terima"""
+        tanda_terima = self.get_object()
+        return TiketPIC.objects.filter(
+            id_tiket__detiltandaterima__id_tanda_terima=tanda_terima,
+            id_user=self.request.user,
+            active=True
+        ).exists()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

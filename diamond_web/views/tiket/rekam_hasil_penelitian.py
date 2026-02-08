@@ -9,15 +9,25 @@ from django.http import JsonResponse
 
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
+from ...models.tiket_pic import TiketPIC
 from ...forms.rekam_hasil_penelitian import RekamHasilPenelitianForm
 from ...constants.tiket_action_types import TiketActionType
-from ..mixins import UserP3DERequiredMixin
+from ..mixins import UserP3DERequiredMixin, ActiveTiketPICRequiredForEditMixin
 
 
-class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, UpdateView):
+class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketPICRequiredForEditMixin, UpdateView):
     """View for recording research results (Rekam Hasil Penelitian)."""
     model = Tiket
     form_class = RekamHasilPenelitianForm
+    
+    def test_func(self):
+        """Check if user is active PIC for this tiket"""
+        tiket = self.get_object()
+        return TiketPIC.objects.filter(
+            id_tiket=tiket,
+            id_user=self.request.user,
+            active=True
+        ).exists()
     template_name = 'tiket/rekam_hasil_penelitian_form.html'
     
     def get_template_names(self):

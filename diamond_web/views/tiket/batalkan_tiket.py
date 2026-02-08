@@ -8,16 +8,26 @@ from django.contrib import messages
 
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
+from ...models.tiket_pic import TiketPIC
 from ...forms.batalkan_tiket import BatalkanTiketForm
 from ...constants.tiket_action_types import TiketActionType
-from ..mixins import UserP3DERequiredMixin
+from ..mixins import UserP3DERequiredMixin, ActiveTiketPICRequiredForEditMixin
 
 
-class BatalkanTiketView(LoginRequiredMixin, UserP3DERequiredMixin, UpdateView):
+class BatalkanTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketPICRequiredForEditMixin, UpdateView):
     """View for canceling a tiket (Batalkan Tiket)."""
     model = Tiket
     form_class = BatalkanTiketForm
     template_name = 'tiket/batalkan_tiket_form.html'
+    
+    def test_func(self):
+        """Check if user is active PIC for this tiket"""
+        tiket = self.get_object()
+        return TiketPIC.objects.filter(
+            id_tiket=tiket,
+            id_user=self.request.user,
+            active=True
+        ).exists()
 
     def get_template_names(self):
         """Return modal template for AJAX requests."""
