@@ -21,7 +21,7 @@ class NamaTabelCreateView(LoginRequiredMixin, AdminPIDERequiredMixin, AjaxFormMi
     form_class = NamaTabelForm
     template_name = 'nama_tabel/form.html'
     success_url = reverse_lazy('nama_tabel_list')
-    success_message = 'Nama Tabel "{object}" created successfully.'
+    success_message = 'Nama Tabel "{object}" berhasil dibuat.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -38,7 +38,7 @@ class NamaTabelUpdateView(LoginRequiredMixin, AdminPIDERequiredMixin, AjaxFormMi
     form_class = NamaTabelForm
     template_name = 'nama_tabel/form.html'
     success_url = reverse_lazy('nama_tabel_list')
-    success_message = 'Nama Tabel "{object}" updated successfully.'
+    success_message = 'Nama Tabel "{object}" berhasil diperbarui.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -78,9 +78,9 @@ class NamaTabelDeleteView(LoginRequiredMixin, AdminPIDERequiredMixin, DeleteView
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': f'Nama Tabel "{name}" cleared successfully.'
+                'message': f'Nama Tabel "{name}" berhasil dikosongkan.'
             })
-        messages.success(request, f'Nama Tabel "{name}" cleared successfully.')
+        messages.success(request, f'Nama Tabel "{name}" berhasil dikosongkan.')
         return JsonResponse({'success': True, 'redirect': self.success_url})
 
     def post(self, request, *args, **kwargs):

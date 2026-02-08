@@ -28,7 +28,7 @@ class TandaTerimaDataListView(LoginRequiredMixin, UserP3DERequiredMixin, Templat
         if deleted and name:
             try:
                 name = unquote_plus(name)
-                messages.success(request, f'Tanda Terima Data "{name}" deleted successfully.')
+                messages.success(request, f'Tanda Terima Data "{name}" dibatalkan.')
             except Exception:
                 pass
         return super().get(request, *args, **kwargs)
@@ -227,7 +227,7 @@ class TandaTerimaDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxF
     form_class = TandaTerimaDataForm
     template_name = 'tanda_terima_data/form.html'
     success_url = reverse_lazy('tanda_terima_data_list')
-    success_message = 'Tanda Terima Data "{object}" created successfully.'
+    success_message = 'Tanda Terima Data "{object}" berhasil dibuat.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -252,15 +252,28 @@ class TandaTerimaDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxF
         # Save selected tikets to DetilTandaTerima
         tiket_ids = form.cleaned_data.get('tiket_ids', [])
         for tiket in tiket_ids:
+            # Ensure we have a Tiket instance whether the form returned
+            # an instance or a primary key
+            if hasattr(tiket, 'id'):
+                tiket_obj = tiket
+            else:
+                try:
+                    tiket_obj = Tiket.objects.get(pk=tiket)
+                except Exception:
+                    # skip invalid tiket ids
+                    continue
+
             DetilTandaTerima.objects.create(
                 id_tanda_terima=self.object,
-                id_tiket=tiket
+                id_tiket=tiket_obj
             )
 
-            # tanda_terima field is set when TandaTerimaData is created
+            # Mark tiket as having tanda terima and persist
+            tiket_obj.tanda_terima = True
+            tiket_obj.save(update_fields=["tanda_terima"])
 
             TiketAction.objects.create(
-                id_tiket=tiket,
+                id_tiket=tiket_obj,
                 id_user=self.request.user,
                 timestamp=timezone.now(),
                 action=TandaTerimaActionType.DIREKAM,
@@ -275,7 +288,7 @@ class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMix
     model = TandaTerimaData
     form_class = TandaTerimaDataForm
     template_name = 'tanda_terima_data/form.html'
-    success_message = 'Tanda Terima Data "{object}" created successfully.'
+    success_message = 'Tanda Terima Data "{object}" berhasil dibuat.'
 
     def get_success_url(self):
         return reverse('tiket_detail', kwargs={'pk': self.kwargs['tiket_pk']})
@@ -362,7 +375,7 @@ class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, Activ
     form_class = TandaTerimaDataForm
     template_name = 'tanda_terima_data/form.html'
     success_url = reverse_lazy('tanda_terima_data_list')
-    success_message = 'Tanda Terima Data "{object}" updated successfully.'
+    success_message = 'Tanda Terima Data "{object}" berhasil diperbarui.'
     
     def test_func(self):
         """Check if user is active PIC for any tiket in this tanda terima"""
@@ -412,20 +425,29 @@ class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, Activ
             
             # Create new detil items and update tiket status
             for tiket in tiket_ids:
+                # Resolve tiket instance if needed
+                if hasattr(tiket, 'id'):
+                    tiket_obj = tiket
+                else:
+                    try:
+                        tiket_obj = Tiket.objects.get(pk=tiket)
+                    except Exception:
+                        continue
+
                 DetilTandaTerima.objects.create(
                     id_tanda_terima=self.object,
-                    id_tiket=tiket
+                    id_tiket=tiket_obj
                 )
 
-                # Update status and create action only for newly added tikets
-                is_new_tiket = tiket.id not in existing_tiket_ids
-                
-                # tanda_terima field is set when TandaTerimaData is created
+                # Determine whether this tiket was newly added
+                is_new_tiket = tiket_obj.id not in existing_tiket_ids
 
-                # Record tiket_action for audit trail (only for newly added tikets)
+                # If newly added, mark tanda_terima and record action
                 if is_new_tiket:
+                    tiket_obj.tanda_terima = True
+                    tiket_obj.save(update_fields=["tanda_terima"])
                     TiketAction.objects.create(
-                        id_tiket=tiket,
+                        id_tiket=tiket_obj,
                         id_user=self.request.user,
                         timestamp=timezone.now(),
                         action=TandaTerimaActionType.DIREKAM,

@@ -37,7 +37,7 @@ class PICListView(LoginRequiredMixin, TemplateView):
         if deleted and name:
             try:
                 name = unquote_plus(name)
-                messages.success(request, f'{self.get_tipe_display()} "{name}" deleted successfully.')
+                messages.success(request, f'{self.get_tipe_display()} "{name}" berhasil dihapus.')
             except Exception:
                 pass
         return super().get(request, *args, **kwargs)
@@ -66,7 +66,7 @@ class PICCreateView(LoginRequiredMixin, AjaxFormMixin, CreateView):
     
     @property
     def success_message(self):
-        return f'{self.get_tipe_display()} "{{object}}" created successfully.'
+        return f'{self.get_tipe_display()} "{{object}}" berhasil dibuat.'
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -215,7 +215,7 @@ class PICUpdateView(LoginRequiredMixin, AjaxFormMixin, UpdateView):
     
     @property
     def success_message(self):
-        return f'{self.get_tipe_display()} "{{object}}" updated successfully.'
+        return f'{self.get_tipe_display()} "{{object}}" berhasil diperbarui.'
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -454,9 +454,9 @@ class PICDeleteView(LoginRequiredMixin, DeleteView):
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': f'{self.get_tipe_display()} "{name}" deleted successfully.'
+                'message': f'{self.get_tipe_display()} "{name}" berhasil dihapus.'
             })
-        messages.success(request, f'{self.get_tipe_display()} "{name}" deleted successfully.')
+        messages.success(request, f'{self.get_tipe_display()} "{name}" berhasil dihapus.')
         return JsonResponse({'success': True, 'redirect': self.get_success_url()})
 
     def post(self, request, *args, **kwargs):

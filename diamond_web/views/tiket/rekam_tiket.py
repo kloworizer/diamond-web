@@ -302,7 +302,7 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
 
                 self._assign_tiket_pics(periode_jenis_data, today)
 
-            messages.success(self.request, f'Tiket "{nomor_tiket}" created successfully.')
+            messages.success(self.request, f'Tiket "{nomor_tiket}" berhasil dibuat.')
             return super().form_valid(form)
         except Exception as exc:
             form.add_error(None, str(exc))

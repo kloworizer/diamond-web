@@ -21,7 +21,7 @@ class PeriodePengirimanListView(LoginRequiredMixin, AdminP3DERequiredMixin, Temp
         if deleted and name:
             try:
                 name = unquote_plus(name)
-                messages.success(request, f'Periode Pengiriman "{name}" deleted successfully.')
+                messages.success(request, f'Periode Pengiriman "{name}" berhasil dihapus.')
             except Exception:
                 pass
         return super().get(request, *args, **kwargs)
@@ -31,7 +31,7 @@ class PeriodePengirimanCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, Aj
     form_class = PeriodePengirimanForm
     template_name = 'periode_pengiriman/form.html'
     success_url = reverse_lazy('periode_pengiriman_list')
-    success_message = 'Periode Pengiriman "{object}" created successfully.'
+    success_message = 'Periode Pengiriman "{object}" berhasil dibuat.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -48,7 +48,7 @@ class PeriodePengirimanUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, Aj
     form_class = PeriodePengirimanForm
     template_name = 'periode_pengiriman/form.html'
     success_url = reverse_lazy('periode_pengiriman_list')
-    success_message = 'Periode Pengiriman "{object}" updated successfully.'
+    success_message = 'Periode Pengiriman "{object}" berhasil diperbarui.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -85,9 +85,9 @@ class PeriodePengirimanDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, De
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': f'Periode Pengiriman "{name}" deleted successfully.'
+                'message': f'Periode Pengiriman "{name}" berhasil dihapus.'
             })
-        messages.success(request, f'Periode Pengiriman "{name}" deleted successfully.')
+        messages.success(request, f'Periode Pengiriman "{name}" berhasil dihapus.')
         return JsonResponse({'success': True, 'redirect': self.success_url})
 
     def post(self, request, *args, **kwargs):

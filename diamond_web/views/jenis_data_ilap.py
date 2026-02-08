@@ -21,7 +21,7 @@ class JenisDataILAPListView(LoginRequiredMixin, AdminP3DERequiredMixin, Template
         if deleted and name:
             try:
                 name = unquote_plus(name)
-                messages.success(request, f'Jenis Data "{name}" deleted successfully.')
+                messages.success(request, f'Jenis Data "{name}" berhasil dihapus.')
             except Exception:
                 pass
         return super().get(request, *args, **kwargs)
@@ -31,7 +31,7 @@ class JenisDataILAPCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFo
     form_class = JenisDataILAPForm
     template_name = 'jenis_data_ilap/form.html'
     success_url = reverse_lazy('jenis_data_ilap_list')
-    success_message = 'Jenis Data "{object}" created successfully.'
+    success_message = 'Jenis Data "{object}" berhasil dibuat.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -48,7 +48,7 @@ class JenisDataILAPUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFo
     form_class = JenisDataILAPForm
     template_name = 'jenis_data_ilap/form.html'
     success_url = reverse_lazy('jenis_data_ilap_list')
-    success_message = 'Jenis Data "{object}" updated successfully.'
+    success_message = 'Jenis Data "{object}" berhasil diperbarui.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -85,9 +85,9 @@ class JenisDataILAPDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, Delete
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': f'Jenis Data "{name}" deleted successfully.'
+                'message': f'Jenis Data "{name}" berhasil dihapus.'
             })
-        messages.success(request, f'Jenis Data "{name}" deleted successfully.')
+        messages.success(request, f'Jenis Data "{name}" berhasil dihapus.')
         return JsonResponse({'success': True, 'redirect': self.success_url})
 
     def post(self, request, *args, **kwargs):

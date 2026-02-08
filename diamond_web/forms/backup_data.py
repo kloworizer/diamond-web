@@ -36,7 +36,7 @@ class BackupDataForm(forms.ModelForm):
                     role=TiketPIC.Role.P3DE,
                     active=True
                 ).values_list('id_tiket_id', flat=True)
-                self.fields['id_tiket'].queryset = Tiket.objects.filter(id__in=tiket_ids, status__lt=6).order_by('-id')
+                self.fields['id_tiket'].queryset = Tiket.objects.filter(id__in=tiket_ids, status__lt=4).order_by('-id')
             else:
                 self.fields['id_tiket'].queryset = Tiket.objects.none()
             self.fields['id_tiket'].label_from_instance = lambda obj: obj.nomor_tiket if obj.nomor_tiket else f"Tiket #{obj.id}"

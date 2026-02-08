@@ -21,7 +21,7 @@ class KategoriILAPListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateV
         if deleted and name:
             try:
                 name = unquote_plus(name)
-                messages.success(request, f'Kategori "{name}" deleted successfully.')
+                messages.success(request, f'Kategori "{name}" berhasil dihapus.')
             except Exception:
                 pass
         return super().get(request, *args, **kwargs)
@@ -31,7 +31,7 @@ class KategoriILAPCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFor
     form_class = KategoriILAPForm
     template_name = 'kategori_ilap/form.html'
     success_url = reverse_lazy('kategori_ilap_list')
-    success_message = 'Kategori "{object}" created successfully.'
+    success_message = 'Kategori "{object}" berhasil dibuat.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -48,7 +48,7 @@ class KategoriILAPUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFor
     form_class = KategoriILAPForm
     template_name = 'kategori_ilap/form.html'
     success_url = reverse_lazy('kategori_ilap_list')
-    success_message = 'Kategori "{object}" updated successfully.'
+    success_message = 'Kategori "{object}" berhasil diperbarui.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -85,9 +85,9 @@ class KategoriILAPDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteV
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': f'Kategori "{name}" deleted successfully.'
+                'message': f'Kategori "{name}" berhasil dihapus.'
             })
-        messages.success(request, f'Kategori "{name}" deleted successfully.')
+        messages.success(request, f'Kategori "{name}" berhasil dihapus.')
         return JsonResponse({'success': True, 'redirect': self.success_url})
 
     def post(self, request, *args, **kwargs):

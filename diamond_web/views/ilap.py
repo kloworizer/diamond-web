@@ -22,7 +22,7 @@ class ILAPListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
         if deleted and name:
             try:
                 name = unquote_plus(name)
-                messages.success(request, f'ILAP "{name}" deleted successfully.')
+                messages.success(request, f'ILAP "{name}" berhasil dihapus.')
             except Exception:
                 pass
         return super().get(request, *args, **kwargs)
