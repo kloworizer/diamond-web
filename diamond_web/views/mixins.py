@@ -106,6 +106,55 @@ class ActiveTiketPICRequiredForEditMixin(UserPassesTestMixin):
         return HttpResponseForbidden("Anda bukan PIC aktif untuk tiket ini.")
 
 
+class ActiveTiketP3DERequiredForEditMixin(UserPassesTestMixin):
+    """Mixin to restrict edit operations to admin or active P3DE PIC assigned to tiket."""
+    def test_func(self):
+        user = self.request.user
+        # Allow superuser or admin group
+        if user.is_authenticated and (user.is_superuser or user.groups.filter(name='admin').exists()):
+            return True
+
+        # Get tiket from kwargs or object
+        tiket_pk = self.kwargs.get('tiket_pk') or getattr(self, 'tiket_pk', None)
+        if tiket_pk is None:
+            try:
+                obj = self.get_object()
+                if hasattr(obj, 'id_tiket'):
+                    tiket_pk = obj.id_tiket.pk
+                elif hasattr(obj, 'id_tiket_id'):
+                    tiket_pk = obj.id_tiket_id
+                elif hasattr(obj, 'pk'):
+                    tiket_pk = obj.pk
+            except Exception:
+                return False
+
+        if tiket_pk is None:
+            return False
+
+        from ..models.tiket import Tiket
+        from ..models.tiket_pic import TiketPIC
+        try:
+            tiket = Tiket.objects.get(pk=tiket_pk)
+            return TiketPIC.objects.filter(
+                id_tiket=tiket,
+                id_user=user,
+                active=True,
+                role=TiketPIC.Role.P3DE
+            ).exists()
+        except Tiket.DoesNotExist:
+            return False
+
+    def handle_no_permission(self):
+        request = getattr(self, "request", None)
+        if request is not None and request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JsonResponse(
+                {"success": False, "message": "Anda bukan PIC P3DE aktif untuk tiket ini."}, 
+                status=403
+            )
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden("Anda bukan PIC P3DE aktif untuk tiket ini.")
+
+
 def has_active_tiket_pic(user):
     if not user or not user.is_authenticated:
         return False

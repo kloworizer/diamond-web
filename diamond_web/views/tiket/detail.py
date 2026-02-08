@@ -121,7 +121,7 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         # Get PICs and enrich with badge info
         tiket_pics = TiketPIC.objects.filter(
             id_tiket=self.object
-        ).select_related('id_user').order_by('role', '-timestamp')
+        ).select_related('id_user').order_by('role', 'id_user__username')
 
         for pic in tiket_pics:
             badge = ROLE_BADGES.get(pic.role, {'label': str(pic.role), 'class': 'bg-info'})
@@ -176,7 +176,8 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         user_is_active_pic = TiketPIC.objects.filter(
             id_tiket=self.object,
             id_user=self.request.user,
-            active=True
+            active=True,
+            role=TiketPIC.Role.P3DE
         ).exists()
         context['user_is_active_pic'] = user_is_active_pic
         

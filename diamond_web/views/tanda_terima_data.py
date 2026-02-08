@@ -16,7 +16,7 @@ from ..models.tiket_pic import TiketPIC
 from ..models.tiket import Tiket
 from ..forms.tanda_terima_data import TandaTerimaDataForm
 from ..constants.tiket_action_types import TandaTerimaActionType
-from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketPICRequiredForEditMixin
+from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin
 
 
 class TandaTerimaDataListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView):
@@ -103,7 +103,8 @@ def tanda_terima_data_data(request):
         is_active_pic = TiketPIC.objects.filter(
             id_tiket__detiltandaterima__id_tanda_terima=obj,
             id_user=request.user,
-            active=True
+            active=True,
+            role=TiketPIC.Role.P3DE
         ).exists()
         
         actions_html = ''
@@ -269,7 +270,7 @@ class TandaTerimaDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxF
         return response
 
 
-class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketPICRequiredForEditMixin, AjaxFormMixin, CreateView):
+class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, AjaxFormMixin, CreateView):
     """Create Tanda Terima Data from a specific Tiket."""
     model = TandaTerimaData
     form_class = TandaTerimaDataForm
@@ -289,7 +290,8 @@ class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMix
             return TiketPIC.objects.filter(
                 id_tiket=tiket,
                 id_user=self.request.user,
-                active=True
+                    active=True,
+                    role=TiketPIC.Role.P3DE
             ).exists()
         except Tiket.DoesNotExist:
             return False
@@ -355,7 +357,7 @@ class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMix
         return HttpResponseRedirect(self.get_success_url())
 
 
-class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketPICRequiredForEditMixin, AjaxFormMixin, UpdateView):
+class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, AjaxFormMixin, UpdateView):
     model = TandaTerimaData
     form_class = TandaTerimaDataForm
     template_name = 'tanda_terima_data/form.html'
@@ -368,7 +370,8 @@ class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, Activ
         return TiketPIC.objects.filter(
             id_tiket__detiltandaterima__id_tanda_terima=tanda_terima,
             id_user=self.request.user,
-            active=True
+            active=True,
+            role=TiketPIC.Role.P3DE
         ).exists()
 
     def get_form_kwargs(self):
@@ -453,7 +456,7 @@ class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, Activ
                 raise
 
 
-class TandaTerimaDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketPICRequiredForEditMixin, DeleteView):
+class TandaTerimaDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, DeleteView):
     model = TandaTerimaData
     template_name = 'tanda_terima_data/confirm_delete.html'
     success_url = reverse_lazy('tanda_terima_data_list')
@@ -464,7 +467,8 @@ class TandaTerimaDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, Activ
         return TiketPIC.objects.filter(
             id_tiket__detiltandaterima__id_tanda_terima=tanda_terima,
             id_user=self.request.user,
-            active=True
+            active=True,
+            role=TiketPIC.Role.P3DE
         ).exists()
 
     def get_context_data(self, **kwargs):
@@ -514,7 +518,7 @@ class TandaTerimaDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, Activ
         return self.delete(request, *args, **kwargs)
 
 
-class TandaTerimaDataViewOnly(LoginRequiredMixin, ActiveTiketPICRequiredForEditMixin, DetailView):
+class TandaTerimaDataViewOnly(LoginRequiredMixin, ActiveTiketP3DERequiredForEditMixin, DetailView):
     """Display tanda terima data details with related tiket information."""
     model = TandaTerimaData
     template_name = 'tanda_terima_data/view.html'

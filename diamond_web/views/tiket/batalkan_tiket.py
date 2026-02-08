@@ -11,10 +11,10 @@ from ...models.tiket_action import TiketAction
 from ...models.tiket_pic import TiketPIC
 from ...forms.batalkan_tiket import BatalkanTiketForm
 from ...constants.tiket_action_types import TiketActionType
-from ..mixins import UserP3DERequiredMixin, ActiveTiketPICRequiredForEditMixin
+from ..mixins import UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin
 
 
-class BatalkanTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketPICRequiredForEditMixin, UpdateView):
+class BatalkanTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, UpdateView):
     """View for canceling a tiket (Batalkan Tiket)."""
     model = Tiket
     form_class = BatalkanTiketForm
@@ -26,7 +26,8 @@ class BatalkanTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketPI
         return TiketPIC.objects.filter(
             id_tiket=tiket,
             id_user=self.request.user,
-            active=True
+            active=True,
+            role=TiketPIC.Role.P3DE
         ).exists()
 
     def get_template_names(self):
