@@ -87,7 +87,7 @@
                                 <input class="form-check-input tiket-checkbox" type="checkbox" name="tiket-select" 
                                        value="{{ tiket.id }}" id="tiket_{{ tiket.id }}" data-tiket-id="{{ tiket.id }}">
                                 <label class="form-check-label" for="tiket_{{ tiket.id }}">
-                                    ID: {{ tiket.id }} | Nomor: {{ tiket.nomor_tiket }} | Periode: {{ tiket.periode }}/{{ tiket.tahun }}
+                                    {{ tiket.nomor_tiket }}
                                 </label>
                             </div>
                         {% empty %}
@@ -101,8 +101,6 @@
                     {% endif %}
                 </div>
                 {% endif %}
-
-                {{ form.tiket_ids }}
 
                 <!-- Hidden input to store selected tiket IDs -->
                 <input type="hidden" id="tiket-ids-input" name="tiket_ids" value="{{ form.tiket_ids.value|default:'' }}">
@@ -119,14 +117,13 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const tiketCheckboxes = document.querySelectorAll('.tiket-checkbox');
-    const tiketIdsInput = document.getElementById('tiket-ids-input');
+    const tiketIdsInput = document.querySelector('input[name="tiket_ids"][type="hidden"]');
+    const form = document.getElementById('kirim-tiket-form');
     
-    // Update hidden input when checkboxes change
-    tiketCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            updateTiketIds();
-        });
-    });
+    if (!tiketIdsInput) {
+        console.error('Hidden input for tiket_ids not found');
+        return;
+    }
     
     function updateTiketIds() {
         const selectedIds = Array.from(tiketCheckboxes)
@@ -137,15 +134,28 @@ document.addEventListener('DOMContentLoaded', function() {
         tiketIdsInput.value = selectedIds;
     }
     
-    // Form submission validation
-    document.getElementById('kirim-tiket-form').addEventListener('submit', function(e) {
-        const selectedIds = tiketIdsInput.value.trim();
-        
-        if (!selectedIds) {
-            e.preventDefault();
-            showToast('Silakan pilih minimal satu tiket.', 'warning');
-            return false;
-        }
+    // Update hidden input when checkboxes change
+    tiketCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            updateTiketIds();
+        });
     });
+    // Initialize hidden input from any pre-checked boxes
+    updateTiketIds();
+    
+    // Form submission validation
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Ensure hidden input is up-to-date before validation/submission
+            updateTiketIds();
+            const selectedIds = tiketIdsInput.value.trim();
+
+            if (!selectedIds) {
+                e.preventDefault();
+                showToast('Silakan pilih minimal satu tiket.', 'warning');
+                return false;
+            }
+        });
+    }
 });
  </script>

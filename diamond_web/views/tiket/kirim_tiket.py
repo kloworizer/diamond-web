@@ -40,7 +40,17 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DER
             context['single_tiket'] = tiket
             context['form_action'] = reverse('kirim_tiket_from_tiket', kwargs={'tiket_pk': tiket_pk})
         else:
-            context['tikets'] = Tiket.objects.all()
+            # Filter tikets for checkbox: status < 4, backup True, tanda_terima True, and logged user is active PIC P3DE
+            from ...models.tiket_pic import TiketPIC
+            tikets = Tiket.objects.filter(
+                status__lt=4,
+                backup=True,
+                tanda_terima=True,
+                tiketpic__active=True,
+                tiketpic__role=TiketPIC.Role.P3DE,
+                tiketpic__id_user=self.request.user
+            ).distinct()
+            context['tikets'] = tikets
             context['form_action'] = reverse('kirim_tiket')
         return context
 
@@ -50,6 +60,19 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DER
         if tiket_pk:
             initial['tiket_ids'] = str(tiket_pk)
         return initial
+
+    def get_form_kwargs(self):
+        """Ensure tiket_ids is populated from checkbox selections on POST."""
+        kwargs = super().get_form_kwargs()
+        if self.request.method == 'POST':
+            data = self.request.POST.copy()
+            selected_ids = data.get('tiket_ids')
+            if not selected_ids:
+                selected_ids = ','.join(self.request.POST.getlist('tiket-select'))
+            if selected_ids:
+                data['tiket_ids'] = selected_ids
+            kwargs['data'] = data
+        return kwargs
     
     def is_ajax_request(self):
         """Check if the request is an AJAX request."""
@@ -108,7 +131,7 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DER
                         catatan="tiket dikirim ke PIDE"
                     )
                 
-                message = f'Successfully updated {len(tikets)} tiket(s) and sent to NADINE/PIDE.'
+                message = f'Berhasil memperbarui {len(tikets)} tiket dan mengirim ke PIDE.'
                 
                 if self.is_ajax_request():
                     return self.get_json_response(
@@ -121,7 +144,7 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DER
                     return super().form_valid(form)
         
         except Exception as e:
-            error_message = f'Error updating tikets: {str(e)}'
+            error_message = f'Gagal memperbarui tiket: {str(e)}'
             if self.is_ajax_request():
                 return self.get_json_response(
                     success=False,
