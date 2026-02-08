@@ -9,6 +9,7 @@ from django.views.decorators.http import require_GET
 
 from ..models.pic import PIC
 from ..forms.pic import PICForm
+from ..constants.tiket_action_types import PICActionType
 from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, AdminPIDERequiredMixin, AdminPMDERequiredMixin
 
 
@@ -88,6 +89,107 @@ class PICCreateView(LoginRequiredMixin, AjaxFormMixin, CreateView):
         self.object = None
         form = self.get_form()
         return self.render_form_response(form)
+    
+    def form_valid(self, form):
+        """Handle form submission and add PIC to all active tikets"""
+        from ..models.tiket import Tiket
+        from ..models.tiket_pic import TiketPIC
+        from ..models.tiket_action import TiketAction
+        from django.utils import timezone
+        from django.db.models import Q
+        
+        response = super().form_valid(form)
+        
+        # Get the newly created PIC object
+        pic = self.object
+        
+        # Map PIC tipe to TiketPIC role
+        tipe_to_role = {
+            PIC.TipePIC.P3DE: TiketPIC.Role.P3DE,
+            PIC.TipePIC.PIDE: TiketPIC.Role.PIDE,
+            PIC.TipePIC.PMDE: TiketPIC.Role.PMDE,
+        }
+        role = tipe_to_role.get(pic.tipe)
+        current_time = timezone.now()
+        tipe_label = dict(PIC.TipePIC.choices).get(pic.tipe, pic.tipe)
+        action_logged = False
+        
+        if role:
+            # Find all tikets using this sub_jenis_data with status < 7 (not dibatalkan or selesai)
+            # AND with tgl_terima_dip >= pic.start_date
+            active_tikets = Tiket.objects.filter(
+                id_periode_data__id_sub_jenis_data_ilap=pic.id_sub_jenis_data_ilap,
+                status__lt=7  # status < 7 (not dibatalkan or selesai)
+            ).filter(
+                Q(tgl_terima_dip__gte=pic.start_date) | Q(tgl_terima_dip__isnull=True)
+            )
+            
+            # Create or update TiketPIC records for this user
+            for tiket in active_tikets:
+                # Check if user already has a PIC record for this tiket and role
+                existing_pic = TiketPIC.objects.filter(
+                    id_tiket=tiket,
+                    id_user=pic.id_user,
+                    role=role
+                ).first()
+                
+                if existing_pic:
+                    # Check if this is a reactivation (was inactive)
+                    was_inactive = not existing_pic.active
+                    update_fields = []
+                    
+                    # Reactivate if inactive
+                    if not existing_pic.active:
+                        existing_pic.active = True
+                        update_fields.append('active')
+                    
+                    # Fill timestamp if null
+                    if existing_pic.timestamp is None:
+                        existing_pic.timestamp = current_time
+                        update_fields.append('timestamp')
+                    
+                    if update_fields:
+                        existing_pic.save(update_fields=update_fields)
+                        
+                        # Log with appropriate message
+                        if was_inactive:
+                            action_type = PICActionType.DIAKTIFKAN_KEMBALI
+                            message = f'{tipe_label} {pic.id_user.username} diaktifkan kembali'
+                        else:
+                            action_type = PICActionType.DITAMBAHKAN
+                            message = f'{tipe_label} {pic.id_user.username} ditambahkan'
+                        
+                        TiketAction.objects.create(
+                            id_tiket=tiket,
+                            id_user=self.request.user,
+                            timestamp=current_time,
+                            action=action_type,
+                            catatan=message
+                        )
+                        action_logged = True
+                else:
+                    # Create new TiketPIC with timestamp
+                    TiketPIC.objects.create(
+                        id_tiket=tiket,
+                        id_user=pic.id_user,
+                        role=role,
+                        active=True,
+                        timestamp=current_time
+                    )
+                    
+                    # Add log to TiketAction
+                    TiketAction.objects.create(
+                        id_tiket=tiket,
+                        id_user=self.request.user,
+                        timestamp=current_time,
+                        action=PICActionType.DITAMBAHKAN,
+                        catatan=f'{tipe_label} {pic.id_user.username} ditambahkan'
+                    )
+                    action_logged = True
+            
+            # Only log to tikets where changes were actually made
+        
+        return response
 
 
 class PICUpdateView(LoginRequiredMixin, AjaxFormMixin, UpdateView):
@@ -131,6 +233,125 @@ class PICUpdateView(LoginRequiredMixin, AjaxFormMixin, UpdateView):
         }
         context['form_action'] = reverse(tipe_update_url_map.get(self.tipe, 'home'), args=[self.object.pk])
         return context
+
+    def form_valid(self, form):
+        """Handle end_date changes to update TiketPIC records"""
+        from ..models.tiket import Tiket
+        from ..models.tiket_pic import TiketPIC
+        from ..models.tiket_action import TiketAction
+        from django.utils import timezone
+        from django.db.models import Q
+        
+        # Get the original object before save
+        original_pic = PIC.objects.get(pk=self.object.pk)
+        
+        # Map PIC tipe to TiketPIC role
+        tipe_to_role = {
+            PIC.TipePIC.P3DE: TiketPIC.Role.P3DE,
+            PIC.TipePIC.PIDE: TiketPIC.Role.PIDE,
+            PIC.TipePIC.PMDE: TiketPIC.Role.PMDE,
+        }
+        role = tipe_to_role.get(self.object.tipe)
+        current_time = timezone.now()
+        tipe_label = dict(PIC.TipePIC.choices).get(self.object.tipe, self.object.tipe)
+        
+        # Check if end_date is being set (was None, now has value) - DEACTIVATION
+        if original_pic.end_date is None and form.cleaned_data.get('end_date') is not None:
+            if role:
+                # Find TiketPIC records for this user and role, but ONLY for tikets with this sub_jenis_data
+                deactivate_tiket_pcs = TiketPIC.objects.filter(
+                    id_user=self.object.id_user,
+                    role=role,
+                    active=True,  # Only deactivate currently active ones
+                    id_tiket__id_periode_data__id_sub_jenis_data_ilap=self.object.id_sub_jenis_data_ilap
+                )
+                
+                action_logged = False
+                # Mark these TiketPIC records as inactive and add logs
+                for tiket_pic in deactivate_tiket_pcs:
+                    tiket_pic.active = False
+                    tiket_pic.save(update_fields=['active'])
+                    
+                    # Add log to TiketAction
+                    TiketAction.objects.create(
+                        id_tiket=tiket_pic.id_tiket,
+                        id_user=self.request.user,
+                        timestamp=current_time,
+                        action=PICActionType.TIDAK_AKTIF,
+                        catatan=f'{tipe_label} {self.object.id_user.username} tidak aktif'
+                    )
+                    # No logging needed for this iteration
+        
+        # Check if end_date is being cleared (was set, now is None) - REACTIVATION
+        elif original_pic.end_date is not None and form.cleaned_data.get('end_date') is None:
+            if role:
+                # Find all tikets using this sub_jenis_data with status < 7 (not dibatalkan or selesai)
+                # AND with tgl_terima_dip >= pic.start_date
+                active_tikets = Tiket.objects.filter(
+                    id_periode_data__id_sub_jenis_data_ilap=self.object.id_sub_jenis_data_ilap,
+                    status__lt=7  # status < 7 (not dibatalkan or selesai)
+                ).filter(
+                    Q(tgl_terima_dip__gte=self.object.start_date) | Q(tgl_terima_dip__isnull=True)
+                )
+                
+                action_logged = False
+                # Create or reactivate TiketPIC records for this user
+                for tiket in active_tikets:
+                    # Check if user already has a PIC record for this tiket and role
+                    existing_pic = TiketPIC.objects.filter(
+                        id_tiket=tiket,
+                        id_user=self.object.id_user,
+                        role=role
+                    ).first()
+                    
+                    if existing_pic:
+                        # Update existing record - reactivate and set timestamp if null
+                        update_fields = []
+                        is_reactivation = False
+                        filled_timestamp = False
+                        if not existing_pic.active:
+                            existing_pic.active = True
+                            update_fields.append('active')
+                            is_reactivation = True
+                        if existing_pic.timestamp is None:
+                            existing_pic.timestamp = current_time
+                            update_fields.append('timestamp')
+                            filled_timestamp = True
+                        if update_fields:
+                            existing_pic.save(update_fields=update_fields)
+                        
+                        # Add log if reactivated or timestamp filled
+                        if is_reactivation or filled_timestamp:
+                            TiketAction.objects.create(
+                                id_tiket=tiket,
+                                id_user=self.request.user,
+                                timestamp=current_time,
+                                action=PICActionType.DIAKTIFKAN_KEMBALI,
+                                catatan=f'{tipe_label} {self.object.id_user.username} diaktifkan kembali'
+                            )
+                            action_logged = True
+                    else:
+                        # Create new TiketPIC with timestamp
+                        TiketPIC.objects.create(
+                            id_tiket=tiket,
+                            id_user=self.object.id_user,
+                            role=role,
+                            active=True,
+                            timestamp=current_time
+                        )
+                        
+                        # Add log for new assignment
+                        TiketAction.objects.create(
+                            id_tiket=tiket,
+                            id_user=self.request.user,
+                            timestamp=current_time,
+                            action=PICActionType.DITAMBAHKAN,
+                            catatan=f'{tipe_label} {self.object.id_user.username} ditambahkan'
+                        )
+                
+                # No fallback logging - only log to tikets where changes were made
+        
+        return super().form_valid(form)
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
@@ -186,9 +407,50 @@ class PICDeleteView(LoginRequiredMixin, DeleteView):
         return self.render_to_response(self.get_context_data())
 
     def delete(self, request, *args, **kwargs):
+        """Delete PIC and mark all associated TiketPIC records as inactive"""
+        from ..models.tiket_pic import TiketPIC
+        from ..models.tiket_action import TiketAction
+        from django.utils import timezone
+        
         self.object = self.get_object()
         name = str(self.object)
-        self.object.delete()
+        pic = self.object
+        
+        # Map PIC tipe to TiketPIC role
+        tipe_to_role = {
+            PIC.TipePIC.P3DE: TiketPIC.Role.P3DE,
+            PIC.TipePIC.PIDE: TiketPIC.Role.PIDE,
+            PIC.TipePIC.PMDE: TiketPIC.Role.PMDE,
+        }
+        role = tipe_to_role.get(pic.tipe)
+        current_time = timezone.now()
+        tipe_label = dict(PIC.TipePIC.choices).get(pic.tipe, pic.tipe)
+        
+        # Find TiketPIC records for this user and role, but ONLY for tikets with this sub_jenis_data
+        if role:
+            delete_tiket_pcs = TiketPIC.objects.filter(
+                id_user=pic.id_user,
+                role=role,
+                id_tiket__id_periode_data__id_sub_jenis_data_ilap=pic.id_sub_jenis_data_ilap
+            )
+            
+            # Delete TiketPIC records and log the action
+            for tiket_pic in delete_tiket_pcs:
+                tiket = tiket_pic.id_tiket
+                tiket_pic.delete()
+                
+                # Add log to TiketAction
+                TiketAction.objects.create(
+                    id_tiket=tiket,
+                    id_user=request.user,
+                    timestamp=current_time,
+                    action=PICActionType.TIDAK_AKTIF,
+                    catatan=f'{tipe_label} {pic.id_user.username} dihapus'
+                )
+        
+        # Now delete the PIC object
+        pic.delete()
+        
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,

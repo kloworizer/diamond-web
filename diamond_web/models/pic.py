@@ -47,6 +47,10 @@ class PIC(models.Model):
     def __str__(self):
         return f"{self.get_tipe_display()} - {self.id_sub_jenis_data_ilap} - {self.id_user.username}"
     
+    def is_active(self):
+        """Check if this PIC is currently active (no end_date)"""
+        return self.end_date is None
+    
     @classmethod
     def get_by_tipe(cls, tipe):
         """Helper method to filter PICs by type"""

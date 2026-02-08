@@ -34,3 +34,49 @@ class PICForm(forms.ModelForm):
         
         # Customize user field to show first_name and last_name
         self.fields['id_user'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name} ({obj.username})" if obj.first_name or obj.last_name else obj.username
+
+    def clean(self):
+        cleaned_data = super().clean()
+        tipe = cleaned_data.get('tipe')
+        id_sub_jenis_data_ilap = cleaned_data.get('id_sub_jenis_data_ilap')
+        id_user = cleaned_data.get('id_user')
+        start_date = cleaned_data.get('start_date')
+        
+        if tipe and id_sub_jenis_data_ilap and id_user and start_date:
+            # Check for existing PIC with same user, sub_jenis_data, and start_date
+            existing_pic = PIC.objects.filter(
+                tipe=tipe,
+                id_sub_jenis_data_ilap=id_sub_jenis_data_ilap,
+                id_user=id_user,
+                start_date=start_date
+            )
+            
+            # Exclude current instance if updating
+            if self.instance.pk:
+                existing_pic = existing_pic.exclude(pk=self.instance.pk)
+            
+            if existing_pic.exists():
+                raise forms.ValidationError(
+                    f"PIC dengan user '{id_user.username}', sub jenis data '{id_sub_jenis_data_ilap}', "
+                    f"dan start date '{start_date}' sudah ada. Silakan gunakan start date yang berbeda."
+                )
+            
+            # Check for overlapping date ranges (same user and sub_jenis_data without end_date)
+            overlapping_pic = PIC.objects.filter(
+                tipe=tipe,
+                id_sub_jenis_data_ilap=id_sub_jenis_data_ilap,
+                id_user=id_user,
+                end_date__isnull=True  # Active PIC without end_date
+            )
+            
+            # Exclude current instance if updating
+            if self.instance.pk:
+                overlapping_pic = overlapping_pic.exclude(pk=self.instance.pk)
+            
+            if overlapping_pic.exists():
+                raise forms.ValidationError(
+                    f"Sudah ada PIC aktif untuk user '{id_user.username}' dan sub jenis data '{id_sub_jenis_data_ilap}'. "
+                    f"Silakan set end_date pada PIC yang ada terlebih dahulu."
+                )
+        
+        return cleaned_data

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from django.views.generic import FormView
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
 from django.http import JsonResponse
 from django.urls import reverse_lazy, reverse
@@ -10,14 +10,38 @@ from django.db import transaction
 
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
+from ...models.tiket_pic import TiketPIC
 from ...forms.kirim_tiket import KirimTiketForm
 from ...constants.tiket_action_types import TiketActionType
 from ..mixins import UserP3DERequiredMixin
 
 
-class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
+class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, UserPassesTestMixin, FormView):
     """View for Kirim Tiket workflow step."""
     form_class = KirimTiketForm
+    
+    def test_func(self):
+        """Check if user is active PIC for this tiket"""
+        tiket_pk = self.kwargs.get('tiket_pk') or self.request.POST.get('id_tiket')
+        if not tiket_pk:
+            return False
+        try:
+            tiket = Tiket.objects.get(pk=tiket_pk)
+            return TiketPIC.objects.filter(
+                id_tiket=tiket,
+                id_user=self.request.user,
+                active=True
+            ).exists()
+        except Tiket.DoesNotExist:
+            return False
+    
+    def handle_no_permission(self):
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse(
+                {"success": False, "message": "Anda bukan PIC aktif untuk tiket ini."}, 
+                status=403
+            )
+        return super().handle_no_permission()
     template_name = 'tiket/kirim_tiket_form.html'
     success_url = reverse_lazy('tiket_list')
 

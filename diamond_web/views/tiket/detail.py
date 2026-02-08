@@ -2,23 +2,35 @@
 
 from django.views.generic import DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import PermissionDenied
 
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
 from ...models.tiket_pic import TiketPIC
+from ...models.pic import PIC
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ...models.detil_tanda_terima import DetilTandaTerima
 from ...constants.tiket_status import STATUS_LABELS, STATUS_BADGE_CLASSES
 from ...constants.tiket_action_badges import ACTION_BADGES, ROLE_BADGES, WORKFLOW_STEPS
 from ...constants.tiket_action_types import get_action_label, get_action_badge_class
-from ..mixins import ActiveTiketPICRequiredMixin
 
 
-class TiketDetailView(LoginRequiredMixin, ActiveTiketPICRequiredMixin, DetailView):
+class TiketDetailView(LoginRequiredMixin, DetailView):
     """Detail view for viewing a tiket."""
     model = Tiket
     template_name = 'tiket/tiket_detail.html'
     context_object_name = 'tiket'
+
+    def get_object(self, queryset=None):
+        """Override to ensure user is a PIC for this tiket (active or inactive) or is admin"""
+        obj = super().get_object(queryset)
+        # Allow access if user is superuser or admin
+        if self.request.user.is_superuser or self.request.user.groups.filter(name='admin').exists():
+            return obj
+        # Allow access if user is any kind of PIC for this tiket (active or inactive)
+        if not TiketPIC.objects.filter(id_tiket=obj, id_user=self.request.user).exists():
+            raise PermissionDenied()
+        return obj
 
     
     def _format_periode(self, deskripsi_periode, periode, tahun):
@@ -109,7 +121,7 @@ class TiketDetailView(LoginRequiredMixin, ActiveTiketPICRequiredMixin, DetailVie
         # Get PICs and enrich with badge info
         tiket_pics = TiketPIC.objects.filter(
             id_tiket=self.object
-        ).select_related('id_user').order_by('-timestamp')
+        ).select_related('id_user').order_by('role', '-timestamp')
 
         for pic in tiket_pics:
             badge = ROLE_BADGES.get(pic.role, {'label': str(pic.role), 'class': 'bg-info'})
@@ -120,6 +132,26 @@ class TiketDetailView(LoginRequiredMixin, ActiveTiketPICRequiredMixin, DetailVie
                 f"{pic.id_user.username} - {full_name}"
                 if full_name else pic.id_user.username
             )
+            
+            # Check if this PIC is active (has an active PIC record without end_date)
+            if pic.role == TiketPIC.Role.P3DE:
+                tipe = PIC.TipePIC.P3DE
+            elif pic.role == TiketPIC.Role.PIDE:
+                tipe = PIC.TipePIC.PIDE
+            elif pic.role == TiketPIC.Role.PMDE:
+                tipe = PIC.TipePIC.PMDE
+            else:
+                tipe = None
+            
+            if tipe:
+                pic.is_pic_active = PIC.objects.filter(
+                    tipe=tipe,
+                    id_user=pic.id_user,
+                    id_sub_jenis_data_ilap=self.object.id_periode_data.id_sub_jenis_data_ilap,
+                    end_date__isnull=True
+                ).exists()
+            else:
+                pic.is_pic_active = False
         
         # Backup data list
         backups = self.object.backups.select_related('id_user').all().order_by('-id')
@@ -139,4 +171,13 @@ class TiketDetailView(LoginRequiredMixin, ActiveTiketPICRequiredMixin, DetailVie
         
         # Get workflow step based on status
         context['workflow_step'] = WORKFLOW_STEPS.get(self.object.status, 'rekam')
+        
+        # Check if current user is an active PIC for this tiket
+        user_is_active_pic = TiketPIC.objects.filter(
+            id_tiket=self.object,
+            id_user=self.request.user,
+            active=True
+        ).exists()
+        context['user_is_active_pic'] = user_is_active_pic
+        
         return context

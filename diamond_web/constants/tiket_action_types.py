@@ -24,6 +24,13 @@ class TandaTerimaActionType:
     DIREKAM = 201
     DIBATALKAN = 202
 
+# Action types for PIC workflow
+class PICActionType:
+    """Action types for PIC operations"""
+    DITAMBAHKAN = 301
+    TIDAK_AKTIF = 302
+    DIAKTIFKAN_KEMBALI = 303
+
 # Map action types to display labels
 ACTION_TYPE_LABELS = {
     # Tiket actions
@@ -41,6 +48,10 @@ ACTION_TYPE_LABELS = {
     # TandaTerima actions
     201: 'Tanda Terima Direkam',
     202: 'Tanda Terima Dibatalkan',
+    # PIC actions
+    301: 'PIC Ditambahkan',
+    302: 'PIC Tidak Aktif',
+    303: 'PIC Diaktifkan Kembali',
 }
 
 # Map action types to badge classes
@@ -60,6 +71,10 @@ ACTION_TYPE_BADGE_CLASSES = {
     # TandaTerima actions
     201: 'bg-primary',
     202: 'bg-danger',
+    # PIC actions
+    301: 'bg-success',
+    302: 'bg-warning',
+    303: 'bg-info',
 }
 
 
