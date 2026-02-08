@@ -21,7 +21,7 @@ class JenisTabelCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormM
     form_class = JenisTabelForm
     template_name = 'jenis_tabel/form.html'
     success_url = reverse_lazy('jenis_tabel_list')
-    success_message = 'Jenis Tabel "{object}" created successfully.'
+    success_message = 'Jenis Tabel "{object}" berhasil dibuat.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -38,7 +38,7 @@ class JenisTabelUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormM
     form_class = JenisTabelForm
     template_name = 'jenis_tabel/form.html'
     success_url = reverse_lazy('jenis_tabel_list')
-    success_message = 'Jenis Tabel "{object}" updated successfully.'
+    success_message = 'Jenis Tabel "{object}" berhasil diperbarui.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -75,9 +75,9 @@ class JenisTabelDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteVie
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': f'Jenis Tabel "{name}" deleted successfully.'
+                'message': f'Jenis Tabel "{name}" berhasil dihapus.'
             })
-        messages.success(request, f'Jenis Tabel "{name}" deleted successfully.')
+        messages.success(request, f'Jenis Tabel "{name}" berhasil dihapus.')
         return JsonResponse({'success': True, 'redirect': self.success_url})
 
     def post(self, request, *args, **kwargs):
