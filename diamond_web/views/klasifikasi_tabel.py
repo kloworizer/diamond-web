@@ -21,7 +21,7 @@ class KlasifikasiTabelListView(LoginRequiredMixin, AdminP3DERequiredMixin, Templ
         if deleted and name:
             try:
                 name = unquote_plus(name)
-                messages.success(request, f'Klasifikasi Tabel "{name}" deleted successfully.')
+                messages.success(request, f'Klasifikasi Tabel "{name}" berhasil dihapus.')
             except Exception:
                 pass
         return super().get(request, *args, **kwargs)
@@ -31,7 +31,7 @@ class KlasifikasiTabelCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, Aja
     form_class = KlasifikasiTabelForm
     template_name = 'klasifikasi_tabel/form.html'
     success_url = reverse_lazy('klasifikasi_tabel_list')
-    success_message = 'Klasifikasi Tabel "{object}" created successfully.'
+    success_message = 'Klasifikasi Tabel "{object}" berhasil dibuat.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -48,7 +48,7 @@ class KlasifikasiTabelUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, Aja
     form_class = KlasifikasiTabelForm
     template_name = 'klasifikasi_tabel/form.html'
     success_url = reverse_lazy('klasifikasi_tabel_list')
-    success_message = 'Klasifikasi Tabel "{object}" updated successfully.'
+    success_message = 'Klasifikasi Tabel "{object}" berhasil diperbarui.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -85,9 +85,9 @@ class KlasifikasiTabelDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, Del
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': f'Klasifikasi Tabel "{name}" deleted successfully.'
+                'message': f'Klasifikasi Tabel "{name}" berhasil dihapus.'
             })
-        messages.success(request, f'Klasifikasi Tabel "{name}" deleted successfully.')
+        messages.success(request, f'Klasifikasi Tabel "{name}" berhasil dihapus.')
         return JsonResponse({'success': True, 'redirect': self.success_url})
 
     def post(self, request, *args, **kwargs):

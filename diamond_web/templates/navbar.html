@@ -104,12 +104,24 @@
                         <span class="badge bg-danger">{{ unread_count }}</span>
                         {% endif %}
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-end">
+                    <ul class="dropdown-menu dropdown-menu-end notifications-dropdown">
                         {% for notif in unread_notifications %}
-                        <li><a class="dropdown-item" href="{% url 'mark_notification_read' notif.pk %}">
-                                <strong>{{ notif.title }}</strong><br>
-                                <small>{{ notif.message }}</small>
-                            </a></li>
+                        <li>
+                            <div class="dropdown-item notification-item" role="button" tabindex="0" data-href="{% url 'mark_notification_read' notif.pk %}">
+                                <div class="notif-icon">
+                                    <i class="ri-mail-open-line" aria-hidden="true"></i>
+                                </div>
+                                <div class="notif-content">
+                                    <div class="notif-header d-flex justify-content-between align-items-start">
+                                        <div class="notif-title-wrap">
+                                            <strong class="notif-title">{{ notif.title }}</strong>
+                                        </div>
+                                        <small class="text-muted notif-time">{% if notif.created_at %}{{ notif.created_at|date:"SHORT_DATETIME_FORMAT" }}{% endif %}</small>
+                                    </div>
+                                    <div class="notif-message small text-muted mt-1">{{ notif.message|safe }}</div>
+                                </div>
+                            </div>
+                        </li>
                         {% empty %}
                         <li><span class="dropdown-item text-muted">No new notifications</span></li>
                         {% endfor %}
