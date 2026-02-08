@@ -43,7 +43,7 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DER
             # Filter tikets for checkbox: status < 4, backup True, tanda_terima True, and logged user is active PIC P3DE
             from ...models.tiket_pic import TiketPIC
             tikets = Tiket.objects.filter(
-                status__lt=4,
+                status__in=[2, 3],
                 backup=True,
                 tanda_terima=True,
                 tiketpic__active=True,
