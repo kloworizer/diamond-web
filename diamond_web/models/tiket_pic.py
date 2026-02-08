@@ -4,6 +4,10 @@ from .tiket import Tiket
 
 
 class TiketPIC(models.Model):
+    class Role(models.IntegerChoices):
+        P3DE = 1, "P3DE"
+        PIDE = 2, "PIDE"
+        PMDE = 3, "PMDE"
     id = models.AutoField(primary_key=True, verbose_name="ID")
     id_tiket = models.ForeignKey(
         Tiket,
@@ -18,7 +22,8 @@ class TiketPIC(models.Model):
         verbose_name="User"
     )
     timestamp = models.DateTimeField(null=True, blank=True, verbose_name="Timestamp")
-    role = models.IntegerField(null=True, blank=True, verbose_name="Role")
+    role = models.IntegerField(null=True, blank=True, verbose_name="Role", choices=Role.choices)
+    active = models.BooleanField(default=True, verbose_name="Active")
 
     class Meta:
         verbose_name = "Tiket PIC"

@@ -8,9 +8,7 @@ from .klasifikasi_tabel import KlasifikasiTabelForm
 from .klasifikasi_jenis_data import KlasifikasiJenisDataForm
 from .periode_pengiriman import PeriodePengirimanForm
 from .periode_jenis_data import PeriodeJenisDataForm
-from .pic_p3de import PICP3DEForm
-from .pic_pide import PICPIDEForm
-from .pic_pmde import PICPMDEForm
+from .pic import PICForm
 from .durasi_jatuh_tempo import DurasiJatuhTempoForm
 from .tanda_terima_data import TandaTerimaDataForm
 from .nama_tabel import NamaTabelForm

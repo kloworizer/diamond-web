@@ -3,34 +3,51 @@
 
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">PIC PIDE</h2>
-        <button type="button" class="btn btn-success" data-action="create">Tambah</button>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="ri-user-settings-line me-2"></i>PIC PIDE
+                    </h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                            <li class="breadcrumb-item active">Daftar PIC PIDE</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <table id="pic-pide-table" class="table table-striped" style="width:100%">
-        <thead>
-            <tr>
-                <th>Sub Jenis Data ILAP</th>
-                <th>User</th>
-                <th>Start Date</th>
-                <th>End Date</th>
-                <th>Actions</th>
-            </tr>
-            <tr id="column-search-row">
-                <th><input type="text" class="form-control form-control-sm" placeholder="Search Sub Jenis Data" data-column="0" />
-                </th>
-                <th><input type="text" class="form-control form-control-sm" placeholder="Search User" data-column="1" />
-                </th>
-                <th><input type="text" class="form-control form-control-sm" placeholder="Search Start Date" data-column="2" />
-                </th>
-                <th><input type="text" class="form-control form-control-sm" placeholder="Search End Date" data-column="3" />
-                </th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
+            <h5 class="mb-0"><i class="ri-user-settings-line me-2"></i>Daftar PIC PIDE</h5>
+            <button type="button" class="btn btn-success" data-action="create"><i class="ri-add-line me-1"></i>Tambah</button>
+        </div>
+        <div class="card-body">
+            <table id="pic-pide-table" class="table table-striped" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>Sub Jenis Data ILAP</th>
+                        <th>User</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Actions</th>
+                    </tr>
+                    <tr id="column-search-row">
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Sub Jenis Data" data-column="0" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search User" data-column="1" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Start Date" data-column="2" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search End Date" data-column="3" /></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
 
     <!-- Modal for Create/Edit/Delete -->
     <div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
@@ -143,13 +160,13 @@
                         if (response.success) {
                             $('#crudModal').modal('hide');
                             table.ajax.reload();
-                            showAlert('success', response.message);
+                            showToast(response.message || 'Data berhasil disimpan.', 'success');
                         } else {
                             $('#modalBody').html(response.html);
                         }
                     },
                     error: function (xhr) {
-                        showAlert('danger', 'Terjadi kesalahan. Silakan coba lagi.');
+                        showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
                     }
                 });
             });
@@ -173,9 +190,6 @@
             });
         }
 
-        function showAlert(type, message) {
-            showToast(type === 'success' ? 'Success' : 'Error', message, type);
-        }
     })();
 </script>
 {% endblock %}

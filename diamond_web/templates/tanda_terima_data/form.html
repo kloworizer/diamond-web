@@ -1,58 +1,101 @@
-{% load crispy_forms_tags %}
-<form method="post" action="{{ form_action }}" class="form-modal">
+<form method="post" action="{{ form_action }}" {% if tanda_terima_id %}data-tanda-terima-id="{{ tanda_terima_id }}"{% endif %}>
     {% csrf_token %}
-    
-    <div class="mb-3">
-        {{ form.nomor_tanda_terima.label_tag }}
-        {{ form.nomor_tanda_terima }}
-        {% if form.nomor_tanda_terima.errors %}
-            <div class="text-danger">{{ form.nomor_tanda_terima.errors }}</div>
+    <div class="modal-body" {% if tanda_terima_id %}data-tanda-terima-id="{{ tanda_terima_id }}"{% endif %}>
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger mb-3">
+                {% for error in form.non_field_errors %}
+                    <p class="mb-0">{{ error }}</p>
+                {% endfor %}
+            </div>
         {% endif %}
-    </div>
-    
-    <div class="mb-3">
-        {{ form.tanggal_tanda_terima.label_tag }}
-        {{ form.tanggal_tanda_terima }}
-        {% if form.tanggal_tanda_terima.errors %}
-            <div class="text-danger">{{ form.tanggal_tanda_terima.errors }}</div>
-        {% endif %}
-    </div>
-    
-    <div class="mb-3">
-        {{ form.id_ilap.label_tag }}
-        {{ form.id_ilap }}
-        {% if form.id_ilap.errors %}
-            <div class="text-danger">{{ form.id_ilap.errors }}</div>
-        {% endif %}
-    </div>
-    
-    <div class="mb-3">
-        {{ form.deskripsi.label_tag }}
-        {{ form.deskripsi }}
-        {% if form.deskripsi.errors %}
-            <div class="text-danger">{{ form.deskripsi.errors }}</div>
-        {% endif %}
-    </div>
-    
-    <div class="mb-3">
-        <label class="form-label">{{ form.tiket_ids.label }}</label>
-        <div style="max-height: 200px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px; border-radius: 4px;">
-            {% for checkbox in form.tiket_ids %}
-                <div class="form-check">
-                    {{ checkbox.tag }}
-                    <label class="form-check-label" for="{{ checkbox.id_for_label }}">
-                        {{ checkbox.choice_label }}
-                    </label>
-                </div>
-            {% endfor %}
+        
+        <div class="mb-3">
+            {{ form.tanggal_tanda_terima.label_tag }}
+            {{ form.tanggal_tanda_terima }}
+            {% if form.tanggal_tanda_terima.errors %}
+                <small class="text-danger d-block mt-1">
+                    {% for error in form.tanggal_tanda_terima.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </small>
+            {% endif %}
+            {% if form.tanggal_tanda_terima.help_text %}
+                <small class="text-muted d-block mt-1">{{ form.tanggal_tanda_terima.help_text|safe }}</small>
+            {% endif %}
         </div>
-        {% if form.tiket_ids.errors %}
-            <div class="text-danger">{{ form.tiket_ids.errors }}</div>
+
+        <div class="mb-3">
+            {{ form.nomor_tanda_terima.label_tag }}
+            {{ form.nomor_tanda_terima }}
+            {% if form.nomor_tanda_terima.errors %}
+                <small class="text-danger d-block mt-1">
+                    {% for error in form.nomor_tanda_terima.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </small>
+            {% endif %}
+            {% if form.nomor_tanda_terima.help_text %}
+                <small class="text-muted d-block mt-1">{{ form.nomor_tanda_terima.help_text|safe }}</small>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.id_ilap.label_tag }}
+            {{ form.id_ilap }}
+            {% if form.id_ilap.errors %}
+                <small class="text-danger d-block mt-1">
+                    {% for error in form.id_ilap.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </small>
+            {% endif %}
+            {% if form.id_ilap.help_text %}
+                <small class="text-muted d-block mt-1">{{ form.id_ilap.help_text|safe }}</small>
+            {% endif %}
+        </div>
+        
+        {% if form.tiket_ids %}
+        <div class="mb-3">
+            <label class="form-label">{{ form.tiket_ids.label }}</label>
+            <div id="tiket-checkbox-container" style="max-height: 200px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px; border-radius: 4px;">
+                {% for checkbox in form.tiket_ids %}
+                    <div class="form-check">
+                        {{ checkbox.tag }}
+                        <label class="form-check-label" for="{{ checkbox.id_for_label }}">
+                            {{ checkbox.choice_label }}
+                        </label>
+                    </div>
+                {% endfor %}
+            </div>
+            {% if form.tiket_ids.errors %}
+                <small class="text-danger d-block mt-1">
+                    {% for error in form.tiket_ids.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </small>
+            {% endif %}
+        </div>
         {% endif %}
+
+        <div class="mb-3">
+            {{ form.deskripsi.label_tag }}
+            {{ form.deskripsi }}
+            {% if form.deskripsi.errors %}
+                <small class="text-danger d-block mt-1">
+                    {% for error in form.deskripsi.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </small>
+            {% endif %}
+            {% if form.deskripsi.help_text %}
+                <small class="text-muted d-block mt-1">{{ form.deskripsi.help_text|safe }}</small>
+            {% endif %}
+        </div>
     </div>
-    
-    <div class="modal-footer mt-3 border-top pt-3">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="submit" class="btn btn-success">Save</button>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="submit" class="btn btn-info">
+            <i class="ri-save-line me-1"></i>Simpan
+        </button>
     </div>
 </form>

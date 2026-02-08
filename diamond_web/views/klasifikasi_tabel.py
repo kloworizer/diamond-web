@@ -9,9 +9,9 @@ from django.views.decorators.http import require_GET
 
 from ..models.klasifikasi_tabel import KlasifikasiTabel
 from ..forms.klasifikasi_tabel import KlasifikasiTabelForm
-from .mixins import AjaxFormMixin, AdminRequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
 
-class KlasifikasiTabelListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
+class KlasifikasiTabelListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
     template_name = 'klasifikasi_tabel/list.html'
 
     def get(self, request, *args, **kwargs):
@@ -26,7 +26,7 @@ class KlasifikasiTabelListView(LoginRequiredMixin, AdminRequiredMixin, TemplateV
                 pass
         return super().get(request, *args, **kwargs)
 
-class KlasifikasiTabelCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
+class KlasifikasiTabelCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
     model = KlasifikasiTabel
     form_class = KlasifikasiTabelForm
     template_name = 'klasifikasi_tabel/form.html'
@@ -43,7 +43,7 @@ class KlasifikasiTabelCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFor
         form = self.get_form()
         return self.render_form_response(form)
 
-class KlasifikasiTabelUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
+class KlasifikasiTabelUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
     model = KlasifikasiTabel
     form_class = KlasifikasiTabelForm
     template_name = 'klasifikasi_tabel/form.html'
@@ -60,7 +60,7 @@ class KlasifikasiTabelUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFor
         form = self.get_form()
         return self.render_form_response(form)
 
-class KlasifikasiTabelDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+class KlasifikasiTabelDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     model = KlasifikasiTabel
     template_name = 'klasifikasi_tabel/confirm_delete.html'
     success_url = reverse_lazy('klasifikasi_tabel_list')

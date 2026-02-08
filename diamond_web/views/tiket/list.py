@@ -4,20 +4,25 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.decorators.http import require_GET
 from django.views.generic import TemplateView
+from django.contrib.auth.mixins import UserPassesTestMixin
 from django.http import JsonResponse
 from django.urls import reverse
 
 from ...models.tiket import Tiket
-from .base import AdminRequiredMixin
+from ..mixins import can_access_tiket_list
+from ...constants.tiket_status import STATUS_LABELS
 
 
-class TiketListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
+class TiketListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     """Display list of all tikets with DataTables integration."""
     template_name = 'tiket/list.html'
 
+    def test_func(self):
+        return can_access_tiket_list(self.request.user)
+
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(lambda u: can_access_tiket_list(u))
 @require_GET
 def tiket_data(request):
     """Server-side processing for DataTables."""
@@ -26,6 +31,10 @@ def tiket_data(request):
     length = int(request.GET.get('length', '10'))
 
     qs = Tiket.objects.select_related('id_periode_data__id_sub_jenis_data_ilap').all()
+    if not request.user.groups.filter(name='admin').exists() and not request.user.is_superuser:
+        qs = qs.filter(
+            tiketpic__id_user=request.user
+        ).distinct()
     records_total = qs.count()
 
     # Column-specific filtering
@@ -47,7 +56,7 @@ def tiket_data(request):
     # ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['nomor_tiket', 'id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data', 'periode', 'tahun', 'status']
+    columns = ['id', 'nomor_tiket', 'id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data', 'periode', 'tahun', 'status']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -56,32 +65,52 @@ def tiket_data(request):
                 col = '-' + col
             qs = qs.order_by(col)
         except Exception:
-            qs = qs.order_by('-id')
+            qs = qs.order_by('id')
     else:
-        qs = qs.order_by('-id')
+        qs = qs.order_by('id')
 
     qs_page = qs[start:start + length]
 
     data = []
-    status_labels = {
-        1: 'Direkam',
-        2: 'Backup direkam',
-        3: 'Diteliti',
-        4: 'Dikirim ke PIDE',
-        5: 'Dibatalkan',
-        6: 'Dikembalikan',
-        7: 'Identifikasi',
-        8: 'Pengendalian Mutu',
-        9: 'Selesai'
-    }
-    
     for obj in qs_page:
+        # Get nama_ilap and nama_sub_jenis_data from related models
+        nama_ilap = '-'
+        nama_sub_jenis_data = '-'
+        if obj.id_periode_data and obj.id_periode_data.id_sub_jenis_data_ilap:
+            jenis_data_ilap = obj.id_periode_data.id_sub_jenis_data_ilap
+            if jenis_data_ilap.id_ilap:
+                nama_ilap = jenis_data_ilap.id_ilap.nama_ilap
+            nama_sub_jenis_data = jenis_data_ilap.nama_sub_jenis_data
+
+        # Format periode (e.g. Januari 2026, Semester 1 2026)
+        periode_formatted = '-'
+        if obj.id_periode_data and obj.id_periode_data.id_periode_pengiriman:
+            periode_desc = obj.id_periode_data.id_periode_pengiriman.deskripsi
+            tahun = str(obj.tahun) if obj.tahun else '-'
+            if periode_desc.lower() == 'bulanan' and obj.periode:
+                # Map periode number to month name
+                bulan_map = {
+                    1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni',
+                    7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
+                }
+                bulan = bulan_map.get(obj.periode, f'Bulan {obj.periode}')
+                periode_formatted = f"{bulan} {tahun}"
+            elif 'semester' in periode_desc.lower() and obj.periode:
+                periode_formatted = f"Semester {obj.periode} {tahun}"
+            elif 'triwulan' in periode_desc.lower() and obj.periode:
+                periode_formatted = f"Triwulan {obj.periode} {tahun}"
+            elif 'mingguan' in periode_desc.lower() and obj.periode:
+                periode_formatted = f"Minggu {obj.periode} {tahun}"
+            else:
+                periode_formatted = f"{periode_desc} {tahun}"
+
         data.append({
+            'id': obj.id,
             'nomor_tiket': obj.nomor_tiket or '-',
-            'periode_jenis_data': str(obj.id_periode_data) if obj.id_periode_data else '-',
-            'periode': str(obj.periode) if obj.periode else '-',
-            'tahun': str(obj.tahun) if obj.tahun else '-',
-            'status': status_labels.get(obj.status, '-'),
+            'nama_ilap': nama_ilap,
+            'nama_sub_jenis_data': nama_sub_jenis_data,
+            'periode_formatted': periode_formatted,
+            'status': STATUS_LABELS.get(obj.status, '-'),
             'actions': f"<a href='{reverse('tiket_detail', args=[obj.pk])}' class='btn btn-sm btn-info' title='View'><i class='ri-eye-line'></i></a>"
         })
 

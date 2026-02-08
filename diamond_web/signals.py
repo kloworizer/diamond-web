@@ -4,4 +4,6 @@ from django.contrib import messages
 
 @receiver(user_logged_in)
 def display_login_success_message(sender, request, user, **kwargs):
-    messages.success(request, f"Welcome back, {user.username}!")
+    # Get user's full name or fall back to username
+    full_name = user.get_full_name().strip() if user.get_full_name() else user.username
+    messages.success(request, f"Selamat datang, {full_name}!")

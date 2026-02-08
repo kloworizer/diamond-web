@@ -8,15 +8,15 @@ from django.views.decorators.http import require_GET
 
 from ..models.jenis_data_ilap import JenisDataILAP
 from ..forms.nama_tabel import NamaTabelForm
-from .mixins import AjaxFormMixin, AdminRequiredMixin
+from .mixins import AjaxFormMixin, AdminPIDERequiredMixin
 
-class NamaTabelListView(LoginRequiredMixin, AdminRequiredMixin, TemplateView):
+class NamaTabelListView(LoginRequiredMixin, AdminPIDERequiredMixin, TemplateView):
     template_name = 'nama_tabel/list.html'
 
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
 
-class NamaTabelCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, CreateView):
+class NamaTabelCreateView(LoginRequiredMixin, AdminPIDERequiredMixin, AjaxFormMixin, CreateView):
     model = JenisDataILAP
     form_class = NamaTabelForm
     template_name = 'nama_tabel/form.html'
@@ -33,7 +33,7 @@ class NamaTabelCreateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin,
         form = self.get_form()
         return self.render_form_response(form)
 
-class NamaTabelUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin, UpdateView):
+class NamaTabelUpdateView(LoginRequiredMixin, AdminPIDERequiredMixin, AjaxFormMixin, UpdateView):
     model = JenisDataILAP
     form_class = NamaTabelForm
     template_name = 'nama_tabel/form.html'
@@ -50,7 +50,7 @@ class NamaTabelUpdateView(LoginRequiredMixin, AdminRequiredMixin, AjaxFormMixin,
         form = self.get_form()
         return self.render_form_response(form)
 
-class NamaTabelDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+class NamaTabelDeleteView(LoginRequiredMixin, AdminPIDERequiredMixin, DeleteView):
     model = JenisDataILAP
     template_name = 'nama_tabel/confirm_delete.html'
     success_url = reverse_lazy('nama_tabel_list')

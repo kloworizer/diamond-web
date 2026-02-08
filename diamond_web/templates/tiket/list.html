@@ -1,33 +1,57 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
 
+
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">Daftar Tiket</h2>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="ri-list-check-2 me-2"></i>Daftar Tiket
+                    </h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                            <li class="breadcrumb-item active">Daftar Tiket</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <table id="tiket-table" class="table table-striped" style="width:100%">
-        <thead>
-            <tr>
-                <th>Nomor Tiket</th>
-                <th>Periode Jenis Data</th>
-                <th>Periode</th>
-                <th>Tahun</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-            <tr id="column-search-row">
-                <th><input type="text" class="form-control form-control-sm" placeholder="Search Nomor" data-column="0" /></th>
-                <th><input type="text" class="form-control form-control-sm" placeholder="Search Periode Jenis Data" data-column="1" /></th>
-                <th><input type="text" class="form-control form-control-sm" placeholder="Search Periode" data-column="2" /></th>
-                <th><input type="text" class="form-control form-control-sm" placeholder="Search Tahun" data-column="3" /></th>
-                <th><input type="text" class="form-control form-control-sm" placeholder="Search Status" data-column="4" /></th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex align-items-center">
+            <h5 class="mb-0"><i class="ri-list-check-2 me-2"></i>Daftar Tiket</h5>
+        </div>
+        <div class="card-body">
+            <table id="tiket-table" class="table table-striped" style="width:100%">
+                <thead>
+                    <tr>
+                        <th class="d-none">ID</th>
+                        <th>Nomor Tiket</th>
+                        <th>ILAP</th>
+                        <th>Jenis Data</th>
+                        <th>Periode</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                    <tr id="column-search-row">
+                        <th class="d-none"></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Nomor" data-column="0" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search ILAP" data-column="1" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Jenis Data" data-column="2" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Periode" data-column="3" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Status" data-column="4" /></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -58,17 +82,19 @@
                 },
                 pageLength: 10,
                 columns: [
+                    { data: 'id' },
                     { data: 'nomor_tiket' },
-                    { data: 'periode_jenis_data' },
-                    { data: 'periode' },
-                    { data: 'tahun' },
+                    { data: 'nama_ilap' },
+                    { data: 'nama_sub_jenis_data' },
+                    { data: 'periode_formatted' },
                     { data: 'status' },
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [
-                    { targets: 5, render: function (data, type, row, meta) { return data; } }
+                    { targets: 0, visible: false, searchable: false },
+                    { targets: 6, render: function (data, type, row, meta) { return data; } }
                 ],
-                order: [[0, 'desc']]
+                order: [[0, 'asc']]
             });
 
             // Add individual column search

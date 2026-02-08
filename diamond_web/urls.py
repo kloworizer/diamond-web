@@ -7,6 +7,7 @@ import sys
 print("--- Loading diamond_web/urls.py ---", file=sys.stderr)
 
 urlpatterns = [
+        path('tanda-terima-data/<int:pk>/view/', views.TandaTerimaDataViewOnly.as_view(), name='tanda_terima_data_view'),
     path('', views.home, name='home'),
     path('keep-alive/', keep_alive, name='keep_alive'),
     path('session-expired/', session_expired, name='session_expired'),
@@ -88,7 +89,10 @@ urlpatterns = [
     # Tanda Terima Data URLs
     path('tanda-terima-data/', views.TandaTerimaDataListView.as_view(), name='tanda_terima_data_list'),
     path('tanda-terima-data/data/', views.tanda_terima_data_data, name='tanda_terima_data_data'),
+    path('tanda-terima-data/next-number/', views.tanda_terima_next_number, name='tanda_terima_next_number'),
+    path('tanda-terima-data/tikets-by-ilap/', views.tanda_terima_tikets_by_ilap, name='tanda_terima_tikets_by_ilap'),
     path('tanda-terima-data/create/', views.TandaTerimaDataCreateView.as_view(), name='tanda_terima_data_create'),
+    path('tanda-terima-data/from-tiket/<int:tiket_pk>/create/', views.TandaTerimaDataFromTiketCreateView.as_view(), name='tanda_terima_data_from_tiket_create'),
     path('tanda-terima-data/<int:pk>/update/', views.TandaTerimaDataUpdateView.as_view(), name='tanda_terima_data_update'),
     path('tanda-terima-data/<int:pk>/delete/', views.TandaTerimaDataDeleteView.as_view(), name='tanda_terima_data_delete'),
 
@@ -131,12 +135,19 @@ urlpatterns = [
     path('backup-data/', views.BackupDataListView.as_view(), name='backup_data_list'),
     path('backup-data/data/', views.backup_data_data, name='backup_data_data'),
     path('backup-data/create/', views.BackupDataCreateView.as_view(), name='backup_data_create'),
+    path('backup-data/from-tiket/<int:tiket_pk>/create/', views.BackupDataFromTiketCreateView.as_view(), name='backup_data_from_tiket_create'),
     path('backup-data/<int:pk>/update/', views.BackupDataUpdateView.as_view(), name='backup_data_update'),
     path('backup-data/<int:pk>/delete/', views.BackupDataDeleteView.as_view(), name='backup_data_delete'),
     # === Tiket Workflow ===
     # List view (shared across all workflow steps)
     path('tiket/', views.TiketListView.as_view(), name='tiket_list'),
     path('tiket/data/', views.tiket_data, name='tiket_data'),
+    
+    # API endpoints
+    path('api/ilap/<int:ilap_id>/periode-jenis-data/', views.ILAPPeriodeDataAPIView.as_view(), name='api_ilap_periode_jenis_data'),
+    path('api/check-jenis-prioritas/<str:jenis_data_id>/<int:tahun>/', views.CheckJenisPrioritasAPIView.as_view(), name='check_jenis_prioritas'),
+    path('api/check-tiket-exists/', views.CheckTiketExistsAPIView.as_view(), name='check_tiket_exists'),
+    path('api/preview-nomor-tiket/', views.PreviewNomorTiketAPIView.as_view(), name='preview_nomor_tiket'),
     
     # Legacy URLs - kept for backward compatibility
     path('tiket/create/', views.TiketCreateView.as_view(), name='tiket_create'),
@@ -153,6 +164,7 @@ urlpatterns = [
     
     # Kirim Tiket (Send Tiket) - Step 3
     path('tiket/kirim-tiket/', views.KirimTiketView.as_view(), name='kirim_tiket'),
+    path('tiket/<int:tiket_pk>/kirim-pide/', views.KirimTiketView.as_view(), name='kirim_tiket_from_tiket'),
     
     # Future workflow steps can be added here:
     # path('tiket/teliti/create/', views.TiketTelitiCreateView.as_view(), name='tiket_teliti_create'),
