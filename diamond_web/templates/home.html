@@ -10,6 +10,17 @@
     {% endif %}
 </div>
 
+{% if user.is_authenticated and is_p3de %}
+<div class="card mb-4">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0">Task Summary</h5>
+    </div>
+    <div class="card-body">
+        {% include 'task_to_do.html' %}
+    </div>
+</div>
+{% endif %}
+
 {% if debug_user_groups %}
 <div class="card shadow-sm">
     <div class="card-header bg-warning text-dark">
