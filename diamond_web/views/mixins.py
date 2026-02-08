@@ -68,15 +68,25 @@ def has_active_tiket_pic(user):
 
 
 def get_active_p3de_ilap_ids(user):
+    """Get all ILAP IDs where user is assigned as P3DE PIC with active date range."""
     if not user or not user.is_authenticated:
         return []
-    return TiketPIC.objects.filter(
+    
+    from datetime import datetime
+    from django.db.models import Q
+    from ..models.pic import PIC
+    
+    today = datetime.now().date()
+    
+    # Get ILAPs where user is assigned as P3DE PIC with active date range
+    return PIC.objects.filter(
+        tipe=PIC.TipePIC.P3DE,
         id_user=user,
-        active=True,
-        role=TiketPIC.Role.P3DE,
-        id_tiket__id_periode_data__id_sub_jenis_data_ilap__id_ilap__isnull=False
+        start_date__lte=today
+    ).filter(
+        Q(end_date__isnull=True) | Q(end_date__gte=today)
     ).values_list(
-        'id_tiket__id_periode_data__id_sub_jenis_data_ilap__id_ilap_id',
+        'id_sub_jenis_data_ilap__id_ilap_id',
         flat=True
     ).distinct()
 

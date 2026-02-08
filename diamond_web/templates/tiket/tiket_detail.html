@@ -365,48 +365,49 @@
                     <h5 class="mb-0"><i class="ri-settings-3-line me-2"></i>Aksi</h5>
                 </div>
                 <div class="card-body">
-                        {% if tiket.status < 6 %}
+                        <!-- Main action buttons: visible if tiket not dikirim ke pide (4), dibatalkan (7), or selesai (8) -->
+                        {% if tiket.status != 4 and tiket.status != 7 and tiket.status != 8 %}
                             <div class="d-grid gap-2">
-                                {% if not backup_list %}
+                                <!-- Rekam Backup button: show if backup not yet recorded -->
+                                {% if not tiket.backup %}
                                     <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#rekamBackupDataModal">
                                         <i class="ri-save-line me-1"></i>Rekam Backup Data
                                     </button>
                                 {% endif %}
-                                {% if tanda_terima_items %}
-                                    {% with last_item=tanda_terima_items|dictsort:'id_tanda_terima.active'|last %}
-                                        {% if not last_item.id_tanda_terima.active %}
-                                            <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#createTandaTerimaModal">
-                                                <i class="ri-file-list-2-line me-1"></i>Buat Tanda Terima
-                                            </button>
-                                        {% endif %}
-                                        {% if backup_list and last_item.id_tanda_terima.active %}
-                                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rekamHasilPenelitianModal" data-action="edit">
-                                                <i class="ri-file-edit-line me-1"></i>{% if tiket.tgl_teliti %}Ubah Hasil Penelitian{% else %}Rekam Hasil Penelitian{% endif %}
-                                            </button>
-                                        {% endif %}
-                                    {% endwith %}
-                                {% else %}
+                                
+                                <!-- Rekam Tanda Terima button: show if tanda terima not yet recorded -->
+                                {% if not tiket.tanda_terima %}
                                     <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#createTandaTerimaModal">
-                                        <i class="ri-file-list-2-line me-1"></i>Buat Tanda Terima
+                                        <i class="ri-file-list-2-line me-1"></i>Rekam Tanda Terima
                                     </button>
                                 {% endif %}
-                                {% if tanda_terima_items %}
-                                    {% with last_item=tanda_terima_items|dictsort:'id_tanda_terima.active'|last %}
-                                        {% if tiket.status == 4 or tiket.tgl_teliti and backup_list and last_item.id_tanda_terima.active %}
-                                            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#kirimTiketModal">
-                                                <i class="ri-send-plane-line me-1"></i>Kirim Tiket ke PIDE
-                                            </button>
-                                        {% endif %}
-                                    {% endwith %}
+                                
+                                <!-- Rekam Hasil Penelitian button: show if backup and tanda terima both recorded -->
+                                {% if tiket.backup and tiket.tanda_terima %}
+                                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rekamHasilPenelitianModal" data-action="edit">
+                                        <i class="ri-file-edit-line me-1"></i>{% if tiket.tgl_teliti %}Ubah Hasil Penelitian{% else %}Rekam Hasil Penelitian{% endif %}
+                                    </button>
                                 {% endif %}
-                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
-                                    <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
-                                </button>
+                                
+                                <!-- Kirim Tiket ke PIDE button: show if backup, tanda terima, and penelitian all completed -->
+                                {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti %}
+                                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#kirimTiketModal">
+                                        <i class="ri-send-plane-line me-1"></i>Kirim Tiket ke PIDE
+                                    </button>
+                                {% endif %}
                             </div>
                         {% else %}
+                            <!-- No actions available for finalized tikets -->
                             <div class="text-center text-muted py-2">
                                 <i class="ri-information-line me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
                             </div>
+                        {% endif %}
+                        
+                        <!-- Batalkan Tiket button: always available if tiket not yet sent to PIDE (status < 4) -->
+                        {% if tiket.status < 4 %}
+                            <button type="button" class="btn btn-danger mt-2 w-100" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
+                                <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
+                            </button>
                         {% endif %}
                 </div>
             </div>
@@ -601,21 +602,23 @@
                                     .then(data => {
                                         if (data.success) {
                                             bootstrap.Modal.getInstance(rekamBackupDataModal).hide();
-                                            showToast('Success', data.message || 'Backup data berhasil disimpan.', 'success');
+                                            showToast(data.message || 'Backup data berhasil disimpan.', 'success');
                                             setTimeout(() => location.reload(), 800);
                                         } else {
+                                            showToast(data.message || 'Gagal menyimpan backup data.', 'danger');
                                             formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
                                         }
                                     })
                                     .catch(error => {
                                         console.error('Error:', error);
-                                        alert('Terjadi kesalahan saat menyimpan data.');
+                                        showToast('Terjadi kesalahan saat menyimpan data.', 'danger');
                                     });
                             });
                         }
                     })
                     .catch(error => {
                         console.error('Error loading form:', error);
+                        showToast('Gagal memuat form.', 'danger');
                         formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
                     });
             });
@@ -652,23 +655,25 @@
                                     .then(data => {
                                         if (data.success) {
                                             bootstrap.Modal.getInstance(tandaTerimaModal).hide();
-                                            showToast('Success', data.message || 'Tanda terima berhasil dibuat.', 'success');
+                                            showToast(data.message || 'Tanda terima berhasil dibuat.', 'success');
                                             setTimeout(() => location.reload(), 800);
                                         } else {
                                             // Handle form errors - the mixin returns 'html' not 'form_html'
+                                            showToast(data.message || 'Gagal membuat tanda terima.', 'danger');
                                             formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
                                             attachTandaTerimaHandlers(formContainer);
                                         }
                                     })
                                     .catch(error => {
                                         console.error('Error:', error);
-                                        alert('Terjadi kesalahan saat menyimpan data.');
+                                        showToast('Terjadi kesalahan saat menyimpan data.', 'danger');
                                     });
                             });
                         }
                     })
                     .catch(error => {
                         console.error('Error loading form:', error);
+                        showToast('Gagal memuat form.', 'danger');
                         formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
                     });
             });
@@ -704,9 +709,10 @@
                                     .then(response => {
                                         if (response.ok && response.redirected) {
                                             bootstrap.Modal.getInstance(batalkanTiketModal).hide();
-                                            showToast('Success', 'Tiket berhasil dibatalkan.', 'success');
+                                            showToast('Tiket berhasil dibatalkan.', 'success');
                                             setTimeout(() => location.reload(), 800);
                                         } else {
+                                            showToast('Gagal membatalkan tiket.', 'danger');
                                             return response.text();
                                         }
                                     })
@@ -717,13 +723,14 @@
                                     })
                                     .catch(error => {
                                         console.error('Error:', error);
-                                        alert('Terjadi kesalahan saat membatalkan tiket.');
+                                        showToast('Terjadi kesalahan saat membatalkan tiket.', 'danger');
                                     });
                             });
                         }
                     })
                     .catch(error => {
                         console.error('Error loading form:', error);
+                        showToast('Gagal memuat form.', 'danger');
                         formContainer.innerHTML = '<div class="alert alert-danger m-3">Gagal memuat form</div>';
                     });
             });
@@ -763,21 +770,23 @@
                                     .then(data => {
                                         if (data.success) {
                                             bootstrap.Modal.getInstance(rekamHasilPenelitianModal).hide();
-                                            showToast('Success', data.message || 'Hasil penelitian berhasil disimpan.', 'success');
+                                            showToast(data.message || 'Hasil penelitian berhasil disimpan.', 'success');
                                             setTimeout(() => location.reload(), 800);
                                         } else {
+                                            showToast(data.message || 'Gagal menyimpan hasil penelitian.', 'danger');
                                             formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
                                         }
                                     })
                                     .catch(error => {
                                         console.error('Error:', error);
-                                        alert('Terjadi kesalahan saat menyimpan data.');
+                                        showToast('Terjadi kesalahan saat menyimpan data.', 'danger');
                                     });
                             });
                         }
                     })
                     .catch(error => {
                         console.error('Error loading form:', error);
+                        showToast('Gagal memuat form.', 'danger');
                         formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
                     });
             });
@@ -816,15 +825,16 @@
                                         .then(data => {
                                             if (data.success) {
                                                 bootstrap.Modal.getInstance(kirimTiketModal).hide();
-                                                showToast('Success', data.message || 'Tiket berhasil dikirim.', 'success');
+                                                showToast(data.message || 'Tiket berhasil dikirim.', 'success');
                                                 setTimeout(() => location.reload(), 800);
                                             } else if (data.errors) {
+                                                showToast(data.message || 'Gagal mengirim tiket.', 'danger');
                                                 formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
                                             }
                                         })
                                         .catch(error => {
                                             console.error('Error:', error);
-                                            alert('Terjadi kesalahan saat mengirim tiket.');
+                                            showToast('Terjadi kesalahan saat mengirim tiket.', 'danger');
                                         });
                                 });
                             }

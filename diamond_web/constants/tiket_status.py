@@ -1,25 +1,21 @@
 STATUS_LABELS = {
     1: 'Direkam',
-    2: 'Backup direkam',
-    3: 'Tanda Terima dibuat',
-    4: 'Diteliti',
-    5: 'Dikembalikan',
-    6: 'Dikirim ke PIDE',
-    7: 'Identifikasi',
-    8: 'Pengendalian Mutu',
-    9: 'Dibatalkan',
-    10: 'Selesai'
+    2: 'Diteliti',
+    3: 'Dikembalikan',
+    4: 'Dikirim ke PIDE',
+    5: 'Identifikasi',
+    6: 'Pengendalian Mutu',
+    7: 'Dibatalkan',
+    8: 'Selesai'
 }
 
 STATUS_BADGE_CLASSES = {
     1: 'bg-primary',
-    2: 'bg-info',
-    3: 'bg-success',
-    4: 'bg-secondary',
+    2: 'bg-secondary',
+    3: 'bg-info',
+    4: 'bg-warning text-dark',
     5: 'bg-info',
-    6: 'bg-warning text-dark',
-    7: 'bg-info',
-    8: 'bg-secondary',
-    9: 'bg-danger',
-    10: 'bg-success'
+    6: 'bg-secondary',
+    7: 'bg-danger',
+    8: 'bg-success'
 }

@@ -9,6 +9,8 @@ from ...models.tiket_pic import TiketPIC
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ...models.detil_tanda_terima import DetilTandaTerima
 from ...constants.tiket_status import STATUS_LABELS, STATUS_BADGE_CLASSES
+from ...constants.tiket_action_badges import ACTION_BADGES, ROLE_BADGES, WORKFLOW_STEPS
+from ...constants.tiket_action_types import get_action_label, get_action_badge_class
 from ..mixins import ActiveTiketPICRequiredMixin
 
 
@@ -49,25 +51,6 @@ class TiketDetailView(LoginRequiredMixin, ActiveTiketPICRequiredMixin, DetailVie
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
-        action_badges = {
-            1: {'label': 'Direkam', 'class': 'bg-primary'},
-            2: {'label': 'Backup', 'class': 'bg-info'},
-            3: {'label': 'Tanda Terima', 'class': 'bg-success'},
-            4: {'label': 'Diteliti', 'class': 'bg-secondary'},
-            5: {'label': 'Dikembalikan', 'class': 'bg-info'},
-            6: {'label': 'Dikirim ke PIDE', 'class': 'bg-warning'},
-            7: {'label': 'Identifikasi', 'class': 'bg-info'},
-            8: {'label': 'Pengendalian Mutu', 'class': 'bg-secondary'},
-            9: {'label': 'Dibatalkan', 'class': 'bg-danger'},
-            10: {'label': 'Selesai', 'class': 'bg-success'}
-        }
-        
-        role_badges = {
-            1: {'label': 'P3DE', 'class': 'bg-primary'},
-            2: {'label': 'PIDE', 'class': 'bg-info'},
-            3: {'label': 'PMDE', 'class': 'bg-warning text-dark'}
-        }
         
         # Get related data
         periode_jenis_data = self.object.id_periode_data
@@ -115,9 +98,8 @@ class TiketDetailView(LoginRequiredMixin, ActiveTiketPICRequiredMixin, DetailVie
         ).select_related('id_user').order_by('-timestamp')
         
         for action in tiket_actions:
-            badge = action_badges.get(action.action, {'label': str(action.action), 'class': 'bg-secondary'})
-            action.badge_label = badge['label']
-            action.badge_class = badge['class']
+            action.badge_label = get_action_label(action.action)
+            action.badge_class = get_action_badge_class(action.action)
             full_name = (action.id_user.get_full_name() or '').strip()
             action.user_display = (
                 f"{action.id_user.username} - {full_name}"
@@ -130,7 +112,7 @@ class TiketDetailView(LoginRequiredMixin, ActiveTiketPICRequiredMixin, DetailVie
         ).select_related('id_user').order_by('-timestamp')
 
         for pic in tiket_pics:
-            badge = role_badges.get(pic.role, {'label': str(pic.role), 'class': 'bg-info'})
+            badge = ROLE_BADGES.get(pic.role, {'label': str(pic.role), 'class': 'bg-info'})
             pic.badge_label = badge['label']
             pic.badge_class = badge['class']
             full_name = (pic.id_user.get_full_name() or '').strip()
@@ -156,17 +138,5 @@ class TiketDetailView(LoginRequiredMixin, ActiveTiketPICRequiredMixin, DetailVie
         context['page_title'] = f'Detail Tiket {self.object.nomor_tiket}'
         
         # Get workflow step based on status
-        workflow_steps = {
-            1: 'rekam',
-            2: 'backup',
-            3: 'tanda_terima',
-            4: 'teliti',
-            5: 'kembali',
-            6: 'kirim_pide',
-            7: 'identifikasi',
-            8: 'pengendalian_mutu',
-            9: 'batal',
-            10: 'selesai'
-        }
-        context['workflow_step'] = workflow_steps.get(self.object.status, 'rekam')
+        context['workflow_step'] = WORKFLOW_STEPS.get(self.object.status, 'rekam')
         return context

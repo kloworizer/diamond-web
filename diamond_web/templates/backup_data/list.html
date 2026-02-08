@@ -158,13 +158,14 @@
                         if (response.success) {
                             $('#crudModal').modal('hide');
                             table.ajax.reload();
-                            showAlert('success', response.message);
+                            showToast(response.message || 'Data berhasil disimpan.', 'success');
                         } else {
                             $('#modalBody').html(response.html);
                         }
                     },
                     error: function (xhr) {
-                        showAlert('danger', 'Terjadi kesalahan. Silakan coba lagi.');
+                        const message = xhr.responseText || 'Terjadi kesalahan. Silakan coba lagi.';
+                        showToast(message, 'danger');
                     }
                 });
             });
@@ -188,9 +189,6 @@
             });
         }
 
-        function showAlert(type, message) {
-            showToast(type === 'success' ? 'Success' : 'Error', message, type);
-        }
     })();
 </script>
 {% endblock %}

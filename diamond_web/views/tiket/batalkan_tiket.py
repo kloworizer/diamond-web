@@ -9,6 +9,7 @@ from django.contrib import messages
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
 from ...forms.batalkan_tiket import BatalkanTiketForm
+from ...constants.tiket_action_types import TiketActionType
 from ..mixins import UserP3DERequiredMixin
 
 
@@ -40,7 +41,7 @@ class BatalkanTiketView(LoginRequiredMixin, UserP3DERequiredMixin, UpdateView):
         now = datetime.now()
 
         self.object = form.save(commit=False)
-        self.object.status = 9  # Change status to "Dibatalkan"
+        self.object.status = 7  # Change status to "Dibatalkan"
         self.object.tgl_dibatalkan = now
         self.object.save()
 
@@ -50,7 +51,7 @@ class BatalkanTiketView(LoginRequiredMixin, UserP3DERequiredMixin, UpdateView):
             id_tiket=self.object,
             id_user=self.request.user,
             timestamp=now,
-            action=9,
+            action=TiketActionType.DIBATALKAN,
             catatan=catatan
         )
 

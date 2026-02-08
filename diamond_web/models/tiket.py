@@ -27,6 +27,8 @@ class Tiket(models.Model):
     tgl_terima_vertikal = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Terima Vertikal")
     tgl_terima_dip = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Terima DIP")
     tgl_teliti = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Teliti")
+    backup = models.BooleanField(default=False, verbose_name="Backup Direkam")
+    tanda_terima = models.BooleanField(default=False, verbose_name="Tanda Terima Dibuat")
     baris_p3de = models.IntegerField(null=True, blank=True, verbose_name="Baris P3DE")
     tgl_nadine = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Nadine")
     nomor_nd_nadine = models.CharField(max_length=255, null=True, blank=True, verbose_name="Nomor ND Nadine")

@@ -11,6 +11,7 @@ from django.db import transaction
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
 from ...forms.kirim_tiket import KirimTiketForm
+from ...constants.tiket_action_types import TiketActionType
 from ..mixins import UserP3DERequiredMixin
 
 
@@ -80,7 +81,7 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
                     tiket.nomor_nd_nadine = nomor_nd_nadine
                     tiket.tgl_nadine = tgl_nadine
                     tiket.tgl_kirim_pide = tgl_kirim_pide
-                    tiket.status = 6  # Change status to 6 (Dikirim ke PIDE)
+                    tiket.status = 4  # Change status to 4 (Dikirim ke PIDE)
                     tiket.save()
                     
                     # Record tiket_action for audit trail
@@ -88,8 +89,8 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
                         id_tiket=tiket,
                         id_user=self.request.user,
                         timestamp=datetime.now(),
-                        action=6,  # Action 6 for "Dikirim ke PIDE"
-                        catatan="tiket dikirim ke nadine/pide"
+                        action=TiketActionType.DIKIRIM_KE_PIDE,
+                        catatan="tiket dikirim ke PIDE"
                     )
                 
                 message = f'Successfully updated {len(tikets)} tiket(s) and sent to NADINE/PIDE.'

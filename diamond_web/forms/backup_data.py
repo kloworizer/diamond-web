@@ -28,7 +28,7 @@ class BackupDataForm(forms.ModelForm):
             # Remove the id_tiket field since it's determined by tiket_pk
             del self.fields['id_tiket']
         else:
-            # Only show tickets where user is active PIC P3DE and status < 6
+            # Only show tickets where user is active PIC P3DE and status < 8
             from ..models.tiket_pic import TiketPIC
             if user is not None:
                 tiket_ids = TiketPIC.objects.filter(

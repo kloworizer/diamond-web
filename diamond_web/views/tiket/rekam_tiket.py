@@ -18,6 +18,7 @@ from ...models.pic import PIC
 from ...models.periode_jenis_data import PeriodeJenisData
 from ...models.jenis_prioritas_data import JenisPrioritasData
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
+from ...constants.tiket_action_types import TiketActionType
 from ...forms.tiket import TiketForm
 from ..mixins import UserFormKwargsMixin, UserP3DERequiredMixin, get_active_p3de_ilap_ids
 
@@ -295,7 +296,7 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
                     id_tiket=self.object,
                     id_user=self.request.user,
                     timestamp=datetime.now(),
-                    action=1,
+                    action=TiketActionType.DIREKAM,
                     catatan="tiket direkam"
                 )
 

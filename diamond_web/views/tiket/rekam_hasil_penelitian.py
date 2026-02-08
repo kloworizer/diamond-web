@@ -10,6 +10,7 @@ from django.http import JsonResponse
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
 from ...forms.rekam_hasil_penelitian import RekamHasilPenelitianForm
+from ...constants.tiket_action_types import TiketActionType
 from ..mixins import UserP3DERequiredMixin
 
 
@@ -43,7 +44,7 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Update
         
         # Update the tiket with new baris_p3de value
         self.object = form.save(commit=False)
-        self.object.status = 4  # Change status to "Diteliti"
+        self.object.status = 2  # Change status to "Diteliti"
         self.object.tgl_teliti = now
         self.object.save()
         
@@ -59,7 +60,7 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Update
             id_tiket=self.object,
             id_user=self.request.user,
             timestamp=now,
-            action=4,
+            action=TiketActionType.DITELITI,
             catatan=catatan
         )
         

@@ -1,6 +1,6 @@
 from django.urls import reverse_lazy, reverse
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import CreateView, UpdateView, DeleteView, TemplateView
+from django.views.generic import CreateView, UpdateView, DeleteView, TemplateView, DetailView
 from django.contrib import messages
 from urllib.parse import quote_plus, unquote_plus
 from django.http import JsonResponse, HttpResponseRedirect
@@ -15,6 +15,7 @@ from ..models.tiket_action import TiketAction
 from ..models.tiket_pic import TiketPIC
 from ..models.tiket import Tiket
 from ..forms.tanda_terima_data import TandaTerimaDataForm
+from ..constants.tiket_action_types import TandaTerimaActionType
 from .mixins import AjaxFormMixin, UserP3DERequiredMixin
 
 
@@ -95,7 +96,7 @@ def tanda_terima_data_data(request):
     for obj in qs_page:
         status_text = 'Aktif' if obj.active else 'Dibatalkan'
         can_edit = obj.detil_items.filter(
-            Q(id_tiket__status__lt=6) | Q(id_tiket__status__isnull=True)
+            Q(id_tiket__status__lt=8) | Q(id_tiket__status__isnull=True)
         ).exists()
         actions_html = f"<button class='btn btn-sm btn-info me-1' data-action='view' data-url='{reverse('tanda_terima_data_view', args=[obj.pk])}' title='Detail'><i class='ri-eye-line'></i></button>"
         # Hide edit button if tanda terima is dibatalkan
@@ -160,7 +161,7 @@ def tanda_terima_next_number(request):
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
 @require_GET
 def tanda_terima_tikets_by_ilap(request):
-    """Return available tikets for a given ILAP (status < 6 and not assigned to active tanda terima for that ILAP)."""
+    """Return available tikets for a given ILAP (status < 8 and not assigned to active tanda terima for that ILAP)."""
     ilap_id = request.GET.get('ilap_id')
     tanda_terima_id = request.GET.get('tanda_terima_id')  # Optional, for edit mode
     
@@ -190,7 +191,7 @@ def tanda_terima_tikets_by_ilap(request):
 
     # Get available tikets
     available_tikets = Tiket.objects.filter(
-        status__lt=6,
+        status__lt=8,
         id_periode_data__id_sub_jenis_data_ilap__id_ilap_id=ilap_id
     ).exclude(
         id__in=other_assigned_tiket_ids
@@ -244,15 +245,13 @@ class TandaTerimaDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxF
                 id_tiket=tiket
             )
 
-            if tiket.status is None or tiket.status < 3:
-                tiket.status = 3
-                tiket.save(update_fields=['status'])
+            # tanda_terima field is set when TandaTerimaData is created
 
             TiketAction.objects.create(
                 id_tiket=tiket,
                 id_user=self.request.user,
                 timestamp=timezone.now(),
-                action=3,
+                action=TandaTerimaActionType.DIREKAM,
                 catatan='Tanda terima dibuat'
             )
         
@@ -307,13 +306,13 @@ class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMix
         )
 
         # Update tiket status and record action
-        tiket.status = 3
-        tiket.save()
+        tiket.tanda_terima = True
+        tiket.save(update_fields=["tanda_terima"])
         TiketAction.objects.create(
             id_tiket=tiket,
             id_user=self.request.user,
             timestamp=timezone.now(),
-            action=3,
+            action=TandaTerimaActionType.DIREKAM,
             catatan='Tanda terima dibuat'
         )
         
@@ -351,7 +350,7 @@ class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxF
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
         # Prevent edit if any tiket in this tanda terima is dibatalkan
-        if not self.object.active or self.object.detil_items.filter(id_tiket__status__gte=6).exists():
+        if not self.object.active or self.object.detil_items.filter(id_tiket__status__gte=8).exists():
             return JsonResponse({'success': False, 'message': 'Tanda terima atau tiket sudah dibatalkan, tidak dapat diedit.', 'html': '<div class="alert alert-warning">Tanda terima atau tiket sudah dibatalkan, tidak dapat diedit.</div>'})
         form = self.get_form()
         return self.render_form_response(form)
@@ -383,9 +382,7 @@ class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxF
                 # Update status and create action only for newly added tikets
                 is_new_tiket = tiket.id not in existing_tiket_ids
                 
-                if tiket.status is None or tiket.status < 3:
-                    tiket.status = 3
-                    tiket.save(update_fields=['status'])
+                # tanda_terima field is set when TandaTerimaData is created
 
                 # Record tiket_action for audit trail (only for newly added tikets)
                 if is_new_tiket:
@@ -393,7 +390,7 @@ class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxF
                         id_tiket=tiket,
                         id_user=self.request.user,
                         timestamp=timezone.now(),
-                        action=3,
+                        action=TandaTerimaActionType.DIREKAM,
                         catatan='Tanda terima dibuat'
                     )
             
@@ -447,14 +444,17 @@ class TandaTerimaDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, Delet
             self.object.active = False
             self.object.save(update_fields=['active'])
 
-            # Add TiketAction for all tiket in this tanda terima
+            # Add TiketAction for all tiket in this tanda terima and set tanda_terima flag to False
             detil_items = self.object.detil_items.select_related('id_tiket').all()
             for detil in detil_items:
+                tiket = detil.id_tiket
+                tiket.tanda_terima = False
+                tiket.save(update_fields=["tanda_terima"])
                 TiketAction.objects.create(
-                    id_tiket=detil.id_tiket,
+                    id_tiket=tiket,
                     id_user=request.user,
                     timestamp=timezone.now(),
-                    action=3,
+                    action=TandaTerimaActionType.DIBATALKAN,
                     catatan='Tanda terima dibatalkan'
                 )
 
@@ -468,3 +468,15 @@ class TandaTerimaDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, Delet
 
     def post(self, request, *args, **kwargs):
         return self.delete(request, *args, **kwargs)
+
+
+class TandaTerimaDataViewOnly(LoginRequiredMixin, DetailView):
+    """Display tanda terima data details with related tiket information."""
+    model = TandaTerimaData
+    template_name = 'tanda_terima_data/view.html'
+    context_object_name = 'tanda_terima'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['detil_items'] = DetilTandaTerima.objects.filter(id_tanda_terima=self.object).select_related('id_tiket')
+        return context

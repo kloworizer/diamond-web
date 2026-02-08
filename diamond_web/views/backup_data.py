@@ -11,17 +11,26 @@ from ..models.backup_data import BackupData
 from ..models.tiket import Tiket
 from ..models.tiket_action import TiketAction
 from ..forms.backup_data import BackupDataForm
+from ..constants.tiket_action_types import BackupActionType
 from .mixins import AjaxFormMixin, UserP3DERequiredMixin
 
 
-def create_tiket_action(tiket, user, catatan):
+def create_tiket_action(tiket, user, catatan, action_type):
+    """Create a TiketAction record for audit trail
+    
+    Args:
+        tiket: The Tiket instance
+        user: The User instance
+        catatan: Action description/notes
+        action_type: Action type ID from action type classes
+    """
     if not tiket:
         return
     TiketAction.objects.create(
         id_tiket=tiket,
         id_user=user,
         timestamp=datetime.now(),
-        action=2,
+        action=action_type,
         catatan=catatan
     )
 
@@ -51,16 +60,16 @@ class BackupDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxFormMi
         form.instance.id_user = self.request.user
         response = super().form_valid(form)
         tiket = self.object.id_tiket
-        # Set tiket status to 2 (Backup direkam)
-        if tiket.status != 2:
-            tiket.status = 2
-            tiket.save(update_fields=["status"])
+        # Set tiket backup flag to True
+        if not tiket.backup:
+            tiket.backup = True
+            tiket.save(update_fields=["backup"])
         # Add TiketAction for backup
         TiketAction.objects.create(
             id_tiket=tiket,
             id_user=self.request.user,
             timestamp=datetime.now(),
-            action=2,
+            action=BackupActionType.DIREKAM,
             catatan="backup data direkam"
         )
         return response
@@ -99,16 +108,16 @@ class BackupDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMixin, A
         form.instance.id_tiket = tiket
         self.object = form.save()
         
-        # Update tiket status to 2 (Backup direkam)
-        tiket.status = 2
-        tiket.save()
+        # Set tiket backup flag to True
+        tiket.backup = True
+        tiket.save(update_fields=["backup"])
         
         # Record tiket_action for audit trail
         TiketAction.objects.create(
             id_tiket=tiket,
             id_user=self.request.user,
             timestamp=datetime.now(),
-            action=2,
+            action=BackupActionType.DIREKAM,
             catatan="backup data direkam"
         )
         
@@ -129,7 +138,7 @@ class BackupDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxFormMi
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        create_tiket_action(self.object.id_tiket, self.request.user, "backup data diperbarui")
+        create_tiket_action(self.object.id_tiket, self.request.user, "backup data diperbarui", BackupActionType.DIREKAM)
         return response
 
     def get(self, request, *args, **kwargs):
@@ -171,9 +180,18 @@ class BackupDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, DeleteView
         user = request.user
         # Delete the backup data
         self.object.delete()
+        # Set tiket backup flag to False if no other backups exist
+        if not tiket.backups.exists():
+            tiket.backup = False
+            tiket.save(update_fields=["backup"])
         # Audit trail: add TiketAction
-        from .backup_data import create_tiket_action
-        create_tiket_action(tiket, user, "backup data dihapus")
+        TiketAction.objects.create(
+            id_tiket=tiket,
+            id_user=user,
+            timestamp=datetime.now(),
+            action=BackupActionType.DIHAPUS,
+            catatan="backup data dihapus"
+        )
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
@@ -230,7 +248,7 @@ def backup_data_data(request):
     for obj in qs_page:
         user_name = obj.id_user.username if obj.id_user else '-'
         actions = ''
-        if obj.id_tiket and obj.id_tiket.status is not None and obj.id_tiket.status < 6:
+        if obj.id_tiket and obj.id_tiket.status is not None and obj.id_tiket.status < 8:
             actions = (
                 f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('backup_data_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
                 f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('backup_data_delete', args=[obj.pk])}' title='Delete'><i class='ri-delete-bin-line'></i></button>"

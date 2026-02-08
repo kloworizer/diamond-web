@@ -204,14 +204,14 @@
                         if (response.success) {
                             $('#crudModal').modal('hide');
                             table.ajax.reload();
-                            showAlert('success', response.message || 'Data saved successfully.');
+                            showToast(response.message || 'Data berhasil disimpan.', 'success');
                         } else {
                             $('#modalBody').html(response.html);
                         }
                     },
                     error: function (xhr) {
                         const message = xhr.responseText || 'Terjadi kesalahan. Silakan coba lagi.';
-                        showAlert('warning', message);
+                        showToast(message, 'danger');
                     }
                 });
             });
@@ -234,10 +234,6 @@
                     $('#modalBody').html('<div class="alert alert-warning">Gagal memuat form.</div>');
                 }
             });
-        }
-
-        function showAlert(type, message) {
-            showToast(type === 'success' ? 'Success' : 'Error', message, type);
         }
 
         function initTandaTerimaForm(container) {
