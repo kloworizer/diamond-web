@@ -61,10 +61,12 @@ class PICForm(forms.ModelForm):
                 existing_pic = existing_pic.exclude(pk=self.instance.pk)
             
             if existing_pic.exists():
-                raise forms.ValidationError(
+                # Attach error to start_date so it renders inline like Durasi Jatuh Tempo
+                self.add_error('start_date', (
                     f"PIC dengan user '{id_user.username}', sub jenis data '{id_sub_jenis_data_ilap}', "
                     f"dan start date '{start_date}' sudah ada. Silakan gunakan start date yang berbeda."
-                )
+                ))
+                return cleaned_data
             
             # Check for overlapping date ranges (same user and sub_jenis_data without end_date)
             overlapping_pic = PIC.objects.filter(
@@ -79,9 +81,11 @@ class PICForm(forms.ModelForm):
                 overlapping_pic = overlapping_pic.exclude(pk=self.instance.pk)
             
             if overlapping_pic.exists():
-                raise forms.ValidationError(
+                # Attach error to start_date to match Durasi Jatuh Tempo inline style
+                self.add_error('start_date', (
                     f"Sudah ada PIC aktif untuk user '{id_user.username}' dan sub jenis data '{id_sub_jenis_data_ilap}'. "
                     f"Silakan set end_date pada PIC yang ada terlebih dahulu."
-                )
+                ))
+                return cleaned_data
         
         return cleaned_data

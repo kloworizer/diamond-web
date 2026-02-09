@@ -451,11 +451,11 @@ class PICDeleteView(LoginRequiredMixin, DeleteView):
         # Now delete the PIC object
         pic.delete()
         
+        # For AJAX clients, set a server-side message and return a redirect URL
+        # so the base template can render the toast uniformly.
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'message': f'{self.get_tipe_display()} "{name}" berhasil dihapus.'
-            })
+            messages.success(request, f'{self.get_tipe_display()} "{name}" berhasil dihapus.')
+            return JsonResponse({'success': True, 'redirect': self.get_success_url()})
         messages.success(request, f'{self.get_tipe_display()} "{name}" berhasil dihapus.')
         return JsonResponse({'success': True, 'redirect': self.get_success_url()})
 

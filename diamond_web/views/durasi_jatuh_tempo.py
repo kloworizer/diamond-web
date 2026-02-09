@@ -10,6 +10,7 @@ from django.views.decorators.http import require_GET
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from ..forms.durasi_jatuh_tempo import DurasiJatuhTempoForm
 from .mixins import AjaxFormMixin
+from datetime import date as _date
 
 # ========== PIDE Section ==========
 
@@ -53,6 +54,22 @@ class DurasiJatuhTempoPIDECreateView(LoginRequiredMixin, AdminPIDERequiredMixin,
         form = self.get_form()
         return self.render_form_response(form)
 
+    def form_valid(self, form):
+        # Prevent overlapping ranges for same sub jenis data (pre-save guard)
+        s2 = form.cleaned_data.get('start_date')
+        if not s2:
+            return super().form_valid(form)
+        e2 = form.cleaned_data.get('end_date') or _date.max
+        id_sub = form.cleaned_data.get('id_sub_jenis_data') or form.instance.id_sub_jenis_data
+        qs = DurasiJatuhTempo.objects.filter(id_sub_jenis_data=id_sub)
+        for other in qs:
+            s1 = other.start_date
+            e1 = other.end_date or _date.max
+            if not (e1 < s2 or e2 < s1):
+                form.add_error('start_date', 'Rentang tanggal bertumpuk dengan entri lain untuk Sub Jenis Data ini.')
+                return self.form_invalid(form)
+        return super().form_valid(form)
+
 class DurasiJatuhTempoPIDEUpdateView(LoginRequiredMixin, AdminPIDERequiredMixin, AjaxFormMixin, UpdateView):
     model = DurasiJatuhTempo
     form_class = DurasiJatuhTempoForm
@@ -74,6 +91,21 @@ class DurasiJatuhTempoPIDEUpdateView(LoginRequiredMixin, AdminPIDERequiredMixin,
         self.object = self.get_object()
         form = self.get_form()
         return self.render_form_response(form)
+
+    def form_valid(self, form):
+        s2 = form.cleaned_data.get('start_date')
+        if not s2:
+            return super().form_valid(form)
+        e2 = form.cleaned_data.get('end_date') or _date.max
+        id_sub = form.cleaned_data.get('id_sub_jenis_data') or form.instance.id_sub_jenis_data
+        qs = DurasiJatuhTempo.objects.filter(id_sub_jenis_data=id_sub).exclude(pk=form.instance.pk)
+        for other in qs:
+            s1 = other.start_date
+            e1 = other.end_date or _date.max
+            if not (e1 < s2 or e2 < s1):
+                form.add_error('start_date', 'Rentang tanggal bertumpuk dengan entri lain untuk Sub Jenis Data ini.')
+                return self.form_invalid(form)
+        return super().form_valid(form)
 
 class DurasiJatuhTempoPIDEDeleteView(LoginRequiredMixin, AdminPIDERequiredMixin, DeleteView):
     model = DurasiJatuhTempo
@@ -215,6 +247,21 @@ class DurasiJatuhTempoPMDECreateView(LoginRequiredMixin, AdminPMDERequiredMixin,
         form = self.get_form()
         return self.render_form_response(form)
 
+    def form_valid(self, form):
+        s2 = form.cleaned_data.get('start_date')
+        if not s2:
+            return super().form_valid(form)
+        e2 = form.cleaned_data.get('end_date') or _date.max
+        id_sub = form.cleaned_data.get('id_sub_jenis_data') or form.instance.id_sub_jenis_data
+        qs = DurasiJatuhTempo.objects.filter(id_sub_jenis_data=id_sub)
+        for other in qs:
+            s1 = other.start_date
+            e1 = other.end_date or _date.max
+            if not (e1 < s2 or e2 < s1):
+                form.add_error('start_date', 'Rentang tanggal bertumpuk dengan entri lain untuk Sub Jenis Data ini.')
+                return self.form_invalid(form)
+        return super().form_valid(form)
+
 class DurasiJatuhTempoPMDEUpdateView(LoginRequiredMixin, AdminPMDERequiredMixin, AjaxFormMixin, UpdateView):
     model = DurasiJatuhTempo
     form_class = DurasiJatuhTempoForm
@@ -236,6 +283,21 @@ class DurasiJatuhTempoPMDEUpdateView(LoginRequiredMixin, AdminPMDERequiredMixin,
         self.object = self.get_object()
         form = self.get_form()
         return self.render_form_response(form)
+
+    def form_valid(self, form):
+        s2 = form.cleaned_data.get('start_date')
+        if not s2:
+            return super().form_valid(form)
+        e2 = form.cleaned_data.get('end_date') or _date.max
+        id_sub = form.cleaned_data.get('id_sub_jenis_data') or form.instance.id_sub_jenis_data
+        qs = DurasiJatuhTempo.objects.filter(id_sub_jenis_data=id_sub).exclude(pk=form.instance.pk)
+        for other in qs:
+            s1 = other.start_date
+            e1 = other.end_date or _date.max
+            if not (e1 < s2 or e2 < s1):
+                form.add_error('start_date', 'Rentang tanggal bertumpuk dengan entri lain untuk Sub Jenis Data ini.')
+                return self.form_invalid(form)
+        return super().form_valid(form)
 
 class DurasiJatuhTempoPMDEDeleteView(LoginRequiredMixin, AdminPMDERequiredMixin, DeleteView):
     model = DurasiJatuhTempo
