@@ -97,11 +97,12 @@ class DurasiJatuhTempoPIDEDeleteView(LoginRequiredMixin, AdminPIDERequiredMixin,
         self.object = self.get_object()
         name = str(self.object)
         self.object.delete()
+        # For AJAX, set server-side message and return redirect so that the
+        # client can navigate to the list view and let the base template
+        # render the toast from Django messages.
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'message': f'Durasi Jatuh Tempo "{name}" berhasil dihapus.'
-            })
+            messages.success(request, f'Durasi Jatuh Tempo "{name}" berhasil dihapus.')
+            return JsonResponse({'success': True, 'redirect': self.success_url})
         messages.success(request, f'Durasi Jatuh Tempo "{name}" berhasil dihapus.')
         return JsonResponse({'success': True, 'redirect': self.success_url})
 
