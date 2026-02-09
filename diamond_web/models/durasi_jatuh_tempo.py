@@ -28,3 +28,4 @@ class DurasiJatuhTempo(models.Model):
 
     def __str__(self):
         return f"{self.id_sub_jenis_data} - {self.seksi}"
+

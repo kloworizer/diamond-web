@@ -160,14 +160,17 @@
                     success: function (response) {
                         if (response.success) {
                             $('#crudModal').modal('hide');
+                            if (response.redirect) {
+                                window.location.href = response.redirect;
+                                return;
+                            }
                             table.ajax.reload();
-                            showAlert('success', response.message);
                         } else {
                             $('#modalBody').html(response.html);
                         }
                     },
                     error: function (xhr) {
-                        showAlert('danger', 'Terjadi kesalahan. Silakan coba lagi.');
+                        showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
                     }
                 });
             });
@@ -191,9 +194,7 @@
             });
         }
 
-        function showAlert(type, message) {
-            showToast(type === 'success' ? 'Success' : 'Error', message, type);
-        }
+        // Note: toast display is handled via Django messages and `showToast` in base template.
     })();
 </script>
 {% endblock %}
