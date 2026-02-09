@@ -1,4 +1,5 @@
 {% load crispy_forms_tags %}
+{% load static %}
 <form method="post" action="{{ form_action }}" class="form-modal">
     {% csrf_token %}
     {{ form|crispy }}
@@ -7,3 +8,5 @@
         <button type="submit" class="btn btn-success">Simpan</button>
     </div>
 </form>
+
+<script src="{% static 'js/jenis_data_ilap_wizard.js' %}"></script>
