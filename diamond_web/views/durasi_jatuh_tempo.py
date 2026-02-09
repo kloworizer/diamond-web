@@ -61,7 +61,7 @@ class DurasiJatuhTempoPIDECreateView(LoginRequiredMixin, AdminPIDERequiredMixin,
             return super().form_valid(form)
         e2 = form.cleaned_data.get('end_date') or _date.max
         id_sub = form.cleaned_data.get('id_sub_jenis_data') or form.instance.id_sub_jenis_data
-        qs = DurasiJatuhTempo.objects.filter(id_sub_jenis_data=id_sub)
+        qs = DurasiJatuhTempo.objects.filter(id_sub_jenis_data=id_sub, seksi__name='user_pide')
         for other in qs:
             s1 = other.start_date
             e1 = other.end_date or _date.max
@@ -98,7 +98,7 @@ class DurasiJatuhTempoPIDEUpdateView(LoginRequiredMixin, AdminPIDERequiredMixin,
             return super().form_valid(form)
         e2 = form.cleaned_data.get('end_date') or _date.max
         id_sub = form.cleaned_data.get('id_sub_jenis_data') or form.instance.id_sub_jenis_data
-        qs = DurasiJatuhTempo.objects.filter(id_sub_jenis_data=id_sub).exclude(pk=form.instance.pk)
+        qs = DurasiJatuhTempo.objects.filter(id_sub_jenis_data=id_sub, seksi__name='user_pide').exclude(pk=form.instance.pk)
         for other in qs:
             s1 = other.start_date
             e1 = other.end_date or _date.max
@@ -253,7 +253,7 @@ class DurasiJatuhTempoPMDECreateView(LoginRequiredMixin, AdminPMDERequiredMixin,
             return super().form_valid(form)
         e2 = form.cleaned_data.get('end_date') or _date.max
         id_sub = form.cleaned_data.get('id_sub_jenis_data') or form.instance.id_sub_jenis_data
-        qs = DurasiJatuhTempo.objects.filter(id_sub_jenis_data=id_sub)
+        qs = DurasiJatuhTempo.objects.filter(id_sub_jenis_data=id_sub, seksi__name='user_pmde')
         for other in qs:
             s1 = other.start_date
             e1 = other.end_date or _date.max
@@ -290,7 +290,7 @@ class DurasiJatuhTempoPMDEUpdateView(LoginRequiredMixin, AdminPMDERequiredMixin,
             return super().form_valid(form)
         e2 = form.cleaned_data.get('end_date') or _date.max
         id_sub = form.cleaned_data.get('id_sub_jenis_data') or form.instance.id_sub_jenis_data
-        qs = DurasiJatuhTempo.objects.filter(id_sub_jenis_data=id_sub).exclude(pk=form.instance.pk)
+        qs = DurasiJatuhTempo.objects.filter(id_sub_jenis_data=id_sub, seksi__name='user_pmde').exclude(pk=form.instance.pk)
         for other in qs:
             s1 = other.start_date
             e1 = other.end_date or _date.max
