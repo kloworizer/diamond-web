@@ -3,6 +3,7 @@ Development settings.
 """
 
 from .base import *
+import socket
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -32,14 +33,26 @@ INSTALLED_APPS += [
 ]
 
 # Development-specific middleware
-MIDDLEWARE += [
-    "debug_toolbar.middleware.DebugToolbarMiddleware",
-]
+# Ensure debug toolbar middleware is present near the top
+if "debug_toolbar.middleware.DebugToolbarMiddleware" not in MIDDLEWARE:
+    try:
+        # Prefer placing after SecurityMiddleware when available
+        idx = MIDDLEWARE.index("django.middleware.security.SecurityMiddleware") + 1
+    except ValueError:
+        idx = 0
+    MIDDLEWARE.insert(idx, "debug_toolbar.middleware.DebugToolbarMiddleware")
 
-# Internal IPs for debug toolbar
-INTERNAL_IPS = [
-    "127.0.0.1",
-]
+# Dynamically detect INTERNAL_IPS (works on PythonAnywhere)
+try:
+    _, _, _ips = socket.gethostbyname_ex(socket.gethostname())
+    INTERNAL_IPS = ["127.0.0.1"] + [ip[:-1] + "1" for ip in _ips]
+except Exception:
+    INTERNAL_IPS = ["127.0.0.1"]
+
+# Always show the toolbar in this demo/dev environment
+DEBUG_TOOLBAR_CONFIG = {
+    "SHOW_TOOLBAR_CALLBACK": lambda request: True,
+}
 
 # Email backend for development (console)
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
