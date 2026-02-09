@@ -10,6 +10,7 @@ from django.views.decorators.http import require_GET
 from ..models.jenis_prioritas_data import JenisPrioritasData
 from ..forms.jenis_prioritas_data import JenisPrioritasDataForm
 from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
+from datetime import date as _date
 class JenisPrioritasDataListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
     template_name = 'jenis_prioritas_data/list.html'
 
@@ -42,6 +43,21 @@ class JenisPrioritasDataCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, A
         form = self.get_form()
         return self.render_form_response(form)
 
+    def form_valid(self, form):
+        s2 = form.cleaned_data.get('start_date')
+        if not s2:
+            return super().form_valid(form)
+        e2 = form.cleaned_data.get('end_date') or _date.max
+        id_sub = form.cleaned_data.get('id_sub_jenis_data_ilap') or form.instance.id_sub_jenis_data_ilap
+        qs = JenisPrioritasData.objects.filter(id_sub_jenis_data_ilap=id_sub)
+        for other in qs:
+            s1 = other.start_date
+            e1 = other.end_date or _date.max
+            if not (e1 < s2 or e2 < s1):
+                form.add_error('start_date', 'Rentang tanggal bertumpuk dengan entri lain untuk Sub Jenis Data ini.')
+                return self.form_invalid(form)
+        return super().form_valid(form)
+
 class JenisPrioritasDataUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
     model = JenisPrioritasData
     form_class = JenisPrioritasDataForm
@@ -58,6 +74,21 @@ class JenisPrioritasDataUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, A
         self.object = self.get_object()
         form = self.get_form()
         return self.render_form_response(form)
+
+    def form_valid(self, form):
+        s2 = form.cleaned_data.get('start_date')
+        if not s2:
+            return super().form_valid(form)
+        e2 = form.cleaned_data.get('end_date') or _date.max
+        id_sub = form.cleaned_data.get('id_sub_jenis_data_ilap') or form.instance.id_sub_jenis_data_ilap
+        qs = JenisPrioritasData.objects.filter(id_sub_jenis_data_ilap=id_sub).exclude(pk=form.instance.pk)
+        for other in qs:
+            s1 = other.start_date
+            e1 = other.end_date or _date.max
+            if not (e1 < s2 or e2 < s1):
+                form.add_error('start_date', 'Rentang tanggal bertumpuk dengan entri lain untuk Sub Jenis Data ini.')
+                return self.form_invalid(form)
+        return super().form_valid(form)
 
 class JenisPrioritasDataDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     model = JenisPrioritasData
