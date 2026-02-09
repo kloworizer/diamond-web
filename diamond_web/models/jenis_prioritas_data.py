@@ -17,5 +17,11 @@ class JenisPrioritasData(models.Model):
     class Meta:
         db_table = 'jenis_prioritas_data'
         ordering = ['id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['id_sub_jenis_data_ilap', 'tahun'],
+                name='unique_subjenis_tahun'
+            )
+        ]
         verbose_name = 'Jenis Prioritas Data'
         verbose_name_plural = 'Jenis Prioritas Data'

@@ -11,7 +11,7 @@ class ILAP(models.Model):
         db_column="id_kategori",
         verbose_name="ID Kategori"
     )
-    nama_ilap = models.CharField(max_length=150, verbose_name="Nama ILAP")
+    nama_ilap = models.CharField(max_length=150, unique=True, verbose_name="Nama ILAP")
     id_kategori_wilayah = models.ForeignKey(
         KategoriWilayah,
         on_delete=models.CASCADE,
