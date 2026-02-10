@@ -1,8 +1,10 @@
+<!-- P3DE Tasks -->
+{% if is_p3de %}
 <div class="card">
     <div class="card-header d-flex align-items-center bg-white">
         <i class="ri-list-check-3-line fs-4 text-primary me-3"></i>
         <div>
-            <h5 class="mb-0">Ringkasan Tugas</h5>
+            <h5 class="mb-0">Ringkasan Tugas (P3DE)</h5>
             <small class="text-muted">Ringkasan cepat tiket yang menunggu tindakan Anda</small>
         </div>
     </div>
@@ -55,3 +57,78 @@
         <i class="ri-information-line me-1"></i> Jumlah menunjukkan tiket yang ditugaskan kepada Anda.
     </div>
 </div>
+{% endif %}
+
+<!-- PIDE Tasks -->
+{% if is_pide %}
+<div class="card">
+    <div class="card-header d-flex align-items-center bg-white">
+        <i class="ri-list-check-3-line fs-4 text-primary me-3"></i>
+        <div>
+            <h5 class="mb-0">Ringkasan Tugas (PIDE)</h5>
+            <small class="text-muted">Ringkasan cepat tiket yang menunggu tindakan Anda</small>
+        </div>
+    </div>
+    <div class="list-group list-group-flush">
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <i class="ri-search-line text-info me-3 fs-5"></i>
+                <div>
+                    <div class="fw-semibold">Identifikasi Data</div>
+                    <small class="text-muted">Tiket siap diidentifikasi</small>
+                </div>
+            </div>
+            <span class="badge bg-info rounded-pill">{{ tiket_summary_pide.identifikasi_data|default:"0" }}</span>
+        </div>
+
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <i class="ri-send-plane-line text-success me-3 fs-5"></i>
+                <div>
+                    <div class="fw-semibold">Transfer ke PMDE</div>
+                    <small class="text-muted">Tiket siap ditransfer</small>
+                </div>
+            </div>
+            <span class="badge bg-success rounded-pill">{{ tiket_summary_pide.transfer_ke_pmde|default:"0" }}</span>
+        </div>
+    </div>
+    <div class="card-footer text-muted small">
+        <i class="ri-information-line me-1"></i> Jumlah menunjukkan tiket yang ditugaskan kepada Anda.
+    </div>
+</div>
+{% elif is_authenticated and not is_p3de and not is_pmde %}
+<!-- Placeholder for when user is logged in but not in any role -->
+<div class="card">
+    <div class="card-body text-center text-muted">
+        <p>Tidak ada ringkasan tugas untuk peran Anda.</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- PMDE Tasks -->
+{% if is_pmde %}
+<div class="card">
+    <div class="card-header d-flex align-items-center bg-white">
+        <i class="ri-list-check-3-line fs-4 text-primary me-3"></i>
+        <div>
+            <h5 class="mb-0">Ringkasan Tugas (PMDE)</h5>
+            <small class="text-muted">Ringkasan cepat tiket yang menunggu tindakan Anda</small>
+        </div>
+    </div>
+    <div class="list-group list-group-flush">
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <i class="ri-shield-check-line text-warning me-3 fs-5"></i>
+                <div>
+                    <div class="fw-semibold">Pengendalian Mutu</div>
+                    <small class="text-muted">Tiket menunggu QC</small>
+                </div>
+            </div>
+            <span class="badge bg-warning text-dark rounded-pill">{{ tiket_summary_pmde.pengendalian_mutu|default:"0" }}</span>
+        </div>
+    </div>
+    <div class="card-footer text-muted small">
+        <i class="ri-information-line me-1"></i> Jumlah menunjukkan tiket yang ditugaskan kepada Anda.
+    </div>
+</div>
+{% endif %}
