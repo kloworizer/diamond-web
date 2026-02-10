@@ -314,86 +314,83 @@ class UserFormKwargsMixin:
 
 
 class AjaxFormMixin:
-    """Mixin to provide consistent AJAX form handling for Create/Update views."""
+    """Provide consistent AJAX handling for Create/Update views.
 
-    class AjaxFormMixin:
-        """Provide consistent AJAX handling for Create/Update views.
+    Behavior summary:
+    - If the request contains the `ajax` GET parameter the view will
+      return rendered form HTML (for client-side injection) instead of a
+      full page.
+    - On successful form submission for AJAX requests the mixin returns
+      a JSON payload containing `success: true` and optionally
+      `redirect` pointing to the success URL. The mixin also registers
+      the configured `success_message` in Django messages so the client
+      sees the toast after a full navigation.
+    - Non-AJAX flows remain compatible with standard Django CBV
+      behavior.
+    """
 
-        Behavior summary:
-        - If the request contains the `ajax` GET parameter the view will
-          return rendered form HTML (for client-side injection) instead of a
-          full page.
-        - On successful form submission for AJAX requests the mixin returns
-          a JSON payload containing `success: true` and optionally
-          `redirect` pointing to the success URL. The mixin also registers
-          the configured `success_message` in Django messages so the client
-          sees the toast after a full navigation.
-        - Non-AJAX flows remain compatible with standard Django CBV
-          behavior.
+    ajax_param = "ajax"
+    success_message = ""
+
+    def is_ajax(self):
+        request = getattr(self, "request", None)
+        return request is not None and request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+    def render_form_html(self, form):
+        """Render the form template to an HTML string (used for AJAX)."""
+        return render_to_string(
+            self.template_name,
+            self.get_context_data(form=form),
+            request=self.request,
+        )
+
+    def render_form_response(self, form):
+        """Return either a JSON html payload (when `?ajax=1`) or full response."""
+        if self.request.GET.get(self.ajax_param):
+            return JsonResponse({"html": self.render_form_html(form)})
+        return self.render_to_response(self.get_context_data(form=form))
+
+    def form_valid(self, form):
+        """Save valid form and return JSON redirect for AJAX clients.
+
+        The method also registers `success_message` into Django messages so
+        that client-side toasts can be rendered after a redirect.
         """
-
-        ajax_param = "ajax"
-        success_message = ""
-
-        def is_ajax(self):
-            request = getattr(self, "request", None)
-            return request is not None and request.headers.get("X-Requested-With") == "XMLHttpRequest"
-
-        def render_form_html(self, form):
-            """Render the form template to an HTML string (used for AJAX)."""
-            return render_to_string(
-                self.template_name,
-                self.get_context_data(form=form),
-                request=self.request,
-            )
-
-        def render_form_response(self, form):
-            """Return either a JSON html payload (when `?ajax=1`) or full response."""
-            if self.request.GET.get(self.ajax_param):
-                return JsonResponse({"html": self.render_form_html(form)})
-            return self.render_to_response(self.get_context_data(form=form))
-
-        def form_valid(self, form):
-            """Save valid form and return JSON redirect for AJAX clients.
-
-            The method also registers `success_message` into Django messages so
-            that client-side toasts can be rendered after a redirect.
-            """
-            self.object = form.save()
-            message = self.get_success_message(form)
-            if self.is_ajax():
-                # For AJAX requests, set server-side message and instruct client to
-                # redirect to the success URL so that the message is rendered via
-                # Django messages (displayed by base template as a toast).
-                if message:
-                    messages.success(self.request, message)
-                try:
-                    redirect_url = self.get_success_url()
-                except Exception:
-                    redirect_url = getattr(self, 'success_url', None)
-                payload = {"success": True}
-                if redirect_url:
-                    payload["redirect"] = redirect_url
-                return JsonResponse(payload)
+        self.object = form.save()
+        message = self.get_success_message(form)
+        if self.is_ajax():
+            # For AJAX requests, set server-side message and instruct client to
+            # redirect to the success URL so that the message is rendered via
+            # Django messages (displayed by base template as a toast).
             if message:
                 messages.success(self.request, message)
-            return super().form_valid(form)
-
-        def form_invalid(self, form):
-            """Return form HTML for AJAX invalid submissions, otherwise default."""
-            if self.is_ajax():
-                return JsonResponse({"success": False, "html": self.render_form_html(form)})
-            return super().form_invalid(form)
-
-        def get_success_message(self, form):  # noqa: ARG002 - form kept for parity with Django patterns
-            """Format and return the success message for this view.
-
-            The method intentionally accepts `form` for signature parity with
-            other patterns but does not require it.
-            """
-            if not self.success_message:
-                return ""
             try:
-                return self.success_message.format(object=self.object)
+                redirect_url = self.get_success_url()
             except Exception:
-                return self.success_message
+                redirect_url = getattr(self, 'success_url', None)
+            payload = {"success": True}
+            if redirect_url:
+                payload["redirect"] = redirect_url
+            return JsonResponse(payload)
+        if message:
+            messages.success(self.request, message)
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        """Return form HTML for AJAX invalid submissions, otherwise default."""
+        if self.is_ajax():
+            return JsonResponse({"success": False, "html": self.render_form_html(form)})
+        return super().form_invalid(form)
+
+    def get_success_message(self, form):  # noqa: ARG002 - form kept for parity with Django patterns
+        """Format and return the success message for this view.
+
+        The method intentionally accepts `form` for signature parity with
+        other patterns but does not require it.
+        """
+        if not self.success_message:
+            return ""
+        try:
+            return self.success_message.format(object=self.object)
+        except Exception:
+            return self.success_message
