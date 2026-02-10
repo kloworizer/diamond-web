@@ -14,7 +14,6 @@ from ...constants.tiket_status import STATUS_LABELS, STATUS_BADGE_CLASSES
 from ...constants.tiket_action_types import (
     ACTION_BADGES,
     ROLE_BADGES,
-    WORKFLOW_STEPS,
     get_action_label,
     get_action_badge_class,
 )
@@ -174,8 +173,7 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         context['status_badge_class'] = STATUS_BADGE_CLASSES.get(self.object.status, 'bg-secondary')
         context['page_title'] = f'Detail Tiket {self.object.nomor_tiket}'
         
-        # Get workflow step based on status
-        context['workflow_step'] = WORKFLOW_STEPS.get(self.object.status, 'rekam')
+        # NOTE: workflow_step mapping removed — templates do not use it.
         
         # Check if current user has any active PIC record for this tiket (per role)
         user_is_active_pic_p3de = TiketPIC.objects.filter(
