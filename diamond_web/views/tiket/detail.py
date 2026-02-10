@@ -122,7 +122,7 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         # Get actions and enrich with badge info
         tiket_actions = TiketAction.objects.filter(
             id_tiket=self.object
-        ).select_related('id_user').order_by('-timestamp')
+        ).select_related('id_user').order_by('-timestamp', '-id')
         
         for action in tiket_actions:
             action.badge_label = get_action_label(action.action)
