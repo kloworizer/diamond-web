@@ -172,13 +172,34 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         # Get workflow step based on status
         context['workflow_step'] = WORKFLOW_STEPS.get(self.object.status, 'rekam')
         
-        # Check if current user is an active PIC for this tiket
-        user_is_active_pic = TiketPIC.objects.filter(
+        # Check if current user has any active PIC record for this tiket (per role)
+        user_is_active_pic_p3de = TiketPIC.objects.filter(
             id_tiket=self.object,
             id_user=self.request.user,
             active=True,
             role=TiketPIC.Role.P3DE
         ).exists()
+
+        user_is_active_pic_pide = TiketPIC.objects.filter(
+            id_tiket=self.object,
+            id_user=self.request.user,
+            active=True,
+            role=TiketPIC.Role.PIDE
+        ).exists()
+
+        user_is_active_pic_pmde = TiketPIC.objects.filter(
+            id_tiket=self.object,
+            id_user=self.request.user,
+            active=True,
+            role=TiketPIC.Role.PMDE
+        ).exists()
+
+        # overall active flag (any role)
+        user_is_active_pic = user_is_active_pic_p3de or user_is_active_pic_pide or user_is_active_pic_pmde
+
         context['user_is_active_pic'] = user_is_active_pic
+        context['user_is_active_pic_p3de'] = user_is_active_pic_p3de
+        context['user_is_active_pic_pide'] = user_is_active_pic_pide
+        context['user_is_active_pic_pmde'] = user_is_active_pic_pmde
         
         return context

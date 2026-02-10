@@ -388,49 +388,59 @@
                         <i class="ri-information-line me-2"></i>Anda bukan PIC aktif untuk tiket ini. Anda hanya dapat melihat, tidak dapat melakukan perubahan.
                     </div>
                     {% else %}
-                        <!-- Main action buttons: visible if tiket not dikirim ke pide (4), dibatalkan (7), or selesai (8) -->
-                        {% if tiket.status != 4 and tiket.status != 7 and tiket.status != 8 %}
-                            <div class="d-grid gap-2">
-                                <!-- Rekam Backup button: show if backup not yet recorded -->
-                                {% if not tiket.backup %}
-                                    <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#rekamBackupDataModal">
-                                        <i class="ri-save-line me-1"></i>Rekam Backup Data
-                                    </button>
-                                {% endif %}
-                                
-                                <!-- Rekam Tanda Terima button: show if tanda terima not yet recorded -->
-                                {% if not tiket.tanda_terima %}
-                                    <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#createTandaTerimaModal">
-                                        <i class="ri-file-list-2-line me-1"></i>Rekam Tanda Terima
-                                    </button>
-                                {% endif %}
-                                
-                                <!-- Rekam Hasil Penelitian button: show if backup and tanda terima both recorded -->
-                                {% if tiket.backup and tiket.tanda_terima %}
-                                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rekamHasilPenelitianModal" data-action="edit">
-                                        <i class="ri-file-edit-line me-1"></i>{% if tiket.tgl_teliti %}Ubah Hasil Penelitian{% else %}Rekam Hasil Penelitian{% endif %}
-                                    </button>
-                                {% endif %}
-                                
-                                <!-- Kirim Tiket ke PIDE button: show if backup, tanda terima, and penelitian all completed -->
-                                {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti %}
-                                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#kirimTiketModal">
-                                        <i class="ri-send-plane-line me-1"></i>Kirim Tiket ke PIDE
-                                    </button>
-                                {% endif %}
-                            </div>
-                        {% else %}
-                            <!-- No actions available for finalized tikets -->
-                            <div class="text-center text-muted py-2">
-                                <i class="ri-information-line me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
+                        <!-- P3DE actions (existing) -->
+                        {% if user_is_active_pic_p3de %}
+                            {% if tiket.status != 4 and tiket.status != 7 and tiket.status != 8 %}
+                                <div class="d-grid gap-2">
+                                    {% if not tiket.backup %}
+                                        <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#rekamBackupDataModal">
+                                            <i class="ri-save-line me-1"></i>Rekam Backup Data
+                                        </button>
+                                    {% endif %}
+
+                                    {% if not tiket.tanda_terima %}
+                                        <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#createTandaTerimaModal">
+                                            <i class="ri-file-list-2-line me-1"></i>Rekam Tanda Terima
+                                        </button>
+                                    {% endif %}
+
+                                    {% if tiket.backup and tiket.tanda_terima %}
+                                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rekamHasilPenelitianModal" data-action="edit">
+                                            <i class="ri-file-edit-line me-1"></i>{% if tiket.tgl_teliti %}Ubah Hasil Penelitian{% else %}Rekam Hasil Penelitian{% endif %}
+                                        </button>
+                                    {% endif %}
+
+                                    {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti %}
+                                        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#kirimTiketModal">
+                                            <i class="ri-send-plane-line me-1"></i>Kirim Tiket ke PIDE
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div class="text-center text-muted py-2">
+                                    <i class="ri-information-line me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
+                                </div>
+                            {% endif %}
+
+                            {% if tiket.status < 4 %}
+                                <button type="button" class="btn btn-danger mt-2 w-100" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
+                                    <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
+                                </button>
+                            {% endif %}
+                        {% endif %}
+
+                        <!-- PIDE actions (dummy) -->
+                        {% if user_is_active_pic_pide %}
+                            <div class="d-grid gap-2 mt-2">
+                                <button type="button" class="btn btn-outline-primary">PIDE Dummy Action</button>
                             </div>
                         {% endif %}
-                        
-                        <!-- Batalkan Tiket button: always available if tiket not yet sent to PIDE (status < 4) -->
-                        {% if tiket.status < 4 %}
-                            <button type="button" class="btn btn-danger mt-2 w-100" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
-                                <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
-                            </button>
+
+                        <!-- PMDE actions (dummy) -->
+                        {% if user_is_active_pic_pmde %}
+                            <div class="d-grid gap-2 mt-2">
+                                <button type="button" class="btn btn-outline-secondary">PMDE Dummy Action</button>
+                            </div>
                         {% endif %}
                     {% endif %}
                 </div>
