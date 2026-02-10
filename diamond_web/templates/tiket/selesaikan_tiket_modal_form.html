@@ -1,0 +1,48 @@
+<div class="modal-body">
+    <form id="selesaikanTiketForm" method="post" action="{{ form_action }}">
+        {% csrf_token %}
+        <div class="form-group mb-3">
+            <label for="{{ form.sudah_qc.id_for_label }}" class="form-label">{{ form.sudah_qc.label }}</label>
+            {{ form.sudah_qc }}
+            <small class="form-text text-muted">Otomatis dihitung dari Lolos QC + Tidak Lolos QC</small>
+            {% if form.sudah_qc.errors %}
+                <div class="invalid-feedback d-block">{{ form.sudah_qc.errors }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="{{ form.lolos_qc.id_for_label }}" class="form-label">{{ form.lolos_qc.label }}</label>
+            {{ form.lolos_qc }}
+            {% if form.lolos_qc.errors %}
+                <div class="invalid-feedback d-block">{{ form.lolos_qc.errors }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="{{ form.tidak_lolos_qc.id_for_label }}" class="form-label">{{ form.tidak_lolos_qc.label }}</label>
+            {{ form.tidak_lolos_qc }}
+            {% if form.tidak_lolos_qc.errors %}
+                <div class="invalid-feedback d-block">{{ form.tidak_lolos_qc.errors }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="{{ form.qc_c.id_for_label }}" class="form-label">{{ form.qc_c.label }}</label>
+            {{ form.qc_c }}
+            {% if form.qc_c.errors %}
+                <div class="invalid-feedback d-block">{{ form.qc_c.errors }}</div>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<div class="modal-footer d-flex justify-content-between align-items-center">
+    <button type="button" class="btn btn-outline-secondary" id="sinkronisasiDariDatabaseBtn">
+        <i class="ri-refresh-line me-1"></i>Sinkronisasi
+    </button>
+    <div class="gap-2 d-flex">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="submit" form="selesaikanTiketForm" class="btn btn-success">Selesaikan Tiket</button>
+    </div>
+</div>
+

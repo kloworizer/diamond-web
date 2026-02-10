@@ -175,6 +175,9 @@ urlpatterns = [
     path('tiket/<int:pk>/identifikasi/', views.IdentifikasiTiketView.as_view(), name='identifikasi_tiket'),
     path('tiket/<int:pk>/transfer-ke-pmde/', views.TransferKePMDEView.as_view(), name='transfer_ke_pmde'),
     
+    # PMDE Workflow Actions
+    path('tiket/<int:pk>/selesaikan/', views.SelesaikanTiketView.as_view(), name='selesaikan_tiket'),
+    
     # Future workflow steps can be added here:
     # path('tiket/teliti/create/', views.TiketTelitiCreateView.as_view(), name='tiket_teliti_create'),
     # path('tiket/kirim-pide/create/', views.TiketKirimPIDECreateView.as_view(), name='tiket_kirim_pide_create'),

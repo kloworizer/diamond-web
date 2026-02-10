@@ -6,20 +6,20 @@
             <i class="ri-information-line me-2"></i>
             <strong>Transfer ke PMDE:</strong> Masukkan data tabel untuk tiket <strong>{{ tiket.nomor_tiket }}</strong>.
         </div>
-        
+
         <div class="row">
             <div class="col-md-6 mb-3">
                 {{ form.baris_i.label_tag }}
                 {{ form.baris_i }}
                 {% if form.baris_i.errors %}
-                    <div class="text-danger">{{ form.baris_i.errors }}</div>
+                <div class="text-danger">{{ form.baris_i.errors }}</div>
                 {% endif %}
             </div>
             <div class="col-md-6 mb-3">
                 {{ form.baris_u.label_tag }}
                 {{ form.baris_u }}
                 {% if form.baris_u.errors %}
-                    <div class="text-danger">{{ form.baris_u.errors }}</div>
+                <div class="text-danger">{{ form.baris_u.errors }}</div>
                 {% endif %}
             </div>
         </div>
@@ -29,14 +29,14 @@
                 {{ form.baris_res.label_tag }}
                 {{ form.baris_res }}
                 {% if form.baris_res.errors %}
-                    <div class="text-danger">{{ form.baris_res.errors }}</div>
+                <div class="text-danger">{{ form.baris_res.errors }}</div>
                 {% endif %}
             </div>
             <div class="col-md-6 mb-3">
                 {{ form.baris_cde.label_tag }}
                 {{ form.baris_cde }}
                 {% if form.baris_cde.errors %}
-                    <div class="text-danger">{{ form.baris_cde.errors }}</div>
+                <div class="text-danger">{{ form.baris_cde.errors }}</div>
                 {% endif %}
             </div>
         </div>
@@ -45,14 +45,19 @@
             {{ form.tgl_transfer.label_tag }}
             {{ form.tgl_transfer }}
             {% if form.tgl_transfer.errors %}
-                <div class="text-danger">{{ form.tgl_transfer.errors }}</div>
+            <div class="text-danger">{{ form.tgl_transfer.errors }}</div>
             {% endif %}
         </div>
     </div>
-    <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-        <button type="submit" class="btn btn-success">
-            <i class="ri-send-plane-line me-1"></i>Transfer ke PMDE
+    <div class="modal-footer d-flex justify-content-between align-items-center">
+        <button type="button" class="btn btn-outline-secondary" id="sinkronisasiDariDatabaseBtn">
+            <i class="ri-refresh-line me-1"></i>Sinkronisasi
         </button>
+        <div class="gap-2 d-flex">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+            <button type="submit" class="btn btn-success">
+                <i class="ri-send-plane-line me-1"></i>Transfer ke PMDE
+            </button>
+        </div>
     </div>
 </form>

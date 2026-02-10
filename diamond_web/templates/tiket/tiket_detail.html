@@ -127,6 +127,72 @@
                             </div>
                         </div>
                         {% endif %}
+
+                        <!-- QC and Baris Information -->
+                        {% if tiket.baris_p3de %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Baris P3DE</label>
+                                <p class="fw-semibold mb-0">{{ tiket.baris_p3de }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.baris_i %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Baris I</label>
+                                <p class="fw-semibold mb-0">{{ tiket.baris_i }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.baris_u %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Baris U</label>
+                                <p class="fw-semibold mb-0">{{ tiket.baris_u }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.baris_res %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Baris Res</label>
+                                <p class="fw-semibold mb-0">{{ tiket.baris_res }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.baris_cde %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Baris CDE</label>
+                                <p class="fw-semibold mb-0">{{ tiket.baris_cde }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.lolos_qc %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Lolos QC</label>
+                                <p class="fw-semibold mb-0">{{ tiket.lolos_qc }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.tidak_lolos_qc %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tidak Lolos QC</label>
+                                <p class="fw-semibold mb-0">{{ tiket.tidak_lolos_qc }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.qc_c %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">QC C</label>
+                                <p class="fw-semibold mb-0">{{ tiket.qc_c }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -461,12 +527,12 @@
                             {% endif %}
                         {% endif %}
 
-                        <!-- PMDE actions (placeholder for future) -->
+                        <!-- PMDE actions -->
                         {% if user_is_active_pic_pmde %}
                             {% if tiket.status == STATUS_PENGENDALIAN_MUTU %}
                                 <div class="d-grid gap-2 mt-2">
-                                    <button type="button" class="btn btn-outline-secondary" disabled>
-                                        <i class="ri-tools-line me-1"></i>PMDE Actions (Coming Soon)
+                                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#selesaikanTiketModal">
+                                        <i class="ri-check-line me-1"></i>Selesaikan Tiket
                                     </button>
                                 </div>
                             {% else %}
@@ -606,6 +672,21 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div id="transfer-ke-pmde-form-container">
+                <!-- Form will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Selesaikan Tiket Modal (PMDE) -->
+<div class="modal fade" id="selesaikanTiketModal" tabindex="-1" aria-labelledby="selesaikanTiketModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="selesaikanTiketModalLabel">Selesaikan Tiket {{ tiket.nomor_tiket }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div id="selesaikan-tiket-form-container">
                 <!-- Form will be loaded here -->
             </div>
         </div>
@@ -979,6 +1060,8 @@
                     .then(html => {
                         formContainer.innerHTML = html;
 
+                        attachSelesaikanTiketHandlers(formContainer);
+
                         const form = formContainer.querySelector('form');
                         if (form) {
                             form.addEventListener('submit', function (e) {
@@ -1104,6 +1187,128 @@
                         formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
                     });
             });
+        }
+
+        // Selesaikan Tiket Modal Handler (PMDE)
+        const selesaikanTiketModal = document.getElementById('selesaikanTiketModal');
+        if (selesaikanTiketModal) {
+            setupModalAria(selesaikanTiketModal);
+            selesaikanTiketModal.addEventListener('show.bs.modal', function () {
+                const formContainer = document.getElementById('selesaikan-tiket-form-container');
+                formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-success" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                fetch('{% url "selesaikan_tiket" tiket.pk %}', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => response.text())
+                    .then(html => {
+                        formContainer.innerHTML = html;
+                        attachSelesaikanTiketHandlers(formContainer);
+                    })
+                    .catch(error => {
+                        console.error('Error loading form:', error);
+                        showToast('Gagal memuat form.', 'danger');
+                        formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
+                    });
+            });
+        }
+
+        function attachSelesaikanTiketHandlers(container) {
+            const sudahQcInput = container.querySelector('input[name="sudah_qc"]');
+            const lolosQcInput = container.querySelector('input[name="lolos_qc"]');
+            const tidakLolosQcInput = container.querySelector('input[name="tidak_lolos_qc"]');
+            const sinkronisasiBtn = container.querySelector('#sinkronisasiDariDatabaseBtn');
+            const selesaikanForm = container.querySelector('#selesaikanTiketForm');
+
+            if (!sudahQcInput || !lolosQcInput || !tidakLolosQcInput) {
+                console.error('QC fields not found');
+                return;
+            }
+
+            // Make sudah_qc readonly with styling
+            sudahQcInput.readOnly = true;
+            sudahQcInput.style.backgroundColor = '#e9ecef';
+            sudahQcInput.style.cursor = 'not-allowed';
+
+            // Function to calculate sudah_qc
+            const calculateSudahQc = () => {
+                const lolos = parseInt(lolosQcInput.value) || 0;
+                const tidakLolos = parseInt(tidakLolosQcInput.value) || 0;
+                sudahQcInput.value = lolos + tidakLolos;
+            };
+
+            // Prevent typing in sudah_qc
+            sudahQcInput.addEventListener('keypress', (e) => e.preventDefault());
+            sudahQcInput.addEventListener('keydown', (e) => e.preventDefault());
+            sudahQcInput.addEventListener('input', (e) => {
+                e.preventDefault();
+                calculateSudahQc();
+            });
+
+            // Listen to lolos_qc changes
+            lolosQcInput.addEventListener('input', calculateSudahQc);
+            lolosQcInput.addEventListener('change', calculateSudahQc);
+
+            // Listen to tidak_lolos_qc changes
+            tidakLolosQcInput.addEventListener('input', calculateSudahQc);
+            tidakLolosQcInput.addEventListener('change', calculateSudahQc);
+
+            // Initial calculation
+            calculateSudahQc();
+
+            // Sinkronisasi button handler
+            if (sinkronisasiBtn) {
+                sinkronisasiBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showToast('Fitur sinkronisasi belum tersedia.', 'info');
+                });
+            }
+
+            // Form submission with AJAX
+            if (selesaikanForm) {
+                selesaikanForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    
+                    // Ensure calculation is done before submit
+                    calculateSudahQc();
+                    
+                    const formData = new FormData(selesaikanForm);
+                    const selesaikanTiketModal = document.getElementById('selesaikanTiketModal');
+
+                    fetch(selesaikanForm.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                bootstrap.Modal.getInstance(selesaikanTiketModal).hide();
+                                showToast(data.message || 'Tiket berhasil diselesaikan.', 'success');
+                                setTimeout(() => location.reload(), 800);
+                            } else {
+                                showToast(data.message || 'Gagal menyelesaikan tiket.', 'danger');
+                                if (data.errors) {
+                                    // Display validation errors
+                                    Object.keys(data.errors).forEach(field => {
+                                        const fieldInput = selesaikanForm.querySelector(`input[name="${field}"]`);
+                                        if (fieldInput) {
+                                            fieldInput.classList.add('is-invalid');
+                                        }
+                                    });
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showToast('Terjadi kesalahan saat menyelesaikan tiket.', 'danger');
+                        });
+                });
+            }
         }
 
         function attachTandaTerimaHandlers(container) {
