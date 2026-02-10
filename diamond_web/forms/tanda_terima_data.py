@@ -7,7 +7,6 @@ from ..models.tiket import Tiket
 from ..models.tiket_pic import TiketPIC
 from ..models.ilap import ILAP
 from ..models.detil_tanda_terima import DetilTandaTerima
-from ..views.mixins import get_active_p3de_ilap_ids
 
 
 class TiketCheckboxSelectMultiple(forms.CheckboxSelectMultiple):
@@ -131,6 +130,7 @@ class TandaTerimaDataForm(forms.ModelForm):
 
             # Restrict ILAP to active P3DE PIC for non-admin users
             if self.user and not (self.user.is_superuser or self.user.groups.filter(name='admin').exists()):
+                from ..views.mixins import get_active_p3de_ilap_ids
                 pic_ilap_ids = set(get_active_p3de_ilap_ids(self.user))
                 ilap_ids = [ilap_id for ilap_id in ilap_ids if ilap_id in pic_ilap_ids]
             self.fields['id_ilap'].queryset = ILAP.objects.filter(id__in=ilap_ids)

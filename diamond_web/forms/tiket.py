@@ -4,7 +4,6 @@ from django.contrib.auth.models import Group
 from ..models.tiket import Tiket
 from ..models.periode_jenis_data import PeriodeJenisData
 from ..models.ilap import ILAP
-from ..views.mixins import get_active_p3de_ilap_ids
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from datetime import datetime
 
@@ -54,6 +53,7 @@ class TiketForm(forms.ModelForm):
                 'id_sub_jenis_data', flat=True
             ).distinct()
         else:
+            from ..views.mixins import get_active_p3de_ilap_ids
             allowed_ilap_ids = set(get_active_p3de_ilap_ids(self.user))
             jenis_data_with_pic = JenisDataILAP.objects.filter(
                 id_ilap_id__in=allowed_ilap_ids
