@@ -11,8 +11,13 @@ from ...models.pic import PIC
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ...models.detil_tanda_terima import DetilTandaTerima
 from ...constants.tiket_status import STATUS_LABELS, STATUS_BADGE_CLASSES
-from ...constants.tiket_action_badges import ACTION_BADGES, ROLE_BADGES, WORKFLOW_STEPS
-from ...constants.tiket_action_types import get_action_label, get_action_badge_class
+from ...constants.tiket_action_types import (
+    ACTION_BADGES,
+    ROLE_BADGES,
+    WORKFLOW_STEPS,
+    get_action_label,
+    get_action_badge_class,
+)
 
 
 class TiketDetailView(LoginRequiredMixin, DetailView):
