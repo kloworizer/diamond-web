@@ -11,12 +11,24 @@ from ..forms.jenis_tabel import JenisTabelForm
 from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
 
 class JenisTabelListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
+    """List view for `JenisTabel`.
+
+    Renders `jenis_tabel/list.html`. Access restricted to P3DE admins via
+    `AdminP3DERequiredMixin`.
+    """
     template_name = 'jenis_tabel/list.html'
 
     def get(self, request, *args, **kwargs):
+        """Render the list template."""
         return super().get(request, *args, **kwargs)
 
 class JenisTabelCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
+    """Create view for `JenisTabel`.
+
+    Presents a modal/form to create a new `JenisTabel`. Supports AJAX via
+    `AjaxFormMixin`. On success, sets a Django success message or returns a
+    JSON redirect for AJAX clients.
+    """
     model = JenisTabel
     form_class = JenisTabelForm
     template_name = 'jenis_tabel/form.html'
@@ -34,6 +46,10 @@ class JenisTabelCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormM
         return self.render_form_response(form)
 
 class JenisTabelUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
+    """Update view for existing `JenisTabel` entries.
+
+    Renders an edit form and supports AJAX via `AjaxFormMixin`.
+    """
     model = JenisTabel
     form_class = JenisTabelForm
     template_name = 'jenis_tabel/form.html'
@@ -51,6 +67,11 @@ class JenisTabelUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormM
         return self.render_form_response(form)
 
 class JenisTabelDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+    """Delete view for `JenisTabel` entries.
+
+    Returns confirmation fragment for AJAX `GET` and JSON `redirect` on
+    successful deletion so clients can navigate and render toast messages.
+    """
     model = JenisTabel
     template_name = 'jenis_tabel/confirm_delete.html'
     success_url = reverse_lazy('jenis_tabel_list')
@@ -88,10 +109,16 @@ class JenisTabelDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteVie
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def jenis_tabel_data(request):
-    """Server-side processing for DataTables.
+    """Server-side DataTables endpoint for `JenisTabel`.
 
-    Accepts DataTables parameters: draw, start, length, search[value], order[0][column], order[0][dir]
-    Returns JSON with draw, recordsTotal, recordsFiltered, data.
+    GET parameters:
+    - draw: DataTables draw counter.
+    - start, length: paging offset and page size.
+    - columns_search[]: column-specific search values (id, deskripsi).
+    - order[0][column], order[0][dir]: ordering index and direction.
+
+    Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data` rows.
+    Each row contains: `id`, `deskripsi`, and `actions` HTML.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))

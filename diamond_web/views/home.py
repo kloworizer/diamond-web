@@ -4,6 +4,21 @@ from django.contrib.auth.models import Group
 from diamond_web.views.task_to_do import get_tiket_summary_for_user
 
 def home(request):
+    """Render the application home page.
+
+    Context provided to template:
+    - `is_p3de` (bool): whether the current authenticated user belongs to
+      `user_p3de` group. Used to show P3DE-specific UI.
+    - `tiket_summary` (dict): when `is_p3de` is True, contains counts of
+      actionable tiket items for the logged-in P3DE (uses
+      `get_tiket_summary_for_user`). Example keys: `rekam_backup_data`,
+      `buat_tanda_terima`, `rekam_hasil_penelitian`, `kirim_ke_pide`.
+    - `debug_user_groups` (dict): only present when `settings.DEBUG` is
+      True; includes three admin groups and their member lists for UI
+      debugging.
+
+    Usage: GET request; returns rendered `home.html` with the above context.
+    """
     context = {}
     # expose whether the current user is in user_p3de group for templates
     is_p3de = False

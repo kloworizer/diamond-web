@@ -12,10 +12,19 @@ from ..forms.kategori_ilap import KategoriILAPForm
 from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
 
 class KategoriILAPListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
+    """List view for `KategoriILAP` entries.
+
+    Renders `kategori_ilap/list.html`. When redirected from a delete
+    operation, the view reads `deleted` and `name` query parameters and
+    registers a Django `messages.success` toast for the UI to display.
+    """
     template_name = 'kategori_ilap/list.html'
 
     def get(self, request, *args, **kwargs):
-        # If redirected after delete, show success message from query params
+        """Render list template and surface optional delete message.
+
+        Query params: `deleted` and `name` (URL-encoded).
+        """
         deleted = request.GET.get('deleted')
         name = request.GET.get('name')
         if deleted and name:
@@ -27,6 +36,12 @@ class KategoriILAPListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateV
         return super().get(request, *args, **kwargs)
 
 class KategoriILAPCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
+    """Create view for `KategoriILAP`.
+
+    Presents a modal/form to create a new `KategoriILAP`. Supports AJAX via
+    `AjaxFormMixin`. On success it persists the instance and either returns
+    a JSON redirect for AJAX clients or sets a Django success message.
+    """
     model = KategoriILAP
     form_class = KategoriILAPForm
     template_name = 'kategori_ilap/form.html'
@@ -44,6 +59,10 @@ class KategoriILAPCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFor
         return self.render_form_response(form)
 
 class KategoriILAPUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
+    """Update view for existing `KategoriILAP` entries.
+
+    Renders edit form and supports AJAX via `AjaxFormMixin`.
+    """
     model = KategoriILAP
     form_class = KategoriILAPForm
     template_name = 'kategori_ilap/form.html'
@@ -61,6 +80,12 @@ class KategoriILAPUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFor
         return self.render_form_response(form)
 
 class KategoriILAPDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+    """Delete view for `KategoriILAP` entries.
+
+    Returns a confirmation fragment for AJAX `GET` and a JSON `redirect` on
+    successful deletion. Also sets a Django `messages.success` so the base
+    template can render a toast after navigation.
+    """
     model = KategoriILAP
     template_name = 'kategori_ilap/confirm_delete.html'
     success_url = reverse_lazy('kategori_ilap_list')
@@ -98,10 +123,16 @@ class KategoriILAPDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteV
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def kategori_ilap_data(request):
-    """Server-side processing for DataTables.
+    """Server-side DataTables endpoint for `KategoriILAP`.
 
-    Accepts DataTables parameters: draw, start, length, search[value], order[0][column], order[0][dir]
-    Returns JSON with draw, recordsTotal, recordsFiltered, data.
+    GET parameters:
+    - draw: DataTables draw counter.
+    - start, length: paging offset and page size.
+    - columns_search[]: column-specific search values (id_kategori, nama_kategori).
+    - order[0][column], order[0][dir]: ordering index and direction.
+
+    Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data` rows.
+    Each row contains: `id_kategori`, `nama_kategori`, and `actions` HTML.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))

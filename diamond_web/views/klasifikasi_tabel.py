@@ -12,9 +12,20 @@ from ..forms.klasifikasi_tabel import KlasifikasiTabelForm
 from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
 
 class KlasifikasiTabelListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
+    """List view for `KlasifikasiTabel` entries.
+
+    Renders `klasifikasi_tabel/list.html`. When redirected after a delete
+    operation the view reads `deleted` and `name` query parameters and
+    registers a Django `messages.success` notification for the frontend to
+    display as a toast.
+    """
     template_name = 'klasifikasi_tabel/list.html'
 
     def get(self, request, *args, **kwargs):
+        """Render list template and surface optional delete message.
+
+        Query params: `deleted` and `name` (URL-encoded).
+        """
         # If redirected after delete, show success message from query params
         deleted = request.GET.get('deleted')
         name = request.GET.get('name')
@@ -27,6 +38,13 @@ class KlasifikasiTabelListView(LoginRequiredMixin, AdminP3DERequiredMixin, Templ
         return super().get(request, *args, **kwargs)
 
 class KlasifikasiTabelCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
+    """Create view for `KlasifikasiTabel`.
+
+    Presents a modal/form to create a new `KlasifikasiTabel`. Supports
+    AJAX via `AjaxFormMixin`. On success the view either returns a JSON
+    redirect (for AJAX clients) or sets a Django success message for
+    full-page flows.
+    """
     model = KlasifikasiTabel
     form_class = KlasifikasiTabelForm
     template_name = 'klasifikasi_tabel/form.html'
@@ -39,11 +57,16 @@ class KlasifikasiTabelCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, Aja
         return context
 
     def get(self, request, *args, **kwargs):
+        """Return the create form rendered for AJAX or full-page requests."""
         self.object = None
         form = self.get_form()
         return self.render_form_response(form)
 
 class KlasifikasiTabelUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
+    """Update view for existing `KlasifikasiTabel` entries.
+
+    Renders edit form and supports AJAX via `AjaxFormMixin`.
+    """
     model = KlasifikasiTabel
     form_class = KlasifikasiTabelForm
     template_name = 'klasifikasi_tabel/form.html'
@@ -56,11 +79,18 @@ class KlasifikasiTabelUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, Aja
         return context
 
     def get(self, request, *args, **kwargs):
+        """Return the edit form for the requested instance."""
         self.object = self.get_object()
         form = self.get_form()
         return self.render_form_response(form)
 
 class KlasifikasiTabelDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+    """Delete view for `KlasifikasiTabel` entries.
+
+    Returns a confirmation fragment for AJAX `GET` and a JSON `redirect` on
+    successful deletion. Also sets a Django `messages.success` so the base
+    template can render a toast after navigation.
+    """
     model = KlasifikasiTabel
     template_name = 'klasifikasi_tabel/confirm_delete.html'
     success_url = reverse_lazy('klasifikasi_tabel_list')
@@ -98,10 +128,16 @@ class KlasifikasiTabelDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, Del
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def klasifikasi_tabel_data(request):
-    """Server-side processing for DataTables.
+    """Server-side DataTables endpoint for `KlasifikasiTabel`.
 
-    Accepts DataTables parameters: draw, start, length, search[value], order[0][column], order[0][dir]
-    Returns JSON with draw, recordsTotal, recordsFiltered, data.
+    GET parameters:
+    - draw: DataTables draw counter.
+    - start, length: paging offset and page size.
+    - columns_search[]: column-specific search values (id, deskripsi).
+    - order[0][column], order[0][dir]: ordering index and direction.
+
+    Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data` rows.
+    Each row contains: `id`, `deskripsi`, and `actions` HTML for edit/delete.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))

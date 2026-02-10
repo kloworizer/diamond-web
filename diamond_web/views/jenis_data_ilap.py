@@ -14,10 +14,21 @@ from ..forms.jenis_data_ilap import JenisDataILAPForm
 from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
 
 class JenisDataILAPListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
+    """List view for `JenisDataILAP` entries.
+
+    Renders `jenis_data_ilap/list.html`. When redirected after a delete
+    operation this view reads `deleted` and `name` query parameters and
+    registers a Django `messages.success` toast so the base template can
+    display it to the user.
+    """
     template_name = 'jenis_data_ilap/list.html'
 
     def get(self, request, *args, **kwargs):
-        # If redirected after delete, show success message from query params
+        """Render the list page and surface optional delete success messages.
+
+        Query params: `deleted` and `name` (URL-encoded). Decodes `name`
+        and sets `messages.success` for display by client templates.
+        """
         deleted = request.GET.get('deleted')
         name = request.GET.get('name')
         if deleted and name:
@@ -29,6 +40,13 @@ class JenisDataILAPListView(LoginRequiredMixin, AdminP3DERequiredMixin, Template
         return super().get(request, *args, **kwargs)
 
 class JenisDataILAPCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
+    """Create view for `JenisDataILAP`.
+
+    Presents a modal/form to create a new `JenisDataILAP`. Supports AJAX via
+    `AjaxFormMixin`. On success the instance is persisted and a
+    `messages.success` is set (or the client is instructed to redirect via
+    JSON for AJAX flows).
+    """
     model = JenisDataILAP
     form_class = JenisDataILAPForm
     template_name = 'jenis_data_ilap/form.html'
@@ -46,6 +64,11 @@ class JenisDataILAPCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFo
         return self.render_form_response(form)
 
 class JenisDataILAPUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
+    """Update view for existing `JenisDataILAP` entries.
+
+    Ensures the edit form is rendered and supports AJAX update flows. The
+    context includes `form_action` pointing to the update URL for templates.
+    """
     model = JenisDataILAP
     form_class = JenisDataILAPForm
     template_name = 'jenis_data_ilap/form.html'
@@ -63,6 +86,13 @@ class JenisDataILAPUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFo
         return self.render_form_response(form)
 
 class JenisDataILAPDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+    """Delete view for `JenisDataILAP` entries.
+
+    For AJAX `GET` requests returns the confirmation HTML fragment under
+    `html`. On deletion returns JSON with a `redirect` URL and sets a Django
+    `messages.success` so the base template can render a toast after
+    navigation.
+    """
     model = JenisDataILAP
     template_name = 'jenis_data_ilap/confirm_delete.html'
     success_url = reverse_lazy('jenis_data_ilap_list')
@@ -100,10 +130,20 @@ class JenisDataILAPDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, Delete
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def jenis_data_ilap_data(request):
-    """Server-side processing for DataTables.
+    """Server-side DataTables endpoint for `JenisDataILAP`.
 
-    Accepts DataTables parameters: draw, start, length, search[value], order[0][column], order[0][dir]
-    Returns JSON with draw, recordsTotal, recordsFiltered, data.
+    GET parameters:
+    - draw: DataTables draw counter.
+    - start, length: paging offset and page size.
+    - columns_search[]: column-specific search values (id_sub_jenis_data, jenis_tabel, kategori_ilap, ilap, nama_jenis_data, nama_sub_jenis_data).
+    - order[0][column], order[0][dir]: ordering index and direction.
+
+    Behavior:
+    - Uses `select_related` for `id_ilap`, `id_ilap__id_kategori`, and `id_jenis_tabel` to reduce queries.
+    - Applies column-specific filters and ordering according to DataTables conventions.
+
+    Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data` rows.
+    Each row contains: `id_sub_jenis_data`, `jenis_tabel`, `kategori_ilap`, `ilap`, `nama_jenis_data`, `nama_sub_jenis_data`, and `actions` HTML.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
@@ -179,10 +219,20 @@ def jenis_data_ilap_data(request):
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def get_next_jenis_data_id(request):
-    """Get next id_jenis_data for a given ILAP prefix.
+    """Return the next `id_jenis_data` string for a provided ILAP identifier.
 
-    Expects `ilap_id` GET parameter which is the ILAP prefix (e.g. 'AS001').
-    Returns JSON: {'next_id': 'AS00102'}
+    GET parameters:
+    - ilap_id: either an ILAP `id_ilap` string prefix (e.g. 'AS001') or a numeric ILAP PK.
+
+    Behavior:
+    - If a numeric PK is supplied, the corresponding `ILAP.id_ilap` is used as
+        the prefix. Otherwise an alphanumeric prefix is extracted from the
+        provided string.
+    - Finds the highest existing `id_jenis_data` starting with the prefix,
+        increments the suffix (treated as an integer), and returns the next
+        identifier formatted with two digits (e.g., `AS00101` -> `AS00102`).
+
+    Returns JSON: `{'next_id': '<prefix><NN>'}` or 400 when `ilap_id` is missing.
     """
     ilap_id = request.GET.get('ilap_id')
     if not ilap_id:
@@ -226,9 +276,13 @@ def get_next_jenis_data_id(request):
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def get_existing_jenis_data(request):
-    """Return list of existing id_jenis_data for a given ILAP prefix or PK.
+    """Return existing `id_jenis_data` items for a given ILAP prefix or PK.
 
-    Returns JSON: {'items': [{'value': 'AS00101', 'text': 'AS00101 - Nama'}, ...]}
+    GET parameters:
+    - ilap_id: ILAP prefix string or numeric PK. When numeric, resolves to
+        the ILAP's `id_ilap` value.
+
+    Returns JSON: `{'items': [{'value': '<id>', 'text': '<id> - <nama>'}, ...]}`.
     """
     ilap_id = request.GET.get('ilap_id')
     if not ilap_id:
@@ -260,9 +314,12 @@ def get_existing_jenis_data(request):
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def get_existing_sub_jenis_data(request):
-    """Return existing id_sub_jenis_data for a given id_jenis_data.
+    """Return existing `id_sub_jenis_data` entries for a given `id_jenis_data`.
 
-    Returns JSON: {'items': [{'value': 'KM0330101', 'text': 'KM0330101 - Nama Sub'}, ...]}
+    GET parameters:
+    - id_jenis_data: prefix to search for sub-jenis entries.
+
+    Returns JSON: `{'items': [{'value': '<id_sub>', 'text': '<id_sub> - <nama_sub>'}, ...]}`.
     """
     id_jenis = request.GET.get('id_jenis_data')
     if not id_jenis:
@@ -280,9 +337,16 @@ def get_existing_sub_jenis_data(request):
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def get_next_sub_jenis_id(request):
-    """Get next id_sub_jenis_data for a given id_jenis_data prefix.
+    """Return the next `id_sub_jenis_data` for a given `id_jenis_data` prefix.
 
-    Expects `id_jenis_data` GET parameter. Returns JSON: {'next_id': '<id_jenis_data>01'}
+    GET parameters:
+    - id_jenis_data: prefix (required).
+
+    Behavior:
+    - Finds existing `id_sub_jenis_data` rows starting with the prefix, takes
+        the numeric suffix, increments it, and formats it with two digits.
+
+    Returns JSON: `{'next_id': '<id_jenis_data><NN>'}` or 400 when missing.
     """
     id_jenis = request.GET.get('id_jenis_data')
     if not id_jenis:
