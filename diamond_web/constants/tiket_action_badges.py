@@ -1,11 +1,9 @@
-"""Compatibility shim for tiket action badges.
+"""Compatibility shim re-exporting tiket action constants.
 
-This module previously defined `ACTION_BADGES`, `ROLE_BADGES`, and
-`WORKFLOW_STEPS`. Those constants have been consolidated into
-``tiket_action_types.py`` to reduce redundancy. Keep this file as a
-thin shim to avoid breaking imports elsewhere.
+This module re-exports `ACTION_BADGES` and `ROLE_BADGES` from
+``tiket_action_types.py`` for backward compatibility with older imports.
 """
 
-from .tiket_action_types import ACTION_BADGES, ROLE_BADGES, WORKFLOW_STEPS
+from .tiket_action_types import ACTION_BADGES, ROLE_BADGES
 
-__all__ = ["ACTION_BADGES", "ROLE_BADGES", "WORKFLOW_STEPS"]
+__all__ = ["ACTION_BADGES", "ROLE_BADGES"]

@@ -176,15 +176,4 @@ ROLE_BADGES = {
 
 
 # Workflow step mapping based on status (kept here for convenience)
-WORKFLOW_STEPS = {
-    1: 'rekam',
-    2: 'backup',
-    3: 'tanda_terima',
-    4: 'teliti',
-    5: 'kembali',
-    6: 'kirim_pide',
-    7: 'identifikasi',
-    8: 'pengendalian_mutu',
-    9: 'batal',
-    10: 'selesai'
-}
+
