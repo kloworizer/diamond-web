@@ -11,6 +11,7 @@ class TiketActionType:
     PENGENDALIAN_MUTU = 6
     DIBATALKAN = 7
     SELESAI = 8
+    DITRANSFER_KE_PMDE = 9
 
 # Action types for Backup workflow
 class BackupActionType:
@@ -42,6 +43,7 @@ ACTION_TYPE_LABELS = {
     6: 'Pengendalian Mutu',
     7: 'Dibatalkan',
     8: 'Selesai',
+    9: 'Ditransfer ke PMDE',
     # Backup actions
     101: 'Backup Direkam',
     102: 'Backup Dihapus',
@@ -65,6 +67,7 @@ ACTION_TYPE_BADGE_CLASSES = {
     6: 'bg-secondary',
     7: 'bg-danger',
     8: 'bg-success',
+    9: 'bg-success',
     # Backup actions
     101: 'bg-primary',
     102: 'bg-danger',

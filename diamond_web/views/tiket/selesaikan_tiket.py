@@ -59,13 +59,22 @@ class SelesaikanTiketView(LoginRequiredMixin, UserPMDERequiredMixin, UpdateView)
                 self.object.status = STATUS_SELESAI
                 self.object.save()
 
-                # Create tiket action
+                # Create first action: PENGENDALIAN_MUTU (to record QC phase with details)
+                TiketAction.objects.create(
+                    id_tiket=self.object,
+                    id_user=self.request.user,
+                    timestamp=now,
+                    action=TiketActionType.PENGENDALIAN_MUTU,
+                    catatan=f'Sudah QC:{self.object.sudah_qc}, Lolos QC:{self.object.lolos_qc}, Tidak Lolos QC:{self.object.tidak_lolos_qc}, QC C:{self.object.qc_c}'
+                )
+
+                # Create second action: SELESAI (final status)
                 TiketAction.objects.create(
                     id_tiket=self.object,
                     id_user=self.request.user,
                     timestamp=now,
                     action=TiketActionType.SELESAI,
-                    catatan=f'Selesaikan Tiket - Sudah QC:{self.object.sudah_qc}, Lolos QC:{self.object.lolos_qc}, Tidak Lolos QC:{self.object.tidak_lolos_qc}, QC C:{self.object.qc_c}'
+                    catatan='Tiket selesai diproses'
                 )
 
                 message = f'Tiket "{self.object.nomor_tiket}" berhasil diselesaikan.'

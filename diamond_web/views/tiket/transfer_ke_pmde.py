@@ -66,7 +66,7 @@ class TransferKePMDEView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateView):
                     id_tiket=self.object,
                     id_user=self.request.user,
                     timestamp=now,
-                    action=TiketActionType.PENGENDALIAN_MUTU,
+                    action=TiketActionType.DITRANSFER_KE_PMDE,
                     catatan=f'Transfer ke PMDE - I:{self.object.baris_i}, U:{self.object.baris_u}, Res:{self.object.baris_res}, CDE:{self.object.baris_cde}'
                 )
 
