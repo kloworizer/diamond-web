@@ -10,6 +10,7 @@ from django.views.decorators.http import require_GET
 from ..models.pic import PIC
 from ..forms.pic import PICForm
 from ..constants.tiket_action_types import PICActionType
+from ..constants.tiket_status import STATUS_DIBATALKAN
 from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, AdminPIDERequiredMixin, AdminPMDERequiredMixin
 
 
@@ -119,7 +120,7 @@ class PICCreateView(LoginRequiredMixin, AjaxFormMixin, CreateView):
             # AND with tgl_terima_dip >= pic.start_date
             active_tikets = Tiket.objects.filter(
                 id_periode_data__id_sub_jenis_data_ilap=pic.id_sub_jenis_data_ilap,
-                status__lt=7  # status < 7 (not dibatalkan or selesai)
+                status__lt=STATUS_DIBATALKAN  # status < STATUS_DIBATALKAN (not dibatalkan or selesai)
             ).filter(
                 Q(tgl_terima_dip__gte=pic.start_date) | Q(tgl_terima_dip__isnull=True)
             )
@@ -289,7 +290,7 @@ class PICUpdateView(LoginRequiredMixin, AjaxFormMixin, UpdateView):
                 # AND with tgl_terima_dip >= pic.start_date
                 active_tikets = Tiket.objects.filter(
                     id_periode_data__id_sub_jenis_data_ilap=self.object.id_sub_jenis_data_ilap,
-                    status__lt=7  # status < 7 (not dibatalkan or selesai)
+                    status__lt=STATUS_DIBATALKAN  # status < STATUS_DIBATALKAN (not dibatalkan or selesai)
                 ).filter(
                     Q(tgl_terima_dip__gte=self.object.start_date) | Q(tgl_terima_dip__isnull=True)
                 )

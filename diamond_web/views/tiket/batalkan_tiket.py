@@ -12,6 +12,7 @@ from ...models.tiket_pic import TiketPIC
 from ...forms.batalkan_tiket import BatalkanTiketForm
 from ...constants.tiket_action_types import TiketActionType
 from ..mixins import UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin
+from ...constants.tiket_status import STATUS_DIBATALKAN
 
 
 class BatalkanTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, UpdateView):
@@ -52,7 +53,7 @@ class BatalkanTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3
         now = datetime.now()
 
         self.object = form.save(commit=False)
-        self.object.status = 7  # Change status to "Dibatalkan"
+        self.object.status = STATUS_DIBATALKAN  # Change status to STATUS_DIBATALKAN (Dibatalkan)
         self.object.tgl_dibatalkan = now
         self.object.save()
 

@@ -17,6 +17,7 @@ from ..models.tiket import Tiket
 from ..forms.tanda_terima_data import TandaTerimaDataForm
 from ..constants.tiket_action_types import TandaTerimaActionType
 from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin
+from ..constants.tiket_status import STATUS_DIKIRIM_KE_PIDE
 
 
 class TandaTerimaDataListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView):
@@ -96,7 +97,7 @@ def tanda_terima_data_data(request):
     for obj in qs_page:
         status_text = 'Aktif' if obj.active else 'Dibatalkan'
         can_edit = obj.detil_items.filter(
-            Q(id_tiket__status__lt=8) | Q(id_tiket__status__isnull=True)
+                Q(id_tiket__status__lt=STATUS_DIKIRIM_KE_PIDE) | Q(id_tiket__status__isnull=True)
         ).exists()
         
         # Check if user is active PIC for any tiket in this tanda terima
@@ -173,7 +174,7 @@ def tanda_terima_next_number(request):
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
 @require_GET
 def tanda_terima_tikets_by_ilap(request):
-    """Return available tikets for a given ILAP (status < 8 and not assigned to active tanda terima for that ILAP)."""
+    """Return available tikets for a given ILAP (status < STATUS_SELESAI and not assigned to active tanda terima for that ILAP)."""
     ilap_id = request.GET.get('ilap_id')
     tanda_terima_id = request.GET.get('tanda_terima_id')  # Optional, for edit mode
     
@@ -203,7 +204,7 @@ def tanda_terima_tikets_by_ilap(request):
 
     # Get available tikets
     available_tikets = Tiket.objects.filter(
-        status__lt=8,
+        status__lt=STATUS_DIKIRIM_KE_PIDE,
         id_periode_data__id_sub_jenis_data_ilap__id_ilap_id=ilap_id
     ).exclude(
         id__in=other_assigned_tiket_ids
@@ -401,7 +402,7 @@ class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, Activ
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
         # Prevent edit if any tiket in this tanda terima is dibatalkan
-        if not self.object.active or self.object.detil_items.filter(id_tiket__status__gte=8).exists():
+        if not self.object.active or self.object.detil_items.filter(id_tiket__status__gte=STATUS_DIKIRIM_KE_PIDE).exists():
             return JsonResponse({'success': False, 'message': 'Tanda terima atau tiket sudah dibatalkan, tidak dapat diedit.', 'html': '<div class="alert alert-warning">Tanda terima atau tiket sudah dibatalkan, tidak dapat diedit.</div>'})
         form = self.get_form()
         return self.render_form_response(form)
