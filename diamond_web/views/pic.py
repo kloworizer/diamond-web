@@ -118,16 +118,16 @@ class PICCreateView(LoginRequiredMixin, AjaxFormMixin, CreateView):
         self.object = None
         form = self.get_form()
         return self.render_form_response(form)
-    
-        def form_valid(self, form):
-                """Handle successful form submission and propagate PIC to active tikets.
 
-                Side effects:
-                - Queries `Tiket` for entries matching `id_sub_jenis_data_ilap` and
-                    with `status` less than `STATUS_DIBATALKAN`.
-                - Creates or updates `TiketPIC` records and creates `TiketAction`
-                    records for each affected ticket.
-                """
+    def form_valid(self, form):
+        """Handle successful form submission and propagate PIC to active tikets.
+
+        Side effects:
+        - Queries `Tiket` for entries matching `id_sub_jenis_data_ilap` and
+            with `status` less than `STATUS_DIBATALKAN`.
+        - Creates or updates `TiketPIC` records and creates `TiketAction`
+            records for each affected ticket.
+        """
         from ..models.tiket import Tiket
         from ..models.tiket_pic import TiketPIC
         from ..models.tiket_action import TiketAction
@@ -280,15 +280,15 @@ class PICUpdateView(LoginRequiredMixin, AjaxFormMixin, UpdateView):
         context['form_action'] = reverse(tipe_update_url_map.get(self.tipe, 'home'), args=[self.object.pk])
         return context
 
-        def form_valid(self, form):
-                """Process `end_date` changes and update `TiketPIC` / `TiketAction`.
+    def form_valid(self, form):
+        """Process `end_date` changes and update `TiketPIC` / `TiketAction`.
 
-                Behavior:
-                - If `end_date` is newly set, deactivate matching active `TiketPIC`
-                    records and add a `TiketAction` with `PICActionType.TIDAK_AKTIF`.
-                - If `end_date` is cleared, reactivate or create `TiketPIC` records
-                    for related tickets and log reactivation or creation actions.
-                """
+        Behavior:
+        - If `end_date` is newly set, deactivate matching active `TiketPIC`
+            records and add a `TiketAction` with `PICActionType.TIDAK_AKTIF`.
+        - If `end_date` is cleared, reactivate or create `TiketPIC` records
+            for related tickets and log reactivation or creation actions.
+        """
         from ..models.tiket import Tiket
         from ..models.tiket_pic import TiketPIC
         from ..models.tiket_action import TiketAction

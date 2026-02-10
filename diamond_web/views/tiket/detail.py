@@ -10,7 +10,18 @@ from ...models.tiket_pic import TiketPIC
 from ...models.pic import PIC
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ...models.detil_tanda_terima import DetilTandaTerima
-from ...constants.tiket_status import STATUS_LABELS, STATUS_BADGE_CLASSES
+from ...constants.tiket_status import (
+    STATUS_LABELS,
+    STATUS_BADGE_CLASSES,
+    STATUS_DIREKAM,
+    STATUS_DITELITI,
+    STATUS_DIKEMBALIKAN,
+    STATUS_DIKIRIM_KE_PIDE,
+    STATUS_IDENTIFIKASI,
+    STATUS_PENGENDALIAN_MUTU,
+    STATUS_DIBATALKAN,
+    STATUS_SELESAI,
+)
 from ...constants.tiket_action_types import (
     ACTION_BADGES,
     ROLE_BADGES,
@@ -204,5 +215,15 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         context['user_is_active_pic_p3de'] = user_is_active_pic_p3de
         context['user_is_active_pic_pide'] = user_is_active_pic_pide
         context['user_is_active_pic_pmde'] = user_is_active_pic_pmde
+        
+        # Add status constants for template use
+        context['STATUS_DIREKAM'] = STATUS_DIREKAM
+        context['STATUS_DITELITI'] = STATUS_DITELITI
+        context['STATUS_DIKEMBALIKAN'] = STATUS_DIKEMBALIKAN
+        context['STATUS_DIKIRIM_KE_PIDE'] = STATUS_DIKIRIM_KE_PIDE
+        context['STATUS_IDENTIFIKASI'] = STATUS_IDENTIFIKASI
+        context['STATUS_PENGENDALIAN_MUTU'] = STATUS_PENGENDALIAN_MUTU
+        context['STATUS_DIBATALKAN'] = STATUS_DIBATALKAN
+        context['STATUS_SELESAI'] = STATUS_SELESAI
         
         return context

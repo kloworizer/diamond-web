@@ -390,7 +390,7 @@
                     {% else %}
                         <!-- P3DE actions (existing) -->
                         {% if user_is_active_pic_p3de %}
-                            {% if tiket.status < 4 and tiket.status != 7 and tiket.status != 8 %}
+                            {% if tiket.status < STATUS_DIKIRIM_KE_PIDE and tiket.status != STATUS_DIBATALKAN and tiket.status != STATUS_SELESAI %}
                                 <div class="d-grid gap-2">
                                     {% if not tiket.backup %}
                                         <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#rekamBackupDataModal">
@@ -422,7 +422,7 @@
                                 </div>
                             {% endif %}
 
-                            {% if tiket.status < 4 %}
+                            {% if tiket.status < STATUS_DIKIRIM_KE_PIDE %}
                                 <button type="button" class="btn btn-danger mt-2 w-100" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
                                     <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
                                 </button>
@@ -431,24 +431,24 @@
 
                         <!-- PIDE actions -->
                         {% if user_is_active_pic_pide %}
-                            {% if tiket.status == 4 or tiket.status == 5 %}
+                            {% if tiket.status == STATUS_DIKIRIM_KE_PIDE or tiket.status == STATUS_IDENTIFIKASI %}
                                 <div class="d-grid gap-2 mt-2">
                                     <!-- Dikembalikan button: show if status 4 or 5 -->
-                                    {% if tiket.status == 4 or tiket.status == 5 %}
+                                    {% if tiket.status == STATUS_DIKIRIM_KE_PIDE or tiket.status == STATUS_IDENTIFIKASI %}
                                         <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#dikembalikanTiketModal">
                                             <i class="ri-arrow-go-back-line me-1"></i>Kembalikan ke P3DE
                                         </button>
                                     {% endif %}
 
                                     <!-- Identifikasi button: show if status 4 (Dikirim ke PIDE) -->
-                                    {% if tiket.status == 4 %}
+                                    {% if tiket.status == STATUS_DIKIRIM_KE_PIDE %}
                                         <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#identifikasiTiketModal">
                                             <i class="ri-checkbox-circle-line me-1"></i>Identifikasi
                                         </button>
                                     {% endif %}
 
                                     <!-- Transfer ke PMDE button: show if status 5 (Diidentifikasi) -->
-                                    {% if tiket.status == 5 %}
+                                    {% if tiket.status == STATUS_IDENTIFIKASI %}
                                         <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#transferKePMDEModal">
                                             <i class="ri-send-plane-line me-1"></i>Transfer ke PMDE
                                         </button>
@@ -463,7 +463,7 @@
 
                         <!-- PMDE actions (placeholder for future) -->
                         {% if user_is_active_pic_pmde %}
-                            {% if tiket.status == 6 %}
+                            {% if tiket.status == STATUS_PENGENDALIAN_MUTU %}
                                 <div class="d-grid gap-2 mt-2">
                                     <button type="button" class="btn btn-outline-secondary" disabled>
                                         <i class="ri-tools-line me-1"></i>PMDE Actions (Coming Soon)
