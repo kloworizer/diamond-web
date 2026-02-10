@@ -12,9 +12,20 @@ from ..forms.kategori_wilayah import KategoriWilayahForm
 from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
 
 class KategoriWilayahListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
+    """List view for `KategoriWilayah` entries.
+
+    Renders `kategori_wilayah/list.html`. When redirected after a delete
+    operation the view will read `deleted` and `name` query parameters and
+    register a Django `messages.success` notification for the frontend to
+    display as a toast.
+    """
     template_name = 'kategori_wilayah/list.html'
 
     def get(self, request, *args, **kwargs):
+        """Render the list template and surface optional delete message.
+
+        Query params: `deleted` and `name` (URL-encoded).
+        """
         # If redirected after delete, show success message from query params
         deleted = request.GET.get('deleted')
         name = request.GET.get('name')
@@ -27,6 +38,12 @@ class KategoriWilayahListView(LoginRequiredMixin, AdminP3DERequiredMixin, Templa
         return super().get(request, *args, **kwargs)
 
 class KategoriWilayahCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
+    """Create view for `KategoriWilayah`.
+
+    Presents a modal/form to create a new `KategoriWilayah`. Supports AJAX
+    via `AjaxFormMixin`. On success the view either returns a JSON redirect
+    (for AJAX clients) or sets a Django success message for full-page flows.
+    """
     model = KategoriWilayah
     form_class = KategoriWilayahForm
     template_name = 'kategori_wilayah/form.html'
@@ -39,11 +56,16 @@ class KategoriWilayahCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, Ajax
         return context
 
     def get(self, request, *args, **kwargs):
+        """Return the create form rendered for AJAX or full-page requests."""
         self.object = None
         form = self.get_form()
         return self.render_form_response(form)
 
 class KategoriWilayahUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
+    """Update view for existing `KategoriWilayah` entries.
+
+    Renders edit form and supports AJAX via `AjaxFormMixin`.
+    """
     model = KategoriWilayah
     form_class = KategoriWilayahForm
     template_name = 'kategori_wilayah/form.html'
@@ -56,11 +78,18 @@ class KategoriWilayahUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, Ajax
         return context
 
     def get(self, request, *args, **kwargs):
+        """Return the edit form for the requested instance."""
         self.object = self.get_object()
         form = self.get_form()
         return self.render_form_response(form)
 
 class KategoriWilayahDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+    """Delete view for `KategoriWilayah` entries.
+
+    Returns a confirmation fragment for AJAX `GET` and a JSON `redirect` on
+    successful deletion. Also sets a Django `messages.success` so the base
+    template can render a toast after navigation.
+    """
     model = KategoriWilayah
     template_name = 'kategori_wilayah/confirm_delete.html'
     success_url = reverse_lazy('kategori_wilayah_list')
@@ -98,10 +127,16 @@ class KategoriWilayahDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, Dele
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def kategori_wilayah_data(request):
-    """Server-side processing for DataTables.
+    """Server-side DataTables endpoint for `KategoriWilayah`.
 
-    Accepts DataTables parameters: draw, start, length, search[value], order[0][column], order[0][dir]
-    Returns JSON with draw, recordsTotal, recordsFiltered, data.
+    GET parameters:
+    - draw: DataTables draw counter.
+    - start, length: paging offset and page size.
+    - columns_search[]: column-specific search values (id, deskripsi).
+    - order[0][column], order[0][dir]: ordering index and direction.
+
+    Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data` rows.
+    Each row contains: `id`, `deskripsi`, and `actions` HTML for edit/delete.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))

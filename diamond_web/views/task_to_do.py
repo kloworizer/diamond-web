@@ -3,6 +3,27 @@ from diamond_web.models.tiket_pic import TiketPIC
 
 
 def get_tiket_summary_for_user(user):
+    """Return a compact summary of pending tiket actions for a P3DE user.
+
+    Parameters
+    - user: Django `User` instance (or falsy). If the user is not
+        authenticated or is not a member of the `user_p3de` group, this
+        function returns a zeroed summary dictionary.
+
+    Returns
+    A dict with the following integer keys (counts):
+    - `rekam_backup_data`: number of assigned tickets missing backup data
+    - `buat_tanda_terima`: number of assigned tickets without a tanda terima
+    - `rekam_hasil_penelitian`: number of assigned tickets missing `tgl_teliti`
+    - `kirim_ke_pide`: number of assigned tickets missing `tgl_kirim_pide`
+
+    Queries
+    - Selects active `TiketPIC` records for the given user with role P3DE to
+        determine the set of relevant ticket ids, then executes simple
+        `Tiket.objects.filter(...).count()` queries for each metric.
+
+    Side effects: None.
+    """
     empty = {
         'rekam_backup_data': 0,
         'buat_tanda_terima': 0,

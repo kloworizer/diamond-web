@@ -11,12 +11,29 @@ from ..forms.nama_tabel import NamaTabelForm
 from .mixins import AjaxFormMixin, AdminPIDERequiredMixin
 
 class NamaTabelListView(LoginRequiredMixin, AdminPIDERequiredMixin, TemplateView):
+    """List view for `JenisDataILAP` (Nama Tabel) entries.
+
+    Renders `nama_tabel/list.html`. This view is protected by
+    `AdminPIDERequiredMixin` and `LoginRequiredMixin` so only authorized
+    admin users can access the listing UI.
+    """
     template_name = 'nama_tabel/list.html'
 
     def get(self, request, *args, **kwargs):
+        """Render the list template.
+
+        Presentational method — no extra context is required beyond the
+        template's client-side DataTables initialization.
+        """
         return super().get(request, *args, **kwargs)
 
 class NamaTabelCreateView(LoginRequiredMixin, AdminPIDERequiredMixin, AjaxFormMixin, CreateView):
+    """Create view for `JenisDataILAP` entries representing table names.
+
+    Uses `AjaxFormMixin` to support modal forms; on success it returns a JSON
+    redirect for AJAX clients or sets a Django success message for full-page
+    flows. The `form_action` context key is set to the create URL.
+    """
     model = JenisDataILAP
     form_class = NamaTabelForm
     template_name = 'nama_tabel/form.html'
@@ -29,11 +46,17 @@ class NamaTabelCreateView(LoginRequiredMixin, AdminPIDERequiredMixin, AjaxFormMi
         return context
 
     def get(self, request, *args, **kwargs):
+        """Return the create form rendered for AJAX or full-page requests."""
         self.object = None
         form = self.get_form()
         return self.render_form_response(form)
 
 class NamaTabelUpdateView(LoginRequiredMixin, AdminPIDERequiredMixin, AjaxFormMixin, UpdateView):
+    """Update view for `JenisDataILAP` (Nama Tabel).
+
+    Provides the same AJAX/modal behaviour as the create view and sets
+    `form_action` to the update URL for the instance being edited.
+    """
     model = JenisDataILAP
     form_class = NamaTabelForm
     template_name = 'nama_tabel/form.html'
@@ -46,11 +69,20 @@ class NamaTabelUpdateView(LoginRequiredMixin, AdminPIDERequiredMixin, AjaxFormMi
         return context
 
     def get(self, request, *args, **kwargs):
+        """Return the edit form for the requested instance."""
         self.object = self.get_object()
         form = self.get_form()
         return self.render_form_response(form)
 
 class NamaTabelDeleteView(LoginRequiredMixin, AdminPIDERequiredMixin, DeleteView):
+    """Delete/clear action for `JenisDataILAP` table-name fields.
+
+    Instead of removing the database row, this view clears the
+    `nama_tabel_I` and `nama_tabel_U` fields and persists the instance.
+    Supports AJAX confirmation fragment (`GET?ajax=1`) and returns JSON
+    responses for AJAX form submissions. On non-AJAX flows a success
+    message is registered and a JSON redirect is returned for consistency.
+    """
     model = JenisDataILAP
     template_name = 'nama_tabel/confirm_delete.html'
     success_url = reverse_lazy('nama_tabel_list')
@@ -61,6 +93,7 @@ class NamaTabelDeleteView(LoginRequiredMixin, AdminPIDERequiredMixin, DeleteView
         return context
 
     def get(self, request, *args, **kwargs):
+        """Return confirmation HTML when requested via AJAX, else render page."""
         self.object = self.get_object()
         if request.GET.get('ajax'):
             from django.template.loader import render_to_string
@@ -69,6 +102,12 @@ class NamaTabelDeleteView(LoginRequiredMixin, AdminPIDERequiredMixin, DeleteView
         return self.render_to_response(self.get_context_data())
 
     def delete(self, request, *args, **kwargs):
+        """Clear the two table-name fields and persist the instance.
+
+        Returns JSON indicating success and a `redirect` URL for clients to
+        follow when needed. Also sets a Django success message for non-AJAX
+        workflows.
+        """
         self.object = self.get_object()
         name = str(self.object)
         # Clear only the nama_tabel_I and nama_tabel_U fields instead of deleting the row
@@ -91,10 +130,16 @@ class NamaTabelDeleteView(LoginRequiredMixin, AdminPIDERequiredMixin, DeleteView
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def nama_tabel_data(request):
-    """Server-side processing for DataTables.
+    """Server-side DataTables endpoint for `JenisDataILAP` (Nama Tabel).
 
-    Accepts DataTables parameters: draw, start, length, search[value], order[0][column], order[0][dir]
-    Returns JSON with draw, recordsTotal, recordsFiltered, data.
+    GET parameters:
+    - draw: DataTables draw counter.
+    - start, length: paging offset and page size.
+    - columns_search[]: column-specific search values (id_sub_jenis_data, nama_jenis_data, nama_sub_jenis_data, nama_tabel_I, nama_tabel_U).
+    - order[0][column], order[0][dir]: ordering index and direction.
+
+    Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data` rows.
+    Each row contains: `id_sub_jenis_data`, `nama_jenis_data`, `nama_sub_jenis_data`, `nama_tabel_I`, `nama_tabel_U`, and `actions` HTML.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))

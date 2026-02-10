@@ -9,19 +9,27 @@ from django.views.decorators.http import require_GET
 
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from ..forms.durasi_jatuh_tempo import DurasiJatuhTempoForm
-from .mixins import AjaxFormMixin
+from .mixins import AjaxFormMixin, AdminPIDERequiredMixin, AdminPMDERequiredMixin
 from datetime import date as _date
 
 # ========== PIDE Section ==========
 
-class AdminPIDERequiredMixin(UserPassesTestMixin):
-    def test_func(self):
-        return self.request.user.groups.filter(name__in=['admin', 'admin_pide']).exists()
-
 class DurasiJatuhTempoPIDEListView(LoginRequiredMixin, AdminPIDERequiredMixin, TemplateView):
+    """List view for `DurasiJatuhTempo` entries scoped to PIDE (`user_pide`).
+
+    Renders `durasi_jatuh_tempo/pide_list.html`. When redirected after a
+    successful deletion, query parameters `deleted` and `name` are used to
+    generate a Django success message for UI to render a toast.
+    """
     template_name = 'durasi_jatuh_tempo/pide_list.html'
 
     def get(self, request, *args, **kwargs):
+        """Render the PIDE list template and surface delete success messages.
+
+        Query params considered: `deleted` and `name`. When redirecting after a
+        deletion, the `name` value is URL-encoded; this method will decode it and
+        show a Django `messages.success` toast.
+        """
         deleted = request.GET.get('deleted')
         name = request.GET.get('name')
         if deleted and name:
@@ -33,6 +41,16 @@ class DurasiJatuhTempoPIDEListView(LoginRequiredMixin, AdminPIDERequiredMixin, T
         return super().get(request, *args, **kwargs)
 
 class DurasiJatuhTempoPIDECreateView(LoginRequiredMixin, AdminPIDERequiredMixin, AjaxFormMixin, CreateView):
+    """Create view for `DurasiJatuhTempo` entries for PIDE.
+
+    Usage: Presents a modal/form to create a new duration rule scoped to PIDE
+    (`seksi__name='user_pide'`). Enforces non-overlapping date ranges for the
+    same `id_sub_jenis_data`. Supports AJAX via `AjaxFormMixin`.
+
+    Side effects on successful save:
+    - Persists a `DurasiJatuhTempo` row with `seksi='user_pide'`.
+    - No additional model side-effects beyond saving the instance.
+    """
     model = DurasiJatuhTempo
     form_class = DurasiJatuhTempoForm
     template_name = 'durasi_jatuh_tempo/form.html'
@@ -40,6 +58,7 @@ class DurasiJatuhTempoPIDECreateView(LoginRequiredMixin, AdminPIDERequiredMixin,
     success_message = 'Durasi Jatuh Tempo "{object}" berhasil dibuat.'
 
     def get_form_kwargs(self):
+        """Pass `group_name='user_pide'` to the form so widget choices/validation can scope to PIDE."""
         kwargs = super().get_form_kwargs()
         kwargs['group_name'] = 'user_pide'
         return kwargs
@@ -55,7 +74,13 @@ class DurasiJatuhTempoPIDECreateView(LoginRequiredMixin, AdminPIDERequiredMixin,
         return self.render_form_response(form)
 
     def form_valid(self, form):
-        # Prevent overlapping ranges for same sub jenis data (pre-save guard)
+        """Validate that the date range does not overlap an existing entry.
+
+        This view enforces that for the same `id_sub_jenis_data` within the PIDE
+        seksi, the `start_date`/`end_date` ranges do not overlap with other
+        `DurasiJatuhTempo` rows. If overlap is detected, an error is added to
+        `start_date` and the form is invalidated.
+        """
         s2 = form.cleaned_data.get('start_date')
         if not s2:
             return super().form_valid(form)
@@ -71,6 +96,11 @@ class DurasiJatuhTempoPIDECreateView(LoginRequiredMixin, AdminPIDERequiredMixin,
         return super().form_valid(form)
 
 class DurasiJatuhTempoPIDEUpdateView(LoginRequiredMixin, AdminPIDERequiredMixin, AjaxFormMixin, UpdateView):
+    """Update view for existing `DurasiJatuhTempo` entries (PIDE scope).
+
+    Ensures the updated date range does not overlap other entries for the same
+    `id_sub_jenis_data` within the PIDE seksi. Supports AJAX form flows.
+    """
     model = DurasiJatuhTempo
     form_class = DurasiJatuhTempoForm
     template_name = 'durasi_jatuh_tempo/form.html'
@@ -108,6 +138,13 @@ class DurasiJatuhTempoPIDEUpdateView(LoginRequiredMixin, AdminPIDERequiredMixin,
         return super().form_valid(form)
 
 class DurasiJatuhTempoPIDEDeleteView(LoginRequiredMixin, AdminPIDERequiredMixin, DeleteView):
+    """Delete view for `DurasiJatuhTempo` entries in PIDE scope.
+
+    For AJAX `GET` requests the confirmation fragment is returned as JSON with
+    the `html` key. On deletion, sets a Django success message and returns a
+    JSON object containing a `redirect` URL so clients can navigate and render
+    toasts uniformly.
+    """
     model = DurasiJatuhTempo
     template_name = 'durasi_jatuh_tempo/confirm_delete.html'
     success_url = reverse_lazy('durasi_jatuh_tempo_pide_list')
@@ -146,7 +183,22 @@ class DurasiJatuhTempoPIDEDeleteView(LoginRequiredMixin, AdminPIDERequiredMixin,
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pide']).exists())
 @require_GET
 def durasi_jatuh_tempo_pide_data(request):
-    """Server-side processing for DataTables."""
+    """Server-side DataTables endpoint for PIDE `DurasiJatuhTempo`.
+
+    GET parameters:
+    - draw: DataTables draw counter.
+    - start, length: paging offset and page size.
+    - columns_search[]: column-specific search values (sub_jenis_data, durasi, start_date, end_date).
+    - order[0][column], order[0][dir]: ordering index and direction.
+
+    Behavior:
+    - Filters queryset to `seksi__name='user_pide'` and uses
+        `select_related('id_sub_jenis_data', 'seksi')` for efficiency.
+    - Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data`.
+    - Each data row contains: `sub_jenis_data`, `durasi`, `start_date`, `end_date`, and `actions`.
+
+    Side effects: None — read-only endpoint.
+    """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
@@ -208,10 +260,22 @@ def durasi_jatuh_tempo_pide_data(request):
 # ========== PMDE Section ==========
 
 class AdminPMDERequiredMixin(UserPassesTestMixin):
+    """Ensure view access is limited to `admin` or `admin_pmde` group members.
+
+    Use this mixin on class-based views that should be visible only to PMDE
+    administrators. It implements `test_func` returning True when the
+    requesting user is a member of `admin` or `admin_pmde` groups.
+    """
     def test_func(self):
         return self.request.user.groups.filter(name__in=['admin', 'admin_pmde']).exists()
 
 class DurasiJatuhTempoPMDEListView(LoginRequiredMixin, AdminPMDERequiredMixin, TemplateView):
+    """List view for `DurasiJatuhTempo` entries scoped to PMDE (`user_pmde`).
+
+    Renders `durasi_jatuh_tempo/pmde_list.html`. When redirected after a
+    successful deletion, query parameters `deleted` and `name` are used to
+    generate a Django success message for UI to render a toast.
+    """
     template_name = 'durasi_jatuh_tempo/pmde_list.html'
 
     def get(self, request, *args, **kwargs):
@@ -226,6 +290,15 @@ class DurasiJatuhTempoPMDEListView(LoginRequiredMixin, AdminPMDERequiredMixin, T
         return super().get(request, *args, **kwargs)
 
 class DurasiJatuhTempoPMDECreateView(LoginRequiredMixin, AdminPMDERequiredMixin, AjaxFormMixin, CreateView):
+    """Create view for `DurasiJatuhTempo` entries for PMDE.
+
+    Usage: Presents a modal/form to create a new duration rule scoped to PMDE
+    (`seksi__name='user_pmde'`). Enforces non-overlapping date ranges for the
+    same `id_sub_jenis_data`. Supports AJAX via `AjaxFormMixin`.
+
+    Side effects on successful save:
+    - Persists a `DurasiJatuhTempo` row with `seksi='user_pmde'`.
+    """
     model = DurasiJatuhTempo
     form_class = DurasiJatuhTempoForm
     template_name = 'durasi_jatuh_tempo/form.html'
@@ -263,6 +336,11 @@ class DurasiJatuhTempoPMDECreateView(LoginRequiredMixin, AdminPMDERequiredMixin,
         return super().form_valid(form)
 
 class DurasiJatuhTempoPMDEUpdateView(LoginRequiredMixin, AdminPMDERequiredMixin, AjaxFormMixin, UpdateView):
+    """Update view for existing `DurasiJatuhTempo` entries (PMDE scope).
+
+    Ensures the updated date range does not overlap other entries for the same
+    `id_sub_jenis_data` within the PMDE seksi. Supports AJAX form flows.
+    """
     model = DurasiJatuhTempo
     form_class = DurasiJatuhTempoForm
     template_name = 'durasi_jatuh_tempo/form.html'
@@ -300,6 +378,13 @@ class DurasiJatuhTempoPMDEUpdateView(LoginRequiredMixin, AdminPMDERequiredMixin,
         return super().form_valid(form)
 
 class DurasiJatuhTempoPMDEDeleteView(LoginRequiredMixin, AdminPMDERequiredMixin, DeleteView):
+    """Delete view for `DurasiJatuhTempo` entries in PMDE scope.
+
+    Behaves like the PIDE delete view: returns a confirmation fragment for
+    AJAX `GET` and returns JSON with `redirect` on successful deletion. Also
+    sets a Django `messages.success` to allow the base template to render
+    toasts after navigation.
+    """
     model = DurasiJatuhTempo
     template_name = 'durasi_jatuh_tempo/confirm_delete.html'
     success_url = reverse_lazy('durasi_jatuh_tempo_pmde_list')
@@ -337,7 +422,22 @@ class DurasiJatuhTempoPMDEDeleteView(LoginRequiredMixin, AdminPMDERequiredMixin,
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde']).exists())
 @require_GET
 def durasi_jatuh_tempo_pmde_data(request):
-    """Server-side processing for DataTables."""
+    """Server-side DataTables endpoint for PMDE `DurasiJatuhTempo`.
+
+    GET parameters:
+    - draw: DataTables draw counter.
+    - start, length: paging offset and page size.
+    - columns_search[]: column-specific search values (sub_jenis_data, durasi, start_date, end_date).
+    - order[0][column], order[0][dir]: ordering index and direction.
+
+    Behavior:
+    - Filters queryset to `seksi__name='user_pmde'` and uses
+        `select_related('id_sub_jenis_data', 'seksi')` for efficiency.
+    - Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data`.
+    - Each data row contains: `sub_jenis_data`, `durasi`, `start_date`, `end_date`, and `actions`.
+
+    Side effects: None — read-only endpoint.
+    """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))

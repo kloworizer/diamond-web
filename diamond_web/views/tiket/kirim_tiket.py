@@ -42,17 +42,18 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DER
             tiket = Tiket.objects.get(pk=tiket_pk)
             context['single_tiket'] = tiket
             context['form_action'] = reverse('kirim_tiket_from_tiket', kwargs={'tiket_pk': tiket_pk})
-            else:
-                # Filter tikets for checkbox: status in (Diteliti, Dikembalikan), backup True, tanda_terima True, and logged user is active PIC P3DE
-                from ...models.tiket_pic import TiketPIC
-                tikets = Tiket.objects.filter(
-                    status__in=[STATUS_DITELITI, STATUS_DIKEMBALIKAN],
-                    backup=True,
-                    tanda_terima=True,
-                    tiketpic__active=True,
-                    tiketpic__role=TiketPIC.Role.P3DE,
-                    tiketpic__id_user=self.request.user
-                ).distinct()
+            context['tikets'] = None
+        else:
+            # Filter tikets for checkbox: status in (Diteliti, Dikembalikan), backup True, tanda_terima True,
+            # and logged user is active PIC P3DE
+            tikets = Tiket.objects.filter(
+                status__in=[STATUS_DITELITI, STATUS_DIKEMBALIKAN],
+                backup=True,
+                tanda_terima=True,
+                tiketpic__active=True,
+                tiketpic__role=TiketPIC.Role.P3DE,
+                tiketpic__id_user=self.request.user
+            ).distinct()
             context['tikets'] = tikets
             context['form_action'] = reverse('kirim_tiket')
         return context

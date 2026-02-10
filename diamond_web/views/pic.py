@@ -15,7 +15,20 @@ from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, AdminPIDERequiredMixi
 
 
 class PICListView(LoginRequiredMixin, TemplateView):
-    """Base list view for all PIC types"""
+    """List view for `PIC` entries of a specific `tipe`.
+
+    Subclasses must set the `tipe` attribute to one of `PIC.TipePIC` values
+    (e.g. `PIC.TipePIC.P3DE`). Renders `pic/list.html` by default and
+    provides the following context variables for templates:
+
+    - ``tipe``: raw stored `tipe` value
+    - ``tipe_display``: human-readable label for the `tipe`
+
+    Behavior:
+    - When redirected after a delete operation the view reads `deleted` and
+        `name` query parameters (URL-encoded) and registers a Django
+        `messages.success` notification so the frontend can display a toast.
+    """
     template_name = 'pic/list.html'
     tipe = None
     
@@ -45,7 +58,22 @@ class PICListView(LoginRequiredMixin, TemplateView):
 
 
 class PICCreateView(LoginRequiredMixin, AjaxFormMixin, CreateView):
-    """Base create view for all PIC types"""
+    """Create view for `PIC` assignments.
+
+    Presents a form to create a `PIC` record. On successful save this view
+    also propagates the assignment to active `Tiket` objects that reference
+    the same `id_sub_jenis_data_ilap`. For each matching `Tiket` the view
+    will either create a new `TiketPIC` record or reactivate/update an
+    existing one, and will append a `TiketAction` log entry. This side-effect
+    is intentional to keep ticket assignments in sync with PIC definitions.
+
+    Notes:
+    - The view supports AJAX via `AjaxFormMixin`: AJAX clients receive a
+        JSON redirect payload; non-AJAX clients receive a standard redirect
+        and a Django success message.
+    - The form receives a ``tipe`` kwarg to restrict form choices where
+        applicable.
+    """
     model = PIC
     form_class = PICForm
     template_name = 'pic/form.html'
@@ -91,8 +119,15 @@ class PICCreateView(LoginRequiredMixin, AjaxFormMixin, CreateView):
         form = self.get_form()
         return self.render_form_response(form)
     
-    def form_valid(self, form):
-        """Handle form submission and add PIC to all active tikets"""
+        def form_valid(self, form):
+                """Handle successful form submission and propagate PIC to active tikets.
+
+                Side effects:
+                - Queries `Tiket` for entries matching `id_sub_jenis_data_ilap` and
+                    with `status` less than `STATUS_DIBATALKAN`.
+                - Creates or updates `TiketPIC` records and creates `TiketAction`
+                    records for each affected ticket.
+                """
         from ..models.tiket import Tiket
         from ..models.tiket_pic import TiketPIC
         from ..models.tiket_action import TiketAction
@@ -194,7 +229,17 @@ class PICCreateView(LoginRequiredMixin, AjaxFormMixin, CreateView):
 
 
 class PICUpdateView(LoginRequiredMixin, AjaxFormMixin, UpdateView):
-    """Base update view for all PIC types"""
+    """Update view for `PIC` entries.
+
+    When the `end_date` field is set on a `PIC` (transition from None ->
+    date) this view will deactivate related `TiketPIC` records (for
+    tickets referencing the same `id_sub_jenis_data_ilap`) and create
+    `TiketAction` logs. When `end_date` is cleared (date -> None) it will
+    attempt to reactivate or create `TiketPIC` records for relevant active
+    tickets and log the actions.
+
+    The view preserves standard AJAX behavior through `AjaxFormMixin`.
+    """
     model = PIC
     form_class = PICForm
     template_name = 'pic/form.html'
@@ -235,8 +280,15 @@ class PICUpdateView(LoginRequiredMixin, AjaxFormMixin, UpdateView):
         context['form_action'] = reverse(tipe_update_url_map.get(self.tipe, 'home'), args=[self.object.pk])
         return context
 
-    def form_valid(self, form):
-        """Handle end_date changes to update TiketPIC records"""
+        def form_valid(self, form):
+                """Process `end_date` changes and update `TiketPIC` / `TiketAction`.
+
+                Behavior:
+                - If `end_date` is newly set, deactivate matching active `TiketPIC`
+                    records and add a `TiketAction` with `PICActionType.TIDAK_AKTIF`.
+                - If `end_date` is cleared, reactivate or create `TiketPIC` records
+                    for related tickets and log reactivation or creation actions.
+                """
         from ..models.tiket import Tiket
         from ..models.tiket_pic import TiketPIC
         from ..models.tiket_action import TiketAction
@@ -368,7 +420,17 @@ class PICUpdateView(LoginRequiredMixin, AjaxFormMixin, UpdateView):
 
 
 class PICDeleteView(LoginRequiredMixin, DeleteView):
-    """Base delete view for all PIC types"""
+    """Delete view for `PIC` entries and associated side-effects.
+
+    Deleting a `PIC` will also find `TiketPIC` records for the same user,
+    role and `id_sub_jenis_data_ilap` and delete them; a `TiketAction` log
+    with `PICActionType.TIDAK_AKTIF` is created for each affected ticket.
+
+    Response behavior:
+    - AJAX clients receive a JSON payload with `success` and `redirect`.
+    - Non-AJAX clients receive a JSON redirect as well and a Django
+        success message is registered so the frontend can show a toast.
+    """
     model = PIC
     template_name = 'pic/confirm_delete.html'
     tipe = None
@@ -534,7 +596,21 @@ class PICPMDEDeleteView(AdminPMDERequiredMixin, PICDeleteView):
 
 # DataTables server-side processing
 def _pic_data_common(request, tipe):
-    """Common function for DataTables server-side processing"""
+    """Common DataTables server-side endpoint for `PIC` objects.
+
+    Expected GET parameters (DataTables conventions):
+    - `draw`, `start`, `length` for paging.
+    - `columns_search[]` list for per-column filtering: [sub_jenis_data, user, start_date, end_date].
+    - `search[value]` for global search.
+    - `order[0][column]`, `order[0][dir]` for ordering.
+
+    Returns JSON with the standard DataTables fields: `draw`,
+    `recordsTotal`, `recordsFiltered`, and `data` (list of rows). Each row
+    contains: `id`, `sub_jenis_data_ilap`, `user`, `start_date`, `end_date`,
+    and `actions` HTML for edit/delete buttons. Permission checks are not
+    enforced here; callers should wrap this function with appropriate
+    decorators to restrict access.
+    """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
@@ -622,7 +698,11 @@ def _pic_data_common(request, tipe):
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def pic_p3de_data(request):
-    """Server-side processing for P3DE DataTables"""
+    """DataTables endpoint for P3DE `PIC` rows.
+
+    Permissions: user must be logged in and a member of `admin` or
+    `admin_p3de`. Returns the same JSON shape as `_pic_data_common`.
+    """
     return _pic_data_common(request, PIC.TipePIC.P3DE)
 
 
@@ -630,7 +710,11 @@ def pic_p3de_data(request):
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pide']).exists())
 @require_GET
 def pic_pide_data(request):
-    """Server-side processing for PIDE DataTables"""
+    """DataTables endpoint for PIDE `PIC` rows.
+
+    Permissions: user must be logged in and a member of `admin` or
+    `admin_pide`. Returns the same JSON shape as `_pic_data_common`.
+    """
     return _pic_data_common(request, PIC.TipePIC.PIDE)
 
 
@@ -638,5 +722,9 @@ def pic_pide_data(request):
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde']).exists())
 @require_GET
 def pic_pmde_data(request):
-    """Server-side processing for PMDE DataTables"""
+    """DataTables endpoint for PMDE `PIC` rows.
+
+    Permissions: user must be logged in and a member of `admin` or
+    `admin_pmde`. Returns the same JSON shape as `_pic_data_common`.
+    """
     return _pic_data_common(request, PIC.TipePIC.PMDE)

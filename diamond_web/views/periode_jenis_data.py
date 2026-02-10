@@ -13,9 +13,20 @@ from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
 from datetime import date as _date
 
 class PeriodeJenisDataListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
+    """List view for `PeriodeJenisData` entries.
+
+    Renders `periode_jenis_data/list.html`. When redirected after a delete
+    operation the view will read `deleted` and `name` query parameters and
+    register a Django `messages.success` notification for the frontend to
+    display as a toast.
+    """
     template_name = 'periode_jenis_data/list.html'
 
     def get(self, request, *args, **kwargs):
+        """Render the list template and surface optional delete message.
+
+        Query params: `deleted` and `name` (URL-encoded).
+        """
         # If redirected after delete, show success message from query params
         deleted = request.GET.get('deleted')
         name = request.GET.get('name')
@@ -28,6 +39,12 @@ class PeriodeJenisDataListView(LoginRequiredMixin, AdminP3DERequiredMixin, Templ
         return super().get(request, *args, **kwargs)
 
 class PeriodeJenisDataCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
+    """Create view for `PeriodeJenisData`.
+
+    Presents a modal/form to create a new `PeriodeJenisData`. Supports
+    AJAX via `AjaxFormMixin`. Validates that the provided date range does
+    not overlap existing ranges for the same Sub Jenis Data.
+    """
     model = PeriodeJenisData
     form_class = PeriodeJenisDataForm
     template_name = 'periode_jenis_data/form.html'
@@ -40,11 +57,18 @@ class PeriodeJenisDataCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, Aja
         return context
 
     def get(self, request, *args, **kwargs):
+        """Return the create form rendered for AJAX or full-page requests."""
         self.object = None
         form = self.get_form()
         return self.render_form_response(form)
 
     def form_valid(self, form):
+        """Validate date-range overlaps before saving.
+
+        Ensures the submitted start/end date range does not intersect any
+        existing `PeriodeJenisData` for the same Sub Jenis Data. Adds a
+        form error on `start_date` when overlap is detected.
+        """
         s2 = form.cleaned_data.get('start_date')
         if not s2:
             return super().form_valid(form)
@@ -60,6 +84,11 @@ class PeriodeJenisDataCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, Aja
         return super().form_valid(form)
 
 class PeriodeJenisDataUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
+    """Update view for existing `PeriodeJenisData` entries.
+
+    Validates date-range overlap similar to the create view and supports
+    AJAX/modal behaviour.
+    """
     model = PeriodeJenisData
     form_class = PeriodeJenisDataForm
     template_name = 'periode_jenis_data/form.html'
@@ -72,11 +101,13 @@ class PeriodeJenisDataUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, Aja
         return context
 
     def get(self, request, *args, **kwargs):
+        """Return the edit form for the requested instance."""
         self.object = self.get_object()
         form = self.get_form()
         return self.render_form_response(form)
 
     def form_valid(self, form):
+        """Validate date-range overlaps (excluding current instance)."""
         s2 = form.cleaned_data.get('start_date')
         if not s2:
             return super().form_valid(form)
@@ -92,6 +123,12 @@ class PeriodeJenisDataUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, Aja
         return super().form_valid(form)
 
 class PeriodeJenisDataDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+    """Delete view for `PeriodeJenisData` entries.
+
+    Returns a confirmation fragment for AJAX `GET` and a JSON `redirect` on
+    successful deletion. Also sets a Django `messages.success` so the base
+    template can render a toast after navigation.
+    """
     model = PeriodeJenisData
     template_name = 'periode_jenis_data/confirm_delete.html'
     success_url = reverse_lazy('periode_jenis_data_list')
@@ -129,10 +166,16 @@ class PeriodeJenisDataDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, Del
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def periode_jenis_data_data(request):
-    """Server-side processing for DataTables.
+    """Server-side DataTables endpoint for `PeriodeJenisData`.
 
-    Accepts DataTables parameters: draw, start, length, search[value], order[0][column], order[0][dir]
-    Returns JSON with draw, recordsTotal, recordsFiltered, data.
+    GET parameters:
+    - draw: DataTables draw counter.
+    - start, length: paging offset and page size.
+    - columns_search[]: column-specific search values (sub_jenis_data_ilap, periode_pengiriman, start_date, end_date).
+    - order[0][column], order[0][dir]: ordering index and direction.
+
+    Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data` rows.
+    Each row contains: `sub_jenis_data_ilap`, `periode_pengiriman`, `start_date`, `end_date`, and `actions` HTML.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))

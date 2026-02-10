@@ -11,11 +11,22 @@ from ..models.jenis_prioritas_data import JenisPrioritasData
 from ..forms.jenis_prioritas_data import JenisPrioritasDataForm
 from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
 from datetime import date as _date
+
+
 class JenisPrioritasDataListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
+    """List view for `JenisPrioritasData` entries.
+
+    Renders `jenis_prioritas_data/list.html`. When redirected from a delete
+    operation this view checks `deleted` and `name` query params and emits a
+    `messages.success` toast for the client to display.
+    """
     template_name = 'jenis_prioritas_data/list.html'
 
     def get(self, request, *args, **kwargs):
-        # If redirected after delete, show success message from query params
+        """Render list and surface optional delete success messages.
+
+        Query params considered: `deleted` and `name` (URL-encoded).
+        """
         deleted = request.GET.get('deleted')
         name = request.GET.get('name')
         if deleted and name:
@@ -27,6 +38,12 @@ class JenisPrioritasDataListView(LoginRequiredMixin, AdminP3DERequiredMixin, Tem
         return super().get(request, *args, **kwargs)
 
 class JenisPrioritasDataCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
+    """Create view for `JenisPrioritasData` entries.
+
+    Presents a form (modal-capable) to create a new priority rule for a
+    particular `id_sub_jenis_data_ilap`. Enforces non-overlapping date ranges
+    for the same sub-jenis data. Supports AJAX via `AjaxFormMixin`.
+    """
     model = JenisPrioritasData
     form_class = JenisPrioritasDataForm
     template_name = 'jenis_prioritas_data/form.html'
@@ -44,6 +61,10 @@ class JenisPrioritasDataCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, A
         return self.render_form_response(form)
 
     def form_valid(self, form):
+        """Validate that the start/end date range does not overlap existing rules.
+
+        For the same `id_sub_jenis_data_ilap` this enforces exclusive date ranges.
+        """
         s2 = form.cleaned_data.get('start_date')
         if not s2:
             return super().form_valid(form)
@@ -59,6 +80,11 @@ class JenisPrioritasDataCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, A
         return super().form_valid(form)
 
 class JenisPrioritasDataUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
+    """Update view for existing `JenisPrioritasData` entries.
+
+    Validates updated date ranges against other entries for the same
+    `id_sub_jenis_data_ilap` to avoid overlaps. Supports AJAX update flows.
+    """
     model = JenisPrioritasData
     form_class = JenisPrioritasDataForm
     template_name = 'jenis_prioritas_data/form.html'
@@ -69,7 +95,7 @@ class JenisPrioritasDataUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, A
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('jenis_prioritas_data_update', args=[self.object.pk])
         return context
-    
+
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
         form = self.get_form()
@@ -91,6 +117,12 @@ class JenisPrioritasDataUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, A
         return super().form_valid(form)
 
 class JenisPrioritasDataDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+    """Delete view for `JenisPrioritasData` entries.
+
+    For AJAX `GET` returns the confirmation HTML under `html`. On delete,
+    returns JSON with `redirect` and sets a Django success message for the
+    UI to render.
+    """
     model = JenisPrioritasData
     template_name = 'jenis_prioritas_data/confirm_delete.html'
     success_url = reverse_lazy('jenis_prioritas_data_list')
@@ -127,10 +159,21 @@ class JenisPrioritasDataDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, D
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def jenis_prioritas_data_data(request):
-    """Server-side processing for DataTables.
+    """Server-side DataTables endpoint for `JenisPrioritasData`.
 
-    Accepts DataTables parameters: draw, start, length, search[value], order[0][column], order[0][dir]
-    Returns JSON with draw, recordsTotal, recordsFiltered, data.
+    GET parameters:
+    - draw: DataTables draw counter.
+    - start, length: paging offset and page size.
+    - columns_search[]: column-specific search values (sub_jenis_data_ilap, no_nd, tahun, start_date, end_date).
+    - order[0][column], order[0][dir]: ordering index and direction.
+
+    Behavior:
+    - Uses `select_related('id_sub_jenis_data_ilap')` to reduce DB queries.
+    - Applies column-specific filtering and ordering according to DataTables
+      conventions.
+
+    Returns JSON: `{'draw', 'recordsTotal', 'recordsFiltered', 'data'}` where
+    each data row contains: `sub_jenis_data_ilap`, `no_nd`, `tahun`, `start_date`, `end_date`, and `actions` HTML.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))

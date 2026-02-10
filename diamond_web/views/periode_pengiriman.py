@@ -12,9 +12,20 @@ from ..forms.periode_pengiriman import PeriodePengirimanForm
 from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
 
 class PeriodePengirimanListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
+    """List view for `PeriodePengiriman` entries.
+
+    Renders `periode_pengiriman/list.html`. When redirected after a delete
+    operation the view will read `deleted` and `name` query parameters and
+    register a Django `messages.success` notification for the frontend to
+    display as a toast.
+    """
     template_name = 'periode_pengiriman/list.html'
 
     def get(self, request, *args, **kwargs):
+        """Render the list template and surface optional delete message.
+
+        Query params: `deleted` and `name` (URL-encoded).
+        """
         # If redirected after delete, show success message from query params
         deleted = request.GET.get('deleted')
         name = request.GET.get('name')
@@ -27,6 +38,13 @@ class PeriodePengirimanListView(LoginRequiredMixin, AdminP3DERequiredMixin, Temp
         return super().get(request, *args, **kwargs)
 
 class PeriodePengirimanCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
+    """Create view for `PeriodePengiriman`.
+
+    Presents a modal/form to create a new `PeriodePengiriman`. Supports
+    AJAX via `AjaxFormMixin`. On success it persists the instance and
+    returns either a JSON redirect for AJAX clients or a standard redirect
+    with a Django success message.
+    """
     model = PeriodePengiriman
     form_class = PeriodePengirimanForm
     template_name = 'periode_pengiriman/form.html'
@@ -39,11 +57,16 @@ class PeriodePengirimanCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, Aj
         return context
 
     def get(self, request, *args, **kwargs):
+        """Return the create form rendered for AJAX or full-page requests."""
         self.object = None
         form = self.get_form()
         return self.render_form_response(form)
 
 class PeriodePengirimanUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
+    """Update view for existing `PeriodePengiriman` entries.
+
+    Renders edit form and supports AJAX via `AjaxFormMixin`.
+    """
     model = PeriodePengiriman
     form_class = PeriodePengirimanForm
     template_name = 'periode_pengiriman/form.html'
@@ -56,11 +79,18 @@ class PeriodePengirimanUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, Aj
         return context
 
     def get(self, request, *args, **kwargs):
+        """Return the edit form for the requested instance."""
         self.object = self.get_object()
         form = self.get_form()
         return self.render_form_response(form)
 
 class PeriodePengirimanDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+    """Delete view for `PeriodePengiriman` entries.
+
+    Returns a confirmation fragment for AJAX `GET` and a JSON `redirect` on
+    successful deletion. Also sets a Django `messages.success` so the base
+    template can render a toast after navigation.
+    """
     model = PeriodePengiriman
     template_name = 'periode_pengiriman/confirm_delete.html'
     success_url = reverse_lazy('periode_pengiriman_list')
@@ -98,10 +128,16 @@ class PeriodePengirimanDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, De
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def periode_pengiriman_data(request):
-    """Server-side processing for DataTables.
+    """Server-side DataTables endpoint for `PeriodePengiriman`.
 
-    Accepts DataTables parameters: draw, start, length, search[value], order[0][column], order[0][dir]
-    Returns JSON with draw, recordsTotal, recordsFiltered, data.
+    GET parameters:
+    - draw: DataTables draw counter.
+    - start, length: paging offset and page size.
+    - columns_search[]: column-specific search values (id, deskripsi).
+    - order[0][column], order[0][dir]: ordering index and direction.
+
+    Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data` rows.
+    Each row contains: `id`, `deskripsi`, and `actions` HTML for edit/delete.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
