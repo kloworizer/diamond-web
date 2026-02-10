@@ -154,7 +154,7 @@ urlpatterns = [
     path('api/preview-nomor-tiket/', views.PreviewNomorTiketAPIView.as_view(), name='preview_nomor_tiket'),
     
     # Legacy URLs - kept for backward compatibility
-    path('tiket/create/', views.TiketCreateView.as_view(), name='tiket_create'),
+    path('tiket/create/', views.TiketRekamCreateView.as_view(), name='tiket_create'),
     path('tiket/<int:pk>/', views.TiketDetailView.as_view(), name='tiket_detail'),
     
     # Rekam (Record) Workflow Step - Step 1
@@ -169,6 +169,14 @@ urlpatterns = [
     # Kirim Tiket (Send Tiket) - Step 3
     path('tiket/kirim-tiket/', views.KirimTiketView.as_view(), name='kirim_tiket'),
     path('tiket/<int:tiket_pk>/kirim-pide/', views.KirimTiketView.as_view(), name='kirim_tiket_from_tiket'),
+    
+    # PIDE Workflow Actions
+    path('tiket/<int:pk>/dikembalikan/', views.DikembalikanTiketView.as_view(), name='dikembalikan_tiket'),
+    path('tiket/<int:pk>/identifikasi/', views.IdentifikasiTiketView.as_view(), name='identifikasi_tiket'),
+    path('tiket/<int:pk>/transfer-ke-pmde/', views.TransferKePMDEView.as_view(), name='transfer_ke_pmde'),
+    
+    # PMDE Workflow Actions
+    path('tiket/<int:pk>/selesaikan/', views.SelesaikanTiketView.as_view(), name='selesaikan_tiket'),
     
     # Future workflow steps can be added here:
     # path('tiket/teliti/create/', views.TiketTelitiCreateView.as_view(), name='tiket_teliti_create'),

@@ -16,6 +16,7 @@ from ...forms.kirim_tiket import KirimTiketForm
 from django.utils.html import format_html
 from ...constants.tiket_action_types import TiketActionType
 from ..mixins import UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin
+from ...constants.tiket_status import STATUS_DITELITI, STATUS_DIKEMBALIKAN, STATUS_DIKIRIM_KE_PIDE
 
 
 class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, FormView):
@@ -41,11 +42,12 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DER
             tiket = Tiket.objects.get(pk=tiket_pk)
             context['single_tiket'] = tiket
             context['form_action'] = reverse('kirim_tiket_from_tiket', kwargs={'tiket_pk': tiket_pk})
+            context['tikets'] = None
         else:
-            # Filter tikets for checkbox: status < 4, backup True, tanda_terima True, and logged user is active PIC P3DE
-            from ...models.tiket_pic import TiketPIC
+            # Filter tikets for checkbox: status in (Diteliti, Dikembalikan), backup True, tanda_terima True,
+            # and logged user is active PIC P3DE
             tikets = Tiket.objects.filter(
-                status__in=[2, 3],
+                status__in=[STATUS_DITELITI, STATUS_DIKEMBALIKAN],
                 backup=True,
                 tanda_terima=True,
                 tiketpic__active=True,
@@ -121,7 +123,7 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DER
                     tiket.nomor_nd_nadine = nomor_nd_nadine
                     tiket.tgl_nadine = tgl_nadine
                     tiket.tgl_kirim_pide = tgl_kirim_pide
-                    tiket.status = 4  # Change status to 4 (Dikirim ke PIDE)
+                    tiket.status = STATUS_DIKIRIM_KE_PIDE  # Change status to STATUS_DIKIRIM_KE_PIDE (Dikirim ke PIDE)
                     tiket.save()
                     
                     # Record tiket_action for audit trail

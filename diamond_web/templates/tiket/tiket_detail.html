@@ -127,6 +127,72 @@
                             </div>
                         </div>
                         {% endif %}
+
+                        <!-- QC and Baris Information -->
+                        {% if tiket.baris_p3de %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Baris P3DE</label>
+                                <p class="fw-semibold mb-0">{{ tiket.baris_p3de }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.baris_i %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Baris I</label>
+                                <p class="fw-semibold mb-0">{{ tiket.baris_i }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.baris_u %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Baris U</label>
+                                <p class="fw-semibold mb-0">{{ tiket.baris_u }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.baris_res %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Baris Res</label>
+                                <p class="fw-semibold mb-0">{{ tiket.baris_res }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.baris_cde %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Baris CDE</label>
+                                <p class="fw-semibold mb-0">{{ tiket.baris_cde }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.lolos_qc %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Lolos QC</label>
+                                <p class="fw-semibold mb-0">{{ tiket.lolos_qc }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.tidak_lolos_qc %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tidak Lolos QC</label>
+                                <p class="fw-semibold mb-0">{{ tiket.tidak_lolos_qc }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.qc_c %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">QC C</label>
+                                <p class="fw-semibold mb-0">{{ tiket.qc_c }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -388,49 +454,92 @@
                         <i class="ri-information-line me-2"></i>Anda bukan PIC aktif untuk tiket ini. Anda hanya dapat melihat, tidak dapat melakukan perubahan.
                     </div>
                     {% else %}
-                        <!-- Main action buttons: visible if tiket not dikirim ke pide (4), dibatalkan (7), or selesai (8) -->
-                        {% if tiket.status != 4 and tiket.status != 7 and tiket.status != 8 %}
-                            <div class="d-grid gap-2">
-                                <!-- Rekam Backup button: show if backup not yet recorded -->
-                                {% if not tiket.backup %}
-                                    <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#rekamBackupDataModal">
-                                        <i class="ri-save-line me-1"></i>Rekam Backup Data
-                                    </button>
-                                {% endif %}
-                                
-                                <!-- Rekam Tanda Terima button: show if tanda terima not yet recorded -->
-                                {% if not tiket.tanda_terima %}
-                                    <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#createTandaTerimaModal">
-                                        <i class="ri-file-list-2-line me-1"></i>Rekam Tanda Terima
-                                    </button>
-                                {% endif %}
-                                
-                                <!-- Rekam Hasil Penelitian button: show if backup and tanda terima both recorded -->
-                                {% if tiket.backup and tiket.tanda_terima %}
-                                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rekamHasilPenelitianModal" data-action="edit">
-                                        <i class="ri-file-edit-line me-1"></i>{% if tiket.tgl_teliti %}Ubah Hasil Penelitian{% else %}Rekam Hasil Penelitian{% endif %}
-                                    </button>
-                                {% endif %}
-                                
-                                <!-- Kirim Tiket ke PIDE button: show if backup, tanda terima, and penelitian all completed -->
-                                {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti %}
-                                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#kirimTiketModal">
-                                        <i class="ri-send-plane-line me-1"></i>Kirim Tiket ke PIDE
-                                    </button>
-                                {% endif %}
-                            </div>
-                        {% else %}
-                            <!-- No actions available for finalized tikets -->
-                            <div class="text-center text-muted py-2">
-                                <i class="ri-information-line me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
-                            </div>
+                        <!-- P3DE actions (existing) -->
+                        {% if user_is_active_pic_p3de %}
+                            {% if tiket.status < STATUS_DIKIRIM_KE_PIDE and tiket.status != STATUS_DIBATALKAN and tiket.status != STATUS_SELESAI %}
+                                <div class="d-grid gap-2">
+                                    {% if not tiket.backup %}
+                                        <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#rekamBackupDataModal">
+                                            <i class="ri-save-line me-1"></i>Rekam Backup Data
+                                        </button>
+                                    {% endif %}
+
+                                    {% if not tiket.tanda_terima %}
+                                        <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#createTandaTerimaModal">
+                                            <i class="ri-file-list-2-line me-1"></i>Rekam Tanda Terima
+                                        </button>
+                                    {% endif %}
+
+                                    {% if tiket.backup and tiket.tanda_terima %}
+                                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rekamHasilPenelitianModal" data-action="edit">
+                                            <i class="ri-file-edit-line me-1"></i>{% if tiket.tgl_teliti %}Ubah Hasil Penelitian{% else %}Rekam Hasil Penelitian{% endif %}
+                                        </button>
+                                    {% endif %}
+
+                                    {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti %}
+                                        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#kirimTiketModal">
+                                            <i class="ri-send-plane-line me-1"></i>Kirim Tiket ke PIDE
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div class="text-center text-muted py-2">
+                                    <i class="ri-information-line me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
+                                </div>
+                            {% endif %}
+
+                            {% if tiket.status < STATUS_DIKIRIM_KE_PIDE %}
+                                <button type="button" class="btn btn-danger mt-2 w-100" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
+                                    <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
+                                </button>
+                            {% endif %}
                         {% endif %}
-                        
-                        <!-- Batalkan Tiket button: always available if tiket not yet sent to PIDE (status < 4) -->
-                        {% if tiket.status < 4 %}
-                            <button type="button" class="btn btn-danger mt-2 w-100" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
-                                <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
-                            </button>
+
+                        <!-- PIDE actions -->
+                        {% if user_is_active_pic_pide %}
+                            {% if tiket.status == STATUS_DIKIRIM_KE_PIDE or tiket.status == STATUS_IDENTIFIKASI %}
+                                <div class="d-grid gap-2 mt-2">
+                                    <!-- Dikembalikan button: show if status 4 or 5 -->
+                                    {% if tiket.status == STATUS_DIKIRIM_KE_PIDE or tiket.status == STATUS_IDENTIFIKASI %}
+                                        <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#dikembalikanTiketModal">
+                                            <i class="ri-arrow-go-back-line me-1"></i>Kembalikan ke P3DE
+                                        </button>
+                                    {% endif %}
+
+                                    <!-- Identifikasi button: show if status 4 (Dikirim ke PIDE) -->
+                                    {% if tiket.status == STATUS_DIKIRIM_KE_PIDE %}
+                                        <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#identifikasiTiketModal">
+                                            <i class="ri-checkbox-circle-line me-1"></i>Identifikasi
+                                        </button>
+                                    {% endif %}
+
+                                    <!-- Transfer ke PMDE button: show if status 5 (Diidentifikasi) -->
+                                    {% if tiket.status == STATUS_IDENTIFIKASI %}
+                                        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#transferKePMDEModal">
+                                            <i class="ri-send-plane-line me-1"></i>Transfer ke PMDE
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div class="text-center text-muted py-2 mt-2">
+                                    <i class="ri-information-line me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
+                                </div>
+                            {% endif %}
+                        {% endif %}
+
+                        <!-- PMDE actions -->
+                        {% if user_is_active_pic_pmde %}
+                            {% if tiket.status == STATUS_PENGENDALIAN_MUTU %}
+                                <div class="d-grid gap-2 mt-2">
+                                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#selesaikanTiketModal">
+                                        <i class="ri-check-line me-1"></i>Selesaikan Tiket
+                                    </button>
+                                </div>
+                            {% else %}
+                                <div class="text-center text-muted py-2 mt-2">
+                                    <i class="ri-information-line me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
+                                </div>
+                            {% endif %}
                         {% endif %}
                     {% endif %}
                 </div>
@@ -514,6 +623,70 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div id="kirim-tiket-form-container">
+                <!-- Form will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dikembalikan Tiket Modal (PIDE) -->
+<div class="modal fade" id="dikembalikanTiketModal" tabindex="-1" aria-labelledby="dikembalikanTiketModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="dikembalikanTiketModalLabel">Kembalikan Tiket ke P3DE {{ tiket.nomor_tiket }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div id="dikembalikan-tiket-form-container">
+                <!-- Form will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Identifikasi Tiket Modal (PIDE) -->
+<div class="modal fade" id="identifikasiTiketModal" tabindex="-1" aria-labelledby="identifikasiTiketModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="identifikasiTiketModalLabel">Identifikasi Tiket {{ tiket.nomor_tiket }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Apakah Anda yakin untuk menandai tiket ini sebagai proses diidentifikasi?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-info" id="confirmIdentifikasiBtn">Identifikasi</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transfer ke PMDE Modal (PIDE) -->
+<div class="modal fade" id="transferKePMDEModal" tabindex="-1" aria-labelledby="transferKePMDEModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="transferKePMDEModalLabel">Transfer Tiket ke PMDE {{ tiket.nomor_tiket }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div id="transfer-ke-pmde-form-container">
+                <!-- Form will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Selesaikan Tiket Modal (PMDE) -->
+<div class="modal fade" id="selesaikanTiketModal" tabindex="-1" aria-labelledby="selesaikanTiketModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="selesaikanTiketModalLabel">Selesaikan Tiket {{ tiket.nomor_tiket }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div id="selesaikan-tiket-form-container">
                 <!-- Form will be loaded here -->
             </div>
         </div>
@@ -869,6 +1042,274 @@
                         });
                 });
             }
+
+        // PIDE Modal Handlers
+        const dikembalikanTiketModal = document.getElementById('dikembalikanTiketModal');
+        if (dikembalikanTiketModal) {
+            setupModalAria(dikembalikanTiketModal);
+            dikembalikanTiketModal.addEventListener('show.bs.modal', function () {
+                const formContainer = document.getElementById('dikembalikan-tiket-form-container');
+                formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-warning" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                fetch('{% url "dikembalikan_tiket" tiket.pk %}', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => response.text())
+                    .then(html => {
+                        formContainer.innerHTML = html;
+
+                        attachSelesaikanTiketHandlers(formContainer);
+
+                        const form = formContainer.querySelector('form');
+                        if (form) {
+                            form.addEventListener('submit', function (e) {
+                                e.preventDefault();
+                                const formData = new FormData(form);
+
+                                fetch(form.action, {
+                                    method: 'POST',
+                                    body: formData,
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
+                                })
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            bootstrap.Modal.getInstance(dikembalikanTiketModal).hide();
+                                            showToast(data.message || 'Tiket berhasil dikembalikan.', 'success');
+                                            setTimeout(() => location.reload(), 800);
+                                        } else {
+                                            showToast(data.message || 'Gagal mengembalikan tiket.', 'danger');
+                                            formContainer.innerHTML = data.html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error:', error);
+                                        showToast('Terjadi kesalahan saat mengembalikan tiket.', 'danger');
+                                    });
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading form:', error);
+                        showToast('Gagal memuat form.', 'danger');
+                        formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
+                    });
+            });
+        }
+
+        // Identifikasi Tiket Handler
+        const identifikasiTiketModal = document.getElementById('identifikasiTiketModal');
+        if (identifikasiTiketModal) {
+            setupModalAria(identifikasiTiketModal);
+            const confirmBtn = document.getElementById('confirmIdentifikasiBtn');
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', function () {
+                    fetch('{% url "identifikasi_tiket" tiket.pk %}', {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                        }
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                bootstrap.Modal.getInstance(identifikasiTiketModal).hide();
+                                showToast(data.message || 'Tiket berhasil diidentifikasi.', 'success');
+                                setTimeout(() => location.reload(), 800);
+                            } else {
+                                showToast(data.message || 'Gagal mengidentifikasi tiket.', 'danger');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showToast('Terjadi kesalahan saat mengidentifikasi tiket.', 'danger');
+                        });
+                });
+            }
+        }
+
+        // Transfer ke PMDE Modal Handler
+        const transferKePMDEModal = document.getElementById('transferKePMDEModal');
+        if (transferKePMDEModal) {
+            setupModalAria(transferKePMDEModal);
+            transferKePMDEModal.addEventListener('show.bs.modal', function () {
+                const formContainer = document.getElementById('transfer-ke-pmde-form-container');
+                formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-success" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                fetch('{% url "transfer_ke_pmde" tiket.pk %}', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => response.text())
+                    .then(html => {
+                        formContainer.innerHTML = html;
+
+                        const form = formContainer.querySelector('form');
+                        if (form) {
+                            form.addEventListener('submit', function (e) {
+                                e.preventDefault();
+                                const formData = new FormData(form);
+
+                                fetch(form.action, {
+                                    method: 'POST',
+                                    body: formData,
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
+                                })
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            bootstrap.Modal.getInstance(transferKePMDEModal).hide();
+                                            showToast(data.message || 'Tiket berhasil ditransfer ke PMDE.', 'success');
+                                            setTimeout(() => location.reload(), 800);
+                                        } else {
+                                            showToast(data.message || 'Gagal mentransfer tiket ke PMDE.', 'danger');
+                                            formContainer.innerHTML = data.html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error:', error);
+                                        showToast('Terjadi kesalahan saat mentransfer tiket.', 'danger');
+                                    });
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading form:', error);
+                        showToast('Gagal memuat form.', 'danger');
+                        formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
+                    });
+            });
+        }
+
+        // Selesaikan Tiket Modal Handler (PMDE)
+        const selesaikanTiketModal = document.getElementById('selesaikanTiketModal');
+        if (selesaikanTiketModal) {
+            setupModalAria(selesaikanTiketModal);
+            selesaikanTiketModal.addEventListener('show.bs.modal', function () {
+                const formContainer = document.getElementById('selesaikan-tiket-form-container');
+                formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-success" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                fetch('{% url "selesaikan_tiket" tiket.pk %}', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => response.text())
+                    .then(html => {
+                        formContainer.innerHTML = html;
+                        attachSelesaikanTiketHandlers(formContainer);
+                    })
+                    .catch(error => {
+                        console.error('Error loading form:', error);
+                        showToast('Gagal memuat form.', 'danger');
+                        formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
+                    });
+            });
+        }
+
+        function attachSelesaikanTiketHandlers(container) {
+            const sudahQcInput = container.querySelector('input[name="sudah_qc"]');
+            const lolosQcInput = container.querySelector('input[name="lolos_qc"]');
+            const tidakLolosQcInput = container.querySelector('input[name="tidak_lolos_qc"]');
+            const sinkronisasiBtn = container.querySelector('#sinkronisasiDariDatabaseBtn');
+            const selesaikanForm = container.querySelector('#selesaikanTiketForm');
+
+            if (!sudahQcInput || !lolosQcInput || !tidakLolosQcInput) {
+                console.error('QC fields not found');
+                return;
+            }
+
+            // Make sudah_qc readonly with styling
+            sudahQcInput.readOnly = true;
+            sudahQcInput.style.backgroundColor = '#e9ecef';
+            sudahQcInput.style.cursor = 'not-allowed';
+
+            // Function to calculate sudah_qc
+            const calculateSudahQc = () => {
+                const lolos = parseInt(lolosQcInput.value) || 0;
+                const tidakLolos = parseInt(tidakLolosQcInput.value) || 0;
+                sudahQcInput.value = lolos + tidakLolos;
+            };
+
+            // Prevent typing in sudah_qc
+            sudahQcInput.addEventListener('keypress', (e) => e.preventDefault());
+            sudahQcInput.addEventListener('keydown', (e) => e.preventDefault());
+            sudahQcInput.addEventListener('input', (e) => {
+                e.preventDefault();
+                calculateSudahQc();
+            });
+
+            // Listen to lolos_qc changes
+            lolosQcInput.addEventListener('input', calculateSudahQc);
+            lolosQcInput.addEventListener('change', calculateSudahQc);
+
+            // Listen to tidak_lolos_qc changes
+            tidakLolosQcInput.addEventListener('input', calculateSudahQc);
+            tidakLolosQcInput.addEventListener('change', calculateSudahQc);
+
+            // Initial calculation
+            calculateSudahQc();
+
+            // Sinkronisasi button handler
+            if (sinkronisasiBtn) {
+                sinkronisasiBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showToast('Fitur sinkronisasi belum tersedia.', 'info');
+                });
+            }
+
+            // Form submission with AJAX
+            if (selesaikanForm) {
+                selesaikanForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    
+                    // Ensure calculation is done before submit
+                    calculateSudahQc();
+                    
+                    const formData = new FormData(selesaikanForm);
+                    const selesaikanTiketModal = document.getElementById('selesaikanTiketModal');
+
+                    fetch(selesaikanForm.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                bootstrap.Modal.getInstance(selesaikanTiketModal).hide();
+                                showToast(data.message || 'Tiket berhasil diselesaikan.', 'success');
+                                setTimeout(() => location.reload(), 800);
+                            } else {
+                                showToast(data.message || 'Gagal menyelesaikan tiket.', 'danger');
+                                if (data.errors) {
+                                    // Display validation errors
+                                    Object.keys(data.errors).forEach(field => {
+                                        const fieldInput = selesaikanForm.querySelector(`input[name="${field}"]`);
+                                        if (fieldInput) {
+                                            fieldInput.classList.add('is-invalid');
+                                        }
+                                    });
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showToast('Terjadi kesalahan saat menyelesaikan tiket.', 'danger');
+                        });
+                });
+            }
+        }
 
         function attachTandaTerimaHandlers(container) {
             const tanggalInput = container.querySelector('#id_tanggal_tanda_terima');

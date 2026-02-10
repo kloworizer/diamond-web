@@ -10,9 +10,24 @@ from ...models.tiket_pic import TiketPIC
 from ...models.pic import PIC
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ...models.detil_tanda_terima import DetilTandaTerima
-from ...constants.tiket_status import STATUS_LABELS, STATUS_BADGE_CLASSES
-from ...constants.tiket_action_badges import ACTION_BADGES, ROLE_BADGES, WORKFLOW_STEPS
-from ...constants.tiket_action_types import get_action_label, get_action_badge_class
+from ...constants.tiket_status import (
+    STATUS_LABELS,
+    STATUS_BADGE_CLASSES,
+    STATUS_DIREKAM,
+    STATUS_DITELITI,
+    STATUS_DIKEMBALIKAN,
+    STATUS_DIKIRIM_KE_PIDE,
+    STATUS_IDENTIFIKASI,
+    STATUS_PENGENDALIAN_MUTU,
+    STATUS_DIBATALKAN,
+    STATUS_SELESAI,
+)
+from ...constants.tiket_action_types import (
+    ACTION_BADGES,
+    ROLE_BADGES,
+    get_action_label,
+    get_action_badge_class,
+)
 
 
 class TiketDetailView(LoginRequiredMixin, DetailView):
@@ -169,16 +184,46 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         context['status_badge_class'] = STATUS_BADGE_CLASSES.get(self.object.status, 'bg-secondary')
         context['page_title'] = f'Detail Tiket {self.object.nomor_tiket}'
         
-        # Get workflow step based on status
-        context['workflow_step'] = WORKFLOW_STEPS.get(self.object.status, 'rekam')
+        # NOTE: workflow_step mapping removed — templates do not use it.
         
-        # Check if current user is an active PIC for this tiket
-        user_is_active_pic = TiketPIC.objects.filter(
+        # Check if current user has any active PIC record for this tiket (per role)
+        user_is_active_pic_p3de = TiketPIC.objects.filter(
             id_tiket=self.object,
             id_user=self.request.user,
             active=True,
             role=TiketPIC.Role.P3DE
         ).exists()
+
+        user_is_active_pic_pide = TiketPIC.objects.filter(
+            id_tiket=self.object,
+            id_user=self.request.user,
+            active=True,
+            role=TiketPIC.Role.PIDE
+        ).exists()
+
+        user_is_active_pic_pmde = TiketPIC.objects.filter(
+            id_tiket=self.object,
+            id_user=self.request.user,
+            active=True,
+            role=TiketPIC.Role.PMDE
+        ).exists()
+
+        # overall active flag (any role)
+        user_is_active_pic = user_is_active_pic_p3de or user_is_active_pic_pide or user_is_active_pic_pmde
+
         context['user_is_active_pic'] = user_is_active_pic
+        context['user_is_active_pic_p3de'] = user_is_active_pic_p3de
+        context['user_is_active_pic_pide'] = user_is_active_pic_pide
+        context['user_is_active_pic_pmde'] = user_is_active_pic_pmde
+        
+        # Add status constants for template use
+        context['STATUS_DIREKAM'] = STATUS_DIREKAM
+        context['STATUS_DITELITI'] = STATUS_DITELITI
+        context['STATUS_DIKEMBALIKAN'] = STATUS_DIKEMBALIKAN
+        context['STATUS_DIKIRIM_KE_PIDE'] = STATUS_DIKIRIM_KE_PIDE
+        context['STATUS_IDENTIFIKASI'] = STATUS_IDENTIFIKASI
+        context['STATUS_PENGENDALIAN_MUTU'] = STATUS_PENGENDALIAN_MUTU
+        context['STATUS_DIBATALKAN'] = STATUS_DIBATALKAN
+        context['STATUS_SELESAI'] = STATUS_SELESAI
         
         return context

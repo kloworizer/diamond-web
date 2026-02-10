@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">{{ page_title }}</h2>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Transfer Tiket ke PMDE</h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info mb-3">
+                <i class="ri-information-line me-2"></i>
+                <strong>Transfer ke PMDE:</strong> Masukkan data tabel untuk tiket <strong>{{ tiket.nomor_tiket }}</strong>.
+            </div>
+
+            <form method="post" action="{{ form_action }}">
+                {% csrf_token %}
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.baris_i.label_tag }}
+                        {{ form.baris_i }}
+                        {% if form.baris_i.errors %}
+                            <div class="text-danger">{{ form.baris_i.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.baris_u.label_tag }}
+                        {{ form.baris_u }}
+                        {% if form.baris_u.errors %}
+                            <div class="text-danger">{{ form.baris_u.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.baris_res.label_tag }}
+                        {{ form.baris_res }}
+                        {% if form.baris_res.errors %}
+                            <div class="text-danger">{{ form.baris_res.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.baris_cde.label_tag }}
+                        {{ form.baris_cde }}
+                        {% if form.baris_cde.errors %}
+                            <div class="text-danger">{{ form.baris_cde.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    {{ form.tgl_transfer.label_tag }}
+                    {{ form.tgl_transfer }}
+                    {% if form.tgl_transfer.errors %}
+                        <div class="text-danger">{{ form.tgl_transfer.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success">
+                        <i class="ri-send-plane-line me-1"></i>Transfer ke PMDE
+                    </button>
+                    <a href="{% url 'tiket_detail' tiket.pk %}" class="btn btn-secondary">Batal</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

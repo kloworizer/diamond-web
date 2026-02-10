@@ -21,6 +21,7 @@ from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ...constants.tiket_action_types import TiketActionType
 from ...forms.tiket import TiketForm
 from ..mixins import UserFormKwargsMixin, UserP3DERequiredMixin, get_active_p3de_ilap_ids
+from ...constants.tiket_status import STATUS_DIREKAM
 
 logger = logging.getLogger(__name__)
 
@@ -278,7 +279,7 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
             with transaction.atomic():
                 self.object = form.save(commit=False)
                 self.object.nomor_tiket = nomor_tiket
-                self.object.status = 1
+                self.object.status = STATUS_DIREKAM
 
                 tahun = form.cleaned_data.get('tahun')
                 if tahun:

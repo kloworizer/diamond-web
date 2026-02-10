@@ -155,3 +155,25 @@ def get_action_badge_class(action_id):
         CSS class or 'bg-secondary' if not found
     """
     return ACTION_TYPE_BADGE_CLASSES.get(action_id, 'bg-secondary')
+
+
+# Aggregate action metadata for convenience (label + badge class)
+ACTION_BADGES = {
+    action_id: {
+        'label': label,
+        'class': ACTION_TYPE_BADGE_CLASSES.get(action_id, 'bg-secondary')
+    }
+    for action_id, label in ACTION_TYPE_LABELS.items()
+}
+
+
+# Role badges for TiketPIC (kept here to centralize workflow constants)
+ROLE_BADGES = {
+    1: {'label': 'P3DE', 'class': 'bg-primary'},
+    2: {'label': 'PIDE', 'class': 'bg-info'},
+    3: {'label': 'PMDE', 'class': 'bg-warning text-dark'}
+}
+
+
+# Workflow step mapping based on status (kept here for convenience)
+

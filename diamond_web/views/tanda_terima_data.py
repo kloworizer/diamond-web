@@ -17,9 +17,18 @@ from ..models.tiket import Tiket
 from ..forms.tanda_terima_data import TandaTerimaDataForm
 from ..constants.tiket_action_types import TandaTerimaActionType
 from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin
+from ..constants.tiket_status import STATUS_DIKIRIM_KE_PIDE
 
 
 class TandaTerimaDataListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView):
+    """List view for `TandaTerimaData` entries for P3DE users.
+
+    Renders `tanda_terima_data/list.html`. Non-admin users are restricted
+    to records where they are an active `TiketPIC` with role P3DE. When the
+    view is redirected from a delete operation it reads `deleted` and
+    `name` query parameters (URL-encoded) and registers a Django
+    `messages.success` notification for the frontend toast.
+    """
     template_name = 'tanda_terima_data/list.html'
 
     def get(self, request, *args, **kwargs):
@@ -38,7 +47,21 @@ class TandaTerimaDataListView(LoginRequiredMixin, UserP3DERequiredMixin, Templat
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
 @require_GET
 def tanda_terima_data_data(request):
-    """Server-side processing for Tanda Terima Data DataTables."""
+    """DataTables server-side endpoint for `TandaTerimaData`.
+
+    GET parameters (DataTables): `draw`, `start`, `length`, `columns_search[]`,
+    `search[value]`, `order[0][column]`, `order[0][dir]`.
+
+    Permissions: wrapped by decorators to allow only users in `admin` or
+    `user_p3de` groups. Non-admin users are further restricted to
+    `TandaTerimaData` instances that reference tickets where they are an
+    active P3DE `TiketPIC`.
+
+    Returns: JSON with `draw`, `recordsTotal`, `recordsFiltered`, and
+    `data` rows. Each row includes `id`, `nomor_tanda_terima`,
+    `tanggal_tanda_terima`, `id_ilap`, `deskripsi`, `id_perekam`, `status`,
+    and `actions` HTML depending on the requesting user's permissions.
+    """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
@@ -96,7 +119,7 @@ def tanda_terima_data_data(request):
     for obj in qs_page:
         status_text = 'Aktif' if obj.active else 'Dibatalkan'
         can_edit = obj.detil_items.filter(
-            Q(id_tiket__status__lt=8) | Q(id_tiket__status__isnull=True)
+                Q(id_tiket__status__lt=STATUS_DIKIRIM_KE_PIDE) | Q(id_tiket__status__isnull=True)
         ).exists()
         
         # Check if user is active PIC for any tiket in this tanda terima
@@ -139,7 +162,14 @@ def tanda_terima_data_data(request):
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
 @require_GET
 def tanda_terima_next_number(request):
-    """Return next nomor_tanda_terima based on selected tanggal_tanda_terima year."""
+    """Return next sequential `nomor_tanda_terima` for a given year.
+
+    Query params:
+    - `tanggal` (optional): ISO date or datetime. If omitted current date
+      year is used.
+
+    Response JSON: { 'success': True, 'nomor_tanda_terima': <string> }
+    """
     tanggal_param = request.GET.get('tanggal')
     tanggal = parse_datetime(tanggal_param) if tanggal_param else None
     if tanggal is None and tanggal_param:
@@ -173,7 +203,21 @@ def tanda_terima_next_number(request):
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
 @require_GET
 def tanda_terima_tikets_by_ilap(request):
-    """Return available tikets for a given ILAP (status < 8 and not assigned to active tanda terima for that ILAP)."""
+    """Return available `Tiket` options for a given ILAP for selection.
+
+    Query params:
+    - `ilap_id` (required): ILAP primary key.
+    - `tanda_terima_id` (optional): current tanda terima id when editing to
+        allow already-selected tickets to remain selected.
+
+    Behavior:
+    - Filters `Tiket` with `status < STATUS_DIKIRIM_KE_PIDE` and that
+        reference the given ILAP via `id_periode_data__id_sub_jenis_data_ilap`.
+    - Excludes tickets already assigned to an active `TandaTerimaData` for
+        the same ILAP (unless they belong to the editing `tanda_terima_id`).
+
+    Returns JSON: { 'success': True, 'data': [ {id,label,selected,disabled}, ... ] }
+    """
     ilap_id = request.GET.get('ilap_id')
     tanda_terima_id = request.GET.get('tanda_terima_id')  # Optional, for edit mode
     
@@ -203,7 +247,7 @@ def tanda_terima_tikets_by_ilap(request):
 
     # Get available tikets
     available_tikets = Tiket.objects.filter(
-        status__lt=8,
+        status__lt=STATUS_DIKIRIM_KE_PIDE,
         id_periode_data__id_sub_jenis_data_ilap__id_ilap_id=ilap_id
     ).exclude(
         id__in=other_assigned_tiket_ids
@@ -401,7 +445,7 @@ class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, Activ
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
         # Prevent edit if any tiket in this tanda terima is dibatalkan
-        if not self.object.active or self.object.detil_items.filter(id_tiket__status__gte=8).exists():
+        if not self.object.active or self.object.detil_items.filter(id_tiket__status__gte=STATUS_DIKIRIM_KE_PIDE).exists():
             return JsonResponse({'success': False, 'message': 'Tanda terima atau tiket sudah dibatalkan, tidak dapat diedit.', 'html': '<div class="alert alert-warning">Tanda terima atau tiket sudah dibatalkan, tidak dapat diedit.</div>'})
         form = self.get_form()
         return self.render_form_response(form)

@@ -19,3 +19,17 @@ STATUS_BADGE_CLASSES = {
     7: 'bg-danger',
     8: 'bg-success'
 }
+
+# Named constants for ticket statuses to avoid magic numbers across the codebase.
+STATUS_DIREKAM = 1
+STATUS_DITELITI = 2
+STATUS_DIKEMBALIKAN = 3
+STATUS_DIKIRIM_KE_PIDE = 4
+STATUS_IDENTIFIKASI = 5
+STATUS_PENGENDALIAN_MUTU = 6
+STATUS_DIBATALKAN = 7
+STATUS_SELESAI = 8
+
+# Optional helpers for common comparisons
+# Tickets with status < STATUS_DIBATALKAN are considered non-final (not cancelled or finished)
+STATUS_NON_FINAL_MAX = STATUS_PENGENDALIAN_MUTU

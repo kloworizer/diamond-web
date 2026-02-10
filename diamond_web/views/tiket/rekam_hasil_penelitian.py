@@ -13,6 +13,7 @@ from ...models.tiket_pic import TiketPIC
 from ...forms.rekam_hasil_penelitian import RekamHasilPenelitianForm
 from ...constants.tiket_action_types import TiketActionType
 from ..mixins import UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin
+from ...constants.tiket_status import STATUS_DITELITI
 
 
 class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, UpdateView):
@@ -55,7 +56,7 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Active
         
         # Update the tiket with new baris_p3de value
         self.object = form.save(commit=False)
-        self.object.status = 2  # Change status to "Diteliti"
+        self.object.status = STATUS_DITELITI  # Change status to STATUS_DITELITI (Diteliti)
         self.object.tgl_teliti = now
         self.object.save()
         
