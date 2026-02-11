@@ -6,13 +6,13 @@ class KlasifikasiJenisData(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="ID")
     id_jenis_data_ilap = models.ForeignKey(
         JenisDataILAP,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_jenis_data_ilap",
         verbose_name="Jenis Data ILAP"
     )
     id_klasifikasi_tabel = models.ForeignKey(
         KlasifikasiTabel,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_klasifikasi_tabel",
         verbose_name="Klasifikasi Tabel"
     )
