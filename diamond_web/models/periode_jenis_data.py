@@ -6,13 +6,13 @@ class PeriodeJenisData(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="ID")
     id_sub_jenis_data_ilap = models.ForeignKey(
         JenisDataILAP,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_sub_jenis_data_ilap",
         verbose_name="Sub Jenis Data ILAP"
     )
     id_periode_pengiriman = models.ForeignKey(
         PeriodePengiriman,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_periode_pengiriman",
         verbose_name="Periode Pengiriman"
     )

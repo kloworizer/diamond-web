@@ -6,13 +6,13 @@ class DurasiJatuhTempo(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="ID")
     id_sub_jenis_data = models.ForeignKey(
         JenisDataILAP,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_sub_jenis_data",
         verbose_name="Sub Jenis Data ILAP"
     )
     seksi = models.ForeignKey(
         Group,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="seksi",
         verbose_name="Seksi"
     )

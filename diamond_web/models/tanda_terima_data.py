@@ -9,14 +9,14 @@ class TandaTerimaData(models.Model):
     tanggal_tanda_terima = models.DateTimeField(verbose_name="Tanggal Tanda Terima")
     id_ilap = models.ForeignKey(
         ILAP,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_ilap",
         verbose_name="ILAP"
     )
     deskripsi = models.CharField(max_length=255, verbose_name="Deskripsi")
     id_perekam = models.ForeignKey(
         User,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_perekam",
         verbose_name="Perekam"
     )
