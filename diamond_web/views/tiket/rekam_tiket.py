@@ -1,6 +1,6 @@
 """Rekam Tiket Workflow Step - Step 1: Record/Register"""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.urls import reverse
 from django.contrib import messages
 from django.db import transaction
@@ -18,7 +18,7 @@ from ...models.pic import PIC
 from ...models.periode_jenis_data import PeriodeJenisData
 from ...models.jenis_prioritas_data import JenisPrioritasData
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
-from ...constants.tiket_action_types import TiketActionType
+from ...constants.tiket_action_types import TiketActionType, PICActionType
 from ...forms.tiket import TiketForm
 from ..mixins import UserFormKwargsMixin, UserP3DERequiredMixin, get_active_p3de_ilap_ids
 from ...constants.tiket_status import STATUS_DIREKAM
@@ -293,15 +293,17 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
                 self._set_durasi_fields(periode_jenis_data, today)
                 self.object.save()
 
+                # Use a fixed base timestamp so subsequent PIC actions are recorded after DIREKAM
+                base_action_time = datetime.now()
                 TiketAction.objects.create(
                     id_tiket=self.object,
                     id_user=self.request.user,
-                    timestamp=datetime.now(),
+                    timestamp=base_action_time,
                     action=TiketActionType.DIREKAM,
                     catatan="tiket direkam"
                 )
 
-                self._assign_tiket_pics(periode_jenis_data, today)
+                self._assign_tiket_pics(periode_jenis_data, today, base_time=base_action_time)
 
             messages.success(self.request, f'Tiket "{nomor_tiket}" berhasil dibuat.')
             return super().form_valid(form)
@@ -348,7 +350,7 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
             )
         self.object.id_durasi_jatuh_tempo_pmde = durasi_pmde
 
-    def _assign_tiket_pics(self, periode_jenis_data, today):
+    def _assign_tiket_pics(self, periode_jenis_data, today, base_time=None):
         current_user_is_p3de_pic = PIC.objects.filter(
             tipe=PIC.TipePIC.P3DE,
             id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap,
@@ -363,10 +365,18 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
                 timestamp=datetime.now(),
                 role=TiketPIC.Role.P3DE
             )
+            tipe_label = dict(PIC.TipePIC.choices).get(PIC.TipePIC.P3DE, PIC.TipePIC.P3DE)
+            # Ensure PIC action timestamp is after base_time (if provided)
+            action_time = (base_time + timedelta(microseconds=1)) if base_time else datetime.now()
+            TiketAction.objects.create(
+                id_tiket=self.object,
+                id_user=self.request.user,
+                timestamp=action_time,
+                action=PICActionType.DITAMBAHKAN,
+                catatan=f'{tipe_label} {self.request.user.username} ditambahkan'
+            )
 
         active_filter = Q(start_date__lte=today) & Q(end_date__isnull=True)
-        additional_pics = []
-
         for role_value, tipe in (
             (TiketPIC.Role.P3DE, PIC.TipePIC.P3DE),
             (TiketPIC.Role.PIDE, PIC.TipePIC.PIDE),
@@ -376,16 +386,26 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
                 tipe=tipe,
                 id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap
             )
-            for pic in pic_qs.filter(active_filter):
-                additional_pics.append(
-                    TiketPIC(
-                        id_tiket=self.object,
-                        id_user=pic.id_user,
-                        timestamp=datetime.now(),
-                        role=role_value
-                    )
+            tipe_label = dict(PIC.TipePIC.choices).get(tipe, tipe)
+            for idx, pic in enumerate(pic_qs.filter(active_filter), start=1):
+                tiket_pic = TiketPIC.objects.create(
+                    id_tiket=self.object,
+                    id_user=pic.id_user,
+                    timestamp=datetime.now(),
+                    role=role_value
                 )
 
-        if additional_pics:
-            TiketPIC.objects.bulk_create(additional_pics)
+                # Use base_time + offset to guarantee ordering after DIREKAM
+                if base_time:
+                    action_time = base_time + timedelta(microseconds=1 + idx)
+                else:
+                    action_time = datetime.now()
+
+                TiketAction.objects.create(
+                    id_tiket=self.object,
+                    id_user=self.request.user,
+                    timestamp=action_time,
+                    action=PICActionType.DITAMBAHKAN,
+                    catatan=f'{tipe_label} {pic.id_user.username} ditambahkan'
+                )
 
