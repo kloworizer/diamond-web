@@ -11,13 +11,13 @@ class TiketPIC(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="ID")
     id_tiket = models.ForeignKey(
         Tiket,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_tiket",
         verbose_name="Tiket"
     )
     id_user = models.ForeignKey(
         User,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_user",
         verbose_name="User"
     )

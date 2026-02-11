@@ -9,13 +9,13 @@ class Tiket(models.Model):
     nomor_tiket = models.CharField(max_length=17, null=True, blank=True, verbose_name="Nomor Tiket")
     id_periode_data = models.ForeignKey(
         PeriodeJenisData,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_periode_data",
         verbose_name="Periode Jenis Data"
     )
     id_jenis_prioritas_data = models.ForeignKey(
         JenisPrioritasData,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_jenis_prioritas_data",
         verbose_name="Jenis Prioritas Data",
         null=True,
@@ -37,7 +37,7 @@ class Tiket(models.Model):
     tgl_dikembalikan = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Dikembalikan")
     id_durasi_jatuh_tempo_pide = models.ForeignKey(
         DurasiJatuhTempo,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_durasi_jatuh_tempo_pide",
         verbose_name="Durasi Jatuh Tempo PIDE",
         null=True,
@@ -52,7 +52,7 @@ class Tiket(models.Model):
     tgl_rematch = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Rematch")
     id_durasi_jatuh_tempo_pmde = models.ForeignKey(
         DurasiJatuhTempo,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_durasi_jatuh_tempo_pmde",
         verbose_name="Durasi Jatuh Tempo PMDE",
         null=True,

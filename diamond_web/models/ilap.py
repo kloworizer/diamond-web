@@ -7,14 +7,14 @@ class ILAP(models.Model):
     id_ilap = models.CharField(max_length=5, unique=True, verbose_name="ID ILAP")
     id_kategori = models.ForeignKey(
         KategoriILAP,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_kategori",
         verbose_name="ID Kategori"
     )
     nama_ilap = models.CharField(max_length=150, unique=True, verbose_name="Nama ILAP")
     id_kategori_wilayah = models.ForeignKey(
         KategoriWilayah,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_kategori_wilayah",
         verbose_name="Kategori Wilayah"
     )
