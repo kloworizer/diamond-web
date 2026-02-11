@@ -7,7 +7,7 @@ class BackupData(models.Model):
     
     id_tiket = models.ForeignKey(
         Tiket, 
-        on_delete=models.CASCADE, 
+        on_delete=models.PROTECT, 
         verbose_name="No Tiket",
         related_name="backups"
     )

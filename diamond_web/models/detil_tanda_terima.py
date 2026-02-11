@@ -7,14 +7,14 @@ class DetilTandaTerima(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="ID")
     id_tanda_terima = models.ForeignKey(
         TandaTerimaData,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_tanda_terima",
         verbose_name="Tanda Terima Data",
         related_name="detil_items"
     )
     id_tiket = models.ForeignKey(
         Tiket,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_tiket",
         verbose_name="Tiket"
     )

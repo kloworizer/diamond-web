@@ -6,8 +6,8 @@ class JenisPrioritasData(models.Model):
     start_date = models.DateField(verbose_name="Start Date")
     end_date = models.DateField(blank=True, null=True, default=None, verbose_name="End Date")
     id_sub_jenis_data_ilap = models.ForeignKey(
-        'JenisDataILAP',  # pastikan model ini ada
-        on_delete=models.CASCADE,
+        'JenisDataILAP',
+        on_delete=models.PROTECT,
         db_column='id_sub_jenis_data_ilap',
         verbose_name='Sub Jenis Data ILAP'
     )

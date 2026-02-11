@@ -22,13 +22,13 @@ class PIC(models.Model):
     )
     id_sub_jenis_data_ilap = models.ForeignKey(
         JenisDataILAP,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_sub_jenis_data_ilap",
         verbose_name="Sub Jenis Data ILAP"
     )
     id_user = models.ForeignKey(
         User,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_user",
         verbose_name="User"
     )

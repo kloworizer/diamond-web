@@ -7,7 +7,7 @@ class JenisDataILAP(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="ID")
     id_ilap = models.ForeignKey(
         ILAP,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_ilap",
         verbose_name="ILAP"
     )
@@ -19,7 +19,7 @@ class JenisDataILAP(models.Model):
     nama_tabel_U = models.CharField(max_length=255, verbose_name="Nama Tabel U")
     id_jenis_tabel = models.ForeignKey(
         JenisTabel,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column="id_jenis_tabel",
         verbose_name="Jenis Tabel"
     )
