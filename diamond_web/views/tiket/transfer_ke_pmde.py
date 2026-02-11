@@ -20,13 +20,48 @@ from ..mixins import UserPIDERequiredMixin
 
 
 class TransferKePMDEView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateView):
-    """View for transferring tiket to PMDE by PIDE."""
+    """Allow PIDE PICs to transfer identified tikets to PMDE for quality control.
+
+    This view enables PIDE users to transfer a tiket to PMDE (Pengendalian Mutu)
+    after identification is complete. The transfer updates the tiket status and
+    creates an audit trail entry with identified rows (I, U, Res, CDE).
+
+    Model: Tiket
+    Form: TransferKePMDEForm (collects identified rows: baris_i, baris_u, baris_res, baris_cde)
+    Template: tiket/transfer_ke_pmde_form.html or modal variant for AJAX
+
+    Workflow Step: PIDE transfers identified tiket to PMDE for quality control phase
+
+    Access Control:
+    - Requires @login_required
+    - Requires UserPIDERequiredMixin (user must be in user_pide group)
+    - Requires test_func() - user must be ACTIVE PIDE PIC AND tiket in IDENTIFIKASI status
+
+    Side Effects on Form Submission:
+    - Tiket.status set to STATUS_PENGENDALIAN_MUTU (quality control)
+    - TiketAction created with:
+        - action: TiketActionType.DITRANSFER_KE_PMDE
+        - catatan: Identified rows summary (I, U, Res, CDE counts)
+        - timestamp: Current datetime
+    - Notification objects created for all active PMDE PICs for this tiket
+    """
     model = Tiket
     form_class = TransferKePMDEForm
     template_name = 'tiket/transfer_ke_pmde_form.html'
     
     def test_func(self):
-        """Check if user is active PIC PIDE for this tiket and status is 5 (Identifikasi)"""
+        """Verify user is ACTIVE PIDE PIC and tiket is in IDENTIFIKASI status.
+
+        Returns True only if:
+        1. User is actively assigned to this tiket with PIDE role
+        2. Tiket.status == 5 (STATUS_IDENTIFIKASI)
+
+        False otherwise (blocks non-PIC or wrong status tikets from being transferred).
+
+        Queries:
+        - TiketPIC for active PIDE assignment
+        - Checks tiket.status on get_object()
+        """
         tiket = self.get_object()
         return (
             TiketPIC.objects.filter(
@@ -39,12 +74,25 @@ class TransferKePMDEView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateView):
         )
 
     def get_template_names(self):
-        """Return modal template for AJAX requests."""
+        """Return modal template for AJAX requests, full page otherwise.
+
+        AJAX requests (X-Requested-With=XMLHttpRequest) get a modal dialog
+        template for inline display, while regular requests get full page.
+        """
         if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return ['tiket/transfer_ke_pmde_modal_form.html']
         return [self.template_name]
 
     def get_context_data(self, **kwargs):
+        """Build context with tiket information for the transfer form.
+
+        Populates context with:
+        - context['form_action']: URL for form submission
+        - context['page_title']: Display title with tiket number
+        - context['tiket']: The tiket being transferred
+
+        Used by both single-tiket views and batch operations.
+        """
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('transfer_ke_pmde', kwargs={'pk': self.object.pk})
         context['page_title'] = f'Transfer ke PMDE - {self.object.nomor_tiket}'
@@ -52,7 +100,22 @@ class TransferKePMDEView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateView):
         return context
 
     def form_valid(self, form):
-        """Handle form submission to transfer tiket to PMDE and notify PMDE PIC."""
+        """Handle form submission: update tiket status and notify PMDE.
+
+        Within transaction:
+        1. Set tiket.status to STATUS_PENGENDALIAN_MUTU
+        2. Create TiketAction record with identified rows summary (I, U, Res, CDE)
+        3. Query all active PMDE PICs assigned to tiket
+        4. Create Notification for each PMDE PIC with formatted message
+        5. Return JsonResponse (AJAX) or redirect with success message
+
+        Raises:
+        - Exception handlers catch any errors and return error responses
+
+        Returns:
+        - JsonResponse {'success': True/False, 'message': ...} for AJAX
+        - Redirect to tiket detail for non-AJAX requests
+        """
         try:
             with transaction.atomic():
                 now = datetime.now()
@@ -126,7 +189,11 @@ class TransferKePMDEView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateView):
                 return self.form_invalid(form)
 
     def form_invalid(self, form):
-        """Return form errors for AJAX requests."""
+        """Return validation errors as JSON for AJAX requests.
+
+        Handles both AJAX (returns JsonResponse with form errors) and
+        non-AJAX requests (returns parent form_invalid response).
+        """
         if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': False,
@@ -136,5 +203,9 @@ class TransferKePMDEView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateView):
         return super().form_invalid(form)
 
     def get_success_url(self):
-        """Redirect back to tiket detail after saving."""
+        """Redirect to tiket detail page after successful transfer.
+
+        User is redirected back to view the tiket with updated status
+        and the new audit trail entry (TiketAction) containing row counts.
+        """
         return reverse('tiket_detail', kwargs={'pk': self.object.pk})

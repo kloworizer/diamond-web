@@ -20,7 +20,34 @@ from ...constants.tiket_status import STATUS_DITELITI, STATUS_DIKEMBALIKAN, STAT
 
 
 class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, FormView):
-    """View for Kirim Tiket workflow step."""
+    """P3DE workflow step to submit completed tikets to PIDE.
+
+    This view allows P3DE users to send prepared tikets (with backup and
+    tanda terima completed) to PIDE for the identification/analysis phase.
+    Supports both single-tiket and batch submission modes.
+
+    Form: KirimTiketForm (validates and processes tiket selections)
+    Template: tiket/kirim_tiket_form.html or modal variant for AJAX
+    
+    Workflow Sequence:
+    1. User selects tikets with status=DITELITI or DIKEMBALIKAN
+    2. User verifies backup data and tanda terima are complete
+    3. Form submission updates tikets to STATUS_DIKIRIM_KE_PIDE
+    4. TiketAction audit records created for each tiket
+    5. PIDE PICs notified via Notification objects
+
+    Access Control:
+    - Requires @login_required
+    - Requires UserP3DERequiredMixin (user in user_p3de group)
+    - Requires ActiveTiketP3DERequiredForEditMixin for single-tiket mode
+
+    Side Effects on Submission:
+    - Updates tiket.status to STATUS_DIKIRIM_KE_PIDE
+    - Sets tiket.tgl_kirim_pide to current datetime
+    - Creates TiketAction records with TiketActionType.DIKIRIM_KE_PIDE
+    - Creates Notification objects for all active PIDE PICs assigned to tiket
+    - Assigns PIDE PICs to TiketPIC if they exist in PIC table
+    """
     form_class = KirimTiketForm
     
     # Authorization handled by ActiveTiketP3DERequiredForEditMixin
@@ -28,12 +55,31 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DER
     success_url = reverse_lazy('tiket_list')
 
     def get_template_names(self):
-        """Return modal template for AJAX requests."""
+        """Return modal or full-page template based on AJAX detection."""
         if self.is_ajax_request():
             return ['tiket/kirim_tiket_modal_form.html']
         return [self.template_name]
-    
+
     def get_context_data(self, **kwargs):
+        """Build context with tikets available for submission.
+
+        When single_tiket mode (tiket_pk in URL):
+        - context['single_tiket']: The specific tiket to submit
+        - context['tikets']: None (not showing list)
+
+        When batch mode (no tiket_pk):
+        - context['tikets']: QuerySet of tikets ready for submission:
+            * status in (DITELITI, DIKEMBALIKAN)
+            * backup=True (backup data recorded)
+            * tanda_terima=True (receipt data recorded)
+            * User is active P3DE PIC for each tiket
+        - context['single_tiket']: None (not single mode)
+
+        Both modes populate:
+        - context['form_action']: Form submission URL
+        - context['page_title']: "Kirim Tiket"
+        - context['workflow_step']: "kirim_tiket"
+        """
         context = super().get_context_data(**kwargs)
         tiket_pk = self.kwargs.get('tiket_pk')
         context['page_title'] = 'Kirim Tiket'
@@ -59,6 +105,7 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DER
         return context
 
     def get_initial(self):
+        """Set initial form data for single-tiket mode."""
         initial = super().get_initial()
         tiket_pk = self.kwargs.get('tiket_pk')
         if tiket_pk:
@@ -66,7 +113,10 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DER
         return initial
 
     def get_form_kwargs(self):
-        """Ensure tiket_ids is populated from checkbox selections on POST."""
+        """Ensure tiket_ids form field is populated from selected checkboxes on POST.
+
+        Handles both explicit tiket_ids field value and tiket-select checkbox array.
+        """
         kwargs = super().get_form_kwargs()
         if self.request.method == 'POST':
             data = self.request.POST.copy()

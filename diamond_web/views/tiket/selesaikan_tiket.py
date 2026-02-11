@@ -18,13 +18,46 @@ from ..mixins import UserPMDERequiredMixin
 
 
 class SelesaikanTiketView(LoginRequiredMixin, UserPMDERequiredMixin, UpdateView):
-    """View for completing tiket with QC information by PMDE."""
+    """Allow PMDE PICs to complete tikets with quality control information.
+
+    This view enables PMDE users to finalize a tiket with quality control (QC)
+    information and transition it to SELESAI (completed) status. The completion
+    updates the tiket and creates two audit trail entries (QC phase and completion).
+
+    Model: Tiket
+    Form: SelesaikanTiketForm (collects QC data: sudah_qc, lolos_qc, tidak_lolos_qc, qc_c)
+    Template: tiket/selesaikan_tiket_form.html or modal variant for AJAX
+
+    Workflow Step: PMDE completes tiket with QC results (final step)
+
+    Access Control:
+    - Requires @login_required
+    - Requires UserPMDERequiredMixin (user must be in user_pmde group)
+    - Requires test_func() - user must be ACTIVE PMDE PIC AND tiket in PENGENDALIAN_MUTU status
+
+    Side Effects on Form Submission:
+    - Tiket.status set to STATUS_SELESAI (completed)
+    - Two TiketAction records created with same timestamp:
+        1. PENGENDALIAN_MUTU action: Records QC summary (sudah_qc, lolos_qc, tidak_lolos_qc, qc_c counts)
+        2. SELESAI action: Marks completion ('Tiket selesai diproses')
+    """
     model = Tiket
     form_class = SelesaikanTiketForm
     template_name = 'tiket/selesaikan_tiket_form.html'
     
     def test_func(self):
-        """Check if user is active PIC PMDE for this tiket and status is 6 (Pengendalian Mutu)"""
+        """Verify user is ACTIVE PMDE PIC and tiket is in PENGENDALIAN_MUTU status.
+
+        Returns True only if:
+        1. User is actively assigned to this tiket with PMDE role
+        2. Tiket.status == STATUS_PENGENDALIAN_MUTU (6)
+
+        False otherwise (blocks non-PIC or wrong status tikets from being completed).
+
+        Queries:
+        - TiketPIC for active PMDE assignment
+        - Checks tiket.status on get_object()
+        """
         tiket = self.get_object()
         return (
             TiketPIC.objects.filter(
@@ -37,12 +70,25 @@ class SelesaikanTiketView(LoginRequiredMixin, UserPMDERequiredMixin, UpdateView)
         )
 
     def get_template_names(self):
-        """Return modal template for AJAX requests."""
+        """Return modal template for AJAX requests, full page otherwise.
+
+        AJAX requests (X-Requested-With=XMLHttpRequest) get a modal dialog
+        template for inline display, while regular requests get full page.
+        """
         if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return ['tiket/selesaikan_tiket_modal_form.html']
         return [self.template_name]
 
     def get_context_data(self, **kwargs):
+        """Build context with tiket information for the completion form.
+
+        Populates context with:
+        - context['form_action']: URL for form submission
+        - context['page_title']: Display title with tiket number
+        - context['tiket']: The tiket being completed
+
+        Used by both single-tiket views and batch operations.
+        """
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('selesaikan_tiket', kwargs={'pk': self.object.pk})
         context['page_title'] = f'Selesaikan Tiket - {self.object.nomor_tiket}'
@@ -50,7 +96,24 @@ class SelesaikanTiketView(LoginRequiredMixin, UserPMDERequiredMixin, UpdateView)
         return context
 
     def form_valid(self, form):
-        """Handle form submission to complete tiket with QC information."""
+        """Handle form submission: finalize tiket with QC information.
+
+        Within transaction:
+        1. Set tiket.status to STATUS_SELESAI
+        2. Create TiketAction with PENGENDALIAN_MUTU action (records QC phase with counts)
+        3. Create TiketAction with SELESAI action (marks final completion)
+        4. Return JsonResponse (AJAX) or redirect with success message
+
+        QC Information Captured:
+        - sudah_qc: Count of records that have undergone QC
+        - lolos_qc: Count of records that passed QC
+        - tidak_lolos_qc: Count of records that failed QC
+        - qc_c: QC C flag or count
+
+        Returns:
+        - JsonResponse {'success': True/False, 'message': ...} for AJAX
+        - Redirect to tiket detail for non-AJAX requests
+        """
         try:
             with transaction.atomic():
                 now = datetime.now()
@@ -100,7 +163,11 @@ class SelesaikanTiketView(LoginRequiredMixin, UserPMDERequiredMixin, UpdateView)
                 return self.form_invalid(form)
 
     def form_invalid(self, form):
-        """Return form errors for AJAX requests."""
+        """Return validation errors as JSON for AJAX requests.
+
+        Handles both AJAX (returns JsonResponse with form errors) and
+        non-AJAX requests (returns parent form_invalid response).
+        """
         if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': False,
@@ -110,4 +177,9 @@ class SelesaikanTiketView(LoginRequiredMixin, UserPMDERequiredMixin, UpdateView)
         return super().form_invalid(form)
 
     def get_success_url(self):
+        """Redirect to tiket detail page after successful completion.
+
+        User is redirected back to view the tiket with final SELESAI status
+        and both audit trail entries (PENGENDALIAN_MUTU and SELESAI actions).
+        """
         return reverse('tiket_detail', kwargs={'pk': self.object.pk})

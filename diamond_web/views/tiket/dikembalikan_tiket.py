@@ -20,13 +20,45 @@ from ..mixins import UserPIDERequiredMixin
 
 
 class DikembalikanTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateView):
-    """View for returning a tiket by PIDE (Dikembalikan)."""
+    """Allow PIDE PICs to return/reject tikets back to P3DE for revision.
+
+    This view enables PIDE users to reject a tiket and send it back to P3DE
+    when the data is incomplete, invalid, or needs clarification. The return
+    updates the tiket status and creates an audit trail entry.
+
+    Model: Tiket
+    Form: DikembalikanTiketForm (accepts return reason/notes)
+    Template: tiket/dikembalikan_tiket_form.html or modal variant for AJAX
+
+    Workflow Step: PIDE can return tiket to P3DE during identification/analysis phase
+
+    Access Control:
+    - Requires @login_required
+    - Requires UserPIDERequiredMixin (user must be in user_pide group)
+    - Requires test_func() - user must be ACTIVE PIDE PIC for this tiket
+
+    Side Effects on Form Submission:
+    - Tiket.status set to STATUS_DIKEMBALIKAN (returned)
+    - Tiket.tgl_dikembalikan set to current datetime
+    - TiketAction created with:
+        - action: TiketActionType.DIKEMBALIKAN
+        - catatan: User-provided return reason
+        - timestamp: Current datetime
+    - Notification objects created for all active P3DE PICs for this tiket
+    """
     model = Tiket
     form_class = DikembalikanTiketForm
     template_name = 'tiket/dikembalikan_tiket_form.html'
     
     def test_func(self):
-        """Check if user is active PIC PIDE for this tiket"""
+        """Verify user is an ACTIVE PIDE PIC for this tiket.
+
+        Returns True only if user is actively assigned to this tiket with
+        PIDE role, False otherwise (blocks non-PIC users from editing).
+
+        Query:
+        - Filters TiketPIC by id_tiket, id_user, active=True, role=PIDE
+        """
         tiket = self.get_object()
         return TiketPIC.objects.filter(
             id_tiket=tiket,
@@ -36,12 +68,25 @@ class DikembalikanTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
         ).exists()
 
     def get_template_names(self):
-        """Return modal template for AJAX requests."""
+        """Return modal template for AJAX requests, full page otherwise.
+
+        AJAX requests (X-Requested-With=XMLHttpRequest) get a modal dialog
+        template for inline display, while regular requests get full page.
+        """
         if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return ['tiket/dikembalikan_tiket_modal_form.html']
         return [self.template_name]
 
     def get_context_data(self, **kwargs):
+        """Build context with tiket information for the return form.
+
+        Populates context with:
+        - context['form_action']: URL for form submission
+        - context['page_title']: Display title with tiket number
+        - context['tiket']: The tiket being returned
+
+        Used by both single-tiket views and batch operations.
+        """
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('dikembalikan_tiket', kwargs={'pk': self.object.pk})
         context['page_title'] = f'Kembalikan Tiket - {self.object.nomor_tiket}'
@@ -49,7 +94,23 @@ class DikembalikanTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
         return context
 
     def form_valid(self, form):
-        """Handle form submission to return tiket and notify P3DE."""
+        """Handle form submission: update tiket status and notify P3DE.
+
+        Within transaction:
+        1. Set tiket.status to STATUS_DIKEMBALIKAN
+        2. Set tiket.tgl_dikembalikan to current datetime
+        3. Create TiketAction record with return reason (catatan)
+        4. Query all active P3DE PICs assigned to tiket
+        5. Create Notification for each P3DE PIC with formatted message
+        6. Return JsonResponse (AJAX) or redirect with success message
+
+        Raises:
+        - Exception handlers catch any errors and return error responses
+
+        Returns:
+        - JsonResponse {'success': True/False, 'message': ...} for AJAX
+        - Redirect to tiket detail for non-AJAX requests
+        """
         try:
             with transaction.atomic():
                 now = datetime.now()
@@ -127,7 +188,11 @@ class DikembalikanTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
                 return self.form_invalid(form)
 
     def form_invalid(self, form):
-        """Return form errors for AJAX requests."""
+        """Return validation errors as JSON for AJAX requests.
+
+        Handles both AJAX (returns JsonResponse with form errors) and
+        non-AJAX requests (returns parent form_invalid response).
+        """
         if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': False,
@@ -137,5 +202,9 @@ class DikembalikanTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
         return super().form_invalid(form)
 
     def get_success_url(self):
-        """Redirect back to tiket detail after saving."""
+        """Redirect to tiket detail page after successful return.
+
+        User is redirected back to view the tiket with updated status
+        and the new audit trail entry (TiketAction).
+        """
         return reverse('tiket_detail', kwargs={'pk': self.object.pk})
