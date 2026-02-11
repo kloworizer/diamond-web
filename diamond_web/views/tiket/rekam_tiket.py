@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta
 from django.urls import reverse
 from django.contrib import messages
+from django.contrib.auth.models import Group
 from django.db import transaction
 from django.db.models import Q
 from django.views.generic import CreateView
@@ -27,11 +28,38 @@ logger = logging.getLogger(__name__)
 
 
 class ILAPPeriodeDataAPIView(View):
-    """API view to fetch periode jenis data for a specific ILAP."""
+    """AJAX API endpoint to fetch available periode jenis data for an ILAP.
+
+    Returns a JSON array of periode data entries that meet all active criteria:
+    - PIDE has active Durasi Jatuh Tempo (deadline duration)
+    - PMDE has active Durasi Jatuh Tempo
+    - User has permission to access the ILAP (P3DE PICs only see their ILAPs)
+
+    HTTP Method: GET
+    URL Parameter: ilap_id (ILAP primary key)
+
+    Query Parameters:
+    - Filters PeriodeJenisData by:
+      * id_sub_jenis_data_ilap__id_ilap_id = ilap_id
+      * Active PIDE durasi (start_date <= today, end_date null or >= today)
+      * Active PMDE durasi (start_date <= today, end_date null or >= today)
+    - Applies user access control via get_active_p3de_ilap_ids (non-admin users)
+    - Uses select_related for optimization on ILAP, kategori, kategori_wilayah, jenis_tabel
+
+    Returns JSON with success flag and data array containing:
+    - id, nama_ilap, kategori_ilap, kategori_wilayah
+    - jenis_tabel, jenis_prioritas, klasifikasi, deskripsi_periode
+    - pic_p3de, pic_pide, pic_pmde (comma-separated active PICs)
+
+    Side Effects:
+    - Queries PIC table to fetch current active PICs for each role
+    - Queries KlasifikasiJenisData for classification text
+    - Queries JenisPrioritasData for priority flag
+    - Logs errors if query fails for individual records
+    """
     
     def get(self, request, ilap_id):
         try:
-            from django.contrib.auth.models import Group
             from datetime import datetime
             
             today = datetime.now().date()
@@ -175,7 +203,25 @@ class ILAPPeriodeDataAPIView(View):
 
 
 class CheckJenisPrioritasAPIView(View):
-    """API view to check if jenis prioritas data exists for a given jenis data and tahun."""
+    """AJAX API endpoint to check if jenis prioritas data exists for a sub jenis data.
+
+    Used during tiket creation to determine if priority data exists for the
+    selected sub jenis data and tahun (year), which may affect workflow or
+    display of additional fields.
+
+    HTTP Method: GET
+    URL Parameters:
+    - jenis_data_id: Sub jenis data identifier (e.g., 'KM0330101')
+    - tahun: Year (e.g., '2026')
+
+    Returns JSON with success flag and has_prioritas boolean.
+
+    Database Queries:
+    - Filters JenisPrioritasData by:
+        * id_sub_jenis_data_ilap__id_sub_jenis_data = jenis_data_id
+        * tahun = tahun (as string)
+    - Returns existence check result (no full object needed)
+    """
     
     def get(self, request, jenis_data_id, tahun):
         try:
@@ -200,7 +246,32 @@ class CheckJenisPrioritasAPIView(View):
 
 
 class CheckTiketExistsAPIView(View):
-    """API view to check if tiket already exists for sub jenis data, periode, and tahun."""
+    """AJAX API endpoint to check for existing tikets with same data signature.
+
+    Prevents duplicate tiket creation by checking if a tiket already exists
+    for the same sub jenis data, periode (month), and tahun (year) combination.
+
+    HTTP Method: GET
+    Query Parameters:
+    - periode_data_id: PeriodeJenisData ID
+    - periode: Period/month number (int)
+    - tahun: Year (int)
+
+    Returns JSON with success flag, exists boolean, and nomor_tiket list of
+    any existing tikets with the same signature.
+
+    Database Queries:
+    - Fetches PeriodeJenisData and extracts id_sub_jenis_data
+    - Queries Tiket where:
+        * id_periode_data__id_sub_jenis_data_ilap__id_sub_jenis_data = id_sub_jenis_data
+        * periode = periode
+        * tahun = tahun
+    - Returns list of existing nomor_tiket values for duplicate checking
+
+    Raises:
+    - Returns 400 if required parameters missing
+    - Returns 400 if PeriodeJenisData not found
+    """
 
     def get(self, request):
         try:
@@ -228,7 +299,36 @@ class CheckTiketExistsAPIView(View):
 
 
 class PreviewNomorTiketAPIView(View):
-    """API view to preview generated nomor tiket based on selected periode data."""
+    """AJAX API endpoint to preview generated tiket nomor before creation.
+
+    Generates and returns a preview of the tiket number (nomor_tiket) that
+    will be assigned based on the selected periode data. Uses format:
+    <id_sub_jenis_data><YYMMDD><sequence>
+
+    HTTP Method: GET
+    Query Parameters:
+    - periode_data_id: PeriodeJenisData ID
+
+    Nomor Tiket Format:
+    - YYMMDD: Current date formatted as year-month-day (2-digit year)
+    - sequence: 3-digit zero-padded counter (001, 002, ...)
+    - Example: 'KM0330101260211001' = KM0330101 + 260211 + 001
+
+    Returns JSON with success flag and nomor_tiket preview string.
+
+    Database Queries:
+    - Fetches PeriodeJenisData with select_related for optimization
+    - Counts existing Tiket records with same nomor_tiket prefix
+    - Uses COUNT to determine next sequence number
+
+    Side Effects:
+    - Uses current datetime for YYMMDD generation
+    - Queries database to calculate next sequence number
+
+    Raises:
+    - Returns 400 if periode_data_id missing
+    - Returns 400 if PeriodeJenisData not found
+    """
 
     def get(self, request):
         try:
@@ -252,16 +352,65 @@ class PreviewNomorTiketAPIView(View):
 
 
 class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKwargsMixin, CreateView):
-    """Create view for Rekam Tiket workflow step."""
+    """P3DE workflow step to register/record new tiket (first step).
+
+    This view allows P3DE users to create new tikets by selecting data source
+    (ILAP), sub jenis data, period, and year. The creation generates a unique
+    nomor_tiket and automatically assigns all relevant PICs (P3DE, PIDE, PMDE).
+
+    Model: Tiket
+    Form: TiketForm (collects id_periode_data, periode, tahun, id_jenis_prioritas_data)
+    Template: tiket/rekam_tiket_form.html
+
+    Workflow Step: Initial tiket registration (DIREKAM status)
+
+    Access Control:
+    - Requires @login_required
+    - Requires UserP3DERequiredMixin (user must be in user_p3de group)
+    - Requires UserFormKwargsMixin (passes user to form for ILAP filtering)
+    - User must have active P3DE PIC assignment for selected ILAP/sub jenis data
+
+    Side Effects on Form Submission:
+    - Tiket creation within transaction:
+        - nomor_tiket auto-generated: <sub_jenis_data><YYMMDD><sequence>
+        - status set to STATUS_DIREKAM
+        - id_durasi_jatuh_tempo_pide and _pmde assigned from PeriodeJenisData
+        - id_jenis_prioritas_data assigned if exists for year
+        - tgl_diterima and tgl_mulai_data set from form
+    - TiketAction created with DIREKAM action type (base timestamp)
+    - TiketPIC assignments for all active PICs:
+        - Current user added if not already P3DE PIC
+        - All active P3DE, PIDE, PMDE PICs from PIC table assigned
+    - PICActionType.DITAMBAHKAN TiketAction created for each PIC
+    - Signals triggered for tiket creation (may send notifications)
+
+    Error Handling:
+    - Validates Durasi Jatuh Tempo exists for PIDE and PMDE (raises ValueError)
+    - Prevents creation if durasi not configured
+    - Collects form errors and re-displays on failure
+    """
     model = Tiket
     form_class = TiketForm
     template_name = 'tiket/rekam_tiket_form.html'
     
     def get_success_url(self):
-        """Redirect to detail view after successful creation."""
+        """Redirect to tiket detail page after successful creation.
+
+        User is redirected to the newly created tiket's detail view where they
+        can see all assigned PICs and the initial DIREKAM audit trail entry.
+        """
         return reverse('tiket_detail', kwargs={'pk': self.object.pk})
     
     def get_context_data(self, **kwargs):
+        """Build context with form information and workflow metadata.
+
+        Populates context with:
+        - context['form_action']: URL for form submission (tiket_rekam_create)
+        - context['page_title']: Display title "Rekam Penerimaan Data"
+        - context['workflow_step']: Identifies this as 'rekam' step in workflow
+
+        Used by template to render form and provide workflow context to user.
+        """
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('tiket_rekam_create')
         context['page_title'] = 'Rekam Penerimaan Data'
@@ -269,6 +418,27 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
         return context
 
     def form_valid(self, form):
+        """Handle form submission: create tiket with nomor_tiket and assign PICs.
+
+        Within transaction:
+        1. Generate nomor_tiket based on sub_jenis_data and current date
+        2. Set tiket.status to STATUS_DIREKAM
+        3. Assign durasi_jatuh_tempo from PeriodeJenisData (raises ValueError if missing)
+        4. Assign id_jenis_prioritas_data if exists for specified year
+        5. Save tiket object
+        6. Create TiketAction DIREKAM record (base timestamp)
+        7. Call _assign_tiket_pics to assign all P3DE, PIDE, PMDE PICs
+        8. Display success message with generated nomor_tiket
+        9. Redirect to tiket detail page
+
+        Raises:
+        - ValueError if Durasi Jatuh Tempo not configured for PIDE or PMDE
+        - All exceptions caught and added to form errors for re-display
+
+        Returns:
+        - Redirect to tiket detail on success
+        - Form with errors re-displayed on failure
+        """
         try:
             periode_jenis_data = form.cleaned_data['id_periode_data']
             id_sub_jenis_data = periode_jenis_data.id_sub_jenis_data_ilap.id_sub_jenis_data
@@ -312,6 +482,26 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
             return self.form_invalid(form)
 
     def _generate_nomor_tiket(self, id_sub_jenis_data, today):
+        """Generate unique tiket number based on sub jenis data and current date.
+
+        Format: <id_sub_jenis_data><YYMMDD><sequence>
+        Example: KM0330101 + 260211 + 001 = KM0330101260211001
+
+        Algorithm:
+        1. Create prefix from id_sub_jenis_data + YYMMDD
+        2. Count existing tikets with same prefix
+        3. Calculate sequence as count + 1, zero-padded to 3 digits
+
+        Args:
+        - id_sub_jenis_data: Sub jenis data ID (e.g., 'KM0330101')
+        - today: date object for generating YYMMDD
+
+        Returns:
+        - Generated nomor_tiket string (guaranteed unique for this prefix)
+
+        Database Query:
+        - Filters Tiket by nomor_tiket__startswith = prefix to count existing
+        """
         yymmdd = today.strftime('%y%m%d')
         nomor_tiket_prefix = f"{id_sub_jenis_data}{yymmdd}"
         count = Tiket.objects.filter(nomor_tiket__startswith=nomor_tiket_prefix).count()
@@ -319,7 +509,29 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
         return f"{nomor_tiket_prefix}{sequence}"
 
     def _set_durasi_fields(self, periode_jenis_data, today):
-        from django.contrib.auth.models import Group
+        """Assign durasi jatuh tempo (deadline) for PIDE and PMDE.
+
+        Fetches active Durasi Jatuh Tempo records for both PIDE and PMDE groups
+        from the sub jenis data ilap, validating that both exist and are currently
+        active (start_date <= today and end_date null or >= today).
+
+        Args:
+        - periode_jenis_data: PeriodeJenisData object containing sub_jenis_data_ilap
+        - today: date object for filtering active durations
+
+        Side Effects:
+        - Sets self.object.id_durasi_jatuh_tempo_pide
+        - Sets self.object.id_durasi_jatuh_tempo_pmde
+
+        Raises:
+        - ValueError if PIDE durasi not found or not active
+        - ValueError if PMDE durasi not found or not active
+        - Error message includes data type name for debugging
+
+        Database Queries:
+        - Filters DurasiJatuhTempo by seksi (PIDE/PMDE groups) and date range
+        - Uses first() to get single active record (assumes one active per group)
+        """
 
         pide_group = Group.objects.get(name='user_pide')
         pmde_group = Group.objects.get(name='user_pmde')
@@ -351,6 +563,34 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
         self.object.id_durasi_jatuh_tempo_pmde = durasi_pmde
 
     def _assign_tiket_pics(self, periode_jenis_data, today, base_time=None):
+        """Assign all active P3DE, PIDE, PMDE PICs to the tiket.
+
+        Performs two operations:
+        1. Adds current user as P3DE PIC if not already assigned in PIC table
+        2. Adds all active P3DE, PIDE, PMDE PICs from PIC table to TiketPIC
+
+        Args:
+        - periode_jenis_data: PeriodeJenisData for this tiket's sub_jenis_data_ilap
+        - today: date object for filtering active PIC assignments
+        - base_time: datetime to use as base for PICActionType timestamps (optional)
+
+        Side Effects:
+        - Creates TiketPIC records for each PIC assignment
+        - Creates PICActionType.DITAMBAHKAN TiketAction for each PIC
+        - Timestamps for PIC actions are base_time + offset (1-based index)
+          to ensure ordering after DIREKAM action and prevent duplicates
+
+        Database Queries:
+        - Checks if current user is P3DE PIC in PIC table
+        - Filters PIC table for active (start_date <= today, end_date null) assignments
+        - Queries by tipe (P3DE, PIDE, PMDE) and id_sub_jenis_data_ilap
+        - Iterates through all matches to create TiketPIC and TiketAction records
+
+        Timestamp Logic:
+        - If base_time provided: action_time = base_time + timedelta(microseconds=1+idx)
+        - If base_time not provided: action_time = datetime.now()
+        - Ensures PIC actions always ordered after DIREKAM action in audit trail
+        """
         current_user_is_p3de_pic = PIC.objects.filter(
             tipe=PIC.TipePIC.P3DE,
             id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap,

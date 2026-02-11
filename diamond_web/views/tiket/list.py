@@ -14,10 +14,28 @@ from ...constants.tiket_status import STATUS_LABELS
 
 
 class TiketListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
-    """Display list of all tikets with DataTables integration."""
+    """Display a paginated list of all tikets with DataTables integration.
+
+    This view renders a template with a DataTables table that displays tikets
+    accessible to the logged-in user. Access control is enforced via
+    `test_func()` using the `can_access_tiket_list` helper to verify the user
+    has permission to view tiket listings (admins, superusers, or users with
+    active TiketPIC assignments).
+
+    Template: tiket/list.html
+
+    Context:
+    - No additional context variables beyond standard Django template context.
+      DataTables initialization is handled client-side via tiket_data endpoint.
+    """
     template_name = 'tiket/list.html'
 
     def test_func(self):
+        """Verify the user is allowed to access tiket listings.
+
+        Returns True if user is admin, superuser, or has an active TiketPIC
+        assignment, False otherwise.
+        """
         return can_access_tiket_list(self.request.user)
 
 
@@ -25,7 +43,44 @@ class TiketListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
 @user_passes_test(lambda u: can_access_tiket_list(u))
 @require_GET
 def tiket_data(request):
-    """Server-side processing for DataTables."""
+    """DataTables server-side endpoint for tiket listing with dynamic filtering.
+
+    This AJAX endpoint handles server-side processing for DataTables, including
+    pagination, sorting, and column-based filtering. Non-admin users only see
+    tikets where they are assigned as a TiketPIC.
+
+    GET Parameters (DataTables standard):
+    - draw: DataTables draw counter (for synchronizing responses with requests)
+    - start: Record offset for pagination (default 0)
+    - length: Number of records per page (default 10)
+    - columns_search[]: Array of search values for each column:
+        [0] nomor_tiket: Filter by ticket number (partial match)
+        [1] nama_sub_jenis_data: Filter by sub-data type name
+        [2] periode: Filter by period value
+        [3] tahun: Filter by year value
+        [4] status: Filter by tiket status
+    - order[0][column]: Index of column to sort by
+    - order[0][dir]: Sort direction (asc/desc)
+
+    Returns JSON with keys:
+    - draw: Echo of request draw parameter
+    - recordsTotal: Total count before filtering
+    - recordsFiltered: Total count after filtering
+    - data: Array of tiket objects with fields:
+        id, nomor_tiket, nama_ilap, nama_sub_jenis_data,
+        periode_formatted, status, actions (view button)
+
+    Side Effects/Database Queries:
+    - Queries Tiket with select_related('id_periode_data__id_sub_jenis_data_ilap')
+    - Non-admins: filters by TiketPIC.id_user=request.user
+    - Formats periode display based on type (daily/weekly/monthly/etc)
+    - Joins related ILAP and sub-jenis-data tables for display names
+
+    Access Control:
+    - Requires @login_required
+    - Requires can_access_tiket_list permission
+    - @require_GET enforces GET-only access
+    """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
