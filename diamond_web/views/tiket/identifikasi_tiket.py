@@ -16,11 +16,44 @@ from ..mixins import UserPIDERequiredMixin
 
 
 class IdentifikasiTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateView):
-    """View for marking a tiket as identified by PIDE (Identifikasi)."""
+    """Allow PIDE PICs to mark tikets as identified and start analysis.
+
+    This view enables PIDE users to transition a tiket to IDENTIFIKASI status,
+    marking the start of the identification/data analysis phase. Updates tiket
+    status and creates an audit trail entry.
+
+    Model: Tiket
+    Template: Tiket detail view (redirects after POST)
+
+    Workflow Step: PIDE marks tiket as identified after receiving it from P3DE
+
+    Access Control:
+    - Requires @login_required
+    - Requires UserPIDERequiredMixin (user must be in user_pide group)
+    - Requires test_func() - user must be ACTIVE PIDE PIC AND tiket in DIKIRIM_KE_PIDE status
+
+    Side Effects on Submission:
+    - Tiket.status set to STATUS_IDENTIFIKASI
+    - TiketAction created with:
+        - action: TiketActionType.IDENTIFIKASI
+        - catatan: 'Mulai proses identifikasi' (fixed message)
+        - timestamp: Current datetime
+    """
     model = Tiket
     
     def test_func(self):
-        """Check if user is active PIC PIDE for this tiket and status is 4 (Dikirim ke PIDE)"""
+        """Verify user is ACTIVE PIDE PIC and tiket is in DIKIRIM_KE_PIDE status.
+
+        Returns True only if:
+        1. User is actively assigned to this tiket with PIDE role
+        2. Tiket.status == 4 (STATUS_DIKIRIM_KE_PIDE)
+
+        False otherwise (blocks non-PIC or wrong status tikets from being updated).
+
+        Queries:
+        - TiketPIC for active PIDE assignment
+        - Checks tiket.status on get_object()
+        """
         tiket = self.get_object()
         return (
             TiketPIC.objects.filter(
@@ -33,7 +66,15 @@ class IdentifikasiTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
         )
 
     def post(self, request, *args, **kwargs):
-        """Handle POST request to mark tiket as identified."""
+        """Handle POST request: mark tiket as IDENTIFIKASI and create audit entry.
+
+        Updates tiket.status to STATUS_IDENTIFIKASI and creates TiketAction record.
+        Supports both AJAX (returns JsonResponse) and non-AJAX (redirects).
+
+        Returns:
+        - JsonResponse {'success': True, 'message': ...} for AJAX requests
+        - Redirect to tiket detail for non-AJAX requests
+        """
         tiket = self.get_object()
         now = datetime.now()
 
@@ -62,5 +103,9 @@ class IdentifikasiTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
         return super().post(request, *args, **kwargs)
 
     def get_success_url(self):
-        """Redirect back to tiket detail after saving."""
+        """Redirect to tiket detail page after successful status update.
+
+        User is redirected back to view the tiket with updated status
+        and the new audit trail entry (TiketAction).
+        """
         return reverse('tiket_detail', kwargs={'pk': self.object.pk})

@@ -31,13 +31,38 @@ from ...constants.tiket_action_types import (
 
 
 class TiketDetailView(LoginRequiredMixin, DetailView):
-    """Detail view for viewing a tiket."""
+    """Display complete details of a single tiket with audit trail and related data.
+
+    This view retrieves and displays a single Tiket record with all associated
+    information including PICs, actions (audit trail), backup data, and
+    tanda terima (receipt) items. It enforces permission checking to ensure
+    only authorized users can view a tiket (admins, superusers, or assigned PICs).
+
+    Model: Tiket
+    Template: tiket/tiket_detail.html
+    Context Object Name: tiket
+
+    Access Control:
+    - Requires @login_required (Django authentication)
+    - Users must be superuser, admin, OR have a TiketPIC assignment for the tiket
+    - PermissionDenied is raised if user is not authorized
+    """
     model = Tiket
     template_name = 'tiket/tiket_detail.html'
     context_object_name = 'tiket'
 
     def get_object(self, queryset=None):
-        """Override to ensure user is a PIC for this tiket (active or inactive) or is admin"""
+        """Retrieve tiket and verify user has permission to view it.
+
+        Permission Logic:
+        - Superuser: Always allowed
+        - Admin group member: Always allowed
+        - Other users: Must have a TiketPIC record (active or inactive) for this tiket
+
+        Raises:
+        - PermissionDenied: If user is not superuser/admin and has no TiketPIC
+        - Http404: If tiket PK not found (via parent get_object)
+        """
         obj = super().get_object(queryset)
         # Allow access if user is superuser or admin
         if self.request.user.is_superuser or self.request.user.groups.filter(name='admin').exists():
@@ -49,7 +74,21 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
 
     
     def _format_periode(self, deskripsi_periode, periode, tahun):
-        """Format periode based on deskripsi periode type."""
+        """Format periodo description into human-readable date range string.
+
+        Converts numeric periodo values and descriptions into readable format.
+        For example, converts (Bulanan, 3, 2026) -> 'Maret 2026' or
+        (Semester, 2, 2026) -> 'Semester 2 2026'.
+
+        Args:
+        - deskripsi_periode (str): Period type (Harian, Mingguan, Bulanan, 
+          Semester, Triwulanan, etc.)
+        - periode (int): Numeric period value (day, week, month number, etc.)
+        - tahun (int): Year value
+
+        Returns:
+        - str: Human-readable period string (e.g., 'Januari 2026', 'Minggu 5 2026')
+        """
         bulan_names = [
             'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
             'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
@@ -77,6 +116,40 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
             return f'{periode} - {tahun}'
     
     def get_context_data(self, **kwargs):
+        """Build comprehensive context data for the tiket detail template.
+
+        This method assembles all related tiket information including:
+        - ILAP details (name, category, region)
+        - Data classification information
+        - Related PICs (persons in charge) with role badges
+        - Audit trail of all tiket actions/events
+        - Backup data records
+        - Tanda terima (receipt) items
+
+        Database Queries/Side Effects:
+        - Queries KlasifikasiJenisData with select_related('id_klasifikasi_tabel')
+        - Queries TiketAction with select_related('id_user'), ordered by timestamp
+        - Queries TiketPIC with select_related('id_user'), ordered by role
+        - Queries BackupData with select_related('id_user')
+        - Queries DetilTandaTerima with related ILAP and perekam user data
+        - Queries PIC to check if each TiketPIC user has active PIC status
+
+        Context Variables Added:
+        - tiket: The Tiket instance
+        - ilap_info: Dict with ILAP, category, region, data type, classifications
+        - periode_formatted: Human-readable period string
+        - tiket_actions: Ordered list of all tiket action records with badges
+        - tiket_pics: List of assigned PICs with role badges and active status
+        - backup_list: All backup data records for the tiket
+        - tanda_terima_items: All receipt items linked to this tiket
+        - status_label: Human-readable status string
+        - status_badge_class: CSS class for status badge styling
+        - page_title: Page title for browser/UI
+        - user_is_active_pic_p3de/pide/pmde: Boolean flags for current user's role
+
+        Returns:
+        - dict: Updated context ready for template rendering
+        """
         context = super().get_context_data(**kwargs)
         
         # Get related data
