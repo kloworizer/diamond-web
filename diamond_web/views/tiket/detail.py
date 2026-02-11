@@ -150,6 +150,7 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         Returns:
         - dict: Updated context ready for template rendering
         """
+        context = super().get_context_data(**kwargs)
         
         # Get related data
         periode_jenis_data = self.object.id_periode_data
