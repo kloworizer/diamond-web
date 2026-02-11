@@ -3,9 +3,9 @@
 
 # Django Settings
 SECRET_KEY=django-insecure-wsgi-debug-key-change-in-production
-DEBUG=True
+DEBUG=true
 ENVIRONMENT=wsgi
-ALLOWED_HOSTS=*
+ALLOWED_HOSTS=127.0.0.1,localhost,*
 
 # CSRF Configuration
 CSRF_TRUSTED_ORIGINS=http://localhost,http://127.0.0.1
