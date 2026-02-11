@@ -38,3 +38,5 @@ htmlcov/
 # Migrations (optional, if you want to ignore them)
 # **/migrations/*.pyc
 # **/migrations/__pycache__/
+
+packages/
