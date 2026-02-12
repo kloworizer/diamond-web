@@ -29,33 +29,113 @@
             text-decoration: none;
             color: inherit;
         }
-        .notification-item:last-child { border-bottom: none; }
-        .notification-item:hover { background: #f6fbff; }
 
-        .notif-icon { width: 44px; height: 44px; border-radius: 50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:#e9f7ff; }
-        .notif-icon .ri-mail-open-line { color: #0d6efd; font-size: 1.15rem; }
+        .notification-item:last-child {
+            border-bottom: none;
+        }
 
-        .notif-content { flex:1; min-width:0; }
-        .notif-header { display:flex; justify-content:space-between; gap:0.5rem; align-items:flex-start; }
-        .notif-title { font-size:0.95rem; margin:0; color:#0b1220; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .notif-time { font-size:0.72rem; color:#6c757d; white-space:nowrap; }
+        .notification-item:hover {
+            background: #f6fbff;
+        }
 
-        .notif-message { margin-top:0.25rem; color:#495057; font-size:0.85rem; overflow-wrap:anywhere; }
+        .notif-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            background: #e9f7ff;
+        }
+
+        .notif-icon .ri-mail-open-line {
+            color: #0d6efd;
+            font-size: 1.15rem;
+        }
+
+        .notif-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .notif-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+            align-items: flex-start;
+        }
+
+        .notif-title {
+            font-size: 0.95rem;
+            margin: 0;
+            color: #0b1220;
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .notif-time {
+            font-size: 0.72rem;
+            color: #6c757d;
+            white-space: nowrap;
+        }
+
+        .notif-message {
+            margin-top: 0.25rem;
+            color: #495057;
+            font-size: 0.85rem;
+            overflow-wrap: anywhere;
+        }
 
         @media (max-width: 992px) {
-            .notifications-dropdown { min-width: 340px; max-width: 560px; }
-            .notif-icon { width:36px; height:36px; }
-            .notif-icon .ri-mail-open-line { font-size:1rem; }
-            .notif-title { font-size:0.92rem; }
-            .notif-message { font-size:0.82rem; }
+            .notifications-dropdown {
+                min-width: 340px;
+                max-width: 560px;
+            }
+
+            .notif-icon {
+                width: 36px;
+                height: 36px;
+            }
+
+            .notif-icon .ri-mail-open-line {
+                font-size: 1rem;
+            }
+
+            .notif-title {
+                font-size: 0.92rem;
+            }
+
+            .notif-message {
+                font-size: 0.82rem;
+            }
         }
 
         @media (max-width: 576px) {
-            .notifications-dropdown { min-width: 220px; max-width:320px; }
-            .notification-item { padding:0.45rem 0.5rem; gap:0.5rem; }
-            .notif-icon { width:32px; height:32px; }
-            .notif-title { font-size:0.9rem; }
-            .notif-message { font-size:0.78rem; }
+            .notifications-dropdown {
+                min-width: 220px;
+                max-width: 320px;
+            }
+
+            .notification-item {
+                padding: 0.45rem 0.5rem;
+                gap: 0.5rem;
+            }
+
+            .notif-icon {
+                width: 32px;
+                height: 32px;
+            }
+
+            .notif-title {
+                font-size: 0.9rem;
+            }
+
+            .notif-message {
+                font-size: 0.78rem;
+            }
         }
 
         /* Ensure links inside notification messages don't create their own hover/background
@@ -65,12 +145,19 @@
             text-decoration: underline;
             background: transparent;
         }
+
         .notification-item .notif-message a:hover,
         .notification-item .notif-message a:focus {
             color: #0b5ed7;
             text-decoration: underline;
             background: transparent;
         }
+    </style>
+    <style>
+        /* make page stretch to full viewport and keep footer at bottom */
+        html, body { height: 100%; }
+        body { min-height: 100vh; display: flex; flex-direction: column; }
+        .content-container { flex: 1 0 auto; }
     </style>
 </head>
 
@@ -83,12 +170,14 @@
     </div>
 
     <!-- Django Messages Data (for toasts) -->
-    <div style="display:none;" data-messages='[{% for message in messages %}{"level": "{{ message.level_tag }}", "message": "{{ message|escapejs }}", "tags": "{{ message.tags }}"}{% if not forloop.last %},{% endif %}{% endfor %}]' id="messagesData"></div>
+    <div style="display:none;"
+        data-messages='[{% for message in messages %}{"level": "{{ message.level_tag }}", "message": "{{ message|escapejs }}", "tags": "{{ message.tags }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'
+        id="messagesData"></div>
 
-    <div class="container">
+    <main class="content-container container">
         {% block content %}
         {% endblock %}
-    </div>
+    </main>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- jQuery and DataTables JS (imported for future integration) -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -126,7 +215,7 @@
         }
 
         // Display Django messages as toasts
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const messagesJson = document.querySelector('[data-messages]');
             if (messagesJson) {
                 try {
@@ -159,7 +248,7 @@
         const csrftoken = getCookie('csrftoken');
 
         // Keep-alive behavior & session warning modal (automatic keep-alive + server-side logout on expiry)
-        (function() {
+        (function () {
             const SESSION_SECONDS = 30 * 60; // must match server SESSION_COOKIE_AGE
             const WARNING_SECONDS = 60; // show warning 60s before expiry
             const KEEP_ALIVE_INTERVAL = 10 * 60 * 1000; // POST keep-alive every 10 minutes
@@ -182,7 +271,7 @@
                     onShowWarning();
                 }
                 timeoutId = setTimeout(onSessionExpired, msUntilExpiry);
-                
+
                 // Start/restart automatic keep-alive POSTs
                 startKeepAliveInterval();
             }
@@ -230,7 +319,7 @@
             function onShowWarning() {
                 if (modalShown) return;
                 modalShown = true;
-                
+
                 // show modal with countdown
                 const modalHtml = `
                 <div class="modal fade" id="sessionWarningModal" tabindex="-1" aria-hidden="true">
@@ -252,7 +341,7 @@
                 `;
                 document.body.insertAdjacentHTML('beforeend', modalHtml);
                 const modalEl = document.getElementById('sessionWarningModal');
-                const bsModal = new bootstrap.Modal(modalEl, {backdrop: 'static'});
+                const bsModal = new bootstrap.Modal(modalEl, { backdrop: 'static' });
                 bsModal.show();
 
                 const countdownEl = document.getElementById('sessionCountdown');
@@ -277,7 +366,7 @@
                 // clear timers and call server-side logout endpoint, then redirect
                 clearTimers();
                 showToast('Sesi Anda telah berakhir. Keluar.', 'info', 'Sesi');
-                
+
                 // POST to session-expired endpoint to log out server-side
                 fetch('{% url "session_expired" %}', {
                     method: 'POST',
@@ -305,20 +394,20 @@
                 scheduleTimers();
             }
 
-            ['mousemove','mousedown','keydown','touchstart','scroll'].forEach(evt => document.addEventListener(evt, onUserActivity, {passive: true}));
+            ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evt => document.addEventListener(evt, onUserActivity, { passive: true }));
 
             // Initialize timers
             scheduleTimers();
 
             // Global AJAX / fetch wrapper to handle 401 responses and redirect to login
             const origFetch = window.fetch;
-            window.fetch = function() {
+            window.fetch = function () {
                 return origFetch.apply(this, arguments).then(response => {
                     if (response.status === 401 || response.status === 403) {
                         // Session likely expired; redirect to login preserving next
                         const next = encodeURIComponent(window.location.pathname + window.location.search);
                         window.location.href = '/accounts/login/?next=' + next;
-                        return Promise.reject(new Error('Unauthorized')); 
+                        return Promise.reject(new Error('Unauthorized'));
                     }
                     return response;
                 });
@@ -327,7 +416,7 @@
         })();
 
         // Inactivity timeout (30 minutes) - fallback client side for pages without modal
-        (function() {
+        (function () {
             const TIMEOUT_SECONDS = 30 * 60; // 30 minutes
             let timerId;
 
@@ -361,7 +450,7 @@
 
             // Events that count as activity
             const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
-            events.forEach(evt => document.addEventListener(evt, onUserEvent, {passive: true}));
+            events.forEach(evt => document.addEventListener(evt, onUserEvent, { passive: true }));
 
             // Start timer when page loads
             document.addEventListener('DOMContentLoaded', startTimer);
@@ -404,6 +493,15 @@
             }
         }, false);
     </script>
+
+    <footer class="mt-4 py-2 bg-white border-top">
+        <div class="container text-center small text-muted">
+            Commit: {{ git_commit|default:"n/a" }}
+            {% if git_commit_info.branch %} &middot; {{ git_commit_info.branch }}{% endif %}
+            {% if git_commit_info.date %} &middot; {{ git_commit_info.date }}{% endif %}
+        </div>
+    </footer>
+
     {% block scripts %}{% endblock %}
 </body>
 
