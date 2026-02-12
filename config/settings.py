@@ -279,5 +279,15 @@ LOGGING = {
             "level": "INFO" if not DEBUG else "DEBUG",
             "propagate": False,
         },
+        "django.utils.autoreload": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
     },
 }
