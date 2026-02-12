@@ -95,6 +95,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "diamond_web.context_processors.notifications",
+                "diamond_web.context_processors.git_commit",
             ],
         },
     },
