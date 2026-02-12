@@ -280,6 +280,11 @@ LOGGING = {
             "level": "INFO" if not DEBUG else "DEBUG",
             "propagate": False,
         },
+        "django.template": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
         "django.utils.autoreload": {
             "handlers": ["console"],
             "level": "INFO",
