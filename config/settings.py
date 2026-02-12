@@ -234,9 +234,16 @@ if DEBUG:
     except Exception:
         pass
 
-    # Only show toolbar when DEBUG is True and the request comes from an internal IP
+    # Only show toolbar when DEBUG is True and either:
+    # - request comes from an INTERNAL_IP, OR
+    # - request includes ?djdt=1, OR
+    # - DEBUG_TOOLBAR_ALWAYS env var is set to true
     DEBUG_TOOLBAR_CONFIG = {
-        "SHOW_TOOLBAR_CALLBACK": lambda request: DEBUG and request.META.get("REMOTE_ADDR") in INTERNAL_IPS,
+        "SHOW_TOOLBAR_CALLBACK": lambda request: DEBUG and (
+            (request.META.get("REMOTE_ADDR") in INTERNAL_IPS)
+            or (request.GET.get("djdt") == "1")
+            or (os.getenv("DEBUG_TOOLBAR_ALWAYS", "False").lower() == "true")
+        ),
     }
 
 # Logging configuration
