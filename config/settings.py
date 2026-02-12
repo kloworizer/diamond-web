@@ -22,6 +22,12 @@ SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-default-key-for-dev")
 
 # Debug mode
 DEBUG = os.getenv("DEBUG", "True").lower() == "true"
+import sys
+
+# Detect when Django is running tests so development-only apps (like debug_toolbar)
+# are not installed during test runs. Django sets DEBUG=False when running tests,
+# but the toolbar may still be installed from DEBUG=True in .env — avoid that.
+RUNNING_TESTS = len(sys.argv) > 1 and sys.argv[1] == "test"
 
 # Allow hosts from environment variable
 ALLOWED_HOSTS = [
@@ -51,8 +57,8 @@ INSTALLED_APPS = [
     "import_export",
 ]
 
-# Development-only apps
-if DEBUG:
+# Development-only apps (skip during test runs)
+if DEBUG and not RUNNING_TESTS:
     INSTALLED_APPS += [
         "debug_toolbar",
         "schema_graph",
@@ -68,8 +74,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-# Add debug toolbar middleware in development
-if DEBUG:
+# Add debug toolbar middleware in development (skip during test runs)
+if DEBUG and not RUNNING_TESTS:
     try:
         idx = MIDDLEWARE.index("django.middleware.security.SecurityMiddleware") + 1
     except ValueError:
@@ -205,8 +211,8 @@ else:
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
 
-# Debug toolbar configuration (development only)
-if DEBUG:
+# Debug toolbar configuration (development only; skip during test runs)
+if DEBUG and not RUNNING_TESTS:
     import socket
     import ipaddress
 
