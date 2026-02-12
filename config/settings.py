@@ -209,15 +209,18 @@ else:
 if DEBUG:
     import socket
 
-    INTERNAL_IPS = ["127.0.0.1"]
+    # Include localhost, IPv6 loopback and the server IP used in this environment.
+    INTERNAL_IPS = ["127.0.0.1", "::1", "localhost", "10.244.65.110"]
     try:
         _, _, _ips = socket.gethostbyname_ex(socket.gethostname())
-        INTERNAL_IPS += [ip[:-1] + "1" for ip in _ips]
+        # Add common host-derived addresses (adjust trailing digit heuristics)
+        INTERNAL_IPS += [ip[:-1] + "1" for ip in _ips if ip]
     except Exception:
         pass
 
+    # Only show toolbar when DEBUG is True and the request comes from an internal IP
     DEBUG_TOOLBAR_CONFIG = {
-        "SHOW_TOOLBAR_CALLBACK": lambda request: True,
+        "SHOW_TOOLBAR_CALLBACK": lambda request: DEBUG and request.META.get("REMOTE_ADDR") in INTERNAL_IPS,
     }
 
 # Logging configuration
