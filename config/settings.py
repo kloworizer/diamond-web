@@ -208,13 +208,29 @@ else:
 # Debug toolbar configuration (development only)
 if DEBUG:
     import socket
+    import ipaddress
 
-    # Include localhost, IPv6 loopback and the server IP used in this environment.
-    INTERNAL_IPS = ["127.0.0.1", "::1", "localhost", "10.244.65.110"]
+    # Base internal IPs
+    INTERNAL_IPS = ["127.0.0.1", "::1", "localhost"]
+
+    # Add any IPs specified in ALLOWED_HOSTS (if they are IPs) or resolve hostnames
+    for host in ALLOWED_HOSTS:
+        try:
+            # If host is an IP literal, add it directly
+            ipaddress.ip_address(host)
+            INTERNAL_IPS.append(host)
+        except Exception:
+            # Try resolving hostname to IPs, ignore failures
+            try:
+                resolved = socket.gethostbyname_ex(host)[2]
+                INTERNAL_IPS += [ip for ip in resolved if ip]
+            except Exception:
+                pass
+
+    # Also add addresses derived from the server hostname (helpful in some container setups)
     try:
         _, _, _ips = socket.gethostbyname_ex(socket.gethostname())
-        # Add common host-derived addresses (adjust trailing digit heuristics)
-        INTERNAL_IPS += [ip[:-1] + "1" for ip in _ips if ip]
+        INTERNAL_IPS += [ip for ip in _ips if ip]
     except Exception:
         pass
 
