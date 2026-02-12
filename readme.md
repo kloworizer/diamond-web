@@ -182,3 +182,7 @@ git pull upstream main
 
 Setelah selesai mengembangkan di branch fitur, push ke repo fork Anda dan buat pull request ke repo utama melalui GitHub.
 
+# Misc Command
+activate venv di lokal : Set-ExecutionPolicy Unrestricted -Scope Process; .\.venv\Scripts\Activate.ps1
+push dari lokal ke VM : git push work-vm main
+pull main di vm : git pull origin main
