@@ -30,3 +30,18 @@ class TandaTerimaData(models.Model):
 
     def __str__(self):
         return f"{self.nomor_tanda_terima}"
+
+    @property
+    def nama_ILAP(self):
+        return self.id_ILAP.nama_ILAP
+
+    @property
+    def daftar_jenis_data(self):
+        return ", ".join(
+            [j.nama_jenis_data for j in self.id_ILAP.jenisdataILAP_set.all()]
+        )
+
+    @property
+    def periode_data(self):
+        data = self.id_ILAP.jenisdataILAP_set.first()
+        return data.periode_data if data else None
