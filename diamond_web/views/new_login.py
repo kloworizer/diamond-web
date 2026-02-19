@@ -1,4 +1,4 @@
 from django.shortcuts import render
 
 def new_login(request):
-    return render(request, 'auth-login-creative.html')
+    return render(request, 'login/auth-login-creative.html')
