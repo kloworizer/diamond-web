@@ -12,7 +12,8 @@ class BackupData(models.Model):
         related_name="backups"
     )
     lokasi_backup = models.CharField(max_length=255, verbose_name="Lokasi Backup")
-    
+    nama_file = models.CharField(max_length=255, default='')
+
     # Audit trail
     id_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, verbose_name="Dilakukan Oleh")
 
