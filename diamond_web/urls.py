@@ -15,7 +15,10 @@ urlpatterns = [
     path('password_change/done/', auth_views.PasswordChangeDoneView.as_view(template_name='registration/change_password_done.html'), name='user_password_change_done'),
 
     # === new_login Section ===
-    # path('new-login/', views.new_login, name='new_login'), #masih eror
+    path('new_login/', views.new_login, name='new_login'),
+
+    # === Dashboard Section ===
+    path('dashboard/', views.index, name='dashboard_index'),
 
     # === P3DE Section ===
     # Kategori ILAP URLs
