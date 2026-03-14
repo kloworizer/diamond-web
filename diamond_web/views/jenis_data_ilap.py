@@ -10,7 +10,7 @@ from django.views.decorators.http import require_GET
 from ..models.jenis_data_ilap import JenisDataILAP
 from ..models.ilap import ILAP
 import re
-from ..forms.jenis_data_ilap import JenisDataILAPForm
+from ..forms.jenis_data_ilap import JenisDataILAPForm, JenisDataILAPUpdateForm
 from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, SafeDeleteMixin
 
 class JenisDataILAPListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
@@ -68,9 +68,10 @@ class JenisDataILAPUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFo
 
     Ensures the edit form is rendered and supports AJAX update flows. The
     context includes `form_action` pointing to the update URL for templates.
+    Only allows editing nama_jenis_data and nama_sub_jenis_data fields.
     """
     model = JenisDataILAP
-    form_class = JenisDataILAPForm
+    form_class = JenisDataILAPUpdateForm
     template_name = 'jenis_data_ilap/form.html'
     success_url = reverse_lazy('jenis_data_ilap_list')
     success_message = 'Jenis Data "{object}" berhasil diperbarui.'

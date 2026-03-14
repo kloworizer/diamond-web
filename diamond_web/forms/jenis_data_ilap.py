@@ -21,3 +21,18 @@ class JenisDataILAPForm(forms.ModelForm):
                 field.widget.attrs['class'] = 'form-select'
             else:
                 field.widget.attrs['class'] = 'form-control'
+
+class JenisDataILAPUpdateForm(forms.ModelForm):
+    """Form for updating existing JenisDataILAP - only allows editing nama_jenis_data and nama_sub_jenis_data"""
+    class Meta:
+        model = JenisDataILAP
+        fields = [
+            'nama_jenis_data',
+            'nama_sub_jenis_data',
+        ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Add Bootstrap classes for better styling
+        for field_name, field in self.fields.items():
+            field.widget.attrs['class'] = 'form-control'
