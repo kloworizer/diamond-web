@@ -18,6 +18,7 @@ class PeriodeJenisData(models.Model):
     )
     start_date = models.DateField(verbose_name="Start Date")
     end_date = models.DateField(null=True, blank=True, default=None, verbose_name="End Date")
+    akhir_penyampaian = models.IntegerField(verbose_name="Akhir Penyampaian")
 
     class Meta:
         verbose_name = "Periode Jenis Data"

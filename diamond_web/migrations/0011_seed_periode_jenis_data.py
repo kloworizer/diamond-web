@@ -4,11 +4,11 @@ from django.db import migrations
 
 # Sample PeriodeJenisData data
 PERIODE_JENIS_DATA_MAPPING = [
-    {"id_sub_jenis_data": "KM0330101", "periode": "Bulanan", "start_date": "2024-01-01", "end_date": None},
-    {"id_sub_jenis_data": "KM0330102", "periode": "Bulanan", "start_date": "2024-01-01", "end_date": None},
-    {"id_sub_jenis_data": "LM0030101", "periode": "Tahunan", "start_date": "2024-01-01", "end_date": None},
-    {"id_sub_jenis_data": "BI0010101", "periode": "Triwulanan", "start_date": "2024-01-01", "end_date": None},
-    {"id_sub_jenis_data": "LM0100101", "periode": "Bulanan", "start_date": "2024-01-01", "end_date": None},
+    {"id_sub_jenis_data": "KM0330101", "periode": "Bulanan", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 10},
+    {"id_sub_jenis_data": "KM0330102", "periode": "Bulanan", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 10},
+    {"id_sub_jenis_data": "LM0030101", "periode": "Tahunan", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 30},
+    {"id_sub_jenis_data": "BI0010101", "periode": "Triwulanan", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 20},
+    {"id_sub_jenis_data": "LM0100101", "periode": "Bulanan", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 10},
 ]
 
 
@@ -18,18 +18,27 @@ def seed_periode_jenis_data(apps, schema_editor):
     JenisDataILAP = apps.get_model("diamond_web", "JenisDataILAP")
     PeriodePengiriman = apps.get_model("diamond_web", "PeriodePengiriman")
     
+    # Check if akhir_penyampaian field exists
+    has_akhir_penyampaian = any(f.name == 'akhir_penyampaian' for f in PeriodeJenisData._meta.get_fields())
+    
     for item in PERIODE_JENIS_DATA_MAPPING:
         try:
             jenis_data = JenisDataILAP.objects.get(id_sub_jenis_data=item["id_sub_jenis_data"])
             periode = PeriodePengiriman.objects.get(deskripsi=item["periode"])
             
+            defaults = {
+                "start_date": item["start_date"],
+                "end_date": item["end_date"],
+            }
+            
+            # Only add akhir_penyampaian if the field exists
+            if has_akhir_penyampaian:
+                defaults["akhir_penyampaian"] = item.get("akhir_penyampaian", 0)
+            
             PeriodeJenisData.objects.get_or_create(
                 id_sub_jenis_data_ilap=jenis_data,
                 id_periode_pengiriman=periode,
-                defaults={
-                    "start_date": item["start_date"],
-                    "end_date": item["end_date"],
-                }
+                defaults=defaults
             )
         except Exception as e:
             print(f"Warning: Could not create PeriodeJenisData for {item['id_sub_jenis_data']} - {item['periode']}: {e}")
