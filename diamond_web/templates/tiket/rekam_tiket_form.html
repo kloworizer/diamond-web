@@ -85,8 +85,12 @@
                                 <p class="fw-semibold mb-0" id="info-klasifikasi">-</p>
                             </div>
                             <div class="info-group mb-2">
-                                <label class="text-muted small mb-1">Deskripsi Periode</label>
+                                <label class="text-muted small mb-1">Periode Penyampaian</label>
                                 <p class="fw-semibold mb-0" id="info-deskripsi-periode">-</p>
+                            </div>
+                            <div class="info-group mb-2">
+                                <label class="text-muted small mb-1">Periode Penerimaan</label>
+                                <p class="fw-semibold mb-0" id="info-periode-penerimaan">-</p>
                             </div>
                         </div>
                     </div>
@@ -453,14 +457,15 @@
             document.getElementById('info-jenis-tabel').textContent = selectedData.jenis_tabel || '-';
             document.getElementById('info-jenis-prioritas').textContent = selectedData.jenis_prioritas || '-';
             document.getElementById('info-klasifikasi').textContent = selectedData.klasifikasi || '-';
-            document.getElementById('info-deskripsi-periode').textContent = selectedData.deskripsi_periode || '-';
+            document.getElementById('info-deskripsi-periode').textContent = selectedData.periode_penyampaian || '-';
+            document.getElementById('info-periode-penerimaan').textContent = selectedData.periode_penerimaan || '-';
             
             document.getElementById('info-pic-p3de').textContent = selectedData.pic_p3de || '-';
             document.getElementById('info-pic-pide').textContent = selectedData.pic_pide || '-';
             document.getElementById('info-pic-pmde').textContent = selectedData.pic_pmde || '-';
 
             // Update periode options
-            updatePeriodeOptions(selectedData.deskripsi_periode);
+            updatePeriodeOptions(selectedData.periode_penyampaian);
 
             infoSection.style.display = 'block';
         }

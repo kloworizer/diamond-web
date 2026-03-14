@@ -4,4 +4,4 @@ from ..models.periode_pengiriman import PeriodePengiriman
 class PeriodePengirimanForm(forms.ModelForm):
     class Meta:
         model = PeriodePengiriman
-        fields = ['deskripsi']
+        fields = ['periode_penyampaian', 'periode_penerimaan']

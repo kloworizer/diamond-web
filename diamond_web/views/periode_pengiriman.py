@@ -133,11 +133,11 @@ def periode_pengiriman_data(request):
     GET parameters:
     - draw: DataTables draw counter.
     - start, length: paging offset and page size.
-    - columns_search[]: column-specific search values (id, deskripsi).
+    - columns_search[]: column-specific search values (id, periode_penyampaian, periode_penerimaan).
     - order[0][column], order[0][dir]: ordering index and direction.
 
     Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data` rows.
-    Each row contains: `id`, `deskripsi`, and `actions` HTML for edit/delete.
+    Each row contains: `id`, `periode_penyampaian`, `periode_penerimaan`, and `actions` HTML for edit/delete.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
@@ -151,15 +151,17 @@ def periode_pengiriman_data(request):
     if columns_search:
         if columns_search[0]:  # ID
             qs = qs.filter(id__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:  # Deskripsi
-            qs = qs.filter(deskripsi__icontains=columns_search[1])
+        if len(columns_search) > 1 and columns_search[1]:  # Periode Penyampaian
+            qs = qs.filter(periode_penyampaian__icontains=columns_search[1])
+        if len(columns_search) > 2 and columns_search[2]:  # Periode Penerimaan
+            qs = qs.filter(periode_penerimaan__icontains=columns_search[2])
 
     records_filtered = qs.count()
 
     # ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id', 'deskripsi']
+    columns = ['id', 'periode_penyampaian', 'periode_penerimaan']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -178,7 +180,8 @@ def periode_pengiriman_data(request):
     for obj in qs_page:
         data.append({
             'id': obj.id,
-            'deskripsi': obj.deskripsi,
+            'periode_penyampaian': obj.periode_penyampaian,
+            'periode_penerimaan': obj.periode_penerimaan,
             'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('periode_pengiriman_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
                        f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('periode_pengiriman_delete', args=[obj.pk])}' title='Delete'><i class='ri-delete-bin-line'></i></button>"
         })
