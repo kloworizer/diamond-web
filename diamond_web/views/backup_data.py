@@ -14,7 +14,7 @@ from ..models.tiket_pic import TiketPIC
 from ..forms.backup_data import BackupDataForm
 from ..constants.tiket_action_types import BackupActionType
 from ..constants.tiket_status import STATUS_DIKIRIM_KE_PIDE
-from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin
+from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, SafeDeleteMixin
 
 
 def create_tiket_action(tiket, user, catatan, action_type):
@@ -261,7 +261,7 @@ class BackupDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTike
         return super().post(request, *args, **kwargs)
 
 
-class BackupDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, DeleteView):
+class BackupDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, DeleteView):
     """Delete (remove) a `BackupData` record and log the action.
 
     Notes:

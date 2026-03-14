@@ -9,7 +9,7 @@ from django.views.decorators.http import require_GET
 
 from ..models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ..forms.klasifikasi_jenis_data import KlasifikasiJenisDataForm
-from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, SafeDeleteMixin
 
 class KlasifikasiJenisDataListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
     """List view for `KlasifikasiJenisData` entries.
@@ -84,7 +84,7 @@ class KlasifikasiJenisDataUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin,
         form = self.get_form()
         return self.render_form_response(form)
 
-class KlasifikasiJenisDataDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+class KlasifikasiJenisDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     """Delete view for `KlasifikasiJenisData` entries.
 
     Returns a confirmation fragment for AJAX `GET` and a JSON `redirect` on

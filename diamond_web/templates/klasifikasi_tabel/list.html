@@ -161,7 +161,16 @@
                         }
                     },
                     error: function (xhr) {
-                        showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.message) {
+                                showToast(response.message, 'danger');
+                            } else {
+                                showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                            }
+                        } catch (e) {
+                            showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                        }
                     }
                 });
             });

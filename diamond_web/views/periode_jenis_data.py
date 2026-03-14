@@ -9,7 +9,7 @@ from django.views.decorators.http import require_GET
 
 from ..models.periode_jenis_data import PeriodeJenisData
 from ..forms.periode_jenis_data import PeriodeJenisDataForm
-from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, SafeDeleteMixin
 from datetime import date as _date
 
 class PeriodeJenisDataListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
@@ -122,7 +122,7 @@ class PeriodeJenisDataUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, Aja
                 return self.form_invalid(form)
         return super().form_valid(form)
 
-class PeriodeJenisDataDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+class PeriodeJenisDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     """Delete view for `PeriodeJenisData` entries.
 
     Returns a confirmation fragment for AJAX `GET` and a JSON `redirect` on

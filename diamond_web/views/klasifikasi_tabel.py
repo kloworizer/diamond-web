@@ -9,7 +9,7 @@ from django.views.decorators.http import require_GET
 
 from ..models.klasifikasi_tabel import KlasifikasiTabel
 from ..forms.klasifikasi_tabel import KlasifikasiTabelForm
-from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, SafeDeleteMixin
 
 class KlasifikasiTabelListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
     """List view for `KlasifikasiTabel` entries.
@@ -84,7 +84,7 @@ class KlasifikasiTabelUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, Aja
         form = self.get_form()
         return self.render_form_response(form)
 
-class KlasifikasiTabelDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+class KlasifikasiTabelDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     """Delete view for `KlasifikasiTabel` entries.
 
     Returns a confirmation fragment for AJAX `GET` and a JSON `redirect` on

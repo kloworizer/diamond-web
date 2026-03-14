@@ -11,7 +11,7 @@ from ..models.jenis_data_ilap import JenisDataILAP
 from ..models.ilap import ILAP
 import re
 from ..forms.jenis_data_ilap import JenisDataILAPForm
-from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, SafeDeleteMixin
 
 class JenisDataILAPListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
     """List view for `JenisDataILAP` entries.
@@ -85,7 +85,7 @@ class JenisDataILAPUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFo
         form = self.get_form()
         return self.render_form_response(form)
 
-class JenisDataILAPDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+class JenisDataILAPDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     """Delete view for `JenisDataILAP` entries.
 
     For AJAX `GET` requests returns the confirmation HTML fragment under
