@@ -5,7 +5,7 @@ from django.db import migrations
 JENIS_TABEL_DATA = [
     {"deskripsi": "Master"},
     {"deskripsi": "Transaksi"},
-    {"deskripsi": "Unstructured"},
+    {"deskripsi": "Tidak Terstruktur"},
 ]
 
 

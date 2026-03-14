@@ -195,13 +195,15 @@ def periode_jenis_data_data(request):
             qs = qs.filter(start_date__icontains=columns_search[2])
         if len(columns_search) > 3 and columns_search[3]:  # End Date
             qs = qs.filter(end_date__icontains=columns_search[3])
+        if len(columns_search) > 4 and columns_search[4]:  # Akhir Penyampaian
+            qs = qs.filter(akhir_penyampaian__icontains=columns_search[4])
 
     records_filtered = qs.count()
 
     # ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id_sub_jenis_data_ilap__nama_sub_jenis_data', 'id_periode_pengiriman__deskripsi', 'start_date', 'end_date']
+    columns = ['id_sub_jenis_data_ilap__nama_sub_jenis_data', 'id_periode_pengiriman__deskripsi', 'start_date', 'end_date', 'akhir_penyampaian']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -223,6 +225,7 @@ def periode_jenis_data_data(request):
             'periode_pengiriman': str(obj.id_periode_pengiriman),
             'start_date': obj.start_date.strftime('%Y-%m-%d') if obj.start_date else '',
             'end_date': obj.end_date.strftime('%Y-%m-%d') if obj.end_date else '',
+            'akhir_penyampaian': obj.akhir_penyampaian,
             'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('periode_jenis_data_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
                        f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('periode_jenis_data_delete', args=[obj.pk])}' title='Delete'><i class='ri-delete-bin-line'></i></button>"
         })

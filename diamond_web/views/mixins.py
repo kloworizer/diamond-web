@@ -359,16 +359,15 @@ class AjaxFormMixin:
         self.object = form.save()
         message = self.get_success_message(form)
         if self.is_ajax():
-            # For AJAX requests, set server-side message and instruct client to
-            # redirect to the success URL so that the message is rendered via
-            # Django messages (displayed by base template as a toast).
+            # For AJAX requests, return the message in the JSON response
+            # so the client can display it directly without redirecting.
+            payload = {"success": True}
             if message:
-                messages.success(self.request, message)
+                payload["message"] = message
             try:
                 redirect_url = self.get_success_url()
             except Exception:
                 redirect_url = getattr(self, 'success_url', None)
-            payload = {"success": True}
             if redirect_url:
                 payload["redirect"] = redirect_url
             return JsonResponse(payload)
