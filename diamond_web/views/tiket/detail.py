@@ -171,7 +171,7 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         
         # Format periode based on deskripsi
         periode_formatted = self._format_periode(
-            periode_jenis_data.id_periode_pengiriman.deskripsi,
+            periode_jenis_data.id_periode_pengiriman.periode_penyampaian,
             self.object.periode,
             self.object.tahun
         )
@@ -184,7 +184,7 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
             'id_sub_jenis_data': jenis_data.id_sub_jenis_data,
             'nama_sub_jenis_data': jenis_data.nama_sub_jenis_data,
             'jenis_tabel': jenis_data.id_jenis_tabel.deskripsi if jenis_data.id_jenis_tabel else '-',
-            'deskripsi_periode': periode_jenis_data.id_periode_pengiriman.deskripsi,
+            'deskripsi_periode': periode_jenis_data.id_periode_pengiriman.periode_penyampaian,
             'jenis_prioritas': jenis_prioritas_text,
             'klasifikasi': klasifikasi_items,
         }

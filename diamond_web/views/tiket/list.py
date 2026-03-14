@@ -140,7 +140,7 @@ def tiket_data(request):
         # Format periode (e.g. Januari 2026, Semester 1 2026)
         periode_formatted = '-'
         if obj.id_periode_data and obj.id_periode_data.id_periode_pengiriman:
-            periode_desc = obj.id_periode_data.id_periode_pengiriman.deskripsi
+            periode_desc = obj.id_periode_data.id_periode_pengiriman.periode_penyampaian
             tahun = str(obj.tahun) if obj.tahun else '-'
             if periode_desc.lower() == 'bulanan' and obj.periode:
                 # Map periode number to month name

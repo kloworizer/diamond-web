@@ -190,7 +190,7 @@ def periode_jenis_data_data(request):
         if columns_search[0]:  # Sub Jenis Data ILAP
             qs = qs.filter(id_sub_jenis_data_ilap__nama_sub_jenis_data__icontains=columns_search[0])
         if len(columns_search) > 1 and columns_search[1]:  # Periode Pengiriman
-            qs = qs.filter(id_periode_pengiriman__deskripsi__icontains=columns_search[1])
+            qs = qs.filter(id_periode_pengiriman__periode_penyampaian__icontains=columns_search[1])
         if len(columns_search) > 2 and columns_search[2]:  # Start Date
             qs = qs.filter(start_date__icontains=columns_search[2])
         if len(columns_search) > 3 and columns_search[3]:  # End Date
@@ -203,7 +203,7 @@ def periode_jenis_data_data(request):
     # ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id_sub_jenis_data_ilap__nama_sub_jenis_data', 'id_periode_pengiriman__deskripsi', 'start_date', 'end_date', 'akhir_penyampaian']
+    columns = ['id_sub_jenis_data_ilap__nama_sub_jenis_data', 'id_periode_pengiriman__periode_penyampaian', 'start_date', 'end_date', 'akhir_penyampaian']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
