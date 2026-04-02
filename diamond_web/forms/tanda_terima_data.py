@@ -35,10 +35,9 @@ class TandaTerimaDataForm(forms.ModelForm):
     
     class Meta:
         model = TandaTerimaData
-        fields = ['tanggal_tanda_terima', 'nomor_tanda_terima', 'deskripsi', 'id_ilap']
+        fields = ['tanggal_tanda_terima', 'nomor_tanda_terima', 'id_ilap']
         widgets = {
             'tanggal_tanda_terima': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-            'deskripsi': forms.Textarea(attrs={'rows': 3}),
         }
 
     def __init__(self, *args, **kwargs):

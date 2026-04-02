@@ -21,13 +21,18 @@ class TiketForm(forms.ModelForm):
     
     class Meta:
         model = Tiket
-        fields = ['id_ilap', 'id_periode_data', 'periode', 'tahun', 'tgl_terima_vertikal', 'tgl_terima_dip']
+        fields = ['id_ilap', 'id_periode_data', 'periode', 'tahun', 'tgl_terima_vertikal', 'tgl_terima_dip', 'nomor_surat_pengantar', 'tanggal_surat_pengantar', 'nama_pengirim', 'bentuk_data', 'cara_penyampaian']
         widgets = {
             'id_periode_data': forms.Select(attrs={'class': 'form-control', 'id': 'id_periode_data'}),
             'periode': forms.Select(attrs={'class': 'form-control', 'id': 'id_periode'}),
             'tahun': forms.Select(attrs={'class': 'form-control'}),
             'tgl_terima_vertikal': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
             'tgl_terima_dip': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
+            'nomor_surat_pengantar': forms.TextInput(attrs={'class': 'form-control'}),
+            'tanggal_surat_pengantar': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
+            'nama_pengirim': forms.TextInput(attrs={'class': 'form-control'}),
+            'bentuk_data': forms.Select(attrs={'class': 'form-control'}),
+            'cara_penyampaian': forms.Select(attrs={'class': 'form-control'}),
         }
         
     def __init__(self, *args, **kwargs):

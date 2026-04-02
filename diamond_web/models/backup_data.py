@@ -12,6 +12,8 @@ class BackupData(models.Model):
         related_name="backups"
     )
     lokasi_backup = models.CharField(max_length=255, verbose_name="Lokasi Backup")
+    nama_file = models.CharField(max_length=100, null=True, blank=True, verbose_name="Nama File")
+    media_backup = models.IntegerField(null=True, blank=True, verbose_name="Media Backup")
     
     # Audit trail
     id_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, verbose_name="Dilakukan Oleh")

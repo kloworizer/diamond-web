@@ -95,6 +95,42 @@
                                 </p>
                             </div>
                         </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Nomor Surat Pengantar</label>
+                                <p class="fw-semibold mb-0">{{ tiket.nomor_surat_pengantar|default:"-" }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Surat Pengantar</label>
+                                <p class="fw-semibold mb-0">
+                                    {% if tiket.tanggal_surat_pengantar %}
+                                        <i class="ri-calendar-line me-1"></i>{{ tiket.tanggal_surat_pengantar|date:"d/m/Y H:i" }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Nama Pengirim</label>
+                                <p class="fw-semibold mb-0">{{ tiket.nama_pengirim|default:"-" }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Bentuk Data</label>
+                                <p class="fw-semibold mb-0">{{ tiket.bentuk_data|default:"-" }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Cara Penyampaian</label>
+                                <p class="fw-semibold mb-0">{{ tiket.cara_penyampaian|default:"-" }}</p>
+                            </div>
+                        </div>
                         {% if tiket.nomor_nd_nadine %}
                         <div class="col-md-4">
                             <div class="info-group">
