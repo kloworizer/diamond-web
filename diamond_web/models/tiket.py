@@ -27,6 +27,8 @@ class Tiket(models.Model):
     nama_pengirim = models.CharField(max_length=50, null=True, blank=True, verbose_name="Nama Pengirim")
     bentuk_data = models.IntegerField(null=True, blank=True, verbose_name="Bentuk Data")
     cara_penyampaian = models.IntegerField(null=True, blank=True, verbose_name="Cara Penyampaian")
+    status_ketersediaan_data = models.BooleanField(default=True, verbose_name="Status Ketersediaan Data")
+    alasan_ketidaktersediaan = models.CharField(max_length=100, null=True, blank=True, verbose_name="Alasan Ketidaktersediaan")
     tahun = models.IntegerField(null=True, blank=True, verbose_name="Tahun")
     status = models.IntegerField(null=True, blank=True, verbose_name="Status")
     tgl_terima_vertikal = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Terima Vertikal")

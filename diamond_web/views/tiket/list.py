@@ -105,13 +105,18 @@ def tiket_data(request):
             qs = qs.filter(tahun__icontains=columns_search[3])
         if len(columns_search) > 4 and columns_search[4]:  # Status
             qs = qs.filter(status__icontains=columns_search[4])
+        if len(columns_search) > 5 and columns_search[5]:  # Ketersediaan Data
+            if columns_search[5].lower() in ['ya', 'tersedia', 'true']:
+                qs = qs.filter(status_ketersediaan_data=True)
+            elif columns_search[5].lower() in ['tidak', 'tidak tersedia', 'false']:
+                qs = qs.filter(status_ketersediaan_data=False)
 
     records_filtered = qs.count()
 
     # ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id', 'nomor_tiket', 'id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data', 'periode', 'tahun', 'status']
+    columns = ['id', 'nomor_tiket', 'id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data', 'periode', 'tahun', 'status', 'status_ketersediaan_data']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -166,6 +171,7 @@ def tiket_data(request):
             'nama_sub_jenis_data': nama_sub_jenis_data,
             'periode_formatted': periode_formatted,
             'status': STATUS_LABELS.get(obj.status, '-'),
+            'status_ketersediaan_data': 'Ya' if obj.status_ketersediaan_data else 'Tidak',
             'actions': f"<a href='{reverse('tiket_detail', args=[obj.pk])}' class='btn btn-sm btn-info' title='View'><i class='ri-eye-line'></i></a>"
         })
 
