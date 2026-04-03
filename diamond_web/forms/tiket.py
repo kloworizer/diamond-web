@@ -21,7 +21,7 @@ class TiketForm(forms.ModelForm):
     
     class Meta:
         model = Tiket
-        fields = ['id_ilap', 'id_periode_data', 'periode', 'tahun', 'tgl_terima_vertikal', 'tgl_terima_dip', 'nomor_surat_pengantar', 'tanggal_surat_pengantar', 'nama_pengirim', 'bentuk_data', 'cara_penyampaian']
+        fields = ['id_ilap', 'id_periode_data', 'periode', 'tahun', 'tgl_terima_vertikal', 'tgl_terima_dip', 'nomor_surat_pengantar', 'tanggal_surat_pengantar', 'nama_pengirim', 'bentuk_data', 'cara_penyampaian', 'status_ketersediaan_data', 'alasan_ketidaktersediaan']
         widgets = {
             'id_periode_data': forms.Select(attrs={'class': 'form-control', 'id': 'id_periode_data'}),
             'periode': forms.Select(attrs={'class': 'form-control', 'id': 'id_periode'}),
@@ -33,6 +33,8 @@ class TiketForm(forms.ModelForm):
             'nama_pengirim': forms.TextInput(attrs={'class': 'form-control'}),
             'bentuk_data': forms.Select(attrs={'class': 'form-control'}),
             'cara_penyampaian': forms.Select(attrs={'class': 'form-control'}),
+            'status_ketersediaan_data': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'alasan_ketidaktersediaan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Alasan jika data tidak tersedia'}),
         }
         
     def __init__(self, *args, **kwargs):

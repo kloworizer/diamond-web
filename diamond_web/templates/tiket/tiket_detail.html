@@ -131,6 +131,24 @@
                                 <p class="fw-semibold mb-0">{{ tiket.cara_penyampaian|default:"-" }}</p>
                             </div>
                         </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Status Ketersediaan Data</label>
+                                <p class="fw-semibold mb-0">
+                                    {% if tiket.status_ketersediaan_data %}
+                                        <span class="badge bg-success"><i class="ri-check-line me-1"></i>Tersedia</span>
+                                    {% else %}
+                                        <span class="badge bg-danger"><i class="ri-close-line me-1"></i>Tidak Tersedia</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Alasan Ketidaktersediaan</label>
+                                <p class="fw-semibold mb-0">{{ tiket.alasan_ketidaktersediaan|default:"-" }}</p>
+                            </div>
+                        </div>
                         {% if tiket.nomor_nd_nadine %}
                         <div class="col-md-4">
                             <div class="info-group">
