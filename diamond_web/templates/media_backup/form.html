@@ -1,0 +1,9 @@
+{% load crispy_forms_tags %}
+<form method="post" class="form-modal">
+    {% csrf_token %}
+    {{ form|crispy }}
+    <div class="d-flex gap-2 justify-content-end mt-3">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="submit" class="btn btn-primary">Simpan</button>
+    </div>
+</form>

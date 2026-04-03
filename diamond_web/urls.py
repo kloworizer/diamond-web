@@ -44,6 +44,12 @@ urlpatterns = [
     path('kategori-wilayah/create/', views.KategoriWilayahCreateView.as_view(), name='kategori_wilayah_create'),
     path('kategori-wilayah/<int:pk>/update/', views.KategoriWilayahUpdateView.as_view(), name='kategori_wilayah_update'),
     path('kategori-wilayah/<int:pk>/delete/', views.KategoriWilayahDeleteView.as_view(), name='kategori_wilayah_delete'),
+    # Status Data URLs
+    path('status-data/', views.StatusDataListView.as_view(), name='status_data_list'),
+    path('status-data/data/', views.status_data_data, name='status_data_data'),
+    path('status-data/create/', views.StatusDataCreateView.as_view(), name='status_data_create'),
+    path('status-data/<int:pk>/update/', views.StatusDataUpdateView.as_view(), name='status_data_update'),
+    path('status-data/<int:pk>/delete/', views.StatusDataDeleteView.as_view(), name='status_data_delete'),
     # Dasar Hukum URLs
     path('dasar-hukum/', views.DasarHukumListView.as_view(), name='dasar_hukum_list'),
     path('dasar-hukum/data/', views.dasar_hukum_data, name='dasar_hukum_data'),
@@ -56,6 +62,24 @@ urlpatterns = [
     path('periode-pengiriman/create/', views.PeriodePengirimanCreateView.as_view(), name='periode_pengiriman_create'),
     path('periode-pengiriman/<int:pk>/update/', views.PeriodePengirimanUpdateView.as_view(), name='periode_pengiriman_update'),
     path('periode-pengiriman/<int:pk>/delete/', views.PeriodePengirimanDeleteView.as_view(), name='periode_pengiriman_delete'),
+    # Bentuk Data URLs
+    path('bentuk-data/', views.BentukDataListView.as_view(), name='bentuk_data_list'),
+    path('bentuk-data/data/', views.bentuk_data_data, name='bentuk_data_data'),
+    path('bentuk-data/create/', views.BentukDataCreateView.as_view(), name='bentuk_data_create'),
+    path('bentuk-data/<int:pk>/update/', views.BentukDataUpdateView.as_view(), name='bentuk_data_update'),
+    path('bentuk-data/<int:pk>/delete/', views.BentukDataDeleteView.as_view(), name='bentuk_data_delete'),
+    # Cara Penyampaian URLs
+    path('cara-penyampaian/', views.CaraPenyampaianListView.as_view(), name='cara_penyampaian_list'),
+    path('cara-penyampaian/data/', views.cara_penyampaian_data, name='cara_penyampaian_data'),
+    path('cara-penyampaian/create/', views.CaraPenyampaianCreateView.as_view(), name='cara_penyampaian_create'),
+    path('cara-penyampaian/<int:pk>/update/', views.CaraPenyampaianUpdateView.as_view(), name='cara_penyampaian_update'),
+    path('cara-penyampaian/<int:pk>/delete/', views.CaraPenyampaianDeleteView.as_view(), name='cara_penyampaian_delete'),
+    # Media Backup URLs
+    path('media-backup/', views.MediaBackupListView.as_view(), name='media_backup_list'),
+    path('media-backup/data/', views.media_backup_data, name='media_backup_data'),
+    path('media-backup/create/', views.MediaBackupCreateView.as_view(), name='media_backup_create'),
+    path('media-backup/<int:pk>/update/', views.MediaBackupUpdateView.as_view(), name='media_backup_update'),
+    path('media-backup/<int:pk>/delete/', views.MediaBackupDeleteView.as_view(), name='media_backup_delete'),
     # Jenis Data ILAP URLs
     path('jenis-data-ilap/', views.JenisDataILAPListView.as_view(), name='jenis_data_ilap_list'),
     path('jenis-data-ilap/data/', views.jenis_data_ilap_data, name='jenis_data_ilap_data'),

@@ -5,7 +5,7 @@ from ..models.tiket import Tiket
 class BackupDataForm(forms.ModelForm):
     class Meta:
         model = BackupData
-        fields = ['id_tiket', 'lokasi_backup', 'nama_file', 'media_backup']
+        fields = ['id_tiket', 'lokasi_backup', 'nama_file', 'id_media_backup']
         widgets = {
             'id_tiket': forms.Select(attrs={
                 'class': 'form-select',
@@ -19,7 +19,7 @@ class BackupDataForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'Contoh: backup_tiket_123.zip'
             }),
-            'media_backup': forms.Select(attrs={
+            'id_media_backup': forms.Select(attrs={
                 'class': 'form-control'
             }),
         }

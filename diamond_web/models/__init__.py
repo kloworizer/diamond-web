@@ -6,6 +6,10 @@ from .jenis_prioritas_data import JenisPrioritasData
 from .jenis_tabel import JenisTabel
 from .kategori_wilayah import KategoriWilayah
 from .dasar_hukum import DasarHukum
+from .status_data import StatusData
+from .bentuk_data import BentukData
+from .cara_penyampaian import CaraPenyampaian
+from .media_backup import MediaBackup
 from .klasifikasi_jenis_data import KlasifikasiJenisData
 from .periode_pengiriman import PeriodePengiriman
 from .periode_jenis_data import PeriodeJenisData
