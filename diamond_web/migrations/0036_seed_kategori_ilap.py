@@ -36,7 +36,7 @@ def unseed_kategori_ilap(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("diamond_web", "0002_create_tables"),
+        ("diamond_web", "0035_backupdata_media_backup_backupdata_nama_file"),
     ]
 
     operations = [

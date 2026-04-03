@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("diamond_web", "0012_seed_users"),
+        ("diamond_web", "0002_create_tables"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

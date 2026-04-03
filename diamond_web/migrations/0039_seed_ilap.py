@@ -196,7 +196,7 @@ def unseed_ilap(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("diamond_web", "0005_seed_kategori_wilayah"),
+        ("diamond_web", "0038_seed_kategori_wilayah"),
     ]
 
     operations = [

@@ -107,7 +107,7 @@ def unseed_users(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("diamond_web", "0011_seed_periode_jenis_data"),
+        ("diamond_web", "0044_seed_periode_jenis_data"),
     ]
 
     operations = [

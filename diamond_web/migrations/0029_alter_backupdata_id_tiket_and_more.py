@@ -72,7 +72,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='klasifikasijenisdata',
             name='id_klasifikasi_tabel',
-            field=models.ForeignKey(db_column='id_klasifikasi_tabel', on_delete=django.db.models.deletion.PROTECT, to='diamond_web.klasifikasitabel', verbose_name='Klasifikasi Tabel'),
+            field=models.ForeignKey(db_column='id_klasifikasi_tabel', on_delete=django.db.models.deletion.PROTECT, to='diamond_web.dasarhukum', verbose_name='Dasar Hukum'),
         ),
         migrations.AlterField(
             model_name='notification',

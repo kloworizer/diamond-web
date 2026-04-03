@@ -17,22 +17,23 @@ PERIODE_PENGIRIMAN_DATA = [
 def seed_periode_pengiriman(apps, schema_editor):
     """Seeds the PeriodePengiriman model with initial data."""
     PeriodePengiriman = apps.get_model("diamond_web", "PeriodePengiriman")
-    for deskripsi in PERIODE_PENGIRIMAN_DATA:
+    for periode in PERIODE_PENGIRIMAN_DATA:
         PeriodePengiriman.objects.get_or_create(
-            deskripsi=deskripsi
+            periode_penyampaian=periode,
+            defaults={"periode_penerimaan": periode}
         )
 
 
 def unseed_periode_pengiriman(apps, schema_editor):
     """Removes the initial data from the PeriodePengiriman model."""
     PeriodePengiriman = apps.get_model("diamond_web", "PeriodePengiriman")
-    PeriodePengiriman.objects.filter(deskripsi__in=PERIODE_PENGIRIMAN_DATA).delete()
+    PeriodePengiriman.objects.filter(periode_penyampaian__in=PERIODE_PENGIRIMAN_DATA).delete()
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("diamond_web", "0007_seed_klasifikasi_tabel"),
+        ("diamond_web", "0040_seed_klasifikasi_tabel"),
     ]
 
     operations = [

@@ -13,27 +13,27 @@ KLASIFIKASI_TABEL_DATA = [
 
 
 def seed_klasifikasi_tabel(apps, schema_editor):
-    """Seeds the KlasifikasiTabel table with initial data."""
-    KlasifikasiTabel = apps.get_model("diamond_web", "KlasifikasiTabel")
+    """Seeds the DasarHukum table with initial data."""
+    DasarHukum = apps.get_model("diamond_web", "DasarHukum")
     
     for item in KLASIFIKASI_TABEL_DATA:
-        KlasifikasiTabel.objects.get_or_create(
+        DasarHukum.objects.get_or_create(
             deskripsi=item["deskripsi"],
             defaults={"deskripsi": item["deskripsi"]}
         )
 
 
 def unseed_klasifikasi_tabel(apps, schema_editor):
-    """Removes the initial data from the KlasifikasiTabel table."""
-    KlasifikasiTabel = apps.get_model("diamond_web", "KlasifikasiTabel")
+    """Removes the initial data from the DasarHukum table."""
+    DasarHukum = apps.get_model("diamond_web", "DasarHukum")
     descriptions_to_delete = [item["deskripsi"] for item in KLASIFIKASI_TABEL_DATA]
-    KlasifikasiTabel.objects.filter(deskripsi__in=descriptions_to_delete).delete()
+    DasarHukum.objects.filter(deskripsi__in=descriptions_to_delete).delete()
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("diamond_web", "0006_seed_ilap"),
+        ("diamond_web", "0039_seed_ilap"),
     ]
 
     operations = [

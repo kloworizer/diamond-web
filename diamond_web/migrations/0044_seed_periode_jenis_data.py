@@ -24,7 +24,7 @@ def seed_periode_jenis_data(apps, schema_editor):
     for item in PERIODE_JENIS_DATA_MAPPING:
         try:
             jenis_data = JenisDataILAP.objects.get(id_sub_jenis_data=item["id_sub_jenis_data"])
-            periode = PeriodePengiriman.objects.get(deskripsi=item["periode"])
+            periode = PeriodePengiriman.objects.get(periode_penyampaian=item["periode"])
             
             defaults = {
                 "start_date": item["start_date"],
@@ -58,7 +58,7 @@ def unseed_periode_jenis_data(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("diamond_web", "0010_seed_klasifikasi_jenis_data"),
+        ("diamond_web", "0043_seed_klasifikasi_jenis_data"),
     ]
 
     operations = [

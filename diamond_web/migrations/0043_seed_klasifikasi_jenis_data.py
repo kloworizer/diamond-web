@@ -19,12 +19,12 @@ def seed_klasifikasi_jenis_data(apps, schema_editor):
     """Seeds the KlasifikasiJenisData model with initial data."""
     KlasifikasiJenisData = apps.get_model("diamond_web", "KlasifikasiJenisData")
     JenisDataILAP = apps.get_model("diamond_web", "JenisDataILAP")
-    KlasifikasiTabel = apps.get_model("diamond_web", "KlasifikasiTabel")
+    DasarHukum = apps.get_model("diamond_web", "DasarHukum")
     
     for item in KLASIFIKASI_JENIS_DATA_MAPPING:
         try:
             jenis_data = JenisDataILAP.objects.get(id_sub_jenis_data=item["id_sub_jenis_data"])
-            klasifikasi = KlasifikasiTabel.objects.get(deskripsi=item["klasifikasi"])
+            klasifikasi = DasarHukum.objects.get(deskripsi=item["klasifikasi"])
             
             KlasifikasiJenisData.objects.get_or_create(
                 id_jenis_data_ilap=jenis_data,
@@ -48,7 +48,7 @@ def unseed_klasifikasi_jenis_data(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("diamond_web", "0009_seed_jenis_data_ilap"),
+        ("diamond_web", "0042_seed_jenis_data_ilap"),
     ]
 
     operations = [

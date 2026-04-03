@@ -55,15 +55,15 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name='KlasifikasiTabel',
+            name='DasarHukum',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
                 ('deskripsi', models.CharField(max_length=50, unique=True, verbose_name='Deskripsi')),
             ],
             options={
-                'verbose_name': 'Klasifikasi Tabel',
-                'verbose_name_plural': 'Klasifikasi Tabel',
-                'db_table': 'klasifikasi_tabel',
+                'verbose_name': 'Dasar Hukum',
+                'verbose_name_plural': 'Dasar Hukum',
+                'db_table': 'dasar_hukum',
                 'ordering': ['id'],
             },
         ),
@@ -132,7 +132,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
                 ('id_jenis_data_ilap', models.ForeignKey(db_column='id_jenis_data_ilap', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.JenisDataILAP', verbose_name='Jenis Data ILAP')),
-                ('id_klasifikasi_tabel', models.ForeignKey(db_column='id_klasifikasi_tabel', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.KlasifikasiTabel', verbose_name='Klasifikasi Tabel')),
+                ('id_klasifikasi_tabel', models.ForeignKey(db_column='id_klasifikasi_tabel', on_delete=django.db.models.deletion.CASCADE, to='diamond_web.DasarHukum', verbose_name='Dasar Hukum')),
             ],
             options={
                 'verbose_name': 'Klasifikasi Jenis Data',

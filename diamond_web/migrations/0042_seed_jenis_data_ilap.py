@@ -94,7 +94,7 @@ def unseed_jenis_data_ilap(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("diamond_web", "0008_seed_periode_pengiriman"),
+        ("diamond_web", "0041_seed_periode_pengiriman"),
     ]
 
     operations = [
