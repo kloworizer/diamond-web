@@ -1,0 +1,14 @@
+from django.db import models
+
+class StatusData(models.Model):
+    id = models.AutoField(primary_key=True, verbose_name="ID")
+    deskripsi = models.CharField(max_length=25, unique=True, verbose_name="Deskripsi")
+
+    class Meta:
+        verbose_name = "Status Data"
+        verbose_name_plural = "Status Data"
+        db_table = "status_data"
+        ordering = ["id"]
+
+    def __str__(self):
+        return self.deskripsi

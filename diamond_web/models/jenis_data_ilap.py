@@ -1,6 +1,7 @@
 from django.db import models
 from .ilap import ILAP
 from .jenis_tabel import JenisTabel
+from .status_data import StatusData
 
 class JenisDataILAP(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="ID")
@@ -21,6 +22,14 @@ class JenisDataILAP(models.Model):
         on_delete=models.PROTECT,
         db_column="id_jenis_tabel",
         verbose_name="Jenis Tabel"
+    )
+    id_status_data = models.ForeignKey(
+        StatusData,
+        on_delete=models.PROTECT,
+        db_column="id_status_data",
+        verbose_name="Status Data",
+        null=True,
+        blank=True
     )
 
     class Meta:
