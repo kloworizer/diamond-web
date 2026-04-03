@@ -153,7 +153,8 @@ def jenis_data_ilap_data(request):
     qs = JenisDataILAP.objects.select_related(
         'id_ilap',
         'id_ilap__id_kategori',
-        'id_jenis_tabel'
+        'id_jenis_tabel',
+        'id_status_data'
     ).all()
     records_total = qs.count()
 
@@ -172,6 +173,8 @@ def jenis_data_ilap_data(request):
             qs = qs.filter(nama_jenis_data__icontains=columns_search[4])
         if len(columns_search) > 5 and columns_search[5]:  # Nama Sub Jenis Data
             qs = qs.filter(nama_sub_jenis_data__icontains=columns_search[5])
+        if len(columns_search) > 6 and columns_search[6]:  # Status Data
+            qs = qs.filter(id_status_data__deskripsi__icontains=columns_search[6])
 
     records_filtered = qs.count()
 
@@ -179,7 +182,7 @@ def jenis_data_ilap_data(request):
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
     columns = ['id_sub_jenis_data', 'id_jenis_tabel__deskripsi', 'id_ilap__id_kategori__nama_kategori', 
-               'id_ilap__nama_ilap', 'nama_jenis_data', 'nama_sub_jenis_data']
+               'id_ilap__nama_ilap', 'nama_jenis_data', 'nama_sub_jenis_data', 'id_status_data__deskripsi']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -203,6 +206,7 @@ def jenis_data_ilap_data(request):
             'ilap': str(obj.id_ilap),
             'nama_jenis_data': obj.nama_jenis_data,
             'nama_sub_jenis_data': obj.nama_sub_jenis_data,
+            'status_data': str(obj.id_status_data) if obj.id_status_data else '-',
             'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('jenis_data_ilap_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
                        f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('jenis_data_ilap_delete', args=[obj.pk])}' title='Delete'><i class='ri-delete-bin-line'></i></button>"
         })

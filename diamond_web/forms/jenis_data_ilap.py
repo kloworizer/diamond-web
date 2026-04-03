@@ -1,5 +1,6 @@
 from django import forms
 from ..models.jenis_data_ilap import JenisDataILAP
+from ..models.status_data import StatusData
 
 class JenisDataILAPForm(forms.ModelForm):
     class Meta:
@@ -10,7 +11,8 @@ class JenisDataILAPForm(forms.ModelForm):
             'nama_jenis_data',
             'id_sub_jenis_data',
             'nama_sub_jenis_data',
-            'id_jenis_tabel'
+            'id_jenis_tabel',
+            'id_status_data'
         ]
 
     def __init__(self, *args, **kwargs):

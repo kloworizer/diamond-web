@@ -122,13 +122,13 @@
                         <div class="col-md-6">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Bentuk Data</label>
-                                <p class="fw-semibold mb-0">{{ tiket.bentuk_data|default:"-" }}</p>
+                                <p class="fw-semibold mb-0">{{ tiket.id_bentuk_data.deskripsi|default:"-" }}</p>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Cara Penyampaian</label>
-                                <p class="fw-semibold mb-0">{{ tiket.cara_penyampaian|default:"-" }}</p>
+                                <p class="fw-semibold mb-0">{{ tiket.id_cara_penyampaian.deskripsi|default:"-" }}</p>
                             </div>
                         </div>
                         <div class="col-md-6">
