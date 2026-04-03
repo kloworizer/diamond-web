@@ -133,11 +133,11 @@ def klasifikasi_jenis_data_data(request):
     GET parameters:
     - draw: DataTables draw counter.
     - start, length: paging offset and page size.
-    - columns_search[]: column-specific search values (jenis_data_ilap, klasifikasi_tabel).
+    - columns_search[]: column-specific search values (jenis_data_ilap, dasar_hukum).
     - order[0][column], order[0][dir]: ordering index and direction.
 
     Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data` rows.
-    Each row contains: `jenis_data_ilap`, `klasifikasi_tabel`, and `actions` HTML.
+    Each row contains: `jenis_data_ilap`, `dasar_hukum`, and `actions` HTML.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
@@ -154,7 +154,7 @@ def klasifikasi_jenis_data_data(request):
     if columns_search:
         if columns_search[0]:  # Jenis Data ILAP
             qs = qs.filter(id_jenis_data_ilap__nama_sub_jenis_data__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:  # Klasifikasi Tabel
+        if len(columns_search) > 1 and columns_search[1]:  # Dasar Hukum
             qs = qs.filter(id_klasifikasi_tabel__deskripsi__icontains=columns_search[1])
 
     records_filtered = qs.count()

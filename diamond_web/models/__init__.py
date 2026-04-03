@@ -5,7 +5,7 @@ from .jenis_data_ilap import JenisDataILAP
 from .jenis_prioritas_data import JenisPrioritasData
 from .jenis_tabel import JenisTabel
 from .kategori_wilayah import KategoriWilayah
-from .klasifikasi_tabel import KlasifikasiTabel
+from .dasar_hukum import DasarHukum
 from .klasifikasi_jenis_data import KlasifikasiJenisData
 from .periode_pengiriman import PeriodePengiriman
 from .periode_jenis_data import PeriodeJenisData

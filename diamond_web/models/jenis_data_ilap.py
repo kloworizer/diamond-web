@@ -1,7 +1,6 @@
 from django.db import models
 from .ilap import ILAP
 from .jenis_tabel import JenisTabel
-from .klasifikasi_tabel import KlasifikasiTabel
 
 class JenisDataILAP(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="ID")

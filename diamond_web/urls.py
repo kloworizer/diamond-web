@@ -44,12 +44,12 @@ urlpatterns = [
     path('kategori-wilayah/create/', views.KategoriWilayahCreateView.as_view(), name='kategori_wilayah_create'),
     path('kategori-wilayah/<int:pk>/update/', views.KategoriWilayahUpdateView.as_view(), name='kategori_wilayah_update'),
     path('kategori-wilayah/<int:pk>/delete/', views.KategoriWilayahDeleteView.as_view(), name='kategori_wilayah_delete'),
-    # Klasifikasi Tabel URLs
-    path('klasifikasi-tabel/', views.KlasifikasiTabelListView.as_view(), name='klasifikasi_tabel_list'),
-    path('klasifikasi-tabel/data/', views.klasifikasi_tabel_data, name='klasifikasi_tabel_data'),
-    path('klasifikasi-tabel/create/', views.KlasifikasiTabelCreateView.as_view(), name='klasifikasi_tabel_create'),
-    path('klasifikasi-tabel/<int:pk>/update/', views.KlasifikasiTabelUpdateView.as_view(), name='klasifikasi_tabel_update'),
-    path('klasifikasi-tabel/<int:pk>/delete/', views.KlasifikasiTabelDeleteView.as_view(), name='klasifikasi_tabel_delete'),
+    # Dasar Hukum URLs
+    path('dasar-hukum/', views.DasarHukumListView.as_view(), name='dasar_hukum_list'),
+    path('dasar-hukum/data/', views.dasar_hukum_data, name='dasar_hukum_data'),
+    path('dasar-hukum/create/', views.DasarHukumCreateView.as_view(), name='dasar_hukum_create'),
+    path('dasar-hukum/<int:pk>/update/', views.DasarHukumUpdateView.as_view(), name='dasar_hukum_update'),
+    path('dasar-hukum/<int:pk>/delete/', views.DasarHukumDeleteView.as_view(), name='dasar_hukum_delete'),
     # Periode Pengiriman URLs
     path('periode-pengiriman/', views.PeriodePengirimanListView.as_view(), name='periode_pengiriman_list'),
     path('periode-pengiriman/data/', views.periode_pengiriman_data, name='periode_pengiriman_data'),

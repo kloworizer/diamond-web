@@ -9,12 +9,12 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h2 class="mb-1">
-                        <i class="ri-layout-2-line me-2"></i>Klasifikasi Tabel
+                        <i class="ri-layout-2-line me-2"></i>Dasar Hukum
                     </h2>
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-                            <li class="breadcrumb-item active">Klasifikasi Tabel</li>
+                            <li class="breadcrumb-item active">Dasar Hukum</li>
                         </ol>
                     </nav>
                 </div>
@@ -24,11 +24,11 @@
 
     <div class="card shadow-sm">
         <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
-            <h5 class="mb-0"><i class="ri-layout-2-line me-2"></i>Daftar Klasifikasi Tabel</h5>
+            <h5 class="mb-0"><i class="ri-layout-2-line me-2"></i>Daftar Dasar Hukum</h5>
             <button type="button" class="btn btn-success" data-action="create"><i class="ri-add-line me-1"></i>Tambah</button>
         </div>
         <div class="card-body">
-            <table id="klasifikasi-table" class="table table-striped" style="width:100%">
+            <table id="dasar-hukum-table" class="table table-striped" style="width:100%">
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -66,11 +66,11 @@
 {% block scripts %}
 <script>
     (function () {
-        const ajaxUrl = "{% url 'klasifikasi_tabel_data' %}";
+        const ajaxUrl = "{% url 'dasar_hukum_data' %}";
         let table;
 
         $(document).ready(function () {
-            table = $('#klasifikasi-table').DataTable({
+            table = $('#dasar-hukum-table').DataTable({
                 serverSide: true,
                 layout: {
                     topStart: null,
@@ -122,20 +122,20 @@
 
             // Handle create button
             $('[data-action="create"]').on('click', function () {
-                loadModal('{% url "klasifikasi_tabel_create" %}', 'Tambah Klasifikasi Tabel');
+                loadModal('{% url "dasar_hukum_create" %}', 'Tambah Dasar Hukum');
             });
 
             // Handle edit/delete buttons (delegated event)
             $(document).on('click', '[data-action="edit"]', function (e) {
                 e.preventDefault();
                 const url = $(this).data('url');
-                loadModal(url, 'Edit Klasifikasi Tabel');
+                loadModal(url, 'Edit Dasar Hukum');
             });
 
             $(document).on('click', '[data-action="delete"]', function (e) {
                 e.preventDefault();
                 const url = $(this).data('url');
-                loadModal(url, 'Hapus Klasifikasi Tabel');
+                loadModal(url, 'Hapus Dasar Hukum');
             });
 
             // Handle form submission
