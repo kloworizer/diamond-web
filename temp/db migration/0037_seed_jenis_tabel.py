@@ -3,8 +3,8 @@
 from django.db import migrations
 
 JENIS_TABEL_DATA = [
-    {"deskripsi": "Master"},
-    {"deskripsi": "Transaksi"},
+    {"deskripsi": "Diidentifikasi"},
+    {"deskripsi": "Tidak Diidentifikasi"},
     {"deskripsi": "Tidak Terstruktur"},
 ]
 
