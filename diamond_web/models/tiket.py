@@ -10,6 +10,7 @@ from .status_penelitian import StatusPenelitian
 class Tiket(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="ID")
     nomor_tiket = models.CharField(max_length=17, null=True, blank=True, verbose_name="Nomor Tiket")
+    status_tiket = models.IntegerField(null=True, blank=True, verbose_name="Status Tiket")
     id_periode_data = models.ForeignKey(
         PeriodeJenisData,
         on_delete=models.PROTECT,
@@ -48,7 +49,7 @@ class Tiket(models.Model):
     status_ketersediaan_data = models.BooleanField(default=True, verbose_name="Status Ketersediaan Data")
     alasan_ketidaktersediaan = models.CharField(max_length=100, null=True, blank=True, verbose_name="Alasan Ketidaktersediaan")
     tahun = models.IntegerField(null=True, blank=True, verbose_name="Tahun")
-    status_tiket = models.IntegerField(null=True, blank=True, verbose_name="Status Tiket")
+    baris_p3de = models.IntegerField(null=True, blank=True, verbose_name="Baris P3DE")
     tgl_terima_vertikal = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Terima Vertikal")
     tgl_terima_dip = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Terima DIP")
     backup = models.BooleanField(default=False, verbose_name="Backup Direkam")
@@ -62,7 +63,6 @@ class Tiket(models.Model):
         blank=True
     )
     tgl_teliti = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Teliti")
-    baris_p3de = models.IntegerField(null=True, blank=True, verbose_name="Baris P3DE")
     baris_lengkap = models.IntegerField(null=True, blank=True, verbose_name="Baris Lengkap")
     baris_tidak_lengkap = models.IntegerField(null=True, blank=True, verbose_name="Baris Tidak Lengkap")
     tgl_nadine = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Nadine")
