@@ -450,7 +450,7 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
             with transaction.atomic():
                 self.object = form.save(commit=False)
                 self.object.nomor_tiket = nomor_tiket
-                self.object.status = STATUS_DIREKAM
+                self.object.status_tiket = STATUS_DIREKAM
 
                 tahun = form.cleaned_data.get('tahun')
                 if tahun:

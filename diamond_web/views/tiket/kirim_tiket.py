@@ -173,7 +173,7 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DER
                     tiket.nomor_nd_nadine = nomor_nd_nadine
                     tiket.tgl_nadine = tgl_nadine
                     tiket.tgl_kirim_pide = tgl_kirim_pide
-                    tiket.status = STATUS_DIKIRIM_KE_PIDE  # Change status to STATUS_DIKIRIM_KE_PIDE (Dikirim ke PIDE)
+                    tiket.status_tiket = STATUS_DIKIRIM_KE_PIDE  # Change status_tiket to STATUS_DIKIRIM_KE_PIDE (Dikirim ke PIDE)
                     tiket.save()
                     
                     # Record tiket_action for audit trail

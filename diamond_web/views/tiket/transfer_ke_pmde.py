@@ -70,7 +70,7 @@ class TransferKePMDEView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateView):
                 active=True,
                 role=TiketPIC.Role.PIDE
             ).exists()
-            and tiket.status == 5  # STATUS_IDENTIFIKASI
+            and tiket.status_tiket == 5  # STATUS_IDENTIFIKASI
         )
 
     def get_template_names(self):

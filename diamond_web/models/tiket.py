@@ -4,6 +4,7 @@ from .jenis_prioritas_data import JenisPrioritasData
 from .durasi_jatuh_tempo import DurasiJatuhTempo
 from .bentuk_data import BentukData
 from .cara_penyampaian import CaraPenyampaian
+from .status_penelitian import StatusPenelitian
 
 
 class Tiket(models.Model):
@@ -24,6 +25,7 @@ class Tiket(models.Model):
         blank=True
     )
     periode = models.IntegerField(null=True, blank=True, verbose_name="Periode")
+    penyampaian = models.IntegerField(null=True, blank=True, verbose_name="Penyampaian")
     nomor_surat_pengantar = models.CharField(max_length=50, null=True, blank=True, verbose_name="Nomor Surat Pengantar")
     tanggal_surat_pengantar = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Surat Pengantar")
     nama_pengirim = models.CharField(max_length=50, null=True, blank=True, verbose_name="Nama Pengirim")
@@ -46,12 +48,20 @@ class Tiket(models.Model):
     status_ketersediaan_data = models.BooleanField(default=True, verbose_name="Status Ketersediaan Data")
     alasan_ketidaktersediaan = models.CharField(max_length=100, null=True, blank=True, verbose_name="Alasan Ketidaktersediaan")
     tahun = models.IntegerField(null=True, blank=True, verbose_name="Tahun")
-    status = models.IntegerField(null=True, blank=True, verbose_name="Status")
+    status_tiket = models.IntegerField(null=True, blank=True, verbose_name="Status Tiket")
     tgl_terima_vertikal = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Terima Vertikal")
     tgl_terima_dip = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Terima DIP")
-    tgl_teliti = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Teliti")
     backup = models.BooleanField(default=False, verbose_name="Backup Direkam")
     tanda_terima = models.BooleanField(default=False, verbose_name="Tanda Terima Dibuat")
+    id_status_penelitian = models.ForeignKey(
+        StatusPenelitian,
+        on_delete=models.PROTECT,
+        db_column="status_penelitian",
+        verbose_name="Status Penelitian",
+        null=True,
+        blank=True
+    )
+    tgl_teliti = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Teliti")
     baris_p3de = models.IntegerField(null=True, blank=True, verbose_name="Baris P3DE")
     baris_lengkap = models.IntegerField(null=True, blank=True, verbose_name="Baris Lengkap")
     baris_tidak_lengkap = models.IntegerField(null=True, blank=True, verbose_name="Baris Tidak Lengkap")

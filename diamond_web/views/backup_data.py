@@ -421,7 +421,7 @@ def backup_data_data(request):
                 active=True
             ).exists()
         
-        if obj.id_tiket and obj.id_tiket.status is not None and obj.id_tiket.status < STATUS_DIKIRIM_KE_PIDE and is_active_pic:
+        if obj.id_tiket and obj.id_tiket.status_tiket is not None and obj.id_tiket.status_tiket < STATUS_DIKIRIM_KE_PIDE and is_active_pic:
             actions = (
                 f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('backup_data_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
                 f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('backup_data_delete', args=[obj.pk])}' title='Delete'><i class='ri-delete-bin-line'></i></button>"

@@ -50,6 +50,12 @@ urlpatterns = [
     path('status-data/create/', views.StatusDataCreateView.as_view(), name='status_data_create'),
     path('status-data/<int:pk>/update/', views.StatusDataUpdateView.as_view(), name='status_data_update'),
     path('status-data/<int:pk>/delete/', views.StatusDataDeleteView.as_view(), name='status_data_delete'),
+    # Status Penelitian URLs
+    path('status-penelitian/', views.StatusPenelitianListView.as_view(), name='status_penelitian_list'),
+    path('status-penelitian/data/', views.status_penelitian_data, name='status_penelitian_data'),
+    path('status-penelitian/create/', views.StatusPenelitianCreateView.as_view(), name='status_penelitian_create'),
+    path('status-penelitian/<int:pk>/update/', views.StatusPenelitianUpdateView.as_view(), name='status_penelitian_update'),
+    path('status-penelitian/<int:pk>/delete/', views.StatusPenelitianDeleteView.as_view(), name='status_penelitian_delete'),
     # Dasar Hukum URLs
     path('dasar-hukum/', views.DasarHukumListView.as_view(), name='dasar_hukum_list'),
     path('dasar-hukum/data/', views.dasar_hukum_data, name='dasar_hukum_data'),

@@ -21,7 +21,7 @@ class TiketForm(forms.ModelForm):
     
     class Meta:
         model = Tiket
-        fields = ['id_ilap', 'id_periode_data', 'periode', 'tahun', 'tgl_terima_vertikal', 'tgl_terima_dip', 'nomor_surat_pengantar', 'tanggal_surat_pengantar', 'nama_pengirim', 'id_bentuk_data', 'id_cara_penyampaian', 'status_ketersediaan_data', 'alasan_ketidaktersediaan']
+        fields = ['id_ilap', 'id_periode_data', 'periode', 'tahun', 'tgl_terima_vertikal', 'tgl_terima_dip', 'nomor_surat_pengantar', 'tanggal_surat_pengantar', 'nama_pengirim', 'id_bentuk_data', 'id_cara_penyampaian', 'status_ketersediaan_data', 'alasan_ketidaktersediaan', 'id_status_penelitian']
         widgets = {
             'id_periode_data': forms.Select(attrs={'class': 'form-control', 'id': 'id_periode_data'}),
             'periode': forms.Select(attrs={'class': 'form-control', 'id': 'id_periode'}),
@@ -33,6 +33,7 @@ class TiketForm(forms.ModelForm):
             'nama_pengirim': forms.TextInput(attrs={'class': 'form-control'}),
             'id_bentuk_data': forms.Select(attrs={'class': 'form-control'}),
             'id_cara_penyampaian': forms.Select(attrs={'class': 'form-control'}),
+            'id_status_penelitian': forms.Select(attrs={'class': 'form-control'}),
             'status_ketersediaan_data': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'alasan_ketidaktersediaan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Alasan jika data tidak tersedia'}),
         }

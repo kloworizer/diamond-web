@@ -220,6 +220,15 @@
                             {% endif %}
                         </div>
                     </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="{{ form.id_status_penelitian.id_for_label }}" class="form-label">{{ form.id_status_penelitian.label }}</label>
+                            {{ form.id_status_penelitian }}
+                            {% if form.id_status_penelitian.errors %}
+                                <div class="invalid-feedback d-block">{{ form.id_status_penelitian.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
 
                 <div class="row">
@@ -384,6 +393,10 @@
                         <tr>
                             <th>Cara Penyampaian</th>
                             <td id="confirm-cara-penyampaian">-</td>
+                        </tr>
+                        <tr>
+                            <th>Status Penelitian</th>
+                            <td id="confirm-status-penelitian">-</td>
                         </tr>
                     </tbody>
                 </table>
@@ -748,6 +761,9 @@
             
             document.getElementById('confirm-cara-penyampaian').textContent = 
                 document.getElementById('id_cara_penyampaian')?.options[document.getElementById('id_cara_penyampaian')?.selectedIndex]?.text || '-';
+
+            document.getElementById('confirm-status-penelitian').textContent = 
+                document.getElementById('id_status_penelitian')?.options[document.getElementById('id_status_penelitian')?.selectedIndex]?.text || '-';
 
             if (nomorTiketCell && periodeDataSelect?.value) {
                 nomorTiketCell.textContent = 'Loading...';
