@@ -405,6 +405,255 @@ JENIS_PRIORITAS_DATA = [
     {"id_sub_jenis_data": "PD0020201", "no_nd": "ND-2026-003", "tahun": "2026", "start_date": "2026-01-01", "end_date": None},
 ]
 
+USERS_DATA = [
+    # user_p3de group (3 users) - username and password are the same (9-digit number)
+    {"username": "334070720", "first_name": "Ahmad", "last_name": "Wijaya", "group": "user_p3de"},
+    {"username": "219166966", "first_name": "Budi", "last_name": "Santoso", "group": "user_p3de"},
+    {"username": "469817665", "first_name": "Citra", "last_name": "Dewi", "group": "user_p3de"},
+    
+    # user_pide group (3 users) - username and password are the same (9-digit number)
+    {"username": "235512708", "first_name": "Dwi", "last_name": "Purwanto", "group": "user_pide"},
+    {"username": "778511709", "first_name": "Eka", "last_name": "Prasetya", "group": "user_pide"},
+    {"username": "648726232", "first_name": "Farhan", "last_name": "Hidayat", "group": "user_pide"},
+    
+    # user_pmde group (3 users) - username and password are the same (9-digit number)
+    {"username": "446674438", "first_name": "Gitawati", "last_name": "Handini", "group": "user_pmde"},
+    {"username": "090860740", "first_name": "Hendra", "last_name": "Kusuma", "group": "user_pmde"},
+    {"username": "897882042", "first_name": "Irwan", "last_name": "Setiawan", "group": "user_pmde"},
+]
+
+
+# PIC data - fixed assignments with one user per seksi for each JenisDataILAP
+PIC_DATA = [
+    # AS0010101 - Penjualan Kendaraan
+    {"id_sub_jenis_data": "AS0010101", "tipe": "P3DE", "username": "469817665"},
+    {"id_sub_jenis_data": "AS0010101", "tipe": "PIDE", "username": "778511709"},
+    {"id_sub_jenis_data": "AS0010101", "tipe": "PMDE", "username": "090860740"},
+    # AS0010102 - Produksi Kendaraan
+    {"id_sub_jenis_data": "AS0010102", "tipe": "P3DE", "username": "219166966"},
+    {"id_sub_jenis_data": "AS0010102", "tipe": "PIDE", "username": "235512708"},
+    {"id_sub_jenis_data": "AS0010102", "tipe": "PMDE", "username": "897882042"},
+    # BI0010101 - Suku Bunga Acuan
+    {"id_sub_jenis_data": "BI0010101", "tipe": "P3DE", "username": "334070720"},
+    {"id_sub_jenis_data": "BI0010101", "tipe": "PIDE", "username": "648726232"},
+    {"id_sub_jenis_data": "BI0010101", "tipe": "PMDE", "username": "897882042"},
+    # BI0010102 - Inflasi Bulanan
+    {"id_sub_jenis_data": "BI0010102", "tipe": "P3DE", "username": "469817665"},
+    {"id_sub_jenis_data": "BI0010102", "tipe": "PIDE", "username": "648726232"},
+    {"id_sub_jenis_data": "BI0010102", "tipe": "PMDE", "username": "446674438"},
+    # BI0010201 - Kredit Perbankan
+    {"id_sub_jenis_data": "BI0010201", "tipe": "P3DE", "username": "469817665"},
+    {"id_sub_jenis_data": "BI0010201", "tipe": "PIDE", "username": "648726232"},
+    {"id_sub_jenis_data": "BI0010201", "tipe": "PMDE", "username": "090860740"},
+    # BU0010101 - Container Movement
+    {"id_sub_jenis_data": "BU0010101", "tipe": "P3DE", "username": "219166966"},
+    {"id_sub_jenis_data": "BU0010101", "tipe": "PIDE", "username": "648726232"},
+    {"id_sub_jenis_data": "BU0010101", "tipe": "PMDE", "username": "446674438"},
+    # BU0020101 - Produksi Energi
+    {"id_sub_jenis_data": "BU0020101", "tipe": "P3DE", "username": "469817665"},
+    {"id_sub_jenis_data": "BU0020101", "tipe": "PIDE", "username": "648726232"},
+    {"id_sub_jenis_data": "BU0020101", "tipe": "PMDE", "username": "446674438"},
+    # BU0030101 - Peserta Asuransi
+    {"id_sub_jenis_data": "BU0030101", "tipe": "P3DE", "username": "219166966"},
+    {"id_sub_jenis_data": "BU0030101", "tipe": "PIDE", "username": "235512708"},
+    {"id_sub_jenis_data": "BU0030101", "tipe": "PMDE", "username": "897882042"},
+    # EI0010101 - Informasi Pajak Australia
+    {"id_sub_jenis_data": "EI0010101", "tipe": "P3DE", "username": "469817665"},
+    {"id_sub_jenis_data": "EI0010101", "tipe": "PIDE", "username": "235512708"},
+    {"id_sub_jenis_data": "EI0010101", "tipe": "PMDE", "username": "090860740"},
+    # EI0010102 - Informasi Pajak Jepang
+    {"id_sub_jenis_data": "EI0010102", "tipe": "P3DE", "username": "334070720"},
+    {"id_sub_jenis_data": "EI0010102", "tipe": "PIDE", "username": "235512708"},
+    {"id_sub_jenis_data": "EI0010102", "tipe": "PMDE", "username": "897882042"},
+    # KM0050101 - Data Pasien
+    {"id_sub_jenis_data": "KM0050101", "tipe": "P3DE", "username": "469817665"},
+    {"id_sub_jenis_data": "KM0050101", "tipe": "PIDE", "username": "235512708"},
+    {"id_sub_jenis_data": "KM0050101", "tipe": "PMDE", "username": "897882042"},
+    # KM0260101 - Hasil Panen
+    {"id_sub_jenis_data": "KM0260101", "tipe": "P3DE", "username": "219166966"},
+    {"id_sub_jenis_data": "KM0260101", "tipe": "PIDE", "username": "778511709"},
+    {"id_sub_jenis_data": "KM0260101", "tipe": "PMDE", "username": "446674438"},
+    # KM0330101 - Realisasi Anggaran
+    {"id_sub_jenis_data": "KM0330101", "tipe": "P3DE", "username": "469817665"},
+    {"id_sub_jenis_data": "KM0330101", "tipe": "PIDE", "username": "235512708"},
+    {"id_sub_jenis_data": "KM0330101", "tipe": "PMDE", "username": "446674438"},
+    # KM0330102 - Laporan Neraca Keuangan
+    {"id_sub_jenis_data": "KM0330102", "tipe": "P3DE", "username": "334070720"},
+    {"id_sub_jenis_data": "KM0330102", "tipe": "PIDE", "username": "235512708"},
+    {"id_sub_jenis_data": "KM0330102", "tipe": "PMDE", "username": "090860740"},
+    # LM0030101 - Data Penduduk
+    {"id_sub_jenis_data": "LM0030101", "tipe": "P3DE", "username": "334070720"},
+    {"id_sub_jenis_data": "LM0030101", "tipe": "PIDE", "username": "648726232"},
+    {"id_sub_jenis_data": "LM0030101", "tipe": "PMDE", "username": "897882042"},
+    # LM0030102 - Data Ketenagakerjaan
+    {"id_sub_jenis_data": "LM0030102", "tipe": "P3DE", "username": "219166966"},
+    {"id_sub_jenis_data": "LM0030102", "tipe": "PIDE", "username": "235512708"},
+    {"id_sub_jenis_data": "LM0030102", "tipe": "PMDE", "username": "090860740"},
+    # LM0100101 - Laporan Keuangan Lembaga Jasa Keuangan
+    {"id_sub_jenis_data": "LM0100101", "tipe": "P3DE", "username": "219166966"},
+    {"id_sub_jenis_data": "LM0100101", "tipe": "PIDE", "username": "778511709"},
+    {"id_sub_jenis_data": "LM0100101", "tipe": "PMDE", "username": "446674438"},
+    # PD0010101 - Anggaran Daerah
+    {"id_sub_jenis_data": "PD0010101", "tipe": "P3DE", "username": "334070720"},
+    {"id_sub_jenis_data": "PD0010101", "tipe": "PIDE", "username": "648726232"},
+    {"id_sub_jenis_data": "PD0010101", "tipe": "PMDE", "username": "090860740"},
+    # PD0010201 - Realisasi Pajak Bumi Bangunan
+    {"id_sub_jenis_data": "PD0010201", "tipe": "P3DE", "username": "219166966"},
+    {"id_sub_jenis_data": "PD0010201", "tipe": "PIDE", "username": "235512708"},
+    {"id_sub_jenis_data": "PD0010201", "tipe": "PMDE", "username": "446674438"},
+    # PD0020101 - Anggaran Pendapatan Belanja Daerah
+    {"id_sub_jenis_data": "PD0020101", "tipe": "P3DE", "username": "219166966"},
+    {"id_sub_jenis_data": "PD0020101", "tipe": "PIDE", "username": "235512708"},
+    {"id_sub_jenis_data": "PD0020101", "tipe": "PMDE", "username": "446674438"},
+    # PD0020201 - Retribusi Jasa Umum
+    {"id_sub_jenis_data": "PD0020201", "tipe": "P3DE", "username": "469817665"},
+    {"id_sub_jenis_data": "PD0020201", "tipe": "PIDE", "username": "648726232"},
+    {"id_sub_jenis_data": "PD0020201", "tipe": "PMDE", "username": "090860740"},
+    # PD0030101 - Izin Mendirikan Bangunan
+    {"id_sub_jenis_data": "PD0030101", "tipe": "P3DE", "username": "219166966"},
+    {"id_sub_jenis_data": "PD0030101", "tipe": "PIDE", "username": "648726232"},
+    {"id_sub_jenis_data": "PD0030101", "tipe": "PMDE", "username": "897882042"},
+    # PD0030201 - Data Penduduk
+    {"id_sub_jenis_data": "PD0030201", "tipe": "P3DE", "username": "469817665"},
+    {"id_sub_jenis_data": "PD0030201", "tipe": "PIDE", "username": "778511709"},
+    {"id_sub_jenis_data": "PD0030201", "tipe": "PMDE", "username": "446674438"},
+    # PD0040101 - Data Jalan Daerah
+    {"id_sub_jenis_data": "PD0040101", "tipe": "P3DE", "username": "334070720"},
+    {"id_sub_jenis_data": "PD0040101", "tipe": "PIDE", "username": "235512708"},
+    {"id_sub_jenis_data": "PD0040101", "tipe": "PMDE", "username": "090860740"},
+    # PD0050101 - Hasil Pertanian
+    {"id_sub_jenis_data": "PD0050101", "tipe": "P3DE", "username": "334070720"},
+    {"id_sub_jenis_data": "PD0050101", "tipe": "PIDE", "username": "648726232"},
+    {"id_sub_jenis_data": "PD0050101", "tipe": "PMDE", "username": "446674438"},
+    # PD0060101 - Kunjungan Wisatawan
+    {"id_sub_jenis_data": "PD0060101", "tipe": "P3DE", "username": "334070720"},
+    {"id_sub_jenis_data": "PD0060101", "tipe": "PIDE", "username": "235512708"},
+    {"id_sub_jenis_data": "PD0060101", "tipe": "PMDE", "username": "446674438"},
+    # PD0070101 - Data Pasar Tradisional
+    {"id_sub_jenis_data": "PD0070101", "tipe": "P3DE", "username": "334070720"},
+    {"id_sub_jenis_data": "PD0070101", "tipe": "PIDE", "username": "235512708"},
+    {"id_sub_jenis_data": "PD0070101", "tipe": "PMDE", "username": "090860740"},
+    # PD0080101 - Aktivitas Pelabuhan
+    {"id_sub_jenis_data": "PD0080101", "tipe": "P3DE", "username": "219166966"},
+    {"id_sub_jenis_data": "PD0080101", "tipe": "PIDE", "username": "235512708"},
+    {"id_sub_jenis_data": "PD0080101", "tipe": "PMDE", "username": "090860740"},
+    # PD0090101 - Data Kendaraan Umum
+    {"id_sub_jenis_data": "PD0090101", "tipe": "P3DE", "username": "219166966"},
+    {"id_sub_jenis_data": "PD0090101", "tipe": "PIDE", "username": "778511709"},
+    {"id_sub_jenis_data": "PD0090101", "tipe": "PMDE", "username": "090860740"},
+    # PL0230101 - Laporan Keuangan Bank
+    {"id_sub_jenis_data": "PL0230101", "tipe": "P3DE", "username": "219166966"},
+    {"id_sub_jenis_data": "PL0230101", "tipe": "PIDE", "username": "235512708"},
+    {"id_sub_jenis_data": "PL0230101", "tipe": "PMDE", "username": "897882042"},
+    # PL0230102 - Data Nasabah
+    {"id_sub_jenis_data": "PL0230102", "tipe": "P3DE", "username": "469817665"},
+    {"id_sub_jenis_data": "PL0230102", "tipe": "PIDE", "username": "648726232"},
+    {"id_sub_jenis_data": "PL0230102", "tipe": "PMDE", "username": "897882042"},
+    # PL0440101 - Data Pelanggan
+    {"id_sub_jenis_data": "PL0440101", "tipe": "P3DE", "username": "219166966"},
+    {"id_sub_jenis_data": "PL0440101", "tipe": "PIDE", "username": "778511709"},
+    {"id_sub_jenis_data": "PL0440101", "tipe": "PMDE", "username": "897882042"},
+]
+
+DURASI_JATUH_TEMPO_DATA = [
+    # AS0010101 - Penjualan Kendaraan
+    {"id_sub_jenis_data": "AS0010101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "AS0010101", "seksi": "user_pmde", "durasi": 90},
+    # AS0010102 - Produksi Kendaraan
+    {"id_sub_jenis_data": "AS0010102", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "AS0010102", "seksi": "user_pmde", "durasi": 90},
+    # BI0010101 - Suku Bunga Acuan
+    {"id_sub_jenis_data": "BI0010101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "BI0010101", "seksi": "user_pmde", "durasi": 90},
+    # BI0010102 - Inflasi Bulanan
+    {"id_sub_jenis_data": "BI0010102", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "BI0010102", "seksi": "user_pmde", "durasi": 90},
+    # BI0010201 - Kredit Perbankan
+    {"id_sub_jenis_data": "BI0010201", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "BI0010201", "seksi": "user_pmde", "durasi": 90},
+    # BU0010101 - Container Movement
+    {"id_sub_jenis_data": "BU0010101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "BU0010101", "seksi": "user_pmde", "durasi": 90},
+    # BU0020101 - Produksi Energi
+    {"id_sub_jenis_data": "BU0020101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "BU0020101", "seksi": "user_pmde", "durasi": 90},
+    # BU0030101 - Peserta Asuransi
+    {"id_sub_jenis_data": "BU0030101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "BU0030101", "seksi": "user_pmde", "durasi": 90},
+    # EI0010101 - Informasi Pajak Australia
+    {"id_sub_jenis_data": "EI0010101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "EI0010101", "seksi": "user_pmde", "durasi": 90},
+    # EI0010102 - Informasi Pajak Jepang
+    {"id_sub_jenis_data": "EI0010102", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "EI0010102", "seksi": "user_pmde", "durasi": 90},
+    # KM0050101 - Data Pasien
+    {"id_sub_jenis_data": "KM0050101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "KM0050101", "seksi": "user_pmde", "durasi": 90},
+    # KM0260101 - Hasil Panen
+    {"id_sub_jenis_data": "KM0260101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "KM0260101", "seksi": "user_pmde", "durasi": 90},
+    # KM0330101 - Realisasi Anggaran
+    {"id_sub_jenis_data": "KM0330101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "KM0330101", "seksi": "user_pmde", "durasi": 90},
+    # KM0330102 - Laporan Neraca Keuangan
+    {"id_sub_jenis_data": "KM0330102", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "KM0330102", "seksi": "user_pmde", "durasi": 90},
+    # LM0030101 - Data Penduduk
+    {"id_sub_jenis_data": "LM0030101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "LM0030101", "seksi": "user_pmde", "durasi": 90},
+    # LM0030102 - Data Ketenagakerjaan
+    {"id_sub_jenis_data": "LM0030102", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "LM0030102", "seksi": "user_pmde", "durasi": 90},
+    # LM0100101 - Laporan Keuangan Lembaga Jasa Keuangan
+    {"id_sub_jenis_data": "LM0100101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "LM0100101", "seksi": "user_pmde", "durasi": 90},
+    # PD0010101 - Anggaran Daerah
+    {"id_sub_jenis_data": "PD0010101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PD0010101", "seksi": "user_pmde", "durasi": 90},
+    # PD0010201 - Realisasi Pajak Bumi Bangunan
+    {"id_sub_jenis_data": "PD0010201", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PD0010201", "seksi": "user_pmde", "durasi": 90},
+    # PD0020101 - Anggaran Pendapatan Belanja Daerah
+    {"id_sub_jenis_data": "PD0020101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PD0020101", "seksi": "user_pmde", "durasi": 90},
+    # PD0020201 - Retribusi Jasa Umum
+    {"id_sub_jenis_data": "PD0020201", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PD0020201", "seksi": "user_pmde", "durasi": 90},
+    # PD0030101 - Izin Mendirikan Bangunan
+    {"id_sub_jenis_data": "PD0030101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PD0030101", "seksi": "user_pmde", "durasi": 90},
+    # PD0030201 - Data Penduduk
+    {"id_sub_jenis_data": "PD0030201", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PD0030201", "seksi": "user_pmde", "durasi": 90},
+    # PD0040101 - Data Jalan Daerah
+    {"id_sub_jenis_data": "PD0040101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PD0040101", "seksi": "user_pmde", "durasi": 90},
+    # PD0050101 - Hasil Pertanian
+    {"id_sub_jenis_data": "PD0050101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PD0050101", "seksi": "user_pmde", "durasi": 90},
+    # PD0060101 - Kunjungan Wisatawan
+    {"id_sub_jenis_data": "PD0060101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PD0060101", "seksi": "user_pmde", "durasi": 90},
+    # PD0070101 - Data Pasar Tradisional
+    {"id_sub_jenis_data": "PD0070101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PD0070101", "seksi": "user_pmde", "durasi": 90},
+    # PD0080101 - Aktivitas Pelabuhan
+    {"id_sub_jenis_data": "PD0080101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PD0080101", "seksi": "user_pmde", "durasi": 90},
+    # PD0090101 - Data Kendaraan Umum
+    {"id_sub_jenis_data": "PD0090101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PD0090101", "seksi": "user_pmde", "durasi": 90},
+    # PL0230101 - Laporan Keuangan Bank
+    {"id_sub_jenis_data": "PL0230101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PL0230101", "seksi": "user_pmde", "durasi": 90},
+    # PL0230102 - Data Nasabah
+    {"id_sub_jenis_data": "PL0230102", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PL0230102", "seksi": "user_pmde", "durasi": 90},
+    # PL0440101 - Data Pelanggan
+    {"id_sub_jenis_data": "PL0440101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PL0440101", "seksi": "user_pmde", "durasi": 90},
+]
+
 
 def seed_kategori_ilap(apps, schema_editor):
     """Seeds the KategoriILAP model with initial data."""
@@ -741,6 +990,124 @@ def unseed_jenis_prioritas_data(apps, schema_editor):
     JenisPrioritasData.objects.filter(id_sub_jenis_data_ilap__id_sub_jenis_data__in=sub_jenis_data_ids).delete()
 
 
+def seed_users(apps, schema_editor):
+    """Seeds the User model with fixed users (3 per group) with fixed 9-digit usernames and passwords."""
+    from django.contrib.auth.hashers import make_password
+    
+    User = apps.get_model("auth", "User")
+    Group = apps.get_model("auth", "Group")
+    
+    for item in USERS_DATA:
+        try:
+            group = Group.objects.get(name=item["group"])
+            
+            # Use fixed username from USERS_DATA
+            username = item["username"]
+            # Password is same as username
+            password = username
+            email = f"{username}@diamond.pde"
+            
+            # Create user with hashed password (skip if already exists)
+            user, created = User.objects.get_or_create(
+                username=username,
+                defaults={
+                    "first_name": item["first_name"],
+                    "last_name": item["last_name"],
+                    "email": email,
+                    "password": make_password(password)
+                }
+            )
+            
+            # Add to group
+            user.groups.add(group)
+        except Exception as e:
+            print(f"Warning: Could not create user {item['first_name']} {item['last_name']}: {e}")
+
+
+def unseed_users(apps, schema_editor):
+    """Removes the seeded users from user groups."""
+    User = apps.get_model("auth", "User")
+    
+    # Delete users with fixed 9-digit usernames from USERS_DATA
+    usernames = [item["username"] for item in USERS_DATA]
+    User.objects.filter(username__in=usernames).delete()
+
+
+def seed_pic(apps, schema_editor):
+    """Seeds the PIC model with fixed user assignments from PIC_DATA."""
+    User = apps.get_model("auth", "User")
+    JenisDataILAP = apps.get_model("diamond_web", "JenisDataILAP")
+    PIC = apps.get_model("diamond_web", "PIC")
+    
+    from datetime import datetime
+    start_date = datetime.strptime("2024-01-01", "%Y-%m-%d").date()
+    
+    # Create PIC for each entry in PIC_DATA
+    for item in PIC_DATA:
+        try:
+            jenis_data_ilap = JenisDataILAP.objects.get(id_sub_jenis_data=item["id_sub_jenis_data"])
+            user = User.objects.get(username=item["username"])
+            
+            PIC.objects.get_or_create(
+                tipe=item["tipe"],
+                id_sub_jenis_data_ilap=jenis_data_ilap,
+                defaults={
+                    'id_user': user,
+                    'start_date': start_date,
+                    'end_date': None
+                }
+            )
+        except Exception as e:
+            print(f"Warning: Could not create PIC for {item['id_sub_jenis_data']} {item['tipe']}: {e}")
+
+
+def unseed_pic(apps, schema_editor):
+    """Removes all seeded PIC records."""
+    PIC = apps.get_model("diamond_web", "PIC")
+    
+    # Delete PIC records that match the seeded data
+    id_sub_jenis_data_list = [item["id_sub_jenis_data"] for item in PIC_DATA]
+    PIC.objects.filter(id_sub_jenis_data_ilap__id_sub_jenis_data__in=id_sub_jenis_data_list).delete()
+
+
+def seed_durasi_jatuh_tempo(apps, schema_editor):
+    """Seeds the DurasiJatuhTempo model with fixed durations for PIDE and PMDE seksi."""
+    Group = apps.get_model("auth", "Group")
+    JenisDataILAP = apps.get_model("diamond_web", "JenisDataILAP")
+    DurasiJatuhTempo = apps.get_model("diamond_web", "DurasiJatuhTempo")
+    
+    from datetime import datetime
+    start_date = datetime.strptime("2024-01-01", "%Y-%m-%d").date()
+    
+    # Create DurasiJatuhTempo for each entry in DURASI_JATUH_TEMPO_DATA
+    for item in DURASI_JATUH_TEMPO_DATA:
+        try:
+            jenis_data_ilap = JenisDataILAP.objects.get(id_sub_jenis_data=item["id_sub_jenis_data"])
+            seksi_group = Group.objects.get(name=item["seksi"])
+            
+            DurasiJatuhTempo.objects.get_or_create(
+                id_sub_jenis_data=jenis_data_ilap,
+                seksi=seksi_group,
+                defaults={
+                    'durasi': item["durasi"],
+                    'start_date': start_date,
+                    'end_date': None
+                }
+            )
+        except Exception as e:
+            print(f"Warning: Could not create DurasiJatuhTempo for {item['id_sub_jenis_data']} {item['seksi']}: {e}")
+
+
+def unseed_durasi_jatuh_tempo(apps, schema_editor):
+    """Removes all seeded DurasiJatuhTempo records."""
+    DurasiJatuhTempo = apps.get_model("diamond_web", "DurasiJatuhTempo")
+    
+    # Delete DurasiJatuhTempo records that match the seeded data
+    id_sub_jenis_data_list = [item["id_sub_jenis_data"] for item in DURASI_JATUH_TEMPO_DATA]
+    DurasiJatuhTempo.objects.filter(id_sub_jenis_data__id_sub_jenis_data__in=id_sub_jenis_data_list).delete()
+
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -763,4 +1130,7 @@ class Migration(migrations.Migration):
         migrations.RunPython(seed_klasifikasi_jenis_data, reverse_code=unseed_klasifikasi_jenis_data),
         migrations.RunPython(seed_periode_jenis_data, reverse_code=unseed_periode_jenis_data),
         migrations.RunPython(seed_jenis_prioritas_data, reverse_code=unseed_jenis_prioritas_data),
+        migrations.RunPython(seed_users, reverse_code=unseed_users),
+        migrations.RunPython(seed_pic, reverse_code=unseed_pic),
+        migrations.RunPython(seed_durasi_jatuh_tempo, reverse_code=unseed_durasi_jatuh_tempo),
     ]
