@@ -154,25 +154,68 @@ def monitoring_penyampaian_data_data(request):
     """
     # Check if requesting filter options
     if request.GET.get('get_filter_options'):
-        kanwil_list = Kanwil.objects.all().values('id', 'nama_kanwil').order_by('nama_kanwil')
-        kpp_list = KPP.objects.all().values('id', 'nama_kpp').order_by('nama_kpp')
-        kategori_wilayah_list = KategoriWilayah.objects.all().values('id', 'deskripsi').order_by('deskripsi')
+        kanwil_list = Kanwil.objects.all().values('id', 'kode_kanwil', 'nama_kanwil').order_by('kode_kanwil')
+        kpp_list = KPP.objects.all().values('id', 'kode_kpp', 'nama_kpp').order_by('kode_kpp')
+        kategori_wilayah_list = KategoriWilayah.objects.all().values('id', 'deskripsi').order_by('id')
         kategori_ilap_list = KategoriILAP.objects.all().values('id', 'id_kategori', 'nama_kategori').order_by('nama_kategori')
         ilap_list = ILAP.objects.all().values('id', 'id_ilap', 'nama_ilap').order_by('id_ilap')
-        jenis_data_list = JenisDataILAP.objects.values('nama_jenis_data').distinct().order_by('nama_jenis_data')
+        jenis_data_list = JenisDataILAP.objects.values('id_jenis_data', 'nama_jenis_data').distinct().order_by('id_jenis_data')
         sub_jenis_data_list = JenisDataILAP.objects.values('id_sub_jenis_data', 'nama_sub_jenis_data').distinct().order_by('id_sub_jenis_data')
-        jenis_tabel_list = JenisTabel.objects.all().values('id', 'deskripsi').order_by('deskripsi')
-        dasar_hukum_list = DasarHukum.objects.all().values('id', 'deskripsi').order_by('deskripsi')
-        periode_pengiriman_list = PeriodePengiriman.objects.all().values('id', 'periode_penyampaian').order_by('periode_penyampaian')
+        jenis_tabel_list = JenisTabel.objects.all().values('id', 'deskripsi').order_by('id')
+        dasar_hukum_list = DasarHukum.objects.all().values('id', 'deskripsi').order_by('id')
+        periode_pengiriman_list = PeriodePengiriman.objects.all().values('id', 'periode_penyampaian').order_by('id')
+        
+        # Get unique tahun from periode_jenis_data and generate range up to current year
+        from django.db.models import Min, Max
+        tahun_range = PeriodeJenisData.objects.aggregate(
+            min_year=Min('start_date__year'),
+            max_year=Max('start_date__year')
+        )
+        min_year = tahun_range.get('min_year') or datetime.now().year
+        max_year = max(tahun_range.get('max_year') or datetime.now().year, datetime.now().year)
+        tahun_options = [{'id': str(year), 'name': str(year)} for year in range(min_year, max_year + 1)]
+        
+        # Get PIC P3DE list based on user role
+        if request.user.is_superuser or request.user.groups.filter(name='admin').exists():
+            # Admin: show all P3DE users
+            pic_p3de_list = PIC.objects.filter(
+                tipe=PIC.TipePIC.P3DE,
+                end_date__isnull=True
+            ).values('id_user__id', 'id_user__username', 'id_user__first_name', 'id_user__last_name').distinct().order_by('id_user__first_name', 'id_user__last_name', 'id_user__username')
+            pic_p3de_options = [
+                {
+                    'id': str(pic['id_user__id']),
+                    'name': f"{pic['id_user__username']} - {pic['id_user__first_name']} {pic['id_user__last_name']}".strip()
+                }
+                for pic in pic_p3de_list
+            ]
+        else:
+            # User P3DE: show only their own name
+            user_pic = PIC.objects.filter(
+                id_user=request.user,
+                tipe=PIC.TipePIC.P3DE,
+                end_date__isnull=True
+            ).first()
+            if user_pic:
+                pic_p3de_options = [
+                    {
+                        'id': str(request.user.id),
+                        'name': f"{request.user.username} - {request.user.first_name} {request.user.last_name}".strip()
+                    }
+                ]
+            else:
+                pic_p3de_options = []
         
         return JsonResponse({
             'filter_options': {
-                'kanwil': [{'id': str(k['id']), 'name': k['nama_kanwil']} for k in kanwil_list],
-                'kpp': [{'id': str(k['id']), 'name': k['nama_kpp']} for k in kpp_list],
+                'tahun': tahun_options,
+                'pic_p3de': pic_p3de_options,
+                'kanwil': [{'id': str(k['id']), 'name': f"{k['kode_kanwil']} - {k['nama_kanwil']}"} for k in kanwil_list],
+                'kpp': [{'id': str(k['id']), 'name': f"{k['kode_kpp']} - {k['nama_kpp']}"} for k in kpp_list],
                 'kategori_wilayah': [{'id': str(k['id']), 'name': k['deskripsi']} for k in kategori_wilayah_list],
                 'kategori_ilap': [{'id': str(k['id']), 'name': f"{k['id_kategori']} - {k['nama_kategori']}"} for k in kategori_ilap_list],
                 'ilap': [{'id': str(k['id']), 'name': f"{k['id_ilap']} - {k['nama_ilap']}"} for k in ilap_list],
-                'jenis_data': [{'id': k['nama_jenis_data'], 'name': k['nama_jenis_data']} for k in jenis_data_list],
+                'jenis_data': [{'id': k['id_jenis_data'], 'name': f"{k['id_jenis_data']} - {k['nama_jenis_data']}"} for k in jenis_data_list],
                 'sub_jenis_data': [{'id': k['id_sub_jenis_data'], 'name': f"{k['id_sub_jenis_data']} - {k['nama_sub_jenis_data']}"} for k in sub_jenis_data_list],
                 'jenis_tabel': [{'id': str(k['id']), 'name': k['deskripsi']} for k in jenis_tabel_list],
                 'dasar_hukum': [{'id': str(k['id']), 'name': k['deskripsi']} for k in dasar_hukum_list],
@@ -225,18 +268,32 @@ def monitoring_penyampaian_data_data(request):
             if periode_type_penyampaian.lower() in ('harian', 'mingguan', '2 mingguan'):
                 periode_type_penerimaan = 'bulanan'
 
-            # Generate all periods from start_date until today using effective periode_penerimaan
-            periods = get_periods_for_range(start_date, today, periode_type_penerimaan)
+            # Determine the end date for period generation
+            # If periode_data has an end_date, use it; otherwise use today
+            end_date_for_periods = periode_data.end_date if periode_data.end_date else today
+
+            # Generate all periods from start_date until end_date_for_periods using effective periode_penerimaan
+            periods = get_periods_for_range(start_date, end_date_for_periods, periode_type_penerimaan)
             
             for period in periods:
                 deadline_date = period['end_date'] + timedelta(days=akhir_penyampaian)
                 period_display_name = get_period_display_name(periode_type_penerimaan, period['periode_num'], period['start_date'])
                 
+                # Get pic_p3de from PIC model (active P3DE PIC for this jenis_data_ilap)
+                pic_p3de = PIC.objects.filter(
+                    id_sub_jenis_data_ilap=jenis_data,
+                    tipe=PIC.TipePIC.P3DE,
+                    end_date__isnull=True
+                ).first()
+                pic_p3de_id = pic_p3de.id_user_id if pic_p3de else None
+                
                 # Check if tiket exists for this period
-                tiket_exists = Tiket.objects.filter(
+                tiket = Tiket.objects.filter(
                     id_periode_data=periode_data,
                     periode=period['periode_num']
-                ).exists()
+                ).first()
+                
+                tiket_exists = tiket is not None
                 
                 # Determine status
                 if tiket_exists:
@@ -303,6 +360,7 @@ def monitoring_penyampaian_data_data(request):
                     'tiket_exists': tiket_exists,
                     'is_late': is_late,
                     'days_diff': days_diff,
+                    'pic_p3de_id': pic_p3de_id,
                     'kanwil_id': (jenis_data.id_ilap.id_kpp.id_kanwil_id if jenis_data.id_ilap.id_kpp else ''),
                     'kpp_id': (jenis_data.id_ilap.id_kpp.id if jenis_data.id_ilap.id_kpp else ''),
                     'kategori_wilayah_id': jenis_data.id_ilap.id_kategori_wilayah.id if jenis_data.id_ilap.id_kategori_wilayah else '',
@@ -331,6 +389,8 @@ def monitoring_penyampaian_data_data(request):
     records_total = len(records)
 
     # Apply filter form parameters
+    tahun_filter = request.GET.get('tahun', '')
+    pic_p3de_filter = request.GET.get('pic_p3de', '')
     kanwil_id = request.GET.get('kanwil', '')
     kpp_id = request.GET.get('kpp', '')
     kategori_wilayah_id = request.GET.get('kategori_wilayah', '')
@@ -343,6 +403,10 @@ def monitoring_penyampaian_data_data(request):
     
     filtered_records = records
     
+    if tahun_filter:
+        filtered_records = [r for r in filtered_records if str(r.get('tahun', '')) == tahun_filter]
+    if pic_p3de_filter:
+        filtered_records = [r for r in filtered_records if r.get('pic_p3de_id') and str(r.get('pic_p3de_id')) == pic_p3de_filter]
     if kanwil_id:
         filtered_records = [r for r in filtered_records if str(r.get('kanwil_id', '')) == kanwil_id]
     if kpp_id:
