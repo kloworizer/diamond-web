@@ -85,8 +85,12 @@
                                 <p class="fw-semibold mb-0" id="info-klasifikasi">-</p>
                             </div>
                             <div class="info-group mb-2">
-                                <label class="text-muted small mb-1">Deskripsi Periode</label>
+                                <label class="text-muted small mb-1">Periode Penyampaian</label>
                                 <p class="fw-semibold mb-0" id="info-deskripsi-periode">-</p>
+                            </div>
+                            <div class="info-group mb-2">
+                                <label class="text-muted small mb-1">Periode Penerimaan</label>
+                                <p class="fw-semibold mb-0" id="info-periode-penerimaan">-</p>
                             </div>
                         </div>
                     </div>
@@ -161,6 +165,93 @@
                             {{ form.tgl_terima_dip }}
                             {% if form.tgl_terima_dip.errors %}
                                 <div class="invalid-feedback d-block">{{ form.tgl_terima_dip.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Surat Pengantar Section -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.nomor_surat_pengantar.id_for_label }}" class="form-label">{{ form.nomor_surat_pengantar.label }}</label>
+                            {{ form.nomor_surat_pengantar }}
+                            {% if form.nomor_surat_pengantar.errors %}
+                                <div class="invalid-feedback d-block">{{ form.nomor_surat_pengantar.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.tanggal_surat_pengantar.id_for_label }}" class="form-label">{{ form.tanggal_surat_pengantar.label }}</label>
+                            {{ form.tanggal_surat_pengantar }}
+                            {% if form.tanggal_surat_pengantar.errors %}
+                                <div class="invalid-feedback d-block">{{ form.tanggal_surat_pengantar.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="{{ form.nama_pengirim.id_for_label }}" class="form-label">{{ form.nama_pengirim.label }}</label>
+                            {{ form.nama_pengirim }}
+                            {% if form.nama_pengirim.errors %}
+                                <div class="invalid-feedback d-block">{{ form.nama_pengirim.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="{{ form.id_bentuk_data.id_for_label }}" class="form-label">{{ form.id_bentuk_data.label }}</label>
+                            {{ form.id_bentuk_data }}
+                            {% if form.id_bentuk_data.errors %}
+                                <div class="invalid-feedback d-block">{{ form.id_bentuk_data.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="{{ form.id_cara_penyampaian.id_for_label }}" class="form-label">{{ form.id_cara_penyampaian.label }}</label>
+                            {{ form.id_cara_penyampaian }}
+                            {% if form.id_cara_penyampaian.errors %}
+                                <div class="invalid-feedback d-block">{{ form.id_cara_penyampaian.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="{{ form.id_status_penelitian.id_for_label }}" class="form-label">{{ form.id_status_penelitian.label }}</label>
+                            {{ form.id_status_penelitian }}
+                            {% if form.id_status_penelitian.errors %}
+                                <div class="invalid-feedback d-block">{{ form.id_status_penelitian.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.status_ketersediaan_data.id_for_label }}" class="form-label">{{ form.status_ketersediaan_data.label }}</label>
+                            <div class="form-check mt-2">
+                                {{ form.status_ketersediaan_data }}
+                                <label class="form-check-label ms-2" for="{{ form.status_ketersediaan_data.id_for_label }}">
+                                    Data Tersedia
+                                </label>
+                            </div>
+                            {% if form.status_ketersediaan_data.errors %}
+                                <div class="invalid-feedback d-block">{{ form.status_ketersediaan_data.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.alasan_ketidaktersediaan.id_for_label }}" class="form-label">{{ form.alasan_ketidaktersediaan.label }}</label>
+                            {{ form.alasan_ketidaktersediaan }}
+                            {% if form.alasan_ketidaktersediaan.errors %}
+                                <div class="invalid-feedback d-block">{{ form.alasan_ketidaktersediaan.errors }}</div>
                             {% endif %}
                         </div>
                     </div>
@@ -279,6 +370,33 @@
                         <tr>
                             <th>Tanggal Terima DIP</th>
                             <td id="confirm-tgl-dip">-</td>
+                        </tr>
+                        <tr>
+                            <th colspan="2"><strong>Surat Pengantar</strong></th>
+                        </tr>
+                        <tr>
+                            <th>Nomor Surat Pengantar</th>
+                            <td id="confirm-nomor-surat-pengantar">-</td>
+                        </tr>
+                        <tr>
+                            <th>Tanggal Surat Pengantar</th>
+                            <td id="confirm-tanggal-surat-pengantar">-</td>
+                        </tr>
+                        <tr>
+                            <th>Nama Pengirim</th>
+                            <td id="confirm-nama-pengirim">-</td>
+                        </tr>
+                        <tr>
+                            <th>Bentuk Data</th>
+                            <td id="confirm-bentuk-data">-</td>
+                        </tr>
+                        <tr>
+                            <th>Cara Penyampaian</th>
+                            <td id="confirm-cara-penyampaian">-</td>
+                        </tr>
+                        <tr>
+                            <th>Status Penelitian</th>
+                            <td id="confirm-status-penelitian">-</td>
                         </tr>
                     </tbody>
                 </table>
@@ -453,14 +571,15 @@
             document.getElementById('info-jenis-tabel').textContent = selectedData.jenis_tabel || '-';
             document.getElementById('info-jenis-prioritas').textContent = selectedData.jenis_prioritas || '-';
             document.getElementById('info-klasifikasi').textContent = selectedData.klasifikasi || '-';
-            document.getElementById('info-deskripsi-periode').textContent = selectedData.deskripsi_periode || '-';
+            document.getElementById('info-deskripsi-periode').textContent = selectedData.periode_penyampaian || '-';
+            document.getElementById('info-periode-penerimaan').textContent = selectedData.periode_penerimaan || '-';
             
             document.getElementById('info-pic-p3de').textContent = selectedData.pic_p3de || '-';
             document.getElementById('info-pic-pide').textContent = selectedData.pic_pide || '-';
             document.getElementById('info-pic-pmde').textContent = selectedData.pic_pmde || '-';
 
             // Update periode options
-            updatePeriodeOptions(selectedData.deskripsi_periode);
+            updatePeriodeOptions(selectedData.periode_penyampaian);
 
             infoSection.style.display = 'block';
         }
@@ -627,6 +746,24 @@
             
             document.getElementById('confirm-tgl-dip').textContent = 
                 formatDateTime(tglDipInput.value) || '-';
+
+            document.getElementById('confirm-nomor-surat-pengantar').textContent = 
+                document.getElementById('id_nomor_surat_pengantar')?.value || '-';
+            
+            document.getElementById('confirm-tanggal-surat-pengantar').textContent = 
+                formatDateTime(document.getElementById('id_tanggal_surat_pengantar')?.value) || '-';
+            
+            document.getElementById('confirm-nama-pengirim').textContent = 
+                document.getElementById('id_nama_pengirim')?.value || '-';
+            
+            document.getElementById('confirm-bentuk-data').textContent = 
+                document.getElementById('id_bentuk_data')?.options[document.getElementById('id_bentuk_data')?.selectedIndex]?.text || '-';
+            
+            document.getElementById('confirm-cara-penyampaian').textContent = 
+                document.getElementById('id_cara_penyampaian')?.options[document.getElementById('id_cara_penyampaian')?.selectedIndex]?.text || '-';
+
+            document.getElementById('confirm-status-penelitian').textContent = 
+                document.getElementById('id_status_penelitian')?.options[document.getElementById('id_status_penelitian')?.selectedIndex]?.text || '-';
 
             if (nomorTiketCell && periodeDataSelect?.value) {
                 nomorTiketCell.textContent = 'Loading...';

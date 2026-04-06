@@ -10,8 +10,8 @@ from django.views.decorators.http import require_GET
 from ..models.jenis_data_ilap import JenisDataILAP
 from ..models.ilap import ILAP
 import re
-from ..forms.jenis_data_ilap import JenisDataILAPForm
-from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
+from ..forms.jenis_data_ilap import JenisDataILAPForm, JenisDataILAPUpdateForm
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, SafeDeleteMixin
 
 class JenisDataILAPListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
     """List view for `JenisDataILAP` entries.
@@ -68,9 +68,10 @@ class JenisDataILAPUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFo
 
     Ensures the edit form is rendered and supports AJAX update flows. The
     context includes `form_action` pointing to the update URL for templates.
+    Only allows editing nama_jenis_data and nama_sub_jenis_data fields.
     """
     model = JenisDataILAP
-    form_class = JenisDataILAPForm
+    form_class = JenisDataILAPUpdateForm
     template_name = 'jenis_data_ilap/form.html'
     success_url = reverse_lazy('jenis_data_ilap_list')
     success_message = 'Jenis Data "{object}" berhasil diperbarui.'
@@ -85,7 +86,7 @@ class JenisDataILAPUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFo
         form = self.get_form()
         return self.render_form_response(form)
 
-class JenisDataILAPDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+class JenisDataILAPDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     """Delete view for `JenisDataILAP` entries.
 
     For AJAX `GET` requests returns the confirmation HTML fragment under
@@ -152,7 +153,8 @@ def jenis_data_ilap_data(request):
     qs = JenisDataILAP.objects.select_related(
         'id_ilap',
         'id_ilap__id_kategori',
-        'id_jenis_tabel'
+        'id_jenis_tabel',
+        'id_status_data'
     ).all()
     records_total = qs.count()
 
@@ -171,6 +173,8 @@ def jenis_data_ilap_data(request):
             qs = qs.filter(nama_jenis_data__icontains=columns_search[4])
         if len(columns_search) > 5 and columns_search[5]:  # Nama Sub Jenis Data
             qs = qs.filter(nama_sub_jenis_data__icontains=columns_search[5])
+        if len(columns_search) > 6 and columns_search[6]:  # Status Data
+            qs = qs.filter(id_status_data__deskripsi__icontains=columns_search[6])
 
     records_filtered = qs.count()
 
@@ -178,7 +182,7 @@ def jenis_data_ilap_data(request):
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
     columns = ['id_sub_jenis_data', 'id_jenis_tabel__deskripsi', 'id_ilap__id_kategori__nama_kategori', 
-               'id_ilap__nama_ilap', 'nama_jenis_data', 'nama_sub_jenis_data']
+               'id_ilap__nama_ilap', 'nama_jenis_data', 'nama_sub_jenis_data', 'id_status_data__deskripsi']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -202,6 +206,7 @@ def jenis_data_ilap_data(request):
             'ilap': str(obj.id_ilap),
             'nama_jenis_data': obj.nama_jenis_data,
             'nama_sub_jenis_data': obj.nama_sub_jenis_data,
+            'status_data': str(obj.id_status_data) if obj.id_status_data else '-',
             'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('jenis_data_ilap_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
                        f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('jenis_data_ilap_delete', args=[obj.pk])}' title='Delete'><i class='ri-delete-bin-line'></i></button>"
         })

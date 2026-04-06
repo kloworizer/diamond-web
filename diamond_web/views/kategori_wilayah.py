@@ -9,7 +9,7 @@ from django.views.decorators.http import require_GET
 
 from ..models.kategori_wilayah import KategoriWilayah
 from ..forms.kategori_wilayah import KategoriWilayahForm
-from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, SafeDeleteMixin
 
 class KategoriWilayahListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
     """List view for `KategoriWilayah` entries.
@@ -83,7 +83,7 @@ class KategoriWilayahUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, Ajax
         form = self.get_form()
         return self.render_form_response(form)
 
-class KategoriWilayahDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+class KategoriWilayahDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     """Delete view for `KategoriWilayah` entries.
 
     Returns a confirmation fragment for AJAX `GET` and a JSON `redirect` on

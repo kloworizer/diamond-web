@@ -359,16 +359,15 @@ class AjaxFormMixin:
         self.object = form.save()
         message = self.get_success_message(form)
         if self.is_ajax():
-            # For AJAX requests, set server-side message and instruct client to
-            # redirect to the success URL so that the message is rendered via
-            # Django messages (displayed by base template as a toast).
+            # For AJAX requests, return the message in the JSON response
+            # so the client can display it directly without redirecting.
+            payload = {"success": True}
             if message:
-                messages.success(self.request, message)
+                payload["message"] = message
             try:
                 redirect_url = self.get_success_url()
             except Exception:
                 redirect_url = getattr(self, 'success_url', None)
-            payload = {"success": True}
             if redirect_url:
                 payload["redirect"] = redirect_url
             return JsonResponse(payload)
@@ -394,3 +393,76 @@ class AjaxFormMixin:
             return self.success_message.format(object=self.object)
         except Exception:
             return self.success_message
+
+class SafeDeleteMixin:
+    """Mixin to handle deletion errors gracefully.
+
+    Catches ProtectedError and other deletion-related exceptions and returns
+    user-friendly error messages instead of generic 500 errors. Works with
+    both AJAX and standard form submissions.
+    """
+    
+    def delete(self, request, *args, **kwargs):
+        """Override delete to catch ProtectedError and other exceptions."""
+        from django.db.models.deletion import ProtectedError
+        
+        self.object = self.get_object()
+        object_name = str(self.object)
+        
+        try:
+            self.object.delete()
+            # Success path
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': self.get_delete_success_message(object_name)
+                })
+            messages.success(request, self.get_delete_success_message(object_name))
+            return JsonResponse({'success': True, 'redirect': self.get_success_url()})
+        
+        except ProtectedError as e:
+            # Get the model name that is preventing deletion
+            related_models = []
+            if hasattr(e, 'protected_objects'):
+                for obj in e.protected_objects:
+                    related_models.append(obj._meta.verbose_name_plural)
+            
+            error_message = self.get_protected_error_message(object_name, related_models)
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': error_message
+                }, status=400)
+            
+            messages.error(request, error_message)
+            return JsonResponse({'success': False, 'message': error_message}, status=400)
+        
+        except Exception as e:
+            error_message = self.get_general_error_message(str(e))
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': error_message
+                }, status=400)
+            
+            messages.error(request, error_message)
+            return JsonResponse({'success': False, 'message': error_message}, status=400)
+    
+    def get_delete_success_message(self, object_name):
+        """Get the success message for deletion."""
+        model_name = self.model._meta.verbose_name
+        return f'{model_name} "{object_name}" berhasil dihapus.'
+    
+    def get_protected_error_message(self, object_name, related_models):
+        """Get the error message for ProtectedError."""
+        model_name = self.model._meta.verbose_name
+        if related_models:
+            related_text = ', '.join(related_models)
+            return f'Tidak dapat menghapus {model_name} "{object_name}" karena masih digunakan oleh {related_text}. Silakan hapus referensi tersebut terlebih dahulu.'
+        return f'Tidak dapat menghapus {model_name} "{object_name}" karena masih digunakan di tempat lain. Silakan hapus referensi tersebut terlebih dahulu.'
+    
+    def get_general_error_message(self, error_detail):
+        """Get the error message for other exceptions."""
+        return 'Gagal menghapus data. Silakan periksa apakah data masih digunakan di tempat lain.'

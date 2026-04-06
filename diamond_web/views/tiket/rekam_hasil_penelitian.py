@@ -122,7 +122,7 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Active
         
         # Update the tiket with new baris_p3de value
         self.object = form.save(commit=False)
-        self.object.status = STATUS_DITELITI  # Change status to STATUS_DITELITI (Diteliti)
+        self.object.status_tiket = STATUS_DITELITI  # Change status_tiket to STATUS_DITELITI (Diteliti)
         self.object.tgl_teliti = now
         self.object.save()
         

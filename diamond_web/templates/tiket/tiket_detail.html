@@ -95,6 +95,66 @@
                                 </p>
                             </div>
                         </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Nomor Surat Pengantar</label>
+                                <p class="fw-semibold mb-0">{{ tiket.nomor_surat_pengantar|default:"-" }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Surat Pengantar</label>
+                                <p class="fw-semibold mb-0">
+                                    {% if tiket.tanggal_surat_pengantar %}
+                                        <i class="ri-calendar-line me-1"></i>{{ tiket.tanggal_surat_pengantar|date:"d/m/Y H:i" }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Nama Pengirim</label>
+                                <p class="fw-semibold mb-0">{{ tiket.nama_pengirim|default:"-" }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Bentuk Data</label>
+                                <p class="fw-semibold mb-0">{{ tiket.id_bentuk_data.deskripsi|default:"-" }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Cara Penyampaian</label>
+                                <p class="fw-semibold mb-0">{{ tiket.id_cara_penyampaian.deskripsi|default:"-" }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Status Penelitian</label>
+                                <p class="fw-semibold mb-0">{{ tiket.id_status_penelitian.deskripsi|default:"-" }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Status Ketersediaan Data</label>
+                                <p class="fw-semibold mb-0">
+                                    {% if tiket.status_ketersediaan_data %}
+                                        <span class="badge bg-success"><i class="ri-check-line me-1"></i>Tersedia</span>
+                                    {% else %}
+                                        <span class="badge bg-danger"><i class="ri-close-line me-1"></i>Tidak Tersedia</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Alasan Ketidaktersediaan</label>
+                                <p class="fw-semibold mb-0">{{ tiket.alasan_ketidaktersediaan|default:"-" }}</p>
+                            </div>
+                        </div>
                         {% if tiket.nomor_nd_nadine %}
                         <div class="col-md-4">
                             <div class="info-group">
@@ -456,7 +516,7 @@
                     {% else %}
                         <!-- P3DE actions (existing) -->
                         {% if user_is_active_pic_p3de %}
-                            {% if tiket.status < STATUS_DIKIRIM_KE_PIDE and tiket.status != STATUS_DIBATALKAN and tiket.status != STATUS_SELESAI %}
+                            {% if tiket.status_tiket < STATUS_DIKIRIM_KE_PIDE and tiket.status_tiket != STATUS_DIBATALKAN and tiket.status_tiket != STATUS_SELESAI %}
                                 <div class="d-grid gap-2">
                                     {% if not tiket.backup %}
                                         <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#rekamBackupDataModal">
@@ -488,7 +548,7 @@
                                 </div>
                             {% endif %}
 
-                            {% if tiket.status < STATUS_DIKIRIM_KE_PIDE %}
+                            {% if tiket.status_tiket < STATUS_DIKIRIM_KE_PIDE %}
                                 <button type="button" class="btn btn-danger mt-2 w-100" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
                                     <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
                                 </button>
@@ -497,24 +557,24 @@
 
                         <!-- PIDE actions -->
                         {% if user_is_active_pic_pide %}
-                            {% if tiket.status == STATUS_DIKIRIM_KE_PIDE or tiket.status == STATUS_IDENTIFIKASI %}
+                            {% if tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE or tiket.status_tiket == STATUS_IDENTIFIKASI %}
                                 <div class="d-grid gap-2 mt-2">
                                     <!-- Dikembalikan button: show if status 4 or 5 -->
-                                    {% if tiket.status == STATUS_DIKIRIM_KE_PIDE or tiket.status == STATUS_IDENTIFIKASI %}
+                                    {% if tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE or tiket.status_tiket == STATUS_IDENTIFIKASI %}
                                         <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#dikembalikanTiketModal">
                                             <i class="ri-arrow-go-back-line me-1"></i>Kembalikan ke P3DE
                                         </button>
                                     {% endif %}
 
                                     <!-- Identifikasi button: show if status 4 (Dikirim ke PIDE) -->
-                                    {% if tiket.status == STATUS_DIKIRIM_KE_PIDE %}
+                                    {% if tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE %}
                                         <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#identifikasiTiketModal">
                                             <i class="ri-checkbox-circle-line me-1"></i>Identifikasi
                                         </button>
                                     {% endif %}
 
                                     <!-- Transfer ke PMDE button: show if status 5 (Diidentifikasi) -->
-                                    {% if tiket.status == STATUS_IDENTIFIKASI %}
+                                    {% if tiket.status_tiket == STATUS_IDENTIFIKASI %}
                                         <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#transferKePMDEModal">
                                             <i class="ri-send-plane-line me-1"></i>Transfer ke PMDE
                                         </button>
@@ -529,7 +589,7 @@
 
                         <!-- PMDE actions -->
                         {% if user_is_active_pic_pmde %}
-                            {% if tiket.status == STATUS_PENGENDALIAN_MUTU %}
+                            {% if tiket.status_tiket == STATUS_PENGENDALIAN_MUTU %}
                                 <div class="d-grid gap-2 mt-2">
                                     <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#selesaikanTiketModal">
                                         <i class="ri-check-line me-1"></i>Selesaikan Tiket

@@ -48,7 +48,7 @@ class ILAPPeriodeDataAPIView(View):
 
     Returns JSON with success flag and data array containing:
     - id, nama_ilap, kategori_ilap, kategori_wilayah
-    - jenis_tabel, jenis_prioritas, klasifikasi, deskripsi_periode
+    - jenis_tabel, jenis_prioritas, klasifikasi, periode_penyampaian, periode_penerimaan
     - pic_p3de, pic_pide, pic_pmde (comma-separated active PICs)
 
     Side Effects:
@@ -185,7 +185,8 @@ class ILAPPeriodeDataAPIView(View):
                     'jenis_tabel': jenis_data.id_jenis_tabel.deskripsi if jenis_data.id_jenis_tabel else '-',
                     'jenis_prioritas': jenis_prioritas_text,
                     'klasifikasi': klasifikasi_text,
-                    'deskripsi_periode': pd.id_periode_pengiriman.deskripsi,
+                    'periode_penyampaian': pd.id_periode_pengiriman.periode_penyampaian,
+                    'periode_penerimaan': pd.id_periode_pengiriman.periode_penerimaan,
                     'pic_p3de': pic_p3de,
                     'pic_pide': pic_pide,
                     'pic_pmde': pic_pmde
@@ -449,7 +450,7 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
             with transaction.atomic():
                 self.object = form.save(commit=False)
                 self.object.nomor_tiket = nomor_tiket
-                self.object.status = STATUS_DIREKAM
+                self.object.status_tiket = STATUS_DIREKAM
 
                 tahun = form.cleaned_data.get('tahun')
                 if tahun:

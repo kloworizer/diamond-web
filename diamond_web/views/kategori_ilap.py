@@ -9,7 +9,7 @@ from django.views.decorators.http import require_GET
 
 from ..models.kategori_ilap import KategoriILAP
 from ..forms.kategori_ilap import KategoriILAPForm
-from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, SafeDeleteMixin
 
 class KategoriILAPListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
     """List view for `KategoriILAP` entries.
@@ -79,7 +79,7 @@ class KategoriILAPUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFor
         form = self.get_form()
         return self.render_form_response(form)
 
-class KategoriILAPDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+class KategoriILAPDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     """Delete view for `KategoriILAP` entries.
 
     Returns a confirmation fragment for AJAX `GET` and a JSON `redirect` on
@@ -102,18 +102,6 @@ class KategoriILAPDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteV
             html = render_to_string(self.template_name, self.get_context_data(object=self.object), request=request)
             return JsonResponse({'html': html})
         return self.render_to_response(self.get_context_data())
-
-    def delete(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        name = str(self.object)
-        self.object.delete()
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'message': f'Kategori "{name}" berhasil dihapus.'
-            })
-        messages.success(request, f'Kategori "{name}" berhasil dihapus.')
-        return JsonResponse({'success': True, 'redirect': self.success_url})
 
     def post(self, request, *args, **kwargs):
         return self.delete(request, *args, **kwargs)

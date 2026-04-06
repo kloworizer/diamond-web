@@ -76,21 +76,6 @@
             {% endif %}
         </div>
         {% endif %}
-
-        <div class="mb-3">
-            {{ form.deskripsi.label_tag }}
-            {{ form.deskripsi }}
-            {% if form.deskripsi.errors %}
-                <small class="text-danger d-block mt-1">
-                    {% for error in form.deskripsi.errors %}
-                        {{ error }}
-                    {% endfor %}
-                </small>
-            {% endif %}
-            {% if form.deskripsi.help_text %}
-                <small class="text-muted d-block mt-1">{{ form.deskripsi.help_text|safe }}</small>
-            {% endif %}
-        </div>
     </div>
     <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>

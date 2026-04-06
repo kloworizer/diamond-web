@@ -7,8 +7,6 @@
         <dd class="col-sm-8">{{ tanda_terima.tanggal_tanda_terima|date:"d/m/Y H:i" }}</dd>
         <dt class="col-sm-4">ILAP</dt>
         <dd class="col-sm-8">{{ tanda_terima.id_ilap }}</dd>
-        <dt class="col-sm-4">Deskripsi</dt>
-        <dd class="col-sm-8">{{ tanda_terima.deskripsi }}</dd>
         <dt class="col-sm-4">Status</dt>
         <dd class="col-sm-8">
             {% if not tanda_terima.active %}

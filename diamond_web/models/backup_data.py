@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from .tiket import Tiket
+from .media_backup import MediaBackup
 
 class BackupData(models.Model):
     """Model untuk menyimpan riwayat backup data per tiket."""
@@ -12,8 +13,16 @@ class BackupData(models.Model):
         related_name="backups"
     )
     lokasi_backup = models.CharField(max_length=255, verbose_name="Lokasi Backup")
-    nama_file = models.CharField(max_length=255, default='')
-
+    nama_file = models.CharField(max_length=100, null=True, blank=True, verbose_name="Nama File")
+    id_media_backup = models.ForeignKey(
+        MediaBackup,
+        on_delete=models.PROTECT,
+        db_column="media_backup",
+        verbose_name="Media Backup",
+        null=True,
+        blank=True
+    )
+    
     # Audit trail
     id_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, verbose_name="Dilakukan Oleh")
 

@@ -25,3 +25,6 @@ class JenisPrioritasData(models.Model):
         ]
         verbose_name = 'Jenis Prioritas Data'
         verbose_name_plural = 'Jenis Prioritas Data'
+
+    def __str__(self):
+        return f"{self.id_sub_jenis_data_ilap} - {self.tahun}"

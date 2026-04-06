@@ -35,7 +35,6 @@
                         <th>Nomor Tanda Terima</th>
                         <th>Tanggal</th>
                         <th>ILAP</th>
-                        <th>Deskripsi</th>
                         <th>Perekam</th>
                         <th>Status</th>
                         <th>Actions</th>
@@ -45,9 +44,8 @@
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search Nomor" data-column="0" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search Tanggal" data-column="1" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search ILAP" data-column="2" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Deskripsi" data-column="3" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Perekam" data-column="4" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Status" data-column="5" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Perekam" data-column="3" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Status" data-column="4" /></th>
                         <th></th>
                     </tr>
                 </thead>
@@ -104,7 +102,6 @@
                     { data: 'nomor_tanda_terima' },
                     { data: 'tanggal_tanda_terima' },
                     { data: 'id_ilap' },
-                    { data: 'deskripsi' },
                     { data: 'id_perekam' },
                     { data: 'status' },
                     { data: 'actions', orderable: false, searchable: false }
@@ -210,8 +207,17 @@
                         }
                     },
                     error: function (xhr) {
-                        const message = xhr.responseText || 'Terjadi kesalahan. Silakan coba lagi.';
-                        showToast(message, 'danger');
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.message) {
+                                showToast(response.message, 'danger');
+                            } else {
+                                showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                            }
+                        } catch (e) {
+                            const message = xhr.responseText || 'Terjadi kesalahan. Silakan coba lagi.';
+                            showToast(message, 'danger');
+                        }
                     }
                 });
             });

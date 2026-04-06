@@ -9,7 +9,7 @@ from django.views.decorators.http import require_GET
 
 from ..models.periode_pengiriman import PeriodePengiriman
 from ..forms.periode_pengiriman import PeriodePengirimanForm
-from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, SafeDeleteMixin
 
 class PeriodePengirimanListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
     """List view for `PeriodePengiriman` entries.
@@ -84,7 +84,7 @@ class PeriodePengirimanUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, Aj
         form = self.get_form()
         return self.render_form_response(form)
 
-class PeriodePengirimanDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+class PeriodePengirimanDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     """Delete view for `PeriodePengiriman` entries.
 
     Returns a confirmation fragment for AJAX `GET` and a JSON `redirect` on
@@ -133,11 +133,11 @@ def periode_pengiriman_data(request):
     GET parameters:
     - draw: DataTables draw counter.
     - start, length: paging offset and page size.
-    - columns_search[]: column-specific search values (id, deskripsi).
+    - columns_search[]: column-specific search values (id, periode_penyampaian, periode_penerimaan).
     - order[0][column], order[0][dir]: ordering index and direction.
 
     Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data` rows.
-    Each row contains: `id`, `deskripsi`, and `actions` HTML for edit/delete.
+    Each row contains: `id`, `periode_penyampaian`, `periode_penerimaan`, and `actions` HTML for edit/delete.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
@@ -151,15 +151,17 @@ def periode_pengiriman_data(request):
     if columns_search:
         if columns_search[0]:  # ID
             qs = qs.filter(id__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:  # Deskripsi
-            qs = qs.filter(deskripsi__icontains=columns_search[1])
+        if len(columns_search) > 1 and columns_search[1]:  # Periode Penyampaian
+            qs = qs.filter(periode_penyampaian__icontains=columns_search[1])
+        if len(columns_search) > 2 and columns_search[2]:  # Periode Penerimaan
+            qs = qs.filter(periode_penerimaan__icontains=columns_search[2])
 
     records_filtered = qs.count()
 
     # ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id', 'deskripsi']
+    columns = ['id', 'periode_penyampaian', 'periode_penerimaan']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -178,7 +180,8 @@ def periode_pengiriman_data(request):
     for obj in qs_page:
         data.append({
             'id': obj.id,
-            'deskripsi': obj.deskripsi,
+            'periode_penyampaian': obj.periode_penyampaian,
+            'periode_penerimaan': obj.periode_penerimaan,
             'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('periode_pengiriman_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
                        f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('periode_pengiriman_delete', args=[obj.pk])}' title='Delete'><i class='ri-delete-bin-line'></i></button>"
         })

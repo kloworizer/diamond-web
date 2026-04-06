@@ -1,6 +1,6 @@
 from django.db import models
 from .jenis_data_ilap import JenisDataILAP
-from .klasifikasi_tabel import KlasifikasiTabel
+from .dasar_hukum import DasarHukum
 
 class KlasifikasiJenisData(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="ID")
@@ -11,10 +11,10 @@ class KlasifikasiJenisData(models.Model):
         verbose_name="Jenis Data ILAP"
     )
     id_klasifikasi_tabel = models.ForeignKey(
-        KlasifikasiTabel,
+        DasarHukum,
         on_delete=models.PROTECT,
         db_column="id_klasifikasi_tabel",
-        verbose_name="Klasifikasi Tabel"
+        verbose_name="Dasar Hukum"
     )
 
     class Meta:

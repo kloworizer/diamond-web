@@ -2,7 +2,8 @@ from django.db import models
 
 class PeriodePengiriman(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="ID")
-    deskripsi = models.CharField(max_length=50, unique=True, verbose_name="Deskripsi")
+    periode_penyampaian = models.CharField(max_length=50, unique=True, verbose_name="Periode Penyampaian")
+    periode_penerimaan = models.CharField(max_length=50, verbose_name="Periode Penerimaan")
 
     class Meta:
         verbose_name = "Periode Pengiriman"
@@ -11,4 +12,4 @@ class PeriodePengiriman(models.Model):
         ordering = ["id"]
 
     def __str__(self):
-        return self.deskripsi
+        return self.periode_penyampaian

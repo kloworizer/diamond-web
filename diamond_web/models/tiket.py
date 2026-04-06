@@ -2,11 +2,15 @@ from django.db import models
 from .periode_jenis_data import PeriodeJenisData
 from .jenis_prioritas_data import JenisPrioritasData
 from .durasi_jatuh_tempo import DurasiJatuhTempo
+from .bentuk_data import BentukData
+from .cara_penyampaian import CaraPenyampaian
+from .status_penelitian import StatusPenelitian
 
 
 class Tiket(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="ID")
     nomor_tiket = models.CharField(max_length=17, null=True, blank=True, verbose_name="Nomor Tiket")
+    status_tiket = models.IntegerField(null=True, blank=True, verbose_name="Status Tiket")
     id_periode_data = models.ForeignKey(
         PeriodeJenisData,
         on_delete=models.PROTECT,
@@ -22,19 +26,51 @@ class Tiket(models.Model):
         blank=True
     )
     periode = models.IntegerField(null=True, blank=True, verbose_name="Periode")
+    penyampaian = models.IntegerField(null=True, blank=True, verbose_name="Penyampaian")
+    nomor_surat_pengantar = models.CharField(max_length=50, null=True, blank=True, verbose_name="Nomor Surat Pengantar")
+    tanggal_surat_pengantar = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Surat Pengantar")
+    nama_pengirim = models.CharField(max_length=50, null=True, blank=True, verbose_name="Nama Pengirim")
+    id_bentuk_data = models.ForeignKey(
+        BentukData,
+        on_delete=models.PROTECT,
+        db_column="bentuk_data",
+        verbose_name="Bentuk Data",
+        null=True,
+        blank=True
+    )
+    id_cara_penyampaian = models.ForeignKey(
+        CaraPenyampaian,
+        on_delete=models.PROTECT,
+        db_column="cara_penyampaian",
+        verbose_name="Cara Penyampaian",
+        null=True,
+        blank=True
+    )
+    status_ketersediaan_data = models.BooleanField(default=True, verbose_name="Status Ketersediaan Data")
+    alasan_ketidaktersediaan = models.CharField(max_length=100, null=True, blank=True, verbose_name="Alasan Ketidaktersediaan")
     tahun = models.IntegerField(null=True, blank=True, verbose_name="Tahun")
-    status = models.IntegerField(null=True, blank=True, verbose_name="Status")
+    baris_p3de = models.IntegerField(null=True, blank=True, verbose_name="Baris P3DE")
     tgl_terima_vertikal = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Terima Vertikal")
     tgl_terima_dip = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Terima DIP")
-    tgl_teliti = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Teliti")
     backup = models.BooleanField(default=False, verbose_name="Backup Direkam")
     tanda_terima = models.BooleanField(default=False, verbose_name="Tanda Terima Dibuat")
-    baris_p3de = models.IntegerField(null=True, blank=True, verbose_name="Baris P3DE")
+    id_status_penelitian = models.ForeignKey(
+        StatusPenelitian,
+        on_delete=models.PROTECT,
+        db_column="status_penelitian",
+        verbose_name="Status Penelitian",
+        null=True,
+        blank=True
+    )
+    tgl_teliti = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Teliti")
+    baris_lengkap = models.IntegerField(null=True, blank=True, verbose_name="Baris Lengkap")
+    baris_tidak_lengkap = models.IntegerField(null=True, blank=True, verbose_name="Baris Tidak Lengkap")
     tgl_nadine = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Nadine")
     nomor_nd_nadine = models.CharField(max_length=255, null=True, blank=True, verbose_name="Nomor ND Nadine")
     tgl_kirim_pide = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Kirim PIDE")
     tgl_dibatalkan = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Dibatalkan")
     tgl_dikembalikan = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Dikembalikan")
+    tgl_rekam_pide = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Rekam PIDE")
     id_durasi_jatuh_tempo_pide = models.ForeignKey(
         DurasiJatuhTempo,
         on_delete=models.PROTECT,

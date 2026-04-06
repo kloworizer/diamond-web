@@ -86,8 +86,8 @@ def get_tiket_summary_for_user_pide(user):
     tiket_ids = pide_pic.values_list('id_tiket', flat=True)
 
     return {
-        'identifikasi_data': Tiket.objects.filter(id__in=tiket_ids, status=STATUS_DIKIRIM_KE_PIDE).count(),
-        'transfer_ke_pmde': Tiket.objects.filter(id__in=tiket_ids, status=STATUS_IDENTIFIKASI).count(),
+        'identifikasi_data': Tiket.objects.filter(id__in=tiket_ids, status_tiket=STATUS_DIKIRIM_KE_PIDE).count(),
+        'transfer_ke_pmde': Tiket.objects.filter(id__in=tiket_ids, status_tiket=STATUS_IDENTIFIKASI).count(),
     }
 
 
@@ -123,5 +123,5 @@ def get_tiket_summary_for_user_pmde(user):
     tiket_ids = pmde_pic.values_list('id_tiket', flat=True)
 
     return {
-        'pengendalian_mutu': Tiket.objects.filter(id__in=tiket_ids, status=STATUS_PENGENDALIAN_MUTU).count(),
+        'pengendalian_mutu': Tiket.objects.filter(id__in=tiket_ids, status_tiket=STATUS_PENGENDALIAN_MUTU).count(),
     }

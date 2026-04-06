@@ -11,7 +11,7 @@ from ..models.pic import PIC
 from ..forms.pic import PICForm
 from ..constants.tiket_action_types import PICActionType
 from ..constants.tiket_status import STATUS_DIBATALKAN
-from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, AdminPIDERequiredMixin, AdminPMDERequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, AdminPIDERequiredMixin, AdminPMDERequiredMixin, SafeDeleteMixin
 
 
 class PICListView(LoginRequiredMixin, TemplateView):
@@ -342,7 +342,7 @@ class PICUpdateView(LoginRequiredMixin, AjaxFormMixin, UpdateView):
                 # AND with tgl_terima_dip >= pic.start_date
                 active_tikets = Tiket.objects.filter(
                     id_periode_data__id_sub_jenis_data_ilap=self.object.id_sub_jenis_data_ilap,
-                    status__lt=STATUS_DIBATALKAN  # status < STATUS_DIBATALKAN (not dibatalkan or selesai)
+                    status_tiket__lt=STATUS_DIBATALKAN  # status_tiket < STATUS_DIBATALKAN (not dibatalkan or selesai)
                 ).filter(
                     Q(tgl_terima_dip__gte=self.object.start_date) | Q(tgl_terima_dip__isnull=True)
                 )
@@ -419,7 +419,7 @@ class PICUpdateView(LoginRequiredMixin, AjaxFormMixin, UpdateView):
         return qs
 
 
-class PICDeleteView(LoginRequiredMixin, DeleteView):
+class PICDeleteView(SafeDeleteMixin, LoginRequiredMixin, DeleteView):
     """Delete view for `PIC` entries and associated side-effects.
 
     Deleting a `PIC` will also find `TiketPIC` records for the same user,

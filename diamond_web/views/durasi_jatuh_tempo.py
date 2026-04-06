@@ -9,7 +9,7 @@ from django.views.decorators.http import require_GET
 
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from ..forms.durasi_jatuh_tempo import DurasiJatuhTempoForm
-from .mixins import AjaxFormMixin, AdminPIDERequiredMixin, AdminPMDERequiredMixin
+from .mixins import AjaxFormMixin, AdminPIDERequiredMixin, AdminPMDERequiredMixin, SafeDeleteMixin
 from datetime import date as _date
 
 # ========== PIDE Section ==========
@@ -137,7 +137,7 @@ class DurasiJatuhTempoPIDEUpdateView(LoginRequiredMixin, AdminPIDERequiredMixin,
                 return self.form_invalid(form)
         return super().form_valid(form)
 
-class DurasiJatuhTempoPIDEDeleteView(LoginRequiredMixin, AdminPIDERequiredMixin, DeleteView):
+class DurasiJatuhTempoPIDEDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminPIDERequiredMixin, DeleteView):
     """Delete view for `DurasiJatuhTempo` entries in PIDE scope.
 
     For AJAX `GET` requests the confirmation fragment is returned as JSON with
@@ -377,7 +377,7 @@ class DurasiJatuhTempoPMDEUpdateView(LoginRequiredMixin, AdminPMDERequiredMixin,
                 return self.form_invalid(form)
         return super().form_valid(form)
 
-class DurasiJatuhTempoPMDEDeleteView(LoginRequiredMixin, AdminPMDERequiredMixin, DeleteView):
+class DurasiJatuhTempoPMDEDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminPMDERequiredMixin, DeleteView):
     """Delete view for `DurasiJatuhTempo` entries in PMDE scope.
 
     Behaves like the PIDE delete view: returns a confirmation fragment for

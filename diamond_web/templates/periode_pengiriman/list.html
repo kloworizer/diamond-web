@@ -32,12 +32,14 @@
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Deskripsi</th>
+                        <th>Periode Penyampaian</th>
+                        <th>Periode Penerimaan</th>
                         <th>Actions</th>
                     </tr>
                     <tr id="column-search-row">
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search ID" data-column="0" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Deskripsi" data-column="1" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Periode Penyampaian" data-column="1" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Periode Penerimaan" data-column="2" /></th>
                         <th></th>
                     </tr>
                 </thead>
@@ -91,11 +93,12 @@
                 pageLength: 10,
                 columns: [
                     { data: 'id' },
-                    { data: 'deskripsi' },
+                    { data: 'periode_penyampaian' },
+                    { data: 'periode_penerimaan' },
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [
-                    { targets: 2, render: function (data, type, row, meta) { return data; } }
+                    { targets: 3, render: function (data, type, row, meta) { return data; } }
                 ],
                 order: [[0, 'asc']]
             });
@@ -159,7 +162,16 @@
                         }
                     },
                     error: function (xhr) {
-                        showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.message) {
+                                showToast(response.message, 'danger');
+                            } else {
+                                showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                            }
+                        } catch (e) {
+                            showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                        }
                     }
                 });
             });        });

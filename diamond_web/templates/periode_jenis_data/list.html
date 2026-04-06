@@ -33,6 +33,7 @@
                     <tr>
                         <th>Sub Jenis Data ILAP</th>
                         <th>Periode Pengiriman</th>
+                        <th>Akhir Penyampaian</th>
                         <th>Start Date</th>
                         <th>End Date</th>
                         <th>Actions</th>
@@ -40,8 +41,9 @@
                     <tr id="column-search-row">
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search Sub Jenis Data" data-column="0" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search Periode" data-column="1" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Start Date" data-column="2" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search End Date" data-column="3" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Akhir Penyampaian" data-column="2" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Start Date" data-column="3" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search End Date" data-column="4" /></th>
                         <th></th>
                     </tr>
                 </thead>
@@ -96,12 +98,13 @@
                 columns: [
                     { data: 'sub_jenis_data_ilap' },
                     { data: 'periode_pengiriman' },
+                    { data: 'akhir_penyampaian' },
                     { data: 'start_date' },
                     { data: 'end_date' },
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [
-                    { targets: 4, render: function (data, type, row, meta) { return data; } }
+                    { targets: 5, render: function (data, type, row, meta) { return data; } }
                 ],
                 order: [[0, 'asc']]
             });
@@ -167,7 +170,16 @@
                         }
                     },
                     error: function (xhr) {
-                        showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.message) {
+                                showToast(response.message, 'danger');
+                            } else {
+                                showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                            }
+                        } catch (e) {
+                            showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                        }
                     }
                 });
             });

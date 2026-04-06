@@ -66,7 +66,7 @@ class SelesaikanTiketView(LoginRequiredMixin, UserPMDERequiredMixin, UpdateView)
                 active=True,
                 role=TiketPIC.Role.PMDE
             ).exists()
-            and tiket.status == STATUS_PENGENDALIAN_MUTU  # STATUS_PENGENDALIAN_MUTU
+            and tiket.status_tiket == STATUS_PENGENDALIAN_MUTU  # STATUS_PENGENDALIAN_MUTU
         )
 
     def get_template_names(self):
@@ -119,7 +119,7 @@ class SelesaikanTiketView(LoginRequiredMixin, UserPMDERequiredMixin, UpdateView)
                 now = datetime.now()
 
                 self.object = form.save(commit=False)
-                self.object.status = STATUS_SELESAI
+                self.object.status_tiket = STATUS_SELESAI
                 self.object.save()
 
                 # Create first action: PENGENDALIAN_MUTU (to record QC phase with details)

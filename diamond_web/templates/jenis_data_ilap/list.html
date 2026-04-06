@@ -37,6 +37,7 @@
                         <th>ILAP</th>
                         <th>Nama Jenis Data</th>
                         <th>Nama Sub Jenis Data</th>
+                        <th>Status Data</th>
                         <th>Actions</th>
                     </tr>
                     <tr id="column-search-row">
@@ -46,6 +47,7 @@
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search" data-column="3" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search" data-column="4" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search" data-column="5" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search" data-column="6" /></th>
                         <th></th>
                     </tr>
                 </thead>
@@ -102,10 +104,11 @@
                     { data: 'ilap' },
                     { data: 'nama_jenis_data' },
                     { data: 'nama_sub_jenis_data' },
+                    { data: 'status_data' },
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [
-                    { targets: 6, render: function (data, type, row, meta) { return data; } }
+                    { targets: 7, render: function (data, type, row, meta) { return data; } }
                 ],
                 order: [[0, 'asc']],
                 scrollX: true
@@ -172,7 +175,16 @@
                         }
                     },
                     error: function (xhr) {
-                        showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.message) {
+                                showToast(response.message, 'danger');
+                            } else {
+                                showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                            }
+                        } catch (e) {
+                            showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                        }
                     }
                 });
             });

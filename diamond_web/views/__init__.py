@@ -7,7 +7,12 @@ from .ilap import *
 from .jenis_data_ilap import *
 from .jenis_tabel import *
 from .kategori_wilayah import *
-from .klasifikasi_tabel import *
+from .status_data import *
+from .dasar_hukum import *
+from .status_penelitian import *
+from .bentuk_data import *
+from .cara_penyampaian import *
+from .media_backup import *
 from .klasifikasi_jenis_data import *
 from .periode_pengiriman import *
 from .periode_jenis_data import *

@@ -93,7 +93,7 @@ class BatalkanTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3
         now = datetime.now()
 
         self.object = form.save(commit=False)
-        self.object.status = STATUS_DIBATALKAN  # Change status to STATUS_DIBATALKAN (Dibatalkan)
+        self.object.status_tiket = STATUS_DIBATALKAN  # Change status_tiket to STATUS_DIBATALKAN (Dibatalkan)
         self.object.tgl_dibatalkan = now
         self.object.save()
 

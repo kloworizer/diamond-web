@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="ri-layout-2-line me-2"></i>Cara Penyampaian
+                    </h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                            <li class="breadcrumb-item active">Cara Penyampaian</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
+            <h5 class="mb-0"><i class="ri-layout-2-line me-2"></i>Daftar Cara Penyampaian</h5>
+            <button type="button" class="btn btn-success" data-action="create"><i class="ri-add-line me-1"></i>Tambah</button>
+        </div>
+        <div class="card-body">
+            <table id="cara-penyampaian-table" class="table table-striped" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Deskripsi</th>
+                        <th>Actions</th>
+                    </tr>
+                    <tr id="column-search-row">
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search ID" data-column="0" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Deskripsi" data-column="1" /></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal for Create/Edit/Delete -->
+    <div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="crudModalLabel">Form</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="modalBody">
+                    <!-- Content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        const ajaxUrl = "{% url 'cara_penyampaian_data' %}";
+        let table;
+
+        $(document).ready(function () {
+            table = $('#cara-penyampaian-table').DataTable({
+                serverSide: true,
+                layout: {
+                    topStart: null,
+                    topEnd: null
+                },
+                ajax: {
+                    url: ajaxUrl,
+                    dataSrc: 'data',
+                    data: function (d) {
+                        d.columns_search = [];
+                        $('#column-search-row input').each(function (i) {
+                            d.columns_search[i] = $(this).val();
+                        });
+                        return d;
+                    }
+                },
+                pageLength: 10,
+                columns: [
+                    { data: 'id' },
+                    { data: 'deskripsi' },
+                    { data: 'actions', orderable: false, searchable: false }
+                ],
+                columnDefs: [
+                    { targets: 2, render: function (data, type, row, meta) { return data; } }
+                ],
+                order: [[0, 'asc']]
+            });
+
+            $('#column-search-row input').on('keyup change', function () {
+                table.ajax.reload();
+            });
+
+            const modalElement = document.getElementById('crudModal');
+            modalElement.addEventListener('hidden.bs.modal', function () {
+                document.getElementById('modalBody').innerHTML = '';
+            });
+
+            modalElement.addEventListener('hide.bs.modal', function () {
+                const focusedElement = document.activeElement;
+                if (focusedElement && modalElement.contains(focusedElement)) {
+                    focusedElement.blur();
+                }
+            });
+
+            $(document).on('click', 'button[data-action]', function () {
+                const action = $(this).data('action');
+                const url = $(this).data('url');
+
+                if (action === 'create') {
+                    $.ajax({
+                        url: '{% url "cara_penyampaian_create" %}',
+                        method: 'GET',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        success: function (html) {
+                            $('#modalBody').html(html);
+                            $('#crudModal').modal('show');
+                        }
+                    });
+                } else if (action === 'edit') {
+                    $.ajax({
+                        url: url,
+                        method: 'GET',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        success: function (html) {
+                            $('#modalBody').html(html);
+                            $('#crudModal').modal('show');
+                        }
+                    });
+                } else if (action === 'delete') {
+                    $.ajax({
+                        url: url,
+                        method: 'GET',
+                        data: { ajax: 1 },
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        success: function (response) {
+                            $('#modalBody').html(response.html);
+                            $('#crudModal').modal('show');
+                        }
+                    });
+                }
+            });
+
+            $(document).on('submit', '.form-modal', function (e) {
+                e.preventDefault();
+                const form = $(this);
+                const url = form.attr('action');
+
+                $.ajax({
+                    url: url,
+                    method: 'POST',
+                    data: form.serialize(),
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    success: function (response) {
+                        if (response.success) {
+                            $('#crudModal').modal('hide');
+                            table.ajax.reload();
+                            if (response.message && typeof toastr !== 'undefined') {
+                                toastr.success(response.message);
+                            }
+                        }
+                    },
+                    error: function (xhr) {
+                        if (xhr.status === 200) {
+                            const html = xhr.responseText;
+                            $('#modalBody').html(html);
+                        } else {
+                            alert('An error occurred. Please try again.');
+                        }
+                    }
+                });
+            });
+        });
+    })();
+</script>
+{% endblock %}

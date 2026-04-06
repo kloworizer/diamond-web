@@ -28,7 +28,8 @@
                     </a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'tiket_create' %}">Rekam Penerimaan Data</a></li>
-                        <li><a class="dropdown-item" href="{% url 'tanda_terima_data_list' %}">Kelola Tanda Terima</a></li>
+                        <li><a class="dropdown-item" href="{% url 'tanda_terima_data_list' %}">Kelola Tanda Terima</a>
+                        </li>
                         <li><a class="dropdown-item" href="{% url 'backup_data_list' %}">Kelola Backup Data</a></li>
                         <li><a class="dropdown-item" href="{% url 'kirim_tiket' %}">Kirim Tiket</a></li>
                     </ul>
@@ -39,19 +40,29 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
                         aria-expanded="false">
-                        Kelola Referensi P3DE
+                        Admin P3DE
                     </a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="/kategori-ilap/">Kelola Referensi Kategori ILAP</a></li>
-                        <li><a class="dropdown-item" href="/ilap/">Kelola Referensi ILAP</a></li>
-                        <li><a class="dropdown-item" href="/jenis-tabel/">Kelola Referensi Jenis Tabel</a></li>
                         <li><a class="dropdown-item" href="/kategori-wilayah/">Kelola Referensi Kategori Wilayah</a>
                         </li>
-                        <li><a class="dropdown-item" href="/klasifikasi-tabel/">Kelola Referensi Klasifikasi Tabel</a>
+                        <li><a class="dropdown-item" href="/jenis-tabel/">Kelola Referensi Jenis Tabel</a></li>
+                        <li><a class="dropdown-item" href="/dasar-hukum/">Kelola Referensi Dasar Hukum</a>
                         </li>
                         <li><a class="dropdown-item" href="/periode-pengiriman/">Kelola Referensi Periode Pengiriman</a>
                         </li>
+                        <li><a class="dropdown-item" href="/status-data/">Kelola Referensi Status Data</a>
+                        </li>
+                        <li><a class="dropdown-item" href="/bentuk-data/">Kelola Referensi Bentuk Data</a>
+                        </li>
+                        <li><a class="dropdown-item" href="/cara-penyampaian/">Kelola Referensi Cara Penyampaian</a>
+                        </li>
+                        <li><a class="dropdown-item" href="/media-backup/">Kelola Referensi Media Backup</a>
+                        </li>
+                        <li><a class="dropdown-item" href="/status-penelitian/">Kelola Referensi Status Penelitian</a>
+                        </li>
                         <hr>
+                        <li><a class="dropdown-item" href="/ilap/">Kelola ILAP</a></li>
                         <li><a class="dropdown-item" href="/jenis-data-ilap/">Kelola Jenis Data ILAP</a></li>
                         <li><a class="dropdown-item" href="/klasifikasi-jenis-data/">Kelola Klasifikasi Jenis Data
                                 ILAP</a></li>
@@ -66,10 +77,11 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
                         aria-expanded="false">
-                        Kelola Referensi PIDE
+                        Admin PIDE
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="/durasi-jatuh-tempo-pide/">Kelola Referensi Durasi Jatuh Tempo PIDE</a></li>
+                        <li><a class="dropdown-item" href="/durasi-jatuh-tempo-pide/">Kelola Referensi Durasi Jatuh
+                                Tempo PIDE</a></li>
                         <hr>
                         <li><a class="dropdown-item" href="/nama-tabel/">Kelola Nama Tabel</a></li>
                         <li><a class="dropdown-item" href="/pic-pide/">Kelola PIC PIDE</a></li>
@@ -81,10 +93,11 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
                         aria-expanded="false">
-                        Kelola Referensi PMDE
+                        Admin PMDE
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="/durasi-jatuh-tempo-pmde/">Kelola Referensi Durasi Jatuh Tempo PMDE</a></li>
+                        <li><a class="dropdown-item" href="/durasi-jatuh-tempo-pmde/">Kelola Referensi Durasi Jatuh
+                                Tempo PMDE</a></li>
                         <hr>
                         <li><a class="dropdown-item" href="/pic-pmde/">Kelola PIC PMDE</a></li>
                     </ul>
@@ -107,7 +120,8 @@
                     <ul class="dropdown-menu dropdown-menu-end notifications-dropdown">
                         {% for notif in unread_notifications %}
                         <li>
-                            <div class="dropdown-item notification-item" role="button" tabindex="0" data-href="{% url 'mark_notification_read' notif.pk %}">
+                            <div class="dropdown-item notification-item" role="button" tabindex="0"
+                                data-href="{% url 'mark_notification_read' notif.pk %}">
                                 <div class="notif-icon">
                                     <i class="ri-mail-open-line" aria-hidden="true"></i>
                                 </div>
@@ -116,7 +130,8 @@
                                         <div class="notif-title-wrap">
                                             <strong class="notif-title">{{ notif.title }}</strong>
                                         </div>
-                                        <small class="text-muted notif-time">{% if notif.created_at %}{{ notif.created_at|date:"SHORT_DATETIME_FORMAT" }}{% endif %}</small>
+                                        <small class="text-muted notif-time">{% if notif.created_at %}{{
+                                            notif.created_at|date:"SHORT_DATETIME_FORMAT" }}{% endif %}</small>
                                     </div>
                                     <div class="notif-message small text-muted mt-1">{{ notif.message|safe }}</div>
                                 </div>

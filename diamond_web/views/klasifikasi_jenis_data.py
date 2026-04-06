@@ -9,7 +9,7 @@ from django.views.decorators.http import require_GET
 
 from ..models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ..forms.klasifikasi_jenis_data import KlasifikasiJenisDataForm
-from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, SafeDeleteMixin
 
 class KlasifikasiJenisDataListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
     """List view for `KlasifikasiJenisData` entries.
@@ -84,7 +84,7 @@ class KlasifikasiJenisDataUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin,
         form = self.get_form()
         return self.render_form_response(form)
 
-class KlasifikasiJenisDataDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+class KlasifikasiJenisDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     """Delete view for `KlasifikasiJenisData` entries.
 
     Returns a confirmation fragment for AJAX `GET` and a JSON `redirect` on
@@ -133,11 +133,11 @@ def klasifikasi_jenis_data_data(request):
     GET parameters:
     - draw: DataTables draw counter.
     - start, length: paging offset and page size.
-    - columns_search[]: column-specific search values (jenis_data_ilap, klasifikasi_tabel).
+    - columns_search[]: column-specific search values (jenis_data_ilap, dasar_hukum).
     - order[0][column], order[0][dir]: ordering index and direction.
 
     Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data` rows.
-    Each row contains: `jenis_data_ilap`, `klasifikasi_tabel`, and `actions` HTML.
+    Each row contains: `jenis_data_ilap`, `dasar_hukum`, and `actions` HTML.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
@@ -154,7 +154,7 @@ def klasifikasi_jenis_data_data(request):
     if columns_search:
         if columns_search[0]:  # Jenis Data ILAP
             qs = qs.filter(id_jenis_data_ilap__nama_sub_jenis_data__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:  # Klasifikasi Tabel
+        if len(columns_search) > 1 and columns_search[1]:  # Dasar Hukum
             qs = qs.filter(id_klasifikasi_tabel__deskripsi__icontains=columns_search[1])
 
     records_filtered = qs.count()

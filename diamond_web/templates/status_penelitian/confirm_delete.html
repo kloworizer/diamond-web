@@ -1,0 +1,8 @@
+<form method="post" class="form-modal">
+    {% csrf_token %}
+    <p>Apakah Anda yakin ingin menghapus item ini?</p>
+    <div class="d-flex gap-2 justify-content-end mt-3">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="submit" class="btn btn-danger">Hapus</button>
+    </div>
+</form>

@@ -9,7 +9,7 @@ from django.views.decorators.http import require_GET
 
 from ..models.jenis_prioritas_data import JenisPrioritasData
 from ..forms.jenis_prioritas_data import JenisPrioritasDataForm
-from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, SafeDeleteMixin
 from datetime import date as _date
 
 
@@ -116,7 +116,7 @@ class JenisPrioritasDataUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, A
                 return self.form_invalid(form)
         return super().form_valid(form)
 
-class JenisPrioritasDataDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+class JenisPrioritasDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     """Delete view for `JenisPrioritasData` entries.
 
     For AJAX `GET` returns the confirmation HTML under `html`. On delete,

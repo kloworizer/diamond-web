@@ -13,7 +13,6 @@ class TandaTerimaData(models.Model):
         db_column="id_ilap",
         verbose_name="ILAP"
     )
-    deskripsi = models.CharField(max_length=255, verbose_name="Deskripsi")
     id_perekam = models.ForeignKey(
         User,
         on_delete=models.PROTECT,

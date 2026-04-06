@@ -62,7 +62,7 @@ class IdentifikasiTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
                 active=True,
                 role=TiketPIC.Role.PIDE
             ).exists()
-            and tiket.status == 4  # STATUS_DIKIRIM_KE_PIDE
+            and tiket.status_tiket == 4  # STATUS_DIKIRIM_KE_PIDE
         )
 
     def post(self, request, *args, **kwargs):
@@ -78,7 +78,7 @@ class IdentifikasiTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
         tiket = self.get_object()
         now = datetime.now()
 
-        tiket.status = STATUS_IDENTIFIKASI
+        tiket.status_tiket = STATUS_IDENTIFIKASI
         tiket.save()
 
         # Create tiket action

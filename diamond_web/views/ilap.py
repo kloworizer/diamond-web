@@ -10,7 +10,7 @@ from django.db.models import Max
 
 from ..models.ilap import ILAP
 from ..forms.ilap import ILAPForm
-from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, SafeDeleteMixin
 
 
 class ILAPListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
@@ -217,7 +217,7 @@ class ILAPUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, 
         return self.render_form_response(form)
 
 
-class ILAPDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+class ILAPDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
     """Delete view for `ILAP` entries.
 
     For AJAX `GET` requests returns the confirmation fragment as JSON under

@@ -8,7 +8,7 @@ from django.views.decorators.http import require_GET
 
 from ..models.jenis_data_ilap import JenisDataILAP
 from ..forms.nama_tabel import NamaTabelForm
-from .mixins import AjaxFormMixin, AdminPIDERequiredMixin
+from .mixins import AjaxFormMixin, AdminPIDERequiredMixin, SafeDeleteMixin
 
 class NamaTabelListView(LoginRequiredMixin, AdminPIDERequiredMixin, TemplateView):
     """List view for `JenisDataILAP` (Nama Tabel) entries.
@@ -74,7 +74,7 @@ class NamaTabelUpdateView(LoginRequiredMixin, AdminPIDERequiredMixin, AjaxFormMi
         form = self.get_form()
         return self.render_form_response(form)
 
-class NamaTabelDeleteView(LoginRequiredMixin, AdminPIDERequiredMixin, DeleteView):
+class NamaTabelDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminPIDERequiredMixin, DeleteView):
     """Delete/clear action for `JenisDataILAP` table-name fields.
 
     Instead of removing the database row, this view clears the

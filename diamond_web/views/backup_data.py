@@ -14,7 +14,7 @@ from ..models.tiket_pic import TiketPIC
 from ..forms.backup_data import BackupDataForm
 from ..constants.tiket_action_types import BackupActionType
 from ..constants.tiket_status import STATUS_DIKIRIM_KE_PIDE
-from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin
+from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, SafeDeleteMixin
 
 
 def create_tiket_action(tiket, user, catatan, action_type):
@@ -261,7 +261,7 @@ class BackupDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTike
         return super().post(request, *args, **kwargs)
 
 
-class BackupDataDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, DeleteView):
+class BackupDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, DeleteView):
     """Delete (remove) a `BackupData` record and log the action.
 
     Notes:
@@ -382,13 +382,17 @@ def backup_data_data(request):
             qs = qs.filter(id_tiket__nomor_tiket__icontains=columns_search[0])
         if len(columns_search) > 1 and columns_search[1]:  # Lokasi Backup
             qs = qs.filter(lokasi_backup__icontains=columns_search[1])
+        if len(columns_search) > 2 and columns_search[2]:  # Nama File
+            qs = qs.filter(nama_file__icontains=columns_search[2])
+        if len(columns_search) > 3 and columns_search[3]:  # Media Backup
+            qs = qs.filter(id_media_backup__deskripsi__icontains=columns_search[3])
 
     records_filtered = qs.count()
 
     # Ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id', 'id_tiket__nomor_tiket', 'lokasi_backup']
+    columns = ['id', 'id_tiket__nomor_tiket', 'lokasi_backup', 'nama_file', 'id_media_backup__deskripsi']
 
     if order_col_index is not None:
         try:
@@ -417,7 +421,7 @@ def backup_data_data(request):
                 active=True
             ).exists()
         
-        if obj.id_tiket and obj.id_tiket.status is not None and obj.id_tiket.status < STATUS_DIKIRIM_KE_PIDE and is_active_pic:
+        if obj.id_tiket and obj.id_tiket.status_tiket is not None and obj.id_tiket.status_tiket < STATUS_DIKIRIM_KE_PIDE and is_active_pic:
             actions = (
                 f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('backup_data_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
                 f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('backup_data_delete', args=[obj.pk])}' title='Delete'><i class='ri-delete-bin-line'></i></button>"
@@ -426,6 +430,8 @@ def backup_data_data(request):
             'id': obj.pk,
             'no_tiket': obj.id_tiket.nomor_tiket if obj.id_tiket else '-',
             'lokasi_backup': obj.lokasi_backup,
+            'nama_file': obj.nama_file if obj.nama_file else '-',
+            'media_backup': obj.id_media_backup.deskripsi if obj.id_media_backup else '-',
             'user': user_name,
             'actions': actions
         })
