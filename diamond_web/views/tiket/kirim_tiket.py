@@ -93,7 +93,7 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DER
             # Filter tikets for checkbox: status in (Diteliti, Dikembalikan), backup True, tanda_terima True,
             # and logged user is active PIC P3DE
             tikets = Tiket.objects.filter(
-                status__in=[STATUS_DITELITI, STATUS_DIKEMBALIKAN],
+                status_tiket__in=[STATUS_DITELITI, STATUS_DIKEMBALIKAN],
                 backup=True,
                 tanda_terima=True,
                 tiketpic__active=True,
