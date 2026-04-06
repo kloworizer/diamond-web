@@ -48,8 +48,7 @@ def get_period_display_name(periode_type, periode_num, start_date):
     elif periode_type_lower == '2 mingguan':
         return f"2 Minggu {periode_num}"
     elif periode_type_lower == 'bulanan':
-        month_idx = (start_date.month - 1 + (periode_num - 1)) % 12
-        return months_indo[month_idx]
+        return months_indo[start_date.month - 1]
     elif periode_type_lower == 'triwulanan':
         return f"Triwulan {periode_num}"
     elif periode_type_lower == 'kuartal':
@@ -204,14 +203,19 @@ def monitoring_penyampaian_data_data(request):
             start_date = periode_data.start_date
             akhir_penyampaian = periode_data.akhir_penyampaian  # days to submit after period end
             periode_type_penyampaian = periode_data.id_periode_pengiriman.periode_penyampaian
-            periode_type_penerimaan = periode_data.id_periode_pengiriman.periode_penerimaan  # Use this for row generation
-            
-            # Generate all periods from start_date until today using periode_penerimaan
+            periode_type_penerimaan = periode_data.id_periode_pengiriman.periode_penerimaan
+
+            # Rule: sub-monthly penyampaian (harian, mingguan, 2 mingguan) is always
+            # received/grouped monthly — override penerimaan to bulanan regardless of DB value
+            if periode_type_penyampaian.lower() in ('harian', 'mingguan', '2 mingguan'):
+                periode_type_penerimaan = 'bulanan'
+
+            # Generate all periods from start_date until today using effective periode_penerimaan
             periods = get_periods_for_range(start_date, today, periode_type_penerimaan)
             
             for period in periods:
                 deadline_date = period['end_date'] + timedelta(days=akhir_penyampaian)
-                period_display_name = get_period_display_name(periode_type_penerimaan, period['periode_num'], start_date)
+                period_display_name = get_period_display_name(periode_type_penerimaan, period['periode_num'], period['start_date'])
                 
                 # Check if tiket exists for this period
                 tiket_exists = Tiket.objects.filter(
