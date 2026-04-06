@@ -86,6 +86,24 @@
                         <option value="Tidak">Tidak</option>
                     </select>
                 </div>
+                <div class="col-md-6 col-lg-3">
+                    <label for="filter-jenis-tabel" class="form-label">Jenis Tabel</label>
+                    <select class="form-select form-select-sm" id="filter-jenis-tabel" name="jenis_tabel">
+                        <option value="">-- Semua --</option>
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <label for="filter-dasar-hukum" class="form-label">Dasar Hukum</label>
+                    <select class="form-select form-select-sm" id="filter-dasar-hukum" name="dasar_hukum">
+                        <option value="">-- Semua --</option>
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <label for="filter-periode-pengiriman" class="form-label">Periode Pengiriman</label>
+                    <select class="form-select form-select-sm" id="filter-periode-pengiriman" name="periode_pengiriman">
+                        <option value="">-- Semua --</option>
+                    </select>
+                </div>
                 <div class="col-12">
                     <button type="reset" class="btn btn-secondary btn-sm" id="btn-reset-filter"><i class="ri-refresh-line me-1"></i>Reset</button>
                 </div>
@@ -106,22 +124,13 @@
                         <th>Periode Penyampaian</th>
                         <th>Periode</th>
                         <th>Tahun</th>
+                        <th>Batas Waktu Penyampaian</th>
                         <th>Status Penyampaian</th>
                         <th>Terlambat</th>
                         <th>Hari</th>
                         <th>Actions</th>
                     </tr>
-                    <tr id="column-search-row">
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search" data-column="0" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search" data-column="1" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search" data-column="2" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search" data-column="3" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search" data-column="4" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search" data-column="5" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search" data-column="6" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search" data-column="7" /></th>
-                        <th></th>
-                    </tr>
+
                 </thead>
                 <tbody></tbody>
             </table>
@@ -147,10 +156,6 @@
                     url: ajaxUrl,
                     dataSrc: 'data',
                     data: function (d) {
-                        d.columns_search = [];
-                        $('#column-search-row input').each(function (i) {
-                            d.columns_search[i] = $(this).val();
-                        });
                         d.kanwil = $('#filter-kanwil').val();
                         d.kpp = $('#filter-kpp').val();
                         d.kategori_wilayah = $('#filter-kategori-wilayah').val();
@@ -160,6 +165,9 @@
                         d.sub_jenis_data = $('#filter-sub-jenis-data').val();
                         d.status_penyampaian = $('#filter-status-penyampaian').val();
                         d.terlambat = $('#filter-terlambat').val();
+                        d.jenis_tabel = $('#filter-jenis-tabel').val();
+                        d.dasar_hukum = $('#filter-dasar-hukum').val();
+                        d.periode_pengiriman = $('#filter-periode-pengiriman').val();
                         return d;
                     }
                 },
@@ -170,6 +178,7 @@
                     { data: 'periode_penyampaian' },
                     { data: 'periode' },
                     { data: 'tahun' },
+                    { data: 'deadline' },
                     { data: 'status_penyampaian' },
                     { data: 'status_terlambat' },
                     { data: 'hari' },
@@ -180,11 +189,6 @@
                 ],
                 order: [[0, 'asc']],
                 scrollX: true
-            });
-
-            // Column search — reload on keyup/change
-            $('#column-search-row input').on('keyup change', function () {
-                table.ajax.reload();
             });
 
             // Filter dropdowns — dynamic, reload on change
@@ -218,6 +222,9 @@
                     if (opts.ilap) opts.ilap.forEach(item => $('#filter-ilap').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.jenis_data) opts.jenis_data.forEach(item => $('#filter-jenis-data').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.sub_jenis_data) opts.sub_jenis_data.forEach(item => $('#filter-sub-jenis-data').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.jenis_tabel) opts.jenis_tabel.forEach(item => $('#filter-jenis-tabel').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.dasar_hukum) opts.dasar_hukum.forEach(item => $('#filter-dasar-hukum').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.periode_pengiriman) opts.periode_pengiriman.forEach(item => $('#filter-periode-pengiriman').append(`<option value="${item.id}">${item.name}</option>`));
                 }
             });
         }

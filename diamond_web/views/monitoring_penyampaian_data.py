@@ -18,6 +18,10 @@ from ..models.kpp import KPP
 from ..models.kategori_wilayah import KategoriWilayah
 from ..models.kategori_ilap import KategoriILAP
 from ..models.ilap import ILAP
+from ..models.jenis_tabel import JenisTabel
+from ..models.dasar_hukum import DasarHukum
+from ..models.klasifikasi_jenis_data import KlasifikasiJenisData
+from ..models.periode_pengiriman import PeriodePengiriman
 from .mixins import UserP3DERequiredMixin
 
 
@@ -157,6 +161,9 @@ def monitoring_penyampaian_data_data(request):
         ilap_list = ILAP.objects.all().values('id', 'id_ilap', 'nama_ilap').order_by('id_ilap')
         jenis_data_list = JenisDataILAP.objects.values('nama_jenis_data').distinct().order_by('nama_jenis_data')
         sub_jenis_data_list = JenisDataILAP.objects.values('id_sub_jenis_data', 'nama_sub_jenis_data').distinct().order_by('id_sub_jenis_data')
+        jenis_tabel_list = JenisTabel.objects.all().values('id', 'deskripsi').order_by('deskripsi')
+        dasar_hukum_list = DasarHukum.objects.all().values('id', 'deskripsi').order_by('deskripsi')
+        periode_pengiriman_list = PeriodePengiriman.objects.all().values('id', 'periode_penyampaian').order_by('periode_penyampaian')
         
         return JsonResponse({
             'filter_options': {
@@ -167,6 +174,9 @@ def monitoring_penyampaian_data_data(request):
                 'ilap': [{'id': str(k['id']), 'name': f"{k['id_ilap']} - {k['nama_ilap']}"} for k in ilap_list],
                 'jenis_data': [{'id': k['nama_jenis_data'], 'name': k['nama_jenis_data']} for k in jenis_data_list],
                 'sub_jenis_data': [{'id': k['id_sub_jenis_data'], 'name': f"{k['id_sub_jenis_data']} - {k['nama_sub_jenis_data']}"} for k in sub_jenis_data_list],
+                'jenis_tabel': [{'id': str(k['id']), 'name': k['deskripsi']} for k in jenis_tabel_list],
+                'dasar_hukum': [{'id': str(k['id']), 'name': k['deskripsi']} for k in dasar_hukum_list],
+                'periode_pengiriman': [{'id': str(k['id']), 'name': k['periode_penyampaian']} for k in periode_pengiriman_list],
             }
         })
     
@@ -176,6 +186,11 @@ def monitoring_penyampaian_data_data(request):
 
     today = datetime.now().date()
     records = []
+
+    # Build a map of jenis_data_ilap_id -> set of dasar_hukum ids (many-to-many via KlasifikasiJenisData)
+    dasar_hukum_map = {}
+    for kj in KlasifikasiJenisData.objects.values('id_jenis_data_ilap_id', 'id_klasifikasi_tabel_id'):
+        dasar_hukum_map.setdefault(kj['id_jenis_data_ilap_id'], set()).add(kj['id_klasifikasi_tabel_id'])
 
     # Get all jenis_data_ilap with related data
     jenis_data_ilap_list = JenisDataILAP.objects.select_related(
@@ -292,6 +307,9 @@ def monitoring_penyampaian_data_data(request):
                     'kpp_id': (jenis_data.id_ilap.id_kpp.id if jenis_data.id_ilap.id_kpp else ''),
                     'kategori_wilayah_id': jenis_data.id_ilap.id_kategori_wilayah.id if jenis_data.id_ilap.id_kategori_wilayah else '',
                     'kategori_ilap_id': jenis_data.id_ilap.id_kategori.id if jenis_data.id_ilap.id_kategori else '',
+                    'jenis_tabel_id': jenis_data.id_jenis_tabel_id,
+                    'periode_pengiriman_id': periode_data.id_periode_pengiriman_id,
+                    'dasar_hukum_ids': dasar_hukum_map.get(jenis_data.id, set()),
                 })
 
     records_total = len(records)
@@ -344,49 +362,23 @@ def monitoring_penyampaian_data_data(request):
     if terlambat_filter:
         filtered_records = [r for r in filtered_records if r.get('status_terlambat', '') == terlambat_filter]
 
-    records_total = len(records)
+    jenis_tabel_filter = request.GET.get('jenis_tabel', '')
+    dasar_hukum_filter = request.GET.get('dasar_hukum', '')
+    periode_pengiriman_filter = request.GET.get('periode_pengiriman', '')
 
-    # Column-specific filtering
-    columns_search = request.GET.getlist('columns_search[]')
-    
-    if columns_search:
-        if columns_search[0]:  # ILAP
-            search_term = columns_search[0].lower()
-            filtered_records = [r for r in filtered_records if search_term in r['ilap_name'].lower() or search_term in r['ilap_id'].lower()]
-        if len(columns_search) > 1 and columns_search[1]:  # Jenis Data - only search jenis data fields, not ilap
-            search_term = columns_search[1].lower()
-            filtered_records = [r for r in filtered_records if (
-                search_term in r['id_sub_jenis_data'].lower() or 
-                search_term in r['sub_jenis_data'].lower() or 
-                search_term in r['jenis_data'].lower()
-            ) and search_term not in r['ilap_name'].lower()]
-        if len(columns_search) > 2 and columns_search[2]:  # Periode Penyampaian
-            filtered_records = [r for r in filtered_records if columns_search[2].lower() in r['periode_penyampaian'].lower()]
-        if len(columns_search) > 3 and columns_search[3]:  # Periode
-            try:
-                periode_val = int(columns_search[3])
-                filtered_records = [r for r in filtered_records if r['periode'] == periode_val]
-            except:
-                pass
-        if len(columns_search) > 4 and columns_search[4]:  # Tahun
-            try:
-                tahun_val = int(columns_search[4])
-                filtered_records = [r for r in filtered_records if r['tahun'] == tahun_val]
-            except:
-                pass
-        if len(columns_search) > 5 and columns_search[5]:  # Status Penyampaian
-            status_filter = columns_search[5].lower().strip()
-            filtered_records = [r for r in filtered_records if status_filter in r['status_penyampaian'].lower()]
-        if len(columns_search) > 6 and columns_search[6]:  # Status Terlambat
-            status_filter = columns_search[6].lower().strip()
-            filtered_records = [r for r in filtered_records if status_filter in r['status_terlambat'].lower()]
+    if jenis_tabel_filter:
+        filtered_records = [r for r in filtered_records if str(r.get('jenis_tabel_id', '')) == jenis_tabel_filter]
+    if dasar_hukum_filter:
+        filtered_records = [r for r in filtered_records if int(dasar_hukum_filter) in r.get('dasar_hukum_ids', set())]
+    if periode_pengiriman_filter:
+        filtered_records = [r for r in filtered_records if str(r.get('periode_pengiriman_id', '')) == periode_pengiriman_filter]
 
     records_filtered = len(filtered_records)
 
     # Sorting
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['ilap_name', 'jenis_data', 'periode_penyampaian', 'periode', 'tahun', 'status_penyampaian', 'status_terlambat', 'days_diff']
+    columns = ['ilap_name', 'jenis_data', 'periode_penyampaian', 'periode', 'tahun', 'deadline_date', 'status_penyampaian', 'status_terlambat', 'days_diff']
     
     if order_col_index is not None:
         try:
@@ -445,6 +437,7 @@ def monitoring_penyampaian_data_data(request):
             'periode_penyampaian': record['periode_penyampaian'],
             'periode': record['periode_display_name'],
             'tahun': record['tahun'],
+            'deadline': record['deadline_date'].strftime('%d-%m-%Y'),
             'status_penyampaian': status_penyampaian_html,
             'status_terlambat': status_terlambat_html,
             'hari': record['days_diff'],
