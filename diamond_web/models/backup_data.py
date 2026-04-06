@@ -24,7 +24,7 @@ class BackupData(models.Model):
     )
     
     # Audit trail
-    id_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, verbose_name="Dilakukan Oleh")
+    id_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name="Dilakukan Oleh")
 
     class Meta:
         db_table = 'backup_data'

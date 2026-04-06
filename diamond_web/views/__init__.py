@@ -7,6 +7,9 @@ from .ilap import *
 from .jenis_data_ilap import *
 from .jenis_tabel import *
 from .kategori_wilayah import *
+from .kanwil import *
+from .kpp import *
+from .ilap_kanwil_kpp import *
 from .status_data import *
 from .dasar_hukum import *
 from .status_penelitian import *

@@ -47,6 +47,24 @@ urlpatterns = [
     path('kategori-wilayah/create/', views.KategoriWilayahCreateView.as_view(), name='kategori_wilayah_create'),
     path('kategori-wilayah/<int:pk>/update/', views.KategoriWilayahUpdateView.as_view(), name='kategori_wilayah_update'),
     path('kategori-wilayah/<int:pk>/delete/', views.KategoriWilayahDeleteView.as_view(), name='kategori_wilayah_delete'),
+    # Kanwil URLs
+    path('kanwil/', views.KanwilListView.as_view(), name='kanwil_list'),
+    path('kanwil/data/', views.kanwil_data, name='kanwil_data'),
+    path('kanwil/create/', views.KanwilCreateView.as_view(), name='kanwil_create'),
+    path('kanwil/<int:pk>/update/', views.KanwilUpdateView.as_view(), name='kanwil_update'),
+    path('kanwil/<int:pk>/delete/', views.KanwilDeleteView.as_view(), name='kanwil_delete'),
+    # KPP URLs
+    path('kpp/', views.KPPListView.as_view(), name='kpp_list'),
+    path('kpp/data/', views.kpp_data, name='kpp_data'),
+    path('kpp/create/', views.KPPCreateView.as_view(), name='kpp_create'),
+    path('kpp/<int:pk>/update/', views.KPPUpdateView.as_view(), name='kpp_update'),
+    path('kpp/<int:pk>/delete/', views.KPPDeleteView.as_view(), name='kpp_delete'),
+    # ILAP Kanwil KPP URLs
+    path('ilap-kanwil-kpp/', views.ILAPKanwilKPPListView.as_view(), name='ilap_kanwil_kpp_list'),
+    path('ilap-kanwil-kpp/data/', views.ilap_kanwil_kpp_data, name='ilap_kanwil_kpp_data'),
+    path('ilap-kanwil-kpp/create/', views.ILAPKanwilKPPCreateView.as_view(), name='ilap_kanwil_kpp_create'),
+    path('ilap-kanwil-kpp/<int:pk>/update/', views.ILAPKanwilKPPUpdateView.as_view(), name='ilap_kanwil_kpp_update'),
+    path('ilap-kanwil-kpp/<int:pk>/delete/', views.ILAPKanwilKPPDeleteView.as_view(), name='ilap_kanwil_kpp_delete'),
     # Status Data URLs
     path('status-data/', views.StatusDataListView.as_view(), name='status_data_list'),
     path('status-data/data/', views.status_data_data, name='status_data_data'),

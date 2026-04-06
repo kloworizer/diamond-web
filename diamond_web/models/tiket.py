@@ -63,6 +63,7 @@ class Tiket(models.Model):
         blank=True
     )
     tgl_teliti = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Teliti")
+    kesesuaian_data = models.IntegerField(default=1, verbose_name="Kesesuaian Data")
     baris_lengkap = models.IntegerField(null=True, blank=True, verbose_name="Baris Lengkap")
     baris_tidak_lengkap = models.IntegerField(null=True, blank=True, verbose_name="Baris Tidak Lengkap")
     tgl_nadine = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Nadine")

@@ -22,6 +22,83 @@ KATEGORI_WILAYAH_DATA = [
     {"deskripsi": "Internasional"},
 ]
 
+KANWIL_DATA = [
+    {"kode_kanwil": "010", "nama_kanwil": "Kanwil DJP Sumatera Utara"},
+    {"kode_kanwil": "020", "nama_kanwil": "Kanwil DJP Sumatera Barat"},
+    {"kode_kanwil": "030", "nama_kanwil": "Kanwil DJP Riau"},
+    {"kode_kanwil": "040", "nama_kanwil": "Kanwil DJP Jambi"},
+    {"kode_kanwil": "050", "nama_kanwil": "Kanwil DJP Sumatera Selatan"},
+    {"kode_kanwil": "060", "nama_kanwil": "Kanwil DJP Lampung"},
+    {"kode_kanwil": "070", "nama_kanwil": "Kanwil DJP Bangka Belitung"},
+    {"kode_kanwil": "080", "nama_kanwil": "Kanwil DJP DKI Jakarta"},
+    {"kode_kanwil": "090", "nama_kanwil": "Kanwil DJP Jawa Barat"},
+    {"kode_kanwil": "100", "nama_kanwil": "Kanwil DJP Jawa Tengah"},
+    {"kode_kanwil": "110", "nama_kanwil": "Kanwil DJP Yogyakarta"},
+    {"kode_kanwil": "120", "nama_kanwil": "Kanwil DJP Jawa Timur"},
+    {"kode_kanwil": "130", "nama_kanwil": "Kanwil DJP Madura"},
+    {"kode_kanwil": "140", "nama_kanwil": "Kanwil DJP Bali"},
+    {"kode_kanwil": "150", "nama_kanwil": "Kanwil DJP Nusa Tenggara Barat"},
+    {"kode_kanwil": "160", "nama_kanwil": "Kanwil DJP Nusa Tenggara Timur"},
+    {"kode_kanwil": "170", "nama_kanwil": "Kanwil DJP Kalimantan Barat"},
+    {"kode_kanwil": "180", "nama_kanwil": "Kanwil DJP Kalimantan Tengah"},
+    {"kode_kanwil": "190", "nama_kanwil": "Kanwil DJP Kalimantan Selatan"},
+    {"kode_kanwil": "200", "nama_kanwil": "Kanwil DJP Kalimantan Timur"},
+    {"kode_kanwil": "210", "nama_kanwil": "Kanwil DJP Kalimantan Utara"},
+    {"kode_kanwil": "220", "nama_kanwil": "Kanwil DJP Sulawesi Utara"},
+    {"kode_kanwil": "230", "nama_kanwil": "Kanwil DJP Sulawesi Tengah"},
+    {"kode_kanwil": "240", "nama_kanwil": "Kanwil DJP Sulawesi Selatan"},
+    {"kode_kanwil": "250", "nama_kanwil": "Kanwil DJP Sulawesi Tenggara"},
+    {"kode_kanwil": "260", "nama_kanwil": "Kanwil DJP Gorontalo"},
+    {"kode_kanwil": "270", "nama_kanwil": "Kanwil DJP Sulawesi Barat"},
+    {"kode_kanwil": "280", "nama_kanwil": "Kanwil DJP Maluku"},
+    {"kode_kanwil": "290", "nama_kanwil": "Kanwil DJP Papua Barat"},
+    {"kode_kanwil": "300", "nama_kanwil": "Kanwil DJP Papua"},
+]
+
+KPP_DATA = [
+    {"kode_kpp": "001", "nama_kpp": "KPP Medan", "kode_kanwil": "010"},
+    {"kode_kpp": "002", "nama_kpp": "KPP Pematangsiantar", "kode_kanwil": "010"},
+    {"kode_kpp": "003", "nama_kpp": "KPP Padang", "kode_kanwil": "020"},
+    {"kode_kpp": "004", "nama_kpp": "KPP Pekanbaru", "kode_kanwil": "030"},
+    {"kode_kpp": "005", "nama_kpp": "KPP Jambi", "kode_kanwil": "040"},
+    {"kode_kpp": "006", "nama_kpp": "KPP Palembang", "kode_kanwil": "050"},
+    {"kode_kpp": "007", "nama_kpp": "KPP Lampung", "kode_kanwil": "060"},
+    {"kode_kpp": "008", "nama_kpp": "KPP Bangka Belitung", "kode_kanwil": "070"},
+    {"kode_kpp": "009", "nama_kpp": "KPP Jakarta Pusat", "kode_kanwil": "080"},
+    {"kode_kpp": "010", "nama_kpp": "KPP Jakarta Selatan", "kode_kanwil": "080"},
+    {"kode_kpp": "011", "nama_kpp": "KPP Jakarta Utara", "kode_kanwil": "080"},
+    {"kode_kpp": "012", "nama_kpp": "KPP Jakarta Timur", "kode_kanwil": "080"},
+    {"kode_kpp": "013", "nama_kpp": "KPP Jakarta Barat", "kode_kanwil": "080"},
+    {"kode_kpp": "014", "nama_kpp": "KPP Bandung", "kode_kanwil": "090"},
+    {"kode_kpp": "015", "nama_kpp": "KPP Bogor", "kode_kanwil": "090"},
+    {"kode_kpp": "016", "nama_kpp": "KPP Cirebon", "kode_kanwil": "090"},
+    {"kode_kpp": "017", "nama_kpp": "KPP Tasikmalaya", "kode_kanwil": "090"},
+    {"kode_kpp": "018", "nama_kpp": "KPP Semarang", "kode_kanwil": "100"},
+    {"kode_kpp": "019", "nama_kpp": "KPP Surakarta", "kode_kanwil": "100"},
+    {"kode_kpp": "020", "nama_kpp": "KPP Yogyakarta", "kode_kanwil": "110"},
+    {"kode_kpp": "021", "nama_kpp": "KPP Surabaya", "kode_kanwil": "120"},
+    {"kode_kpp": "022", "nama_kpp": "KPP Malang", "kode_kanwil": "120"},
+    {"kode_kpp": "023", "nama_kpp": "KPP Sidoarjo", "kode_kanwil": "120"},
+    {"kode_kpp": "024", "nama_kpp": "KPP Madura", "kode_kanwil": "130"},
+    {"kode_kpp": "025", "nama_kpp": "KPP Denpasar", "kode_kanwil": "140"},
+    {"kode_kpp": "026", "nama_kpp": "KPP Mataram", "kode_kanwil": "150"},
+    {"kode_kpp": "027", "nama_kpp": "KPP Kupang", "kode_kanwil": "160"},
+    {"kode_kpp": "028", "nama_kpp": "KPP Pontianak", "kode_kanwil": "170"},
+    {"kode_kpp": "029", "nama_kpp": "KPP Palangkaraya", "kode_kanwil": "180"},
+    {"kode_kpp": "030", "nama_kpp": "KPP Banjarmasin", "kode_kanwil": "190"},
+    {"kode_kpp": "031", "nama_kpp": "KPP Samarinda", "kode_kanwil": "200"},
+    {"kode_kpp": "032", "nama_kpp": "KPP Tarakan", "kode_kanwil": "210"},
+    {"kode_kpp": "033", "nama_kpp": "KPP Manado", "kode_kanwil": "220"},
+    {"kode_kpp": "034", "nama_kpp": "KPP Palu", "kode_kanwil": "230"},
+    {"kode_kpp": "035", "nama_kpp": "KPP Makassar", "kode_kanwil": "240"},
+    {"kode_kpp": "036", "nama_kpp": "KPP Kendari", "kode_kanwil": "250"},
+    {"kode_kpp": "037", "nama_kpp": "KPP Gorontalo", "kode_kanwil": "260"},
+    {"kode_kpp": "038", "nama_kpp": "KPP Mamuju", "kode_kanwil": "270"},
+    {"kode_kpp": "039", "nama_kpp": "KPP Ambon", "kode_kanwil": "280"},
+    {"kode_kpp": "040", "nama_kpp": "KPP Manokwari", "kode_kanwil": "290"},
+    {"kode_kpp": "041", "nama_kpp": "KPP Jayapura", "kode_kanwil": "300"},
+]
+
 JENIS_TABEL_DATA = [
     {"deskripsi": "Diidentifikasi"},
     {"deskripsi": "Tidak Diidentifikasi"},
@@ -225,6 +302,33 @@ ILAP_DATA = [
     {"id_ilap": "PD010", "id_kategori": "PD", "nama_ilap": "KOTA DENPASAR"},
     {"id_ilap": "PD011", "id_kategori": "PD", "nama_ilap": "KABUPATEN LOMBOK BARAT"},
     {"id_ilap": "PD012", "id_kategori": "PD", "nama_ilap": "KOTA BANDA ACEH"},
+]
+
+ILAP_KANWIL_KPP_DATA = [
+    # Jawa Barat - Bekasi
+    {"id_ilap": "PD003", "kode_kpp": "015"},
+    # Jawa Barat - Sukabumi
+    {"id_ilap": "PD002", "kode_kpp": "015"},
+    # Banten - Serang
+    {"id_ilap": "PD001", "kode_kpp": "015"},
+    # Jawa Tengah - Tegal
+    {"id_ilap": "PD004", "kode_kpp": "018"},
+    # Jawa Tengah - Banjarnegara
+    {"id_ilap": "PD005", "kode_kpp": "018"},
+    # Yogyakarta
+    {"id_ilap": "PD006", "kode_kpp": "020"},
+    # Jawa Timur - Surabaya
+    {"id_ilap": "PD007", "kode_kpp": "021"},
+    # Jawa Timur - Madura/Bangkalan
+    {"id_ilap": "PD008", "kode_kpp": "024"},
+    # Jawa Timur - Kediri
+    {"id_ilap": "PD009", "kode_kpp": "023"},
+    # Bali - Denpasar
+    {"id_ilap": "PD010", "kode_kpp": "025"},
+    # Nusa Tenggara Barat - Lombok Barat
+    {"id_ilap": "PD011", "kode_kpp": "026"},
+    # Aceh - Banda Aceh
+    {"id_ilap": "PD012", "kode_kpp": "001"},
 ]
 
 JENIS_DATA_ILAP_DATA = [
@@ -687,6 +791,45 @@ def unseed_kategori_wilayah(apps, schema_editor):
     KategoriWilayah.objects.filter(deskripsi__in=descriptions_to_delete).delete()
 
 
+def seed_kanwil(apps, schema_editor):
+    """Seeds the Kanwil model with initial data."""
+    Kanwil = apps.get_model("diamond_web", "Kanwil")
+    for item in KANWIL_DATA:
+        Kanwil.objects.get_or_create(
+            kode_kanwil=item["kode_kanwil"],
+            defaults={"nama_kanwil": item["nama_kanwil"]}
+        )
+
+
+def unseed_kanwil(apps, schema_editor):
+    """Removes the initial data from the Kanwil model."""
+    Kanwil = apps.get_model("diamond_web", "Kanwil")
+    kodes_to_delete = [item["kode_kanwil"] for item in KANWIL_DATA]
+    Kanwil.objects.filter(kode_kanwil__in=kodes_to_delete).delete()
+
+
+def seed_kpp(apps, schema_editor):
+    """Seeds the KPP model with initial data."""
+    KPP = apps.get_model("diamond_web", "KPP")
+    Kanwil = apps.get_model("diamond_web", "Kanwil")
+    for item in KPP_DATA:
+        kanwil = Kanwil.objects.get(kode_kanwil=item["kode_kanwil"])
+        KPP.objects.get_or_create(
+            kode_kpp=item["kode_kpp"],
+            defaults={
+                "nama_kpp": item["nama_kpp"],
+                "id_kanwil": kanwil
+            }
+        )
+
+
+def unseed_kpp(apps, schema_editor):
+    """Removes the initial data from the KPP model."""
+    KPP = apps.get_model("diamond_web", "KPP")
+    kodes_to_delete = [item["kode_kpp"] for item in KPP_DATA]
+    KPP.objects.filter(kode_kpp__in=kodes_to_delete).delete()
+
+
 def seed_jenis_tabel(apps, schema_editor):
     """Seeds the JenisTabel model with initial data."""
     JenisTabel = apps.get_model("diamond_web", "JenisTabel")
@@ -852,6 +995,29 @@ def unseed_ilap(apps, schema_editor):
     ILAP = apps.get_model("diamond_web", "ILAP")
     ids_to_delete = [item["id_ilap"] for item in ILAP_DATA]
     ILAP.objects.filter(id_ilap__in=ids_to_delete).delete()
+
+
+def seed_ilap_kanwil_kpp(apps, schema_editor):
+    """Seeds the ILAPKanwilKPP model with initial data."""
+    ILAPKanwilKPP = apps.get_model("diamond_web", "ILAPKanwilKPP")
+    ILAP = apps.get_model("diamond_web", "ILAP")
+    KPP = apps.get_model("diamond_web", "KPP")
+    for item in ILAP_KANWIL_KPP_DATA:
+        ilap = ILAP.objects.get(id_ilap=item["id_ilap"])
+        kpp = KPP.objects.get(kode_kpp=item["kode_kpp"])
+        ILAPKanwilKPP.objects.get_or_create(
+            id_ilap=ilap,
+            id_kpp=kpp
+        )
+
+
+def unseed_ilap_kanwil_kpp(apps, schema_editor):
+    """Removes the initial data from the ILAPKanwilKPP model."""
+    ILAPKanwilKPP = apps.get_model("diamond_web", "ILAPKanwilKPP")
+    ILAP = apps.get_model("diamond_web", "ILAP")
+    ilap_ids = [item["id_ilap"] for item in ILAP_KANWIL_KPP_DATA]
+    ilaps = ILAP.objects.filter(id_ilap__in=ilap_ids)
+    ILAPKanwilKPP.objects.filter(id_ilap__in=ilaps).delete()
 
 
 def seed_jenis_data_ilap(apps, schema_editor):
@@ -1117,6 +1283,8 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(seed_kategori_ilap, reverse_code=unseed_kategori_ilap),
         migrations.RunPython(seed_kategori_wilayah, reverse_code=unseed_kategori_wilayah),
+        migrations.RunPython(seed_kanwil, reverse_code=unseed_kanwil),
+        migrations.RunPython(seed_kpp, reverse_code=unseed_kpp),
         migrations.RunPython(seed_jenis_tabel, reverse_code=unseed_jenis_tabel),
         migrations.RunPython(seed_dasar_hukum, reverse_code=unseed_dasar_hukum),
         migrations.RunPython(seed_periode_pengiriman, reverse_code=unseed_periode_pengiriman),
@@ -1126,6 +1294,7 @@ class Migration(migrations.Migration):
         migrations.RunPython(seed_media_backup, reverse_code=unseed_media_backup),
         migrations.RunPython(seed_status_penelitian, reverse_code=unseed_status_penelitian),
         migrations.RunPython(seed_ilap, reverse_code=unseed_ilap),
+        migrations.RunPython(seed_ilap_kanwil_kpp, reverse_code=unseed_ilap_kanwil_kpp),
         migrations.RunPython(seed_jenis_data_ilap, reverse_code=unseed_jenis_data_ilap),
         migrations.RunPython(seed_klasifikasi_jenis_data, reverse_code=unseed_klasifikasi_jenis_data),
         migrations.RunPython(seed_periode_jenis_data, reverse_code=unseed_periode_jenis_data),
