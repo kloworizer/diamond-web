@@ -12,6 +12,7 @@ from ..models.periode_jenis_data import PeriodeJenisData
 from ..models.tiket import Tiket
 from ..models.detil_tanda_terima import DetilTandaTerima
 from ..models.tiket_pic import TiketPIC
+from ..models.pic import PIC
 from .mixins import UserP3DERequiredMixin
 
 
@@ -239,30 +240,20 @@ def monitoring_penyampaian_data_data(request):
 
     records_total = len(records)
 
-    # Apply RBAC filtering: non-admin users only see records for tikets where they are active P3DE PIC
+    # Apply RBAC filtering
+    # Admin users see all records
+    # Non-admin P3DE users see only records for sub jenis data where they are an active P3DE PIC
     if not request.user.is_superuser and not request.user.groups.filter(name='admin').exists():
-        # Get tiket IDs where user is active P3DE PIC
-        user_tiket_ids = set(
-            TiketPIC.objects.filter(
+        # Get jenis_data_ilap IDs where user is active P3DE PIC (end_date is None means active)
+        user_jenis_data_ids = set(
+            PIC.objects.filter(
                 id_user=request.user,
-                active=True,
-                role=TiketPIC.Role.P3DE
-            ).values_list('id_tiket_id', flat=True)
+                tipe=PIC.TipePIC.P3DE,
+                end_date__isnull=True
+            ).values_list('id_sub_jenis_data_ilap_id', flat=True)
         )
-        
-        # Filter records to only include those where a tiket exists for the period
-        # and the user is an active PIC for that tiket
-        filtered_records_user = []
-        for record in records:
-            if Tiket.objects.filter(
-                id__in=user_tiket_ids,
-                id_periode_data=record['id_periode_data'],
-                periode=record['periode_num']
-            ).exists():
-                filtered_records_user.append(record)
-        
-        records = filtered_records_user
-    
+        records = [r for r in records if r['id_jenis_data'] in user_jenis_data_ids]
+
     records_total = len(records)
 
     # Column-specific filtering
