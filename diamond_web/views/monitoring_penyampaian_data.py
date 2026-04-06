@@ -13,6 +13,11 @@ from ..models.tiket import Tiket
 from ..models.detil_tanda_terima import DetilTandaTerima
 from ..models.tiket_pic import TiketPIC
 from ..models.pic import PIC
+from ..models.kanwil import Kanwil
+from ..models.kpp import KPP
+from ..models.kategori_wilayah import KategoriWilayah
+from ..models.kategori_ilap import KategoriILAP
+from ..models.ilap import ILAP
 from .mixins import UserP3DERequiredMixin
 
 
@@ -58,12 +63,21 @@ def get_period_display_name(periode_type, periode_num, start_date):
 
 
 def get_periods_for_range(start_date, end_date, periode_type):
-    """Generate period dates based on periode type from start_date to end_date."""
+    """Generate period dates based on periode type from start_date to end_date.
+    
+    Periode count resets to 1 at the beginning of each calendar year.
+    """
     periods = []
     current = start_date
     periode_count = 1
+    current_year = start_date.year
     
     while current <= end_date:
+        # Check if year has changed, reset periode_count
+        if current.year != current_year:
+            current_year = current.year
+            periode_count = 1
+        
         if periode_type.lower() == 'harian':
             next_date = current + timedelta(days=1)
         elif periode_type.lower() == 'mingguan':
@@ -129,8 +143,34 @@ def monitoring_penyampaian_data_data(request):
     
     Permissions: wrapped by decorators to allow only users in `admin` or
     `user_p3de` groups. Non-admin users are further restricted to
-    monitoring records for tikets where they are an active P3DE `TiketPIC`.
+    monitoring records for sub jenis data where they are an active P3DE PIC.
+    
+    Query parameters for filter options: get_filter_options=1 to get available filter values
+    Query parameters for filtering: kanwil, kpp, kategori_wilayah, kategori_ilap, ilap, 
+                                     jenis_data, sub_jenis_data, status_penyampaian, terlambat
     """
+    # Check if requesting filter options
+    if request.GET.get('get_filter_options'):
+        kanwil_list = Kanwil.objects.all().values('id', 'nama_kanwil').order_by('nama_kanwil')
+        kpp_list = KPP.objects.all().values('id', 'nama_kpp').order_by('nama_kpp')
+        kategori_wilayah_list = KategoriWilayah.objects.all().values('id', 'deskripsi').order_by('deskripsi')
+        kategori_ilap_list = KategoriILAP.objects.all().values('id', 'id_kategori', 'nama_kategori').order_by('nama_kategori')
+        ilap_list = ILAP.objects.all().values('id', 'id_ilap', 'nama_ilap').order_by('id_ilap')
+        jenis_data_list = JenisDataILAP.objects.values('nama_jenis_data').distinct().order_by('nama_jenis_data')
+        sub_jenis_data_list = JenisDataILAP.objects.values('id_sub_jenis_data', 'nama_sub_jenis_data').distinct().order_by('id_sub_jenis_data')
+        
+        return JsonResponse({
+            'filter_options': {
+                'kanwil': [{'id': str(k['id']), 'name': k['nama_kanwil']} for k in kanwil_list],
+                'kpp': [{'id': str(k['id']), 'name': k['nama_kpp']} for k in kpp_list],
+                'kategori_wilayah': [{'id': str(k['id']), 'name': k['deskripsi']} for k in kategori_wilayah_list],
+                'kategori_ilap': [{'id': str(k['id']), 'name': f"{k['id_kategori']} - {k['nama_kategori']}"} for k in kategori_ilap_list],
+                'ilap': [{'id': str(k['id']), 'name': f"{k['id_ilap']} - {k['nama_ilap']}"} for k in ilap_list],
+                'jenis_data': [{'id': k['nama_jenis_data'], 'name': k['nama_jenis_data']} for k in jenis_data_list],
+                'sub_jenis_data': [{'id': k['id_sub_jenis_data'], 'name': f"{k['id_sub_jenis_data']} - {k['nama_sub_jenis_data']}"} for k in sub_jenis_data_list],
+            }
+        })
+    
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
@@ -143,6 +183,8 @@ def monitoring_penyampaian_data_data(request):
         'id_ilap',
         'id_ilap__id_kategori',
         'id_ilap__id_kategori_wilayah',
+        'id_ilap__id_kpp',
+        'id_ilap__id_kpp__id_kanwil',
         'id_jenis_tabel',
         'id_status_data'
     ).all()
@@ -224,7 +266,9 @@ def monitoring_penyampaian_data_data(request):
                     'periode_num': period['periode_num'],
                     'ilap_name': jenis_data.id_ilap.nama_ilap,
                     'ilap_id': jenis_data.id_ilap.id_ilap,
+                    'ilap_jenis_data_id': jenis_data.id_ilap.id,
                     'jenis_data': jenis_data.nama_jenis_data,
+                    'jenis_data_id': jenis_data.id,
                     'sub_jenis_data': jenis_data.nama_sub_jenis_data,
                     'periode_penyampaian': periode_type_penyampaian,
                     'periode': period['periode_num'],
@@ -240,6 +284,10 @@ def monitoring_penyampaian_data_data(request):
                     'tiket_exists': tiket_exists,
                     'is_late': is_late,
                     'days_diff': days_diff,
+                    'kanwil_id': (jenis_data.id_ilap.id_kpp.id_kanwil_id if jenis_data.id_ilap.id_kpp else ''),
+                    'kpp_id': (jenis_data.id_ilap.id_kpp.id if jenis_data.id_ilap.id_kpp else ''),
+                    'kategori_wilayah_id': jenis_data.id_ilap.id_kategori_wilayah.id if jenis_data.id_ilap.id_kategori_wilayah else '',
+                    'kategori_ilap_id': jenis_data.id_ilap.id_kategori.id if jenis_data.id_ilap.id_kategori else '',
                 })
 
     records_total = len(records)
@@ -260,9 +308,42 @@ def monitoring_penyampaian_data_data(request):
 
     records_total = len(records)
 
+    # Apply filter form parameters
+    kanwil_id = request.GET.get('kanwil', '')
+    kpp_id = request.GET.get('kpp', '')
+    kategori_wilayah_id = request.GET.get('kategori_wilayah', '')
+    kategori_ilap_id = request.GET.get('kategori_ilap', '')
+    ilap_id = request.GET.get('ilap', '')
+    jenis_data_id = request.GET.get('jenis_data', '')
+    sub_jenis_data_id = request.GET.get('sub_jenis_data', '')
+    status_penyampaian_filter = request.GET.get('status_penyampaian', '')
+    terlambat_filter = request.GET.get('terlambat', '')
+    
+    filtered_records = records
+    
+    if kanwil_id:
+        filtered_records = [r for r in filtered_records if str(r.get('kanwil_id', '')) == kanwil_id]
+    if kpp_id:
+        filtered_records = [r for r in filtered_records if str(r.get('kpp_id', '')) == kpp_id]
+    if kategori_wilayah_id:
+        filtered_records = [r for r in filtered_records if str(r.get('kategori_wilayah_id', '')) == kategori_wilayah_id]
+    if kategori_ilap_id:
+        filtered_records = [r for r in filtered_records if str(r.get('kategori_ilap_id', '')) == kategori_ilap_id]
+    if ilap_id:
+        filtered_records = [r for r in filtered_records if str(r.get('ilap_jenis_data_id', '')) == ilap_id]
+    if jenis_data_id:
+        filtered_records = [r for r in filtered_records if r.get('jenis_data', '') == jenis_data_id]
+    if sub_jenis_data_id:
+        filtered_records = [r for r in filtered_records if r.get('id_sub_jenis_data', '') == sub_jenis_data_id]
+    if status_penyampaian_filter:
+        filtered_records = [r for r in filtered_records if r.get('status_penyampaian', '') == status_penyampaian_filter]
+    if terlambat_filter:
+        filtered_records = [r for r in filtered_records if r.get('status_terlambat', '') == terlambat_filter]
+
+    records_total = len(records)
+
     # Column-specific filtering
     columns_search = request.GET.getlist('columns_search[]')
-    filtered_records = records
     
     if columns_search:
         if columns_search[0]:  # ILAP
