@@ -22,6 +22,77 @@
         </div>
     </div>
 
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Filter Data</h5>
+        </div>
+        <div class="card-body">
+            <form id="filter-form" class="row g-3">
+                <div class="col-md-6 col-lg-3">
+                    <label for="filter-kanwil" class="form-label">Kanwil</label>
+                    <select class="form-select form-select-sm" id="filter-kanwil" name="kanwil">
+                        <option value="">-- Semua --</option>
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <label for="filter-kpp" class="form-label">KPP</label>
+                    <select class="form-select form-select-sm" id="filter-kpp" name="kpp">
+                        <option value="">-- Semua --</option>
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <label for="filter-kategori-wilayah" class="form-label">Kategori Wilayah</label>
+                    <select class="form-select form-select-sm" id="filter-kategori-wilayah" name="kategori_wilayah">
+                        <option value="">-- Semua --</option>
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <label for="filter-kategori-ilap" class="form-label">Kategori ILAP</label>
+                    <select class="form-select form-select-sm" id="filter-kategori-ilap" name="kategori_ilap">
+                        <option value="">-- Semua --</option>
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <label for="filter-ilap" class="form-label">ILAP</label>
+                    <select class="form-select form-select-sm" id="filter-ilap" name="ilap">
+                        <option value="">-- Semua --</option>
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <label for="filter-jenis-data" class="form-label">Jenis Data</label>
+                    <select class="form-select form-select-sm" id="filter-jenis-data" name="jenis_data">
+                        <option value="">-- Semua --</option>
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <label for="filter-sub-jenis-data" class="form-label">Sub Jenis Data</label>
+                    <select class="form-select form-select-sm" id="filter-sub-jenis-data" name="sub_jenis_data">
+                        <option value="">-- Semua --</option>
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <label for="filter-status-penyampaian" class="form-label">Status Penyampaian</label>
+                    <select class="form-select form-select-sm" id="filter-status-penyampaian" name="status_penyampaian">
+                        <option value="">-- Semua --</option>
+                        <option value="Sudah Menyampaikan">Sudah Menyampaikan</option>
+                        <option value="Belum Menyampaikan">Belum Menyampaikan</option>
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <label for="filter-terlambat" class="form-label">Terlambat</label>
+                    <select class="form-select form-select-sm" id="filter-terlambat" name="terlambat">
+                        <option value="">-- Semua --</option>
+                        <option value="Ya">Ya</option>
+                        <option value="Tidak">Tidak</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button type="reset" class="btn btn-secondary btn-sm" id="btn-reset-filter"><i class="ri-refresh-line me-1"></i>Reset</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="card shadow-sm">
         <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
             <h5 class="mb-0"><i class="ri-send-plane-line me-2"></i>Daftar Penyampaian Data dari ILAP</h5>
@@ -76,11 +147,19 @@
                     url: ajaxUrl,
                     dataSrc: 'data',
                     data: function (d) {
-                        // Add column search values
                         d.columns_search = [];
                         $('#column-search-row input').each(function (i) {
                             d.columns_search[i] = $(this).val();
                         });
+                        d.kanwil = $('#filter-kanwil').val();
+                        d.kpp = $('#filter-kpp').val();
+                        d.kategori_wilayah = $('#filter-kategori-wilayah').val();
+                        d.kategori_ilap = $('#filter-kategori-ilap').val();
+                        d.ilap = $('#filter-ilap').val();
+                        d.jenis_data = $('#filter-jenis-data').val();
+                        d.sub_jenis_data = $('#filter-sub-jenis-data').val();
+                        d.status_penyampaian = $('#filter-status-penyampaian').val();
+                        d.terlambat = $('#filter-terlambat').val();
                         return d;
                     }
                 },
@@ -103,11 +182,45 @@
                 scrollX: true
             });
 
-            // Add individual column search
+            // Column search — reload on keyup/change
             $('#column-search-row input').on('keyup change', function () {
                 table.ajax.reload();
             });
+
+            // Filter dropdowns — dynamic, reload on change
+            $('#filter-form select').on('change', function () {
+                table.ajax.reload();
+            });
+
+            // Reset button — clear form then reload
+            $('#btn-reset-filter').on('click', function () {
+                setTimeout(function () {
+                    table.ajax.reload();
+                }, 50);
+            });
+
+            // Load filter dropdown options on page load
+            loadFilterOptions();
         });
+
+        function loadFilterOptions() {
+            $.ajax({
+                url: ajaxUrl,
+                type: 'GET',
+                data: { get_filter_options: '1' },
+                success: function (response) {
+                    if (!response.filter_options) return;
+                    const opts = response.filter_options;
+                    if (opts.kanwil) opts.kanwil.forEach(item => $('#filter-kanwil').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.kpp) opts.kpp.forEach(item => $('#filter-kpp').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.kategori_wilayah) opts.kategori_wilayah.forEach(item => $('#filter-kategori-wilayah').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.kategori_ilap) opts.kategori_ilap.forEach(item => $('#filter-kategori-ilap').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.ilap) opts.ilap.forEach(item => $('#filter-ilap').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.jenis_data) opts.jenis_data.forEach(item => $('#filter-jenis-data').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.sub_jenis_data) opts.sub_jenis_data.forEach(item => $('#filter-sub-jenis-data').append(`<option value="${item.id}">${item.name}</option>`));
+                }
+            });
+        }
     })();
 </script>
 {% endblock %}
