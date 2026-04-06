@@ -214,6 +214,9 @@ def monitoring_penyampaian_data_data(request):
                         status_terlambat = "Tidak"
                         status_terlambat_class = "bg-light"
                 
+                # Calculate days from today to deadline
+                days_diff = (deadline_date - today).days
+                
                 records.append({
                     'id_periode_data': periode_data.id,
                     'id_jenis_data': jenis_data.id,
@@ -236,6 +239,7 @@ def monitoring_penyampaian_data_data(request):
                     'status_terlambat_class': status_terlambat_class,
                     'tiket_exists': tiket_exists,
                     'is_late': is_late,
+                    'days_diff': days_diff,
                 })
 
     records_total = len(records)
@@ -297,7 +301,7 @@ def monitoring_penyampaian_data_data(request):
     # Sorting
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['ilap_name', 'jenis_data', 'periode_penyampaian', 'periode', 'tahun', 'status_penyampaian', 'status_terlambat']
+    columns = ['ilap_name', 'jenis_data', 'periode_penyampaian', 'periode', 'tahun', 'status_penyampaian', 'status_terlambat', 'days_diff']
     
     if order_col_index is not None:
         try:
@@ -358,6 +362,7 @@ def monitoring_penyampaian_data_data(request):
             'tahun': record['tahun'],
             'status_penyampaian': status_penyampaian_html,
             'status_terlambat': status_terlambat_html,
+            'hari': record['days_diff'],
             'actions': actions,
         })
 

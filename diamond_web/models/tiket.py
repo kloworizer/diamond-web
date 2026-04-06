@@ -26,6 +26,7 @@ class Tiket(models.Model):
         blank=True
     )
     periode = models.IntegerField(null=True, blank=True, verbose_name="Periode")
+    tahun = models.IntegerField(null=True, blank=True, verbose_name="Tahun")
     penyampaian = models.IntegerField(null=True, blank=True, verbose_name="Penyampaian")
     nomor_surat_pengantar = models.CharField(max_length=50, null=True, blank=True, verbose_name="Nomor Surat Pengantar")
     tanggal_surat_pengantar = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Surat Pengantar")
@@ -48,7 +49,6 @@ class Tiket(models.Model):
     )
     status_ketersediaan_data = models.BooleanField(default=True, verbose_name="Status Ketersediaan Data")
     alasan_ketidaktersediaan = models.CharField(max_length=100, null=True, blank=True, verbose_name="Alasan Ketidaktersediaan")
-    tahun = models.IntegerField(null=True, blank=True, verbose_name="Tahun")
     baris_p3de = models.IntegerField(null=True, blank=True, verbose_name="Baris P3DE")
     tgl_terima_vertikal = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Terima Vertikal")
     tgl_terima_dip = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Terima DIP")
