@@ -92,36 +92,36 @@ def ilap_data(request):
     - order[0][column], order[0][dir]: ordering index and direction.
 
     Behavior:
-    - Uses `select_related('id_kategori', 'id_kategori_wilayah')` for efficiency.
+    - Uses `select_related('id_kategori', 'id_kpp')` for efficiency.
     - Filters and orders queryset according to DataTables parameters.
 
     Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data`.
-    Each `data` row contains: `kategori_wilayah`, `id_ilap`, `id_kategori`, `nama_ilap`, and `actions` HTML.
+    Each `data` row contains: `id_ilap`, `id_kategori`, `nama_ilap`, `id_kpp`, and `actions` HTML.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
 
-    qs = ILAP.objects.select_related('id_kategori', 'id_kategori_wilayah').all()
+    qs = ILAP.objects.select_related('id_kategori', 'id_kpp').all()
     records_total = qs.count()
 
     # Column-specific filtering
     columns_search = request.GET.getlist('columns_search[]')
     if columns_search:
-        if columns_search[0]:  # Kategori Wilayah
-            qs = qs.filter(id_kategori_wilayah__deskripsi__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:  # ID ILAP
-            qs = qs.filter(id_ilap__icontains=columns_search[1])
-        if len(columns_search) > 2 and columns_search[2]:  # ID Kategori
-            qs = qs.filter(id_kategori__id_kategori__icontains=columns_search[2])
-        if len(columns_search) > 3 and columns_search[3]:  # Nama ILAP
-            qs = qs.filter(nama_ilap__icontains=columns_search[3])
+        if columns_search[0]:  # ID ILAP
+            qs = qs.filter(id_ilap__icontains=columns_search[0])
+        if len(columns_search) > 1 and columns_search[1]:  # ID Kategori
+            qs = qs.filter(id_kategori__id_kategori__icontains=columns_search[1])
+        if len(columns_search) > 2 and columns_search[2]:  # Nama ILAP
+            qs = qs.filter(nama_ilap__icontains=columns_search[2])
+        if len(columns_search) > 3 and columns_search[3]:  # KPP
+            qs = qs.filter(id_kpp__nama_kpp__icontains=columns_search[3])
 
     records_filtered = qs.count()
 
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id_kategori_wilayah__deskripsi', 'id_ilap', 'id_kategori__nama_kategori', 'nama_ilap']
+    columns = ['id_ilap', 'id_kategori__id_kategori', 'nama_ilap', 'id_kpp__nama_kpp']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -139,10 +139,10 @@ def ilap_data(request):
     data = []
     for obj in qs_page:
         data.append({
-            'kategori_wilayah': str(obj.id_kategori_wilayah),
             'id_ilap': obj.id_ilap,
             'id_kategori': str(obj.id_kategori),
             'nama_ilap': obj.nama_ilap,
+            'id_kpp': obj.id_kpp.nama_kpp if obj.id_kpp else '-',
             'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('ilap_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
                        f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('ilap_delete', args=[obj.pk])}' title='Delete'><i class='ri-delete-bin-line'></i></button>"
         })

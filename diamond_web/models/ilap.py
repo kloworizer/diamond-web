@@ -1,6 +1,6 @@
 from django.db import models
 from .kategori_ilap import KategoriILAP
-from .kategori_wilayah import KategoriWilayah
+from .kpp import KPP
 
 class ILAP(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="ID")
@@ -12,11 +12,13 @@ class ILAP(models.Model):
         verbose_name="ID Kategori"
     )
     nama_ilap = models.CharField(max_length=150, unique=True, verbose_name="Nama ILAP")
-    id_kategori_wilayah = models.ForeignKey(
-        KategoriWilayah,
+    id_kpp = models.ForeignKey(
+        KPP,
         on_delete=models.PROTECT,
-        db_column="id_kategori_wilayah",
-        verbose_name="Kategori Wilayah"
+        db_column="id_kpp",
+        verbose_name="KPP",
+        null=True,
+        blank=True
     )
 
     class Meta:

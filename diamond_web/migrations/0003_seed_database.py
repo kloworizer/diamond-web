@@ -290,45 +290,18 @@ ILAP_DATA = [
     {"id_ilap": "PL913", "id_kategori": "PL", "nama_ilap": "DIREKTORAT TRANSFORMASI PROSES BISNIS"},
     {"id_ilap": "PL914", "id_kategori": "PL", "nama_ilap": "DIREKTORAT PERPAJAKAN INTERNASIONAL"},
     {"id_ilap": "PL915", "id_kategori": "PL", "nama_ilap": "DIREKTORAT INTELIJEN PERPAJAKAN"},
-    {"id_ilap": "PD001", "id_kategori": "PD", "nama_ilap": "KABUPATEN SERANG"},
-    {"id_ilap": "PD002", "id_kategori": "PD", "nama_ilap": "KABUPATEN SUKABUMI"},
-    {"id_ilap": "PD003", "id_kategori": "PD", "nama_ilap": "KABUPATEN BEKASI"},
-    {"id_ilap": "PD004", "id_kategori": "PD", "nama_ilap": "KABUPATEN TEGAL"},
-    {"id_ilap": "PD005", "id_kategori": "PD", "nama_ilap": "KABUPATEN BANJARNEGARA"},
-    {"id_ilap": "PD006", "id_kategori": "PD", "nama_ilap": "KOTA YOGYAKARTA"},
-    {"id_ilap": "PD007", "id_kategori": "PD", "nama_ilap": "KOTA SURABAYA"},
-    {"id_ilap": "PD008", "id_kategori": "PD", "nama_ilap": "KABUPATEN BANGKALAN"},
-    {"id_ilap": "PD009", "id_kategori": "PD", "nama_ilap": "KOTA KEDIRI"},
-    {"id_ilap": "PD010", "id_kategori": "PD", "nama_ilap": "KOTA DENPASAR"},
-    {"id_ilap": "PD011", "id_kategori": "PD", "nama_ilap": "KABUPATEN LOMBOK BARAT"},
-    {"id_ilap": "PD012", "id_kategori": "PD", "nama_ilap": "KOTA BANDA ACEH"},
-]
-
-ILAP_KANWIL_KPP_DATA = [
-    # Jawa Barat - Bekasi
-    {"id_ilap": "PD003", "kode_kpp": "015"},
-    # Jawa Barat - Sukabumi
-    {"id_ilap": "PD002", "kode_kpp": "015"},
-    # Banten - Serang
-    {"id_ilap": "PD001", "kode_kpp": "015"},
-    # Jawa Tengah - Tegal
-    {"id_ilap": "PD004", "kode_kpp": "018"},
-    # Jawa Tengah - Banjarnegara
-    {"id_ilap": "PD005", "kode_kpp": "018"},
-    # Yogyakarta
-    {"id_ilap": "PD006", "kode_kpp": "020"},
-    # Jawa Timur - Surabaya
-    {"id_ilap": "PD007", "kode_kpp": "021"},
-    # Jawa Timur - Madura/Bangkalan
-    {"id_ilap": "PD008", "kode_kpp": "024"},
-    # Jawa Timur - Kediri
-    {"id_ilap": "PD009", "kode_kpp": "023"},
-    # Bali - Denpasar
-    {"id_ilap": "PD010", "kode_kpp": "025"},
-    # Nusa Tenggara Barat - Lombok Barat
-    {"id_ilap": "PD011", "kode_kpp": "026"},
-    # Aceh - Banda Aceh
-    {"id_ilap": "PD012", "kode_kpp": "001"},
+    {"id_ilap": "PD001", "id_kategori": "PD", "nama_ilap": "KABUPATEN SERANG", "kode_kpp": "015"},
+    {"id_ilap": "PD002", "id_kategori": "PD", "nama_ilap": "KABUPATEN SUKABUMI", "kode_kpp": "015"},
+    {"id_ilap": "PD003", "id_kategori": "PD", "nama_ilap": "KABUPATEN BEKASI", "kode_kpp": "015"},
+    {"id_ilap": "PD004", "id_kategori": "PD", "nama_ilap": "KABUPATEN TEGAL", "kode_kpp": "018"},
+    {"id_ilap": "PD005", "id_kategori": "PD", "nama_ilap": "KABUPATEN BANJARNEGARA", "kode_kpp": "018"},
+    {"id_ilap": "PD006", "id_kategori": "PD", "nama_ilap": "KOTA YOGYAKARTA", "kode_kpp": "020"},
+    {"id_ilap": "PD007", "id_kategori": "PD", "nama_ilap": "KOTA SURABAYA", "kode_kpp": "021"},
+    {"id_ilap": "PD008", "id_kategori": "PD", "nama_ilap": "KABUPATEN BANGKALAN", "kode_kpp": "024"},
+    {"id_ilap": "PD009", "id_kategori": "PD", "nama_ilap": "KOTA KEDIRI", "kode_kpp": "023"},
+    {"id_ilap": "PD010", "id_kategori": "PD", "nama_ilap": "KOTA DENPASAR", "kode_kpp": "025"},
+    {"id_ilap": "PD011", "id_kategori": "PD", "nama_ilap": "KABUPATEN LOMBOK BARAT", "kode_kpp": "026"},
+    {"id_ilap": "PD012", "id_kategori": "PD", "nama_ilap": "KOTA BANDA ACEH", "kode_kpp": "001"},
 ]
 
 JENIS_DATA_ILAP_DATA = [
@@ -962,30 +935,22 @@ def seed_ilap(apps, schema_editor):
     """Seeds the ILAP model with initial data."""
     ILAP = apps.get_model("diamond_web", "ILAP")
     KategoriILAP = apps.get_model("diamond_web", "KategoriILAP")
-    KategoriWilayah = apps.get_model("diamond_web", "KategoriWilayah")
-    
-    # Get the kategori_wilayah objects
-    internasional = KategoriWilayah.objects.get(deskripsi="Internasional")
-    regional = KategoriWilayah.objects.get(deskripsi="Regional")
-    nasional = KategoriWilayah.objects.get(deskripsi="Nasional")
+    KPP = apps.get_model("diamond_web", "KPP")
     
     for item in ILAP_DATA:
         kategori = KategoriILAP.objects.get(id_kategori=item["id_kategori"])
         
-        # Determine kategori_wilayah based on id_kategori
-        if item["id_kategori"] == "EI":
-            kategori_wilayah = internasional
-        elif item["id_kategori"] in ["PV", "PD"]:
-            kategori_wilayah = regional
-        else:
-            kategori_wilayah = nasional
+        # Get KPP if kode_kpp is provided in the data
+        kpp = None
+        if "kode_kpp" in item and item["kode_kpp"]:
+            kpp = KPP.objects.get(kode_kpp=item["kode_kpp"])
         
         ILAP.objects.get_or_create(
             id_ilap=item["id_ilap"],
             defaults={
                 "id_kategori": kategori,
                 "nama_ilap": item["nama_ilap"],
-                "id_kategori_wilayah": kategori_wilayah
+                "id_kpp": kpp
             }
         )
 
@@ -995,29 +960,6 @@ def unseed_ilap(apps, schema_editor):
     ILAP = apps.get_model("diamond_web", "ILAP")
     ids_to_delete = [item["id_ilap"] for item in ILAP_DATA]
     ILAP.objects.filter(id_ilap__in=ids_to_delete).delete()
-
-
-def seed_ilap_kanwil_kpp(apps, schema_editor):
-    """Seeds the ILAPKanwilKPP model with initial data."""
-    ILAPKanwilKPP = apps.get_model("diamond_web", "ILAPKanwilKPP")
-    ILAP = apps.get_model("diamond_web", "ILAP")
-    KPP = apps.get_model("diamond_web", "KPP")
-    for item in ILAP_KANWIL_KPP_DATA:
-        ilap = ILAP.objects.get(id_ilap=item["id_ilap"])
-        kpp = KPP.objects.get(kode_kpp=item["kode_kpp"])
-        ILAPKanwilKPP.objects.get_or_create(
-            id_ilap=ilap,
-            id_kpp=kpp
-        )
-
-
-def unseed_ilap_kanwil_kpp(apps, schema_editor):
-    """Removes the initial data from the ILAPKanwilKPP model."""
-    ILAPKanwilKPP = apps.get_model("diamond_web", "ILAPKanwilKPP")
-    ILAP = apps.get_model("diamond_web", "ILAP")
-    ilap_ids = [item["id_ilap"] for item in ILAP_KANWIL_KPP_DATA]
-    ilaps = ILAP.objects.filter(id_ilap__in=ilap_ids)
-    ILAPKanwilKPP.objects.filter(id_ilap__in=ilaps).delete()
 
 
 def seed_jenis_data_ilap(apps, schema_editor):
@@ -1294,7 +1236,6 @@ class Migration(migrations.Migration):
         migrations.RunPython(seed_media_backup, reverse_code=unseed_media_backup),
         migrations.RunPython(seed_status_penelitian, reverse_code=unseed_status_penelitian),
         migrations.RunPython(seed_ilap, reverse_code=unseed_ilap),
-        migrations.RunPython(seed_ilap_kanwil_kpp, reverse_code=unseed_ilap_kanwil_kpp),
         migrations.RunPython(seed_jenis_data_ilap, reverse_code=unseed_jenis_data_ilap),
         migrations.RunPython(seed_klasifikasi_jenis_data, reverse_code=unseed_klasifikasi_jenis_data),
         migrations.RunPython(seed_periode_jenis_data, reverse_code=unseed_periode_jenis_data),

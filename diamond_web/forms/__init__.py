@@ -6,7 +6,6 @@ from .jenis_prioritas_data import JenisPrioritasDataForm
 from .kategori_wilayah import KategoriWilayahForm
 from .kanwil import KanwilForm
 from .kpp import KPPForm
-from .ilap_kanwil_kpp import ILAPKanwilKPPForm
 from .dasar_hukum import DasarHukumForm
 from .klasifikasi_jenis_data import KlasifikasiJenisDataForm
 from .periode_pengiriman import PeriodePengirimanForm

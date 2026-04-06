@@ -59,12 +59,6 @@ urlpatterns = [
     path('kpp/create/', views.KPPCreateView.as_view(), name='kpp_create'),
     path('kpp/<int:pk>/update/', views.KPPUpdateView.as_view(), name='kpp_update'),
     path('kpp/<int:pk>/delete/', views.KPPDeleteView.as_view(), name='kpp_delete'),
-    # ILAP Kanwil KPP URLs
-    path('ilap-kanwil-kpp/', views.ILAPKanwilKPPListView.as_view(), name='ilap_kanwil_kpp_list'),
-    path('ilap-kanwil-kpp/data/', views.ilap_kanwil_kpp_data, name='ilap_kanwil_kpp_data'),
-    path('ilap-kanwil-kpp/create/', views.ILAPKanwilKPPCreateView.as_view(), name='ilap_kanwil_kpp_create'),
-    path('ilap-kanwil-kpp/<int:pk>/update/', views.ILAPKanwilKPPUpdateView.as_view(), name='ilap_kanwil_kpp_update'),
-    path('ilap-kanwil-kpp/<int:pk>/delete/', views.ILAPKanwilKPPDeleteView.as_view(), name='ilap_kanwil_kpp_delete'),
     # Status Data URLs
     path('status-data/', views.StatusDataListView.as_view(), name='status_data_list'),
     path('status-data/data/', views.status_data_data, name='status_data_data'),

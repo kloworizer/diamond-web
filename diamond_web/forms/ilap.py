@@ -27,7 +27,7 @@ class ILAPForm(forms.ModelForm):
     
     class Meta:
         model = ILAP
-        fields = ['id_kategori', 'id_ilap', 'nama_ilap', 'id_kategori_wilayah']
+        fields = ['id_kategori', 'id_ilap', 'nama_ilap', 'id_kpp']
         widgets = {
             'id_ilap': forms.TextInput(attrs={'readonly': 'readonly'}),
         }
@@ -44,7 +44,7 @@ class ILAPForm(forms.ModelForm):
         self.fields['id_ilap'].required = False
         
         if self.instance.pk:
-            # In edit mode, disable both id_ilap and id_kategori - only allow editing nama_ilap
+            # In edit mode, disable both id_ilap and id_kategori - only allow editing nama_ilap and id_kpp
             self.fields['id_ilap'].disabled = True
             self.fields['id_kategori'].disabled = True
         # In create mode, keep id_ilap readonly but not disabled so value can be submitted
