@@ -144,6 +144,9 @@ urlpatterns = [
     path('tanda-terima-data/from-tiket/<int:tiket_pk>/create/', views.TandaTerimaDataFromTiketCreateView.as_view(), name='tanda_terima_data_from_tiket_create'),
     path('tanda-terima-data/<int:pk>/update/', views.TandaTerimaDataUpdateView.as_view(), name='tanda_terima_data_update'),
     path('tanda-terima-data/<int:pk>/delete/', views.TandaTerimaDataDeleteView.as_view(), name='tanda_terima_data_delete'),
+    # Monitoring Penyampaian Data URLs
+    path('monitoring-penyampaian-data/', views.MonitoringPenyampaianDataListView.as_view(), name='monitoring_penyampaian_data_list'),
+    path('monitoring-penyampaian-data/data/', views.monitoring_penyampaian_data_data, name='monitoring_penyampaian_data_data'),
 
     # === PIDE Section ===
     # Nama Tabel URLs
