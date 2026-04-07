@@ -5,7 +5,8 @@ from .ilap import ILAP
 
 class TandaTerimaData(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="ID")
-    nomor_tanda_terima = models.CharField(max_length=50, unique=True, verbose_name="Nomor Tanda Terima")
+    nomor_tanda_terima = models.IntegerField(verbose_name="Nomor Tanda Terima")
+    tahun_terima = models.IntegerField(verbose_name="Tahun Terima")
     tanggal_tanda_terima = models.DateTimeField(verbose_name="Tanggal Tanda Terima")
     id_ilap = models.ForeignKey(
         ILAP,
@@ -26,9 +27,15 @@ class TandaTerimaData(models.Model):
         verbose_name_plural = "Tanda Terima Data"
         db_table = "tanda_terima_data"
         ordering = ["-tanggal_tanda_terima"]
+        unique_together = ('nomor_tanda_terima', 'tahun_terima')
 
     def __str__(self):
-        return f"{self.nomor_tanda_terima}"
+        return f"{str(self.nomor_tanda_terima).zfill(5)}.TTD/PJ.1031/{self.tahun_terima}"
+    
+    @property
+    def nomor_tanda_terima_format(self):
+        """Returns formatted nomor tanda terima as 5 digit sequence.TTD/PJ.1031/year"""
+        return f"{str(self.nomor_tanda_terima).zfill(5)}.TTD/PJ.1031/{self.tahun_terima}"
 
     @property
     def nama_ILAP(self):

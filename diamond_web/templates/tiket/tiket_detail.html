@@ -436,7 +436,7 @@
                                 <tbody>
                                     {% for item in tanda_terima_items %}
                                         <tr>
-                                            <td>{{ item.id_tanda_terima.nomor_tanda_terima }}</td>
+                                            <td>{{ item.id_tanda_terima.nomor_tanda_terima_format }}</td>
                                             <td>{{ item.id_tanda_terima.tanggal_tanda_terima|date:"d/m/Y H:i" }}</td>
                                             <td>{{ item.id_tanda_terima.id_perekam.get_full_name|default:item.id_tanda_terima.id_perekam.username }}</td>
                                             <td>

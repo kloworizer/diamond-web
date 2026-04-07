@@ -116,7 +116,7 @@ class DikembalikanTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
                 now = datetime.now()
 
                 self.object = form.save(commit=False)
-                self.object.status = STATUS_DIKEMBALIKAN
+                self.object.status_tiket = STATUS_DIKEMBALIKAN
                 self.object.tgl_dikembalikan = now
                 self.object.save()
 

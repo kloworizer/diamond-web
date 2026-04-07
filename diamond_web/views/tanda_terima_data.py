@@ -8,6 +8,7 @@ from django.views.decorators.http import require_GET
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime, parse_date
+from django.db import models
 
 from ..models.tanda_terima_data import TandaTerimaData
 from ..models.detil_tanda_terima import DetilTandaTerima
@@ -139,7 +140,7 @@ def tanda_terima_data_data(request):
         
         data.append({
             'id': obj.pk,
-            'nomor_tanda_terima': obj.nomor_tanda_terima,
+            'nomor_tanda_terima': obj.nomor_tanda_terima_format,
             'tanggal_tanda_terima': obj.tanggal_tanda_terima.strftime('%Y-%m-%d %H:%M'),
             'id_ilap': str(obj.id_ilap),
             'id_perekam': obj.id_perekam.username,
@@ -173,26 +174,20 @@ def tanda_terima_next_number(request):
         tanggal = parse_date(tanggal_param)
 
     tahun = (tanggal or timezone.now()).year
-    suffix = f"/{tahun}"
 
-    existing_numbers = TandaTerimaData.objects.filter(
-        nomor_tanda_terima__endswith=suffix
-    ).values_list('nomor_tanda_terima', flat=True)
-
-    max_seq = 0
-    for nomor in existing_numbers:
-        try:
-            seq_part = nomor.split('/')[0]
-            max_seq = max(max_seq, int(seq_part))
-        except Exception:
-            continue
+    # Get the max sequence for this year
+    max_seq = TandaTerimaData.objects.filter(tahun_terima=tahun).aggregate(
+        max_nomor=models.Max('nomor_tanda_terima')
+    )['max_nomor'] or 0
 
     next_seq = max_seq + 1
-    nomor_tanda_terima = f"{str(next_seq).zfill(5)}/{tahun}"
+    nomor_tanda_terima = f"{str(next_seq).zfill(5)}.TTD/PJ.1031/{tahun}"
 
     return JsonResponse({
         'success': True,
-        'nomor_tanda_terima': nomor_tanda_terima
+        'nomor_tanda_terima': nomor_tanda_terima,
+        'nomor_sequence': next_seq,
+        'tahun': tahun
     })
 
 
@@ -210,6 +205,7 @@ def tanda_terima_tikets_by_ilap(request):
     Behavior:
     - Filters `Tiket` with `status < STATUS_DIKIRIM_KE_PIDE` and that
         reference the given ILAP via `id_periode_data__id_sub_jenis_data_ilap`.
+    - For non-admin users, filters by tikets where user is active P3DE PIC
     - Excludes tickets already assigned to an active `TandaTerimaData` for
         the same ILAP (unless they belong to the editing `tanda_terima_id`).
 
@@ -249,6 +245,14 @@ def tanda_terima_tikets_by_ilap(request):
     ).exclude(
         id__in=other_assigned_tiket_ids
     ).order_by('nomor_tiket')
+    
+    # Filter by user's P3DE PIC assignments for non-admin users
+    if not (request.user.is_superuser or request.user.groups.filter(name='admin').exists()):
+        available_tikets = available_tikets.filter(
+            tiketpic__id_user=request.user,
+            tiketpic__active=True,
+            tiketpic__role=TiketPIC.Role.P3DE
+        ).distinct()
 
     data = [
         {
@@ -286,8 +290,20 @@ class TandaTerimaDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxF
         return self.render_form_response(form)
 
     def form_valid(self, form):
-        # Set the logged-in user as id_perekam
+        # Set the logged-in user as id_perekam and tahun from tanggal_tanda_terima
         form.instance.id_perekam = self.request.user
+        form.instance.tahun_terima = form.instance.tanggal_tanda_terima.year
+        
+        # Extract sequence number from formatted string
+        formatted_nomor = form.cleaned_data.get('nomor_tanda_terima')
+        if formatted_nomor and isinstance(formatted_nomor, str):
+            try:
+                # Extract the first part (5-digit sequence) from "00001.TTD/PJ.1031/2026"
+                seq_part = formatted_nomor.split('.')[0]
+                form.instance.nomor_tanda_terima = int(seq_part)
+            except (ValueError, IndexError):
+                pass
+        
         response = super().form_valid(form)
         
         # Save selected tikets to DetilTandaTerima
@@ -371,8 +387,20 @@ class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMix
     def form_valid(self, form):
         from ..models.tiket import Tiket
         
-        # Set the logged-in user as id_perekam
+        # Set the logged-in user as id_perekam and tahun from tanggal_tanda_terima
         form.instance.id_perekam = self.request.user
+        form.instance.tahun_terima = form.instance.tanggal_tanda_terima.year
+        
+        # Extract sequence number from formatted string
+        formatted_nomor = form.cleaned_data.get('nomor_tanda_terima')
+        if formatted_nomor and isinstance(formatted_nomor, str):
+            try:
+                # Extract the first part (5-digit sequence) from "00001.TTD/PJ.1031/2026"
+                seq_part = formatted_nomor.split('.')[0]
+                form.instance.nomor_tanda_terima = int(seq_part)
+            except (ValueError, IndexError):
+                pass
+        
         # Ensure ILAP is set from tiket for single-tiket flow
         tiket = Tiket.objects.get(pk=self.kwargs['tiket_pk'])
         if tiket.id_periode_data:

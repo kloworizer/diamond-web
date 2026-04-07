@@ -34,11 +34,19 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
         label="Pilih Tiket"
     )
     
+    # Override nomor_tanda_terima as CharField to accept formatted string
+    nomor_tanda_terima = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'readonly': True}),
+        label="Nomor Tanda Terima"
+    )
+    
     class Meta:
         model = TandaTerimaData
-        fields = ['tanggal_tanda_terima', 'nomor_tanda_terima', 'id_ilap']
+        fields = ['tanggal_tanda_terima', 'tahun_terima', 'id_ilap']
         widgets = {
             'tanggal_tanda_terima': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'tahun_terima': forms.NumberInput(attrs={'readonly': True}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -55,15 +63,30 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
         self._existing_tiket_ids = set()
         self._disabled_tiket_ids = set(Tiket.objects.filter(status_tiket__gte=8).values_list('id', flat=True))
 
-        # Auto-generate nomor_tanda_terima for new records
+        # Auto-generate nomor_tanda_terima and tahun_terima for new records
         if not self.instance.pk:
             self.fields['nomor_tanda_terima'].required = False
-            self.fields['nomor_tanda_terima'].widget.attrs.update({'readonly': True})
+            self.fields['tahun_terima'].required = False
             tanggal_input = self.data.get('tanggal_tanda_terima') if self.is_bound else None
             tanggal = parse_datetime(tanggal_input) if tanggal_input else None
-            self.fields['nomor_tanda_terima'].initial = self._generate_nomor_tanda_terima(tanggal=tanggal)
+            if tanggal is None and tanggal_input:
+                tanggal = parse_datetime(tanggal_input)
+            if tanggal is None:
+                tanggal = timezone.now()
+            
+            tahun = tanggal.year
+            # Generate next sequence for this year
+            from django.db.models import Max
+            max_nomor = TandaTerimaData.objects.filter(tahun_terima=tahun).aggregate(Max('nomor_tanda_terima'))['nomor_tanda_terima__max'] or 0
+            next_nomor = max_nomor + 1
+            
+            self.fields['tahun_terima'].initial = tahun
+            # Store the formatted string in the field
+            formatted_nomor = f"{str(next_nomor).zfill(5)}.TTD/PJ.1031/{tahun}"
+            self.fields['nomor_tanda_terima'].initial = formatted_nomor
         else:
             self.fields['nomor_tanda_terima'].disabled = True
+            self.fields['tahun_terima'].disabled = True
             self.fields['tanggal_tanda_terima'].disabled = True
         
         # If tiket_pk is provided, remove the tiket_ids field and pre-fill id_ilap
@@ -121,7 +144,7 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
             # Only exclude tiket linked to an active tanda terima (active=1)
             active_tanda_terima_ids = TandaTerimaData.objects.filter(active=True).values_list('id', flat=True)
             available_tiket_ids = Tiket.objects.filter(
-                status__lt=6
+                status_tiket__lt=6
             ).exclude(
                 id__in=DetilTandaTerima.objects.filter(
                     id_tanda_terima_id__in=active_tanda_terima_ids
@@ -143,7 +166,7 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
             if selected_ilap:
                 # Only exclude tiket linked to an active tanda terima FOR THIS ILAP
                 tiket_qs = Tiket.objects.filter(
-                    status__lt=8,
+                    status_tiket__lt=8,
                     id_periode_data__id_sub_jenis_data_ilap__id_ilap_id=selected_ilap
                 ).exclude(
                     id__in=DetilTandaTerima.objects.filter(
@@ -159,8 +182,18 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
                     )
                 self.fields['tiket_ids'].queryset = tiket_qs.distinct()
             else:
-                # Empty tiket list until ILAP selected
-                self.fields['tiket_ids'].queryset = Tiket.objects.none()
+                # Empty tiket list until ILAP selected (but show user's P3DE tikets as placeholder)
+                if self.user and not (self.user.is_superuser or self.user.groups.filter(name='admin').exists()):
+                    # Show tikets where user is active P3DE PIC
+                    self.fields['tiket_ids'].queryset = Tiket.objects.filter(
+                        status_tiket__lt=8,
+                        tiketpic__id_user=self.user,
+                        tiketpic__active=True,
+                        tiketpic__role=TiketPIC.Role.P3DE
+                    ).distinct()
+                else:
+                    # Admin/superuser see all available tikets
+                    self.fields['tiket_ids'].queryset = Tiket.objects.filter(status_tiket__lt=8)
 
         if 'tiket_ids' in self.fields:
             self.fields['tiket_ids'].widget = TiketCheckboxSelectMultiple(disabled_ids=self._disabled_tiket_ids)
@@ -203,7 +236,7 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
             ).values_list('id_tiket_id', flat=True)
         
         available_ids = set(
-            Tiket.objects.filter(status__lt=8)
+            Tiket.objects.filter(status_tiket__lt=8)
             .exclude(id__in=other_tanda_terima_tikets)
             .values_list('id', flat=True)
         )
@@ -217,31 +250,24 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
 
     def save(self, commit=True):
         instance = super().save(commit=False)
-        if not instance.pk or not instance.nomor_tanda_terima:
-            instance.nomor_tanda_terima = self._generate_nomor_tanda_terima(
-                tanggal=self.cleaned_data.get('tanggal_tanda_terima')
-            )
+        
+        # Extract sequence number from formatted string like "00001.TTD/PJ.1031/2026"
+        # nomor_tanda_terima is not in Meta.fields, so we handle it manually here
+        formatted_nomor = self.cleaned_data.get('nomor_tanda_terima')
+        if formatted_nomor and isinstance(formatted_nomor, str):
+            try:
+                seq_part = formatted_nomor.split('.')[0].strip()
+                instance.nomor_tanda_terima = int(seq_part)
+            except (ValueError, IndexError, AttributeError):
+                pass
+        elif not instance.pk:
+            # Fallback: compute from tahun_terima if formatted string is missing
+            from django.db.models import Max
+            tahun = instance.tahun_terima or instance.tanggal_tanda_terima.year
+            max_nomor = TandaTerimaData.objects.filter(tahun_terima=tahun).aggregate(Max('nomor_tanda_terima'))['nomor_tanda_terima__max'] or 0
+            instance.nomor_tanda_terima = max_nomor + 1
+        
         if commit:
             instance.save()
             self.save_m2m()
         return instance
-
-    def _generate_nomor_tanda_terima(self, tanggal=None):
-        """Generate nomor_tanda_terima with 5-digit sequence/year format."""
-        tahun = (tanggal or timezone.now()).year
-        suffix = f"/{tahun}"
-
-        existing_numbers = TandaTerimaData.objects.filter(
-            nomor_tanda_terima__endswith=suffix
-        ).values_list('nomor_tanda_terima', flat=True)
-
-        max_seq = 0
-        for nomor in existing_numbers:
-            try:
-                seq_part = nomor.split('/')[0]
-                max_seq = max(max_seq, int(seq_part))
-            except Exception:
-                continue
-
-        next_seq = max_seq + 1
-        return f"{str(next_seq).zfill(5)}/{tahun}"
