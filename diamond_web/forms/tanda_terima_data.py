@@ -53,7 +53,7 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
                     field.widget.attrs.update({'class': 'form-control'})
 
         self._existing_tiket_ids = set()
-        self._disabled_tiket_ids = set(Tiket.objects.filter(status__gte=8).values_list('id', flat=True))
+        self._disabled_tiket_ids = set(Tiket.objects.filter(status_tiket__gte=8).values_list('id', flat=True))
 
         # Auto-generate nomor_tanda_terima for new records
         if not self.instance.pk:
@@ -100,7 +100,7 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
                 ).exclude(id_tanda_terima_id=self.instance.pk).values_list('id_tiket_id', flat=True))
 
                 available_qs = Tiket.objects.filter(
-                    status__lt=8,
+                    status_tiket__lt=8,
                     id_periode_data__id_sub_jenis_data_ilap__id_ilap_id=ilap_id
                 ).exclude(id__in=used_tiket_ids)
 

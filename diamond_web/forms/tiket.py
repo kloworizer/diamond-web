@@ -131,7 +131,21 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
 
         if ilap_id:
             # Only show valid periode jenis data for the selected ILAP
-            self.fields['id_periode_data'].queryset = PeriodeJenisData.objects.filter(
+            periode_queryset = PeriodeJenisData.objects.filter(
                 id__in=valid_periode_ids,
                 id_sub_jenis_data_ilap__id_ilap_id=ilap_id
             ).select_related('id_sub_jenis_data_ilap').distinct()
+            
+            # For non-admin users, further filter to only show PeriodeJenisData where they are an active P3DE PIC
+            if self.user and not (self.user.is_superuser or self.user.groups.filter(name='admin').exists()):
+                from ..models.pic import PIC
+                periode_queryset = periode_queryset.filter(
+                    id_sub_jenis_data_ilap__pic__tipe='P3DE',
+                    id_sub_jenis_data_ilap__pic__id_user=self.user,
+                    id_sub_jenis_data_ilap__pic__start_date__lte=today,
+                ).filter(
+                    Q(id_sub_jenis_data_ilap__pic__end_date__isnull=True) |
+                    Q(id_sub_jenis_data_ilap__pic__end_date__gte=today)
+                ).distinct()
+            
+            self.fields['id_periode_data'].queryset = periode_queryset

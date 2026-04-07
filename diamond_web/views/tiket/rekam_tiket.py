@@ -106,6 +106,16 @@ class ILAPPeriodeDataAPIView(View):
                     )
                 else:
                     periode_data_list = periode_data_list.none()
+                
+                # Further filter to show only PeriodeJenisData where the user is an active P3DE PIC
+                periode_data_list = periode_data_list.filter(
+                    id_sub_jenis_data_ilap__pic__tipe='P3DE',
+                    id_sub_jenis_data_ilap__pic__id_user=request.user,
+                    id_sub_jenis_data_ilap__pic__start_date__lte=today,
+                ).filter(
+                    Q(id_sub_jenis_data_ilap__pic__end_date__isnull=True) |
+                    Q(id_sub_jenis_data_ilap__pic__end_date__gte=today)
+                )
 
             periode_data_list = periode_data_list.select_related(
                 'id_sub_jenis_data_ilap__id_ilap__id_kategori',
