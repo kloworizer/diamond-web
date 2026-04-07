@@ -9,6 +9,12 @@ from datetime import datetime
 from .base import AutoRequiredFormMixin
 
 class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
+    satuan_data = forms.ChoiceField(
+        choices=[(1, 'Baris')],
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Satuan Data',
+        required=True
+    )
     id_ilap = forms.ModelChoiceField(
         queryset=ILAP.objects.all(),
         empty_label="Pilih ILAP",
@@ -22,7 +28,7 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
     
     class Meta:
         model = Tiket
-        fields = ['id_ilap', 'id_periode_data', 'periode', 'tahun', 'penyampaian', 'tgl_terima_vertikal', 'tgl_terima_dip', 'nomor_surat_pengantar', 'tanggal_surat_pengantar', 'nama_pengirim', 'id_bentuk_data', 'id_cara_penyampaian', 'baris_p3de', 'status_ketersediaan_data', 'alasan_ketidaktersediaan']
+        fields = ['id_ilap', 'id_periode_data', 'periode', 'tahun', 'penyampaian', 'tgl_terima_vertikal', 'tgl_terima_dip', 'nomor_surat_pengantar', 'tanggal_surat_pengantar', 'nama_pengirim', 'id_bentuk_data', 'id_cara_penyampaian', 'baris_diterima', 'satuan_data', 'status_ketersediaan_data', 'alasan_ketidaktersediaan']
         widgets = {
             'id_periode_data': forms.Select(attrs={'class': 'form-control', 'id': 'id_periode_data'}),
             'periode': forms.Select(attrs={'class': 'form-control', 'id': 'id_periode'}),
@@ -35,7 +41,7 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
             'id_bentuk_data': forms.Select(attrs={'class': 'form-control'}),
             'id_cara_penyampaian': forms.Select(attrs={'class': 'form-control'}),
             'penyampaian': forms.NumberInput(attrs={'class': 'form-control', 'id': 'id_penyampaian', 'type': 'number', 'min': '0'}),
-            'baris_p3de': forms.NumberInput(attrs={'class': 'form-control'}),
+            'baris_diterima': forms.NumberInput(attrs={'class': 'form-control'}),
             'status_ketersediaan_data': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'alasan_ketidaktersediaan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Alasan jika data tidak tersedia'}),
         }

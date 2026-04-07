@@ -38,7 +38,7 @@
                 <!-- Status Ketersediaan Data and Alasan Ketidaktersediaan side-by-side -->
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Status Ketersediaan Data</label>
+                        <label class="form-label">{{ form.status_ketersediaan_data.label }}{% if form.status_ketersediaan_data.field.required %}<span class="text-danger">*</span>{% endif %}</label>
                         <div class="form-check">
                             <input class="form-check-input" type="radio" name="status_ketersediaan_data" id="status_tersedia" value="1" checked>
                             <label class="form-check-label" for="status_tersedia">Data Tersedia</label>
@@ -248,10 +248,10 @@
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="{{ form.baris_p3de.id_for_label }}" class="form-label">{{ form.baris_p3de.label }}{% if form.baris_p3de.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                            {{ form.baris_p3de }}
-                            {% if form.baris_p3de.errors %}
-                                <div class="invalid-feedback d-block">{{ form.baris_p3de.errors }}</div>
+                            <label for="{{ form.baris_diterima.id_for_label }}" class="form-label">{{ form.baris_diterima.label }}{% if form.baris_diterima.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                            {{ form.baris_diterima }}
+                            {% if form.baris_diterima.errors %}
+                                <div class="invalid-feedback d-block">{{ form.baris_diterima.errors }}</div>
                             {% endif %}
                         </div>
                     </div>
@@ -261,12 +261,11 @@
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="satuan_data" class="form-label">Satuan Data</label>
-                            <select class="form-select" id="satuan_data" name="satuan_data">
-                                <option value="">---------</option>
-                                <option value="baris">Baris</option>
-                                <option value="file">File</option>
-                            </select>
+                            <label for="{{ form.satuan_data.id_for_label }}" class="form-label">{{ form.satuan_data.label }}{% if form.satuan_data.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                            {{ form.satuan_data }}
+                            {% if form.satuan_data.errors %}
+                                <div class="invalid-feedback d-block">{{ form.satuan_data.errors }}</div>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="col-md-4">

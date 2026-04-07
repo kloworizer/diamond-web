@@ -17,21 +17,21 @@ class RekamHasilPenelitianForm(AutoRequiredFormMixin, forms.ModelForm):
     
     class Meta:
         model = Tiket
-        fields = ['baris_p3de']
+        fields = ['baris_diterima']
         labels = {
-            'baris_p3de': 'Baris P3DE'
+            'baris_diterima': 'Baris Diterima'
         }
         widgets = {
-            'baris_p3de': forms.NumberInput(attrs={
+            'baris_diterima': forms.NumberInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Masukkan jumlah baris P3DE',
+                'placeholder': 'Masukkan jumlah baris diterima',
                 'required': True
             })
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['baris_p3de'].required = True
+        self.fields['baris_diterima'].required = True
         if not self.fields['catatan'].initial:
             default_catatan = 'Hasil penelitian diubah' if self.instance and self.instance.tgl_teliti else 'Hasil penelitian direkam'
             self.fields['catatan'].initial = default_catatan

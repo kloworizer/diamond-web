@@ -24,7 +24,7 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Active
     The submission updates the tiket and creates an audit trail entry.
 
     Model: Tiket
-    Form: RekamHasilPenelitianForm (collects test results, research date, baris_p3de)
+    Form: RekamHasilPenelitianForm (collects test results, research date, baris_diterima)
     Template: tiket/rekam_hasil_penelitian_form.html or modal variant for AJAX
 
     Workflow Step: P3DE records research findings and marks tiket as researched
@@ -37,7 +37,7 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Active
     Side Effects on Form Submission:
     - Tiket.status set to STATUS_DITELITI (researched)
     - Tiket.tgl_teliti set to current datetime
-    - Tiket.baris_p3de updated with form value
+    - Tiket.baris_diterima updated with form value
     - TiketAction created with:
         - action: TiketActionType.DITELITI
         - catatan: User-provided notes or auto-message based on create/update
@@ -104,7 +104,7 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Active
         Within transaction:
         1. Set tiket.status to STATUS_DITELITI (researched)
         2. Set tiket.tgl_teliti to current datetime
-        3. Update tiket.baris_p3de with form value
+        3. Update tiket.baris_diterima with form value
         4. Create TiketAction record with research notes (catatan)
         5. Return JsonResponse (AJAX) or redirect with success message
 
@@ -120,7 +120,7 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Active
         # Get current timestamp to use for both tiket and action
         now = datetime.now()
         
-        # Update the tiket with new baris_p3de value
+        # Update the tiket with new baris_diterima value
         self.object = form.save(commit=False)
         self.object.status_tiket = STATUS_DITELITI  # Change status_tiket to STATUS_DITELITI (Diteliti)
         self.object.tgl_teliti = now

@@ -32,7 +32,9 @@ class AutoRequiredFormMixin:
                 blank = getattr(model_field, 'blank', False)
                 if null and blank:
                     form_field.required = False
-                elif not null and not isinstance(form_field, forms.BooleanField):
+                elif not null:
+                    # Non-nullable fields are required, including BooleanFields
+                    # (they always have a value via default or user selection)
                     form_field.required = True
             except Exception:
                 # Field not on model (e.g. reverse relations, custom) — skip
