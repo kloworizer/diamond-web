@@ -149,3 +149,9 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
                 ).distinct()
             
             self.fields['id_periode_data'].queryset = periode_queryset
+    def clean_status_ketersediaan_data(self):
+        # The template renders status_ketersediaan_data as radio buttons with values "1" or "0".
+        # Django's CheckboxInput.value_from_datadict uses bool(value), which makes bool("0") == True.
+        # We override here to correctly map "1" -> True and "0" -> False.
+        value = self.data.get('status_ketersediaan_data', '1')
+        return value == '1'
