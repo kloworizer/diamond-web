@@ -1,8 +1,9 @@
 from django import forms
 from ..models.tiket import Tiket
+from .base import AutoRequiredFormMixin
 
 
-class TransferKePMDEForm(forms.ModelForm):
+class TransferKePMDEForm(AutoRequiredFormMixin, forms.ModelForm):
     """Form for transferring tiket to PMDE by PIDE."""
     baris_i = forms.IntegerField(
         label='Baris I',

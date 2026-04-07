@@ -29,11 +29,42 @@
         <div class="card-body">
             <form method="post" action="{{ form_action }}" id="tiket-rekam-form">
                 {% csrf_token %}
+                
+                <!-- SECTION A: Data Utama -->
+                <div class="alert alert-light border-start border-primary border-3 mb-4" role="alert">
+                    <h6 class="mb-0"><i class="ri-checkbox-multiple-line me-2"></i><strong>Bagian A: Data Utama</strong></h6>
+                </div>
+
+                <!-- Status Ketersediaan Data and Alasan Ketidaktersediaan side-by-side -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Status Ketersediaan Data</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="status_ketersediaan_data" id="status_tersedia" value="1" checked>
+                            <label class="form-check-label" for="status_tersedia">Data Tersedia</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="status_ketersediaan_data" id="status_tidak_tersedia" value="0">
+                            <label class="form-check-label" for="status_tidak_tersedia">Data Tidak Tersedia</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.alasan_ketidaktersediaan.id_for_label }}" class="form-label">{{ form.alasan_ketidaktersediaan.label }}</label>
+                            {{ form.alasan_ketidaktersediaan }}
+                            {% if form.alasan_ketidaktersediaan.errors %}
+                                <div class="invalid-feedback d-block">{{ form.alasan_ketidaktersediaan.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ILAP and Periode Data -->
                 <div class="row">
                     <div class="col-md-6">
                         {% if form.id_ilap %}
                             <div class="mb-3">
-                                <label for="{{ form.id_ilap.id_for_label }}" class="form-label">{{ form.id_ilap.label }}</label>
+                                <label for="{{ form.id_ilap.id_for_label }}" class="form-label">{{ form.id_ilap.label }}{% if form.id_ilap.field.required %}<span class="text-danger">*</span>{% endif %}</label>
                                 {{ form.id_ilap }}
                                 {% if form.id_ilap.errors %}
                                     <div class="invalid-feedback d-block">{{ form.id_ilap.errors }}</div>
@@ -44,7 +75,7 @@
                     <div class="col-md-6">
                         {% if form.id_periode_data %}
                             <div class="mb-3">
-                                <label for="{{ form.id_periode_data.id_for_label }}" class="form-label">{{ form.id_periode_data.label }}</label>
+                                <label for="{{ form.id_periode_data.id_for_label }}" class="form-label">{{ form.id_periode_data.label }}{% if form.id_periode_data.field.required %}<span class="text-danger">*</span>{% endif %}</label>
                                 {{ form.id_periode_data }}
                                 {% if form.id_periode_data.errors %}
                                     <div class="invalid-feedback d-block">{{ form.id_periode_data.errors }}</div>
@@ -61,36 +92,37 @@
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="info-group mb-2">
-                                <label class="text-muted small mb-1">ILAP</label>
-                                <p class="fw-semibold mb-0" id="info-nama-ilap">-</p>
+                            <div class="col-md-6">
+                                <div class="info-group mb-2">
+                                    <label class="text-muted small mb-1">ILAP</label>
+                                    <p class="fw-semibold mb-0" id="info-nama-ilap">-</p>
+                                </div>
+                                <div class="info-group mb-2">
+                                    <label class="text-muted small mb-1">Kategori ILAP</label>
+                                    <p class="fw-semibold mb-0" id="info-kategori-ilap">-</p>
+                                </div>
+                                <div class="info-group mb-2">
+                                    <label class="text-muted small mb-1">Kategori Wilayah</label>
+                                    <p class="fw-semibold mb-0" id="info-kategori-wilayah">-</p>
+                                </div>
+                                <div class="info-group mb-2">
+                                    <label class="text-muted small mb-1">Jenis Tabel</label>
+                                    <p class="fw-semibold mb-0" id="info-jenis-tabel">-</p>
+                                </div>
                             </div>
-                            <div class="info-group mb-2">
-                                <label class="text-muted small mb-1">Kategori ILAP</label>
-                                <p class="fw-semibold mb-0" id="info-kategori-ilap">-</p>
-                            </div>
-                            <div class="info-group mb-2">
-                                <label class="text-muted small mb-1">Kategori Wilayah</label>
-                                <p class="fw-semibold mb-0" id="info-kategori-wilayah">-</p>
-                            </div>
-                            <div class="info-group mb-2">
-                                <label class="text-muted small mb-1">Jenis Tabel</label>
-                                <p class="fw-semibold mb-0" id="info-jenis-tabel">-</p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-group mb-2">
-                                <label class="text-muted small mb-1">Klasifikasi Jenis Data</label>
-                                <p class="fw-semibold mb-0" id="info-klasifikasi">-</p>
-                            </div>
-                            <div class="info-group mb-2">
-                                <label class="text-muted small mb-1">Periode Penyampaian</label>
-                                <p class="fw-semibold mb-0" id="info-deskripsi-periode">-</p>
-                            </div>
-                            <div class="info-group mb-2">
-                                <label class="text-muted small mb-1">Periode Penerimaan</label>
-                                <p class="fw-semibold mb-0" id="info-periode-penerimaan">-</p>
+                            <div class="col-md-6">
+                                <div class="info-group mb-2">
+                                    <label class="text-muted small mb-1">Klasifikasi Jenis Data</label>
+                                    <p class="fw-semibold mb-0" id="info-klasifikasi">-</p>
+                                </div>
+                                <div class="info-group mb-2">
+                                    <label class="text-muted small mb-1">Periode Penyampaian</label>
+                                    <p class="fw-semibold mb-0" id="info-deskripsi-periode">-</p>
+                                </div>
+                                <div class="info-group mb-2">
+                                    <label class="text-muted small mb-1">Periode Penerimaan</label>
+                                    <p class="fw-semibold mb-0" id="info-periode-penerimaan">-</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -118,28 +150,37 @@
                         </div>
                     </div>
                 </div>
-                </div>
 
+                <!-- Periode, Tahun, Penyampaian, Jenis Prioritas -->
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="mb-3">
-                            <label for="{{ form.periode.id_for_label }}" class="form-label">{{ form.periode.label }}</label>
+                            <label for="{{ form.periode.id_for_label }}" class="form-label">{{ form.periode.label }}{% if form.periode.field.required %}<span class="text-danger">*</span>{% endif %}</label>
                             {{ form.periode }}
                             {% if form.periode.errors %}
                                 <div class="invalid-feedback d-block">{{ form.periode.errors }}</div>
                             {% endif %}
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="mb-3">
-                            <label for="{{ form.tahun.id_for_label }}" class="form-label">{{ form.tahun.label }}</label>
+                            <label for="{{ form.tahun.id_for_label }}" class="form-label">{{ form.tahun.label }}{% if form.tahun.field.required %}<span class="text-danger">*</span>{% endif %}</label>
                             {{ form.tahun }}
                             {% if form.tahun.errors %}
                                 <div class="invalid-feedback d-block">{{ form.tahun.errors }}</div>
                             {% endif %}
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="{{ form.penyampaian.id_for_label }}" class="form-label">{{ form.penyampaian.label }}{% if form.penyampaian.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                            {{ form.penyampaian }}
+                            {% if form.penyampaian.errors %}
+                                <div class="invalid-feedback d-block">{{ form.penyampaian.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
                         <div class="mb-3">
                             <label class="form-label">Jenis Prioritas Data</label>
                             <div class="info-group d-flex align-items-center justify-content-center" style="height: 38px;">
@@ -149,62 +190,47 @@
                     </div>
                 </div>
 
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="{{ form.tgl_terima_vertikal.id_for_label }}" class="form-label">{{ form.tgl_terima_vertikal.label }}</label>
-                            {{ form.tgl_terima_vertikal }}
-                            {% if form.tgl_terima_vertikal.errors %}
-                                <div class="invalid-feedback d-block">{{ form.tgl_terima_vertikal.errors }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="{{ form.tgl_terima_dip.id_for_label }}" class="form-label">{{ form.tgl_terima_dip.label }}</label>
-                            {{ form.tgl_terima_dip }}
-                            {% if form.tgl_terima_dip.errors %}
-                                <div class="invalid-feedback d-block">{{ form.tgl_terima_dip.errors }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
+                <!-- SECTION B: Surat Pengantar & Penerimaan -->
+                <div class="alert alert-light border-start border-primary border-3 mb-4" role="alert">
+                    <h6 class="mb-0"><i class="ri-mail-line me-2"></i><strong>Bagian B: Surat Pengantar & Penerimaan Data</strong></h6>
                 </div>
 
-                <!-- Surat Pengantar Section -->
+                <!-- Nomor Surat Pengantar, Tanggal Surat Pengantar, Nama Pengirim -->
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="{{ form.nomor_surat_pengantar.id_for_label }}" class="form-label">{{ form.nomor_surat_pengantar.label }}</label>
+                            <label for="{{ form.nomor_surat_pengantar.id_for_label }}" class="form-label">{{ form.nomor_surat_pengantar.label }}{% if form.nomor_surat_pengantar.field.required %}<span class="text-danger">*</span>{% endif %}</label>
                             {{ form.nomor_surat_pengantar }}
                             {% if form.nomor_surat_pengantar.errors %}
                                 <div class="invalid-feedback d-block">{{ form.nomor_surat_pengantar.errors }}</div>
                             {% endif %}
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="{{ form.tanggal_surat_pengantar.id_for_label }}" class="form-label">{{ form.tanggal_surat_pengantar.label }}</label>
+                            <label for="{{ form.tanggal_surat_pengantar.id_for_label }}" class="form-label">{{ form.tanggal_surat_pengantar.label }}{% if form.tanggal_surat_pengantar.field.required %}<span class="text-danger">*</span>{% endif %}</label>
                             {{ form.tanggal_surat_pengantar }}
                             {% if form.tanggal_surat_pengantar.errors %}
                                 <div class="invalid-feedback d-block">{{ form.tanggal_surat_pengantar.errors }}</div>
                             {% endif %}
                         </div>
                     </div>
-                </div>
-
-                <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="{{ form.nama_pengirim.id_for_label }}" class="form-label">{{ form.nama_pengirim.label }}</label>
+                            <label for="{{ form.nama_pengirim.id_for_label }}" class="form-label">{{ form.nama_pengirim.label }}{% if form.nama_pengirim.field.required %}<span class="text-danger">*</span>{% endif %}</label>
                             {{ form.nama_pengirim }}
                             {% if form.nama_pengirim.errors %}
                                 <div class="invalid-feedback d-block">{{ form.nama_pengirim.errors }}</div>
                             {% endif %}
                         </div>
                     </div>
+                </div>
+
+                <!-- Bentuk Data, Cara Penyampaian, Baris P3DE -->
+                <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="{{ form.id_bentuk_data.id_for_label }}" class="form-label">{{ form.id_bentuk_data.label }}</label>
+                            <label for="{{ form.id_bentuk_data.id_for_label }}" class="form-label">{{ form.id_bentuk_data.label }}{% if form.id_bentuk_data.field.required %}<span class="text-danger">*</span>{% endif %}</label>
                             {{ form.id_bentuk_data }}
                             {% if form.id_bentuk_data.errors %}
                                 <div class="invalid-feedback d-block">{{ form.id_bentuk_data.errors }}</div>
@@ -213,7 +239,7 @@
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="{{ form.id_cara_penyampaian.id_for_label }}" class="form-label">{{ form.id_cara_penyampaian.label }}</label>
+                            <label for="{{ form.id_cara_penyampaian.id_for_label }}" class="form-label">{{ form.id_cara_penyampaian.label }}{% if form.id_cara_penyampaian.field.required %}<span class="text-danger">*</span>{% endif %}</label>
                             {{ form.id_cara_penyampaian }}
                             {% if form.id_cara_penyampaian.errors %}
                                 <div class="invalid-feedback d-block">{{ form.id_cara_penyampaian.errors }}</div>
@@ -222,46 +248,50 @@
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="{{ form.id_status_penelitian.id_for_label }}" class="form-label">{{ form.id_status_penelitian.label }}</label>
-                            {{ form.id_status_penelitian }}
-                            {% if form.id_status_penelitian.errors %}
-                                <div class="invalid-feedback d-block">{{ form.id_status_penelitian.errors }}</div>
+                            <label for="{{ form.baris_p3de.id_for_label }}" class="form-label">{{ form.baris_p3de.label }}{% if form.baris_p3de.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                            {{ form.baris_p3de }}
+                            {% if form.baris_p3de.errors %}
+                                <div class="invalid-feedback d-block">{{ form.baris_p3de.errors }}</div>
                             {% endif %}
                         </div>
                     </div>
                 </div>
 
+                <!-- Satuan Data, Tanggal Terima Vertikal, Tanggal Terima DIP -->
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="{{ form.status_ketersediaan_data.id_for_label }}" class="form-label">{{ form.status_ketersediaan_data.label }}</label>
-                            <div class="form-check mt-2">
-                                {{ form.status_ketersediaan_data }}
-                                <label class="form-check-label ms-2" for="{{ form.status_ketersediaan_data.id_for_label }}">
-                                    Data Tersedia
-                                </label>
-                            </div>
-                            {% if form.status_ketersediaan_data.errors %}
-                                <div class="invalid-feedback d-block">{{ form.status_ketersediaan_data.errors }}</div>
+                            <label for="satuan_data" class="form-label">Satuan Data</label>
+                            <select class="form-select" id="satuan_data" name="satuan_data">
+                                <option value="">---------</option>
+                                <option value="baris">Baris</option>
+                                <option value="file">File</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="{{ form.tgl_terima_vertikal.id_for_label }}" class="form-label">{{ form.tgl_terima_vertikal.label }}{% if form.tgl_terima_vertikal.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                            {{ form.tgl_terima_vertikal }}
+                            {% if form.tgl_terima_vertikal.errors %}
+                                <div class="invalid-feedback d-block">{{ form.tgl_terima_vertikal.errors }}</div>
                             {% endif %}
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="{{ form.alasan_ketidaktersediaan.id_for_label }}" class="form-label">{{ form.alasan_ketidaktersediaan.label }}</label>
-                            {{ form.alasan_ketidaktersediaan }}
-                            {% if form.alasan_ketidaktersediaan.errors %}
-                                <div class="invalid-feedback d-block">{{ form.alasan_ketidaktersediaan.errors }}</div>
+                            <label for="{{ form.tgl_terima_dip.id_for_label }}" class="form-label">{{ form.tgl_terima_dip.label }}{% if form.tgl_terima_dip.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                            {{ form.tgl_terima_dip }}
+                            {% if form.tgl_terima_dip.errors %}
+                                <div class="invalid-feedback d-block">{{ form.tgl_terima_dip.errors }}</div>
                             {% endif %}
                         </div>
                     </div>
                 </div>
+
+                <!-- Status Penelitian removed from create form -->
 
                 <div class="mt-3">
-                    <div class="alert alert-info" role="alert">
-                        Jika ILAP tidak muncul dalam daftar, pastikan PIC P3DE dan Durasi Jatuh Tempo (PIDE &amp; PMDE)
-                        sudah tercatat untuk jenis data tersebut.
-                    </div>
                     <div class="d-flex justify-content-end gap-2">
                         <a href="{% url 'tiket_list' %}" class="btn btn-secondary">Batal</a>
                         <button type="button" class="btn btn-success" id="btn-confirm-save">Simpan</button>
@@ -394,10 +424,7 @@
                             <th>Cara Penyampaian</th>
                             <td id="confirm-cara-penyampaian">-</td>
                         </tr>
-                        <tr>
-                            <th>Status Penelitian</th>
-                            <td id="confirm-status-penelitian">-</td>
-                        </tr>
+                        <!-- Status Penelitian removed from create form confirmation -->
                     </tbody>
                 </table>
             </div>
@@ -761,9 +788,6 @@
             
             document.getElementById('confirm-cara-penyampaian').textContent = 
                 document.getElementById('id_cara_penyampaian')?.options[document.getElementById('id_cara_penyampaian')?.selectedIndex]?.text || '-';
-
-            document.getElementById('confirm-status-penelitian').textContent = 
-                document.getElementById('id_status_penelitian')?.options[document.getElementById('id_status_penelitian')?.selectedIndex]?.text || '-';
 
             if (nomorTiketCell && periodeDataSelect?.value) {
                 nomorTiketCell.textContent = 'Loading...';

@@ -1,8 +1,9 @@
 from django import forms
 from ..models.tiket import Tiket
+from .base import AutoRequiredFormMixin
 
 
-class RekamHasilPenelitianForm(forms.ModelForm):
+class RekamHasilPenelitianForm(AutoRequiredFormMixin, forms.ModelForm):
     """Form for recording research results."""
     catatan = forms.CharField(
         label='Catatan',

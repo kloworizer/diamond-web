@@ -1,3 +1,4 @@
+{% load crispy_forms_tags %}
 <form method="post" action="{{ form_action }}" {% if tanda_terima_id %}data-tanda-terima-id="{{ tanda_terima_id }}"{% endif %}>
     {% csrf_token %}
     <div class="modal-body" {% if tanda_terima_id %}data-tanda-terima-id="{{ tanda_terima_id }}"{% endif %}>
@@ -8,52 +9,11 @@
                 {% endfor %}
             </div>
         {% endif %}
-        
-        <div class="mb-3">
-            {{ form.tanggal_tanda_terima.label_tag }}
-            {{ form.tanggal_tanda_terima }}
-            {% if form.tanggal_tanda_terima.errors %}
-                <small class="text-danger d-block mt-1">
-                    {% for error in form.tanggal_tanda_terima.errors %}
-                        {{ error }}
-                    {% endfor %}
-                </small>
-            {% endif %}
-            {% if form.tanggal_tanda_terima.help_text %}
-                <small class="text-muted d-block mt-1">{{ form.tanggal_tanda_terima.help_text|safe }}</small>
-            {% endif %}
-        </div>
 
-        <div class="mb-3">
-            {{ form.nomor_tanda_terima.label_tag }}
-            {{ form.nomor_tanda_terima }}
-            {% if form.nomor_tanda_terima.errors %}
-                <small class="text-danger d-block mt-1">
-                    {% for error in form.nomor_tanda_terima.errors %}
-                        {{ error }}
-                    {% endfor %}
-                </small>
-            {% endif %}
-            {% if form.nomor_tanda_terima.help_text %}
-                <small class="text-muted d-block mt-1">{{ form.nomor_tanda_terima.help_text|safe }}</small>
-            {% endif %}
-        </div>
+        {{ form.tanggal_tanda_terima|as_crispy_field }}
+        {{ form.nomor_tanda_terima|as_crispy_field }}
+        {{ form.id_ilap|as_crispy_field }}
 
-        <div class="mb-3">
-            {{ form.id_ilap.label_tag }}
-            {{ form.id_ilap }}
-            {% if form.id_ilap.errors %}
-                <small class="text-danger d-block mt-1">
-                    {% for error in form.id_ilap.errors %}
-                        {{ error }}
-                    {% endfor %}
-                </small>
-            {% endif %}
-            {% if form.id_ilap.help_text %}
-                <small class="text-muted d-block mt-1">{{ form.id_ilap.help_text|safe }}</small>
-            {% endif %}
-        </div>
-        
         {% if form.tiket_ids %}
         <div class="mb-3">
             <label class="form-label">{{ form.tiket_ids.label }}</label>

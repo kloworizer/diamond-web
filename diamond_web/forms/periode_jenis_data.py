@@ -1,7 +1,8 @@
 from django import forms
 from ..models.periode_jenis_data import PeriodeJenisData
+from .base import AutoRequiredFormMixin
 
-class PeriodeJenisDataForm(forms.ModelForm):
+class PeriodeJenisDataForm(AutoRequiredFormMixin, forms.ModelForm):
     class Meta:
         model = PeriodeJenisData
         fields = ['id_sub_jenis_data_ilap', 'id_periode_pengiriman', 'akhir_penyampaian', 'start_date', 'end_date']

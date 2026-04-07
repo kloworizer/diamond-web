@@ -1,8 +1,9 @@
 from django import forms
 from django.contrib.auth.models import Group
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
+from .base import AutoRequiredFormMixin
 
-class DurasiJatuhTempoForm(forms.ModelForm):
+class DurasiJatuhTempoForm(AutoRequiredFormMixin, forms.ModelForm):
     # Custom field to display friendly names
     seksi = forms.ModelChoiceField(
         queryset=Group.objects.none(),

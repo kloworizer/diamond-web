@@ -1,8 +1,9 @@
 from django import forms
 from ..models.tiket import Tiket
+from .base import AutoRequiredFormMixin
 
 
-class BatalkanTiketForm(forms.ModelForm):
+class BatalkanTiketForm(AutoRequiredFormMixin, forms.ModelForm):
     """Form for canceling a tiket."""
     catatan = forms.CharField(
         label='Catatan',

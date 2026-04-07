@@ -1,8 +1,9 @@
 from django import forms
 from ..models.backup_data import BackupData
 from ..models.tiket import Tiket
+from .base import AutoRequiredFormMixin
 
-class BackupDataForm(forms.ModelForm):
+class BackupDataForm(AutoRequiredFormMixin, forms.ModelForm):
     class Meta:
         model = BackupData
         fields = ['id_tiket', 'lokasi_backup', 'nama_file', 'id_media_backup']
@@ -20,7 +21,7 @@ class BackupDataForm(forms.ModelForm):
                 'placeholder': 'Contoh: backup_tiket_123.zip'
             }),
             'id_media_backup': forms.Select(attrs={
-                'class': 'form-control'
+                'class': 'form-select'
             }),
         }
 

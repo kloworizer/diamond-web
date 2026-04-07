@@ -9,8 +9,8 @@ from .status_penelitian import StatusPenelitian
 
 class Tiket(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="ID")
-    nomor_tiket = models.CharField(max_length=17, null=True, blank=True, verbose_name="Nomor Tiket")
-    status_tiket = models.IntegerField(null=True, blank=True, verbose_name="Status Tiket")
+    nomor_tiket = models.CharField(max_length=17, verbose_name="Nomor Tiket")
+    status_tiket = models.IntegerField(verbose_name="Status Tiket")
     id_periode_data = models.ForeignKey(
         PeriodeJenisData,
         on_delete=models.PROTECT,
@@ -25,33 +25,29 @@ class Tiket(models.Model):
         null=True,
         blank=True
     )
-    periode = models.IntegerField(null=True, blank=True, verbose_name="Periode")
-    tahun = models.IntegerField(null=True, blank=True, verbose_name="Tahun")
-    penyampaian = models.IntegerField(null=True, blank=True, verbose_name="Penyampaian")
-    nomor_surat_pengantar = models.CharField(max_length=50, null=True, blank=True, verbose_name="Nomor Surat Pengantar")
-    tanggal_surat_pengantar = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Surat Pengantar")
-    nama_pengirim = models.CharField(max_length=50, null=True, blank=True, verbose_name="Nama Pengirim")
+    periode = models.IntegerField(verbose_name="Periode")
+    tahun = models.IntegerField(verbose_name="Tahun")
+    penyampaian = models.IntegerField(verbose_name="Penyampaian")
+    nomor_surat_pengantar = models.CharField(max_length=50, verbose_name="Nomor Surat Pengantar")
+    tanggal_surat_pengantar = models.DateTimeField(verbose_name="Tanggal Surat Pengantar")
+    nama_pengirim = models.CharField(max_length=50, verbose_name="Nama Pengirim")
     id_bentuk_data = models.ForeignKey(
         BentukData,
         on_delete=models.PROTECT,
         db_column="bentuk_data",
-        verbose_name="Bentuk Data",
-        null=True,
-        blank=True
+        verbose_name="Bentuk Data"
     )
     id_cara_penyampaian = models.ForeignKey(
         CaraPenyampaian,
         on_delete=models.PROTECT,
         db_column="cara_penyampaian",
-        verbose_name="Cara Penyampaian",
-        null=True,
-        blank=True
+        verbose_name="Cara Penyampaian"
     )
     status_ketersediaan_data = models.BooleanField(default=True, verbose_name="Status Ketersediaan Data")
     alasan_ketidaktersediaan = models.CharField(max_length=100, null=True, blank=True, verbose_name="Alasan Ketidaktersediaan")
-    baris_p3de = models.IntegerField(null=True, blank=True, verbose_name="Baris P3DE")
+    baris_p3de = models.IntegerField(verbose_name="Baris P3DE")
     tgl_terima_vertikal = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Terima Vertikal")
-    tgl_terima_dip = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Terima DIP")
+    tgl_terima_dip = models.DateTimeField(verbose_name="Tanggal Terima DIP")
     backup = models.BooleanField(default=False, verbose_name="Backup Direkam")
     tanda_terima = models.BooleanField(default=False, verbose_name="Tanda Terima Dibuat")
     id_status_penelitian = models.ForeignKey(
@@ -63,7 +59,7 @@ class Tiket(models.Model):
         blank=True
     )
     tgl_teliti = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Teliti")
-    kesesuaian_data = models.IntegerField(default=1, verbose_name="Kesesuaian Data")
+    kesesuaian_data = models.IntegerField(null=True, blank=True, verbose_name="Kesesuaian Data")
     baris_lengkap = models.IntegerField(null=True, blank=True, verbose_name="Baris Lengkap")
     baris_tidak_lengkap = models.IntegerField(null=True, blank=True, verbose_name="Baris Tidak Lengkap")
     tgl_nadine = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Nadine")

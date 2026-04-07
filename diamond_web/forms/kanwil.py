@@ -1,8 +1,9 @@
 from django import forms
 from ..models.kanwil import Kanwil
+from .base import AutoRequiredFormMixin
 
 
-class KanwilForm(forms.ModelForm):
+class KanwilForm(AutoRequiredFormMixin, forms.ModelForm):
     class Meta:
         model = Kanwil
         fields = ['kode_kanwil', 'nama_kanwil']

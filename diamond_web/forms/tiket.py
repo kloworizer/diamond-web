@@ -6,8 +6,9 @@ from ..models.periode_jenis_data import PeriodeJenisData
 from ..models.ilap import ILAP
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from datetime import datetime
+from .base import AutoRequiredFormMixin
 
-class TiketForm(forms.ModelForm):
+class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
     id_ilap = forms.ModelChoiceField(
         queryset=ILAP.objects.all(),
         empty_label="Pilih ILAP",
@@ -21,7 +22,7 @@ class TiketForm(forms.ModelForm):
     
     class Meta:
         model = Tiket
-        fields = ['id_ilap', 'id_periode_data', 'periode', 'tahun', 'tgl_terima_vertikal', 'tgl_terima_dip', 'nomor_surat_pengantar', 'tanggal_surat_pengantar', 'nama_pengirim', 'id_bentuk_data', 'id_cara_penyampaian', 'status_ketersediaan_data', 'alasan_ketidaktersediaan', 'id_status_penelitian']
+        fields = ['id_ilap', 'id_periode_data', 'periode', 'tahun', 'penyampaian', 'tgl_terima_vertikal', 'tgl_terima_dip', 'nomor_surat_pengantar', 'tanggal_surat_pengantar', 'nama_pengirim', 'id_bentuk_data', 'id_cara_penyampaian', 'baris_p3de', 'status_ketersediaan_data', 'alasan_ketidaktersediaan']
         widgets = {
             'id_periode_data': forms.Select(attrs={'class': 'form-control', 'id': 'id_periode_data'}),
             'periode': forms.Select(attrs={'class': 'form-control', 'id': 'id_periode'}),
@@ -33,7 +34,8 @@ class TiketForm(forms.ModelForm):
             'nama_pengirim': forms.TextInput(attrs={'class': 'form-control'}),
             'id_bentuk_data': forms.Select(attrs={'class': 'form-control'}),
             'id_cara_penyampaian': forms.Select(attrs={'class': 'form-control'}),
-            'id_status_penelitian': forms.Select(attrs={'class': 'form-control'}),
+            'penyampaian': forms.NumberInput(attrs={'class': 'form-control', 'id': 'id_penyampaian', 'type': 'number', 'min': '0'}),
+            'baris_p3de': forms.NumberInput(attrs={'class': 'form-control'}),
             'status_ketersediaan_data': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'alasan_ketidaktersediaan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Alasan jika data tidak tersedia'}),
         }
@@ -101,11 +103,8 @@ class TiketForm(forms.ModelForm):
         # Initialize id_periode_data with empty queryset
         self.fields['id_periode_data'].queryset = PeriodeJenisData.objects.none()
         self.fields['id_periode_data'].label = 'Jenis Data ILAP'
-        self.fields['id_periode_data'].required = True
-        self.fields['periode'].required = True
-        self.fields['periode'].widget.attrs['required'] = 'required'
-        self.fields['tgl_terima_vertikal'].required = True
-        self.fields['tgl_terima_dip'].required = True
+        # Django automatically sets required=True for non-nullable fields and required=False for nullable fields
+        # No need to manually set required status - it's inherited from the model
         
         # Generate year choices (current year to 20 years back)
         current_year = datetime.now().year

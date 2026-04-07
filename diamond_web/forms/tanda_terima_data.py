@@ -1,5 +1,6 @@
 from django import forms
 from django.core.exceptions import ValidationError
+from .base import AutoRequiredFormMixin
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from ..models.tanda_terima_data import TandaTerimaData
@@ -25,7 +26,7 @@ class TiketCheckboxSelectMultiple(forms.CheckboxSelectMultiple):
         return option
 
 
-class TandaTerimaDataForm(forms.ModelForm):
+class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
     tiket_ids = forms.ModelMultipleChoiceField(
         queryset=Tiket.objects.all(),
         widget=forms.CheckboxSelectMultiple,
@@ -46,7 +47,10 @@ class TandaTerimaDataForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for field_name, field in self.fields.items():
             if field_name != 'tiket_ids':
-                field.widget.attrs.update({'class': 'form-control'})
+                if isinstance(field.widget, (forms.Select, forms.SelectMultiple)):
+                    field.widget.attrs.update({'class': 'form-select'})
+                else:
+                    field.widget.attrs.update({'class': 'form-control'})
 
         self._existing_tiket_ids = set()
         self._disabled_tiket_ids = set(Tiket.objects.filter(status__gte=8).values_list('id', flat=True))

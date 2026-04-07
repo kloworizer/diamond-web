@@ -1,7 +1,8 @@
 from django import forms
 from ..models.status_data import StatusData
+from .base import AutoRequiredFormMixin
 
-class StatusDataForm(forms.ModelForm):
+class StatusDataForm(AutoRequiredFormMixin, forms.ModelForm):
     class Meta:
         model = StatusData
         fields = ['deskripsi']

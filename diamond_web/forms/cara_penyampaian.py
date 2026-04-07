@@ -1,7 +1,8 @@
 from django import forms
 from ..models.cara_penyampaian import CaraPenyampaian
+from .base import AutoRequiredFormMixin
 
-class CaraPenyampaianForm(forms.ModelForm):
+class CaraPenyampaianForm(AutoRequiredFormMixin, forms.ModelForm):
     class Meta:
         model = CaraPenyampaian
         fields = ['deskripsi']

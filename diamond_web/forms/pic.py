@@ -1,8 +1,9 @@
 from django import forms
 from ..models.pic import PIC
 from django.contrib.auth.models import User
+from .base import AutoRequiredFormMixin
 
-class PICForm(forms.ModelForm):
+class PICForm(AutoRequiredFormMixin, forms.ModelForm):
     class Meta:
         model = PIC
         fields = ['tipe', 'id_sub_jenis_data_ilap', 'id_user', 'start_date', 'end_date']

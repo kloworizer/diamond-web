@@ -1,8 +1,9 @@
 from django import forms
 from ..models.jenis_prioritas_data import JenisPrioritasData
+from .base import AutoRequiredFormMixin
 
 
-class JenisPrioritasDataForm(forms.ModelForm):
+class JenisPrioritasDataForm(AutoRequiredFormMixin, forms.ModelForm):
     class Meta:
         model = JenisPrioritasData
         fields = ['id_sub_jenis_data_ilap', 'no_nd', 'tahun', 'start_date', 'end_date']
