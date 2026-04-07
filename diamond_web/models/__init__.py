@@ -5,6 +5,8 @@ from .jenis_data_ilap import JenisDataILAP
 from .jenis_prioritas_data import JenisPrioritasData
 from .jenis_tabel import JenisTabel
 from .kategori_wilayah import KategoriWilayah
+from .kanwil import Kanwil
+from .kpp import KPP
 from .dasar_hukum import DasarHukum
 from .status_data import StatusData
 from .status_penelitian import StatusPenelitian

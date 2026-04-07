@@ -1,5 +1,6 @@
 from django.db import models
 from .kategori_ilap import KategoriILAP
+from .kpp import KPP
 from .kategori_wilayah import KategoriWilayah
 
 class ILAP(models.Model):
@@ -17,6 +18,14 @@ class ILAP(models.Model):
         on_delete=models.PROTECT,
         db_column="id_kategori_wilayah",
         verbose_name="Kategori Wilayah"
+    )
+    id_kpp = models.ForeignKey(
+        KPP,
+        on_delete=models.PROTECT,
+        db_column="id_kpp",
+        verbose_name="KPP",
+        null=True,
+        blank=True
     )
 
     class Meta:

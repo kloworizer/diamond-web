@@ -105,18 +105,13 @@ def tiket_data(request):
             qs = qs.filter(tahun__icontains=columns_search[3])
         if len(columns_search) > 4 and columns_search[4]:  # Status
             qs = qs.filter(status_tiket__icontains=columns_search[4])
-        if len(columns_search) > 5 and columns_search[5]:  # Ketersediaan Data
-            if columns_search[5].lower() in ['ya', 'tersedia', 'true']:
-                qs = qs.filter(status_ketersediaan_data=True)
-            elif columns_search[5].lower() in ['tidak', 'tidak tersedia', 'false']:
-                qs = qs.filter(status_ketersediaan_data=False)
 
     records_filtered = qs.count()
 
     # ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id', 'nomor_tiket', 'id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data', 'periode', 'tahun', 'status_tiket', 'status_ketersediaan_data']
+    columns = ['id', 'nomor_tiket', 'id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data', 'periode', 'tahun', 'status_tiket']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)

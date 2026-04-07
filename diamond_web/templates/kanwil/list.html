@@ -9,12 +9,12 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h2 class="mb-1">
-                        <i class="ri-database-line me-2"></i>ILAP
+                        <i class="ri-building-2-line me-2"></i>Kanwil
                     </h2>
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-                            <li class="breadcrumb-item active">ILAP</li>
+                            <li class="breadcrumb-item active">Kanwil</li>
                         </ol>
                     </nav>
                 </div>
@@ -24,26 +24,22 @@
 
     <div class="card shadow-sm">
         <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
-            <h5 class="mb-0"><i class="ri-database-line me-2"></i>Daftar ILAP</h5>
+            <h5 class="mb-0"><i class="ri-building-2-line me-2"></i>Daftar Kanwil</h5>
             <button type="button" class="btn btn-success" data-action="create"><i class="ri-add-line me-1"></i>Tambah</button>
         </div>
         <div class="card-body">
-            <table id="ilap-table" class="table table-striped" style="width:100%">
+            <table id="kanwil-table" class="table table-striped" style="width:100%">
                 <thead>
                     <tr>
-                        <th>Kategori Wilayah</th>
-                        <th>ID ILAP</th>
-                        <th>Kategori</th>
-                        <th>Nama ILAP</th>
-                        <th>KPP</th>
+                        <th>ID</th>
+                        <th>Kode Kanwil</th>
+                        <th>Nama Kanwil</th>
                         <th>Actions</th>
                     </tr>
                     <tr id="column-search-row">
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Wilayah" data-column="0" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search ID" data-column="1" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Kategori" data-column="2" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Nama" data-column="3" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search KPP" data-column="4" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search ID" data-column="0" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Kode" data-column="1" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Nama" data-column="2" /></th>
                         <th></th>
                     </tr>
                 </thead>
@@ -72,11 +68,11 @@
 {% block scripts %}
 <script>
     (function () {
-        const ajaxUrl = "{% url 'ilap_data' %}";
+        const ajaxUrl = "{% url 'kanwil_data' %}";
         let table;
 
         $(document).ready(function () {
-            table = $('#ilap-table').DataTable({
+            table = $('#kanwil-table').DataTable({
                 serverSide: true,
                 layout: {
                     topStart: null,
@@ -96,17 +92,15 @@
                 },
                 pageLength: 10,
                 columns: [
-                    { data: 'kategori_wilayah' },
-                    { data: 'id_ilap' },
-                    { data: 'id_kategori' },
-                    { data: 'nama_ilap' },
-                    { data: 'id_kpp' },
+                    { data: 'id' },
+                    { data: 'kode_kanwil' },
+                    { data: 'nama_kanwil' },
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [
-                    { targets: 5, render: function (data, type, row, meta) { return data; } }
+                    { targets: 3, render: function (data, type, row, meta) { return data; } }
                 ],
-                order: [[1, 'asc']]
+                order: [[0, 'asc']]
             });
 
             // Add individual column search
@@ -131,20 +125,20 @@
 
             // Handle create button
             $('[data-action="create"]').on('click', function () {
-                loadModal('{% url "ilap_create" %}', 'Tambah ILAP');
+                loadModal('{% url "kanwil_create" %}', 'Tambah Kanwil');
             });
 
             // Handle edit/delete buttons (delegated event)
             $(document).on('click', '[data-action="edit"]', function (e) {
                 e.preventDefault();
                 const url = $(this).data('url');
-                loadModal(url, 'Edit ILAP');
+                loadModal(url, 'Edit Kanwil');
             });
 
             $(document).on('click', '[data-action="delete"]', function (e) {
                 e.preventDefault();
                 const url = $(this).data('url');
-                loadModal(url, 'Hapus ILAP');
+                loadModal(url, 'Hapus Kanwil');
             });
 
             // Handle form submission

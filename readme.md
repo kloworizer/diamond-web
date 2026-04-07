@@ -185,4 +185,4 @@ Setelah selesai mengembangkan di branch fitur, push ke repo fork Anda dan buat p
 # Misc Command
 activate venv di lokal : Set-ExecutionPolicy Unrestricted -Scope Process; .\.venv\Scripts\Activate.ps1
 push dari lokal ke VM : git push work-vm main
-pull main di vm : git pull origin main
+pull main di vm : git pull origin main & sudo systemctl restart diamond_web_gunicorn

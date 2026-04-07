@@ -7,6 +7,8 @@ from .ilap import *
 from .jenis_data_ilap import *
 from .jenis_tabel import *
 from .kategori_wilayah import *
+from .kanwil import *
+from .kpp import *
 from .status_data import *
 from .dasar_hukum import *
 from .status_penelitian import *
@@ -22,4 +24,5 @@ from .nama_tabel import *
 from .durasi_jatuh_tempo import *
 from .backup_data import *
 from .tanda_terima_data import *
+from .monitoring_penyampaian_data import *
 from .tiket import *

@@ -47,6 +47,18 @@ urlpatterns = [
     path('kategori-wilayah/create/', views.KategoriWilayahCreateView.as_view(), name='kategori_wilayah_create'),
     path('kategori-wilayah/<int:pk>/update/', views.KategoriWilayahUpdateView.as_view(), name='kategori_wilayah_update'),
     path('kategori-wilayah/<int:pk>/delete/', views.KategoriWilayahDeleteView.as_view(), name='kategori_wilayah_delete'),
+    # Kanwil URLs
+    path('kanwil/', views.KanwilListView.as_view(), name='kanwil_list'),
+    path('kanwil/data/', views.kanwil_data, name='kanwil_data'),
+    path('kanwil/create/', views.KanwilCreateView.as_view(), name='kanwil_create'),
+    path('kanwil/<int:pk>/update/', views.KanwilUpdateView.as_view(), name='kanwil_update'),
+    path('kanwil/<int:pk>/delete/', views.KanwilDeleteView.as_view(), name='kanwil_delete'),
+    # KPP URLs
+    path('kpp/', views.KPPListView.as_view(), name='kpp_list'),
+    path('kpp/data/', views.kpp_data, name='kpp_data'),
+    path('kpp/create/', views.KPPCreateView.as_view(), name='kpp_create'),
+    path('kpp/<int:pk>/update/', views.KPPUpdateView.as_view(), name='kpp_update'),
+    path('kpp/<int:pk>/delete/', views.KPPDeleteView.as_view(), name='kpp_delete'),
     # Status Data URLs
     path('status-data/', views.StatusDataListView.as_view(), name='status_data_list'),
     path('status-data/data/', views.status_data_data, name='status_data_data'),
@@ -132,6 +144,9 @@ urlpatterns = [
     path('tanda-terima-data/from-tiket/<int:tiket_pk>/create/', views.TandaTerimaDataFromTiketCreateView.as_view(), name='tanda_terima_data_from_tiket_create'),
     path('tanda-terima-data/<int:pk>/update/', views.TandaTerimaDataUpdateView.as_view(), name='tanda_terima_data_update'),
     path('tanda-terima-data/<int:pk>/delete/', views.TandaTerimaDataDeleteView.as_view(), name='tanda_terima_data_delete'),
+    # Monitoring Penyampaian Data URLs
+    path('monitoring-penyampaian-data/', views.MonitoringPenyampaianDataListView.as_view(), name='monitoring_penyampaian_data_list'),
+    path('monitoring-penyampaian-data/data/', views.monitoring_penyampaian_data_data, name='monitoring_penyampaian_data_data'),
 
     # === PIDE Section ===
     # Nama Tabel URLs

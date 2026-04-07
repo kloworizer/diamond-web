@@ -4,6 +4,8 @@ from .jenis_data_ilap import JenisDataILAPForm
 from .jenis_tabel import JenisTabelForm
 from .jenis_prioritas_data import JenisPrioritasDataForm
 from .kategori_wilayah import KategoriWilayahForm
+from .kanwil import KanwilForm
+from .kpp import KPPForm
 from .dasar_hukum import DasarHukumForm
 from .klasifikasi_jenis_data import KlasifikasiJenisDataForm
 from .periode_pengiriman import PeriodePengirimanForm
