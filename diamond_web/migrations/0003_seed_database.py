@@ -115,14 +115,14 @@ DASAR_HUKUM_DATA = [
 ]
 
 PERIODE_PENGIRIMAN_DATA = [
-    "Harian",
-    "Mingguan",
-    "2 Mingguan",
-    "Bulanan",
-    "Triwulanan",
-    "Kuartal",
-    "Semester",
-    "Tahunan",
+    {"periode_penyampaian": "Harian", "periode_penerimaan": "Bulanan"},
+    {"periode_penyampaian": "Mingguan", "periode_penerimaan": "Bulanan"},
+    {"periode_penyampaian": "2 Mingguan", "periode_penerimaan": "Bulanan"},
+    {"periode_penyampaian": "Bulanan", "periode_penerimaan": "Bulanan"},
+    {"periode_penyampaian": "Triwulanan", "periode_penerimaan": "Triwulanan"},
+    {"periode_penyampaian": "Kuartal", "periode_penerimaan": "Kuartal"},
+    {"periode_penyampaian": "Semester", "periode_penerimaan": "Semester"},
+    {"periode_penyampaian": "Tahunan", "periode_penerimaan": "Tahunan"},
 ]
 
 STATUS_DATA_DATA = [
@@ -840,15 +840,16 @@ def seed_periode_pengiriman(apps, schema_editor):
     PeriodePengiriman = apps.get_model("diamond_web", "PeriodePengiriman")
     for periode in PERIODE_PENGIRIMAN_DATA:
         PeriodePengiriman.objects.get_or_create(
-            periode_penyampaian=periode,
-            defaults={"periode_penerimaan": periode}
+            periode_penyampaian=periode["periode_penyampaian"],
+            defaults={"periode_penerimaan": periode["periode_penerimaan"]}
         )
 
 
 def unseed_periode_pengiriman(apps, schema_editor):
     """Removes the initial data from the PeriodePengiriman model."""
     PeriodePengiriman = apps.get_model("diamond_web", "PeriodePengiriman")
-    PeriodePengiriman.objects.filter(periode_penyampaian__in=PERIODE_PENGIRIMAN_DATA).delete()
+    periode_penyampaian_list = [item["periode_penyampaian"] for item in PERIODE_PENGIRIMAN_DATA]
+    PeriodePengiriman.objects.filter(periode_penyampaian__in=periode_penyampaian_list).delete()
 
 
 def seed_status_data(apps, schema_editor):
