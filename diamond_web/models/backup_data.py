@@ -29,4 +29,4 @@ class BackupData(models.Model):
         ordering = ['id']
 
     def __str__(self):
-        return f"Backup {self.id_tiket.nomor_tiket} - {self.created_at.strftime('%Y-%m-%d')}"
+        return f"Backup {self.id_tiket.nomor_tiket}"
