@@ -423,6 +423,18 @@
                             <th>Cara Penyampaian</th>
                             <td id="confirm-cara-penyampaian">-</td>
                         </tr>
+                        <tr>
+                            <th>Penyampaian</th>
+                            <td id="confirm-penyampaian">-</td>
+                        </tr>
+                        <tr>
+                            <th>Baris Diterima</th>
+                            <td id="confirm-baris-diterima">-</td>
+                        </tr>
+                        <tr>
+                            <th>Satuan Data</th>
+                            <td id="confirm-satuan-data">-</td>
+                        </tr>
                         <!-- Status Penelitian removed from create form confirmation -->
                     </tbody>
                 </table>
@@ -604,8 +616,8 @@
             document.getElementById('info-pic-pide').textContent = selectedData.pic_pide || '-';
             document.getElementById('info-pic-pmde').textContent = selectedData.pic_pmde || '-';
 
-            // Update periode options
-            updatePeriodeOptions(selectedData.periode_penyampaian);
+            // Update periode options based on Reception Period instead of Submission Period
+            updatePeriodeOptions(selectedData.periode_penerimaan);
 
             infoSection.style.display = 'block';
         }
@@ -783,10 +795,19 @@
                 document.getElementById('id_nama_pengirim')?.value || '-';
             
             document.getElementById('confirm-bentuk-data').textContent = 
-                document.getElementById('id_bentuk_data')?.options[document.getElementById('id_bentuk_data')?.selectedIndex]?.text || '-';
+                document.getElementById('id_id_bentuk_data')?.options[document.getElementById('id_id_bentuk_data')?.selectedIndex]?.text || '-';
             
             document.getElementById('confirm-cara-penyampaian').textContent = 
-                document.getElementById('id_cara_penyampaian')?.options[document.getElementById('id_cara_penyampaian')?.selectedIndex]?.text || '-';
+                document.getElementById('id_id_cara_penyampaian')?.options[document.getElementById('id_id_cara_penyampaian')?.selectedIndex]?.text || '-';
+
+            document.getElementById('confirm-penyampaian').textContent = 
+                document.getElementById('id_penyampaian')?.value || '-';
+            
+            document.getElementById('confirm-baris-diterima').textContent = 
+                document.getElementById('id_baris_diterima')?.value || '-';
+            
+            document.getElementById('confirm-satuan-data').textContent = 
+                document.getElementById('id_satuan_data')?.options[document.getElementById('id_satuan_data')?.selectedIndex]?.text || '-';
 
             if (nomorTiketCell && periodeDataSelect?.value) {
                 nomorTiketCell.textContent = 'Loading...';

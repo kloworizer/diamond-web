@@ -169,9 +169,9 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         # Jenis prioritas from tiket (transaction)
         jenis_prioritas_text = 'Ya' if self.object.id_jenis_prioritas_data else 'Tidak'
         
-        # Format periode based on deskripsi
+        # Format periode based on deskripsi (using periode penerimaan instead of periode penyampaian)
         periode_formatted = self._format_periode(
-            periode_jenis_data.id_periode_pengiriman.periode_penyampaian,
+            periode_jenis_data.id_periode_pengiriman.periode_penerimaan,
             self.object.periode,
             self.object.tahun
         )
@@ -185,6 +185,7 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
             'nama_sub_jenis_data': jenis_data.nama_sub_jenis_data,
             'jenis_tabel': jenis_data.id_jenis_tabel.deskripsi if jenis_data.id_jenis_tabel else '-',
             'deskripsi_periode': periode_jenis_data.id_periode_pengiriman.periode_penyampaian,
+            'periode_penerimaan': periode_jenis_data.id_periode_pengiriman.periode_penerimaan,
             'jenis_prioritas': jenis_prioritas_text,
             'klasifikasi': klasifikasi_items,
         }
@@ -253,9 +254,39 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         context['tiket_pics'] = tiket_pics
         context['backup_list'] = backups
         context['tanda_terima_items'] = tanda_terima_items
-        context['status_label'] = STATUS_LABELS.get(self.object.status, '-')
-        context['status_badge_class'] = STATUS_BADGE_CLASSES.get(self.object.status, 'bg-secondary')
+        context['status_label'] = STATUS_LABELS.get(self.object.status_tiket, '-')
+        context['status_badge_class'] = STATUS_BADGE_CLASSES.get(self.object.status_tiket, 'bg-secondary')
         context['page_title'] = f'Detail Tiket {self.object.nomor_tiket}'
+        
+        # Add tiket field details
+        context['tiket_details'] = {
+            'nomor_tiket': self.object.nomor_tiket,
+            'nomor_surat_pengantar': self.object.nomor_surat_pengantar,
+            'tanggal_surat_pengantar': self.object.tanggal_surat_pengantar,
+            'nama_pengirim': self.object.nama_pengirim,
+            'bentuk_data': self.object.id_bentuk_data.deskripsi if self.object.id_bentuk_data else '-',
+            'cara_penyampaian': self.object.id_cara_penyampaian.deskripsi if self.object.id_cara_penyampaian else '-',
+            'penyampaian': self.object.penyampaian,
+            'status_ketersediaan_data': 'Ya' if self.object.status_ketersediaan_data else 'Tidak',
+            'alasan_ketidaktersediaan': self.object.alasan_ketidaktersediaan or '-',
+            'baris_diterima': self.object.baris_diterima,
+            'satuan_data': 'Baris' if self.object.satuan_data == 1 else self.object.satuan_data,
+            'tgl_terima_vertikal': self.object.tgl_terima_vertikal,
+            'tgl_terima_dip': self.object.tgl_terima_dip,
+            'status_penelitian': self.object.id_status_penelitian.deskripsi if self.object.id_status_penelitian else '-',
+            'tgl_teliti': self.object.tgl_teliti,
+            'kesesuaian_data': self.object.kesesuaian_data,
+            'baris_lengkap': self.object.baris_lengkap,
+            'baris_tidak_lengkap': self.object.baris_tidak_lengkap,
+            'tgl_nadine': self.object.tgl_nadine,
+            'nomor_nd_nadine': self.object.nomor_nd_nadine or '-',
+            'tgl_kirim_pide': self.object.tgl_kirim_pide,
+            'tgl_dibatalkan': self.object.tgl_dibatalkan,
+            'tgl_dikembalikan': self.object.tgl_dikembalikan,
+            'tgl_rekam_pide': self.object.tgl_rekam_pide,
+            'backup': 'Ya' if self.object.backup else 'Tidak',
+            'tanda_terima': 'Ya' if self.object.tanda_terima else 'Tidak',
+        }
         
         # NOTE: workflow_step mapping removed — templates do not use it.
         
