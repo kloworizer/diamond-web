@@ -131,18 +131,6 @@
                         </div>
                         <div class="col-md-6">
                             <div class="info-group">
-                                <label class="text-muted small mb-1">Status Penelitian</label>
-                                <p class="fw-semibold mb-0">
-                                    {% if tiket.status_tiket == STATUS_DIREKAM %}
-                                        Belum Diteliti
-                                    {% else %}
-                                        {{ tiket.id_status_penelitian.deskripsi|default:"-" }}
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-group">
                                 <label class="text-muted small mb-1">Status Ketersediaan Data</label>
                                 <p class="fw-semibold mb-0">
                                     {% if tiket.status_ketersediaan_data %}
@@ -158,6 +146,40 @@
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Alasan Ketidaktersediaan</label>
                                 <p class="fw-semibold mb-0">{{ tiket.alasan_ketidaktersediaan|default:"-" }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Status Penelitian</label>
+                                <p class="fw-semibold mb-0">{{ tiket.id_status_penelitian.deskripsi|default:"-" }}</p>
+                            </div>
+                        </div>
+                        {% if tiket.tgl_teliti %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Teliti</label>
+                                <p class="fw-semibold mb-0">
+                                    <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_teliti|date:"d/m/Y H:i" }}
+                                </p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.kesesuaian_data %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Kesesuaian Data</label>
+                                <p class="fw-semibold mb-0">
+                                    {% if tiket.kesesuaian_data == 1 %}
+                                        Sesuai PMK
+                                    {% elif tiket.kesesuaian_data == 2 %}
+                                        Sesuai PKS
+                                    {% elif tiket.kesesuaian_data == 3 %}
+                                        Sesuai Konfirmasi Ketersediaan Data
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </p>
                             </div>
                         </div>
                         {% endif %}
@@ -193,6 +215,46 @@
                             </div>
                         </div>
                         {% endif %}
+                        {% if tiket.tgl_dibatalkan %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Dibatalkan</label>
+                                <p class="fw-semibold mb-0">
+                                    <i class="ri-calendar-line me-1"></i><span class="badge bg-danger">{{ tiket.tgl_dibatalkan|date:"d/m/Y H:i" }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.tgl_dikembalikan %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Dikembalikan</label>
+                                <p class="fw-semibold mb-0">
+                                    <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_dikembalikan|date:"d/m/Y H:i" }}
+                                </p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.tgl_rekam_pide %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Rekam PIDE</label>
+                                <p class="fw-semibold mb-0">
+                                    <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_rekam_pide|date:"d/m/Y H:i" }}
+                                </p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.tgl_transfer %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Transfer</label>
+                                <p class="fw-semibold mb-0">
+                                    <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_transfer|date:"d/m/Y H:i" }}
+                                </p>
+                            </div>
+                        </div>
+                        {% endif %}
 
                         <!-- QC and Baris Information -->
                         {% if tiket.baris_diterima %}
@@ -200,6 +262,22 @@
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Baris Diterima</label>
                                 <p class="fw-semibold mb-0">{{ tiket.baris_diterima }} {% if tiket.satuan_data == 1 %}Baris{% else %}{{ tiket.satuan_data }}{% endif %}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.baris_lengkap %}
+                        <div class="col-md-3">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Baris Lengkap</label>
+                                <p class="fw-semibold mb-0">{{ tiket.baris_lengkap }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.baris_tidak_lengkap %}
+                        <div class="col-md-3">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Baris Tidak Lengkap</label>
+                                <p class="fw-semibold mb-0">{{ tiket.baris_tidak_lengkap }}</p>
                             </div>
                         </div>
                         {% endif %}
@@ -232,6 +310,22 @@
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Baris CDE</label>
                                 <p class="fw-semibold mb-0">{{ tiket.baris_cde }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.sudah_qc %}
+                        <div class="col-md-3">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Sudah QC</label>
+                                <p class="fw-semibold mb-0">{{ tiket.sudah_qc }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.belum_qc %}
+                        <div class="col-md-3">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Belum QC</label>
+                                <p class="fw-semibold mb-0">{{ tiket.belum_qc }}</p>
                             </div>
                         </div>
                         {% endif %}
