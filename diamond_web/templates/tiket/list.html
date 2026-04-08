@@ -372,5 +372,20 @@
             });
         }
     })();
+
+    function downloadTiketDocs(pk) {
+        const base = `/tiket/${pk}/documents/download/`;
+        const types = ['tanda_terima', 'lampiran', 'register'];
+        types.forEach(function(type, i) {
+            setTimeout(function() {
+                const a = document.createElement('a');
+                a.href = base + '?doc_type=' + type;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }, i * 700);
+        });
+    }
 </script>
 {% endblock %}

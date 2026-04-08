@@ -5,7 +5,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.decorators.http import require_GET
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import UserPassesTestMixin
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
+from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
@@ -23,6 +24,8 @@ from ...models.kpp import KPP
 from ...models.kategori_wilayah import KategoriWilayah
 from ...models.jenis_tabel import JenisTabel
 from ...models.dasar_hukum import DasarHukum
+from ...models.detil_tanda_terima import DetilTandaTerima
+from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ..mixins import can_access_tiket_list
 from ...constants.tiket_status import STATUS_LABELS
 
@@ -51,6 +54,9 @@ class TiketListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         assignment, False otherwise.
         """
         return can_access_tiket_list(self.request.user)
+
+
+from .documents import _format_periode_tiket, tiket_documents_download  # noqa: F401
 
 
 @login_required
@@ -409,27 +415,14 @@ def tiket_data(request):
             id_sub_jenis_data = jenis_data_ilap.id_sub_jenis_data
             nama_sub_jenis_data = jenis_data_ilap.nama_sub_jenis_data
 
-        # Format periode using periode_penerimaan (e.g. Januari 2026, Semester 1 2026)
-        periode_formatted = '-'
-        if obj.id_periode_data and obj.id_periode_data.id_periode_pengiriman:
-            periode_desc = obj.id_periode_data.id_periode_pengiriman.periode_penerimaan
-            tahun = str(obj.tahun) if obj.tahun else '-'
-            if periode_desc.lower() == 'bulanan' and obj.periode:
-                # Map periode number to month name
-                bulan_map = {
-                    1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni',
-                    7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
-                }
-                bulan = bulan_map.get(obj.periode, f'Bulan {obj.periode}')
-                periode_formatted = f"{bulan} {tahun}"
-            elif 'semester' in periode_desc.lower() and obj.periode:
-                periode_formatted = f"Semester {obj.periode} {tahun}"
-            elif 'triwulan' in periode_desc.lower() and obj.periode:
-                periode_formatted = f"Triwulan {obj.periode} {tahun}"
-            elif 'mingguan' in periode_desc.lower() and obj.periode:
-                periode_formatted = f"Minggu {obj.periode} {tahun}"
-            else:
-                periode_formatted = f"{periode_desc} {tahun}"
+        periode_formatted = _format_periode_tiket(obj)
+
+        detail_btn = f"<a href='{reverse('tiket_detail', args=[obj.pk])}' class='btn btn-sm btn-info' title='View'><i class='ri-eye-line'></i></a>"
+        if obj.tanda_terima:
+            download_btn = f"<button type='button' onclick='downloadTiketDocs({obj.pk})' class='btn btn-sm btn-success' title='Generate Dokumen'><i class='ri-file-pdf-line'></i></button>"
+        else:
+            download_btn = "<button type='button' class='btn btn-sm btn-success' title='Tanda terima belum dibuat' disabled><i class='ri-file-pdf-line'></i></button>"
+        actions_html = f"<div class='btn-group btn-group-sm'>{detail_btn}{download_btn}</div>"
 
         data.append({
             'id': obj.id,
@@ -441,7 +434,7 @@ def tiket_data(request):
             'periode_formatted': periode_formatted,
             'status': STATUS_LABELS.get(obj.status_tiket, '-'),
             'status_ketersediaan_data': 'Ya' if obj.status_ketersediaan_data else 'Tidak',
-            'actions': f"<a href='{reverse('tiket_detail', args=[obj.pk])}' class='btn btn-sm btn-info' title='View'><i class='ri-eye-line'></i></a>"
+            'actions': actions_html
         })
 
     return JsonResponse({

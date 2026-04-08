@@ -194,6 +194,7 @@ urlpatterns = [
     # List view (shared across all workflow steps)
     path('tiket/', views.TiketListView.as_view(), name='tiket_list'),
     path('tiket/data/', views.tiket_data, name='tiket_data'),
+    path('tiket/<int:pk>/documents/download/', views.tiket_documents_download, name='tiket_documents_download'),
     
     # API endpoints
     path('api/ilap/<int:ilap_id>/periode-jenis-data/', views.ILAPPeriodeDataAPIView.as_view(), name='api_ilap_periode_jenis_data'),
