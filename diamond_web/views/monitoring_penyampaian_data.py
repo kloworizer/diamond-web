@@ -426,7 +426,7 @@ def monitoring_penyampaian_data_data(request):
     # Sorting
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['ilap_name', 'jenis_data', 'periode_penyampaian', 'periode', 'tahun', 'deadline_date', 'status_penyampaian', 'status_terlambat', 'days_diff']
+    columns = ['ilap_name', 'jenis_data', 'periode', 'tahun', 'deadline_date', 'status_penyampaian', 'status_terlambat', 'days_diff']
     
     if order_col_index is not None:
         try:
@@ -482,7 +482,6 @@ def monitoring_penyampaian_data_data(request):
         data.append({
             'ilap': f"{record['ilap_id']} - {record['ilap_name']}",
             'jenis_data': f"{record['id_sub_jenis_data']} - {record['sub_jenis_data']}",
-            'periode_penyampaian': record['periode_penyampaian'],
             'periode': record['periode_display_name'],
             'tahun': record['tahun'],
             'deadline': record['deadline_date'].strftime('%d-%m-%Y'),
