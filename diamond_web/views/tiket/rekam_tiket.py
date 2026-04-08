@@ -5,7 +5,7 @@ from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth.models import Group
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Max
 from django.views.generic import CreateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
@@ -305,8 +305,12 @@ class CheckTiketExistsAPIView(View):
             )
             existing_numbers = list(existing_qs.values_list('nomor_tiket', flat=True))
             exists = len(existing_numbers) > 0
+            
+            # Get max penyampaian for this combination
+            max_penyampaian_obj = existing_qs.aggregate(max_peny=Max('penyampaian'))
+            max_penyampaian = max_penyampaian_obj.get('max_peny') or 0
 
-            return JsonResponse({'success': True, 'exists': exists, 'nomor_tiket': existing_numbers})
+            return JsonResponse({'success': True, 'exists': exists, 'nomor_tiket': existing_numbers, 'max_penyampaian': max_penyampaian})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
 

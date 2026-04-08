@@ -133,12 +133,14 @@ STATUS_DATA_DATA = [
 BENTUK_DATA_DATA = [
     {"deskripsi": "Hardcopy"},
     {"deskripsi": "Softcopy"},
+    {"deskripsi": "Data Tidak Tersedia"},
 ]
 
 CARA_PENYAMPAIAN_DATA = [
     {"deskripsi": "Langsung"},
     {"deskripsi": "Online"},
     {"deskripsi": "Nadine"},
+    {"deskripsi": "Data Tidak Tersedia"},
 ]
 
 MEDIA_BACKUP_DATA = [

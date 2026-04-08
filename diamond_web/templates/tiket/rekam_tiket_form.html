@@ -174,7 +174,9 @@
                     <div class="col-md-3">
                         <div class="mb-3">
                             <label for="{{ form.penyampaian.id_for_label }}" class="form-label">{{ form.penyampaian.label }}{% if form.penyampaian.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                            {{ form.penyampaian }}
+                            <div class="info-group d-flex align-items-center justify-content-center" style="height: 38px;">
+                                <input type="text" class="form-control" id="id_penyampaian" name="penyampaian" readonly style="background-color: #e9ecef;" value="0">
+                            </div>
                             {% if form.penyampaian.errors %}
                                 <div class="invalid-feedback d-block">{{ form.penyampaian.errors }}</div>
                             {% endif %}
@@ -505,7 +507,30 @@
         const periodeDataSelect = document.getElementById('id_periode_data');
         const periodeSelect = document.getElementById('id_periode');
         const tahunSelect = document.getElementById('id_tahun');
+        const penyampaianInput = document.getElementById('id_penyampaian');
         const duplicateModalEl = document.getElementById('duplicateTiketModal');
+
+        const updatePenyampaian = async (periodeDataId, periode, tahun) => {
+            if (!penyampaianInput) return;
+            
+            try {
+                const response = await fetch(`{% url "check_tiket_exists" %}?periode_data_id=${encodeURIComponent(periodeDataId)}&periode=${encodeURIComponent(periode)}&tahun=${encodeURIComponent(tahun)}`);
+                const data = await response.json();
+                
+                if (data && data.success) {
+                    if (data.exists && data.max_penyampaian !== undefined && data.max_penyampaian !== null) {
+                        // Set penyampaian to max_penyampaian + 1
+                        penyampaianInput.value = data.max_penyampaian + 1;
+                    } else {
+                        // No tiket exists, set to 0
+                        penyampaianInput.value = 0;
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating penyampaian:', error);
+                penyampaianInput.value = 0;
+            }
+        };
 
         const checkTiketExists = () => {
             if (!periodeDataSelect || !periodeSelect || !tahunSelect) {
@@ -517,6 +542,9 @@
             if (!periodeDataId || !periode || !tahun) {
                 return;
             }
+
+            // Update penyampaian value
+            updatePenyampaian(periodeDataId, periode, tahun);
 
             fetch(`{% url "check_tiket_exists" %}?periode_data_id=${encodeURIComponent(periodeDataId)}&periode=${encodeURIComponent(periode)}&tahun=${encodeURIComponent(tahun)}`)
                 .then(response => response.json())
@@ -737,6 +765,114 @@
             const btnConfirm = document.getElementById('btn-confirm-save');
             const btnSubmit = document.getElementById('btn-submit-form');
             const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
+            
+            // Handle Status Ketersediaan Data logic
+            const statusTersedia = document.getElementById('status_tersedia');
+            const statusTidakTersedia = document.getElementById('status_tidak_tersedia');
+            const alasanKetidaktersedianInput = document.getElementById('id_alasan_ketidaktersediaan');
+            const bentukDataSelect = document.getElementById('id_id_bentuk_data');
+            const caraPenyampaianSelect = document.getElementById('id_id_cara_penyampaian');
+            const barisDiterimaInput = document.getElementById('id_baris_diterima');
+            
+            function updateKetersediaanDependents() {
+                const backupCheckbox = document.getElementById('rekam-backup-checkbox');
+                
+                if (statusTidakTersedia && statusTidakTersedia.checked) {
+                    // Data Tidak Tersedia selected
+                    
+                    // Enable Alasan Ketidaktersediaan
+                    if (alasanKetidaktersedianInput) {
+                        alasanKetidaktersedianInput.disabled = false;
+                        alasanKetidaktersedianInput.style.opacity = '1';
+                    }
+                    
+                    // Find and select "Data Tidak Tersedia" option in Bentuk Data, then disable
+                    if (bentukDataSelect) {
+                        const tidakTersediaOption = Array.from(bentukDataSelect.options).find(
+                            opt => opt.text.toLowerCase().includes('tidak tersedia') || 
+                                   opt.textContent.toLowerCase().includes('tidak tersedia')
+                        );
+                        if (tidakTersediaOption) {
+                            bentukDataSelect.value = tidakTersediaOption.value;
+                        }
+                        bentukDataSelect.disabled = true;
+                        bentukDataSelect.style.opacity = '0.6';
+                    }
+                    
+                    // Find and select "Data Tidak Tersedia" option in Cara Penyampaian, then disable
+                    if (caraPenyampaianSelect) {
+                        const tidakTersediaOption = Array.from(caraPenyampaianSelect.options).find(
+                            opt => opt.text.toLowerCase().includes('tidak tersedia') || 
+                                   opt.textContent.toLowerCase().includes('tidak tersedia')
+                        );
+                        if (tidakTersediaOption) {
+                            caraPenyampaianSelect.value = tidakTersediaOption.value;
+                        }
+                        caraPenyampaianSelect.disabled = true;
+                        caraPenyampaianSelect.style.opacity = '0.6';
+                    }
+                    
+                    // Set Baris Diterima to 0 and disable
+                    if (barisDiterimaInput) {
+                        barisDiterimaInput.value = 0;
+                        barisDiterimaInput.disabled = true;
+                        barisDiterimaInput.style.opacity = '0.6';
+                    }
+                    
+                    // Disable and uncheck Rekam Backup Data toggle
+                    if (backupCheckbox) {
+                        backupCheckbox.checked = false;
+                        backupCheckbox.disabled = true;
+                        // Trigger backup section hide
+                        const backupSection = document.getElementById('backup-data-section');
+                        if (backupSection) {
+                            backupSection.style.display = 'none';
+                        }
+                    }
+                } else {
+                    // Data Tersedia selected
+                    
+                    // Disable Alasan Ketidaktersediaan
+                    if (alasanKetidaktersedianInput) {
+                        alasanKetidaktersedianInput.disabled = true;
+                        alasanKetidaktersedianInput.value = '';
+                        alasanKetidaktersedianInput.style.opacity = '0.6';
+                    }
+                    
+                    // Enable Bentuk Data
+                    if (bentukDataSelect) {
+                        bentukDataSelect.disabled = false;
+                        bentukDataSelect.style.opacity = '1';
+                    }
+                    
+                    // Enable Cara Penyampaian
+                    if (caraPenyampaianSelect) {
+                        caraPenyampaianSelect.disabled = false;
+                        caraPenyampaianSelect.style.opacity = '1';
+                    }
+                    
+                    // Enable Baris Diterima
+                    if (barisDiterimaInput) {
+                        barisDiterimaInput.disabled = false;
+                        barisDiterimaInput.style.opacity = '1';
+                    }
+                    
+                    // Enable Rekam Backup Data toggle
+                    if (backupCheckbox) {
+                        backupCheckbox.disabled = false;
+                    }
+                }
+            }
+            
+            if (statusTersedia) {
+                statusTersedia.addEventListener('change', updateKetersediaanDependents);
+            }
+            if (statusTidakTersedia) {
+                statusTidakTersedia.addEventListener('change', updateKetersediaanDependents);
+            }
+            
+            // Apply on page load
+            updateKetersediaanDependents();
             
             if (ilapSelect) {
                 ilapSelect.addEventListener('change', updatePeriodeDataDropdown);
