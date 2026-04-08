@@ -15,10 +15,10 @@
                 {% csrf_token %}
                 
                 <div class="mb-3">
-                    {{ form.baris_p3de.label_tag }}
-                    {{ form.baris_p3de }}
-                    {% if form.baris_p3de.errors %}
-                        <div class="text-danger">{{ form.baris_p3de.errors }}</div>
+                    {{ form.baris_diterima.label_tag }}
+                    {{ form.baris_diterima }}
+                    {% if form.baris_diterima.errors %}
+                        <div class="text-danger">{{ form.baris_diterima.errors }}</div>
                     {% endif %}
                 </div>
                 

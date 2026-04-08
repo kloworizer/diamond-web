@@ -1,7 +1,8 @@
 from django import forms
 from ..models.jenis_tabel import JenisTabel
+from .base import AutoRequiredFormMixin
 
-class JenisTabelForm(forms.ModelForm):
+class JenisTabelForm(AutoRequiredFormMixin, forms.ModelForm):
     class Meta:
         model = JenisTabel
         fields = ['deskripsi']

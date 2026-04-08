@@ -1,8 +1,9 @@
 from django import forms
 from ..models.tiket import Tiket
+from .base import AutoRequiredFormMixin
 
 
-class DikembalikanTiketForm(forms.ModelForm):
+class DikembalikanTiketForm(AutoRequiredFormMixin, forms.ModelForm):
     """Form for returning a tiket (Dikembalikan) by PIDE."""
     catatan = forms.CharField(
         label='Catatan',

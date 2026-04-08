@@ -40,7 +40,7 @@
                         <div class="col-md-6">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Nomor Tiket</label>
-                                <p class="fw-bold mb-0 fs-5 text-primary">{{ tiket.nomor_tiket }}</p>
+                                <p class="fw-bold mb-0 fs-5">{{ tiket.nomor_tiket }}</p>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -83,18 +83,16 @@
                                 </p>
                             </div>
                         </div>
+                        {% if tiket.tgl_terima_vertikal %}
                         <div class="col-md-6">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Tanggal Terima Vertikal</label>
                                 <p class="fw-semibold mb-0">
-                                    {% if tiket.tgl_terima_vertikal %}
-                                        <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_terima_vertikal|date:"d/m/Y H:i" }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
+                                    <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_terima_vertikal|date:"d/m/Y H:i" }}
                                 </p>
                             </div>
                         </div>
+                        {% endif %}
                         <div class="col-md-6">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Nomor Surat Pengantar</label>
@@ -134,7 +132,13 @@
                         <div class="col-md-6">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Status Penelitian</label>
-                                <p class="fw-semibold mb-0">{{ tiket.id_status_penelitian.deskripsi|default:"-" }}</p>
+                                <p class="fw-semibold mb-0">
+                                    {% if tiket.status_tiket == STATUS_DIREKAM %}
+                                        Belum Diteliti
+                                    {% else %}
+                                        {{ tiket.id_status_penelitian.deskripsi|default:"-" }}
+                                    {% endif %}
+                                </p>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -149,12 +153,14 @@
                                 </p>
                             </div>
                         </div>
+                        {% if not tiket.status_ketersediaan_data %}
                         <div class="col-md-6">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Alasan Ketidaktersediaan</label>
                                 <p class="fw-semibold mb-0">{{ tiket.alasan_ketidaktersediaan|default:"-" }}</p>
                             </div>
                         </div>
+                        {% endif %}
                         {% if tiket.nomor_nd_nadine %}
                         <div class="col-md-4">
                             <div class="info-group">
@@ -189,11 +195,11 @@
                         {% endif %}
 
                         <!-- QC and Baris Information -->
-                        {% if tiket.baris_p3de %}
+                        {% if tiket.baris_diterima %}
                         <div class="col-md-3">
                             <div class="info-group">
-                                <label class="text-muted small mb-1">Baris P3DE</label>
-                                <p class="fw-semibold mb-0">{{ tiket.baris_p3de }}</p>
+                                <label class="text-muted small mb-1">Baris Diterima</label>
+                                <p class="fw-semibold mb-0">{{ tiket.baris_diterima }} {% if tiket.satuan_data == 1 %}Baris{% else %}{{ tiket.satuan_data }}{% endif %}</p>
                             </div>
                         </div>
                         {% endif %}
@@ -290,9 +296,9 @@
                         </div>
                         <div class="col-md-6">
                             <div class="info-group">
-                                <label class="text-muted small mb-1">ID Sub Jenis Data</label>
+                                <label class="text-muted small mb-1">Jenis Data</label>
                                 <p class="fw-semibold mb-0">
-                                    <span class="badge bg-secondary">{{ ilap_info.id_sub_jenis_data }}</span>
+                                    <span class="badge bg-secondary">{{ ilap_info.id_sub_jenis_data }} - {{ ilap_info.nama_sub_jenis_data }}</span>
                                 </p>
                             </div>
                         </div>
@@ -304,8 +310,8 @@
                         </div>
                         <div class="col-md-6">
                             <div class="info-group">
-                                <label class="text-muted small mb-1">Deskripsi Periode</label>
-                                <p class="fw-semibold mb-0">{{ ilap_info.deskripsi_periode }}</p>
+                                <label class="text-muted small mb-1">Periode Penyampaian - Periode Penerimaan</label>
+                                <p class="fw-semibold mb-0">{{ ilap_info.deskripsi_periode }} - {{ ilap_info.periode_penerimaan }}</p>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -378,6 +384,8 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th><i class="ri-folder-2-line me-1"></i>Lokasi Backup</th>
+                                        <th><i class="ri-file-text-line me-1"></i>Nama File</th>
+                                        <th><i class="ri-database-2-line me-1"></i>Media Backup</th>
                                         <th><i class="ri-user-line me-1"></i>User</th>
                                     </tr>
                                 </thead>
@@ -385,6 +393,8 @@
                                     {% for backup in backup_list %}
                                         <tr>
                                             <td>{{ backup.lokasi_backup }}</td>
+                                            <td>{{ backup.nama_file|default:"-" }}</td>
+                                            <td>{{ backup.id_media_backup.deskripsi|default:"-" }}</td>
                                             <td>
                                                 {% if backup.id_user %}
                                                     {{ backup.id_user.get_full_name|default:backup.id_user.username }}
@@ -419,7 +429,6 @@
                                     <tr>
                                         <th><i class="ri-hashtag me-1"></i>Nomor</th>
                                         <th><i class="ri-calendar-line me-1"></i>Tanggal</th>
-                                        <th><i class="ri-file-text-line me-1"></i>Deskripsi</th>
                                         <th><i class="ri-user-line me-1"></i>Perekam</th>
                                         <th><i class="ri-close-circle-line me-1"></i>Status</th>
                                     </tr>
@@ -427,9 +436,8 @@
                                 <tbody>
                                     {% for item in tanda_terima_items %}
                                         <tr>
-                                            <td>{{ item.id_tanda_terima.nomor_tanda_terima }}</td>
+                                            <td>{{ item.id_tanda_terima.nomor_tanda_terima_format }}</td>
                                             <td>{{ item.id_tanda_terima.tanggal_tanda_terima|date:"d/m/Y H:i" }}</td>
-                                            <td>{{ item.id_tanda_terima.deskripsi }}</td>
                                             <td>{{ item.id_tanda_terima.id_perekam.get_full_name|default:item.id_tanda_terima.id_perekam.username }}</td>
                                             <td>
                                                 {% if not item.id_tanda_terima.active %}
@@ -526,7 +534,7 @@
 
                                     {% if not tiket.tanda_terima %}
                                         <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#createTandaTerimaModal">
-                                            <i class="ri-file-list-2-line me-1"></i>Rekam Tanda Terima
+                                            <i class="ri-file-list-2-line me-1"></i>Buat Tanda Terima
                                         </button>
                                     {% endif %}
 

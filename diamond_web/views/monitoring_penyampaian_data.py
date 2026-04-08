@@ -290,36 +290,20 @@ def monitoring_penyampaian_data_data(request):
                 # Check if tiket exists for this period
                 tiket = Tiket.objects.filter(
                     id_periode_data=periode_data,
-                    periode=period['periode_num']
+                    periode=period['periode_num'],
+                    tahun=period['start_date'].year
                 ).first()
                 
                 tiket_exists = tiket is not None
                 
                 # Determine status
                 if tiket_exists:
-                    # Check if tanda_terima exists (data submitted)
-                    tanda_terima_exists = DetilTandaTerima.objects.filter(
-                        id_tiket__id_periode_data=periode_data,
-                        id_tiket__periode=period['periode_num']
-                    ).exists()
-                    
-                    if tanda_terima_exists:
-                        status_penyampaian = "Sudah Menyampaikan"
-                        status_penyampaian_class = "bg-success"
-                        is_late = False
-                        status_terlambat = "Tidak"
-                        status_terlambat_class = "bg-light"
-                    else:
-                        # Tiket exists but no tanda_terima
-                        is_late = today > deadline_date
-                        status_penyampaian = "Belum Menyampaikan"
-                        status_penyampaian_class = "bg-warning"
-                        if is_late:
-                            status_terlambat = "Ya"
-                            status_terlambat_class = "bg-danger"
-                        else:
-                            status_terlambat = "Tidak"
-                            status_terlambat_class = "bg-light"
+                    # Tiket exists means data has been submitted (sudah menyampaikan)
+                    status_penyampaian = "Sudah Menyampaikan"
+                    status_penyampaian_class = "bg-success"
+                    is_late = False
+                    status_terlambat = "Tidak"
+                    status_terlambat_class = "bg-light"
                 else:
                     # No tiket created
                     is_late = today > deadline_date

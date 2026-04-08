@@ -1,8 +1,9 @@
 from django import forms
 from ..models.tiket import Tiket
+from .base import AutoRequiredFormMixin
 
 
-class SelesaikanTiketForm(forms.ModelForm):
+class SelesaikanTiketForm(AutoRequiredFormMixin, forms.ModelForm):
     """Form for completing tiket with QC information by PMDE."""
     sudah_qc = forms.IntegerField(
         label='Sudah QC',

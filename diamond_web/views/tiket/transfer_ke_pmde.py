@@ -121,7 +121,7 @@ class TransferKePMDEView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateView):
                 now = datetime.now()
 
                 self.object = form.save(commit=False)
-                self.object.status = STATUS_PENGENDALIAN_MUTU
+                self.object.status_tiket = STATUS_PENGENDALIAN_MUTU
                 self.object.save()
 
                 # Create tiket action

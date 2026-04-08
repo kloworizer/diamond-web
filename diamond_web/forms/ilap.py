@@ -1,5 +1,6 @@
 from django import forms
 from ..models.ilap import ILAP
+from .base import AutoRequiredFormMixin
 
 
 class KategoriChoiceField(forms.ModelChoiceField):
@@ -22,7 +23,7 @@ class KategoriChoiceField(forms.ModelChoiceField):
         return value
 
 
-class ILAPForm(forms.ModelForm):
+class ILAPForm(AutoRequiredFormMixin, forms.ModelForm):
     id_kategori = KategoriChoiceField(queryset=None)
     
     class Meta:

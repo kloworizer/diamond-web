@@ -5,7 +5,7 @@ from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth.models import Group
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Max
 from django.views.generic import CreateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
@@ -19,6 +19,8 @@ from ...models.pic import PIC
 from ...models.periode_jenis_data import PeriodeJenisData
 from ...models.jenis_prioritas_data import JenisPrioritasData
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
+from ...models.backup_data import BackupData
+from ...models.media_backup import MediaBackup
 from ...constants.tiket_action_types import TiketActionType, PICActionType
 from ...forms.tiket import TiketForm
 from ..mixins import UserFormKwargsMixin, UserP3DERequiredMixin, get_active_p3de_ilap_ids
@@ -106,6 +108,16 @@ class ILAPPeriodeDataAPIView(View):
                     )
                 else:
                     periode_data_list = periode_data_list.none()
+                
+                # Further filter to show only PeriodeJenisData where the user is an active P3DE PIC
+                periode_data_list = periode_data_list.filter(
+                    id_sub_jenis_data_ilap__pic__tipe='P3DE',
+                    id_sub_jenis_data_ilap__pic__id_user=request.user,
+                    id_sub_jenis_data_ilap__pic__start_date__lte=today,
+                ).filter(
+                    Q(id_sub_jenis_data_ilap__pic__end_date__isnull=True) |
+                    Q(id_sub_jenis_data_ilap__pic__end_date__gte=today)
+                )
 
             periode_data_list = periode_data_list.select_related(
                 'id_sub_jenis_data_ilap__id_ilap__id_kategori',
@@ -293,8 +305,12 @@ class CheckTiketExistsAPIView(View):
             )
             existing_numbers = list(existing_qs.values_list('nomor_tiket', flat=True))
             exists = len(existing_numbers) > 0
+            
+            # Get max penyampaian for this combination
+            max_penyampaian_obj = existing_qs.aggregate(max_peny=Max('penyampaian'))
+            max_penyampaian = max_penyampaian_obj.get('max_peny') or 0
 
-            return JsonResponse({'success': True, 'exists': exists, 'nomor_tiket': existing_numbers})
+            return JsonResponse({'success': True, 'exists': exists, 'nomor_tiket': existing_numbers, 'max_penyampaian': max_penyampaian})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
@@ -416,6 +432,7 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
         context['form_action'] = reverse('tiket_rekam_create')
         context['page_title'] = 'Rekam Penerimaan Data'
         context['workflow_step'] = 'rekam'
+        context['media_backup_list'] = MediaBackup.objects.all()
         return context
 
     def form_valid(self, form):
@@ -475,6 +492,22 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
                 )
 
                 self._assign_tiket_pics(periode_jenis_data, today, base_time=base_action_time)
+
+                # Handle optional Bagian C: create BackupData if checkbox was checked
+                if self.request.POST.get('rekam_backup'):
+                    lokasi_backup = self.request.POST.get('backup_lokasi_backup', '').strip()
+                    nama_file = self.request.POST.get('backup_nama_file', '').strip()
+                    media_backup_id = self.request.POST.get('backup_id_media_backup', '').strip()
+                    if lokasi_backup and media_backup_id:
+                        BackupData.objects.create(
+                            id_tiket=self.object,
+                            lokasi_backup=lokasi_backup,
+                            nama_file=nama_file or '',
+                            id_media_backup=MediaBackup.objects.get(pk=media_backup_id),
+                            id_user=self.request.user,
+                        )
+                        self.object.backup = True
+                        self.object.save(update_fields=['backup'])
 
             messages.success(self.request, f'Tiket "{nomor_tiket}" berhasil dibuat.')
             return super().form_valid(form)

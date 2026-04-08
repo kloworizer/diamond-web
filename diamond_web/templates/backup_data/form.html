@@ -1,3 +1,4 @@
+{% load crispy_forms_tags %}
 <form method="post" action="{{ form_action }}">
     {% csrf_token %}
     <div class="modal-body">
@@ -8,22 +9,7 @@
                 {% endfor %}
             </div>
         {% endif %}
-        {% for field in form %}
-            <div class="mb-3">
-                {{ field.label_tag }}
-                {{ field }}
-                {% if field.errors %}
-                    <small class="text-danger d-block mt-1">
-                        {% for error in field.errors %}
-                            {{ error }}
-                        {% endfor %}
-                    </small>
-                {% endif %}
-                {% if field.help_text %}
-                    <small class="text-muted d-block mt-1">{{ field.help_text|safe }}</small>
-                {% endif %}
-            </div>
-        {% endfor %}
+        {{ form|crispy }}
     </div>
     <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>

@@ -1,9 +1,10 @@
 from collections import OrderedDict
 from django import forms
 from ..models.jenis_data_ilap import JenisDataILAP
+from .base import AutoRequiredFormMixin
 
 
-class NamaTabelForm(forms.ModelForm):
+class NamaTabelForm(AutoRequiredFormMixin, forms.ModelForm):
     # A selector for choosing an existing `JenisDataILAP` (sub-jenis) to
     # assign table names to. This is only shown on the create form; the
     # update form edits an existing instance directly.

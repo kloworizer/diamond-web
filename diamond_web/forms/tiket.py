@@ -6,8 +6,15 @@ from ..models.periode_jenis_data import PeriodeJenisData
 from ..models.ilap import ILAP
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from datetime import datetime
+from .base import AutoRequiredFormMixin
 
-class TiketForm(forms.ModelForm):
+class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
+    satuan_data = forms.ChoiceField(
+        choices=[(1, 'Baris')],
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Satuan Data',
+        required=True
+    )
     id_ilap = forms.ModelChoiceField(
         queryset=ILAP.objects.all(),
         empty_label="Pilih ILAP",
@@ -21,7 +28,7 @@ class TiketForm(forms.ModelForm):
     
     class Meta:
         model = Tiket
-        fields = ['id_ilap', 'id_periode_data', 'periode', 'tahun', 'tgl_terima_vertikal', 'tgl_terima_dip', 'nomor_surat_pengantar', 'tanggal_surat_pengantar', 'nama_pengirim', 'id_bentuk_data', 'id_cara_penyampaian', 'status_ketersediaan_data', 'alasan_ketidaktersediaan', 'id_status_penelitian']
+        fields = ['id_ilap', 'id_periode_data', 'periode', 'tahun', 'penyampaian', 'tgl_terima_vertikal', 'tgl_terima_dip', 'nomor_surat_pengantar', 'tanggal_surat_pengantar', 'nama_pengirim', 'id_bentuk_data', 'id_cara_penyampaian', 'baris_diterima', 'satuan_data', 'status_ketersediaan_data', 'alasan_ketidaktersediaan']
         widgets = {
             'id_periode_data': forms.Select(attrs={'class': 'form-control', 'id': 'id_periode_data'}),
             'periode': forms.Select(attrs={'class': 'form-control', 'id': 'id_periode'}),
@@ -33,7 +40,8 @@ class TiketForm(forms.ModelForm):
             'nama_pengirim': forms.TextInput(attrs={'class': 'form-control'}),
             'id_bentuk_data': forms.Select(attrs={'class': 'form-control'}),
             'id_cara_penyampaian': forms.Select(attrs={'class': 'form-control'}),
-            'id_status_penelitian': forms.Select(attrs={'class': 'form-control'}),
+            'penyampaian': forms.NumberInput(attrs={'class': 'form-control', 'id': 'id_penyampaian', 'type': 'number', 'min': '0'}),
+            'baris_diterima': forms.NumberInput(attrs={'class': 'form-control'}),
             'status_ketersediaan_data': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'alasan_ketidaktersediaan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Alasan jika data tidak tersedia'}),
         }
@@ -101,11 +109,8 @@ class TiketForm(forms.ModelForm):
         # Initialize id_periode_data with empty queryset
         self.fields['id_periode_data'].queryset = PeriodeJenisData.objects.none()
         self.fields['id_periode_data'].label = 'Jenis Data ILAP'
-        self.fields['id_periode_data'].required = True
-        self.fields['periode'].required = True
-        self.fields['periode'].widget.attrs['required'] = 'required'
-        self.fields['tgl_terima_vertikal'].required = True
-        self.fields['tgl_terima_dip'].required = True
+        # Django automatically sets required=True for non-nullable fields and required=False for nullable fields
+        # No need to manually set required status - it's inherited from the model
         
         # Generate year choices (current year to 20 years back)
         current_year = datetime.now().year
@@ -126,7 +131,27 @@ class TiketForm(forms.ModelForm):
 
         if ilap_id:
             # Only show valid periode jenis data for the selected ILAP
-            self.fields['id_periode_data'].queryset = PeriodeJenisData.objects.filter(
+            periode_queryset = PeriodeJenisData.objects.filter(
                 id__in=valid_periode_ids,
                 id_sub_jenis_data_ilap__id_ilap_id=ilap_id
             ).select_related('id_sub_jenis_data_ilap').distinct()
+            
+            # For non-admin users, further filter to only show PeriodeJenisData where they are an active P3DE PIC
+            if self.user and not (self.user.is_superuser or self.user.groups.filter(name='admin').exists()):
+                from ..models.pic import PIC
+                periode_queryset = periode_queryset.filter(
+                    id_sub_jenis_data_ilap__pic__tipe='P3DE',
+                    id_sub_jenis_data_ilap__pic__id_user=self.user,
+                    id_sub_jenis_data_ilap__pic__start_date__lte=today,
+                ).filter(
+                    Q(id_sub_jenis_data_ilap__pic__end_date__isnull=True) |
+                    Q(id_sub_jenis_data_ilap__pic__end_date__gte=today)
+                ).distinct()
+            
+            self.fields['id_periode_data'].queryset = periode_queryset
+    def clean_status_ketersediaan_data(self):
+        # The template renders status_ketersediaan_data as radio buttons with values "1" or "0".
+        # Django's CheckboxInput.value_from_datadict uses bool(value), which makes bool("0") == True.
+        # We override here to correctly map "1" -> True and "0" -> False.
+        value = self.data.get('status_ketersediaan_data', '1')
+        return value == '1'

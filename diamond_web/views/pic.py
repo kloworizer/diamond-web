@@ -155,7 +155,7 @@ class PICCreateView(LoginRequiredMixin, AjaxFormMixin, CreateView):
             # AND with tgl_terima_dip >= pic.start_date
             active_tikets = Tiket.objects.filter(
                 id_periode_data__id_sub_jenis_data_ilap=pic.id_sub_jenis_data_ilap,
-                status__lt=STATUS_DIBATALKAN  # status < STATUS_DIBATALKAN (not dibatalkan or selesai)
+                status_tiket__lt=STATUS_DIBATALKAN  # status_tiket < STATUS_DIBATALKAN (not dibatalkan or selesai)
             ).filter(
                 Q(tgl_terima_dip__gte=pic.start_date) | Q(tgl_terima_dip__isnull=True)
             )

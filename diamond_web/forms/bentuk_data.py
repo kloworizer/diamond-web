@@ -1,7 +1,8 @@
 from django import forms
 from ..models.bentuk_data import BentukData
+from .base import AutoRequiredFormMixin
 
-class BentukDataForm(forms.ModelForm):
+class BentukDataForm(AutoRequiredFormMixin, forms.ModelForm):
     class Meta:
         model = BentukData
         fields = ['deskripsi']

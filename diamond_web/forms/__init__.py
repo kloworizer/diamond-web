@@ -1,3 +1,4 @@
+from .base import AutoRequiredFormMixin
 from .kategori_ilap import KategoriILAPForm
 from .ilap import ILAPForm
 from .jenis_data_ilap import JenisDataILAPForm

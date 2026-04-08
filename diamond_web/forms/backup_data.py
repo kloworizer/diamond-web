@@ -1,8 +1,9 @@
 from django import forms
 from ..models.backup_data import BackupData
 from ..models.tiket import Tiket
+from .base import AutoRequiredFormMixin
 
-class BackupDataForm(forms.ModelForm):
+class BackupDataForm(AutoRequiredFormMixin, forms.ModelForm):
     class Meta:
         model = BackupData
         fields = ['id_tiket', 'lokasi_backup', 'nama_file', 'id_media_backup']
@@ -20,7 +21,7 @@ class BackupDataForm(forms.ModelForm):
                 'placeholder': 'Contoh: backup_tiket_123.zip'
             }),
             'id_media_backup': forms.Select(attrs={
-                'class': 'form-control'
+                'class': 'form-select'
             }),
         }
 
@@ -43,7 +44,7 @@ class BackupDataForm(forms.ModelForm):
                     role=TiketPIC.Role.P3DE,
                     active=True
                 ).values_list('id_tiket_id', flat=True)
-                self.fields['id_tiket'].queryset = Tiket.objects.filter(id__in=tiket_ids, status__lt=4).order_by('-id')
+                self.fields['id_tiket'].queryset = Tiket.objects.filter(id__in=tiket_ids, status_tiket__lt=4).order_by('-id')
             else:
                 self.fields['id_tiket'].queryset = Tiket.objects.none()
             self.fields['id_tiket'].label_from_instance = lambda obj: obj.nomor_tiket if obj.nomor_tiket else f"Tiket #{obj.id}"

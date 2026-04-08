@@ -1,8 +1,9 @@
 from django import forms
 from ..models.jenis_data_ilap import JenisDataILAP
 from ..models.status_data import StatusData
+from .base import AutoRequiredFormMixin
 
-class JenisDataILAPForm(forms.ModelForm):
+class JenisDataILAPForm(AutoRequiredFormMixin, forms.ModelForm):
     class Meta:
         model = JenisDataILAP
         fields = [
@@ -24,7 +25,7 @@ class JenisDataILAPForm(forms.ModelForm):
             else:
                 field.widget.attrs['class'] = 'form-control'
 
-class JenisDataILAPUpdateForm(forms.ModelForm):
+class JenisDataILAPUpdateForm(AutoRequiredFormMixin, forms.ModelForm):
     """Form for updating existing JenisDataILAP - only allows editing nama_jenis_data and nama_sub_jenis_data"""
     class Meta:
         model = JenisDataILAP

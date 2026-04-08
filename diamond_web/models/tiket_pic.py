@@ -21,8 +21,8 @@ class TiketPIC(models.Model):
         db_column="id_user",
         verbose_name="User"
     )
-    timestamp = models.DateTimeField(null=True, blank=True, verbose_name="Timestamp")
-    role = models.IntegerField(null=True, blank=True, verbose_name="Role", choices=Role.choices)
+    timestamp = models.DateTimeField(verbose_name="Timestamp")
+    role = models.IntegerField(verbose_name="Role", choices=Role.choices)
     active = models.BooleanField(default=True, verbose_name="Active")
 
     class Meta:
