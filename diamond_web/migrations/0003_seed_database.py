@@ -120,7 +120,6 @@ PERIODE_PENGIRIMAN_DATA = [
     {"periode_penyampaian": "2 Mingguan", "periode_penerimaan": "Bulanan"},
     {"periode_penyampaian": "Bulanan", "periode_penerimaan": "Bulanan"},
     {"periode_penyampaian": "Triwulanan", "periode_penerimaan": "Triwulanan"},
-    {"periode_penyampaian": "Kuartal", "periode_penerimaan": "Kuartal"},
     {"periode_penyampaian": "Semester", "periode_penerimaan": "Semester"},
     {"periode_penyampaian": "Tahunan", "periode_penerimaan": "Tahunan"},
 ]

@@ -917,6 +917,10 @@
             if (btnSubmit) {
                 btnSubmit.addEventListener('click', function() {
                     confirmModal.hide();
+                    // Re-enable disabled fields before submit so their values are included in POST data
+                    [bentukDataSelect, caraPenyampaianSelect, barisDiterimaInput].forEach(el => {
+                        if (el) el.disabled = false;
+                    });
                     form.submit();
                 });
             }

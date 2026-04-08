@@ -7,8 +7,22 @@ from django.views.generic import TemplateView
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.http import JsonResponse
 from django.urls import reverse
+from django.utils import timezone
+from datetime import timedelta
 
 from ...models.tiket import Tiket
+from ...models.tiket_pic import TiketPIC
+from ...models.pic import PIC
+from ...models.periode_jenis_data import PeriodeJenisData
+from ...models.periode_pengiriman import PeriodePengiriman
+from ...models.kategori_ilap import KategoriILAP
+from ...models.ilap import ILAP
+from ...models.jenis_data_ilap import JenisDataILAP
+from ...models.kanwil import Kanwil
+from ...models.kpp import KPP
+from ...models.kategori_wilayah import KategoriWilayah
+from ...models.jenis_tabel import JenisTabel
+from ...models.dasar_hukum import DasarHukum
 from ..mixins import can_access_tiket_list
 from ...constants.tiket_status import STATUS_LABELS
 
@@ -81,37 +95,291 @@ def tiket_data(request):
     - Requires can_access_tiket_list permission
     - @require_GET enforces GET-only access
     """
+    base_qs = Tiket.objects.select_related(
+        'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+        'id_periode_data__id_periode_pengiriman'
+    ).all()
+    if not request.user.groups.filter(name='admin').exists() and not request.user.is_superuser:
+        base_qs = base_qs.filter(
+            tiketpic__id_user=request.user
+        ).distinct()
+
+    # Return dynamic filter options for dropdowns
+    if request.GET.get('get_filter_options'):
+        nomor_options = []
+        nomor_seen = set()
+        for n in base_qs.order_by('id').values_list('nomor_tiket', flat=True):
+            if not n or n in nomor_seen:
+                continue
+            nomor_seen.add(n)
+            nomor_options.append({'id': n, 'name': n})
+
+        tahun_options = []
+        tahun_seen = set()
+        for y in PeriodeJenisData.objects.order_by('id').values_list('start_date__year', flat=True):
+            if y is None:
+                continue
+            y_str = str(y)
+            if y_str in tahun_seen:
+                continue
+            tahun_seen.add(y_str)
+            tahun_options.append({'id': y_str, 'name': y_str})
+
+        periode_options = []
+        bulan_names = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+        for idx, nama in enumerate(bulan_names, start=1):
+            periode_options.append({'id': f'bulanan:{idx}', 'name': nama})
+        for idx in range(1, 5):
+            periode_options.append({'id': f'triwulanan:{idx}', 'name': f'Triwulan {idx}'})
+        for idx in range(1, 3):
+            periode_options.append({'id': f'semester:{idx}', 'name': f'Semester {idx}'})
+        periode_options.append({'id': 'tahunan:1', 'name': 'Tahun (1)'})
+
+        periode_pengiriman_options = [
+            {'id': p.periode_penyampaian, 'name': p.periode_penyampaian}
+            for p in PeriodePengiriman.objects.all().order_by('id')
+            if p.periode_penyampaian
+        ]
+        periode_penerimaan_options = []
+        periode_penerimaan_seen = set()
+        for p in PeriodePengiriman.objects.all().order_by('id'):
+            val = (p.periode_penerimaan or '').strip()
+            if not val or val in periode_penerimaan_seen:
+                continue
+            periode_penerimaan_seen.add(val)
+            periode_penerimaan_options.append({'id': val, 'name': val})
+
+        def _pic_options(tipe):
+            vals = PIC.objects.filter(
+                tipe=tipe,
+                end_date__isnull=True
+            ).select_related('id_user').order_by('id_user__first_name', 'id_user__last_name', 'id_user__username')
+            seen_users = set()
+            data = []
+            for v in vals:
+                user = v.id_user
+                if not user or user.id in seen_users:
+                    continue
+                seen_users.add(user.id)
+                full_name = f"{user.first_name} {user.last_name}".strip()
+                label = f"{user.username} - {full_name}" if full_name else user.username
+                data.append({'id': str(user.id), 'name': label})
+            return data
+
+        pic_p3de_options = _pic_options(PIC.TipePIC.P3DE)
+        pic_pide_options = _pic_options(PIC.TipePIC.PIDE)
+        pic_pmde_options = _pic_options(PIC.TipePIC.PMDE)
+
+        kategori_ilap_options = [
+            {'id': str(o.id), 'name': f"{o.id_kategori} - {o.nama_kategori}"}
+            for o in KategoriILAP.objects.all().order_by('id')
+        ]
+        ilap_options = [
+            {'id': str(o.id), 'name': f"{o.id_ilap} - {o.nama_ilap}"}
+            for o in ILAP.objects.all().order_by('id')
+        ]
+
+        jenis_options = []
+        jenis_seen = set()
+        sub_jenis_options = []
+        sub_jenis_seen = set()
+        for o in JenisDataILAP.objects.all().order_by('id'):
+            if o.id_jenis_data and o.id_jenis_data not in jenis_seen:
+                jenis_seen.add(o.id_jenis_data)
+                jenis_options.append({'id': o.id_jenis_data, 'name': f"{o.id_jenis_data} - {o.nama_jenis_data}"})
+            if o.id_sub_jenis_data and o.id_sub_jenis_data not in sub_jenis_seen:
+                sub_jenis_seen.add(o.id_sub_jenis_data)
+                sub_jenis_options.append({'id': o.id_sub_jenis_data, 'name': f"{o.id_sub_jenis_data} - {o.nama_sub_jenis_data}"})
+
+        kanwil_options = [
+            {'id': str(o.id), 'name': f"{o.kode_kanwil} - {o.nama_kanwil}"}
+            for o in Kanwil.objects.all().order_by('kode_kanwil')
+        ]
+        kpp_options = [
+            {'id': str(o.id), 'name': f"{o.kode_kpp} - {o.nama_kpp}"}
+            for o in KPP.objects.all().order_by('kode_kpp')
+        ]
+        kategori_wilayah_options = [
+            {'id': str(o.id), 'name': o.deskripsi}
+            for o in KategoriWilayah.objects.all().order_by('id')
+        ]
+        jenis_tabel_options = [
+            {'id': str(o.id), 'name': o.deskripsi}
+            for o in JenisTabel.objects.all().order_by('id')
+        ]
+        dasar_hukum_options = [
+            {'id': str(o.id), 'name': o.deskripsi}
+            for o in DasarHukum.objects.all().order_by('id')
+        ]
+
+        status_options = [
+            {'id': str(sid), 'name': label}
+            for sid, label in sorted(STATUS_LABELS.items(), key=lambda x: x[0])
+        ]
+
+        return JsonResponse({
+            'filter_options': {
+                'nomor_tiket': nomor_options,
+                'tahun': tahun_options,
+                'periode': periode_options,
+                'periode_penerimaan': periode_penerimaan_options,
+                'pic_p3de': pic_p3de_options,
+                'pic_pide': pic_pide_options,
+                'pic_pmde': pic_pmde_options,
+                'kategori_ilap': kategori_ilap_options,
+                'ilap': ilap_options,
+                'jenis_data': jenis_options,
+                'sub_jenis_data': sub_jenis_options,
+                'kanwil': kanwil_options,
+                'kpp': kpp_options,
+                'kategori_wilayah': kategori_wilayah_options,
+                'jenis_tabel': jenis_tabel_options,
+                'dasar_hukum': dasar_hukum_options,
+                'periode_pengiriman': periode_pengiriman_options,
+                'status': status_options,
+            }
+        })
+
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
 
-    qs = Tiket.objects.select_related('id_periode_data__id_sub_jenis_data_ilap').all()
-    if not request.user.groups.filter(name='admin').exists() and not request.user.is_superuser:
-        qs = qs.filter(
-            tiketpic__id_user=request.user
-        ).distinct()
+    qs = base_qs
     records_total = qs.count()
 
-    # Column-specific filtering
-    columns_search = request.GET.getlist('columns_search[]')
-    if columns_search:
-        if columns_search[0]:  # Nomor Tiket
-            qs = qs.filter(nomor_tiket__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:  # Periode Jenis Data
-            qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data__icontains=columns_search[1])
-        if len(columns_search) > 2 and columns_search[2]:  # Periode
-            qs = qs.filter(periode__icontains=columns_search[2])
-        if len(columns_search) > 3 and columns_search[3]:  # Tahun
-            qs = qs.filter(tahun__icontains=columns_search[3])
-        if len(columns_search) > 4 and columns_search[4]:  # Status
-            qs = qs.filter(status_tiket__icontains=columns_search[4])
+    # Dropdown filters (monitoring-style)
+    filter_nomor_tiket = request.GET.get('nomor_tiket', '').strip()
+    filter_periode = request.GET.get('periode', '').strip()
+    filter_periode_penerimaan = request.GET.get('periode_penerimaan', '').strip()
+    filter_pic_p3de = request.GET.get('pic_p3de', '').strip()
+    filter_pic_pide = request.GET.get('pic_pide', '').strip()
+    filter_pic_pmde = request.GET.get('pic_pmde', '').strip()
+    filter_kategori_ilap = request.GET.get('kategori_ilap', '').strip()
+    filter_ilap = request.GET.get('ilap', '').strip()
+    filter_jenis_data = request.GET.get('jenis_data', '').strip()
+    filter_sub_jenis_data = request.GET.get('sub_jenis_data', '').strip()
+    filter_kanwil = request.GET.get('kanwil', '').strip()
+    filter_kpp = request.GET.get('kpp', '').strip()
+    filter_kategori_wilayah = request.GET.get('kategori_wilayah', '').strip()
+    filter_jenis_tabel = request.GET.get('jenis_tabel', '').strip()
+    filter_dasar_hukum = request.GET.get('dasar_hukum', '').strip()
+    filter_periode_pengiriman = request.GET.get('periode_pengiriman', '').strip()
+    filter_terlambat = request.GET.get('terlambat', '').strip()
+    filter_tahun = request.GET.get('tahun', '').strip()
+    filter_status = request.GET.get('status', '').strip()
+
+    if filter_nomor_tiket:
+        qs = qs.filter(nomor_tiket=filter_nomor_tiket)
+
+    if filter_periode:
+        try:
+            periode_type = None
+            periode_value = filter_periode
+            if ':' in filter_periode:
+                periode_type, periode_value = filter_periode.split(':', 1)
+            qs = qs.filter(periode=int(periode_value))
+
+            type_to_penerimaan = {
+                'bulanan': 'Bulanan',
+                'triwulanan': 'Triwulanan',
+                'semester': 'Semester',
+                'tahunan': 'Tahunan',
+            }
+            if periode_type in type_to_penerimaan:
+                qs = qs.filter(id_periode_data__id_periode_pengiriman__periode_penerimaan=type_to_penerimaan[periode_type])
+        except ValueError:
+            qs = qs.none()
+
+    if filter_periode_penerimaan:
+        qs = qs.filter(id_periode_data__id_periode_pengiriman__periode_penerimaan=filter_periode_penerimaan)
+
+    if filter_pic_p3de:
+        qs = qs.filter(tiketpic__role=TiketPIC.Role.P3DE, tiketpic__active=True, tiketpic__id_user_id=filter_pic_p3de)
+
+    if filter_pic_pide:
+        qs = qs.filter(tiketpic__role=TiketPIC.Role.PIDE, tiketpic__active=True, tiketpic__id_user_id=filter_pic_pide)
+
+    if filter_pic_pmde:
+        qs = qs.filter(tiketpic__role=TiketPIC.Role.PMDE, tiketpic__active=True, tiketpic__id_user_id=filter_pic_pmde)
+
+    if filter_kategori_ilap:
+        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id=filter_kategori_ilap)
+
+    if filter_ilap:
+        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__id=filter_ilap)
+
+    if filter_jenis_data:
+        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_jenis_data=filter_jenis_data)
+
+    if filter_sub_jenis_data:
+        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_sub_jenis_data=filter_sub_jenis_data)
+
+    if filter_kanwil:
+        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__id=filter_kanwil)
+
+    if filter_kpp:
+        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id=filter_kpp)
+
+    if filter_kategori_wilayah:
+        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah__id=filter_kategori_wilayah)
+
+    if filter_jenis_tabel:
+        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel__id=filter_jenis_tabel)
+
+    if filter_dasar_hukum:
+        qs = qs.filter(
+            id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata__id_klasifikasi_tabel__id=filter_dasar_hukum
+        )
+
+    if filter_periode_pengiriman:
+        qs = qs.filter(id_periode_data__id_periode_pengiriman__periode_penyampaian=filter_periode_pengiriman)
+
+    if filter_tahun:
+        try:
+            qs = qs.filter(tahun=int(filter_tahun))
+        except ValueError:
+            qs = qs.none()
+
+    if filter_status:
+        try:
+            qs = qs.filter(status_tiket=int(filter_status))
+        except ValueError:
+            qs = qs.none()
+
+    if filter_terlambat in ('Ya', 'Tidak'):
+        now = timezone.now()
+        late_ids = []
+        not_late_ids = []
+        qs_for_late = qs.select_related('id_durasi_jatuh_tempo_pide')
+        for obj in qs_for_late:
+            is_late = False
+            if obj.tgl_terima_dip and obj.id_durasi_jatuh_tempo_pide and obj.id_durasi_jatuh_tempo_pide.durasi is not None:
+                deadline = obj.tgl_terima_dip + timedelta(days=obj.id_durasi_jatuh_tempo_pide.durasi)
+                is_late = now > deadline
+            if is_late:
+                late_ids.append(obj.id)
+            else:
+                not_late_ids.append(obj.id)
+
+        qs = qs.filter(id__in=late_ids if filter_terlambat == 'Ya' else not_late_ids)
+
+    qs = qs.distinct()
 
     records_filtered = qs.count()
 
     # ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id', 'nomor_tiket', 'id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data', 'periode', 'tahun', 'status_tiket']
+    # Columns mapping for ordering to match DataTables columns:
+    # 0:id, 1:nomor_tiket, 2:ILAP (kode), 3:Jenis Data (nama), 4:periode, 5:status_tiket
+    columns = [
+        'id',
+        'nomor_tiket',
+        'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_ilap',
+        'id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data',
+        'periode',
+        'status_tiket'
+    ]
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -130,17 +398,21 @@ def tiket_data(request):
     for obj in qs_page:
         # Get nama_ilap and nama_sub_jenis_data from related models
         nama_ilap = '-'
+        kode_ilap = '-'
         nama_sub_jenis_data = '-'
+        id_sub_jenis_data = '-'
         if obj.id_periode_data and obj.id_periode_data.id_sub_jenis_data_ilap:
             jenis_data_ilap = obj.id_periode_data.id_sub_jenis_data_ilap
             if jenis_data_ilap.id_ilap:
+                kode_ilap = jenis_data_ilap.id_ilap.id_ilap
                 nama_ilap = jenis_data_ilap.id_ilap.nama_ilap
+            id_sub_jenis_data = jenis_data_ilap.id_sub_jenis_data
             nama_sub_jenis_data = jenis_data_ilap.nama_sub_jenis_data
 
-        # Format periode (e.g. Januari 2026, Semester 1 2026)
+        # Format periode using periode_penerimaan (e.g. Januari 2026, Semester 1 2026)
         periode_formatted = '-'
         if obj.id_periode_data and obj.id_periode_data.id_periode_pengiriman:
-            periode_desc = obj.id_periode_data.id_periode_pengiriman.periode_penyampaian
+            periode_desc = obj.id_periode_data.id_periode_pengiriman.periode_penerimaan
             tahun = str(obj.tahun) if obj.tahun else '-'
             if periode_desc.lower() == 'bulanan' and obj.periode:
                 # Map periode number to month name
@@ -162,7 +434,9 @@ def tiket_data(request):
         data.append({
             'id': obj.id,
             'nomor_tiket': obj.nomor_tiket or '-',
+            'kode_ilap': kode_ilap,
             'nama_ilap': nama_ilap,
+            'id_sub_jenis_data': id_sub_jenis_data,
             'nama_sub_jenis_data': nama_sub_jenis_data,
             'periode_formatted': periode_formatted,
             'status': STATUS_LABELS.get(obj.status_tiket, '-'),
