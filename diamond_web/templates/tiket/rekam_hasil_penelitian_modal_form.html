@@ -1,4 +1,4 @@
-<form method="post" action="{{ form_action }}">
+<form method="post" action="{{ form_action }}" id="rekamHasilPenelitianForm" data-baris-diterima="{{ tiket.baris_diterima }}">
     {% csrf_token %}
     <div class="modal-body">
         {% if form.non_field_errors %}
@@ -8,27 +8,96 @@
                 {% endfor %}
             </div>
         {% endif %}
-        
-        {% for field in form %}
-            <div class="mb-3">
-                {{ field.label_tag }}
-                {{ field }}
-                {% if field.errors %}
-                    <small class="text-danger d-block mt-1">
-                        {% for error in field.errors %}
-                            {{ error }}
-                        {% endfor %}
-                    </small>
-                {% endif %}
-                {% if field.help_text %}
-                    <small class="text-muted d-block mt-1">{{ field.help_text|safe }}</small>
+
+        <!-- Tanggal Teliti -->
+        <div class="mb-3">
+            <label for="{{ form.tgl_teliti.id_for_label }}" class="form-label fw-semibold">
+                {{ form.tgl_teliti.label }} <span class="text-danger">*</span>
+            </label>
+            {{ form.tgl_teliti }}
+            {% if form.tgl_teliti.errors %}
+                <small class="text-danger d-block mt-1">{{ form.tgl_teliti.errors }}</small>
+            {% endif %}
+        </div>
+
+        <!-- Kesesuaian Data -->
+        <div class="mb-3">
+            <label for="{{ form.kesesuaian_data.id_for_label }}" class="form-label fw-semibold">
+                {{ form.kesesuaian_data.label }} <span class="text-danger">*</span>
+            </label>
+            {{ form.kesesuaian_data }}
+            {% if form.kesesuaian_data.errors %}
+                <small class="text-danger d-block mt-1">{{ form.kesesuaian_data.errors }}</small>
+            {% endif %}
+        </div>
+
+        <!-- Jumlah Baris Diterima (read-only) -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Jumlah Baris Diterima</label>
+            <input type="number" class="form-control bg-light" value="{{ tiket.baris_diterima }}" readonly>
+        </div>
+
+        <!-- Baris Lengkap & Baris Tidak Lengkap -->
+        <div class="row g-3 mb-3">
+            <div class="col-6">
+                <label for="{{ form.baris_lengkap.id_for_label }}" class="form-label fw-semibold">
+                    {{ form.baris_lengkap.label }} <span class="text-danger">*</span>
+                </label>
+                {{ form.baris_lengkap }}
+                {% if form.baris_lengkap.errors %}
+                    <small class="text-danger d-block mt-1">{{ form.baris_lengkap.errors }}</small>
                 {% endif %}
             </div>
-        {% endfor %}
+            <div class="col-6">
+                <label for="{{ form.baris_tidak_lengkap.id_for_label }}" class="form-label fw-semibold">
+                    {{ form.baris_tidak_lengkap.label }} <span class="text-danger">*</span>
+                </label>
+                {{ form.baris_tidak_lengkap }}
+                {% if form.baris_tidak_lengkap.errors %}
+                    <small class="text-danger d-block mt-1">{{ form.baris_tidak_lengkap.errors }}</small>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Sisa baris validation hint -->
+        <div id="baris-validation-hint" class="mb-3 small"></div>
+
+        <!-- Status Penelitian (read-only, dynamically calculated) -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Status Penelitian</label>
+            <div class="d-flex gap-4 ps-1">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="status_penelitian_display"
+                        id="status-lengkap" value="1" disabled>
+                    <label class="form-check-label" for="status-lengkap">Lengkap</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="status_penelitian_display"
+                        id="status-lengkap-sebagian" value="2" disabled>
+                    <label class="form-check-label" for="status-lengkap-sebagian">Lengkap Sebagian</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="status_penelitian_display"
+                        id="status-tidak-lengkap" value="3" disabled>
+                    <label class="form-check-label" for="status-tidak-lengkap">Tidak Lengkap</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Catatan -->
+        <div class="mb-3">
+            <label for="{{ form.catatan.id_for_label }}" class="form-label fw-semibold">
+                {{ form.catatan.label }} <span class="text-danger">*</span>
+            </label>
+            {{ form.catatan }}
+            {% if form.catatan.errors %}
+                <small class="text-danger d-block mt-1">{{ form.catatan.errors }}</small>
+            {% endif %}
+        </div>
     </div>
     <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-        <button type="submit" class="btn btn-primary">
+        <button type="submit" class="btn btn-primary" id="rekam-hasil-penelitian-simpan-btn" disabled>
             <i class="ri-save-line me-1"></i>Simpan
         </button>
     </div>

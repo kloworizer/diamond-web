@@ -1016,6 +1016,7 @@
                     .then(response => response.text())
                     .then(html => {
                         formContainer.innerHTML = html;
+                        initRekamHasilPenelitianForm(formContainer);
 
                         // Handle form submission
                         const form = formContainer.querySelector('form');
@@ -1040,6 +1041,7 @@
                                         } else {
                                             showToast(data.message || 'Gagal menyimpan hasil penelitian.', 'danger');
                                             formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
+                                            initRekamHasilPenelitianForm(formContainer);
                                         }
                                     })
                                     .catch(error => {
@@ -1377,6 +1379,68 @@
                         });
                 });
             }
+        }
+
+        function initRekamHasilPenelitianForm(container) {
+            const form = container.querySelector('form[data-baris-diterima]');
+            if (!form) return;
+
+            const barisDiterima = parseInt(form.dataset.barisDiterima, 10);
+            const barisLengkapInput = container.querySelector('#id_baris_lengkap');
+            const barisTidakLengkapInput = container.querySelector('#id_baris_tidak_lengkap');
+            const simpanBtn = container.querySelector('#rekam-hasil-penelitian-simpan-btn');
+            const statusLengkap = container.querySelector('#status-lengkap');
+            const statusLengkapSebagian = container.querySelector('#status-lengkap-sebagian');
+            const statusTidakLengkap = container.querySelector('#status-tidak-lengkap');
+            const hintEl = container.querySelector('#baris-validation-hint');
+
+            function updateStatusAndButton() {
+                const barisLengkap = parseInt(barisLengkapInput ? barisLengkapInput.value : '0', 10) || 0;
+                const barisTidakLengkap = parseInt(barisTidakLengkapInput ? barisTidakLengkapInput.value : '0', 10) || 0;
+                const total = barisLengkap + barisTidakLengkap;
+
+                // Update status penelitian radio buttons
+                if (statusLengkap) statusLengkap.checked = false;
+                if (statusLengkapSebagian) statusLengkapSebagian.checked = false;
+                if (statusTidakLengkap) statusTidakLengkap.checked = false;
+
+                if (barisLengkap === barisDiterima) {
+                    if (statusLengkap) statusLengkap.checked = true;
+                } else if (barisLengkap === 0) {
+                    if (statusTidakLengkap) statusTidakLengkap.checked = true;
+                } else {
+                    if (statusLengkapSebagian) statusLengkapSebagian.checked = true;
+                }
+
+                // Show validation hint
+                if (hintEl) {
+                    const sisa = barisDiterima - total;
+                    if (total === barisDiterima) {
+                        hintEl.innerHTML = '<span class="text-success"><i class="ri-check-line"></i> Jumlah baris sesuai.</span>';
+                    } else if (total < barisDiterima) {
+                        hintEl.innerHTML = `<span class="text-warning"><i class="ri-alert-line"></i> Kurang ${sisa} baris dari total ${barisDiterima}.</span>`;
+                    } else {
+                        hintEl.innerHTML = `<span class="text-danger"><i class="ri-close-circle-line"></i> Melebihi ${Math.abs(sisa)} baris dari total ${barisDiterima}.</span>`;
+                    }
+                }
+
+                // Enable/disable submit button
+                if (simpanBtn) {
+                    simpanBtn.disabled = total !== barisDiterima;
+                }
+            }
+
+            if (barisLengkapInput) {
+                barisLengkapInput.addEventListener('input', updateStatusAndButton);
+                barisLengkapInput.addEventListener('change', updateStatusAndButton);
+            }
+            if (barisTidakLengkapInput) {
+                barisTidakLengkapInput.addEventListener('input', updateStatusAndButton);
+                barisTidakLengkapInput.addEventListener('change', updateStatusAndButton);
+            }
+
+            // Run once on load to handle pre-filled values (edit mode)
+            updateStatusAndButton();
         }
 
         function attachTandaTerimaHandlers(container) {
