@@ -133,7 +133,7 @@ def tiket_data(request):
             periode_options.append({'id': f'triwulanan:{idx}', 'name': f'Triwulan {idx}'})
         for idx in range(1, 3):
             periode_options.append({'id': f'semester:{idx}', 'name': f'Semester {idx}'})
-        periode_options.append({'id': 'tahunan:1', 'name': 'Tahun (1)'})
+        periode_options.append({'id': 'tahunan:1', 'name': 'Tahunan'})
 
         periode_pengiriman_options = [
             {'id': p.periode_penyampaian, 'name': p.periode_penyampaian}
@@ -291,7 +291,7 @@ def tiket_data(request):
             qs = qs.none()
 
     if filter_periode_penerimaan:
-        qs = qs.filter(id_periode_data__id_periode_pengiriman__periode_penerimaan=filter_periode_penerimaan)
+        qs = qs.filter(id_periode_data__id_periode_pengiriman__periode_penerimaan__iexact=filter_periode_penerimaan)
 
     if filter_pic_p3de:
         qs = qs.filter(tiketpic__role=TiketPIC.Role.P3DE, tiketpic__active=True, tiketpic__id_user_id=filter_pic_p3de)

@@ -185,7 +185,77 @@
 <script>
     (function () {
         const ajaxUrl = "{% url 'tiket_data' %}";
+        const urlParams = new URLSearchParams(window.location.search);
         let table;
+        let initialFiltersApplied = false;
+
+        function normalizePeriodeParam() {
+            const periodeValue = (urlParams.get('periode') || '').trim();
+            if (!periodeValue) return '';
+
+            const normalizedPenerimaan = (urlParams.get('periode_penerimaan') || '').trim().toLowerCase();
+            const map = {
+                'bulanan': 'bulanan',
+                'triwulanan': 'triwulanan',
+                'semester': 'semester',
+                'tahunan': 'tahunan'
+            };
+
+            if (/^\d+$/.test(periodeValue) && map[normalizedPenerimaan]) {
+                return `${map[normalizedPenerimaan]}:${periodeValue}`;
+            }
+
+            return periodeValue;
+        }
+
+        function applyInitialFiltersFromUrl() {
+            const paramToSelectMap = {
+                nomor_tiket: '#filter-nomor-tiket',
+                tahun: '#filter-tahun',
+                pic_p3de: '#filter-pic-p3de',
+                pic_pide: '#filter-pic-pide',
+                pic_pmde: '#filter-pic-pmde',
+                kategori_ilap: '#filter-kategori-ilap',
+                ilap: '#filter-ilap',
+                jenis_data: '#filter-jenis-data',
+                sub_jenis_data: '#filter-sub-jenis-data',
+                kanwil: '#filter-kanwil',
+                kpp: '#filter-kpp',
+                kategori_wilayah: '#filter-kategori-wilayah',
+                jenis_tabel: '#filter-jenis-tabel',
+                dasar_hukum: '#filter-dasar-hukum',
+                periode_pengiriman: '#filter-periode-pengiriman',
+                periode_penerimaan: '#filter-periode-penerimaan',
+                terlambat: '#filter-terlambat',
+                status: '#filter-status'
+            };
+
+            let hasInitialFilter = false;
+
+            Object.entries(paramToSelectMap).forEach(([param, selector]) => {
+                const value = (urlParams.get(param) || '').trim();
+                if (!value) return;
+                hasInitialFilter = true;
+
+                const $select = $(selector);
+                if ($select.find(`option[value="${value}"]`).length === 0) {
+                    $select.append(`<option value="${value}">${value}</option>`);
+                }
+                $select.val(value);
+            });
+
+            const periodeValue = normalizePeriodeParam();
+            if (periodeValue) {
+                hasInitialFilter = true;
+                const $periode = $('#filter-periode');
+                if ($periode.find(`option[value="${periodeValue}"]`).length === 0) {
+                    $periode.append(`<option value="${periodeValue}">${periodeValue}</option>`);
+                }
+                $periode.val(periodeValue);
+            }
+
+            return hasInitialFilter;
+        }
 
         $(document).ready(function () {
             table = $('#tiket-table').DataTable({
@@ -291,6 +361,13 @@
                     if (opts.periode_pengiriman) opts.periode_pengiriman.forEach(item => $('#filter-periode-pengiriman').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.periode_penerimaan) opts.periode_penerimaan.forEach(item => $('#filter-periode-penerimaan').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.status) opts.status.forEach(item => $('#filter-status').append(`<option value="${item.id}">${item.name}</option>`));
+
+                    if (!initialFiltersApplied) {
+                        initialFiltersApplied = true;
+                        if (applyInitialFiltersFromUrl()) {
+                            table.ajax.reload();
+                        }
+                    }
                 }
             });
         }

@@ -6,6 +6,7 @@ from django.views.decorators.http import require_GET
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Q
 from datetime import datetime, timedelta
+from urllib.parse import urlencode
 
 from ..models.jenis_data_ilap import JenisDataILAP
 from ..models.periode_jenis_data import PeriodeJenisData
@@ -266,7 +267,7 @@ def monitoring_penyampaian_data_data(request):
             # Rule: sub-monthly penyampaian (harian, mingguan, 2 mingguan) is always
             # received/grouped monthly — override penerimaan to bulanan regardless of DB value
             if periode_type_penyampaian.lower() in ('harian', 'mingguan', '2 mingguan'):
-                periode_type_penerimaan = 'bulanan'
+                periode_type_penerimaan = 'Bulanan'
 
             # Determine the end date for period generation
             # If periode_data has an end_date, use it; otherwise use today
@@ -331,6 +332,7 @@ def monitoring_penyampaian_data_data(request):
                     'jenis_data_id': jenis_data.id,
                     'sub_jenis_data': jenis_data.nama_sub_jenis_data,
                     'periode_penyampaian': periode_type_penyampaian,
+                    'periode_penerimaan': periode_type_penerimaan,
                     'periode': period['periode_num'],
                     'periode_display_name': period_display_name,
                     'tahun': period['start_date'].year,
@@ -457,9 +459,16 @@ def monitoring_penyampaian_data_data(request):
     # Build response data
     data = []
     for record in paginated_records:
+        tiket_query = urlencode({
+            'ilap': record['ilap_jenis_data_id'],
+            'sub_jenis_data': record['id_sub_jenis_data'],
+            'periode': record['periode_num'],
+            'tahun': record['tahun'],
+            'periode_penerimaan': record.get('periode_penerimaan', ''),
+        })
         actions = (
             f'<div class="btn-group btn-group-sm">'
-            f'<a href="/tiket/?jenis_data={record["id_jenis_data"]}&periode={record["periode_num"]}" '
+            f'<a href="/tiket/?{tiket_query}" '
             f'class="btn btn-primary btn-sm" title="Lihat Detail">'
             f'<i class="ri-eye-line"></i>'
             f'</a>'
