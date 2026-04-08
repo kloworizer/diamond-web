@@ -636,7 +636,7 @@
 
         let periodeDataCache = {};
 
-        function updatePeriodeDataDropdown() {
+        function updatePeriodeDataDropdown(onLoaded) {
             const ilapSelect = document.getElementById('id_ilap');
             const periodeDataSelect = document.getElementById('id_periode_data');
             
@@ -664,6 +664,7 @@
                             periodeDataSelect.appendChild(option);
                         });
                     }
+                    if (typeof onLoaded === 'function') onLoaded();
                 })
                 .catch(error => {
                     console.error('Error fetching periode data:', error);
@@ -948,6 +949,43 @@
                 backupCheckbox.addEventListener('change', toggleBackupSection);
                 toggleBackupSection(); // apply on load
             }
+
+            // --- Prefill from URL params (when coming from monitoring penyampaian data) ---
+            (function prefillFromUrl() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const prefillIlapId = urlParams.get('ilap_id');
+                const prefillPeriodeDataId = urlParams.get('periode_data_id');
+                const prefillPeriode = urlParams.get('periode');
+                const prefillTahun = urlParams.get('tahun');
+
+                if (!prefillIlapId || !ilapSelect) return;
+
+                // Step 1: select ILAP
+                ilapSelect.value = prefillIlapId;
+
+                // Step 2: fetch periode_data options then select the right one
+                updatePeriodeDataDropdown(function () {
+                    if (prefillPeriodeDataId && periodeDataSelect) {
+                        periodeDataSelect.value = prefillPeriodeDataId;
+
+                        // Step 3: fire change — synchronously calls updateJenisDataInfo()
+                        // which populates the periode dropdown
+                        periodeDataSelect.dispatchEvent(new Event('change'));
+
+                        // Step 4: select periode value (dropdown is now populated)
+                        if (prefillPeriode) {
+                            const periodeSelect = document.getElementById('id_periode');
+                            if (periodeSelect) periodeSelect.value = prefillPeriode;
+                        }
+
+                        // Step 5: select tahun and fire change for penyampaian calc
+                        if (prefillTahun && tahunSelect) {
+                            tahunSelect.value = prefillTahun;
+                            tahunSelect.dispatchEvent(new Event('change'));
+                        }
+                    }
+                });
+            })();
         });
 
         function populateConfirmationModal() {

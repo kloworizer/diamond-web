@@ -466,11 +466,21 @@ def monitoring_penyampaian_data_data(request):
             'tahun': record['tahun'],
             'periode_penerimaan': record.get('periode_penerimaan', ''),
         })
+        tiket_rekam_query = urlencode({
+            'ilap_id': record['ilap_jenis_data_id'],
+            'periode_data_id': record['id_periode_data'],
+            'periode': record['periode_num'],
+            'tahun': record['tahun'],
+        })
         actions = (
             f'<div class="btn-group btn-group-sm">'
             f'<a href="/tiket/?{tiket_query}" '
-            f'class="btn btn-primary btn-sm" title="Lihat Detail">'
+            f'class="btn btn-primary btn-sm" title="Lihat Tiket">'
             f'<i class="ri-eye-line"></i>'
+            f'</a>'
+            f'<a href="/tiket/rekam/create/?{tiket_rekam_query}" '
+            f'class="btn btn-success btn-sm" title="Rekam Penerimaan Data">'
+            f'<i class="ri-file-add-line"></i>'
             f'</a>'
             f'</div>'
         )
