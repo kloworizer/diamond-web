@@ -22,85 +22,90 @@
         </div>
     </div>
 
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-light">
-            <h5 class="mb-0">Filter Data</h5>
-        </div>
-        <div class="card-body">
-            <form id="filter-form" class="row g-3">
-                <div class="col-md-6 col-lg-3">
+    <div class="row g-3">
+        <div class="col-12 col-xl-2">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Filter Data</h5>
+                </div>
+                <div class="card-body">
+                    <form id="filter-form" class="row g-2">
+                <div class="col-12 mb-2">
+                    <button type="reset" class="btn btn-secondary btn-sm w-100" id="btn-reset-filter"><i class="ri-refresh-line me-1"></i>Reset</button>
+                </div>
+                <div class="col-12">
                     <label for="filter-tahun" class="form-label">Tahun</label>
                     <select class="form-select form-select-sm" id="filter-tahun" name="tahun">
                         <option value="">-- Semua --</option>
                     </select>
                 </div>
-                <div class="col-md-6 col-lg-3">
+                <div class="col-12">
                     <label for="filter-pic-p3de" class="form-label">PIC P3DE</label>
                     <select class="form-select form-select-sm" id="filter-pic-p3de" name="pic_p3de">
                         <option value="">-- Semua --</option>
                     </select>
                 </div>
-                <div class="col-md-6 col-lg-3">
+                <div class="col-12">
                     <label for="filter-kategori-ilap" class="form-label">Kategori ILAP</label>
                     <select class="form-select form-select-sm" id="filter-kategori-ilap" name="kategori_ilap">
                         <option value="">-- Semua --</option>
                     </select>
                 </div>
-                <div class="col-md-6 col-lg-3">
+                <div class="col-12">
                     <label for="filter-ilap" class="form-label">ILAP</label>
                     <select class="form-select form-select-sm" id="filter-ilap" name="ilap">
                         <option value="">-- Semua --</option>
                     </select>
                 </div>
-                <div class="col-md-6 col-lg-3">
+                <div class="col-12">
                     <label for="filter-jenis-data" class="form-label">Jenis Data</label>
                     <select class="form-select form-select-sm" id="filter-jenis-data" name="jenis_data">
                         <option value="">-- Semua --</option>
                     </select>
                 </div>
-                <div class="col-md-6 col-lg-3">
+                <div class="col-12">
                     <label for="filter-sub-jenis-data" class="form-label">Sub Jenis Data</label>
                     <select class="form-select form-select-sm" id="filter-sub-jenis-data" name="sub_jenis_data">
                         <option value="">-- Semua --</option>
                     </select>
                 </div>
-                <div class="col-md-6 col-lg-3">
+                <div class="col-12">
                     <label for="filter-kanwil" class="form-label">Kanwil</label>
                     <select class="form-select form-select-sm" id="filter-kanwil" name="kanwil">
                         <option value="">-- Semua --</option>
                     </select>
                 </div>
-                <div class="col-md-6 col-lg-3">
+                <div class="col-12">
                     <label for="filter-kpp" class="form-label">KPP</label>
                     <select class="form-select form-select-sm" id="filter-kpp" name="kpp">
                         <option value="">-- Semua --</option>
                     </select>
                 </div>
-                <div class="col-md-6 col-lg-3">
+                <div class="col-12">
                     <label for="filter-kategori-wilayah" class="form-label">Kategori Wilayah</label>
                     <select class="form-select form-select-sm" id="filter-kategori-wilayah" name="kategori_wilayah">
                         <option value="">-- Semua --</option>
                     </select>
                 </div>
-                <div class="col-md-6 col-lg-3">
+                <div class="col-12">
                     <label for="filter-jenis-tabel" class="form-label">Jenis Tabel</label>
                     <select class="form-select form-select-sm" id="filter-jenis-tabel" name="jenis_tabel">
                         <option value="">-- Semua --</option>
                     </select>
                 </div>
-                <div class="col-md-6 col-lg-3">
+                <div class="col-12">
                     <label for="filter-dasar-hukum" class="form-label">Dasar Hukum</label>
                     <select class="form-select form-select-sm" id="filter-dasar-hukum" name="dasar_hukum">
                         <option value="">-- Semua --</option>
                     </select>
                 </div>
-                <div class="col-md-6 col-lg-3">
+                <div class="col-12">
                     <label for="filter-periode-pengiriman" class="form-label">Periode Pengiriman</label>
                     <select class="form-select form-select-sm" id="filter-periode-pengiriman" name="periode_pengiriman">
                         <option value="">-- Semua --</option>
                     </select>
                 </div>
-                <div class="col-md-6 col-lg-3">
+                <div class="col-12">
                     <label for="filter-status-penyampaian" class="form-label">Status Penyampaian</label>
                     <select class="form-select form-select-sm" id="filter-status-penyampaian" name="status_penyampaian">
                         <option value="">-- Semua --</option>
@@ -108,7 +113,7 @@
                         <option value="Belum Menyampaikan">Belum Menyampaikan</option>
                     </select>
                 </div>
-                <div class="col-md-6 col-lg-3">
+                <div class="col-12">
                     <label for="filter-terlambat" class="form-label">Terlambat</label>
                     <select class="form-select form-select-sm" id="filter-terlambat" name="terlambat">
                         <option value="">-- Semua --</option>
@@ -116,36 +121,36 @@
                         <option value="Tidak">Tidak</option>
                     </select>
                 </div>
-                <div class="col-12">
-                    <button type="reset" class="btn btn-secondary btn-sm" id="btn-reset-filter"><i class="ri-refresh-line me-1"></i>Reset</button>
-                </div>
             </form>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
-            <h5 class="mb-0"><i class="ri-send-plane-line me-2"></i>Daftar Penyampaian Data dari ILAP</h5>
-        </div>
-        <div class="card-body">
-            <table id="monitoring-penyampaian-data-table" class="table table-striped" style="width:100%">
-                <thead>
-                    <tr>
-                        <th>ILAP</th>
-                        <th>Jenis Data</th>
-                        <th>Periode Penyampaian</th>
-                        <th>Periode</th>
-                        <th>Tahun</th>
-                        <th>Batas Waktu Penyampaian</th>
-                        <th>Status Penyampaian</th>
-                        <th>Terlambat</th>
-                        <th>Sisa Hari</th>
-                        <th>Actions</th>
-                    </tr>
+        <div class="col-12 col-xl-10">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
+                    <h5 class="mb-0"><i class="ri-send-plane-line me-2"></i>Daftar Penyampaian Data dari ILAP</h5>
+                </div>
+                <div class="card-body">
+                    <table id="monitoring-penyampaian-data-table" class="table table-striped" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>ILAP</th>
+                                <th>Jenis Data</th>
+                                <th>Periode</th>
+                                <th>Tahun</th>
+                                <th>Batas Waktu Penyampaian</th>
+                                <th>Status Penyampaian</th>
+                                <th>Terlambat</th>
+                                <th>Sisa Hari</th>
+                                <th>Actions</th>
+                            </tr>
 
-                </thead>
-                <tbody></tbody>
-            </table>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -189,7 +194,6 @@
                 columns: [
                     { data: 'ilap' },
                     { data: 'jenis_data' },
-                    { data: 'periode_penyampaian' },
                     { data: 'periode' },
                     { data: 'tahun' },
                     { data: 'deadline' },

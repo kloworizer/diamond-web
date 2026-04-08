@@ -24,7 +24,7 @@ from ...models.media_backup import MediaBackup
 from ...constants.tiket_action_types import TiketActionType, PICActionType
 from ...forms.tiket import TiketForm
 from ..mixins import UserFormKwargsMixin, UserP3DERequiredMixin, get_active_p3de_ilap_ids
-from ...constants.tiket_status import STATUS_DIREKAM
+from ...constants.tiket_status import STATUS_DIREKAM, STATUS_SELESAI
 
 logger = logging.getLogger(__name__)
 
@@ -467,7 +467,13 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
             with transaction.atomic():
                 self.object = form.save(commit=False)
                 self.object.nomor_tiket = nomor_tiket
-                self.object.status_tiket = STATUS_DIREKAM
+                
+                # Set status based on data availability
+                status_ketersediaan = form.cleaned_data.get('status_ketersediaan_data')
+                if status_ketersediaan == 0:  # Data Tidak Tersedia
+                    self.object.status_tiket = STATUS_SELESAI
+                else:  # Data Tersedia
+                    self.object.status_tiket = STATUS_DIREKAM
 
                 tahun = form.cleaned_data.get('tahun')
                 if tahun:

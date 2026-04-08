@@ -120,7 +120,6 @@ PERIODE_PENGIRIMAN_DATA = [
     {"periode_penyampaian": "2 Mingguan", "periode_penerimaan": "Bulanan"},
     {"periode_penyampaian": "Bulanan", "periode_penerimaan": "Bulanan"},
     {"periode_penyampaian": "Triwulanan", "periode_penerimaan": "Triwulanan"},
-    {"periode_penyampaian": "Kuartal", "periode_penerimaan": "Kuartal"},
     {"periode_penyampaian": "Semester", "periode_penerimaan": "Semester"},
     {"periode_penyampaian": "Tahunan", "periode_penerimaan": "Tahunan"},
 ]
@@ -448,7 +447,7 @@ PERIODE_JENIS_DATA = [
     # Lembaga (LM)
     {"id_sub_jenis_data": "LM0030101", "periode": "Bulanan", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 10},
     {"id_sub_jenis_data": "LM0030102", "periode": "Tahunan", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 60},
-    {"id_sub_jenis_data": "LM0100101", "periode": "Kuartal", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 30},
+    {"id_sub_jenis_data": "LM0100101", "periode": "Triwulanan", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 30},
     
     # Pihak Lain (PL)
     {"id_sub_jenis_data": "PL0230101", "periode": "Bulanan", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 10},
