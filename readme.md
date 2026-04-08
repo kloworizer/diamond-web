@@ -186,3 +186,6 @@ Setelah selesai mengembangkan di branch fitur, push ke repo fork Anda dan buat p
 activate venv di lokal : Set-ExecutionPolicy Unrestricted -Scope Process; .\.venv\Scripts\Activate.ps1
 push dari lokal ke VM : git push work-vm main
 pull main di vm : git pull origin main & sudo systemctl restart diamond_web_gunicorn
+install pip package : 
+di lokal : pip download -r requirements/base.txt -d ./packages & pip download -r requirements/dev.txt -d ./packages & pip download -r requirements/base.txt -d ./packages & scp -r .\packages\* user@ip vm:/home/pajak/diamond-web/packages
+di vm : pip install --no-index --find-links=./packages -r requirements.txt

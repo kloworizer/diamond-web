@@ -1,5 +1,5 @@
 """Tiket workflow views"""
-from .list import TiketListView, tiket_data
+from .list import TiketListView, tiket_data, tiket_documents_download
 from .rekam_tiket import (
     TiketRekamCreateView,
     ILAPPeriodeDataAPIView,
@@ -19,6 +19,7 @@ from .selesaikan_tiket import SelesaikanTiketView
 __all__ = [
     'TiketListView',
     'tiket_data',
+    'tiket_documents_download',
     'TiketDetailView',
     'TiketRekamCreateView',
     'ILAPPeriodeDataAPIView',
