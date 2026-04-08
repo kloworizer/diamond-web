@@ -775,6 +775,24 @@
             const caraPenyampaianSelect = document.getElementById('id_id_cara_penyampaian');
             const barisDiterimaInput = document.getElementById('id_baris_diterima');
             
+            // Hide "data tidak tersedia" options from bentuk_data and cara_penyampaian dropdowns
+            function hideDataTidakTersediaOptions() {
+                if (bentukDataSelect) {
+                    Array.from(bentukDataSelect.options).forEach(opt => {
+                        if (opt.text.toLowerCase().includes('tidak tersedia')) {
+                            opt.style.display = 'none';
+                        }
+                    });
+                }
+                if (caraPenyampaianSelect) {
+                    Array.from(caraPenyampaianSelect.options).forEach(opt => {
+                        if (opt.text.toLowerCase().includes('tidak tersedia')) {
+                            opt.style.display = 'none';
+                        }
+                    });
+                }
+            }
+            
             function updateKetersediaanDependents() {
                 const backupCheckbox = document.getElementById('rekam-backup-checkbox');
                 
@@ -840,14 +858,16 @@
                         alasanKetidaktersedianInput.style.opacity = '0.6';
                     }
                     
-                    // Enable Bentuk Data
+                    // Clear and enable Bentuk Data
                     if (bentukDataSelect) {
+                        bentukDataSelect.value = '';
                         bentukDataSelect.disabled = false;
                         bentukDataSelect.style.opacity = '1';
                     }
                     
-                    // Enable Cara Penyampaian
+                    // Clear and enable Cara Penyampaian
                     if (caraPenyampaianSelect) {
+                        caraPenyampaianSelect.value = '';
                         caraPenyampaianSelect.disabled = false;
                         caraPenyampaianSelect.style.opacity = '1';
                     }
@@ -873,6 +893,7 @@
             }
             
             // Apply on page load
+            hideDataTidakTersediaOptions();
             updateKetersediaanDependents();
             
             if (ilapSelect) {
