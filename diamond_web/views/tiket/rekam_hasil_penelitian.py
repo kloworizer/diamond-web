@@ -46,6 +46,7 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Active
     """
     model = Tiket
     form_class = RekamHasilPenelitianForm
+    template_name = 'tiket/rekam_hasil_penelitian_modal_form.html'
     
     def test_func(self):
         """Verify user is an ACTIVE P3DE PIC for this tiket.
@@ -63,17 +64,6 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Active
             active=True,
             role=TiketPIC.Role.P3DE
         ).exists()
-    template_name = 'tiket/rekam_hasil_penelitian_form.html'
-    
-    def get_template_names(self):
-        """Return modal template for AJAX requests, full page otherwise.
-
-        AJAX requests (X-Requested-With=XMLHttpRequest) get a modal dialog
-        template for inline display, while regular requests get full page.
-        """
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return ['tiket/rekam_hasil_penelitian_modal_form.html']
-        return [self.template_name]
     
     def get_success_url(self):
         """Redirect to tiket detail page after successful research recording.

@@ -814,19 +814,9 @@
                 <h5 class="modal-title" id="identifikasiTiketModalLabel">Identifikasi Tiket {{ tiket.nomor_tiket }}</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="identifikasiForm">
-                <div class="modal-body">
-                    <p>Silakan masukkan tanggal rekam PIDE untuk menandai tiket ini sebagai proses diidentifikasi.</p>
-                    <div class="mb-3">
-                        <label for="tglRekamPide" class="form-label">Tanggal Rekam PIDE <span class="text-danger">*</span></label>
-                        <input type="datetime-local" class="form-control" id="tglRekamPide" name="tgl_rekam_pide" required>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="button" class="btn btn-info" id="confirmIdentifikasiBtn">Identifikasi</button>
-                </div>
-            </form>
+            <div id="identifikasi-tiket-form-container">
+                <!-- Form will be loaded here -->
+            </div>
         </div>
     </div>
 </div>
@@ -1275,45 +1265,58 @@
         const identifikasiTiketModal = document.getElementById('identifikasiTiketModal');
         if (identifikasiTiketModal) {
             setupModalAria(identifikasiTiketModal);
-            const confirmBtn = document.getElementById('confirmIdentifikasiBtn');
-            const identifikasiForm = document.getElementById('identifikasiForm');
-            if (confirmBtn) {
-                confirmBtn.addEventListener('click', function () {
-                    // Validate form before submitting
-                    const tglRekamPideInput = document.getElementById('tglRekamPide');
-                    if (!tglRekamPideInput.value) {
-                        showToast('Tanggal Rekam PIDE harus diisi.', 'danger');
-                        return;
+            identifikasiTiketModal.addEventListener('show.bs.modal', function () {
+                const formContainer = document.getElementById('identifikasi-tiket-form-container');
+                formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-info" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                fetch('{% url "identifikasi_tiket" tiket.pk %}', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
                     }
-                    
-                    // Create FormData to send the date
-                    const formData = new FormData();
-                    formData.append('tgl_rekam_pide', tglRekamPideInput.value);
-                    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]')?.value || '');
-                    
-                    fetch('{% url "identifikasi_tiket" tiket.pk %}', {
-                        method: 'POST',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                        },
-                        body: formData
-                    })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                bootstrap.Modal.getInstance(identifikasiTiketModal).hide();
-                                showToast(data.message || 'Tiket berhasil diidentifikasi.', 'success');
-                                setTimeout(() => location.reload(), 800);
-                            } else {
-                                showToast(data.message || 'Gagal mengidentifikasi tiket.', 'danger');
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.html) {
+                            formContainer.innerHTML = data.html;
+
+                            // Handle form submission
+                            const form = formContainer.querySelector('form');
+                            if (form) {
+                                form.addEventListener('submit', function (e) {
+                                    e.preventDefault();
+                                    const formData = new FormData(form);
+
+                                    fetch(form.action, {
+                                        method: 'POST',
+                                        body: formData,
+                                        headers: {
+                                            'X-Requested-With': 'XMLHttpRequest'
+                                        }
+                                    })
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            if (data.success) {
+                                                bootstrap.Modal.getInstance(identifikasiTiketModal).hide();
+                                                showToast(data.message || 'Tiket berhasil diidentifikasi.', 'success');
+                                                setTimeout(() => location.reload(), 800);
+                                            } else {
+                                                showToast(data.message || 'Gagal mengidentifikasi tiket.', 'danger');
+                                            }
+                                        })
+                                        .catch(error => {
+                                            console.error('Error:', error);
+                                            showToast('Terjadi kesalahan saat mengidentifikasi tiket.', 'danger');
+                                        });
+                                });
                             }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            showToast('Terjadi kesalahan saat mengidentifikasi tiket.', 'danger');
-                        });
-                });
-            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading form:', error);
+                        showToast('Gagal memuat form.', 'danger');
+                        formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
+                    });
+            });
         }
 
         // Transfer ke PMDE Modal Handler
@@ -1404,10 +1407,27 @@
             const tidakLolosQcInput = container.querySelector('input[name="tidak_lolos_qc"]');
             const sinkronisasiBtn = container.querySelector('#sinkronisasiDariDatabaseBtn');
             const selesaikanForm = container.querySelector('#selesaikanTiketForm');
+            const submitBtn = container.querySelector('button[type="submit"]');
+            const hintEl = container.querySelector('#baris-validation-hint');
 
             if (!sudahQcInput || !lolosQcInput || !tidakLolosQcInput) {
                 console.error('QC fields not found');
                 return;
+            }
+
+            // Get baris_i from the tiket (from data attribute or DOM)
+            const barisIElement = container.closest('.modal-dialog')?.parentElement?.querySelector('[data-baris-i]');
+            let barisI = barisIElement ? parseInt(barisIElement.dataset.barisI) : 0;
+            
+            // If not found in data attribute, try to parse from the display text
+            if (!barisI) {
+                const infoGroup = Array.from(container.querySelectorAll('.info-group')).find(el => 
+                    el.textContent.includes('Baris I')
+                );
+                if (infoGroup) {
+                    const value = infoGroup.querySelector('p')?.textContent?.trim();
+                    barisI = value && value !== '-' ? parseInt(value) : 0;
+                }
             }
 
             // Make sudah_qc readonly with styling
@@ -1415,11 +1435,38 @@
             sudahQcInput.style.backgroundColor = '#e9ecef';
             sudahQcInput.style.cursor = 'not-allowed';
 
-            // Function to calculate sudah_qc
+            // Function to calculate sudah_qc and validate
             const calculateSudahQc = () => {
                 const lolos = parseInt(lolosQcInput.value) || 0;
                 const tidakLolos = parseInt(tidakLolosQcInput.value) || 0;
                 sudahQcInput.value = lolos + tidakLolos;
+                
+                // Validate if sum equals baris_i
+                updateValidationHint();
+            };
+
+            // Function to update validation hint and button state
+            const updateValidationHint = () => {
+                const lolos = parseInt(lolosQcInput.value) || 0;
+                const tidakLolos = parseInt(tidakLolosQcInput.value) || 0;
+                const total = lolos + tidakLolos;
+
+                if (hintEl) {
+                    if (total === barisI && barisI > 0) {
+                        hintEl.innerHTML = '<span class="text-success"><i class="ri-check-line"></i> Jumlah QC sesuai dengan Baris I.</span>';
+                    } else if (total < barisI) {
+                        hintEl.innerHTML = `<span class="text-warning"><i class="ri-alert-line"></i> Kurang ${barisI - total} dari Baris I (${barisI}).</span>`;
+                    } else if (total > barisI) {
+                        hintEl.innerHTML = `<span class="text-danger"><i class="ri-close-circle-line"></i> Melebihi ${total - barisI} dari Baris I (${barisI}).</span>`;
+                    } else {
+                        hintEl.innerHTML = '<span class="text-muted">Masukkan jumlah QC.</span>';
+                    }
+                }
+
+                // Enable/disable submit button
+                if (submitBtn) {
+                    submitBtn.disabled = total !== barisI || barisI === 0;
+                }
             };
 
             // Prevent typing in sudah_qc

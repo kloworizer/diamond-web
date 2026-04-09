@@ -47,7 +47,7 @@ class TransferKePMDEView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateView):
     """
     model = Tiket
     form_class = TransferKePMDEForm
-    template_name = 'tiket/transfer_ke_pmde_form.html'
+    template_name = 'tiket/transfer_ke_pmde_modal_form.html'
     
     def test_func(self):
         """Verify user is ACTIVE PIDE PIC and tiket is in IDENTIFIKASI status.
@@ -72,16 +72,6 @@ class TransferKePMDEView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateView):
             ).exists()
             and tiket.status_tiket == 5  # STATUS_IDENTIFIKASI
         )
-
-    def get_template_names(self):
-        """Return modal template for AJAX requests, full page otherwise.
-
-        AJAX requests (X-Requested-With=XMLHttpRequest) get a modal dialog
-        template for inline display, while regular requests get full page.
-        """
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return ['tiket/transfer_ke_pmde_modal_form.html']
-        return [self.template_name]
 
     def get_context_data(self, **kwargs):
         """Build context with tiket information for the transfer form.
