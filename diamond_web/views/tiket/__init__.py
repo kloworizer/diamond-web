@@ -1,5 +1,6 @@
 """Tiket workflow views"""
-from .list import TiketListView, tiket_data, tiket_documents_download
+from .list import TiketListView, tiket_data
+from .documents import tiket_documents_download
 from .rekam_tiket import (
     TiketRekamCreateView,
     ILAPPeriodeDataAPIView,

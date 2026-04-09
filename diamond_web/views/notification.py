@@ -1,22 +1,28 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from ..models import Notification
 
 @login_required
 def mark_notification_read(request, pk):
-    """Mark a single `Notification` as read and redirect back.
+    """Mark a single Notification as read and redirect back.
 
-    Permissions: the `recipient` of the `Notification` must match
-    `request.user` (enforced via `get_object_or_404`).
+    Retrieves a notification record by primary key and ensures the current
+    user is the recipient. Updates the notification's `is_read` status to True.
+
+    Permissions:
+    - The `recipient` field of the Notification must match `request.user`
+      (enforced via `get_object_or_404`).
 
     Side effects:
     - Sets `notification.is_read = True` and saves the instance.
 
-    Redirects to the HTTP referer when available, otherwise to the
-    named URL `home`.
+    Args:
+        request (HttpRequest): The HTTP request object from authenticated user.
+        pk (int): Primary key of the Notification to mark as read.
 
-    Parameters:
-    - `pk` (int): primary key of the `Notification` to mark as read.
+    Returns:
+        HttpResponseRedirect: Redirects to the HTTP referer when available,
+                             otherwise to the named URL 'home'.
     """
     notification = get_object_or_404(Notification, pk=pk, recipient=request.user)
     notification.is_read = True

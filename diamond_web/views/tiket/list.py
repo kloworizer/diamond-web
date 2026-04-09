@@ -1,11 +1,10 @@
 """Tiket list view - shared across all workflow steps."""
 
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.decorators.http import require_GET
 from django.views.generic import TemplateView
-from django.contrib.auth.mixins import UserPassesTestMixin
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
@@ -28,7 +27,7 @@ from ...models.detil_tanda_terima import DetilTandaTerima
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ..mixins import can_access_tiket_list
 from ...constants.tiket_status import STATUS_LABELS
-from .documents import _is_p3de_user
+from .documents import _is_p3de_user, _format_periode_tiket
 
 
 class TiketListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
@@ -55,9 +54,6 @@ class TiketListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         assignment, False otherwise.
         """
         return can_access_tiket_list(self.request.user)
-
-
-from .documents import _format_periode_tiket, tiket_documents_download  # noqa: F401
 
 
 @login_required
