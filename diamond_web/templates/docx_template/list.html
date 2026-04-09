@@ -67,7 +67,7 @@
                     <h6 class="text-info mb-2"><strong>2. Placeholder Baris Berulang (untuk Tabel):</strong></h6>
                     <p class="mb-2"><code>{{row.nama_field}}</code></p>
                     <p class="small text-muted mb-2">Digunakan dalam tabel untuk data yang berisi banyak baris (lampiran, register data)</p>
-                    <p class="small mb-3"><strong>Contoh:</strong> <code>{{row.nama_ilap}}</code>, <code>{{row.jenis_data}}</code>, <code>{{row.periode_data}}</code></p>
+                    <p class="small mb-3"><strong>Contoh:</strong> <code>{{row.nama_ilap}}</code>, <code>{{row.jenis_data}}</code>, <code>{{row.periode_tahun}}</code></p>
                     <div class="bg-light p-2 rounded small mb-2">
                         <strong>Cara penggunaan:</strong>
                         <ol class="mb-0 ps-3">
@@ -76,8 +76,34 @@
                             <li>Saat dokumen dibuat, baris template akan otomatis diklon untuk setiap data</li>
                         </ol>
                     </div>
+                    <div class="bg-light p-2 rounded small mb-3">
+                        <strong>Field yang tersedia:</strong><br>
+                        <code>nomor</code>, <code>nama_kanwil</code>, <code>nama_ilap</code>, <code>jenis_data</code>, <code>periode_tahun</code>, <code>status_data</code>, <code>baris_diterima</code>, <code>dasar_hukum</code>, <code>nomor_tiket</code>, <code>baris_lengkap</code>, <code>baris_tidak_lengkap</code>
+                    </div>
                     <div class="bg-light p-2 rounded small">
-                        <strong>Field yang tersedia:</strong> nama_ilap, jenis_data, periode_data, baris_diterima, dasar_hukum
+                        <strong>Contoh struktur tabel di Word:</strong>
+                        <table class="table table-sm mb-0" style="font-size: 0.75rem;">
+                            <thead>
+                                <tr class="table-secondary">
+                                    <td><code>No</code></td>
+                                    <td><code>Kanwil</code></td>
+                                    <td><code>Nama ILAP</code></td>
+                                    <td><code>Jenis Data</code></td>
+                                    <td><code>Periode</code></td>
+                                    <td><code>Status</code></td>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="table-light">
+                                    <td><code>{{row.nomor}}</code></td>
+                                    <td><code>{{row.nama_kanwil}}</code></td>
+                                    <td><code>{{row.nama_ilap}}</code></td>
+                                    <td><code>{{row.jenis_data}}</code></td>
+                                    <td><code>{{row.periode_tahun}}</code></td>
+                                    <td><code>{{row.status_data}}</code></td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>

@@ -275,17 +275,43 @@ def tiket_documents_download(request, pk):
             row_data = None
             if doc_type in ('lampiran', 'register'):
                 row_data = []
+                nomor_counter = 1
                 for t in tiket_rows:
                     sub = t.id_periode_data.id_sub_jenis_data_ilap if t.id_periode_data else None
                     ilap_obj = sub.id_ilap if sub else None
+                    kanwil_obj = ilap_obj.id_kpp.id_kanwil if ilap_obj and ilap_obj.id_kpp else None
                     dasar_hukum_list = dasar_hukum_map.get(sub.id, []) if sub else []
+                    
+                    # Determine status data based on status_penelitian
+                    status_data = '-'
+                    baris_lengkap = '-'
+                    baris_tidak_lengkap = '-'
+                    if hasattr(t, 'status_penelitian'):
+                        if 'lengkap' in str(t.status_penelitian).lower():
+                            status_data = 'Lengkap'
+                            baris_lengkap = str(t.baris_diterima if t.baris_diterima is not None else '-')
+                        elif 'sebagian' in str(t.status_penelitian).lower():
+                            status_data = 'Lengkap Sebagian'
+                            baris_lengkap = str(t.baris_diterima if t.baris_diterima is not None else '-')
+                            baris_tidak_lengkap = str((t.baris_diterima or 0) - (t.baris_diterima or 0) if t.baris_diterima else '-')
+                        elif 'tidak' in str(t.status_penelitian).lower():
+                            status_data = 'Tidak Lengkap'
+                            baris_tidak_lengkap = str(t.baris_diterima if t.baris_diterima is not None else '-')
+                    
                     row_data.append({
+                        'nomor': str(nomor_counter),
+                        'nama_kanwil': kanwil_obj.nama_kanwil if kanwil_obj else '-',
                         'nama_ilap': f"{ilap_obj.id_ilap} - {ilap_obj.nama_ilap}" if ilap_obj else '-',
                         'jenis_data': f"{sub.id_sub_jenis_data} - {sub.nama_sub_jenis_data}" if sub else '-',
-                        'periode_data': _format_periode_tiket(t),
+                        'periode_tahun': _format_periode_tiket(t),
+                        'status_data': status_data,
                         'baris_diterima': str(t.baris_diterima if t.baris_diterima is not None else '-'),
                         'dasar_hukum': ', '.join(dasar_hukum_list) if dasar_hukum_list else '-',
+                        'nomor_tiket': nomor_tanda_terima,
+                        'baris_lengkap': baris_lengkap,
+                        'baris_tidak_lengkap': baris_tidak_lengkap,
                     })
+                    nomor_counter += 1
 
             # Open the template file using FileField's open method for better compatibility
             doc_buffer = fill_template_with_data(template.file_template.open('rb'), template_variables, row_data=row_data)
