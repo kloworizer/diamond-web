@@ -131,18 +131,6 @@
                         </div>
                         <div class="col-md-6">
                             <div class="info-group">
-                                <label class="text-muted small mb-1">Status Penelitian</label>
-                                <p class="fw-semibold mb-0">
-                                    {% if tiket.status_tiket == STATUS_DIREKAM %}
-                                        Belum Diteliti
-                                    {% else %}
-                                        {{ tiket.id_status_penelitian.deskripsi|default:"-" }}
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-group">
                                 <label class="text-muted small mb-1">Status Ketersediaan Data</label>
                                 <p class="fw-semibold mb-0">
                                     {% if tiket.status_ketersediaan_data %}
@@ -158,6 +146,40 @@
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Alasan Ketidaktersediaan</label>
                                 <p class="fw-semibold mb-0">{{ tiket.alasan_ketidaktersediaan|default:"-" }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Status Penelitian</label>
+                                <p class="fw-semibold mb-0">{{ tiket.id_status_penelitian.deskripsi|default:"-" }}</p>
+                            </div>
+                        </div>
+                        {% if tiket.tgl_teliti %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Teliti</label>
+                                <p class="fw-semibold mb-0">
+                                    <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_teliti|date:"d/m/Y H:i" }}
+                                </p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.kesesuaian_data %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Kesesuaian Data</label>
+                                <p class="fw-semibold mb-0">
+                                    {% if tiket.kesesuaian_data == 1 %}
+                                        Sesuai PMK
+                                    {% elif tiket.kesesuaian_data == 2 %}
+                                        Sesuai PKS
+                                    {% elif tiket.kesesuaian_data == 3 %}
+                                        Sesuai Konfirmasi Ketersediaan Data
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </p>
                             </div>
                         </div>
                         {% endif %}
@@ -193,6 +215,46 @@
                             </div>
                         </div>
                         {% endif %}
+                        {% if tiket.tgl_dibatalkan %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Dibatalkan</label>
+                                <p class="fw-semibold mb-0">
+                                    <i class="ri-calendar-line me-1"></i><span class="badge bg-danger">{{ tiket.tgl_dibatalkan|date:"d/m/Y H:i" }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.tgl_dikembalikan %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Dikembalikan</label>
+                                <p class="fw-semibold mb-0">
+                                    <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_dikembalikan|date:"d/m/Y H:i" }}
+                                </p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.tgl_rekam_pide %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Rekam PIDE</label>
+                                <p class="fw-semibold mb-0">
+                                    <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_rekam_pide|date:"d/m/Y H:i" }}
+                                </p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.tgl_transfer %}
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Tanggal Transfer</label>
+                                <p class="fw-semibold mb-0">
+                                    <i class="ri-calendar-line me-1"></i>{{ tiket.tgl_transfer|date:"d/m/Y H:i" }}
+                                </p>
+                            </div>
+                        </div>
+                        {% endif %}
 
                         <!-- QC and Baris Information -->
                         {% if tiket.baris_diterima %}
@@ -200,6 +262,22 @@
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Baris Diterima</label>
                                 <p class="fw-semibold mb-0">{{ tiket.baris_diterima }} {% if tiket.satuan_data == 1 %}Baris{% else %}{{ tiket.satuan_data }}{% endif %}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.baris_lengkap %}
+                        <div class="col-md-3">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Baris Lengkap</label>
+                                <p class="fw-semibold mb-0">{{ tiket.baris_lengkap }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.baris_tidak_lengkap %}
+                        <div class="col-md-3">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Baris Tidak Lengkap</label>
+                                <p class="fw-semibold mb-0">{{ tiket.baris_tidak_lengkap }}</p>
                             </div>
                         </div>
                         {% endif %}
@@ -232,6 +310,22 @@
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Baris CDE</label>
                                 <p class="fw-semibold mb-0">{{ tiket.baris_cde }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.sudah_qc %}
+                        <div class="col-md-3">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Sudah QC</label>
+                                <p class="fw-semibold mb-0">{{ tiket.sudah_qc }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if tiket.belum_qc %}
+                        <div class="col-md-3">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Belum QC</label>
+                                <p class="fw-semibold mb-0">{{ tiket.belum_qc }}</p>
                             </div>
                         </div>
                         {% endif %}
@@ -577,7 +671,7 @@
                                     <!-- Identifikasi button: show if status 4 (Dikirim ke PIDE) -->
                                     {% if tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE %}
                                         <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#identifikasiTiketModal">
-                                            <i class="ri-checkbox-circle-line me-1"></i>Identifikasi
+                                            <i class="ri-checkbox-circle-line me-1"></i>Proses Identifikasi
                                         </button>
                                     {% endif %}
 
@@ -720,12 +814,8 @@
                 <h5 class="modal-title" id="identifikasiTiketModalLabel">Identifikasi Tiket {{ tiket.nomor_tiket }}</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <p>Apakah Anda yakin untuk menandai tiket ini sebagai proses diidentifikasi?</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="button" class="btn btn-info" id="confirmIdentifikasiBtn">Identifikasi</button>
+            <div id="identifikasi-tiket-form-container">
+                <!-- Form will be loaded here -->
             </div>
         </div>
     </div>
@@ -1016,6 +1106,7 @@
                     .then(response => response.text())
                     .then(html => {
                         formContainer.innerHTML = html;
+                        initRekamHasilPenelitianForm(formContainer);
 
                         // Handle form submission
                         const form = formContainer.querySelector('form');
@@ -1040,6 +1131,7 @@
                                         } else {
                                             showToast(data.message || 'Gagal menyimpan hasil penelitian.', 'danger');
                                             formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
+                                            initRekamHasilPenelitianForm(formContainer);
                                         }
                                     })
                                     .catch(error => {
@@ -1173,32 +1265,58 @@
         const identifikasiTiketModal = document.getElementById('identifikasiTiketModal');
         if (identifikasiTiketModal) {
             setupModalAria(identifikasiTiketModal);
-            const confirmBtn = document.getElementById('confirmIdentifikasiBtn');
-            if (confirmBtn) {
-                confirmBtn.addEventListener('click', function () {
-                    fetch('{% url "identifikasi_tiket" tiket.pk %}', {
-                        method: 'POST',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+            identifikasiTiketModal.addEventListener('show.bs.modal', function () {
+                const formContainer = document.getElementById('identifikasi-tiket-form-container');
+                formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-info" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                fetch('{% url "identifikasi_tiket" tiket.pk %}', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.html) {
+                            formContainer.innerHTML = data.html;
+
+                            // Handle form submission
+                            const form = formContainer.querySelector('form');
+                            if (form) {
+                                form.addEventListener('submit', function (e) {
+                                    e.preventDefault();
+                                    const formData = new FormData(form);
+
+                                    fetch(form.action, {
+                                        method: 'POST',
+                                        body: formData,
+                                        headers: {
+                                            'X-Requested-With': 'XMLHttpRequest'
+                                        }
+                                    })
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            if (data.success) {
+                                                bootstrap.Modal.getInstance(identifikasiTiketModal).hide();
+                                                showToast(data.message || 'Tiket berhasil diidentifikasi.', 'success');
+                                                setTimeout(() => location.reload(), 800);
+                                            } else {
+                                                showToast(data.message || 'Gagal mengidentifikasi tiket.', 'danger');
+                                            }
+                                        })
+                                        .catch(error => {
+                                            console.error('Error:', error);
+                                            showToast('Terjadi kesalahan saat mengidentifikasi tiket.', 'danger');
+                                        });
+                                });
+                            }
                         }
                     })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                bootstrap.Modal.getInstance(identifikasiTiketModal).hide();
-                                showToast(data.message || 'Tiket berhasil diidentifikasi.', 'success');
-                                setTimeout(() => location.reload(), 800);
-                            } else {
-                                showToast(data.message || 'Gagal mengidentifikasi tiket.', 'danger');
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            showToast('Terjadi kesalahan saat mengidentifikasi tiket.', 'danger');
-                        });
-                });
-            }
+                    .catch(error => {
+                        console.error('Error loading form:', error);
+                        showToast('Gagal memuat form.', 'danger');
+                        formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
+                    });
+            });
         }
 
         // Transfer ke PMDE Modal Handler
@@ -1289,10 +1407,27 @@
             const tidakLolosQcInput = container.querySelector('input[name="tidak_lolos_qc"]');
             const sinkronisasiBtn = container.querySelector('#sinkronisasiDariDatabaseBtn');
             const selesaikanForm = container.querySelector('#selesaikanTiketForm');
+            const submitBtn = container.querySelector('button[type="submit"]');
+            const hintEl = container.querySelector('#baris-validation-hint');
 
             if (!sudahQcInput || !lolosQcInput || !tidakLolosQcInput) {
                 console.error('QC fields not found');
                 return;
+            }
+
+            // Get baris_i from the tiket (from data attribute or DOM)
+            const barisIElement = container.closest('.modal-dialog')?.parentElement?.querySelector('[data-baris-i]');
+            let barisI = barisIElement ? parseInt(barisIElement.dataset.barisI) : 0;
+            
+            // If not found in data attribute, try to parse from the display text
+            if (!barisI) {
+                const infoGroup = Array.from(container.querySelectorAll('.info-group')).find(el => 
+                    el.textContent.includes('Baris I')
+                );
+                if (infoGroup) {
+                    const value = infoGroup.querySelector('p')?.textContent?.trim();
+                    barisI = value && value !== '-' ? parseInt(value) : 0;
+                }
             }
 
             // Make sudah_qc readonly with styling
@@ -1300,11 +1435,38 @@
             sudahQcInput.style.backgroundColor = '#e9ecef';
             sudahQcInput.style.cursor = 'not-allowed';
 
-            // Function to calculate sudah_qc
+            // Function to calculate sudah_qc and validate
             const calculateSudahQc = () => {
                 const lolos = parseInt(lolosQcInput.value) || 0;
                 const tidakLolos = parseInt(tidakLolosQcInput.value) || 0;
                 sudahQcInput.value = lolos + tidakLolos;
+                
+                // Validate if sum equals baris_i
+                updateValidationHint();
+            };
+
+            // Function to update validation hint and button state
+            const updateValidationHint = () => {
+                const lolos = parseInt(lolosQcInput.value) || 0;
+                const tidakLolos = parseInt(tidakLolosQcInput.value) || 0;
+                const total = lolos + tidakLolos;
+
+                if (hintEl) {
+                    if (total === barisI && barisI > 0) {
+                        hintEl.innerHTML = '<span class="text-success"><i class="ri-check-line"></i> Jumlah QC sesuai dengan Baris I.</span>';
+                    } else if (total < barisI) {
+                        hintEl.innerHTML = `<span class="text-warning"><i class="ri-alert-line"></i> Kurang ${barisI - total} dari Baris I (${barisI}).</span>`;
+                    } else if (total > barisI) {
+                        hintEl.innerHTML = `<span class="text-danger"><i class="ri-close-circle-line"></i> Melebihi ${total - barisI} dari Baris I (${barisI}).</span>`;
+                    } else {
+                        hintEl.innerHTML = '<span class="text-muted">Masukkan jumlah QC.</span>';
+                    }
+                }
+
+                // Enable/disable submit button
+                if (submitBtn) {
+                    submitBtn.disabled = total !== barisI || barisI === 0;
+                }
             };
 
             // Prevent typing in sudah_qc
@@ -1377,6 +1539,68 @@
                         });
                 });
             }
+        }
+
+        function initRekamHasilPenelitianForm(container) {
+            const form = container.querySelector('form[data-baris-diterima]');
+            if (!form) return;
+
+            const barisDiterima = parseInt(form.dataset.barisDiterima, 10);
+            const barisLengkapInput = container.querySelector('#id_baris_lengkap');
+            const barisTidakLengkapInput = container.querySelector('#id_baris_tidak_lengkap');
+            const simpanBtn = container.querySelector('#rekam-hasil-penelitian-simpan-btn');
+            const statusLengkap = container.querySelector('#status-lengkap');
+            const statusLengkapSebagian = container.querySelector('#status-lengkap-sebagian');
+            const statusTidakLengkap = container.querySelector('#status-tidak-lengkap');
+            const hintEl = container.querySelector('#baris-validation-hint');
+
+            function updateStatusAndButton() {
+                const barisLengkap = parseInt(barisLengkapInput ? barisLengkapInput.value : '0', 10) || 0;
+                const barisTidakLengkap = parseInt(barisTidakLengkapInput ? barisTidakLengkapInput.value : '0', 10) || 0;
+                const total = barisLengkap + barisTidakLengkap;
+
+                // Update status penelitian radio buttons
+                if (statusLengkap) statusLengkap.checked = false;
+                if (statusLengkapSebagian) statusLengkapSebagian.checked = false;
+                if (statusTidakLengkap) statusTidakLengkap.checked = false;
+
+                if (barisLengkap === barisDiterima) {
+                    if (statusLengkap) statusLengkap.checked = true;
+                } else if (barisLengkap === 0) {
+                    if (statusTidakLengkap) statusTidakLengkap.checked = true;
+                } else {
+                    if (statusLengkapSebagian) statusLengkapSebagian.checked = true;
+                }
+
+                // Show validation hint
+                if (hintEl) {
+                    const sisa = barisDiterima - total;
+                    if (total === barisDiterima) {
+                        hintEl.innerHTML = '<span class="text-success"><i class="ri-check-line"></i> Jumlah baris sesuai.</span>';
+                    } else if (total < barisDiterima) {
+                        hintEl.innerHTML = `<span class="text-warning"><i class="ri-alert-line"></i> Kurang ${sisa} baris dari total ${barisDiterima}.</span>`;
+                    } else {
+                        hintEl.innerHTML = `<span class="text-danger"><i class="ri-close-circle-line"></i> Melebihi ${Math.abs(sisa)} baris dari total ${barisDiterima}.</span>`;
+                    }
+                }
+
+                // Enable/disable submit button
+                if (simpanBtn) {
+                    simpanBtn.disabled = total !== barisDiterima;
+                }
+            }
+
+            if (barisLengkapInput) {
+                barisLengkapInput.addEventListener('input', updateStatusAndButton);
+                barisLengkapInput.addEventListener('change', updateStatusAndButton);
+            }
+            if (barisTidakLengkapInput) {
+                barisTidakLengkapInput.addEventListener('input', updateStatusAndButton);
+                barisTidakLengkapInput.addEventListener('change', updateStatusAndButton);
+            }
+
+            // Run once on load to handle pre-filled values (edit mode)
+            updateStatusAndButton();
         }
 
         function attachTandaTerimaHandlers(container) {

@@ -51,14 +51,8 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DER
     form_class = KirimTiketForm
     
     # Authorization handled by ActiveTiketP3DERequiredForEditMixin
-    template_name = 'tiket/kirim_tiket_form.html'
+    template_name = 'tiket/kirim_tiket_modal_form.html'
     success_url = reverse_lazy('tiket_list')
-
-    def get_template_names(self):
-        """Return modal or full-page template based on AJAX detection."""
-        if self.is_ajax_request():
-            return ['tiket/kirim_tiket_modal_form.html']
-        return [self.template_name]
 
     def get_context_data(self, **kwargs):
         """Build context with tikets available for submission.

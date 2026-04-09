@@ -21,7 +21,7 @@ from ...models.jenis_prioritas_data import JenisPrioritasData
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ...models.backup_data import BackupData
 from ...models.media_backup import MediaBackup
-from ...constants.tiket_action_types import TiketActionType, PICActionType
+from ...constants.tiket_action_types import TiketActionType, PICActionType, BackupActionType
 from ...forms.tiket import TiketForm
 from ..mixins import UserFormKwargsMixin, UserP3DERequiredMixin, get_active_p3de_ilap_ids
 from ...constants.tiket_status import STATUS_DIREKAM, STATUS_SELESAI
@@ -499,6 +499,16 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
 
                 self._assign_tiket_pics(periode_jenis_data, today, base_time=base_action_time)
 
+                # If data is tidak tersedia, also log SELESAI action after PICs are added
+                if status_ketersediaan == 0:
+                    TiketAction.objects.create(
+                        id_tiket=self.object,
+                        id_user=self.request.user,
+                        timestamp=datetime.now(),
+                        action=TiketActionType.SELESAI,
+                        catatan="tiket selesai, data tidak tersedia"
+                    )
+
                 # Handle optional Bagian C: create BackupData if checkbox was checked
                 if self.request.POST.get('rekam_backup'):
                     lokasi_backup = self.request.POST.get('backup_lokasi_backup', '').strip()
@@ -514,6 +524,14 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
                         )
                         self.object.backup = True
                         self.object.save(update_fields=['backup'])
+                        # Record tiket action for audit trail
+                        TiketAction.objects.create(
+                            id_tiket=self.object,
+                            id_user=self.request.user,
+                            timestamp=base_action_time,
+                            action=BackupActionType.DIREKAM,
+                            catatan="backup data direkam"
+                        )
 
             messages.success(self.request, f'Tiket "{nomor_tiket}" berhasil dibuat.')
             return super().form_valid(form)

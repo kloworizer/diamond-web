@@ -48,7 +48,7 @@ class DikembalikanTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
     """
     model = Tiket
     form_class = DikembalikanTiketForm
-    template_name = 'tiket/dikembalikan_tiket_form.html'
+    template_name = 'tiket/dikembalikan_tiket_modal_form.html'
     
     def test_func(self):
         """Verify user is an ACTIVE PIDE PIC for this tiket.
@@ -66,16 +66,6 @@ class DikembalikanTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
             active=True,
             role=TiketPIC.Role.PIDE
         ).exists()
-
-    def get_template_names(self):
-        """Return modal template for AJAX requests, full page otherwise.
-
-        AJAX requests (X-Requested-With=XMLHttpRequest) get a modal dialog
-        template for inline display, while regular requests get full page.
-        """
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return ['tiket/dikembalikan_tiket_modal_form.html']
-        return [self.template_name]
 
     def get_context_data(self, **kwargs):
         """Build context with tiket information for the return form.
@@ -118,6 +108,7 @@ class DikembalikanTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
                 self.object = form.save(commit=False)
                 self.object.status_tiket = STATUS_DIKEMBALIKAN
                 self.object.tgl_dikembalikan = now
+                self.object.tgl_rekam_pide = None  # Clear recording date when returning to P3DE
                 self.object.save()
 
                 catatan = form.cleaned_data.get('catatan', 'Tiket dikembalikan oleh PIDE')

@@ -43,7 +43,7 @@ class SelesaikanTiketView(LoginRequiredMixin, UserPMDERequiredMixin, UpdateView)
     """
     model = Tiket
     form_class = SelesaikanTiketForm
-    template_name = 'tiket/selesaikan_tiket_form.html'
+    template_name = 'tiket/selesaikan_tiket_modal_form.html'
     
     def test_func(self):
         """Verify user is ACTIVE PMDE PIC and tiket is in PENGENDALIAN_MUTU status.
@@ -68,16 +68,6 @@ class SelesaikanTiketView(LoginRequiredMixin, UserPMDERequiredMixin, UpdateView)
             ).exists()
             and tiket.status_tiket == STATUS_PENGENDALIAN_MUTU  # STATUS_PENGENDALIAN_MUTU
         )
-
-    def get_template_names(self):
-        """Return modal template for AJAX requests, full page otherwise.
-
-        AJAX requests (X-Requested-With=XMLHttpRequest) get a modal dialog
-        template for inline display, while regular requests get full page.
-        """
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return ['tiket/selesaikan_tiket_modal_form.html']
-        return [self.template_name]
 
     def get_context_data(self, **kwargs):
         """Build context with tiket information for the completion form.
