@@ -13,7 +13,17 @@ from ...models.detil_tanda_terima import DetilTandaTerima
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ...models.tiket import Tiket
 from ...models.tiket_pic import TiketPIC
-from ..mixins import can_access_tiket_list
+from ...models.docx_template import DocxTemplate
+from ...utils.docx_template import fill_template_with_data
+
+
+def _is_p3de_user(user):
+    """Check if user is P3DE (can generate/download documents)."""
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser or user.groups.filter(name='admin').exists():
+        return True
+    return user.groups.filter(name='user_p3de').exists()
 
 
 def _format_periode_tiket(tiket_obj):
@@ -41,11 +51,12 @@ def _format_periode_tiket(tiket_obj):
 
 
 def _safe_filename_part(raw):
+    """Convert a string into a filename-safe format."""
     return re.sub(r'[^A-Za-z0-9._-]+', '_', str(raw or '')).strip('_') or 'file'
 
 
 def _format_date_indonesian(date_obj):
-    """Format a date object as 'D bulan YYYY' in Indonesian (e.g., '4 januari 2026')."""
+    """Format a date object as D bulan YYYY in Indonesian."""
     if not date_obj:
         return '-'
     
@@ -74,19 +85,21 @@ def _build_table_doc(title, headers, rows_data):
 
 
 @login_required
-@user_passes_test(lambda u: can_access_tiket_list(u))
+@user_passes_test(lambda u: _is_p3de_user(u))
 @require_GET
 def tiket_documents_download(request, pk):
     """Generate and download a single DOCX document for a tiket.
 
     Accepts a ``?doc_type=`` query parameter to select which document to return:
-
     - ``tanda_terima`` (default) — Tanda Terima Data
     - ``lampiran``               — Lampiran Tanda Terima
     - ``register``               — Register Data
 
     Access is restricted to admins/superusers and assigned TiketPIC members.
     Returns HTTP 400 if tanda_terima has not been created yet.
+    
+    If active DOCX templates exist for the document type, uses them to generate
+    the document by filling placeholders. Otherwise, falls back to default generation.
     """
     try:
         from docx import Document
@@ -113,9 +126,7 @@ def tiket_documents_download(request, pk):
     if not tiket.tanda_terima:
         return HttpResponse('Dokumen hanya tersedia jika tanda terima sudah dibuat.', status=400)
 
-    # ------------------------------------------------------------------ #
-    # Collect tanda-terima group and associated tiket rows                #
-    # ------------------------------------------------------------------ #
+    # Collect tanda-terima group and associated tiket rows
     detil = DetilTandaTerima.objects.select_related('id_tanda_terima').filter(id_tiket=tiket).order_by('-id').first()
     tanda_terima = detil.id_tanda_terima if detil else None
 
@@ -134,9 +145,7 @@ def tiket_documents_download(request, pk):
     else:
         tiket_rows = [tiket]
 
-    # ------------------------------------------------------------------ #
-    # Dasar hukum lookup                                                  #
-    # ------------------------------------------------------------------ #
+    # Dasar hukum lookup
     jenis_data_ids = {
         t.id_periode_data.id_sub_jenis_data_ilap_id
         for t in tiket_rows
@@ -146,9 +155,7 @@ def tiket_documents_download(request, pk):
     for row in KlasifikasiJenisData.objects.filter(id_jenis_data_ilap_id__in=jenis_data_ids).select_related('id_klasifikasi_tabel'):
         dasar_hukum_map.setdefault(row.id_jenis_data_ilap_id, []).append(row.id_klasifikasi_tabel.deskripsi)
 
-    # ------------------------------------------------------------------ #
-    # PIC P3DE name                                                       #
-    # ------------------------------------------------------------------ #
+    # PIC P3DE name
     p3de = TiketPIC.objects.select_related('id_user').filter(
         id_tiket=tiket,
         role=TiketPIC.Role.P3DE,
@@ -158,9 +165,7 @@ def tiket_documents_download(request, pk):
     if p3de and p3de.id_user:
         p3de_name = p3de.id_user.get_full_name().strip() or p3de.id_user.username
 
-    # ------------------------------------------------------------------ #
-    # Derived fields                                                      #
-    # ------------------------------------------------------------------ #
+    # Derived fields
     ilap = (
         tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap
         if tiket.id_periode_data and tiket.id_periode_data.id_sub_jenis_data_ilap
@@ -172,45 +177,34 @@ def tiket_documents_download(request, pk):
     else:
         diterima_dari = ilap.nama_ilap if ilap else '-'
 
-    # Collect multi-value fields from tiket_rows (deduplicated, like periode_data)
-    periode_list = []
-    nomor_surat_list = []
-    tanggal_surat_list = []
-    bentuk_data_list = []
-    cara_penyampaian_list = []
+    # Collect multi-value fields from tiket_rows (deduplicated)
+    periode_list, nomor_surat_list, tanggal_surat_list = [], [], []
+    bentuk_data_list, cara_penyampaian_list = [], []
     
-    seen_periode = set()
-    seen_nomor_surat = set()
-    seen_tanggal_surat = set()
-    seen_bentuk_data = set()
-    seen_cara_penyampaian = set()
+    seen_periode, seen_nomor_surat, seen_tanggal_surat = set(), set(), set()
+    seen_bentuk_data, seen_cara_penyampaian = set(), set()
     
     for t in tiket_rows:
-        # Periode
         label = _format_periode_tiket(t)
         if label not in seen_periode:
             seen_periode.add(label)
             periode_list.append(label)
         
-        # Nomor Surat Pengantar
         nomor_surat = t.nomor_surat_pengantar or '-'
         if nomor_surat not in seen_nomor_surat:
             seen_nomor_surat.add(nomor_surat)
             nomor_surat_list.append(nomor_surat)
         
-        # Tanggal Surat Pengantar
         tanggal = _format_date_indonesian(t.tanggal_surat_pengantar) if t.tanggal_surat_pengantar else '-'
         if tanggal not in seen_tanggal_surat:
             seen_tanggal_surat.add(tanggal)
             tanggal_surat_list.append(tanggal)
         
-        # Bentuk Data
         bentuk = t.id_bentuk_data.deskripsi if t.id_bentuk_data else '-'
         if bentuk not in seen_bentuk_data:
             seen_bentuk_data.add(bentuk)
             bentuk_data_list.append(bentuk)
         
-        # Cara Penyampaian
         cara = t.id_cara_penyampaian.deskripsi if t.id_cara_penyampaian else '-'
         if cara not in seen_cara_penyampaian:
             seen_cara_penyampaian.add(cara)
@@ -219,67 +213,251 @@ def tiket_documents_download(request, pk):
     nomor_tanda_terima = tanda_terima.nomor_tanda_terima_format if tanda_terima else '-'
     tgl_terima_dip = _format_date_indonesian(tiket.tgl_terima_dip) if tiket.tgl_terima_dip else '-'
 
-    # ------------------------------------------------------------------ #
-    # DOC 1 — Tanda Terima                                                #
-    # ------------------------------------------------------------------ #
-    doc_tanda = Document()
-    doc_tanda.add_heading('Tanda Terima Data', level=1)
-    fields = [
-        ('Nomor Tanda Terima',    nomor_tanda_terima),
-        ('Diterima Dari',         diterima_dari),
-        ('Nomor Surat Pengantar',  ', '.join(nomor_surat_list) if nomor_surat_list else '-'),
-        ('Tanggal Surat Pengantar', ', '.join(tanggal_surat_list) if tanggal_surat_list else '-'),
-        ('Nama ILAP',             ilap.nama_ilap if ilap else '-'),
-        ('Jenis Data',            'Terlampir'),
-        ('Periode Data',          ', '.join(periode_list) if periode_list else '-'),
-        ('Bentuk Data',           ', '.join(bentuk_data_list) if bentuk_data_list else '-'),
-        ('Tanggal Terima DIP',    tgl_terima_dip),
-        ('Cara Penyampaian',      ', '.join(cara_penyampaian_list) if cara_penyampaian_list else '-'),
-        ('Nama PIC P3DE',         p3de_name),
-    ]
-    table_fields = doc_tanda.add_table(rows=0, cols=2)
-    table_fields.style = 'Table Grid'
-    for key, value in fields:
-        row = table_fields.add_row().cells
-        row[0].text = str(key)
-        row[1].text = str(value)
+    # Build variable dictionary for template filling
+    # These placeholders match the ones defined in the templates
+    template_variables = {
+        '{{nomor_tiket}}': nomor_tanda_terima,
+        '{{nomor_tanda_terima}}': nomor_tanda_terima,
+        '{{diterima_dari}}': diterima_dari,
+        '{{nama_kantor}}': diterima_dari,
+        '{{nomor_surat_pengantar}}': ', '.join(nomor_surat_list) if nomor_surat_list else '-',
+        '{{tanggal_surat_pengantar}}': ', '.join(tanggal_surat_list) if tanggal_surat_list else '-',
+        '{{tanggal_penerimaan}}': ', '.join(tanggal_surat_list) if tanggal_surat_list else '-',
+        '{{nama_ilap}}': ilap.nama_ilap if ilap else '-',
+        '{{jenis_data}}': 'Terlampir',
+        '{{periode_data}}': ', '.join(periode_list) if periode_list else '-',
+        '{{bentuk_data}}': ', '.join(bentuk_data_list) if bentuk_data_list else '-',
+        '{{tanggal_terima_dip}}': tgl_terima_dip,
+        '{{cara_penyampaian}}': ', '.join(cara_penyampaian_list) if cara_penyampaian_list else '-',
+        '{{nama_pic_p3de}}': p3de_name,
+        '{{nama_pic}}': p3de_name,
+        '{{email_pic}}': '-',
+        '{{telepon_pic}}': '-',
+        '{{nama_tabel}}': 'Terlampir',
+        '{{jumlah_record}}': '-',
+        '{{ukuran_file}}': '-',
+    }
 
-    # ------------------------------------------------------------------ #
-    # DOC 2 & 3 — Lampiran Tanda Terima / Register Data (shared rows)    #
-    # ------------------------------------------------------------------ #
-    lampiran_headers = ['Nama ILAP', 'Jenis Data', 'Periode Data Tahun', 'Baris Diterima', 'Dasar Hukum']
-    lampiran_rows = []
-    for t in tiket_rows:
-        sub = t.id_periode_data.id_sub_jenis_data_ilap if t.id_periode_data else None
-        ilap_obj = sub.id_ilap if sub else None
-        dasar_hukum_list = dasar_hukum_map.get(sub.id, []) if sub else []
-        lampiran_rows.append([
-            f"{ilap_obj.id_ilap} - {ilap_obj.nama_ilap}" if ilap_obj else '-',
-            f"{sub.id_sub_jenis_data} - {sub.nama_sub_jenis_data}" if sub else '-',
-            _format_periode_tiket(t),
-            str(t.baris_diterima if t.baris_diterima is not None else '-'),
-            ', '.join(dasar_hukum_list) if dasar_hukum_list else '-',
-        ])
-
-    doc_lampiran = _build_table_doc('Lampiran Tanda Terima', lampiran_headers, lampiran_rows)
-    doc_register = _build_table_doc('Register Data', lampiran_headers, lampiran_rows)
-
-    # ------------------------------------------------------------------ #
-    # Select document based on doc_type param and return response         #
-    # ------------------------------------------------------------------ #
+    # DOC Type Selection and Template Processing
     now_ts = timezone.now().strftime('%Y%m%d_%H%M%S_%f')
     nomor_safe = _safe_filename_part(nomor_tanda_terima)
     doc_type = request.GET.get('doc_type', 'tanda_terima')
 
+    # Determine region type (Regional or Nasional/Internasional)
+    region_type = 'regional'
+    if ilap and ilap.id_kategori_wilayah:
+        kategori_wilayah_desc = ilap.id_kategori_wilayah.deskripsi.lower()
+        if 'regional' not in kategori_wilayah_desc:
+            region_type = 'nasional_internasional'
+    
+    # Map doc_type to template jenis_dokumen based on region type
+    doc_type_map = {
+        'tanda_terima': f'tanda_terima_{region_type}',
+        'lampiran': f'lampiran_tanda_terima_{region_type}',
+        'register': 'register_penerimaan_data',
+        'pkdi_lengkap': f'surat_pkdi_{region_type}_lengkap',
+        'pkdi_sebagian': f'surat_pkdi_{region_type}_sebagian',
+        'klarifikasi': 'surat_klarifikasi',
+    }
+    template_jenis = doc_type_map.get(doc_type, f'tanda_terima_{region_type}')
+
+    # Try to find an active template for this document type
+    template = DocxTemplate.objects.filter(
+        jenis_dokumen=template_jenis,
+        active=True
+    ).first()
+
+    if template and template.file_template:
+        # Use template-based document generation
+        try:
+            # Build row_data for document types that contain a repeating table
+            # Each dict maps to {{row.field_name}} placeholders in the template
+            row_data = None
+            if doc_type in ('lampiran', 'register'):
+                row_data = []
+                nomor_counter = 1
+                for t in tiket_rows:
+                    sub = t.id_periode_data.id_sub_jenis_data_ilap if t.id_periode_data else None
+                    ilap_obj = sub.id_ilap if sub else None
+                    kanwil_obj = ilap_obj.id_kpp.id_kanwil if ilap_obj and ilap_obj.id_kpp else None
+                    dasar_hukum_list = dasar_hukum_map.get(sub.id, []) if sub else []
+                    
+                    # Determine status data based on status_penelitian
+                    status_data = '-'
+                    baris_lengkap = '-'
+                    baris_tidak_lengkap = '-'
+                    if hasattr(t, 'status_penelitian'):
+                        if 'lengkap' in str(t.status_penelitian).lower():
+                            status_data = 'Lengkap'
+                            baris_lengkap = str(t.baris_diterima if t.baris_diterima is not None else '-')
+                        elif 'sebagian' in str(t.status_penelitian).lower():
+                            status_data = 'Lengkap Sebagian'
+                            baris_lengkap = str(t.baris_diterima if t.baris_diterima is not None else '-')
+                            baris_tidak_lengkap = str((t.baris_diterima or 0) - (t.baris_diterima or 0) if t.baris_diterima else '-')
+                        elif 'tidak' in str(t.status_penelitian).lower():
+                            status_data = 'Tidak Lengkap'
+                            baris_tidak_lengkap = str(t.baris_diterima if t.baris_diterima is not None else '-')
+                    
+                    row_data.append({
+                        'nomor': str(nomor_counter),
+                        'nama_kanwil': kanwil_obj.nama_kanwil if kanwil_obj else '-',
+                        'nama_ilap': f"{ilap_obj.id_ilap} - {ilap_obj.nama_ilap}" if ilap_obj else '-',
+                        'jenis_data': f"{sub.id_sub_jenis_data} - {sub.nama_sub_jenis_data}" if sub else '-',
+                        'periode_tahun': _format_periode_tiket(t),
+                        'status_data': status_data,
+                        'baris_diterima': str(t.baris_diterima if t.baris_diterima is not None else '-'),
+                        'dasar_hukum': ', '.join(dasar_hukum_list) if dasar_hukum_list else '-',
+                        'nomor_tiket': nomor_tanda_terima,
+                        'baris_lengkap': baris_lengkap,
+                        'baris_tidak_lengkap': baris_tidak_lengkap,
+                    })
+                    nomor_counter += 1
+
+            # Open the template file using FileField's open method for better compatibility
+            doc_buffer = fill_template_with_data(template.file_template.open('rb'), template_variables, row_data=row_data)
+            
+            if doc_type == 'lampiran':
+                filename = f'lampiran_tanda_terima_{nomor_safe}_{now_ts}.docx'
+            elif doc_type == 'register':
+                filename = f'register_data_{nomor_safe}_{now_ts}.docx'
+            elif doc_type == 'pkdi_lengkap':
+                filename = f'surat_pkdi_lengkap_{nomor_safe}_{now_ts}.docx'
+            elif doc_type == 'pkdi_sebagian':
+                filename = f'surat_pkdi_lengkap_sebagian_{nomor_safe}_{now_ts}.docx'
+            elif doc_type == 'klarifikasi':
+                filename = f'surat_klarifikasi_{nomor_safe}_{now_ts}.docx'
+            else:
+                filename = f'tanda_terima_{nomor_safe}_{now_ts}.docx'
+            
+            response = HttpResponse(
+                doc_buffer.getvalue(),
+                content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            )
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+        except Exception as e:
+            # Fall back to default generation if template processing fails
+            pass
+
+    # Fallback: Generate default documents
     if doc_type == 'lampiran':
-        doc = doc_lampiran
-        filename = f"lampiran_tanda_terima_{nomor_safe}_{now_ts}.docx"
+        lampiran_headers = ['Nama ILAP', 'Jenis Data', 'Periode Data Tahun', 'Baris Diterima', 'Dasar Hukum']
+        lampiran_rows = []
+        for t in tiket_rows:
+            sub = t.id_periode_data.id_sub_jenis_data_ilap if t.id_periode_data else None
+            ilap_obj = sub.id_ilap if sub else None
+            dasar_hukum_list = dasar_hukum_map.get(sub.id, []) if sub else []
+            lampiran_rows.append([
+                f"{ilap_obj.id_ilap} - {ilap_obj.nama_ilap}" if ilap_obj else '-',
+                f"{sub.id_sub_jenis_data} - {sub.nama_sub_jenis_data}" if sub else '-',
+                _format_periode_tiket(t),
+                str(t.baris_diterima if t.baris_diterima is not None else '-'),
+                ', '.join(dasar_hukum_list) if dasar_hukum_list else '-',
+            ])
+        doc = _build_table_doc('Lampiran Tanda Terima', lampiran_headers, lampiran_rows)
+        filename = f'lampiran_tanda_terima_{nomor_safe}_{now_ts}.docx'
     elif doc_type == 'register':
-        doc = doc_register
-        filename = f"register_data_{nomor_safe}_{now_ts}.docx"
+        register_headers = ['Nama ILAP', 'Jenis Data', 'Periode Data Tahun', 'Baris Diterima', 'Dasar Hukum']
+        register_rows = []
+        for t in tiket_rows:
+            sub = t.id_periode_data.id_sub_jenis_data_ilap if t.id_periode_data else None
+            ilap_obj = sub.id_ilap if sub else None
+            dasar_hukum_list = dasar_hukum_map.get(sub.id, []) if sub else []
+            register_rows.append([
+                f"{ilap_obj.id_ilap} - {ilap_obj.nama_ilap}" if ilap_obj else '-',
+                f"{sub.id_sub_jenis_data} - {sub.nama_sub_jenis_data}" if sub else '-',
+                _format_periode_tiket(t),
+                str(t.baris_diterima if t.baris_diterima is not None else '-'),
+                ', '.join(dasar_hukum_list) if dasar_hukum_list else '-',
+            ])
+        doc = _build_table_doc('Register Data', register_headers, register_rows)
+        filename = f'register_data_{nomor_safe}_{now_ts}.docx'
+    elif doc_type == 'pkdi_lengkap':
+        doc_pkdi = Document()
+        doc_pkdi.add_heading('Surat PKDI Lengkap (Pernyataan Kesesuaian Data)', level=1)
+        fields = [
+            ('Nomor Tanda Terima', nomor_tanda_terima),
+            ('Diterima Dari', diterima_dari),
+            ('Nama ILAP', ilap.nama_ilap if ilap else '-'),
+            ('Jenis Data', 'Terlampir'),
+            ('Periode Data', ', '.join(periode_list) if periode_list else '-'),
+            ('Status Data', 'Lengkap - Semua variabel dan satuan data sesuai spesifikasi'),
+            ('Tanggal Terima DIP', tgl_terima_dip),
+        ]
+        table_fields = doc_pkdi.add_table(rows=0, cols=2)
+        table_fields.style = 'Table Grid'
+        for key, value in fields:
+            row = table_fields.add_row().cells
+            row[0].text = str(key)
+            row[1].text = str(value)
+        doc = doc_pkdi
+        filename = f'surat_pkdi_lengkap_{nomor_safe}_{now_ts}.docx'
+    elif doc_type == 'pkdi_sebagian':
+        doc_pkdi = Document()
+        doc_pkdi.add_heading('Surat PKDI Lengkap Sebagian (Pernyataan Kesesuaian Data)', level=1)
+        fields = [
+            ('Nomor Tanda Terima', nomor_tanda_terima),
+            ('Diterima Dari', diterima_dari),
+            ('Nama ILAP', ilap.nama_ilap if ilap else '-'),
+            ('Jenis Data', 'Terlampir'),
+            ('Periode Data', ', '.join(periode_list) if periode_list else '-'),
+            ('Status Data', 'Lengkap Sebagian - Sebagian variabel dan satuan data sesuai spesifikasi'),
+            ('Keterangan', 'Beberapa item masih perlu perbaikan dan akan dikomunikasikan lebih lanjut'),
+            ('Tanggal Terima DIP', tgl_terima_dip),
+        ]
+        table_fields = doc_pkdi.add_table(rows=0, cols=2)
+        table_fields.style = 'Table Grid'
+        for key, value in fields:
+            row = table_fields.add_row().cells
+            row[0].text = str(key)
+            row[1].text = str(value)
+        doc = doc_pkdi
+        filename = f'surat_pkdi_lengkap_sebagian_{nomor_safe}_{now_ts}.docx'
+    elif doc_type == 'klarifikasi':
+        doc_klr = Document()
+        doc_klr.add_heading('Surat Klarifikasi Data', level=1)
+        fields = [
+            ('Nomor Surat', ', '.join(nomor_surat_list) if nomor_surat_list else '-'),
+            ('Tanggal', ', '.join(tanggal_surat_list) if tanggal_surat_list else '-'),
+            ('Kepada', diterima_dari),
+            ('Nama ILAP', ilap.nama_ilap if ilap else '-'),
+            ('Nomor Tanda Terima', nomor_tanda_terima),
+            ('Status Data', 'Perlu Klarifikasi - Data belum lengkap'),
+            ('Petugas P3DE', p3de_name),
+            ('Keterangan', 'Mohon dapat dikonfirmasi dan perbaiki sesuai spesifikasi yang diminta'),
+        ]
+        table_fields = doc_klr.add_table(rows=0, cols=2)
+        table_fields.style = 'Table Grid'
+        for key, value in fields:
+            row = table_fields.add_row().cells
+            row[0].text = str(key)
+            row[1].text = str(value)
+        doc = doc_klr
+        filename = f'surat_klarifikasi_{nomor_safe}_{now_ts}.docx'
     else:
+        doc_tanda = Document()
+        doc_tanda.add_heading('Tanda Terima Data', level=1)
+        fields = [
+            ('Nomor Tanda Terima',    nomor_tanda_terima),
+            ('Diterima Dari',         diterima_dari),
+            ('Nomor Surat Pengantar',  ', '.join(nomor_surat_list) if nomor_surat_list else '-'),
+            ('Tanggal Surat Pengantar', ', '.join(tanggal_surat_list) if tanggal_surat_list else '-'),
+            ('Nama ILAP',             ilap.nama_ilap if ilap else '-'),
+            ('Jenis Data',            'Terlampir'),
+            ('Periode Data',          ', '.join(periode_list) if periode_list else '-'),
+            ('Bentuk Data',           ', '.join(bentuk_data_list) if bentuk_data_list else '-'),
+            ('Tanggal Terima DIP',    tgl_terima_dip),
+            ('Cara Penyampaian',      ', '.join(cara_penyampaian_list) if cara_penyampaian_list else '-'),
+            ('Nama PIC P3DE',         p3de_name),
+        ]
+        table_fields = doc_tanda.add_table(rows=0, cols=2)
+        table_fields.style = 'Table Grid'
+        for key, value in fields:
+            row = table_fields.add_row().cells
+            row[0].text = str(key)
+            row[1].text = str(value)
         doc = doc_tanda
-        filename = f"tanda_terima_{nomor_safe}_{now_ts}.docx"
+        filename = f'tanda_terima_{nomor_safe}_{now_ts}.docx'
 
     buffer = BytesIO()
     doc.save(buffer)

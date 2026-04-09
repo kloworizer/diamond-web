@@ -1224,6 +1224,86 @@ def unseed_durasi_jatuh_tempo(apps, schema_editor):
     DurasiJatuhTempo.objects.filter(id_sub_jenis_data__id_sub_jenis_data__in=id_sub_jenis_data_list).delete()
 
 
+def seed_docx_templates(apps, schema_editor):
+    """Seeds the DocxTemplate model with sample template metadata."""
+    DocxTemplate = apps.get_model("diamond_web", "DocxTemplate")
+    
+    templates = [
+        {
+            'nama_template': 'Tanda Terima ILAP Nasional/Internasional',
+            'deskripsi': 'Template tanda terima untuk ILAP nasional dan internasional dengan placeholder: {{nomor_tanda_terima}}, {{diterima_dari}}, {{nomor_surat_pengantar}}, {{tanggal_surat_pengantar}}, {{nama_ilap}}, {{jenis_data}}, {{periode_data}}, {{bentuk_data}}, {{cara_penyampaian}}, {{tanggal_terima_dip}}, {{nama_pic_p3de}}',
+            'jenis_dokumen': 'tanda_terima_nasional_internasional',
+        },
+        {
+            'nama_template': 'Tanda Terima ILAP Regional',
+            'deskripsi': 'Template tanda terima untuk ILAP regional dengan placeholder untuk nomor, tanggal, dan data pengirim',
+            'jenis_dokumen': 'tanda_terima_regional',
+        },
+        {
+            'nama_template': 'Lampiran Tanda Terima ILAP Nasional/Internasional',
+            'deskripsi': 'Lampiran rincian tanda terima untuk ILAP nasional dan internasional',
+            'jenis_dokumen': 'lampiran_tanda_terima_nasional_internasional',
+        },
+        {
+            'nama_template': 'Lampiran Tanda Terima ILAP Regional',
+            'deskripsi': 'Lampiran rincian tanda terima untuk ILAP regional',
+            'jenis_dokumen': 'lampiran_tanda_terima_regional',
+        },
+        {
+            'nama_template': 'Register Penerimaan Data',
+            'deskripsi': 'Register pencatatan penerimaan data P3DE',
+            'jenis_dokumen': 'register_penerimaan_data',
+        },
+        {
+            'nama_template': 'ND Pengantar ke PIDE',
+            'deskripsi': 'Naskah Dinas pengantar pengiriman data ke PIDE',
+            'jenis_dokumen': 'nd_pengantar_pide',
+        },
+        {
+            'nama_template': 'Surat Klarifikasi',
+            'deskripsi': 'Surat klarifikasi data untuk pengirim',
+            'jenis_dokumen': 'surat_klarifikasi',
+        },
+        {
+            'nama_template': 'Surat PKDI ILAP Nasional/Internasional Lengkap',
+            'deskripsi': 'Surat Pernyataan Kesesuaian Data ILAP Lengkap',
+            'jenis_dokumen': 'surat_pkdi_nasional_internasional_lengkap',
+        },
+        {
+            'nama_template': 'Surat PKDI ILAP Nasional/Internasional Lengkap Sebagian',
+            'deskripsi': 'Surat Pernyataan Kesesuaian Data ILAP Lengkap Sebagian',
+            'jenis_dokumen': 'surat_pkdi_nasional_internasional_sebagian',
+        },
+        {
+            'nama_template': 'Surat PKDI ILAP Regional Lengkap',
+            'deskripsi': 'Surat Pernyataan Kesesuaian Data ILAP Regional Lengkap',
+            'jenis_dokumen': 'surat_pkdi_regional_lengkap',
+        },
+        {
+            'nama_template': 'Surat PKDI ILAP Regional Lengkap Sebagian',
+            'deskripsi': 'Surat Pernyataan Kesesuaian Data ILAP Regional Lengkap Sebagian',
+            'jenis_dokumen': 'surat_pkdi_regional_sebagian',
+        },
+    ]
+    
+    for template in templates:
+        # Create DocxTemplate metadata entry if it doesn't exist
+        DocxTemplate.objects.get_or_create(
+            jenis_dokumen=template['jenis_dokumen'],
+            defaults={
+                'nama_template': template['nama_template'],
+                'deskripsi': template['deskripsi'],
+                'active': True,
+            }
+        )
+
+
+def unseed_docx_templates(apps, schema_editor):
+    """Reverse function for seed_docx_templates."""
+    DocxTemplate = apps.get_model("diamond_web", "DocxTemplate")
+    DocxTemplate.objects.all().delete()
+
+
 
 class Migration(migrations.Migration):
 
@@ -1252,4 +1332,5 @@ class Migration(migrations.Migration):
         migrations.RunPython(seed_users, reverse_code=unseed_users),
         migrations.RunPython(seed_pic, reverse_code=unseed_pic),
         migrations.RunPython(seed_durasi_jatuh_tempo, reverse_code=unseed_durasi_jatuh_tempo),
+        migrations.RunPython(seed_docx_templates, reverse_code=unseed_docx_templates),
     ]

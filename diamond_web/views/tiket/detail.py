@@ -23,7 +23,6 @@ from ...constants.tiket_status import (
     STATUS_SELESAI,
 )
 from ...constants.tiket_action_types import (
-    ACTION_BADGES,
     ROLE_BADGES,
     get_action_label,
     get_action_badge_class,

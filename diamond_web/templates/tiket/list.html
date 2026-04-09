@@ -34,6 +34,12 @@
                     <button type="reset" class="btn btn-secondary btn-sm w-100" id="btn-reset-filter"><i class="ri-refresh-line me-1"></i>Reset</button>
                 </div>
                 <div class="col-12">
+                    <label for="filter-status" class="form-label">Status Tiket</label>
+                    <select class="form-select form-select-sm" id="filter-status" name="status">
+                        <option value="">-- Semua --</option>
+                    </select>
+                </div>
+                <div class="col-12">
                     <label for="filter-nomor-tiket" class="form-label">Nomor Tiket</label>
                     <select class="form-select form-select-sm" id="filter-nomor-tiket" name="nomor_tiket">
                         <option value="">-- Semua --</option>
@@ -141,12 +147,6 @@
                         <option value="">-- Semua --</option>
                         <option value="Ya">Ya</option>
                         <option value="Tidak">Tidak</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label for="filter-status" class="form-label">Status Tiket</label>
-                    <select class="form-select form-select-sm" id="filter-status" name="status">
-                        <option value="">-- Semua --</option>
                     </select>
                 </div>
             </form>
@@ -257,6 +257,101 @@
             return hasInitialFilter;
         }
 
+        function getCurrentFilterValues() {
+            return {
+                tahun: $('#filter-tahun').val() || '',
+                kategori_ilap: $('#filter-kategori-ilap').val() || '',
+                ilap: $('#filter-ilap').val() || '',
+                jenis_data: $('#filter-jenis-data').val() || ''
+            };
+        }
+
+        function updateDynamicDropdowns() {
+            const filters = getCurrentFilterValues();
+            
+            $.ajax({
+                url: ajaxUrl,
+                type: 'GET',
+                data: Object.assign({ get_filter_options: '1' }, filters),
+                success: function (response) {
+                    if (!response.filter_options) return;
+                    const opts = response.filter_options;
+
+                    // Store currently selected values
+                    const selectedValues = {};
+                    const dropdownMap = {
+                        'nomor_tiket': '#filter-nomor-tiket',
+                        'tahun': '#filter-tahun',
+                        'periode': '#filter-periode',
+                        'pic_p3de': '#filter-pic-p3de',
+                        'pic_pide': '#filter-pic-pide',
+                        'pic_pmde': '#filter-pic-pmde',
+                        'kategori_ilap': '#filter-kategori-ilap',
+                        'ilap': '#filter-ilap',
+                        'jenis_data': '#filter-jenis-data',
+                        'sub_jenis_data': '#filter-sub-jenis-data',
+                        'kanwil': '#filter-kanwil',
+                        'kpp': '#filter-kpp',
+                        'kategori_wilayah': '#filter-kategori-wilayah',
+                        'jenis_tabel': '#filter-jenis-tabel',
+                        'dasar_hukum': '#filter-dasar-hukum',
+                        'periode_pengiriman': '#filter-periode-pengiriman',
+                        'periode_penerimaan': '#filter-periode-penerimaan',
+                        'status': '#filter-status'
+                    };
+
+                    Object.entries(dropdownMap).forEach(([key, selector]) => {
+                        selectedValues[selector] = $(selector).val();
+                    });
+
+                    // Update dropdowns (keep selected value if still valid, preserve periode separately)
+                    const updateDropdown = function(optKey, selector, keepSelected = true) {
+                        if (!opts[optKey]) return;
+                        
+                        const $select = $(selector);
+                        const oldValue = selectedValues[selector];
+                        
+                        // Remove all options except first one
+                        $select.find('option:not(:first)').remove();
+                        
+                        // Add new options
+                        opts[optKey].forEach(item => {
+                            $select.append(`<option value="${item.id}">${item.name}</option>`);
+                        });
+                        
+                        // Restore value if it still exists, otherwise clear
+                        if (keepSelected && oldValue && $select.find(`option[value="${oldValue}"]`).length > 0) {
+                            $select.val(oldValue);
+                        } else if (selector !== '#filter-tahun' && selector !== '#filter-kategori-ilap' && 
+                                   selector !== '#filter-ilap' && selector !== '#filter-jenis-data') {
+                            // Only clear dependent dropdowns, not main filter
+                            $select.val('');
+                        }
+                    };
+
+                    // Update all dropdowns dynamically
+                    updateDropdown('nomor_tiket', '#filter-nomor-tiket');
+                    updateDropdown('tahun', '#filter-tahun');
+                    updateDropdown('periode', '#filter-periode');
+                    updateDropdown('pic_p3de', '#filter-pic-p3de');
+                    updateDropdown('pic_pide', '#filter-pic-pide');
+                    updateDropdown('pic_pmde', '#filter-pic-pmde');
+                    updateDropdown('kategori_ilap', '#filter-kategori-ilap');
+                    updateDropdown('ilap', '#filter-ilap');
+                    updateDropdown('jenis_data', '#filter-jenis-data');
+                    updateDropdown('sub_jenis_data', '#filter-sub-jenis-data');
+                    updateDropdown('kanwil', '#filter-kanwil');
+                    updateDropdown('kpp', '#filter-kpp');
+                    updateDropdown('kategori_wilayah', '#filter-kategori-wilayah');
+                    updateDropdown('jenis_tabel', '#filter-jenis-tabel');
+                    updateDropdown('dasar_hukum', '#filter-dasar-hukum');
+                    updateDropdown('periode_pengiriman', '#filter-periode-pengiriman');
+                    updateDropdown('periode_penerimaan', '#filter-periode-penerimaan');
+                    updateDropdown('status', '#filter-status');
+                }
+            });
+        }
+
         $(document).ready(function () {
             table = $('#tiket-table').DataTable({
                 serverSide: true,
@@ -320,12 +415,16 @@
 
             // Filter dropdowns — dynamic, reload on change
             $('#filter-form select').on('change', function () {
+                // Update dropdown options dynamically based on filter selections
+                updateDynamicDropdowns();
+                // Reload table with new filters
                 table.ajax.reload();
             });
 
             // Reset button — clear form then reload
             $('#btn-reset-filter').on('click', function () {
                 setTimeout(function () {
+                    updateDynamicDropdowns();
                     table.ajax.reload();
                 }, 50);
             });
@@ -365,6 +464,7 @@
                     if (!initialFiltersApplied) {
                         initialFiltersApplied = true;
                         if (applyInitialFiltersFromUrl()) {
+                            updateDynamicDropdowns();
                             table.ajax.reload();
                         }
                     }
@@ -386,6 +486,33 @@
                 document.body.removeChild(a);
             }, i * 700);
         });
+    }
+
+    function downloadPKDILengkap(pk) {
+        const a = document.createElement('a');
+        a.href = `/tiket/${pk}/documents/download/?doc_type=pkdi_lengkap`;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    function downloadPKDILengkapSebagian(pk) {
+        const a = document.createElement('a');
+        a.href = `/tiket/${pk}/documents/download/?doc_type=pkdi_sebagian`;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    function downloadKlarifikasi(pk) {
+        const a = document.createElement('a');
+        a.href = `/tiket/${pk}/documents/download/?doc_type=klarifikasi`;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     }
 </script>
 {% endblock %}

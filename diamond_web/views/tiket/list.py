@@ -1,11 +1,10 @@
 """Tiket list view - shared across all workflow steps."""
 
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.decorators.http import require_GET
 from django.views.generic import TemplateView
-from django.contrib.auth.mixins import UserPassesTestMixin
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
@@ -28,6 +27,7 @@ from ...models.detil_tanda_terima import DetilTandaTerima
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ..mixins import can_access_tiket_list
 from ...constants.tiket_status import STATUS_LABELS
+from .documents import _is_p3de_user, _format_periode_tiket
 
 
 class TiketListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
@@ -54,9 +54,6 @@ class TiketListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         assignment, False otherwise.
         """
         return can_access_tiket_list(self.request.user)
-
-
-from .documents import _format_periode_tiket, tiket_documents_download  # noqa: F401
 
 
 @login_required
@@ -112,9 +109,32 @@ def tiket_data(request):
 
     # Return dynamic filter options for dropdowns
     if request.GET.get('get_filter_options'):
+        # Get current filter values to apply for dynamic filtering
+        filter_tahun = request.GET.get('tahun', '').strip()
+        filter_kategori_ilap = request.GET.get('kategori_ilap', '').strip()
+        filter_ilap = request.GET.get('ilap', '').strip()
+        filter_jenis_data = request.GET.get('jenis_data', '').strip()
+        
+        # Build a filtered queryset based on current selections
+        # For getting dropdown options, we need different filtering strategies:
+        # - Only apply tahun and kategori_ilap to narrow down
+        # - Don't apply ilap and jenis_data filters to prevent hiding other valid options
+        filtered_qs = base_qs
+        
+        if filter_tahun:
+            try:
+                filtered_qs = filtered_qs.filter(tahun=int(filter_tahun))
+            except ValueError:
+                pass
+        
+        if filter_kategori_ilap:
+            filtered_qs = filtered_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id=filter_kategori_ilap
+            )
+        
         nomor_options = []
         nomor_seen = set()
-        for n in base_qs.order_by('id').values_list('nomor_tiket', flat=True):
+        for n in filtered_qs.order_by('id').values_list('nomor_tiket', flat=True):
             if not n or n in nomor_seen:
                 continue
             nomor_seen.add(n)
@@ -122,7 +142,7 @@ def tiket_data(request):
 
         tahun_options = []
         tahun_seen = set()
-        for y in PeriodeJenisData.objects.order_by('id').values_list('start_date__year', flat=True):
+        for y in base_qs.values_list('tahun', flat=True).distinct().order_by('tahun'):
             if y is None:
                 continue
             y_str = str(y)
@@ -131,34 +151,69 @@ def tiket_data(request):
             tahun_seen.add(y_str)
             tahun_options.append({'id': y_str, 'name': y_str})
 
+        # Get available periode values from filtered data
+        periode_values = filtered_qs.values_list('periode', flat=True).distinct().order_by('periode')
         periode_options = []
         bulan_names = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
-        for idx, nama in enumerate(bulan_names, start=1):
-            periode_options.append({'id': f'bulanan:{idx}', 'name': nama})
+        
+        # Show available periode values from the actual data
+        for period_val in periode_values:
+            if period_val and 1 <= period_val <= 12:
+                # Assume bulanan for 1-12 range
+                idx = int(period_val)
+                periode_options.append({'id': f'bulanan:{idx}', 'name': bulan_names[idx - 1]})
+        
+        # Also show common periode options even if not in data
         for idx in range(1, 5):
             periode_options.append({'id': f'triwulanan:{idx}', 'name': f'Triwulan {idx}'})
         for idx in range(1, 3):
             periode_options.append({'id': f'semester:{idx}', 'name': f'Semester {idx}'})
         periode_options.append({'id': 'tahunan:1', 'name': 'Tahunan'})
+        
+        # Remove duplicates while preserving order
+        periode_dict = {}
+        for opt in periode_options:
+            if opt['id'] not in periode_dict:
+                periode_dict[opt['id']] = opt
+        periode_options = list(periode_dict.values())
 
-        periode_pengiriman_options = [
-            {'id': p.periode_penyampaian, 'name': p.periode_penyampaian}
-            for p in PeriodePengiriman.objects.all().order_by('id')
-            if p.periode_penyampaian
-        ]
+        # Get related items from filtered queryset for dynamic dropdowns
+        periode_pengiriman_qs = filtered_qs.values_list(
+            'id_periode_data__id_periode_pengiriman__periode_penyampaian',
+            flat=True
+        ).distinct()
+        periode_pengiriman_options = []
+        seen = set()
+        for val in periode_pengiriman_qs:
+            if val and val not in seen:
+                seen.add(val)
+                periode_pengiriman_options.append({'id': val, 'name': val})
+        
+        periode_penerimaan_qs = filtered_qs.values_list(
+            'id_periode_data__id_periode_pengiriman__periode_penerimaan',
+            flat=True
+        ).distinct()
         periode_penerimaan_options = []
         periode_penerimaan_seen = set()
-        for p in PeriodePengiriman.objects.all().order_by('id'):
-            val = (p.periode_penerimaan or '').strip()
-            if not val or val in periode_penerimaan_seen:
-                continue
-            periode_penerimaan_seen.add(val)
-            periode_penerimaan_options.append({'id': val, 'name': val})
+        for val in periode_penerimaan_qs:
+            val = (val or '').strip()
+            if val and val not in periode_penerimaan_seen:
+                periode_penerimaan_seen.add(val)
+                periode_penerimaan_options.append({'id': val, 'name': val})
 
-        def _pic_options(tipe):
+        def _pic_options_filtered(tipe, qs):
+            """Get PIC options filtered by the current queryset"""
+            user_ids = qs.filter(
+                tiketpic__role=TiketPIC.Role.P3DE if tipe == PIC.TipePIC.P3DE else 
+                TiketPIC.Role.PIDE if tipe == PIC.TipePIC.PIDE else 
+                TiketPIC.Role.PMDE,
+                tiketpic__active=True
+            ).values_list('tiketpic__id_user_id', flat=True).distinct()
+            
             vals = PIC.objects.filter(
                 tipe=tipe,
-                end_date__isnull=True
+                end_date__isnull=True,
+                id_user_id__in=user_ids if user_ids else PIC.objects.none()
             ).select_related('id_user').order_by('id_user__first_name', 'id_user__last_name', 'id_user__username')
             seen_users = set()
             data = []
@@ -172,51 +227,170 @@ def tiket_data(request):
                 data.append({'id': str(user.id), 'name': label})
             return data
 
-        pic_p3de_options = _pic_options(PIC.TipePIC.P3DE)
-        pic_pide_options = _pic_options(PIC.TipePIC.PIDE)
-        pic_pmde_options = _pic_options(PIC.TipePIC.PMDE)
+        pic_p3de_options = _pic_options_filtered(PIC.TipePIC.P3DE, filtered_qs)
+        pic_pide_options = _pic_options_filtered(PIC.TipePIC.PIDE, filtered_qs)
+        pic_pmde_options = _pic_options_filtered(PIC.TipePIC.PMDE, filtered_qs)
 
-        kategori_ilap_options = [
-            {'id': str(o.id), 'name': f"{o.id_kategori} - {o.nama_kategori}"}
-            for o in KategoriILAP.objects.all().order_by('id')
-        ]
-        ilap_options = [
-            {'id': str(o.id), 'name': f"{o.id_ilap} - {o.nama_ilap}"}
-            for o in ILAP.objects.all().order_by('id')
-        ]
+        # Get ILAP categories filtered by year if selected
+        kategori_ilap_qs = filtered_qs.values_list(
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id',
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id_kategori',
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__nama_kategori'
+        ).distinct()
+        kategori_ilap_options = []
+        seen = set()
+        for cat_id, cat_code, cat_name in kategori_ilap_qs:
+            if cat_id and cat_id not in seen:
+                seen.add(cat_id)
+                kategori_ilap_options.append({
+                    'id': str(cat_id), 
+                    'name': f"{cat_code} - {cat_name}"
+                })
+        
+        # Get ILAPs - filter by tahun and kategori_ilap only (not by selected ilap)
+        ilap_filter_qs = base_qs
+        if filter_tahun:
+            try:
+                ilap_filter_qs = ilap_filter_qs.filter(tahun=int(filter_tahun))
+            except ValueError:
+                pass
+        if filter_kategori_ilap:
+            ilap_filter_qs = ilap_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id=filter_kategori_ilap
+            )
+        
+        ilap_qs = ilap_filter_qs.values_list(
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id',
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_ilap',
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__nama_ilap'
+        ).distinct()
+        ilap_options = []
+        seen = set()
+        for ilap_id, ilap_code, ilap_name in ilap_qs:
+            if ilap_id and ilap_id not in seen:
+                seen.add(ilap_id)
+                ilap_options.append({
+                    'id': str(ilap_id),
+                    'name': f"{ilap_code} - {ilap_name}"
+                })
 
+        # Get Jenis Data and Sub Jenis Data - filter by tahun, kategori_ilap, and ilap only (not by jenis_data)
+        jenis_filter_qs = base_qs
+        if filter_tahun:
+            try:
+                jenis_filter_qs = jenis_filter_qs.filter(tahun=int(filter_tahun))
+            except ValueError:
+                pass
+        if filter_kategori_ilap:
+            jenis_filter_qs = jenis_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id=filter_kategori_ilap
+            )
+        if filter_ilap:
+            jenis_filter_qs = jenis_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id=filter_ilap
+            )
+        
         jenis_options = []
         jenis_seen = set()
         sub_jenis_options = []
         sub_jenis_seen = set()
-        for o in JenisDataILAP.objects.all().order_by('id'):
-            if o.id_jenis_data and o.id_jenis_data not in jenis_seen:
-                jenis_seen.add(o.id_jenis_data)
-                jenis_options.append({'id': o.id_jenis_data, 'name': f"{o.id_jenis_data} - {o.nama_jenis_data}"})
-            if o.id_sub_jenis_data and o.id_sub_jenis_data not in sub_jenis_seen:
-                sub_jenis_seen.add(o.id_sub_jenis_data)
-                sub_jenis_options.append({'id': o.id_sub_jenis_data, 'name': f"{o.id_sub_jenis_data} - {o.nama_sub_jenis_data}"})
+        
+        jenis_qs = jenis_filter_qs.values_list(
+            'id_periode_data__id_sub_jenis_data_ilap__id_jenis_data',
+            'id_periode_data__id_sub_jenis_data_ilap__nama_jenis_data'
+        ).distinct()
+        
+        for jenis_id, jenis_name in jenis_qs:
+            if jenis_id and jenis_id not in jenis_seen:
+                jenis_seen.add(jenis_id)
+                jenis_options.append({'id': jenis_id, 'name': f"{jenis_id} - {jenis_name}"})
+        
+        sub_jenis_qs = jenis_filter_qs.values_list(
+            'id_periode_data__id_sub_jenis_data_ilap__id_sub_jenis_data',
+            'id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data'
+        ).distinct()
+        
+        for sub_jenis_id, sub_jenis_name in sub_jenis_qs:
+            if sub_jenis_id and sub_jenis_id not in sub_jenis_seen:
+                sub_jenis_seen.add(sub_jenis_id)
+                sub_jenis_options.append({'id': sub_jenis_id, 'name': f"{sub_jenis_id} - {sub_jenis_name}"})
 
-        kanwil_options = [
-            {'id': str(o.id), 'name': f"{o.kode_kanwil} - {o.nama_kanwil}"}
-            for o in Kanwil.objects.all().order_by('kode_kanwil')
-        ]
-        kpp_options = [
-            {'id': str(o.id), 'name': f"{o.kode_kpp} - {o.nama_kpp}"}
-            for o in KPP.objects.all().order_by('kode_kpp')
-        ]
-        kategori_wilayah_options = [
-            {'id': str(o.id), 'name': o.deskripsi}
-            for o in KategoriWilayah.objects.all().order_by('id')
-        ]
-        jenis_tabel_options = [
-            {'id': str(o.id), 'name': o.deskripsi}
-            for o in JenisTabel.objects.all().order_by('id')
-        ]
-        dasar_hukum_options = [
-            {'id': str(o.id), 'name': o.deskripsi}
-            for o in DasarHukum.objects.all().order_by('id')
-        ]
+        # Get Kanwil from filtered queryset
+        kanwil_qs = filtered_qs.values_list(
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__id',
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__kode_kanwil',
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__nama_kanwil'
+        ).distinct()
+        kanwil_options = []
+        seen = set()
+        for kanwil_id, kanwil_code, kanwil_name in kanwil_qs:
+            if kanwil_id and kanwil_id not in seen:
+                seen.add(kanwil_id)
+                kanwil_options.append({
+                    'id': str(kanwil_id),
+                    'name': f"{kanwil_code} - {kanwil_name}"
+                })
+
+        # Get KPP from filtered queryset
+        kpp_qs = filtered_qs.values_list(
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id',
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__kode_kpp',
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__nama_kpp'
+        ).distinct()
+        kpp_options = []
+        seen = set()
+        for kpp_id, kpp_code, kpp_name in kpp_qs:
+            if kpp_id and kpp_id not in seen:
+                seen.add(kpp_id)
+                kpp_options.append({
+                    'id': str(kpp_id),
+                    'name': f"{kpp_code} - {kpp_name}"
+                })
+
+        # Get Kategori Wilayah from filtered queryset
+        kategori_wilayah_qs = filtered_qs.values_list(
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah__id',
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah__deskripsi'
+        ).distinct()
+        kategori_wilayah_options = []
+        seen = set()
+        for wilayah_id, wilayah_desc in kategori_wilayah_qs:
+            if wilayah_id and wilayah_id not in seen:
+                seen.add(wilayah_id)
+                kategori_wilayah_options.append({
+                    'id': str(wilayah_id),
+                    'name': wilayah_desc
+                })
+
+        # Get Jenis Tabel from filtered queryset
+        jenis_tabel_qs = filtered_qs.values_list(
+            'id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel__id',
+            'id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel__deskripsi'
+        ).distinct()
+        jenis_tabel_options = []
+        seen = set()
+        for tabel_id, tabel_desc in jenis_tabel_qs:
+            if tabel_id and tabel_id not in seen:
+                seen.add(tabel_id)
+                jenis_tabel_options.append({
+                    'id': str(tabel_id),
+                    'name': tabel_desc
+                })
+
+        # Get Dasar Hukum from filtered queryset
+        dasar_hukum_qs = filtered_qs.values_list(
+            'id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata__id_klasifikasi_tabel__id',
+            'id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata__id_klasifikasi_tabel__deskripsi'
+        ).distinct()
+        dasar_hukum_options = []
+        seen = set()
+        for hukum_id, hukum_desc in dasar_hukum_qs:
+            if hukum_id and hukum_id not in seen:
+                seen.add(hukum_id)
+                dasar_hukum_options.append({
+                    'id': str(hukum_id),
+                    'name': hukum_desc
+                })
 
         status_options = [
             {'id': str(sid), 'name': label}
@@ -418,11 +592,41 @@ def tiket_data(request):
         periode_formatted = _format_periode_tiket(obj)
 
         detail_btn = f"<a href='{reverse('tiket_detail', args=[obj.pk])}' class='btn btn-sm btn-info' title='View'><i class='ri-eye-line'></i></a>"
-        if obj.tanda_terima:
-            download_btn = f"<button type='button' onclick='downloadTiketDocs({obj.pk})' class='btn btn-sm btn-success' title='Generate Dokumen'><i class='ri-file-pdf-line'></i></button>"
+        
+        # Only show download buttons to P3DE users
+        if _is_p3de_user(request.user):
+            buttons_html = ""
+            
+            # Tanda Terima + Lampiran + Register button
+            # Show if: tanda_terima exists AND tiket is not dibatalkan (status != 7)
+            if obj.tanda_terima and obj.status_tiket != 7:  # 7 = Dibatalkan
+                buttons_html += f"<button type='button' onclick='downloadTiketDocs({obj.pk})' class='btn btn-sm btn-success' title='Generate Tanda Terima + Lampiran + Register'><i class='ri-file-pdf-line me-1'></i>Dokumen</button>"
+            elif obj.tanda_terima:
+                buttons_html += "<button type='button' class='btn btn-sm btn-success' title='Tiket dibatalkan' disabled><i class='ri-file-pdf-line me-1'></i>Dokumen</button>"
+            else:
+                buttons_html += "<button type='button' class='btn btn-sm btn-success' title='Tanda terima belum dibuat' disabled><i class='ri-file-pdf-line me-1'></i>Dokumen</button>"
+            
+            # PKDI or Klarifikasi buttons based on status penelitian
+            if obj.id_status_penelitian:
+                status_deskripsi = obj.id_status_penelitian.deskripsi
+                
+                # Show PKDI Lengkap button for "Lengkap"
+                if status_deskripsi == 'Lengkap':
+                    buttons_html += f"<button type='button' onclick='downloadPKDILengkap({obj.pk})' class='btn btn-sm btn-primary' title='Download PKDI Lengkap'><i class='ri-file-word-line me-1'></i>PKDI Lengkap</button>"
+                
+                # Show PKDI Lengkap Sebagian button for "Lengkap Sebagian"
+                elif status_deskripsi == 'Lengkap Sebagian':
+                    buttons_html += f"<button type='button' onclick='downloadPKDILengkapSebagian({obj.pk})' class='btn btn-sm btn-info' title='Download PKDI Lengkap Sebagian'><i class='ri-file-word-line me-1'></i>PKDI Sebagian</button>"
+                
+                # Show Klarifikasi button for "Tidak Lengkap"
+                elif status_deskripsi == 'Tidak Lengkap':
+                    buttons_html += f"<button type='button' onclick='downloadKlarifikasi({obj.pk})' class='btn btn-sm btn-warning' title='Download Surat Klarifikasi'><i class='ri-mail-line me-1'></i>Klarifikasi</button>"
+            
+            download_btn = buttons_html
         else:
-            download_btn = "<button type='button' class='btn btn-sm btn-success' title='Tanda terima belum dibuat' disabled><i class='ri-file-pdf-line'></i></button>"
-        actions_html = f"<div class='btn-group btn-group-sm'>{detail_btn}{download_btn}</div>"
+            download_btn = ""  # Hide button entirely for non-P3DE users
+        
+        actions_html = f"<div class='btn-group btn-group-sm' role='group'>{detail_btn}{download_btn}</div>"
 
         data.append({
             'id': obj.id,

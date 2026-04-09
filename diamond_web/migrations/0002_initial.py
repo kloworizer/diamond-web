@@ -477,4 +477,23 @@ class Migration(migrations.Migration):
             name='detiltandaterima',
             unique_together={('id_tanda_terima', 'id_tiket')},
         ),
+        migrations.CreateModel(
+            name='DocxTemplate',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('nama_template', models.CharField(help_text='Nama template dokumen', max_length=255)),
+                ('deskripsi', models.TextField(blank=True, help_text='Deskripsi lengkap template dokumen', null=True)),
+                ('jenis_dokumen', models.CharField(choices=[('tanda_terima_nasional_internasional', 'Tanda Terima ILAP Nasional/Internasional'), ('tanda_terima_regional', 'Tanda Terima ILAP Regional'), ('lampiran_tanda_terima_nasional_internasional', 'Lampiran Tanda Terima ILAP Nasional/Internasional'), ('lampiran_tanda_terima_regional', 'Lampiran Tanda Terima ILAP Regional'), ('register_penerimaan_data', 'Register Penerimaan Data'), ('nd_pengantar_pide', 'ND Pengantar ke PIDE'), ('surat_klarifikasi', 'Surat Klarifikasi'), ('surat_pkdi_nasional_internasional_lengkap', 'Surat PKDI ILAP Nasional/Internasional Lengkap'), ('surat_pkdi_nasional_internasional_sebagian', 'Surat PKDI ILAP Nasional/Internasional Lengkap Sebagian'), ('surat_pkdi_regional_lengkap', 'Surat PKDI ILAP Regional Lengkap'), ('surat_pkdi_regional_sebagian', 'Surat PKDI ILAP Regional Lengkap Sebagian')], help_text='Jenis dokumen yang akan dihasilkan', max_length=50)),
+                ('file_template', models.FileField(help_text='Upload file template DOCX. Gunakan placeholder {{variable_name}} untuk variabel yang akan diisi.', upload_to='docx_templates/%Y%m%d/')),
+                ('active', models.BooleanField(default=True, help_text='Aktifkan/nonaktifkan template ini')),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
+            ],
+            options={
+                'verbose_name': 'DOCX Template',
+                'verbose_name_plural': 'DOCX Templates',
+                'db_table': 'docx_template',
+                'ordering': ['-updated_at'],
+            },
+        ),
     ]

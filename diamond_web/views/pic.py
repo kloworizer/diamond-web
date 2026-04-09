@@ -11,18 +11,25 @@ from ..models.pic import PIC
 from ..forms.pic import PICForm
 from ..constants.tiket_action_types import PICActionType
 from ..constants.tiket_status import STATUS_DIBATALKAN
-from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, AdminPIDERequiredMixin, AdminPMDERequiredMixin, SafeDeleteMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, AdminPIDERequiredMixin, AdminPMDERequiredMixin, AdminAnyRequiredMixin, SafeDeleteMixin
 
 
-class PICListView(LoginRequiredMixin, TemplateView):
+class PICListView(LoginRequiredMixin, AdminAnyRequiredMixin, TemplateView):
     """List view for `PIC` entries of a specific `tipe`.
 
+    Requires membership in any admin group (admin, admin_p3de, admin_pide, admin_pmde).
     Subclasses must set the `tipe` attribute to one of `PIC.TipePIC` values
-    (e.g. `PIC.TipePIC.P3DE`). Renders `pic/list.html` by default and
+    (e.g. `PIC.TipePIC.P3DE`) and can further restrict with specific role mixins
+    (e.g., AdminP3DERequiredMixin). Renders `pic/list.html` by default and
     provides the following context variables for templates:
 
     - ``tipe``: raw stored `tipe` value
     - ``tipe_display``: human-readable label for the `tipe`
+
+    Access Control:
+    - Requires @login_required (LoginRequiredMixin)
+    - Requires admin role (AdminAnyRequiredMixin) - blocks regular users from accessing base view
+    - Subclasses further restrict with specific admin roles (e.g., AdminP3DERequiredMixin)
 
     Behavior:
     - When redirected after a delete operation the view reads `deleted` and
@@ -57,8 +64,11 @@ class PICListView(LoginRequiredMixin, TemplateView):
         return super().get(request, *args, **kwargs)
 
 
-class PICCreateView(LoginRequiredMixin, AjaxFormMixin, CreateView):
+class PICCreateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, CreateView):
     """Create view for `PIC` assignments.
+
+    Requires membership in any admin group (admin, admin_p3de, admin_pide, admin_pmde).
+    Subclasses can further restrict with specific role mixins (e.g., AdminP3DERequiredMixin).
 
     Presents a form to create a `PIC` record. On successful save this view
     also propagates the assignment to active `Tiket` objects that reference
@@ -73,6 +83,11 @@ class PICCreateView(LoginRequiredMixin, AjaxFormMixin, CreateView):
         and a Django success message.
     - The form receives a ``tipe`` kwarg to restrict form choices where
         applicable.
+
+    Access Control:
+    - Requires @login_required (LoginRequiredMixin)
+    - Requires admin role (AdminAnyRequiredMixin) - blocks regular users from accessing base view
+    - Subclasses further restrict with specific admin roles (e.g., AdminP3DERequiredMixin)
     """
     model = PIC
     form_class = PICForm
@@ -228,8 +243,11 @@ class PICCreateView(LoginRequiredMixin, AjaxFormMixin, CreateView):
         return response
 
 
-class PICUpdateView(LoginRequiredMixin, AjaxFormMixin, UpdateView):
+class PICUpdateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, UpdateView):
     """Update view for `PIC` entries.
+
+    Requires membership in any admin group (admin, admin_p3de, admin_pide, admin_pmde).
+    Subclasses can further restrict with specific role mixins (e.g., AdminP3DERequiredMixin).
 
     When the `end_date` field is set on a `PIC` (transition from None ->
     date) this view will deactivate related `TiketPIC` records (for
@@ -239,6 +257,11 @@ class PICUpdateView(LoginRequiredMixin, AjaxFormMixin, UpdateView):
     tickets and log the actions.
 
     The view preserves standard AJAX behavior through `AjaxFormMixin`.
+
+    Access Control:
+    - Requires @login_required (LoginRequiredMixin)
+    - Requires admin role (AdminAnyRequiredMixin) - blocks regular users from accessing base view
+    - Subclasses further restrict with specific admin roles (e.g., AdminP3DERequiredMixin)
     """
     model = PIC
     form_class = PICForm
@@ -419,8 +442,11 @@ class PICUpdateView(LoginRequiredMixin, AjaxFormMixin, UpdateView):
         return qs
 
 
-class PICDeleteView(SafeDeleteMixin, LoginRequiredMixin, DeleteView):
+class PICDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminAnyRequiredMixin, DeleteView):
     """Delete view for `PIC` entries and associated side-effects.
+
+    Requires membership in any admin group (admin, admin_p3de, admin_pide, admin_pmde).
+    Subclasses can further restrict with specific role mixins (e.g., AdminP3DERequiredMixin).
 
     Deleting a `PIC` will also find `TiketPIC` records for the same user,
     role and `id_sub_jenis_data_ilap` and delete them; a `TiketAction` log
@@ -430,6 +456,11 @@ class PICDeleteView(SafeDeleteMixin, LoginRequiredMixin, DeleteView):
     - AJAX clients receive a JSON payload with `success` and `redirect`.
     - Non-AJAX clients receive a JSON redirect as well and a Django
         success message is registered so the frontend can show a toast.
+
+    Access Control:
+    - Requires @login_required (LoginRequiredMixin)
+    - Requires admin role (AdminAnyRequiredMixin) - blocks regular users from accessing base view
+    - Subclasses further restrict with specific admin roles (e.g., AdminP3DERequiredMixin)
     """
     model = PIC
     template_name = 'pic/confirm_delete.html'
