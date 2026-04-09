@@ -85,10 +85,12 @@ def tanda_terima_data_data(request):
             qs = qs.filter(tanggal_tanda_terima__icontains=columns_search[1])
         if len(columns_search) > 2 and columns_search[2]:  # ILAP
             qs = qs.filter(id_ilap__nama_ilap__icontains=columns_search[2])
-        if len(columns_search) > 3 and columns_search[3]:  # Perekam
-            qs = qs.filter(id_perekam__username__icontains=columns_search[3])
-        if len(columns_search) > 4 and columns_search[4]:  # Status
-            status_value = columns_search[4].strip().lower()
+        if len(columns_search) > 3 and columns_search[3]:  # Jenis Data
+            qs = qs.filter(id_ilap__jenisdatailap__nama_jenis_data__icontains=columns_search[3])
+        if len(columns_search) > 4 and columns_search[4]:  # Perekam
+            qs = qs.filter(id_perekam__username__icontains=columns_search[4])
+        if len(columns_search) > 5 and columns_search[5]:  # Status
+            status_value = columns_search[5].strip().lower()
             if status_value in ['dibatalkan', 'batal', 'false', '0']:
                 qs = qs.filter(active=False)
             elif status_value in ['aktif', 'active', 'true', '1']:
@@ -98,7 +100,7 @@ def tanda_terima_data_data(request):
 
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['nomor_tanda_terima', 'tanggal_tanda_terima', 'id_ilap__nama_ilap', 'id_perekam__username', 'active']
+    columns = ['nomor_tanda_terima', 'tanggal_tanda_terima', 'id_ilap__nama_ilap', 'id_ilap__jenisdatailap__nama_jenis_data', 'id_perekam__username', 'active']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -135,15 +137,36 @@ def tanda_terima_data_data(request):
         if is_active_pic:
             actions_html = f"<button class='btn btn-sm btn-info me-1' data-action='view' data-url='{reverse('tanda_terima_data_view', args=[obj.pk])}' title='Detail'><i class='ri-eye-line'></i></button>"
         
+        # Show download button - get first tiket from this tanda terima
+        tiket_item = obj.detil_items.select_related('id_tiket').first()
+        if tiket_item and tiket_item.id_tiket:
+            pk = tiket_item.id_tiket.pk
+            actions_html += f"""<div class="btn-group me-1" role="group">
+                <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Download Dokumen">
+                    <i class="ri-file-word-2-line me-1"></i>Tanda Terima
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="downloadTandaTerimaDoc({pk}, 'tanda_terima'); return false;">Tanda Terima</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="downloadTandaTerimaDoc({pk}, 'lampiran'); return false;">Lampiran Tanda Terima</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="downloadTandaTerimaDoc({pk}, 'register'); return false;">Register Penerimaan Data</a></li>
+                </ul>
+            </div>"""
+        
         # Show delete button only for active PIC when tanda terima is active
         if obj.active and can_edit and is_active_pic:
             actions_html += f"<button class='btn btn-sm btn-warning' data-action='delete' data-url='{reverse('tanda_terima_data_delete', args=[obj.pk])}' title='Batalkan'><i class='ri-close-circle-line'></i></button>"
         
+        # Get ILAP name and jenis data from first tiket
+        jenis_data_list = []
+        if obj.id_ilap:
+            jenis_data_list = list(obj.id_ilap.jenisdatailap_set.values_list('nama_jenis_data', flat=True))
+        
         data.append({
             'id': obj.pk,
             'nomor_tanda_terima': obj.nomor_tanda_terima_format,
-            'tanggal_tanda_terima': obj.tanggal_tanda_terima.strftime('%Y-%m-%d %H:%M'),
-            'id_ilap': str(obj.id_ilap),
+            'tanggal_tanda_terima': obj.tanggal_tanda_terima.strftime('%d-%m-%Y %H:%M'),
+            'id_ilap': obj.id_ilap.nama_ilap if obj.id_ilap else '-',
+            'jenis_data': ', '.join(jenis_data_list) if jenis_data_list else '-',
             'id_perekam': obj.id_perekam.username,
             'status': status_text,
             'actions': actions_html
