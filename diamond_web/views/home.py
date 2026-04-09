@@ -1,14 +1,12 @@
 from django.shortcuts import render
 from django.conf import settings
 from django.contrib.auth.models import Group
-from django.contrib.auth.decorators import login_required
 from diamond_web.views.task_to_do import (
     get_tiket_summary_for_user,
     get_tiket_summary_for_user_pide,
     get_tiket_summary_for_user_pmde,
 )
 
-@login_required
 def home(request):
     """Render the application home page.
 
