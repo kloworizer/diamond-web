@@ -258,6 +258,7 @@ def tiket_documents_download(request, pk):
         'pkdi_lengkap': f'surat_pkdi_{region_type}_lengkap',
         'pkdi_sebagian': f'surat_pkdi_{region_type}_sebagian',
         'klarifikasi': 'surat_klarifikasi',
+        'nd_pengantar': 'nd_pengantar_pide',
     }
     template_jenis = doc_type_map.get(doc_type, f'tanda_terima_{region_type}')
 
@@ -326,6 +327,8 @@ def tiket_documents_download(request, pk):
                 filename = f'surat_pkdi_lengkap_sebagian_{nomor_safe}_{now_ts}.docx'
             elif doc_type == 'klarifikasi':
                 filename = f'surat_klarifikasi_{nomor_safe}_{now_ts}.docx'
+            elif doc_type == 'nd_pengantar':
+                filename = f'nd_pengantar_pide_{nomor_safe}_{now_ts}.docx'
             else:
                 filename = f'tanda_terima_{nomor_safe}_{now_ts}.docx'
             

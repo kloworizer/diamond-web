@@ -35,6 +35,7 @@
                         <th>Nomor Tanda Terima</th>
                         <th>Tanggal</th>
                         <th>ILAP</th>
+                        <th>Jenis Data</th>
                         <th>Perekam</th>
                         <th>Status</th>
                         <th>Actions</th>
@@ -44,8 +45,9 @@
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search Nomor" data-column="0" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search Tanggal" data-column="1" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search ILAP" data-column="2" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Perekam" data-column="3" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Status" data-column="4" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Jenis" data-column="3" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Perekam" data-column="4" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Status" data-column="5" /></th>
                         <th></th>
                     </tr>
                 </thead>
@@ -102,6 +104,7 @@
                     { data: 'nomor_tanda_terima' },
                     { data: 'tanggal_tanda_terima' },
                     { data: 'id_ilap' },
+                    { data: 'jenis_data' },
                     { data: 'id_perekam' },
                     { data: 'status' },
                     { data: 'actions', orderable: false, searchable: false }
@@ -328,5 +331,15 @@
             }
         }
     })();
+
+    // Download tanda terima document
+    function downloadTandaTerimaDoc(pk, docType) {
+        const a = document.createElement('a');
+        a.href = `/tiket/${pk}/documents/download/?doc_type=${docType}`;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
 </script>
 {% endblock %}

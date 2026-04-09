@@ -704,8 +704,42 @@
                             {% endif %}
                         {% endif %}
                     {% endif %}
-                </div>
-            </div>
+
+                    <!-- Document Download Section -->
+                    <div class="mt-4 pt-3 border-top">
+                        <h6 class="text-muted mb-3"><i class="ri-file-download-line me-2"></i>Download Dokumen</h6>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-sm btn-primary" onclick="downloadTiketDoc({{ tiket.pk }}, 'tanda_terima')">
+                                <i class="ri-file-word-2-line me-1"></i>Tanda Terima
+                            </button>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="downloadTiketDoc({{ tiket.pk }}, 'lampiran')">
+                                <i class="ri-file-word-2-line me-1"></i>Lampiran Tanda Terima
+                            </button>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="downloadTiketDoc({{ tiket.pk }}, 'register')">
+                                <i class="ri-file-word-2-line me-1"></i>Register Penerimaan Data
+                            </button>
+                            {% if tiket.id_status_penelitian.deskripsi == 'Lengkap' %}
+                            <button type="button" class="btn btn-sm btn-success" onclick="downloadPKDILengkap({{ tiket.pk }})">
+                                <i class="ri-file-word-2-line me-1"></i>Surat PKDI (Lengkap)
+                            </button>
+                            {% endif %}
+                            {% if tiket.id_status_penelitian.deskripsi == 'Lengkap Sebagian' %}
+                            <button type="button" class="btn btn-sm btn-warning" onclick="downloadPKDILengkapSebagian({{ tiket.pk }})">
+                                <i class="ri-file-word-2-line me-1"></i>Surat PKDI (Sebagian)
+                            </button>
+                            {% endif %}
+                            {% if tiket.id_status_penelitian.deskripsi == 'Tidak Lengkap' %}
+                            <button type="button" class="btn btn-sm btn-danger" onclick="downloadKlarifikasi({{ tiket.pk }})">
+                                <i class="ri-file-word-2-line me-1"></i>Surat Klarifikasi
+                            </button>
+                            {% endif %}
+                            {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti %}
+                            <button type="button" class="btn btn-sm btn-info" onclick="downloadTiketDoc({{ tiket.pk }}, 'nd_pengantar')">
+                                <i class="ri-file-word-2-line me-1"></i>ND Pengantar ke PIDE
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
         </div>
     </div>
 </div>
@@ -1669,5 +1703,42 @@
             }
         }
     });
+
+    // Document download functions
+    function downloadTiketDoc(pk, docType) {
+        const a = document.createElement('a');
+        a.href = `/tiket/${pk}/documents/download/?doc_type=${docType}`;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    function downloadPKDILengkap(pk) {
+        const a = document.createElement('a');
+        a.href = `/tiket/${pk}/documents/download/?doc_type=pkdi_lengkap`;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    function downloadPKDILengkapSebagian(pk) {
+        const a = document.createElement('a');
+        a.href = `/tiket/${pk}/documents/download/?doc_type=pkdi_sebagian`;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    function downloadKlarifikasi(pk) {
+        const a = document.createElement('a');
+        a.href = `/tiket/${pk}/documents/download/?doc_type=klarifikasi`;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
 </script>
 {% endblock %}

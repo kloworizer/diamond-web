@@ -593,40 +593,7 @@ def tiket_data(request):
 
         detail_btn = f"<a href='{reverse('tiket_detail', args=[obj.pk])}' class='btn btn-sm btn-info' title='View'><i class='ri-eye-line'></i></a>"
         
-        # Only show download buttons to P3DE users
-        if _is_p3de_user(request.user):
-            buttons_html = ""
-            
-            # Tanda Terima + Lampiran + Register button
-            # Show if: tanda_terima exists AND tiket is not dibatalkan (status != 7)
-            if obj.tanda_terima and obj.status_tiket != 7:  # 7 = Dibatalkan
-                buttons_html += f"<button type='button' onclick='downloadTiketDocs({obj.pk})' class='btn btn-sm btn-success' title='Download Tanda Terima + Lampiran + Register'><i class='ri-file-pdf-line me-1'></i>Tanda Terima</button>"
-            elif obj.tanda_terima:
-                buttons_html += "<button type='button' class='btn btn-sm btn-success' title='Tiket dibatalkan' disabled><i class='ri-file-pdf-line me-1'></i>Dokumen</button>"
-            else:
-                buttons_html += "<button type='button' class='btn btn-sm btn-success' title='Tanda terima belum dibuat' disabled><i class='ri-file-pdf-line me-1'></i>Dokumen</button>"
-            
-            # PKDI or Klarifikasi buttons based on status penelitian
-            if obj.id_status_penelitian:
-                status_deskripsi = obj.id_status_penelitian.deskripsi
-                
-                # Show PKDI Lengkap button for "Lengkap"
-                if status_deskripsi == 'Lengkap':
-                    buttons_html += f"<button type='button' onclick='downloadPKDILengkap({obj.pk})' class='btn btn-sm btn-primary' title='Download PKDI Lengkap'><i class='ri-file-word-line me-1'></i>PKDI Lengkap</button>"
-                
-                # Show PKDI Lengkap Sebagian button for "Lengkap Sebagian"
-                elif status_deskripsi == 'Lengkap Sebagian':
-                    buttons_html += f"<button type='button' onclick='downloadPKDILengkapSebagian({obj.pk})' class='btn btn-sm btn-info' title='Download PKDI Lengkap Sebagian'><i class='ri-file-word-line me-1'></i>PKDI Sebagian</button>"
-                
-                # Show Klarifikasi button for "Tidak Lengkap"
-                elif status_deskripsi == 'Tidak Lengkap':
-                    buttons_html += f"<button type='button' onclick='downloadKlarifikasi({obj.pk})' class='btn btn-sm btn-warning' title='Download Surat Klarifikasi'><i class='ri-mail-line me-1'></i>Klarifikasi</button>"
-            
-            download_btn = buttons_html
-        else:
-            download_btn = ""  # Hide button entirely for non-P3DE users
-        
-        actions_html = f"<div class='btn-group btn-group-sm' role='group'>{detail_btn}{download_btn}</div>"
+        actions_html = f"<div class='btn-group btn-group-sm' role='group'>{detail_btn}</div>"
 
         data.append({
             'id': obj.id,
