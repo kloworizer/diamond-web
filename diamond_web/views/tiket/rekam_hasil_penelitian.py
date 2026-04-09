@@ -10,6 +10,7 @@ from django.http import JsonResponse
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
 from ...models.tiket_pic import TiketPIC
+from ...models.status_penelitian import StatusPenelitian
 from ...forms.rekam_hasil_penelitian import RekamHasilPenelitianForm
 from ...constants.tiket_action_types import TiketActionType
 from ..mixins import UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin
@@ -45,6 +46,7 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Active
     """
     model = Tiket
     form_class = RekamHasilPenelitianForm
+    template_name = 'tiket/rekam_hasil_penelitian_modal_form.html'
     
     def test_func(self):
         """Verify user is an ACTIVE P3DE PIC for this tiket.
@@ -62,17 +64,6 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Active
             active=True,
             role=TiketPIC.Role.P3DE
         ).exists()
-    template_name = 'tiket/rekam_hasil_penelitian_form.html'
-    
-    def get_template_names(self):
-        """Return modal template for AJAX requests, full page otherwise.
-
-        AJAX requests (X-Requested-With=XMLHttpRequest) get a modal dialog
-        template for inline display, while regular requests get full page.
-        """
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return ['tiket/rekam_hasil_penelitian_modal_form.html']
-        return [self.template_name]
     
     def get_success_url(self):
         """Redirect to tiket detail page after successful research recording.
@@ -117,23 +108,35 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Active
         - JsonResponse {'success': True, 'message': ...} for AJAX requests
         - Redirect to tiket detail for non-AJAX requests
         """
-        # Get current timestamp to use for both tiket and action
+        # Get current timestamp for the audit entry
         now = datetime.now()
-        
-        # Update the tiket with new baris_diterima value
+
+        # Save form fields (tgl_teliti, kesesuaian_data, baris_lengkap, baris_tidak_lengkap)
         self.object = form.save(commit=False)
-        self.object.status_tiket = STATUS_DITELITI  # Change status_tiket to STATUS_DITELITI (Diteliti)
-        self.object.tgl_teliti = now
+        self.object.status_tiket = STATUS_DITELITI
+
+        # Calculate id_status_penelitian from baris values
+        baris_lengkap = form.cleaned_data.get('baris_lengkap') or 0
+        baris_diterima = self.object.baris_diterima
+        try:
+            if baris_lengkap == baris_diterima:
+                self.object.id_status_penelitian = StatusPenelitian.objects.get(deskripsi='Lengkap')
+            elif baris_lengkap == 0:
+                self.object.id_status_penelitian = StatusPenelitian.objects.get(deskripsi='Tidak Lengkap')
+            else:
+                self.object.id_status_penelitian = StatusPenelitian.objects.get(deskripsi='Lengkap Sebagian')
+        except StatusPenelitian.DoesNotExist:
+            pass
+
         self.object.save()
-        
+
         # Get catatan from form
-        is_update = bool(self.object.pk)
         catatan = form.cleaned_data.get(
             'catatan',
-            'Hasil penelitian diubah' if is_update else 'Hasil penelitian direkam'
+            'Hasil penelitian diubah' if self.object.tgl_teliti else 'Hasil penelitian direkam'
         )
-        
-        # Create tiket_action entry for audit trail with same timestamp
+
+        # Create tiket_action entry for audit trail
         TiketAction.objects.create(
             id_tiket=self.object,
             id_user=self.request.user,
@@ -141,15 +144,27 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Active
             action=TiketActionType.DITELITI,
             catatan=catatan
         )
-        
+
         # Check if AJAX request
         if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({'success': True})
-        
+
         # Return response
         messages.success(
             self.request,
             f'Hasil penelitian untuk tiket "{self.object.nomor_tiket}" telah direkam.'
         )
         return super().form_valid(form)
+
+    def form_invalid(self, form):
+        """Return JSON with rendered form HTML for AJAX requests."""
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            from django.template.loader import render_to_string
+            html = render_to_string(
+                'tiket/rekam_hasil_penelitian_modal_form.html',
+                self.get_context_data(form=form),
+                request=self.request
+            )
+            return JsonResponse({'success': False, 'html': html, 'message': 'Terdapat kesalahan pada form.'})
+        return super().form_invalid(form)
 

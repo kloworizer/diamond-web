@@ -209,25 +209,21 @@ urlpatterns = [
     # Rekam (Record) Workflow Step - Step 1
     path('tiket/rekam/create/', views.TiketRekamCreateView.as_view(), name='tiket_rekam_create'),
     
-    # Rekam Hasil Penelitian (Record Research Results) - Step 2
-    path('tiket/<int:pk>/rekam-hasil-penelitian/', views.RekamHasilPenelitianView.as_view(), name='rekam_hasil_penelitian'),
-
-    # Batalkan Tiket (Cancel Tiket)
-    path('tiket/<int:pk>/batalkan/', views.BatalkanTiketView.as_view(), name='batalkan_tiket'),
-    
     # Kirim Tiket (Send Tiket) - Step 3
     path('tiket/kirim-tiket/', views.KirimTiketView.as_view(), name='kirim_tiket'),
     path('tiket/<int:tiket_pk>/kirim-pide/', views.KirimTiketView.as_view(), name='kirim_tiket_from_tiket'),
     
-    # PIDE Workflow Actions
+    # PIDE and PMDE Workflow Actions (Modal-only forms in tiket detail page)
+    # - Batalkan Tiket (Cancel Tiket): batalkan_tiket endpoint for AJAX modal
+    # - Rekam Hasil Penelitian: rekam_hasil_penelitian endpoint for AJAX modal
+    # - Dikembalikan Tiket: dikembalikan_tiket endpoint for AJAX modal
+    # - Identifikasi Tiket: identifikasi_tiket endpoint for AJAX modal
+    # - Transfer ke PMDE: transfer_ke_pmde endpoint for AJAX modal
+    # - Selesaikan Tiket: selesaikan_tiket endpoint for AJAX modal
+    path('tiket/<int:pk>/batalkan/', views.BatalkanTiketView.as_view(), name='batalkan_tiket'),
+    path('tiket/<int:pk>/rekam-hasil-penelitian/', views.RekamHasilPenelitianView.as_view(), name='rekam_hasil_penelitian'),
     path('tiket/<int:pk>/dikembalikan/', views.DikembalikanTiketView.as_view(), name='dikembalikan_tiket'),
     path('tiket/<int:pk>/identifikasi/', views.IdentifikasiTiketView.as_view(), name='identifikasi_tiket'),
     path('tiket/<int:pk>/transfer-ke-pmde/', views.TransferKePMDEView.as_view(), name='transfer_ke_pmde'),
-    
-    # PMDE Workflow Actions
     path('tiket/<int:pk>/selesaikan/', views.SelesaikanTiketView.as_view(), name='selesaikan_tiket'),
-    
-    # Future workflow steps can be added here:
-    # path('tiket/teliti/create/', views.TiketTelitiCreateView.as_view(), name='tiket_teliti_create'),
-    # path('tiket/kirim-pide/create/', views.TiketKirimPIDECreateView.as_view(), name='tiket_kirim_pide_create'),
 ]

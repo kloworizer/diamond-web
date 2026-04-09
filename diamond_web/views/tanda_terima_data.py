@@ -17,6 +17,7 @@ from ..models.tiket_pic import TiketPIC
 from ..models.tiket import Tiket
 from ..forms.tanda_terima_data import TandaTerimaDataForm
 from ..constants.tiket_action_types import TandaTerimaActionType
+from ..constants.tiket_status import STATUS_DIREKAM, STATUS_DITELITI
 from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, SafeDeleteMixin
 from ..constants.tiket_status import STATUS_DIKIRIM_KE_PIDE
 
@@ -327,7 +328,10 @@ class TandaTerimaDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxF
 
             # Mark tiket as having tanda terima and persist
             tiket_obj.tanda_terima = True
-            tiket_obj.save(update_fields=["tanda_terima"])
+            # If tiket was already researched (tgl_teliti is set), ensure status is DITELITI
+            if tiket_obj.tgl_teliti:
+                tiket_obj.status_tiket = STATUS_DITELITI
+            tiket_obj.save(update_fields=["tanda_terima"] + (["status_tiket"] if tiket_obj.tgl_teliti else []))
 
             TiketAction.objects.create(
                 id_tiket=tiket_obj,
@@ -417,7 +421,10 @@ class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMix
 
         # Update tiket status and record action
         tiket.tanda_terima = True
-        tiket.save(update_fields=["tanda_terima"])
+        # If tiket was already researched (tgl_teliti is set), ensure status is DITELITI
+        if tiket.tgl_teliti:
+            tiket.status_tiket = STATUS_DITELITI
+        tiket.save(update_fields=["tanda_terima"] + (["status_tiket"] if tiket.tgl_teliti else []))
         TiketAction.objects.create(
             id_tiket=tiket,
             id_user=self.request.user,
@@ -514,7 +521,10 @@ class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, Activ
                 # If newly added, mark tanda_terima and record action
                 if is_new_tiket:
                     tiket_obj.tanda_terima = True
-                    tiket_obj.save(update_fields=["tanda_terima"])
+                    # If tiket was already researched (tgl_teliti is set), ensure status is DITELITI
+                    if tiket_obj.tgl_teliti:
+                        tiket_obj.status_tiket = STATUS_DITELITI
+                    tiket_obj.save(update_fields=["tanda_terima"] + (["status_tiket"] if tiket_obj.tgl_teliti else []))
                     TiketAction.objects.create(
                         id_tiket=tiket_obj,
                         id_user=self.request.user,
@@ -588,7 +598,8 @@ class TandaTerimaDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, UserP3DEReq
             for detil in detil_items:
                 tiket = detil.id_tiket
                 tiket.tanda_terima = False
-                tiket.save(update_fields=["tanda_terima"])
+                tiket.status_tiket = STATUS_DIREKAM
+                tiket.save(update_fields=["tanda_terima", "status_tiket"])
                 TiketAction.objects.create(
                     id_tiket=tiket,
                     id_user=request.user,

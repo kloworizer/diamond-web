@@ -13,7 +13,7 @@ from ..models.tiket_action import TiketAction
 from ..models.tiket_pic import TiketPIC
 from ..forms.backup_data import BackupDataForm
 from ..constants.tiket_action_types import BackupActionType
-from ..constants.tiket_status import STATUS_DIKIRIM_KE_PIDE
+from ..constants.tiket_status import STATUS_DIKIRIM_KE_PIDE, STATUS_DIREKAM, STATUS_DITELITI
 from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, SafeDeleteMixin
 
 
@@ -199,7 +199,10 @@ class BackupDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMixin, A
         
         # Set tiket backup flag to True
         tiket.backup = True
-        tiket.save(update_fields=["backup"])
+        # If tiket was already researched (tgl_teliti is set), ensure status is DITELITI
+        if tiket.tgl_teliti:
+            tiket.status_tiket = STATUS_DITELITI
+        tiket.save(update_fields=["backup"] + (["status_tiket"] if tiket.tgl_teliti else []))
         
         # Record tiket_action for audit trail
         TiketAction.objects.create(
@@ -313,7 +316,8 @@ class BackupDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, UserP3DERequired
         # Set tiket backup flag to False if no other backups exist
         if not tiket.backups.exists():
             tiket.backup = False
-            tiket.save(update_fields=["backup"])
+            tiket.status_tiket = STATUS_DIREKAM
+            tiket.save(update_fields=["backup", "status_tiket"])
         # Audit trail: add TiketAction
         TiketAction.objects.create(
             id_tiket=tiket,
