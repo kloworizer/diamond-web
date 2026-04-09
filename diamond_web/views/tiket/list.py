@@ -28,6 +28,7 @@ from ...models.detil_tanda_terima import DetilTandaTerima
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ..mixins import can_access_tiket_list
 from ...constants.tiket_status import STATUS_LABELS
+from .documents import _is_p3de_user
 
 
 class TiketListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
@@ -418,10 +419,16 @@ def tiket_data(request):
         periode_formatted = _format_periode_tiket(obj)
 
         detail_btn = f"<a href='{reverse('tiket_detail', args=[obj.pk])}' class='btn btn-sm btn-info' title='View'><i class='ri-eye-line'></i></a>"
-        if obj.tanda_terima:
-            download_btn = f"<button type='button' onclick='downloadTiketDocs({obj.pk})' class='btn btn-sm btn-success' title='Generate Dokumen'><i class='ri-file-pdf-line'></i></button>"
+        
+        # Only show download button to P3DE users
+        if _is_p3de_user(request.user):
+            if obj.tanda_terima:
+                download_btn = f"<button type='button' onclick='downloadTiketDocs({obj.pk})' class='btn btn-sm btn-success' title='Generate Dokumen'><i class='ri-file-pdf-line'></i></button>"
+            else:
+                download_btn = "<button type='button' class='btn btn-sm btn-success' title='Tanda terima belum dibuat' disabled><i class='ri-file-pdf-line'></i></button>"
         else:
-            download_btn = "<button type='button' class='btn btn-sm btn-success' title='Tanda terima belum dibuat' disabled><i class='ri-file-pdf-line'></i></button>"
+            download_btn = ""  # Hide button entirely for non-P3DE users
+        
         actions_html = f"<div class='btn-group btn-group-sm'>{detail_btn}{download_btn}</div>"
 
         data.append({

@@ -259,16 +259,6 @@ def durasi_jatuh_tempo_pide_data(request):
 
 # ========== PMDE Section ==========
 
-class AdminPMDERequiredMixin(UserPassesTestMixin):
-    """Ensure view access is limited to `admin` or `admin_pmde` group members.
-
-    Use this mixin on class-based views that should be visible only to PMDE
-    administrators. It implements `test_func` returning True when the
-    requesting user is a member of `admin` or `admin_pmde` groups.
-    """
-    def test_func(self):
-        return self.request.user.groups.filter(name__in=['admin', 'admin_pmde']).exists()
-
 class DurasiJatuhTempoPMDEListView(LoginRequiredMixin, AdminPMDERequiredMixin, TemplateView):
     """List view for `DurasiJatuhTempo` entries scoped to PMDE (`user_pmde`).
 

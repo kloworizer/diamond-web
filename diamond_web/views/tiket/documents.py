@@ -16,6 +16,15 @@ from ...models.tiket_pic import TiketPIC
 from ..mixins import can_access_tiket_list
 
 
+def _is_p3de_user(user):
+    """Check if user is P3DE (can generate/download documents)."""
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser or user.groups.filter(name='admin').exists():
+        return True
+    return user.groups.filter(name='user_p3de').exists()
+
+
 def _format_periode_tiket(tiket_obj):
     """Format periode display for a tiket object using periode penerimaan."""
     if not tiket_obj.id_periode_data or not tiket_obj.id_periode_data.id_periode_pengiriman:
@@ -74,7 +83,7 @@ def _build_table_doc(title, headers, rows_data):
 
 
 @login_required
-@user_passes_test(lambda u: can_access_tiket_list(u))
+@user_passes_test(lambda u: _is_p3de_user(u))
 @require_GET
 def tiket_documents_download(request, pk):
     """Generate and download a single DOCX document for a tiket.

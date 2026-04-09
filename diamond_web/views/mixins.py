@@ -16,6 +16,21 @@ class AdminRequiredMixin(UserPassesTestMixin):
         return self.request.user.groups.filter(name='admin').exists()
 
 
+class AdminAnyRequiredMixin(UserPassesTestMixin):
+    """Require membership in any admin group (admin, admin_p3de, admin_pide, admin_pmde).
+
+    Use this mixin on base class-based views that should be accessible to any
+    administrator. This provides a safety layer for base views that might be
+    accessed directly, ensuring that only admin-level users can access them.
+    Subclasses can further restrict to specific admin roles via more specific
+    mixins (e.g., AdminP3DERequiredMixin for P3DE-only views).
+    """
+    def test_func(self):
+        return self.request.user.groups.filter(
+            name__in=['admin', 'admin_p3de', 'admin_pide', 'admin_pmde']
+        ).exists()
+
+
 class AdminP3DERequiredMixin(UserPassesTestMixin):
     """Require membership in `admin` or `admin_p3de` groups.
 

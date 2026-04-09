@@ -48,16 +48,32 @@ class BatalkanTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3
     def test_func(self):
         """Verify user is an ACTIVE P3DE PIC for this tiket.
 
-        Returns True only if user is actively assigned to this tiket with
-        P3DE role, False otherwise (blocks non-PIC users from editing).
+        This method combines two checks:
+        1. User must be in user_p3de group or admin (checked by UserP3DERequiredMixin)
+        2. User must be an active P3DE PIC for this specific tiket (checked by ActiveTiketP3DERequiredForEditMixin)
 
-        Query:
+        Both conditions must be true for access. Returns True only if both checks pass,
+        False otherwise (blocks non-P3DE group users and non-active PICs).
+
+        Queries:
+        - Checks user group membership
         - Filters TiketPIC by id_tiket, id_user, active=True, role=P3DE
         """
+        user = self.request.user
+        
+        # Check 1: User must be in user_p3de group or be admin/superuser
+        is_p3de_user = user.is_authenticated and (
+            user.is_superuser or 
+            user.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de']).exists()
+        )
+        if not is_p3de_user:
+            return False
+        
+        # Check 2: User must be an active P3DE PIC for this tiket
         tiket = self.get_object()
         return TiketPIC.objects.filter(
             id_tiket=tiket,
-            id_user=self.request.user,
+            id_user=user,
             active=True,
             role=TiketPIC.Role.P3DE
         ).exists()
