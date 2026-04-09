@@ -6,6 +6,10 @@ __pycache__/
 db.sqlite3
 *.sqlite3
 media/
+docx_templates/
+# But allow default templates in fixtures
+!diamond_web/fixtures/default_templates/
+!diamond_web/fixtures/default_templates/*.docx
 staticfiles/
 local_settings.py
 

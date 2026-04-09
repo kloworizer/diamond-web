@@ -487,5 +487,32 @@
             }, i * 700);
         });
     }
+
+    function downloadPKDILengkap(pk) {
+        const a = document.createElement('a');
+        a.href = `/tiket/${pk}/documents/download/?doc_type=pkdi_lengkap`;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    function downloadPKDILengkapSebagian(pk) {
+        const a = document.createElement('a');
+        a.href = `/tiket/${pk}/documents/download/?doc_type=pkdi_sebagian`;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    function downloadKlarifikasi(pk) {
+        const a = document.createElement('a');
+        a.href = `/tiket/${pk}/documents/download/?doc_type=klarifikasi`;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
 </script>
 {% endblock %}

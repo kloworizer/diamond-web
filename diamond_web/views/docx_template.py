@@ -5,10 +5,10 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import CreateView, UpdateView, DeleteView, TemplateView
 from django.contrib import messages
 from urllib.parse import quote_plus, unquote_plus
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse, Http404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_GET, require_http_methods
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 
 from ..models.docx_template import DocxTemplate
 from ..forms.docx_template import DocxTemplateForm
@@ -124,12 +124,16 @@ def docx_template_data(request):
     for template in records:
         edit_url = reverse_lazy('docx_template_update', kwargs={'pk': template.id})
         delete_url = reverse_lazy('docx_template_delete', kwargs={'pk': template.id})
+        download_url = reverse_lazy('docx_template_download', kwargs={'pk': template.id})
         actions = f'''
             <button class="btn btn-sm btn-primary" data-action="edit" data-url="{edit_url}">
                 <i class="ri-edit-line"></i>
             </button>
+            <a href="{download_url}" class="btn btn-sm btn-info" title="Download">
+                <i class="ri-download-line"></i>
+            </a>
             <button class="btn btn-sm btn-danger" data-action="delete" data-url="{delete_url}">
-                <i class="ri-delete-line"></i>
+                <i class="ri-delete-bin-line"></i>
             </button>
         '''
         data.append({
@@ -146,3 +150,38 @@ def docx_template_data(request):
         'recordsFiltered': total_records,
         'data': data
     })
+
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser or u.groups.filter(name='admin').exists() or u.groups.filter(name='admin_p3de').exists())
+@require_GET
+def docx_template_download(request, pk):
+    """Download template DOCX file."""
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    template = get_object_or_404(DocxTemplate, pk=pk)
+    
+    if not template.file_template:
+        logger.warning(f'Template {pk} ({template.nama_template}) has no file_template')
+        raise Http404(f"Template file not linked: {template.nama_template}")
+    
+    try:
+        # Open file and read content to ensure it exists and is readable
+        with template.file_template.open('rb') as f:
+            file_content = f.read()
+        
+        file_name = template.file_template.name.split('/')[-1]
+        
+        response = HttpResponse(
+            file_content,
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{file_name}"'
+        return response
+    except FileNotFoundError as e:
+        logger.error(f'Template file not found for {pk} ({template.nama_template}): {template.file_template.name}')
+        raise Http404(f"Template file not found on server: {template.file_template.name}")
+    except Exception as e:
+        logger.error(f'Error downloading template {pk}: {type(e).__name__}: {str(e)}')
+        raise Http404(f"Failed to download template: {type(e).__name__}")

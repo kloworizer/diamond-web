@@ -28,9 +28,6 @@
             <button type="button" class="btn btn-success" data-action="create"><i class="ri-add-line me-1"></i>Tambah Template</button>
         </div>
         <div class="card-body">
-            <div class="alert alert-info" role="alert">
-                <strong>Petunjuk:</strong> Template dokumen menggunakan placeholder dengan format {{variable_name}}. Gunakan placeholder ini dalam dokumen Word Anda untuk menentukan di mana data akan diisi.
-            </div>
             <table id="docx-template-table" class="table table-striped" style="width:100%">
                 <thead>
                     <tr>
@@ -50,6 +47,40 @@
                 </thead>
                 <tbody></tbody>
             </table>
+
+            <!-- Instructions Box -->
+            <div class="alert alert-info mt-4 mb-0" role="alert">
+                <h6 class="alert-heading"><i class="ri-information-line me-2"></i>Petunjuk Penggunaan Placeholder</h6>
+                <p class="mb-2">Template dokumen menggunakan dua jenis placeholder:</p>
+                
+                <div class="ms-3 mb-3">
+                    <h6 class="text-info mb-2"><strong>1. Placeholder Variabel Tunggal:</strong></h6>
+                    <p class="mb-2"><code>{{nama_placeholder}}</code></p>
+                    <p class="small text-muted mb-2">Digunakan untuk data tunggal (nama, nomor, tanggal, dll)</p>
+                    <p class="small mb-3"><strong>Contoh:</strong> <code>{{nomor_tanda_terima}}</code>, <code>{{diterima_dari}}</code>, <code>{{nama_ilap}}</code></p>
+                    <div class="bg-light p-2 rounded small">
+                        <strong>Variabel yang tersedia:</strong> nomor_tanda_terima, diterima_dari, nama_ilap, jenis_data, periode_data, bentuk_data, cara_penyampaian, nama_pic_p3de, dan lainnya.
+                    </div>
+                </div>
+
+                <div class="ms-3">
+                    <h6 class="text-info mb-2"><strong>2. Placeholder Baris Berulang (untuk Tabel):</strong></h6>
+                    <p class="mb-2"><code>{{row.nama_field}}</code></p>
+                    <p class="small text-muted mb-2">Digunakan dalam tabel untuk data yang berisi banyak baris (lampiran, register data)</p>
+                    <p class="small mb-3"><strong>Contoh:</strong> <code>{{row.nama_ilap}}</code>, <code>{{row.jenis_data}}</code>, <code>{{row.periode_data}}</code></p>
+                    <div class="bg-light p-2 rounded small mb-2">
+                        <strong>Cara penggunaan:</strong>
+                        <ol class="mb-0 ps-3">
+                            <li>Buat tabel di dokumen Word dengan header dan satu baris template</li>
+                            <li>Isi sel baris template dengan placeholder <code>{{row.field}}</code></li>
+                            <li>Saat dokumen dibuat, baris template akan otomatis diklon untuk setiap data</li>
+                        </ol>
+                    </div>
+                    <div class="bg-light p-2 rounded small">
+                        <strong>Field yang tersedia:</strong> nama_ilap, jenis_data, periode_data, baris_diterima, dasar_hukum
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

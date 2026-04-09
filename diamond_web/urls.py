@@ -141,6 +141,7 @@ urlpatterns = [
     path('docx-template/create/', views.DocxTemplateCreateView.as_view(), name='docx_template_create'),
     path('docx-template/<int:pk>/update/', views.DocxTemplateUpdateView.as_view(), name='docx_template_update'),
     path('docx-template/<int:pk>/delete/', views.DocxTemplateDeleteView.as_view(), name='docx_template_delete'),
+    path('docx-template/<int:pk>/download/', views.docx_template_download, name='docx_template_download'),
     # Tanda Terima Data URLs
     path('tanda-terima-data/', views.TandaTerimaDataListView.as_view(), name='tanda_terima_data_list'),
     path('tanda-terima-data/data/', views.tanda_terima_data_data, name='tanda_terima_data_data'),
