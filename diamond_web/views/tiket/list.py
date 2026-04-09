@@ -600,7 +600,7 @@ def tiket_data(request):
             # Tanda Terima + Lampiran + Register button
             # Show if: tanda_terima exists AND tiket is not dibatalkan (status != 7)
             if obj.tanda_terima and obj.status_tiket != 7:  # 7 = Dibatalkan
-                buttons_html += f"<button type='button' onclick='downloadTiketDocs({obj.pk})' class='btn btn-sm btn-success' title='Generate Tanda Terima + Lampiran + Register'><i class='ri-file-pdf-line me-1'></i>Dokumen</button>"
+                buttons_html += f"<button type='button' onclick='downloadTiketDocs({obj.pk})' class='btn btn-sm btn-success' title='Download Tanda Terima + Lampiran + Register'><i class='ri-file-pdf-line me-1'></i>Tanda Terima</button>"
             elif obj.tanda_terima:
                 buttons_html += "<button type='button' class='btn btn-sm btn-success' title='Tiket dibatalkan' disabled><i class='ri-file-pdf-line me-1'></i>Dokumen</button>"
             else:
