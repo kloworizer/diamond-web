@@ -13,7 +13,6 @@ from ...models.detil_tanda_terima import DetilTandaTerima
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ...models.tiket import Tiket
 from ...models.tiket_pic import TiketPIC
-from ..mixins import can_access_tiket_list
 
 
 def _is_p3de_user(user):
@@ -50,11 +49,36 @@ def _format_periode_tiket(tiket_obj):
 
 
 def _safe_filename_part(raw):
+    """Convert a string into a filename-safe format.
+
+    Replaces all non-alphanumeric characters (except dot, underscore, hyphen) with
+    underscores, strips leading/trailing underscores, and returns 'file' if the
+    result is empty.
+
+    Args:
+        raw (str): The raw string to sanitize for use in filenames.
+
+    Returns:
+        str: A filename-safe string with special characters replaced by underscores.
+             Returns 'file' if the input produces an empty string after sanitization.
+    """
     return re.sub(r'[^A-Za-z0-9._-]+', '_', str(raw or '')).strip('_') or 'file'
 
 
 def _format_date_indonesian(date_obj):
-    """Format a date object as 'D bulan YYYY' in Indonesian (e.g., '4 januari 2026')."""
+    """Format a date object as 'D bulan YYYY' in Indonesian.
+
+    Converts a datetime.date object into Indonesian-formatted string with
+    full month names in lowercase. For example: 4 januari 2026.
+
+    Args:
+        date_obj (datetime.date or None): Date object to format. If None or falsy,
+                                         returns '-'.
+
+    Returns:
+        str: Formatted date string in Indonesian (e.g., '4 januari 2026') or '-'
+             if date_obj is None/falsy.
+    """
     if not date_obj:
         return '-'
     
@@ -67,7 +91,22 @@ def _format_date_indonesian(date_obj):
 
 
 def _build_table_doc(title, headers, rows_data):
-    """Build a DOCX document with a single table."""
+    """Build a DOCX document with a single table.
+
+    Creates a Word document with a title heading and a formatted table. The table
+    includes header row with column titles and data rows from the provided rows_data.
+    Table style is set to 'Table Grid' for standard appearance.
+
+    Args:
+        title (str): Title to display as heading (level 1) in the document.
+        headers (list of str): Column header labels for the table.
+        rows_data (list of list): List of row data, where each row is a list of
+                                 values that will be converted to strings.
+
+    Returns:
+        docx.Document: A Document object containing the title and formatted table,
+                      ready to be saved to file or returned as HTTP response.
+    """
     from docx import Document
     doc = Document()
     doc.add_heading(title, level=1)

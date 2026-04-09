@@ -6,7 +6,6 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
 from django.http import JsonResponse
 from django.urls import reverse_lazy, reverse
-from django.db import transaction
 
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction

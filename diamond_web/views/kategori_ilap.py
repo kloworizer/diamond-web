@@ -49,11 +49,35 @@ class KategoriILAPCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFor
     success_message = 'Kategori "{object}" berhasil dibuat.'
 
     def get_context_data(self, **kwargs):
+        """Add form action URL to context for template rendering.
+
+        Provides the form with the action URL needed for POST submission
+        to the create endpoint.
+
+        Args:
+            **kwargs: Additional context variables.
+
+        Returns:
+            dict: Context dictionary with form_action added.
+        """
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('kategori_ilap_create')
         return context
 
     def get(self, request, *args, **kwargs):
+        """Handle GET request to display the create form.
+
+        Sets object to None (new object) and renders the form via
+        AjaxFormMixin which handles both AJAX and regular requests.
+
+        Args:
+            request (HttpRequest): The HTTP request object.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            HttpResponse: Rendered form template or AJAX response.
+        """
         self.object = None
         form = self.get_form()
         return self.render_form_response(form)
@@ -70,11 +94,35 @@ class KategoriILAPUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFor
     success_message = 'Kategori "{object}" berhasil diperbarui.'
 
     def get_context_data(self, **kwargs):
+        """Add form action URL to context for edit form template.
+
+        Provides the form with the action URL for updating the existing
+        kategori_ilap object.
+
+        Args:
+            **kwargs: Additional context variables.
+
+        Returns:
+            dict: Context dictionary with form_action added.
+        """
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('kategori_ilap_update', args=[self.object.pk])
         return context
 
     def get(self, request, *args, **kwargs):
+        """Handle GET request to display the edit form.
+
+        Retrieves the existing kategori_ilap object and renders the form
+        with current values via AjaxFormMixin.
+
+        Args:
+            request (HttpRequest): The HTTP request object.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            HttpResponse: Rendered form template or AJAX response.
+        """
         self.object = self.get_object()
         form = self.get_form()
         return self.render_form_response(form)
@@ -91,11 +139,34 @@ class KategoriILAPDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequi
     success_url = reverse_lazy('kategori_ilap_list')
 
     def get_context_data(self, **kwargs):
+        """Add form action URL to context for delete confirmation.
+
+        Provides the context with the delete form action URL.
+
+        Args:
+            **kwargs: Additional context variables.
+
+        Returns:
+            dict: Context dictionary with form_action added.
+        """
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('kategori_ilap_delete', args=[self.object.pk])
         return context
 
     def get(self, request, *args, **kwargs):
+        """Handle GET request for delete confirmation.
+
+        For AJAX requests, returns the confirmation HTML as JSON.
+        For regular requests, renders the confirmation template.
+
+        Args:
+            request (HttpRequest): The HTTP request object.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            HttpResponse: Confirmation HTML (AJAX) or rendered template (regular).
+        """
         self.object = self.get_object()
         if request.GET.get('ajax'):
             from django.template.loader import render_to_string
@@ -104,6 +175,18 @@ class KategoriILAPDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequi
         return self.render_to_response(self.get_context_data())
 
     def post(self, request, *args, **kwargs):
+        """Handle POST request to delete the kategori_ilap.
+
+        Delegates to the delete() method to perform the deletion.
+
+        Args:
+            request (HttpRequest): The HTTP POST request object.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            HttpResponse: Redirect response or JSON response.
+        """
         return self.delete(request, *args, **kwargs)
 
 
