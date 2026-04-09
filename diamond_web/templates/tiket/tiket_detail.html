@@ -671,7 +671,7 @@
                                     <!-- Identifikasi button: show if status 4 (Dikirim ke PIDE) -->
                                     {% if tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE %}
                                         <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#identifikasiTiketModal">
-                                            <i class="ri-checkbox-circle-line me-1"></i>Identifikasi
+                                            <i class="ri-checkbox-circle-line me-1"></i>Proses Identifikasi
                                         </button>
                                     {% endif %}
 
@@ -814,13 +814,19 @@
                 <h5 class="modal-title" id="identifikasiTiketModalLabel">Identifikasi Tiket {{ tiket.nomor_tiket }}</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <p>Apakah Anda yakin untuk menandai tiket ini sebagai proses diidentifikasi?</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="button" class="btn btn-info" id="confirmIdentifikasiBtn">Identifikasi</button>
-            </div>
+            <form id="identifikasiForm">
+                <div class="modal-body">
+                    <p>Silakan masukkan tanggal rekam PIDE untuk menandai tiket ini sebagai proses diidentifikasi.</p>
+                    <div class="mb-3">
+                        <label for="tglRekamPide" class="form-label">Tanggal Rekam PIDE <span class="text-danger">*</span></label>
+                        <input type="datetime-local" class="form-control" id="tglRekamPide" name="tgl_rekam_pide" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-info" id="confirmIdentifikasiBtn">Identifikasi</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -1270,14 +1276,27 @@
         if (identifikasiTiketModal) {
             setupModalAria(identifikasiTiketModal);
             const confirmBtn = document.getElementById('confirmIdentifikasiBtn');
+            const identifikasiForm = document.getElementById('identifikasiForm');
             if (confirmBtn) {
                 confirmBtn.addEventListener('click', function () {
+                    // Validate form before submitting
+                    const tglRekamPideInput = document.getElementById('tglRekamPide');
+                    if (!tglRekamPideInput.value) {
+                        showToast('Tanggal Rekam PIDE harus diisi.', 'danger');
+                        return;
+                    }
+                    
+                    // Create FormData to send the date
+                    const formData = new FormData();
+                    formData.append('tgl_rekam_pide', tglRekamPideInput.value);
+                    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]')?.value || '');
+                    
                     fetch('{% url "identifikasi_tiket" tiket.pk %}', {
                         method: 'POST',
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
-                        }
+                        },
+                        body: formData
                     })
                         .then(response => response.json())
                         .then(data => {

@@ -6,12 +6,14 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import UpdateView
 from django.contrib import messages
 from django.http import JsonResponse
+from django.core.exceptions import ValidationError
 
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
 from ...models.tiket_pic import TiketPIC
 from ...constants.tiket_action_types import TiketActionType
 from ...constants.tiket_status import STATUS_IDENTIFIKASI
+from ...forms.identifikasi_tiket import IdentifikasiTiketForm
 from ..mixins import UserPIDERequiredMixin
 
 
@@ -68,8 +70,11 @@ class IdentifikasiTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
     def post(self, request, *args, **kwargs):
         """Handle POST request: mark tiket as IDENTIFIKASI and create audit entry.
 
-        Updates tiket.status to STATUS_IDENTIFIKASI and creates TiketAction record.
-        Supports both AJAX (returns JsonResponse) and non-AJAX (redirects).
+        Updates tiket.status to STATUS_IDENTIFIKASI and sets tgl_rekam_pide from form data.
+        Creates TiketAction record. Supports both AJAX (returns JsonResponse) and non-AJAX (redirects).
+
+        Form Parameters:
+        - tgl_rekam_pide: DateTime when the PIDE recording happened
 
         Returns:
         - JsonResponse {'success': True, 'message': ...} for AJAX requests
@@ -78,29 +83,51 @@ class IdentifikasiTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
         tiket = self.get_object()
         now = datetime.now()
 
-        tiket.status_tiket = STATUS_IDENTIFIKASI
-        tiket.save()
+        # Extract tgl_rekam_pide from request
+        tgl_rekam_pide_str = request.POST.get('tgl_rekam_pide')
+        
+        try:
+            if tgl_rekam_pide_str:
+                # Convert string format from datetime-local input (ISO 8601) to datetime object
+                tgl_rekam_pide = datetime.fromisoformat(tgl_rekam_pide_str)
+            else:
+                tgl_rekam_pide = now
+            
+            # Update tiket status and tgl_rekam_pide
+            tiket.status_tiket = STATUS_IDENTIFIKASI
+            tiket.tgl_rekam_pide = tgl_rekam_pide
+            tiket.save()
 
-        # Create tiket action
-        TiketAction.objects.create(
-            id_tiket=tiket,
-            id_user=request.user,
-            timestamp=now,
-            action=TiketActionType.IDENTIFIKASI,
-            catatan='Mulai proses identifikasi'
-        )
+            # Create tiket action
+            TiketAction.objects.create(
+                id_tiket=tiket,
+                id_user=request.user,
+                timestamp=now,
+                action=TiketActionType.IDENTIFIKASI,
+                catatan='Mulai proses identifikasi'
+            )
 
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'message': f'Tiket "{tiket.nomor_tiket}" telah diidentifikasi.'
-            })
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Tiket "{tiket.nomor_tiket}" telah diidentifikasi.'
+                })
 
-        messages.success(
-            request,
-            f'Tiket "{tiket.nomor_tiket}" telah diidentifikasi.'
-        )
-        return super().post(request, *args, **kwargs)
+            messages.success(
+                request,
+                f'Tiket "{tiket.nomor_tiket}" telah diidentifikasi.'
+            )
+            return super().post(request, *args, **kwargs)
+        
+        except (ValueError, ValidationError) as e:
+            error_message = 'Format tanggal tidak valid.'
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': error_message
+                })
+            messages.error(request, error_message)
+            return super().post(request, *args, **kwargs)
 
     def get_success_url(self):
         """Redirect to tiket detail page after successful status update.
