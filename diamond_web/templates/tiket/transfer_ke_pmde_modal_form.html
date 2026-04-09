@@ -4,7 +4,29 @@
     <div class="modal-body">
         <div class="alert alert-info">
             <i class="ri-information-line me-2"></i>
-            <strong>Transfer ke PMDE:</strong> Masukkan data tabel untuk tiket <strong>{{ tiket.nomor_tiket }}</strong>.
+            <strong>Transfer ke PMDE:</strong> Masukkan data identifikasi tabel untuk tiket <strong>{{ tiket.nomor_tiket }}</strong>.
+        </div>
+
+        <!-- Informasi Baris dari Tiket -->
+        <div class="row mb-3 ml-6 p-3 bg-light rounded border">
+            <div class="col-md-4">
+                <div class="info-group">
+                    <label class="text-muted small mb-1">Baris Diterima</label>
+                    <p class="fw-semibold mb-0">{{ tiket.baris_diterima|default:"-" }}</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="info-group">
+                    <label class="text-muted small mb-1">Baris Lengkap</label>
+                    <p class="fw-semibold mb-0">{{ tiket.baris_lengkap|default:"-" }}</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="info-group">
+                    <label class="text-muted small mb-1">Baris Tidak Lengkap</label>
+                    <p class="fw-semibold mb-0">{{ tiket.baris_tidak_lengkap|default:"-" }}</p>
+                </div>
+            </div>
         </div>
 
         <div class="row">

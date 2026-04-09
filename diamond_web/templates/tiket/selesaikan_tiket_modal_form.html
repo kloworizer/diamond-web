@@ -1,6 +1,51 @@
 <div class="modal-body">
+    <!-- Informasi Baris dari Tiket -->
+    <div class="row mb-3 p-3 bg-light rounded border">
+        <div class="col-md-6 mb-2">
+            <div class="info-group">
+                <label class="text-muted small mb-1">Baris Diterima</label>
+                <p class="fw-semibold mb-0">{{ tiket.baris_diterima|default:"-" }}</p>
+            </div>
+        </div>
+        <div class="col-md-6 mb-2">
+            <div class="info-group">
+                <label class="text-muted small mb-1">Baris Lengkap</label>
+                <p class="fw-semibold mb-0">{{ tiket.baris_lengkap|default:"-" }}</p>
+            </div>
+        </div>
+        <div class="col-md-3 mb-2">
+            <div class="info-group">
+                <label class="text-muted small mb-1">Baris I</label>
+                <p class="fw-semibold mb-0">{{ tiket.baris_i|default:"-" }}</p>
+            </div>
+        </div>
+        <div class="col-md-3 mb-2">
+            <div class="info-group">
+                <label class="text-muted small mb-1">Baris U</label>
+                <p class="fw-semibold mb-0">{{ tiket.baris_u|default:"-" }}</p>
+            </div>
+        </div>
+        <div class="col-md-3 mb-2">
+            <div class="info-group">
+                <label class="text-muted small mb-1">Baris Res</label>
+                <p class="fw-semibold mb-0">{{ tiket.baris_res|default:"-" }}</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="info-group">
+                <label class="text-muted small mb-1">Baris CDE</label>
+                <p class="fw-semibold mb-0">{{ tiket.baris_cde|default:"-" }}</p>
+            </div>
+        </div>
+    </div>
+
     <form id="selesaikanTiketForm" method="post" action="{{ form_action }}">
         {% csrf_token %}
+        <div class="alert alert-info mb-3">
+            <i class="ri-information-line me-2"></i>
+            <strong>Catatan:</strong> Lolos QC + Tidak Lolos QC harus sama dengan Baris I untuk dapat submit.
+        </div>
+
         <div class="form-group mb-3">
             <label for="{{ form.sudah_qc.id_for_label }}" class="form-label">{{ form.sudah_qc.label }}</label>
             {{ form.sudah_qc }}
@@ -25,6 +70,8 @@
                 <div class="invalid-feedback d-block">{{ form.tidak_lolos_qc.errors }}</div>
             {% endif %}
         </div>
+
+        <div id="baris-validation-hint" class="mb-3"></div>
 
         <div class="form-group mb-3">
             <label for="{{ form.qc_c.id_for_label }}" class="form-label">{{ form.qc_c.label }}</label>

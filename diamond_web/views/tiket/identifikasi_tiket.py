@@ -7,6 +7,7 @@ from django.views.generic import UpdateView
 from django.contrib import messages
 from django.http import JsonResponse
 from django.core.exceptions import ValidationError
+from django.template.loader import render_to_string
 
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
@@ -34,7 +35,11 @@ class IdentifikasiTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
     - Requires UserPIDERequiredMixin (user must be in user_pide group)
     - Requires test_func() - user must be ACTIVE PIDE PIC AND tiket in DIKIRIM_KE_PIDE status
 
-    Side Effects on Submission:
+    GET Request:
+    - Returns form HTML for AJAX display in modal
+    - Used by frontend to dynamically load form content
+
+    Side Effects on POST Submission:
     - Tiket.status set to STATUS_IDENTIFIKASI
     - TiketAction created with:
         - action: TiketActionType.IDENTIFIKASI
@@ -42,6 +47,7 @@ class IdentifikasiTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
         - timestamp: Current datetime
     """
     model = Tiket
+    form_class = IdentifikasiTiketForm
     
     def test_func(self):
         """Verify user is ACTIVE PIDE PIC and tiket is in DIKIRIM_KE_PIDE status.
@@ -66,6 +72,27 @@ class IdentifikasiTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
             ).exists()
             and tiket.status_tiket == 4  # STATUS_DIKIRIM_KE_PIDE
         )
+
+    def get(self, request, *args, **kwargs):
+        """Handle GET request: return form HTML for AJAX modal.
+
+        Returns form HTML that will be displayed in the modal.
+        For AJAX requests, returns HTML content.
+
+        Returns:
+        - HTML form content for modal display
+        """
+        tiket = self.get_object()
+        form = self.form_class(instance=tiket)
+        
+        context = {
+            'form': form,
+            'tiket': tiket,
+            'form_action': reverse('identifikasi_tiket', kwargs={'pk': tiket.pk})
+        }
+        
+        form_html = render_to_string('tiket/identifikasi_tiket_modal_form.html', context, request=request)
+        return JsonResponse({'html': form_html})
 
     def post(self, request, *args, **kwargs):
         """Handle POST request: mark tiket as IDENTIFIKASI and create audit entry.

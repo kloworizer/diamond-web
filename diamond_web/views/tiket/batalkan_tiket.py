@@ -43,7 +43,7 @@ class BatalkanTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3
     """
     model = Tiket
     form_class = BatalkanTiketForm
-    template_name = 'tiket/batalkan_tiket_form.html'
+    template_name = 'tiket/batalkan_tiket_modal_form.html'
     
     def test_func(self):
         """Verify user is an ACTIVE P3DE PIC for this tiket.
@@ -61,16 +61,6 @@ class BatalkanTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3
             active=True,
             role=TiketPIC.Role.P3DE
         ).exists()
-
-    def get_template_names(self):
-        """Return modal template for AJAX requests, full page otherwise.
-
-        AJAX requests (X-Requested-With=XMLHttpRequest) get a modal dialog
-        template for inline display, while regular requests get full page.
-        """
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return ['tiket/batalkan_tiket_modal_form.html']
-        return [self.template_name]
 
     def get_success_url(self):
         """Redirect to the tiket detail page after cancellation.
