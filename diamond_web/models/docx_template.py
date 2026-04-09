@@ -1,0 +1,59 @@
+"""DOCX Template model for managing document templates."""
+
+from django.db import models
+
+
+class DocxTemplate(models.Model):
+    """Stores DOCX templates for document generation.
+    
+    Allows admin p3de to upload and manage templates that will be used
+    to generate documents with placeholder variables filled in.
+    """
+    
+    DOCUMENT_TYPE_CHOICES = [
+        ('tanda_terima_nasional_internasional', 'Tanda Terima ILAP Nasional/Internasional'),
+        ('tanda_terima_regional', 'Tanda Terima ILAP Regional'),
+        ('lampiran_tanda_terima_nasional_internasional', 'Lampiran Tanda Terima ILAP Nasional/Internasional'),
+        ('lampiran_tanda_terima_regional', 'Lampiran Tanda Terima ILAP Regional'),
+        ('register_penerimaan_data', 'Register Penerimaan Data'),
+        ('nd_pengantar_pide', 'ND Pengantar ke PIDE'),
+        ('surat_klarifikasi', 'Surat Klarifikasi'),
+        ('surat_pkdi_nasional_internasional_lengkap', 'Surat PKDI ILAP Nasional/Internasional Lengkap'),
+        ('surat_pkdi_nasional_internasional_sebagian', 'Surat PKDI ILAP Nasional/Internasional Lengkap Sebagian'),
+        ('surat_pkdi_regional_lengkap', 'Surat PKDI ILAP Regional Lengkap'),
+        ('surat_pkdi_regional_sebagian', 'Surat PKDI ILAP Regional Lengkap Sebagian'),
+    ]
+    
+    nama_template = models.CharField(
+        max_length=255,
+        help_text="Nama template dokumen"
+    )
+    deskripsi = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Deskripsi lengkap template dokumen"
+    )
+    jenis_dokumen = models.CharField(
+        max_length=50,
+        choices=DOCUMENT_TYPE_CHOICES,
+        help_text="Jenis dokumen yang akan dihasilkan"
+    )
+    file_template = models.FileField(
+        upload_to='docx_templates/%Y%m%d/',
+        help_text="Upload file template DOCX. Gunakan placeholder {{variable_name}} untuk variabel yang akan diisi."
+    )
+    active = models.BooleanField(
+        default=True,
+        help_text="Aktifkan/nonaktifkan template ini"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'docx_template'
+        verbose_name = 'DOCX Template'
+        verbose_name_plural = 'DOCX Templates'
+        ordering = ['-updated_at']
+    
+    def __str__(self):
+        return f"{self.nama_template} ({self.get_jenis_dokumen_display()})"

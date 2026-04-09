@@ -135,6 +135,12 @@ urlpatterns = [
     path('pic-p3de/create/', views.PICP3DECreateView.as_view(), name='pic_p3de_create'),
     path('pic-p3de/<int:pk>/update/', views.PICP3DEUpdateView.as_view(), name='pic_p3de_update'),
     path('pic-p3de/<int:pk>/delete/', views.PICP3DEDeleteView.as_view(), name='pic_p3de_delete'),
+    # DOCX Template URLs
+    path('docx-template/', views.DocxTemplateListView.as_view(), name='docx_template_list'),
+    path('docx-template/data/', views.docx_template_data, name='docx_template_data'),
+    path('docx-template/create/', views.DocxTemplateCreateView.as_view(), name='docx_template_create'),
+    path('docx-template/<int:pk>/update/', views.DocxTemplateUpdateView.as_view(), name='docx_template_update'),
+    path('docx-template/<int:pk>/delete/', views.DocxTemplateDeleteView.as_view(), name='docx_template_delete'),
     # Tanda Terima Data URLs
     path('tanda-terima-data/', views.TandaTerimaDataListView.as_view(), name='tanda_terima_data_list'),
     path('tanda-terima-data/data/', views.tanda_terima_data_data, name='tanda_terima_data_data'),
