@@ -287,14 +287,14 @@ def can_access_tiket_list(user):
     """Return True when `user` should be allowed to view tiket listings.
 
     Rules applied:
-    - Superusers and `admin` group members are always allowed.
+    - Superusers and any admin group members (admin, admin_p3de, admin_pide, admin_pmde) are always allowed.
     - Members of `user_p3de`, `user_pide`, or `user_pmde` groups are
       allowed.
     - Otherwise, the user must have at least one `TiketPIC` record.
     """
     if not user or not user.is_authenticated:
         return False
-    if user.is_superuser or user.groups.filter(name='admin').exists():
+    if user.is_superuser or user.groups.filter(name__in=['admin', 'admin_p3de', 'admin_pide', 'admin_pmde']).exists():
         return True
     if user.groups.filter(name__in=['user_p3de', 'user_pide', 'user_pmde']).exists():
         return True
