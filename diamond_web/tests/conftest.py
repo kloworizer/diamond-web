@@ -54,7 +54,7 @@ class KategoriILAPFactory(DjangoModelFactory):
     class Meta:
         model = KategoriILAP
 
-    id_kategori = factory.Sequence(lambda n: f'{n:02d}')
+    id_kategori = factory.Sequence(lambda n: f'{n % 100:02d}')
     nama_kategori = factory.Sequence(lambda n: f'Kategori_{n:04d}')
 
 
