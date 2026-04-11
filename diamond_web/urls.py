@@ -202,6 +202,13 @@ urlpatterns = [
     path('tiket/', views.TiketListView.as_view(), name='tiket_list'),
     path('tiket/data/', views.tiket_data, name='tiket_data'),
     path('tiket/<int:pk>/documents/download/', views.tiket_documents_download, name='tiket_documents_download'),
+    # Tiket Identifikasi URLs
+    path('tiket/identifikasi/', views.TiketListView.as_view(), name='tiket_identifikasi_list'),
+    path('tiket/identifikasi/create/', views.TiketRekamCreateView.as_view(), name='tiket_identifikasi_create'),
+    path('tiket/identifikasi/<int:pk>/update/', views.IdentifikasiTiketView.as_view(), name='tiket_identifikasi_update'),
+    # Tiket Kirim URLs
+    path('tiket/kirim/', views.TiketListView.as_view(), name='tiket_kirim_list'),
+    path('tiket/kirim/<int:pk>/update/', views.KirimTiketView.as_view(), name='tiket_kirim_update'),
     
     # API endpoints
     path('api/ilap/<int:ilap_id>/periode-jenis-data/', views.ILAPPeriodeDataAPIView.as_view(), name='api_ilap_periode_jenis_data'),

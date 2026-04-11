@@ -4,6 +4,9 @@ from django.contrib import messages
 
 @receiver(user_logged_in)
 def display_login_success_message(sender, request, user, **kwargs):
-    # Get user's full name or fall back to username
-    full_name = user.get_full_name().strip() if user.get_full_name() else user.username
-    messages.success(request, f"Selamat datang, {full_name}!")
+    # Only add message if messages middleware is installed
+    # This handles cases like test clients that don't process middleware
+    if hasattr(request, '_messages'):
+        # Get user's full name or fall back to username
+        full_name = user.get_full_name().strip() if user.get_full_name() else user.username
+        messages.success(request, f"Selamat datang, {full_name}!")
