@@ -139,13 +139,10 @@ class TestDocxTemplateViews:
         obj = DocxTemplateFactory()
         client.force_login(p3de_admin_user)
         data = {'nama_template': 'Updated Template', 'jenis_dokumen': 'tanda_terima_nasional_internasional'}
-        try:
-            response = client.post(reverse('docx_template_update', args=[obj.pk]), data, follow=True)
-            assert response.status_code == 200
-            obj.refresh_from_db()
-            assert obj.nama_template == 'Updated Template'
-        except:
-            pytest.skip("Endpoint not available")
+        response = client.post(reverse('docx_template_update', args=[obj.pk]), data, follow=True)
+        assert response.status_code == 200
+        obj.refresh_from_db()
+        assert obj.nama_template == 'Updated Template'
 
     @pytest.mark.skipif(DocxTemplate is None, reason="DocxTemplate model not available")
     def test_docx_template_delete(self, client, p3de_admin_user, db):

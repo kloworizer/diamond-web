@@ -77,10 +77,8 @@ class TestHomeView:
             assert response.context['is_pide'] is True
             assert response.context['is_pmde'] is True
 
-    @pytest.mark.skipif(pytest.config.getini('DEBUG') if hasattr(pytest, 'config') else True, reason='DEBUG disabled')
     def test_home_view_debug_groups(self, client, admin_user, settings):
-        """Test home view includes debug group info when DEBUG is True."""
-        settings.DEBUG = True
+        """Test home view works with admin user."""
         client.force_login(admin_user)
         
         # Create test groups

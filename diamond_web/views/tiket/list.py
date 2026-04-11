@@ -213,7 +213,7 @@ def tiket_data(request):
             vals = PIC.objects.filter(
                 tipe=tipe,
                 end_date__isnull=True,
-                id_user_id__in=user_ids if user_ids else PIC.objects.none()
+                id_user_id__in=user_ids
             ).select_related('id_user').order_by('id_user__first_name', 'id_user__last_name', 'id_user__username')
             seen_users = set()
             data = []

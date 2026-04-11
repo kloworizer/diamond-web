@@ -55,7 +55,7 @@ class KategoriILAPFactory(DjangoModelFactory):
         model = KategoriILAP
 
     id_kategori = factory.Sequence(lambda n: f'{n:02d}')
-    nama_kategori = factory.LazyFunction(lambda: fake.word().title())
+    nama_kategori = factory.Sequence(lambda n: f'Kategori_{n:04d}')
 
 
 class JenisTabelFactory(DjangoModelFactory):
@@ -63,7 +63,7 @@ class JenisTabelFactory(DjangoModelFactory):
     class Meta:
         model = JenisTabel
 
-    deskripsi = factory.LazyFunction(lambda: fake.word().title())
+    deskripsi = factory.Sequence(lambda n: f'JenisTabel_{n:04d}')
 
 
 class KategoriWilayahFactory(DjangoModelFactory):
@@ -89,7 +89,7 @@ class ILAPFactory(DjangoModelFactory):
 
     id_ilap = factory.Sequence(lambda n: f'{n:05d}')  # max_length=5, so use numeric format
     id_kategori = factory.SubFactory(KategoriILAPFactory)
-    nama_ilap = factory.LazyFunction(lambda: fake.word().title())
+    nama_ilap = factory.Sequence(lambda n: f'ILAP_{n:05d}')
     id_kategori_wilayah = factory.SubFactory(KategoriWilayahFactory)
 
 
@@ -149,7 +149,7 @@ class BentukDataFactory(DjangoModelFactory):
     class Meta:
         model = BentukData
 
-    deskripsi = factory.LazyFunction(lambda: fake.word().title())
+    deskripsi = factory.Sequence(lambda n: f'BentukData_{n:04d}')
 
 
 class CaraPenyampaianFactory(DjangoModelFactory):
@@ -157,7 +157,7 @@ class CaraPenyampaianFactory(DjangoModelFactory):
     class Meta:
         model = CaraPenyampaian
 
-    deskripsi = factory.LazyFunction(lambda: fake.word().title())
+    deskripsi = factory.Sequence(lambda n: f'CaraPenyampaian_{n:04d}')
 
 
 class MediaBackupFactory(DjangoModelFactory):
@@ -165,7 +165,7 @@ class MediaBackupFactory(DjangoModelFactory):
     class Meta:
         model = MediaBackup
 
-    deskripsi = factory.LazyFunction(lambda: fake.word().title())
+    deskripsi = factory.Sequence(lambda n: f'MediaBackup_{n:04d}')
 
 
 class KlasifikasiJenisDataFactory(DjangoModelFactory):
@@ -250,6 +250,7 @@ class DocxTemplateFactory(DjangoModelFactory):
     nama_template = factory.LazyFunction(lambda: fake.word().title())
     jenis_dokumen = 'tanda_terima_nasional_internasional'
     deskripsi = factory.LazyFunction(lambda: fake.text())
+    file_template = factory.django.FileField(filename='test.docx', data=b'PK fake docx content')
 
 
 class TiketFactory(DjangoModelFactory):
