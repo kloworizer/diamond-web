@@ -1,0 +1,42 @@
+> from django.db import models
+> from .ilap import ILAP
+> from .jenis_tabel import JenisTabel
+> from .status_data import StatusData
+  
+> class JenisDataILAP(models.Model):
+>     id = models.AutoField(primary_key=True, verbose_name="ID")
+>     id_ilap = models.ForeignKey(
+>         ILAP,
+>         on_delete=models.PROTECT,
+>         db_column="id_ilap",
+>         verbose_name="ILAP"
+>     )
+>     id_jenis_data = models.CharField(max_length=7, verbose_name="ID Jenis Data")
+>     id_sub_jenis_data = models.CharField(max_length=9, verbose_name="ID Sub Jenis Data")
+>     nama_jenis_data = models.CharField(max_length=255, verbose_name="Nama Jenis Data")
+>     nama_sub_jenis_data = models.CharField(max_length=255, verbose_name="Nama Sub Jenis Data")
+>     nama_tabel_I = models.CharField(max_length=255, verbose_name="Nama Tabel I")
+>     nama_tabel_U = models.CharField(max_length=255, verbose_name="Nama Tabel U")
+>     id_jenis_tabel = models.ForeignKey(
+>         JenisTabel,
+>         on_delete=models.PROTECT,
+>         db_column="id_jenis_tabel",
+>         verbose_name="Jenis Tabel"
+>     )
+>     id_status_data = models.ForeignKey(
+>         StatusData,
+>         on_delete=models.PROTECT,
+>         db_column="id_status_data",
+>         verbose_name="Status Data",
+>         null=True,
+>         blank=True
+>     )
+  
+>     class Meta:
+>         verbose_name = "Jenis Data ILAP"
+>         verbose_name_plural = "Jenis Data ILAP"
+>         db_table = "jenis_data_ilap"
+>         ordering = ["id"]
+  
+>     def __str__(self):
+!         return f"{self.id_sub_jenis_data} - {self.nama_sub_jenis_data}"

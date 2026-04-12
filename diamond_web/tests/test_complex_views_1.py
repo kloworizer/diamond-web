@@ -1171,11 +1171,13 @@ class TestJenisPrioritasDataMissingBranches:
         jdi = JenisDataILAPFactory()
         jpd1 = JenisPrioritasDataFactory(
             id_sub_jenis_data_ilap=jdi,
+            tahun='2024',
             start_date=datetime.date(2024, 1, 1),
             end_date=datetime.date(2024, 6, 30),
         )
         jpd2 = JenisPrioritasDataFactory(
             id_sub_jenis_data_ilap=jdi,
+            tahun='2025',
             start_date=datetime.date(2025, 1, 1),
             end_date=datetime.date(2025, 6, 30),
         )

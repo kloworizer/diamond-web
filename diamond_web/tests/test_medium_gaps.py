@@ -241,6 +241,21 @@ class TestDurasiJatuhTempoPMDEGaps:
         assert resp.status_code == 200
         assert resp.json()['draw'] == 1
 
+    def test_pmde_delete_non_ajax_get(self, client, pmde_admin, pmde_group):
+        """Line 393: non-AJAX GET in DurasiJatuhTempoPMDEDeleteView.get() — render_to_response path."""
+        from diamond_web.models.durasi_jatuh_tempo import DurasiJatuhTempo
+        jdi = JenisDataILAPFactory()
+        obj = DurasiJatuhTempo.objects.create(
+            id_sub_jenis_data=jdi,
+            seksi=pmde_group,
+            durasi=10,
+            start_date=datetime.date(2024, 1, 1),
+        )
+        client.force_login(pmde_admin)
+        # GET without 'ajax' param → hits line 393: return self.render_to_response(...)
+        resp = client.get(reverse('durasi_jatuh_tempo_pmde_delete', args=[obj.pk]))
+        assert resp.status_code == 200
+
 
 # ─── JenisDataILAP gaps ───────────────────────────────────────────────────────
 
@@ -281,7 +296,7 @@ class TestJenisDataILAPGaps:
         assert resp.json()['draw'] == 1
 
     def test_datatables_desc_ordering(self, client, p3de_admin, db):
-        """Lines 267-268: datatables desc ordering in jenis_data_ilap_data."""
+        """Datatables desc ordering in jenis_data_ilap_data."""
         JenisDataILAPFactory()
         client.force_login(p3de_admin)
         resp = client.get(
@@ -295,31 +310,63 @@ class TestJenisDataILAPGaps:
         assert resp.status_code == 200
         assert resp.json()['draw'] == 1
 
-    def test_get_next_jenis_data_id_alphanumeric_prefix(self, client, p3de_admin, db):
-        """Lines 303-306: get_next_jenis_data_id with alphanumeric string (non-numeric pk)."""
-        obj = JenisDataILAPFactory()
-        client.force_login(p3de_admin)
-        # Pass alphanumeric string (not a numeric pk) → triggers regex branch
-        resp = client.get(
-            reverse('get_next_jenis_data_id'),
-            {'ilap_id': obj.id_ilap.id_ilap},  # string prefix, not pk
+    def test_get_next_jenis_data_id_if_last_block(self, client, p3de_admin, db):
+        """Lines 267-268: get_next_jenis_data_id except Exception branch when suffix is non-numeric."""
+        from diamond_web.models import JenisDataILAP as JDIModel
+        jt = JenisTabelFactory()
+        sd = StatusDataFactory()
+        ilap = ILAPFactory()
+        # id_jenis_data 'TPMEDXX' has suffix 'XX' (non-numeric) → triggers except Exception: last_number = 0
+        JDIModel.objects.create(
+            id_ilap=ilap, id_jenis_data='TPMEDXX', id_sub_jenis_data='TPMEDXX01',
+            nama_jenis_data='Test', nama_sub_jenis_data='Test Sub',
+            nama_tabel_I='tbl', nama_tabel_U='tbl', id_jenis_tabel=jt, id_status_data=sd,
         )
+        client.force_login(p3de_admin)
+        # Pass non-numeric string → except branch → prefix='TPMED' → finds 'TPMEDXX' → suffix='XX' → lines 267-268
+        resp = client.get(reverse('get_next_jenis_data_id'), {'ilap_id': 'TPMED'})
         assert resp.status_code == 200
         data = resp.json()
         assert 'next_id' in data
+        assert data['next_id'].startswith('TPMED')
+
+    def test_get_existing_jenis_data_non_numeric(self, client, p3de_admin, db):
+        """Lines 303-306: get_existing_jenis_data with non-numeric string triggers except branch."""
+        from diamond_web.models import JenisDataILAP as JDIModel, JenisTabel, StatusData
+        jt = JenisTabelFactory()
+        sd = StatusDataFactory()
+        ilap = ILAPFactory()
+        JDIModel.objects.create(
+            id_ilap=ilap, id_jenis_data='TPEX01', id_sub_jenis_data='TPEX0101',
+            nama_jenis_data='Test', nama_sub_jenis_data='Test Sub',
+            nama_tabel_I='tbl', nama_tabel_U='tbl', id_jenis_tabel=jt, id_status_data=sd,
+        )
+        client.force_login(p3de_admin)
+        # Non-numeric string → int() raises → except block (lines 303-306)
+        resp = client.get(reverse('get_existing_jenis_data'), {'ilap_id': 'TPEX'})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert 'items' in data
 
     def test_get_next_sub_jenis_id_with_existing_data(self, client, p3de_admin, db):
-        """Lines 362-367: get_next_sub_jenis_id with existing data (covers if last: branch)."""
-        obj = JenisDataILAPFactory()
-        id_jenis = obj.id_jenis_data
-        client.force_login(p3de_admin)
-        resp = client.get(
-            reverse('get_next_sub_jenis_id'),
-            {'id_jenis_data': id_jenis},
+        """Lines 365-366: get_next_sub_jenis_id except Exception branch when suffix is non-numeric."""
+        from diamond_web.models import JenisDataILAP as JDIModel
+        jt = JenisTabelFactory()
+        sd = StatusDataFactory()
+        ilap = ILAPFactory()
+        # id_sub_jenis_data 'TPSUB01AB' has suffix 'AB' (non-numeric) → triggers except Exception: last_number = 0
+        JDIModel.objects.create(
+            id_ilap=ilap, id_jenis_data='TPSUB01', id_sub_jenis_data='TPSUB01AB',
+            nama_jenis_data='Test', nama_sub_jenis_data='Test Sub',
+            nama_tabel_I='tbl', nama_tabel_U='tbl', id_jenis_tabel=jt, id_status_data=sd,
         )
+        client.force_login(p3de_admin)
+        # Query with 'TPSUB01' → finds 'TPSUB01AB' → suffix='AB' → int('AB') raises → lines 365-366 covered
+        resp = client.get(reverse('get_next_sub_jenis_id'), {'id_jenis_data': 'TPSUB01'})
         assert resp.status_code == 200
         data = resp.json()
         assert 'next_id' in data
+        assert data['next_id'].startswith('TPSUB01')
 
     def test_get_next_sub_jenis_id_missing_param(self, client, p3de_admin):
         """get_next_sub_jenis_id with missing id_jenis_data → 400."""
@@ -501,12 +548,8 @@ class TestPICGaps:
 
     def test_pic_datatables_column3_enddate_search(self, client, p3de_admin, db):
         """Line 665: pic datatables column 3 search (end_date)."""
-        import datetime
         pic_obj = PICFactory()
-        if pic_obj.end_date:
-            search_val = str(pic_obj.end_date)
-        else:
-            search_val = '2025'
+        search_val = str(pic_obj.end_date) if pic_obj.end_date else '2025'
         client.force_login(p3de_admin)
         resp = client.get(
             reverse('pic_p3de_data'),

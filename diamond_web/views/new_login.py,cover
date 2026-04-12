@@ -1,0 +1,15 @@
+> from django.shortcuts import render
+  
+> def new_login(request):
+>     """Render the login page.
+  
+>     Displays the login form template for user authentication.
+>     Template: login/auth-login-creative.html
+  
+>     Args:
+>         request (HttpRequest): The HTTP request object.
+  
+>     Returns:
+>         HttpResponse: Rendered login template.
+>     """
+!     return render(request, 'login/auth-login-creative.html')

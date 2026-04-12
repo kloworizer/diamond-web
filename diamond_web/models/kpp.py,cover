@@ -1,0 +1,23 @@
+> from django.db import models
+> from .kanwil import Kanwil
+  
+  
+> class KPP(models.Model):
+>     id = models.AutoField(primary_key=True, verbose_name="ID")
+>     kode_kpp = models.CharField(max_length=3, unique=True, verbose_name="Kode KPP")
+>     nama_kpp = models.CharField(max_length=50, unique=True, verbose_name="Nama KPP")
+>     id_kanwil = models.ForeignKey(
+>         Kanwil,
+>         on_delete=models.PROTECT,
+>         verbose_name="Kanwil",
+>         related_name="kpp"
+>     )
+  
+>     class Meta:
+>         verbose_name = "KPP"
+>         verbose_name_plural = "KPP"
+>         db_table = "kpp"
+>         ordering = ["id"]
+  
+>     def __str__(self):
+!         return self.nama_kpp
