@@ -1,0 +1,14 @@
+> from django import forms
+> from ..models.status_penelitian import StatusPenelitian
+> from .base import AutoRequiredFormMixin
+  
+> class StatusPenelitianForm(AutoRequiredFormMixin, forms.ModelForm):
+>     class Meta:
+>         model = StatusPenelitian
+>         fields = ['deskripsi']
+>         widgets = {
+>             'deskripsi': forms.TextInput(attrs={
+>                 'class': 'form-control',
+>                 'placeholder': 'Masukkan deskripsi status penelitian'
+>             }),
+>         }

@@ -1,0 +1,91 @@
+> from django import forms
+> from ..models.tiket import Tiket
+> from .base import AutoRequiredFormMixin
+  
+  
+> class RekamHasilPenelitianForm(AutoRequiredFormMixin, forms.ModelForm):
+>     """Form for recording research results."""
+  
+>     KESESUAIAN_CHOICES = [
+>         ('', '---------'),
+>         (1, 'Sesuai PMK'),
+>         (2, 'Sesuai PKS'),
+>         (3, 'Sesuai Konfirmasi Ketersediaan Data'),
+>     ]
+  
+>     kesesuaian_data = forms.TypedChoiceField(
+>         label='Kesesuaian Data',
+>         choices=KESESUAIAN_CHOICES,
+>         coerce=lambda x: int(x) if x else None,
+>         widget=forms.Select(attrs={'class': 'form-select'}),
+>         required=True,
+>         empty_value=None,
+>     )
+  
+>     catatan = forms.CharField(
+>         label='Catatan',
+>         widget=forms.Textarea(attrs={
+>             'class': 'form-control',
+>             'placeholder': 'Masukkan catatan tambahan',
+>             'rows': 3
+>         }),
+>         required=True
+>     )
+  
+>     class Meta:
+>         model = Tiket
+>         fields = ['tgl_teliti', 'kesesuaian_data', 'baris_lengkap', 'baris_tidak_lengkap']
+>         labels = {
+>             'tgl_teliti': 'Tanggal Teliti',
+>             'baris_lengkap': 'Baris Lengkap',
+>             'baris_tidak_lengkap': 'Baris Tidak Lengkap',
+>         }
+>         widgets = {
+>             'tgl_teliti': forms.DateTimeInput(
+>                 attrs={'type': 'datetime-local', 'class': 'form-control'},
+>                 format='%Y-%m-%dT%H:%M',
+>             ),
+>             'baris_lengkap': forms.NumberInput(attrs={
+>                 'class': 'form-control',
+>                 'id': 'id_baris_lengkap',
+>                 'min': '0',
+>             }),
+>             'baris_tidak_lengkap': forms.NumberInput(attrs={
+>                 'class': 'form-control',
+>                 'id': 'id_baris_tidak_lengkap',
+>                 'min': '0',
+>             }),
+>         }
+  
+>     def __init__(self, *args, **kwargs):
+!         super().__init__(*args, **kwargs)
+!         self.fields['tgl_teliti'].required = True
+!         self.fields['baris_lengkap'].required = True
+!         self.fields['baris_tidak_lengkap'].required = True
+!         self.fields['tgl_teliti'].input_formats = ['%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M']
+  
+          # Pre-format tgl_teliti for datetime-local input
+!         if self.instance and self.instance.tgl_teliti:
+!             self.initial['tgl_teliti'] = self.instance.tgl_teliti.strftime('%Y-%m-%dT%H:%M')
+  
+          # Set default catatan
+!         default_catatan = 'Hasil penelitian diubah' if self.instance and self.instance.tgl_teliti else 'Hasil penelitian direkam'
+!         if not self.initial.get('catatan'):
+!             self.fields['catatan'].initial = default_catatan
+  
+>     def clean(self):
+!         cleaned_data = super().clean()
+!         baris_lengkap = cleaned_data.get('baris_lengkap')
+!         baris_tidak_lengkap = cleaned_data.get('baris_tidak_lengkap')
+  
+!         if baris_lengkap is not None and baris_tidak_lengkap is not None:
+!             if self.instance and self.instance.baris_diterima is not None:
+!                 total = baris_lengkap + baris_tidak_lengkap
+!                 if total != self.instance.baris_diterima:
+!                     raise forms.ValidationError(
+!                         f'Baris lengkap + baris tidak lengkap ({total}) '
+!                         f'harus sama dengan baris diterima ({self.instance.baris_diterima}).'
+!                     )
+  
+!         return cleaned_data
+  

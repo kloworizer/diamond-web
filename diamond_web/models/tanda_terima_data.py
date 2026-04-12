@@ -39,15 +39,18 @@ class TandaTerimaData(models.Model):
 
     @property
     def nama_ILAP(self):
-        return self.id_ILAP.nama_ILAP
+        return self.id_ilap.nama_ilap
 
     @property
     def daftar_jenis_data(self):
         return ", ".join(
-            [j.nama_jenis_data for j in self.id_ILAP.jenisdataILAP_set.all()]
+            [j.nama_jenis_data for j in self.id_ilap.jenisdatailap_set.all()]
         )
 
     @property
     def periode_data(self):
-        data = self.id_ILAP.jenisdataILAP_set.first()
-        return data.periode_data if data else None
+        data = self.id_ilap.jenisdatailap_set.first()
+        if data is None:
+            return None
+        periode = data.periodejenisdata_set.first()
+        return periode.id_periode_pengiriman.periode_penerimaan if periode else None

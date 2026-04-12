@@ -1,0 +1,17 @@
+> from django.shortcuts import render
+> from django.contrib.auth.decorators import login_required
+  
+> @login_required
+> def index(request):
+>     """Render the dashboard home page.
+  
+>     Displays the main dashboard interface for authenticated users.
+>     Template: dashboard/index.html
+  
+>     Args:
+>         request (HttpRequest): The HTTP request object from an authenticated user.
+  
+>     Returns:
+>         HttpResponse: Rendered dashboard template.
+>     """
+!     return render(request, 'dashboard/index.html')
