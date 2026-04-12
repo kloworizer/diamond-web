@@ -38,7 +38,7 @@ htmlcov/
 .tox/
 .nox/
 .cache/
-*.cover
+*,cover
 
 # Migrations (optional, if you want to ignore them)
 # **/migrations/*.pyc
