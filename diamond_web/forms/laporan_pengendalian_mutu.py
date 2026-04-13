@@ -1,4 +1,8 @@
 from django import forms
+from import_export import resources, fields
+from import_export.widgets import Widget
+from ..models.tiket import Tiket
+from ..constants.tiket_status import STATUS_LABELS
 
 
 class LaporanPengendalianMutuFilterForm(forms.Form):
@@ -107,3 +111,104 @@ class LaporanPengendalianMutuFilterForm(forms.Form):
             }),
             required=False
         )
+
+
+class TiketExportResource(resources.ModelResource):
+    """Resource for exporting Tiket data with QC fields."""
+    
+    nama_ilap = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__id_ilap__nama_ilap')
+    nama_sub_jenis_data = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data')
+    nama_tabel = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel__deskripsi')
+    nomor_tiket = fields.Field(attribute='nomor_tiket')
+    status_tiket = fields.Field()
+    data_diterima = fields.Field(attribute='baris_diterima')
+    data_direkam = fields.Field()
+    data_teridentifikasi_i = fields.Field(attribute='baris_i')
+    data_tidak_teridentifikasi_u = fields.Field(attribute='baris_u')
+    lolos_qc = fields.Field(attribute='lolos_qc')
+    tidak_lolos_qc = fields.Field(attribute='tidak_lolos_qc')
+    qc_p = fields.Field(attribute='qc_p')
+    qc_x = fields.Field(attribute='qc_x')
+    qc_w = fields.Field(attribute='qc_w')
+    qc_v = fields.Field(attribute='qc_v')
+    qc_a = fields.Field(attribute='qc_a')
+    qc_n = fields.Field(attribute='qc_n')
+    qc_y = fields.Field(attribute='qc_y')
+    qc_z = fields.Field(attribute='qc_z')
+    qc_d = fields.Field(attribute='qc_d')
+    qc_u = fields.Field(attribute='qc_u')
+    qc_c = fields.Field(attribute='qc_c')
+    
+    class Meta:
+        model = Tiket
+        fields = (
+            'nama_ilap', 'nama_sub_jenis_data', 'nama_tabel', 'nomor_tiket', 'status_tiket',
+            'data_diterima', 'data_direkam', 'data_teridentifikasi_i', 'data_tidak_teridentifikasi_u',
+            'lolos_qc', 'tidak_lolos_qc', 'qc_p', 'qc_x', 'qc_w', 'qc_v', 'qc_a', 'qc_n', 
+            'qc_y', 'qc_z', 'qc_d', 'qc_u', 'qc_c'
+        )
+        export_order = fields
+    
+    def dehydrate_status_tiket(self, obj):
+        """Return human-readable status label."""
+        return STATUS_LABELS.get(obj.status_tiket, 'Unknown')
+    
+    def dehydrate_data_direkam(self, obj):
+        """Calculate total recorded data (I + U)."""
+        return (obj.baris_i or 0) + (obj.baris_u or 0)
+    
+    def dehydrate_data_diterima(self, obj):
+        """Return null values as 0."""
+        return obj.baris_diterima or 0
+    
+    def dehydrate_lolos_qc(self, obj):
+        """Return null values as 0."""
+        return obj.lolos_qc or 0
+    
+    def dehydrate_tidak_lolos_qc(self, obj):
+        """Return null values as 0."""
+        return obj.tidak_lolos_qc or 0
+    
+    def dehydrate_qc_p(self, obj):
+        """Return null values as 0."""
+        return obj.qc_p or 0
+    
+    def dehydrate_qc_x(self, obj):
+        """Return null values as 0."""
+        return obj.qc_x or 0
+    
+    def dehydrate_qc_w(self, obj):
+        """Return null values as 0."""
+        return obj.qc_w or 0
+    
+    def dehydrate_qc_v(self, obj):
+        """Return null values as 0."""
+        return obj.qc_v or 0
+    
+    def dehydrate_qc_a(self, obj):
+        """Return null values as 0."""
+        return obj.qc_a or 0
+    
+    def dehydrate_qc_n(self, obj):
+        """Return null values as 0."""
+        return obj.qc_n or 0
+    
+    def dehydrate_qc_y(self, obj):
+        """Return null values as 0."""
+        return obj.qc_y or 0
+    
+    def dehydrate_qc_z(self, obj):
+        """Return null values as 0."""
+        return obj.qc_z or 0
+    
+    def dehydrate_qc_d(self, obj):
+        """Return null values as 0."""
+        return obj.qc_d or 0
+    
+    def dehydrate_qc_u(self, obj):
+        """Return null values as 0."""
+        return obj.qc_u or 0
+    
+    def dehydrate_qc_c(self, obj):
+        """Return null values as 0."""
+        return obj.qc_c or 0
