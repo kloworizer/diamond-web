@@ -47,9 +47,12 @@
                         <div class="invalid-feedback d-block">{{ form.tahun.errors }}</div>
                     {% endif %}
                 </div>
-                <div class="col-md-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">
+                <div class="col-md-3 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary flex-grow-1">
                         <i class="ri-search-line me-1"></i>Tampilkan Data
+                    </button>
+                    <button type="button" id="export-btn" class="btn btn-success" disabled>
+                        <i class="ri-download-2-line me-1"></i>Export XLSX
                     </button>
                 </div>
             </form>
@@ -64,37 +67,35 @@
             </h5>
         </div>
         <div class="card-body">
-            <div style="overflow-x: auto;">
-                <table id="laporan-pengendalian-mutu-table" class="table table-striped" style="width:100%">
-                    <thead>
-                        <tr>
-                            <th>Nama ILAP</th>
-                            <th>Nama Sub Jenis Data</th>
-                            <th>Nama Tabel</th>
-                            <th>Nomor Tiket</th>
-                            <th>Status Tiket</th>
-                            <th>Data Diterima</th>
-                            <th>Data Direkam (I+U)</th>
-                            <th>Data Teridentifikasi (I)</th>
-                            <th>Data Tidak Teridentifikasi (U)</th>
-                            <th>Lolos QC</th>
-                            <th>Tidak Lolos QC</th>
-                            <th>QC P</th>
-                            <th>QC X</th>
-                            <th>QC W</th>
-                            <th>QC V</th>
-                            <th>QC A</th>
-                            <th>QC N</th>
-                            <th>QC Y</th>
-                            <th>QC Z</th>
-                            <th>QC D</th>
-                            <th>QC U</th>
-                            <th>QC C</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
+            <table id="laporan-pengendalian-mutu-table" class="table table-striped" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>Nama ILAP</th>
+                        <th>Nama Sub Jenis Data</th>
+                        <th>Nama Tabel</th>
+                        <th>Nomor Tiket</th>
+                        <th>Status Tiket</th>
+                        <th>Data Diterima</th>
+                        <th>Data Direkam (I+U)</th>
+                        <th>Data Teridentifikasi (I)</th>
+                        <th>Data Tidak Teridentifikasi (U)</th>
+                        <th>Lolos QC</th>
+                        <th>Tidak Lolos QC</th>
+                        <th>QC P</th>
+                        <th>QC X</th>
+                        <th>QC W</th>
+                        <th>QC V</th>
+                        <th>QC A</th>
+                        <th>QC N</th>
+                        <th>QC Y</th>
+                        <th>QC Z</th>
+                        <th>QC D</th>
+                        <th>QC U</th>
+                        <th>QC C</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -196,6 +197,12 @@
                 }
             });
             
+            // Enable export button when data is loaded
+            table.on('draw.dt', function() {
+                const recordsFiltered = table.page.info().recordsFiltered;
+                $('#export-btn').prop('disabled', recordsFiltered === 0);
+            });
+            
             // Handle form submission
             $('#filter-form').on('submit', function (e) {
                 e.preventDefault();
@@ -208,6 +215,25 @@
                 
                 // Reload table with new data
                 table.ajax.reload();
+            });
+            
+            // Handle export button
+            $('#export-btn').on('click', function(e) {
+                e.preventDefault();
+                const periodeType = $('#filter-periode-type').val();
+                const periode = $('#filter-periode').val();
+                const tahun = $('#filter-tahun').val();
+                
+                // Create form and submit to export endpoint
+                const form = $('<form></form>');
+                form.attr('method', 'GET');
+                form.attr('action', '{% url "laporan_pengendalian_mutu_export" %}');
+                form.append($('<input>').attr('type', 'hidden').attr('name', 'periode_type').val(periodeType));
+                form.append($('<input>').attr('type', 'hidden').attr('name', 'periode').val(periode));
+                form.append($('<input>').attr('type', 'hidden').attr('name', 'tahun').val(tahun));
+                $('body').append(form);
+                form.submit();
+                form.remove();
             });
         });
     })();
