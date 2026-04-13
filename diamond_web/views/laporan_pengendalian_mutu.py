@@ -4,10 +4,12 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.decorators.http import require_GET
 from django.views.generic import TemplateView
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from datetime import datetime, timedelta
 from django.db.models import Q
+import xlsxwriter
+from io import BytesIO
 
 from ..models.tiket import Tiket
 from ..constants.tiket_status import STATUS_LABELS
@@ -249,3 +251,212 @@ def laporan_pengendalian_mutu_data(request):
         'recordsFiltered': records_filtered,
         'data': data
     })
+
+
+@login_required
+@user_passes_test(_is_pmde_user)
+@require_GET
+def laporan_pengendalian_mutu_export(request):
+    """Export Laporan Pengendalian Mutu to XLSX file.
+    
+    GET Parameters:
+    - periode_type: Type of period (bulanan, triwulanan, semester, tahunan)
+    - periode: Period value
+    - tahun: Year
+    
+    Returns: XLSX file download
+    """
+    periode_type = request.GET.get('periode_type')
+    periode = request.GET.get('periode')
+    tahun = request.GET.get('tahun')
+    
+    # Validate inputs
+    if not periode_type or not periode or not tahun:
+        return HttpResponse('Invalid parameters', status=400)
+    
+    try:
+        tahun = int(tahun)
+    except (ValueError, TypeError):
+        return HttpResponse('Invalid year', status=400)
+    
+    # Calculate date range based on periode type
+    start_date = None
+    end_date = None
+    periode_label = ''
+    
+    if periode_type == 'bulanan':
+        try:
+            bulan = int(periode)
+            if bulan < 1 or bulan > 12:
+                return HttpResponse('Invalid month', status=400)
+            start_date = datetime(tahun, bulan, 1).date()
+            if bulan == 12:
+                end_date = datetime(tahun + 1, 1, 1).date() - timedelta(days=1)
+            else:
+                end_date = datetime(tahun, bulan + 1, 1).date() - timedelta(days=1)
+            
+            bulan_names = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                          'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+            periode_label = f'{bulan_names[bulan]} {tahun}'
+        except (ValueError, TypeError):
+            return HttpResponse('Invalid month', status=400)
+    
+    elif periode_type == 'triwulanan':
+        quarter_months = {
+            1: (1, 3),
+            2: (4, 6),
+            3: (7, 9),
+            4: (10, 12),
+        }
+        try:
+            triwulan = int(periode)
+            if triwulan not in quarter_months:
+                return HttpResponse('Invalid quarter', status=400)
+            start_month, end_month = quarter_months[triwulan]
+            start_date = datetime(tahun, start_month, 1).date()
+            if end_month == 12:
+                end_date = datetime(tahun + 1, 1, 1).date() - timedelta(days=1)
+            else:
+                end_date = datetime(tahun, end_month + 1, 1).date() - timedelta(days=1)
+            periode_label = f'Triwulan {triwulan} {tahun}'
+        except (ValueError, TypeError):
+            return HttpResponse('Invalid quarter', status=400)
+    
+    elif periode_type == 'semester':
+        semester_months = {
+            1: (1, 6),
+            2: (7, 12),
+        }
+        try:
+            semester = int(periode)
+            if semester not in semester_months:
+                return HttpResponse('Invalid semester', status=400)
+            start_month, end_month = semester_months[semester]
+            start_date = datetime(tahun, start_month, 1).date()
+            if end_month == 12:
+                end_date = datetime(tahun + 1, 1, 1).date() - timedelta(days=1)
+            else:
+                end_date = datetime(tahun, end_month + 1, 1).date() - timedelta(days=1)
+            periode_label = f'Semester {semester} {tahun}'
+        except (ValueError, TypeError):
+            return HttpResponse('Invalid semester', status=400)
+    
+    elif periode_type == 'tahunan':
+        start_date = datetime(tahun, 1, 1).date()
+        end_date = datetime(tahun, 12, 31).date()
+        periode_label = f'{tahun}'
+    
+    else:
+        return HttpResponse('Invalid periode type', status=400)
+    
+    # Query tikets
+    tikets = Tiket.objects.filter(
+        tgl_transfer__isnull=False,
+        tgl_transfer__date__gte=start_date,
+        tgl_transfer__date__lte=end_date
+    ).select_related(
+        'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+        'id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel'
+    ).order_by('-tgl_transfer')
+    
+    # Create workbook in memory
+    output = BytesIO()
+    workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+    worksheet = workbook.add_worksheet('Pengendalian Mutu')
+    
+    # Define formats
+    title_format = workbook.add_format({
+        'bold': True,
+        'font_size': 14,
+        'align': 'center',
+        'valign': 'vcenter'
+    })
+    
+    header_format = workbook.add_format({
+        'bold': True,
+        'font_color': 'white',
+        'bg_color': '#0070C0',
+        'align': 'center',
+        'valign': 'vcenter',
+        'text_wrap': True
+    })
+    
+    number_format = workbook.add_format({
+        'align': 'right',
+        'valign': 'vcenter'
+    })
+    
+    text_format = workbook.add_format({
+        'align': 'left',
+        'valign': 'vcenter'
+    })
+    
+    # Add title
+    worksheet.merge_range('A1:V1', f'Laporan Pengendalian Mutu - {periode_label}', title_format)
+    worksheet.set_row(0, 25)
+    
+    # Add headers
+    headers = [
+        'Nama ILAP', 'Nama Sub Jenis Data', 'Nama Tabel', 'Nomor Tiket', 'Status Tiket',
+        'Data Diterima', 'Data Direkam (I+U)', 'Data Teridentifikasi (I)', 
+        'Data Tidak Teridentifikasi (U)', 'Lolos QC', 'Tidak Lolos QC',
+        'QC P', 'QC X', 'QC W', 'QC V', 'QC A', 'QC N', 'QC Y', 'QC Z', 'QC D', 'QC U', 'QC C'
+    ]
+    
+    for col_num, header in enumerate(headers):
+        worksheet.write(1, col_num, header, header_format)
+    worksheet.set_row(1, 20)
+    
+    # Set column widths
+    column_widths = [18, 20, 18, 15, 15, 12, 14, 16, 18, 10, 14, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
+    for col_num, width in enumerate(column_widths):
+        worksheet.set_column(col_num, col_num, width)
+    
+    # Add data rows
+    for row_num, tiket in enumerate(tikets, 2):
+        sub_jenis_data = tiket.id_periode_data.id_sub_jenis_data_ilap
+        ilap = sub_jenis_data.id_ilap
+        jenis_tabel = sub_jenis_data.id_jenis_tabel
+        
+        row_data = [
+            ilap.nama_ilap,
+            sub_jenis_data.nama_sub_jenis_data,
+            jenis_tabel.deskripsi if jenis_tabel else '',
+            tiket.nomor_tiket,
+            STATUS_LABELS.get(tiket.status_tiket, 'Unknown'),
+            tiket.baris_diterima or 0,
+            (tiket.baris_i or 0) + (tiket.baris_u or 0),
+            tiket.baris_i or 0,
+            tiket.baris_u or 0,
+            tiket.lolos_qc or 0,
+            tiket.tidak_lolos_qc or 0,
+            tiket.qc_p or 0,
+            tiket.qc_x or 0,
+            tiket.qc_w or 0,
+            tiket.qc_v or 0,
+            tiket.qc_a or 0,
+            tiket.qc_n or 0,
+            tiket.qc_y or 0,
+            tiket.qc_z or 0,
+            tiket.qc_d or 0,
+            tiket.qc_u or 0,
+            tiket.qc_c or 0,
+        ]
+        
+        for col_num, value in enumerate(row_data):
+            # Right align numbers, left align text
+            if isinstance(value, (int, float)):
+                worksheet.write(row_num, col_num, value, number_format)
+            else:
+                worksheet.write(row_num, col_num, value, text_format)
+    
+    workbook.close()
+    
+    # Create HTTP response
+    output.seek(0)
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="Laporan_Pengendalian_Mutu_{periode_label.replace(" ", "_")}.xlsx"'
+    return response

@@ -179,6 +179,7 @@ urlpatterns = [
     # Laporan Pengendalian Mutu
     path('laporan-pengendalian-mutu/', views.LaporanPengendalianMutuView.as_view(), name='laporan_pengendalian_mutu'),
     path('laporan-pengendalian-mutu/data/', views.laporan_pengendalian_mutu_data, name='laporan_pengendalian_mutu_data'),
+    path('laporan-pengendalian-mutu/export/', views.laporan_pengendalian_mutu_export, name='laporan_pengendalian_mutu_export'),
     # PIC PMDE URLs
     path('pic-pmde/', views.PICPMDEListView.as_view(), name='pic_pmde_list'),
     path('pic-pmde/data/', views.pic_pmde_data, name='pic_pmde_data'),
