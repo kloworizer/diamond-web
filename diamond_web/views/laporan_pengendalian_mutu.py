@@ -8,12 +8,11 @@ from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from datetime import datetime, timedelta
 from django.db.models import Q
-import xlsxwriter
-from io import BytesIO
+from import_export import formats
 
 from ..models.tiket import Tiket
 from ..constants.tiket_status import STATUS_LABELS
-from ..forms.laporan_pengendalian_mutu import LaporanPengendalianMutuFilterForm
+from ..forms.laporan_pengendalian_mutu import LaporanPengendalianMutuFilterForm, TiketExportResource
 
 
 def _is_pmde_user(user):
@@ -349,6 +348,7 @@ def laporan_pengendalian_mutu_export(request):
     else:
         return HttpResponse('Invalid periode type', status=400)
     
+    
     # Query tikets
     tikets = Tiket.objects.filter(
         tgl_transfer__isnull=False,
@@ -359,103 +359,15 @@ def laporan_pengendalian_mutu_export(request):
         'id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel'
     ).order_by('-tgl_transfer')
     
-    # Create workbook in memory
-    output = BytesIO()
-    workbook = xlsxwriter.Workbook(output, {'in_memory': True})
-    worksheet = workbook.add_worksheet('Pengendalian Mutu')
-    
-    # Define formats
-    title_format = workbook.add_format({
-        'bold': True,
-        'font_size': 14,
-        'align': 'center',
-        'valign': 'vcenter'
-    })
-    
-    header_format = workbook.add_format({
-        'bold': True,
-        'font_color': 'white',
-        'bg_color': '#0070C0',
-        'align': 'center',
-        'valign': 'vcenter',
-        'text_wrap': True
-    })
-    
-    number_format = workbook.add_format({
-        'align': 'right',
-        'valign': 'vcenter'
-    })
-    
-    text_format = workbook.add_format({
-        'align': 'left',
-        'valign': 'vcenter'
-    })
-    
-    # Add title
-    worksheet.merge_range('A1:V1', f'Laporan Pengendalian Mutu - {periode_label}', title_format)
-    worksheet.set_row(0, 25)
-    
-    # Add headers
-    headers = [
-        'Nama ILAP', 'Nama Sub Jenis Data', 'Nama Tabel', 'Nomor Tiket', 'Status Tiket',
-        'Data Diterima', 'Data Direkam (I+U)', 'Data Teridentifikasi (I)', 
-        'Data Tidak Teridentifikasi (U)', 'Lolos QC', 'Tidak Lolos QC',
-        'QC P', 'QC X', 'QC W', 'QC V', 'QC A', 'QC N', 'QC Y', 'QC Z', 'QC D', 'QC U', 'QC C'
-    ]
-    
-    for col_num, header in enumerate(headers):
-        worksheet.write(1, col_num, header, header_format)
-    worksheet.set_row(1, 20)
-    
-    # Set column widths
-    column_widths = [18, 20, 18, 15, 15, 12, 14, 16, 18, 10, 14, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
-    for col_num, width in enumerate(column_widths):
-        worksheet.set_column(col_num, col_num, width)
-    
-    # Add data rows
-    for row_num, tiket in enumerate(tikets, 2):
-        sub_jenis_data = tiket.id_periode_data.id_sub_jenis_data_ilap
-        ilap = sub_jenis_data.id_ilap
-        jenis_tabel = sub_jenis_data.id_jenis_tabel
-        
-        row_data = [
-            ilap.nama_ilap,
-            sub_jenis_data.nama_sub_jenis_data,
-            jenis_tabel.deskripsi if jenis_tabel else '',
-            tiket.nomor_tiket,
-            STATUS_LABELS.get(tiket.status_tiket, 'Unknown'),
-            tiket.baris_diterima or 0,
-            (tiket.baris_i or 0) + (tiket.baris_u or 0),
-            tiket.baris_i or 0,
-            tiket.baris_u or 0,
-            tiket.lolos_qc or 0,
-            tiket.tidak_lolos_qc or 0,
-            tiket.qc_p or 0,
-            tiket.qc_x or 0,
-            tiket.qc_w or 0,
-            tiket.qc_v or 0,
-            tiket.qc_a or 0,
-            tiket.qc_n or 0,
-            tiket.qc_y or 0,
-            tiket.qc_z or 0,
-            tiket.qc_d or 0,
-            tiket.qc_u or 0,
-            tiket.qc_c or 0,
-        ]
-        
-        for col_num, value in enumerate(row_data):
-            # Right align numbers, left align text
-            if isinstance(value, (int, float)):
-                worksheet.write(row_num, col_num, value, number_format)
-            else:
-                worksheet.write(row_num, col_num, value, text_format)
-    
-    workbook.close()
+    # Use django-import-export to generate XLSX
+    resource = TiketExportResource()
+    dataset = resource.export(tikets)
+    excel_format = formats.base.Format(formats.xlsx.XLSX)
+    excel_data = excel_format.export_set(dataset)
     
     # Create HTTP response
-    output.seek(0)
     response = HttpResponse(
-        output.read(),
+        excel_data,
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     response['Content-Disposition'] = f'attachment; filename="Laporan_Pengendalian_Mutu_{periode_label.replace(" ", "_")}.xlsx"'
