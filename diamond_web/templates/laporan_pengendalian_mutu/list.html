@@ -28,7 +28,6 @@
         </div>
         <div class="card-body">
             <form id="filter-form" class="row g-3">
-                {% csrf_token %}
                 <div class="col-md-3">
                     {{ form.periode_type }}
                     {% if form.periode_type.errors %}
@@ -48,10 +47,7 @@
                     {% endif %}
                 </div>
                 <div class="col-md-3 d-flex align-items-end gap-2">
-                    <button type="submit" class="btn btn-primary flex-grow-1">
-                        <i class="ri-search-line me-1"></i>Tampilkan Data
-                    </button>
-                    <button type="button" id="export-btn" class="btn btn-success" disabled>
+                    <button type="button" id="export-btn" class="btn btn-success w-100" disabled>
                         <i class="ri-download-2-line me-1"></i>Export XLSX
                     </button>
                 </div>
@@ -205,17 +201,8 @@
                 $('#export-btn').prop('disabled', recordsFiltered === 0);
             });
             
-            // Handle form submission
-            $('#filter-form').on('submit', function (e) {
-                e.preventDefault();
-                
-                // Validate form
-                if (!$('#filter-periode-type').val() || !$('#filter-periode').val() || !$('#filter-tahun').val()) {
-                    alert('Silakan pilih Jenis Periode, Periode, dan Tahun');
-                    return;
-                }
-                
-                // Reload table with new data
+            // Dynamic filtering — reload on select change
+            $('#filter-periode-type, #filter-periode, #filter-tahun').on('change', function() {
                 table.ajax.reload();
             });
             

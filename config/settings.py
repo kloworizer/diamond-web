@@ -215,6 +215,7 @@ else:
     SECURE_SSL_REDIRECT = False
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
+    SECURE_CROSS_ORIGIN_OPENER_POLICY = None
 
 # Debug toolbar configuration (development only; skip during test runs)
 if DEBUG and not RUNNING_TESTS:
