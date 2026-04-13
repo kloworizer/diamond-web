@@ -8,7 +8,8 @@ from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from datetime import datetime, timedelta
 from django.db.models import Q
-from import_export import formats
+from io import BytesIO
+from openpyxl import Workbook
 
 from ..models.tiket import Tiket
 from ..constants.tiket_status import STATUS_LABELS
@@ -41,6 +42,12 @@ class LaporanPengendalianMutuView(LoginRequiredMixin, UserPassesTestMixin, Templ
         # Get unique years from tiket data
         tikets = Tiket.objects.all()
         years = sorted(set(t.tahun for t in tikets), reverse=True)
+        
+        # Always include current year
+        current_year = datetime.now().year
+        if current_year not in years:
+            years = [current_year] + list(years)
+        
         context['years'] = years
         # Initialize form with years
         context['form'] = LaporanPengendalianMutuFilterForm(years=years)
@@ -362,8 +369,26 @@ def laporan_pengendalian_mutu_export(request):
     # Use django-import-export to generate XLSX
     resource = TiketExportResource()
     dataset = resource.export(tikets)
-    excel_format = formats.base.Format(formats.xlsx.XLSX)
-    excel_data = excel_format.export_set(dataset)
+    
+    # Create Excel workbook using openpyxl
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Tikets"
+    
+    # Write headers
+    headers = dataset.headers
+    for col_idx, header in enumerate(headers, 1):
+        ws.cell(row=1, column=col_idx, value=header)
+    
+    # Write data rows
+    for row_idx, row in enumerate(dataset, 2):
+        for col_idx, value in enumerate(row, 1):
+            ws.cell(row=row_idx, column=col_idx, value=value)
+    
+    # Save to BytesIO
+    excel_file = BytesIO()
+    wb.save(excel_file)
+    excel_data = excel_file.getvalue()
     
     # Create HTTP response
     response = HttpResponse(
