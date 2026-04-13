@@ -105,6 +105,16 @@ class Tiket(models.Model):
     belum_qc = models.IntegerField(null=True, blank=True, verbose_name="Belum QC")
     lolos_qc = models.IntegerField(null=True, blank=True, verbose_name="Lolos QC")
     tidak_lolos_qc = models.IntegerField(null=True, blank=True, verbose_name="Tidak Lolos QC")
+    qc_p = models.IntegerField(null=True, blank=True, verbose_name="QC P")
+    qc_x = models.IntegerField(null=True, blank=True, verbose_name="QC X")
+    qc_w = models.IntegerField(null=True, blank=True, verbose_name="QC W")
+    qc_v = models.IntegerField(null=True, blank=True, verbose_name="QC V")
+    qc_a = models.IntegerField(null=True, blank=True, verbose_name="QC A")
+    qc_n = models.IntegerField(null=True, blank=True, verbose_name="QC N")
+    qc_y = models.IntegerField(null=True, blank=True, verbose_name="QC Y")
+    qc_z = models.IntegerField(null=True, blank=True, verbose_name="QC Z")
+    qc_d = models.IntegerField(null=True, blank=True, verbose_name="QC D")
+    qc_u = models.IntegerField(null=True, blank=True, verbose_name="QC U")
     qc_c = models.IntegerField(null=True, blank=True, verbose_name="QC C")
 
     class Meta:
