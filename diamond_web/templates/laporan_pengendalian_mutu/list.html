@@ -154,6 +154,8 @@
                 
                 if (!periodeType) return;
                 
+                let defaultValue = null;
+                
                 if (periodeType === 'bulanan') {
                     const months = [
                         { value: '1', label: 'Januari' },
@@ -172,6 +174,7 @@
                     months.forEach(month => {
                         $periodeSelect.append(`<option value="${month.value}">${month.label}</option>`);
                     });
+                    defaultValue = months[0].value;
                 } else if (periodeType === 'triwulanan') {
                     const quarters = [
                         { value: '1', label: 'Triwulan 1 (Jan - Mar)' },
@@ -182,6 +185,7 @@
                     quarters.forEach(quarter => {
                         $periodeSelect.append(`<option value="${quarter.value}">${quarter.label}</option>`);
                     });
+                    defaultValue = quarters[0].value;
                 } else if (periodeType === 'semester') {
                     const semesters = [
                         { value: '1', label: 'Semester 1 (Jan - Jun)' },
@@ -190,8 +194,15 @@
                     semesters.forEach(semester => {
                         $periodeSelect.append(`<option value="${semester.value}">${semester.label}</option>`);
                     });
+                    defaultValue = semesters[0].value;
                 } else if (periodeType === 'tahunan') {
                     $periodeSelect.append('<option value="all">Seluruh Tahun</option>');
+                    defaultValue = 'all';
+                }
+                
+                // Auto-select first value
+                if (defaultValue) {
+                    $periodeSelect.val(defaultValue);
                 }
             });
             
@@ -201,9 +212,16 @@
                 $('#export-btn').prop('disabled', recordsFiltered === 0);
             });
             
-            // Dynamic filtering — reload on select change
+            // Dynamic filtering - only reload if all required fields have values
             $('#filter-periode-type, #filter-periode, #filter-tahun').on('change', function() {
-                table.ajax.reload();
+                const periodeType = $('#filter-periode-type').val();
+                const periode = $('#filter-periode').val();
+                const tahun = $('#filter-tahun').val();
+                
+                // Only reload if all three fields have values
+                if (periodeType && periode && tahun) {
+                    table.ajax.reload();
+                }
             });
             
             // Handle export button
