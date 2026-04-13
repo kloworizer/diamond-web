@@ -1,6 +1,7 @@
 from django import forms
 from ..models.tiket import Tiket
 from .base import AutoRequiredFormMixin
+from ..utils import validate_not_future_datetime
 
 
 class RekamHasilPenelitianForm(AutoRequiredFormMixin, forms.ModelForm):
@@ -72,6 +73,10 @@ class RekamHasilPenelitianForm(AutoRequiredFormMixin, forms.ModelForm):
         default_catatan = 'Hasil penelitian diubah' if self.instance and self.instance.tgl_teliti else 'Hasil penelitian direkam'
         if not self.initial.get('catatan'):
             self.fields['catatan'].initial = default_catatan
+
+    def clean_tgl_teliti(self):
+        value = self.cleaned_data.get('tgl_teliti')
+        return validate_not_future_datetime(value, "Tanggal Teliti")
 
     def clean(self):
         cleaned_data = super().clean()

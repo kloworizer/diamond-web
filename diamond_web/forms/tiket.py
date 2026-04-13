@@ -7,6 +7,7 @@ from ..models.ilap import ILAP
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from datetime import datetime
 from .base import AutoRequiredFormMixin
+from ..utils import validate_not_future_datetime
 
 class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
     satuan_data = forms.ChoiceField(
@@ -149,6 +150,18 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
                 ).distinct()
             
             self.fields['id_periode_data'].queryset = periode_queryset
+    def clean_tgl_terima_vertikal(self):
+        value = self.cleaned_data.get('tgl_terima_vertikal')
+        return validate_not_future_datetime(value, "Tanggal Terima Vertikal")
+
+    def clean_tgl_terima_dip(self):
+        value = self.cleaned_data.get('tgl_terima_dip')
+        return validate_not_future_datetime(value, "Tanggal Terima DIP")
+
+    def clean_tanggal_surat_pengantar(self):
+        value = self.cleaned_data.get('tanggal_surat_pengantar')
+        return validate_not_future_datetime(value, "Tanggal Surat Pengantar")
+
     def clean_status_ketersediaan_data(self):
         # The template renders status_ketersediaan_data as radio buttons with values "1" or "0".
         # Django's CheckboxInput.value_from_datadict uses bool(value), which makes bool("0") == True.
