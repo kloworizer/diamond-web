@@ -176,6 +176,9 @@ urlpatterns = [
     path('durasi-jatuh-tempo-pide/<int:pk>/delete/', views.DurasiJatuhTempoPIDEDeleteView.as_view(), name='durasi_jatuh_tempo_pide_delete'),
 
     # === PMDE Section ===
+    # Laporan Pengendalian Mutu
+    path('laporan-pengendalian-mutu/', views.LaporanPengendalianMutuView.as_view(), name='laporan_pengendalian_mutu'),
+    path('laporan-pengendalian-mutu/data/', views.laporan_pengendalian_mutu_data, name='laporan_pengendalian_mutu_data'),
     # PIC PMDE URLs
     path('pic-pmde/', views.PICPMDEListView.as_view(), name='pic_pmde_list'),
     path('pic-pmde/data/', views.pic_pmde_data, name='pic_pmde_data'),

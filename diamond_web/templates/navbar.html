@@ -17,6 +17,7 @@
                     <a class="nav-link" href="{% url 'tiket_list' %}">Daftar Tiket</a>
                 </li>
                 {% endif %}
+                
             </ul>
             <ul class="navbar-nav">
                 {% if user|has_group:"admin" or user|has_group:"user_p3de" %}
@@ -34,6 +35,20 @@
                         <li><a class="dropdown-item" href="{% url 'tanda_terima_data_list' %}">Kelola Tanda Terima</a>
                         </li>
                         <li><a class="dropdown-item" href="{% url 'kirim_tiket' %}">Kirim Tiket</a></li>
+                    </ul>
+                </li>
+                {% endif %}
+                {% if user|has_group:"admin" or user|has_group:"user_pmde" %}
+                <!-- Dropdown Group: PMDE -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                        PMDE
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'laporan_pengendalian_mutu' %}">Laporan Pengendalian Mutu</a></li>
+                        <li><a class="dropdown-item" href="#">Laporan Kelengkapan Data</a></li>
+                        <li><a class="dropdown-item" href="#">Laporan Hasil Pengolahan Data Prioritas</a></li>
                     </ul>
                 </li>
                 {% endif %}

@@ -16,3 +16,4 @@ from .durasi_jatuh_tempo import DurasiJatuhTempoForm
 from .tanda_terima_data import TandaTerimaDataForm
 from .nama_tabel import NamaTabelForm
 from .tiket import TiketForm
+from .laporan_pengendalian_mutu import LaporanPengendalianMutuFilterForm
