@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="ri-file-chart-line me-2"></i>Laporan Pengendalian Mutu
+                    </h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                            <li class="breadcrumb-item active">Laporan Pengendalian Mutu</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Filter Data</h5>
+        </div>
+        <div class="card-body">
+            <form id="filter-form" class="row g-3">
+                {% csrf_token %}
+                <div class="col-md-3">
+                    {{ form.periode_type }}
+                    {% if form.periode_type.errors %}
+                        <div class="invalid-feedback d-block">{{ form.periode_type.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    {{ form.periode }}
+                    {% if form.periode.errors %}
+                        <div class="invalid-feedback d-block">{{ form.periode.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    {{ form.tahun }}
+                    {% if form.tahun.errors %}
+                        <div class="invalid-feedback d-block">{{ form.tahun.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="ri-search-line me-1"></i>Tampilkan Data
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Data Table Card -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
+            <h5 class="mb-0">
+                <i class="ri-table-line me-2"></i>Data Pengendalian Mutu
+            </h5>
+        </div>
+        <div class="card-body">
+            <div style="overflow-x: auto;">
+                <table id="laporan-pengendalian-mutu-table" class="table table-striped" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>Nama ILAP</th>
+                            <th>Nama Sub Jenis Data</th>
+                            <th>Nama Tabel</th>
+                            <th>Nomor Tiket</th>
+                            <th>Status Tiket</th>
+                            <th>Data Diterima</th>
+                            <th>Data Direkam (I+U)</th>
+                            <th>Data Teridentifikasi (I)</th>
+                            <th>Data Tidak Teridentifikasi (U)</th>
+                            <th>Lolos QC</th>
+                            <th>Tidak Lolos QC</th>
+                            <th>QC P</th>
+                            <th>QC X</th>
+                            <th>QC W</th>
+                            <th>QC V</th>
+                            <th>QC A</th>
+                            <th>QC N</th>
+                            <th>QC Y</th>
+                            <th>QC Z</th>
+                            <th>QC D</th>
+                            <th>QC U</th>
+                            <th>QC C</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        const ajaxUrl = "{% url 'laporan_pengendalian_mutu_data' %}";
+        let table;
+
+        $(document).ready(function () {
+            table = $('#laporan-pengendalian-mutu-table').DataTable({
+                serverSide: true,
+                ajax: {
+                    url: ajaxUrl,
+                    data: function (d) {
+                        d.periode_type = $('#filter-periode-type').val();
+                        d.periode = $('#filter-periode').val();
+                        d.tahun = $('#filter-tahun').val();
+                        return d;
+                    }
+                },
+                columns: [
+                    { data: 'nama_ilap' },
+                    { data: 'nama_sub_jenis_data' },
+                    { data: 'nama_tabel' },
+                    { data: 'nomor_tiket' },
+                    { data: 'status_tiket' },
+                    { data: 'data_diterima' },
+                    { data: 'data_direkam' },
+                    { data: 'data_teridentifikasi_i' },
+                    { data: 'data_tidak_teridentifikasi_u' },
+                    { data: 'lolos_qc' },
+                    { data: 'tidak_lolos_qc' },
+                    { data: 'qc_p' },
+                    { data: 'qc_x' },
+                    { data: 'qc_w' },
+                    { data: 'qc_v' },
+                    { data: 'qc_a' },
+                    { data: 'qc_n' },
+                    { data: 'qc_y' },
+                    { data: 'qc_z' },
+                    { data: 'qc_d' },
+                    { data: 'qc_u' },
+                    { data: 'qc_c' },
+                ],
+                pageLength: 10,
+                order: [[3, 'asc']],
+                scrollX: true
+            });
+            
+            // Populate periode options based on periode type
+            $('#filter-periode-type').on('change', function() {
+                const periodeType = $(this).val();
+                const $periodeSelect = $('#filter-periode');
+                $periodeSelect.html('<option value="">-- Pilih Periode --</option>');
+                
+                if (!periodeType) return;
+                
+                if (periodeType === 'bulanan') {
+                    const months = [
+                        { value: '1', label: 'Januari' },
+                        { value: '2', label: 'Februari' },
+                        { value: '3', label: 'Maret' },
+                        { value: '4', label: 'April' },
+                        { value: '5', label: 'Mei' },
+                        { value: '6', label: 'Juni' },
+                        { value: '7', label: 'Juli' },
+                        { value: '8', label: 'Agustus' },
+                        { value: '9', label: 'September' },
+                        { value: '10', label: 'Oktober' },
+                        { value: '11', label: 'November' },
+                        { value: '12', label: 'Desember' }
+                    ];
+                    months.forEach(month => {
+                        $periodeSelect.append(`<option value="${month.value}">${month.label}</option>`);
+                    });
+                } else if (periodeType === 'triwulanan') {
+                    const quarters = [
+                        { value: '1', label: 'Triwulan 1 (Jan - Mar)' },
+                        { value: '2', label: 'Triwulan 2 (Apr - Jun)' },
+                        { value: '3', label: 'Triwulan 3 (Jul - Sep)' },
+                        { value: '4', label: 'Triwulan 4 (Oct - Dec)' }
+                    ];
+                    quarters.forEach(quarter => {
+                        $periodeSelect.append(`<option value="${quarter.value}">${quarter.label}</option>`);
+                    });
+                } else if (periodeType === 'semester') {
+                    const semesters = [
+                        { value: '1', label: 'Semester 1 (Jan - Jun)' },
+                        { value: '2', label: 'Semester 2 (Jul - Dec)' }
+                    ];
+                    semesters.forEach(semester => {
+                        $periodeSelect.append(`<option value="${semester.value}">${semester.label}</option>`);
+                    });
+                } else if (periodeType === 'tahunan') {
+                    $periodeSelect.append('<option value="all">Seluruh Tahun</option>');
+                }
+            });
+            
+            // Handle form submission
+            $('#filter-form').on('submit', function (e) {
+                e.preventDefault();
+                
+                // Validate form
+                if (!$('#filter-periode-type').val() || !$('#filter-periode').val() || !$('#filter-tahun').val()) {
+                    alert('Silakan pilih Jenis Periode, Periode, dan Tahun');
+                    return;
+                }
+                
+                // Reload table with new data
+                table.ajax.reload();
+            });
+        });
+    })();
+</script>
+{% endblock %}

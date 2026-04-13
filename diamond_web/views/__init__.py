@@ -26,4 +26,5 @@ from .backup_data import *
 from .tanda_terima_data import *
 from .monitoring_penyampaian_data import *
 from .docx_template import *
+from .laporan_pengendalian_mutu import *
 from .tiket import *
