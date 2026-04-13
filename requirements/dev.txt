@@ -6,6 +6,7 @@ attrs==25.4.0
 cattrs==25.3.0
 django-debug-toolbar==6.2.0
 django-schema-graph==3.1.0
+pytest==9.0.3
 
 # Optional: Add other dev tools as needed
 # django-extensions
