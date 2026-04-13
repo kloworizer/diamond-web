@@ -4,14 +4,15 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.decorators.http import require_GET
 from django.views.generic import TemplateView
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from datetime import datetime, timedelta
 from django.db.models import Q
+from import_export import formats
 
 from ..models.tiket import Tiket
 from ..constants.tiket_status import STATUS_LABELS
-from ..forms.laporan_pengendalian_mutu import LaporanPengendalianMutuFilterForm
+from ..forms.laporan_pengendalian_mutu import LaporanPengendalianMutuFilterForm, TiketExportResource
 
 
 def _is_pmde_user(user):
@@ -249,3 +250,125 @@ def laporan_pengendalian_mutu_data(request):
         'recordsFiltered': records_filtered,
         'data': data
     })
+
+
+@login_required
+@user_passes_test(_is_pmde_user)
+@require_GET
+def laporan_pengendalian_mutu_export(request):
+    """Export Laporan Pengendalian Mutu to XLSX file.
+    
+    GET Parameters:
+    - periode_type: Type of period (bulanan, triwulanan, semester, tahunan)
+    - periode: Period value
+    - tahun: Year
+    
+    Returns: XLSX file download
+    """
+    periode_type = request.GET.get('periode_type')
+    periode = request.GET.get('periode')
+    tahun = request.GET.get('tahun')
+    
+    # Validate inputs
+    if not periode_type or not periode or not tahun:
+        return HttpResponse('Invalid parameters', status=400)
+    
+    try:
+        tahun = int(tahun)
+    except (ValueError, TypeError):
+        return HttpResponse('Invalid year', status=400)
+    
+    # Calculate date range based on periode type
+    start_date = None
+    end_date = None
+    periode_label = ''
+    
+    if periode_type == 'bulanan':
+        try:
+            bulan = int(periode)
+            if bulan < 1 or bulan > 12:
+                return HttpResponse('Invalid month', status=400)
+            start_date = datetime(tahun, bulan, 1).date()
+            if bulan == 12:
+                end_date = datetime(tahun + 1, 1, 1).date() - timedelta(days=1)
+            else:
+                end_date = datetime(tahun, bulan + 1, 1).date() - timedelta(days=1)
+            
+            bulan_names = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                          'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+            periode_label = f'{bulan_names[bulan]} {tahun}'
+        except (ValueError, TypeError):
+            return HttpResponse('Invalid month', status=400)
+    
+    elif periode_type == 'triwulanan':
+        quarter_months = {
+            1: (1, 3),
+            2: (4, 6),
+            3: (7, 9),
+            4: (10, 12),
+        }
+        try:
+            triwulan = int(periode)
+            if triwulan not in quarter_months:
+                return HttpResponse('Invalid quarter', status=400)
+            start_month, end_month = quarter_months[triwulan]
+            start_date = datetime(tahun, start_month, 1).date()
+            if end_month == 12:
+                end_date = datetime(tahun + 1, 1, 1).date() - timedelta(days=1)
+            else:
+                end_date = datetime(tahun, end_month + 1, 1).date() - timedelta(days=1)
+            periode_label = f'Triwulan {triwulan} {tahun}'
+        except (ValueError, TypeError):
+            return HttpResponse('Invalid quarter', status=400)
+    
+    elif periode_type == 'semester':
+        semester_months = {
+            1: (1, 6),
+            2: (7, 12),
+        }
+        try:
+            semester = int(periode)
+            if semester not in semester_months:
+                return HttpResponse('Invalid semester', status=400)
+            start_month, end_month = semester_months[semester]
+            start_date = datetime(tahun, start_month, 1).date()
+            if end_month == 12:
+                end_date = datetime(tahun + 1, 1, 1).date() - timedelta(days=1)
+            else:
+                end_date = datetime(tahun, end_month + 1, 1).date() - timedelta(days=1)
+            periode_label = f'Semester {semester} {tahun}'
+        except (ValueError, TypeError):
+            return HttpResponse('Invalid semester', status=400)
+    
+    elif periode_type == 'tahunan':
+        start_date = datetime(tahun, 1, 1).date()
+        end_date = datetime(tahun, 12, 31).date()
+        periode_label = f'{tahun}'
+    
+    else:
+        return HttpResponse('Invalid periode type', status=400)
+    
+    
+    # Query tikets
+    tikets = Tiket.objects.filter(
+        tgl_transfer__isnull=False,
+        tgl_transfer__date__gte=start_date,
+        tgl_transfer__date__lte=end_date
+    ).select_related(
+        'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+        'id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel'
+    ).order_by('-tgl_transfer')
+    
+    # Use django-import-export to generate XLSX
+    resource = TiketExportResource()
+    dataset = resource.export(tikets)
+    excel_format = formats.base.Format(formats.xlsx.XLSX)
+    excel_data = excel_format.export_set(dataset)
+    
+    # Create HTTP response
+    response = HttpResponse(
+        excel_data,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="Laporan_Pengendalian_Mutu_{periode_label.replace(" ", "_")}.xlsx"'
+    return response
