@@ -23,6 +23,7 @@ from ..models.jenis_tabel import JenisTabel
 from ..models.dasar_hukum import DasarHukum
 from ..models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ..models.periode_pengiriman import PeriodePengiriman
+from ..utils import format_periode
 from .mixins import UserP3DERequiredMixin
 
 
@@ -37,33 +38,6 @@ class MonitoringPenyampaianDataListView(LoginRequiredMixin, UserP3DERequiredMixi
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         return context
-
-
-def get_period_display_name(periode_type, periode_num, start_date):
-    """Generate period display name based on type and number."""
-    months_indo = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-                   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
-    
-    periode_type_lower = periode_type.lower()
-    
-    if periode_type_lower == 'harian':
-        return start_date.strftime('%d-%m-%Y')
-    elif periode_type_lower == 'mingguan':
-        return f"Minggu {periode_num}"
-    elif periode_type_lower == '2 mingguan':
-        return f"2 Minggu {periode_num}"
-    elif periode_type_lower == 'bulanan':
-        return months_indo[start_date.month - 1]
-    elif periode_type_lower == 'triwulanan':
-        return f"Triwulan {periode_num}"
-    elif periode_type_lower == 'kuartal':
-        return f"Kuartal {periode_num}"
-    elif periode_type_lower == 'semester':
-        return f"Semester {periode_num}"
-    elif periode_type_lower == 'tahunan':
-        return "-"
-    else:
-        return str(periode_num)
 
 
 def get_periods_for_range(start_date, end_date, periode_type):
@@ -278,7 +252,7 @@ def monitoring_penyampaian_data_data(request):
             
             for period in periods:
                 deadline_date = period['end_date'] + timedelta(days=akhir_penyampaian)
-                period_display_name = get_period_display_name(periode_type_penerimaan, period['periode_num'], period['start_date'])
+                period_display_name = format_periode(periode_type_penerimaan, period['periode_num'], period['start_date'].year, include_year=False)
                 
                 # Get pic_p3de from PIC model (active P3DE PIC for this jenis_data_ilap)
                 pic_p3de = PIC.objects.filter(
