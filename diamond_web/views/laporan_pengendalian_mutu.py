@@ -2,7 +2,7 @@
 
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_http_methods
 from django.views.generic import TemplateView
 from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
@@ -56,7 +56,7 @@ class LaporanPengendalianMutuView(LoginRequiredMixin, UserPassesTestMixin, Templ
 
 @login_required
 @user_passes_test(_is_pmde_user)
-@require_GET
+@require_http_methods(["GET", "POST"])
 def laporan_pengendalian_mutu_data(request):
     """DataTables server-side endpoint for Quality Control Report.
     
@@ -78,12 +78,25 @@ def laporan_pengendalian_mutu_data(request):
     
     Returns JSON with tiket data including QC fields.
     """
-    periode_type = request.GET.get('periode_type')
-    periode = request.GET.get('periode')
-    tahun = request.GET.get('tahun')
-    draw = int(request.GET.get('draw', 1))
-    start = int(request.GET.get('start', 0))
-    length = int(request.GET.get('length', 10))
+    params = request.POST if request.method == 'POST' else request.GET
+    periode_type = params.get('periode_type')
+    periode = params.get('periode')
+    tahun = params.get('tahun')
+
+    try:
+        draw = int(params.get('draw', 1))
+    except (ValueError, TypeError):
+        draw = 1
+
+    try:
+        start = int(params.get('start', 0))
+    except (ValueError, TypeError):
+        start = 0
+
+    try:
+        length = int(params.get('length', 10))
+    except (ValueError, TypeError):
+        length = 10
     
     # Validate inputs
     if not periode_type or not periode or not tahun:
