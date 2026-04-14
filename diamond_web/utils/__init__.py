@@ -89,7 +89,7 @@ def _to_roman_numeral(num):
     return roman_num
 
 
-def format_periode(deskripsi_periode, periode, tahun):
+def format_periode(deskripsi_periode, periode, tahun, include_year=True):
     """Format period description into human-readable date range string.
 
     Converts numeric periodo values and descriptions into readable format.
@@ -97,7 +97,9 @@ def format_periode(deskripsi_periode, periode, tahun):
     
     Examples:
         - (Bulanan, 3, 2026) -> 'Maret 2026'
+        - (Bulanan, 3, 2026, include_year=False) -> 'Maret'
         - (Semester, 2, 2026) -> 'Semester II 2026'
+        - (Semester, 2, 2026, include_year=False) -> 'Semester II'
         - (Triwulan, 3, 2026) -> 'Triwulan III 2026'
         - (Mingguan, 5, 2026) -> 'Minggu 5 2026'
 
@@ -106,6 +108,7 @@ def format_periode(deskripsi_periode, periode, tahun):
             Semester, Triwulanan, Kuartal, etc.)
         periode (int): Numeric period value (day, week, month number, etc.)
         tahun (int): Year value
+        include_year (bool): Whether to include the year in the output (default: True)
 
     Returns:
         str: Human-readable period string
@@ -115,26 +118,28 @@ def format_periode(deskripsi_periode, periode, tahun):
         'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
     ]
     
+    year_suffix = f" {tahun}" if include_year else ""
+    
     if deskripsi_periode == 'Harian':
-        return f'Hari {periode} - {tahun}'
+        return f'Hari {periode}{year_suffix}'
     elif deskripsi_periode == 'Mingguan':
-        return f'Minggu {periode} - {tahun}'
+        return f'Minggu {periode}{year_suffix}'
     elif deskripsi_periode == '2 Mingguan':
-        return f'2 Minggu {periode} - {tahun}'
+        return f'2 Minggu {periode}{year_suffix}'
     elif deskripsi_periode == 'Bulanan':
         if 1 <= periode <= 12:
-            return f'{bulan_names[periode - 1]} {tahun}'
-        return f'Bulan {periode} - {tahun}'
+            return f'{bulan_names[periode - 1]}{year_suffix}'
+        return f'Bulan {periode}{year_suffix}'
     elif deskripsi_periode == 'Triwulanan':
         roman = _to_roman_numeral(periode)
-        return f'Triwulan {roman} {tahun}'
+        return f'Triwulan {roman}{year_suffix}'
     elif deskripsi_periode == 'Kuartal':
         roman = _to_roman_numeral(periode)
-        return f'Kuartal {roman} {tahun}'
+        return f'Kuartal {roman}{year_suffix}'
     elif deskripsi_periode == 'Semester':
         roman = _to_roman_numeral(periode)
-        return f'Semester {roman} {tahun}'
+        return f'Semester {roman}{year_suffix}'
     elif deskripsi_periode == 'Tahunan':
         return str(tahun)
     else:
-        return f'{periode} - {tahun}'
+        return f'{periode}{year_suffix}'

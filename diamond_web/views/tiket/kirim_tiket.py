@@ -98,6 +98,12 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DER
             context['form_action'] = reverse('kirim_tiket')
         return context
 
+    def get_template_names(self):
+        """Return modal template for AJAX requests, full page template otherwise."""
+        if self.is_ajax_request():
+            return ['tiket/kirim_tiket_modal_form.html']
+        return [self.template_name]
+
     def get_initial(self):
         """Set initial form data for single-tiket mode."""
         initial = super().get_initial()
