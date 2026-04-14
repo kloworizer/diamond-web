@@ -377,10 +377,10 @@ def seed_tiket(apps, schema_editor):
             # p3de: rekam penerimaan -> tanda terima -> backup -> penelitian -> kirim PIDE
             # pide: rekam -> identifikasi -> kirim PMDE (or return to p3de)
             # pmde: rekam selesai; p3de may cancel
-            # Strict workflow rule: once ticket reaches penelitian (status >= 2),
-            # tanda terima and backup must already exist.
-            has_tanda_terima = status >= 2
-            has_backup = status >= 2
+            # Strict workflow rule: backup and tanda_terima flags are set to True
+            # only if actual records exist for this tiket.
+            has_tanda_terima = False
+            has_backup = False
 
             p3de_user = random.choice(p3de_users) if p3de_users else fallback_user
             pide_user = random.choice(pide_users) if pide_users else fallback_user
@@ -421,8 +421,8 @@ def seed_tiket(apps, schema_editor):
                 satuan_data=1,
                 tgl_terima_vertikal=tgl_terima_vertikal,
                 tgl_terima_dip=tgl_terima_dip,
-                backup=has_backup,
-                tanda_terima=has_tanda_terima,
+                backup=False,  # Will be set to True after backup record is created
+                tanda_terima=False,  # Will be set to True after tanda terima record is created
                 id_status_penelitian=id_status_penelitian,
                 tgl_teliti=tgl_teliti,
                 kesesuaian_data=kesesuaian_data,
@@ -460,7 +460,7 @@ def seed_tiket(apps, schema_editor):
             )
 
             # Seed Tanda Terima + Detil after p3de rekam penerimaan
-            if tiket.tanda_terima:
+            if status >= 2:
                 tt_year = tiket.tahun
                 tt_number = tt_counter_by_year.get(tt_year, 0) + 1
                 tt_counter_by_year[tt_year] = tt_number
@@ -479,9 +479,13 @@ def seed_tiket(apps, schema_editor):
                     id_tanda_terima=tanda_terima,
                     id_tiket=tiket,
                 )
+                
+                # Update tiket to mark tanda_terima as created
+                tiket.tanda_terima = True
+                tiket.save(update_fields=['tanda_terima'])
 
             # Seed Backup Data after tanda terima
-            if tiket.backup and media_backup_list:
+            if status >= 2 and media_backup_list:
                 BackupData.objects.create(
                     id_tiket=tiket,
                     lokasi_backup=f"\\\\backup-server\\diamond\\{sub_id}\\{tahun}\\p{penyampaian}",
@@ -489,6 +493,10 @@ def seed_tiket(apps, schema_editor):
                     id_media_backup=random.choice(media_backup_list),
                     id_user=p3de_user,
                 )
+                
+                # Update tiket to mark backup as created
+                tiket.backup = True
+                tiket.save(update_fields=['backup'])
 
             # Seed TiketPIC for all roles (P3DE, PIDE, PMDE) - all tickets active across all roles
             TiketPIC.objects.create(
