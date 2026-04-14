@@ -1,6 +1,7 @@
 from django import forms
 from ..models.tiket import Tiket
 from .base import AutoRequiredFormMixin
+from ..utils import validate_not_future_datetime
 
 
 class TransferKePMDEForm(AutoRequiredFormMixin, forms.ModelForm):
@@ -49,3 +50,7 @@ class TransferKePMDEForm(AutoRequiredFormMixin, forms.ModelForm):
     class Meta:
         model = Tiket
         fields = ['baris_i', 'baris_u', 'baris_res', 'baris_cde', 'tgl_transfer']
+
+    def clean_tgl_transfer(self):
+        value = self.cleaned_data.get('tgl_transfer')
+        return validate_not_future_datetime(value, "Tanggal Transfer")

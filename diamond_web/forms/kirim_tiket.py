@@ -1,5 +1,6 @@
 from django import forms
 from ..models.tiket import Tiket
+from ..utils import validate_not_future_datetime
 
 
 class KirimTiketForm(forms.Form):
@@ -22,6 +23,14 @@ class KirimTiketForm(forms.Form):
         required=False,
         help_text="Comma-separated list of tiket IDs"
     )
+
+    def clean_tgl_nadine(self):
+        value = self.cleaned_data.get('tgl_nadine')
+        return validate_not_future_datetime(value, "Tanggal Nadine")
+
+    def clean_tgl_kirim_pide(self):
+        value = self.cleaned_data.get('tgl_kirim_pide')
+        return validate_not_future_datetime(value, "Tanggal Kirim PIDE")
 
     def clean_tiket_ids(self):
         """Validate that tiket_ids is not empty and contains valid IDs."""

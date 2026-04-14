@@ -28,6 +28,7 @@
         </div>
         <div class="card-body">
             <form id="filter-form" class="row g-3">
+                {% csrf_token %}
                 <div class="col-md-3">
                     {{ form.periode_type }}
                     {% if form.periode_type.errors %}
@@ -104,14 +105,21 @@
         let table;
 
         $(document).ready(function () {
+            const csrfToken = $('[name=csrfmiddlewaretoken]').val();
+
             table = $('#laporan-pengendalian-mutu-table').DataTable({
                 serverSide: true,
                 ajax: {
                     url: ajaxUrl,
+                    type: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    },
                     data: function (d) {
                         d.periode_type = $('#filter-periode-type').val();
                         d.periode = $('#filter-periode').val();
                         d.tahun = $('#filter-tahun').val();
+                        d.csrfmiddlewaretoken = csrfToken;
                         return d;
                     }
                 },

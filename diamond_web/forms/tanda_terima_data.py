@@ -4,6 +4,7 @@ from .base import AutoRequiredFormMixin
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from ..models.tanda_terima_data import TandaTerimaData
+from ..utils import validate_not_future_datetime
 from ..models.tiket import Tiket
 from ..models.tiket_pic import TiketPIC
 from ..models.ilap import ILAP
@@ -48,6 +49,10 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
             'tanggal_tanda_terima': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'tahun_terima': forms.NumberInput(attrs={'readonly': True}),
         }
+
+    def clean_tanggal_tanda_terima(self):
+        value = self.cleaned_data.get('tanggal_tanda_terima')
+        return validate_not_future_datetime(value, "Tanggal Tanda Terima")
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
