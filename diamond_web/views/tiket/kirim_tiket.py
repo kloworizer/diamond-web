@@ -51,7 +51,7 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DER
     form_class = KirimTiketForm
     
     # Authorization handled by ActiveTiketP3DERequiredForEditMixin
-    template_name = 'tiket/kirim_tiket_modal_form.html'
+    template_name = 'tiket/kirim_tiket_form.html'
     success_url = reverse_lazy('tiket_list')
 
     def get_context_data(self, **kwargs):

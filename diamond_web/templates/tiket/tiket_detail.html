@@ -257,91 +257,91 @@
                         {% endif %}
 
                         <!-- QC and Baris Information -->
-                        {% if tiket.baris_diterima %}
+                        {% if tiket_details.baris_diterima %}
                         <div class="col-md-3">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Baris Diterima</label>
-                                <p class="fw-semibold mb-0">{{ tiket.baris_diterima }} {% if tiket.satuan_data == 1 %}Baris{% else %}{{ tiket.satuan_data }}{% endif %}</p>
+                                <p class="fw-semibold mb-0">{{ tiket_details.baris_diterima }} {% if tiket_details.satuan_data == 1 %}Baris{% else %}{{ tiket_details.satuan_data }}{% endif %}</p>
                             </div>
                         </div>
                         {% endif %}
-                        {% if tiket.baris_lengkap %}
+                        {% if tiket_details.baris_lengkap %}
                         <div class="col-md-3">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Baris Lengkap</label>
-                                <p class="fw-semibold mb-0">{{ tiket.baris_lengkap }}</p>
+                                <p class="fw-semibold mb-0">{{ tiket_details.baris_lengkap }}</p>
                             </div>
                         </div>
                         {% endif %}
-                        {% if tiket.baris_tidak_lengkap %}
+                        {% if tiket_details.baris_tidak_lengkap %}
                         <div class="col-md-3">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Baris Tidak Lengkap</label>
-                                <p class="fw-semibold mb-0">{{ tiket.baris_tidak_lengkap }}</p>
+                                <p class="fw-semibold mb-0">{{ tiket_details.baris_tidak_lengkap }}</p>
                             </div>
                         </div>
                         {% endif %}
-                        {% if tiket.baris_i %}
+                        {% if tiket_details.baris_i %}
                         <div class="col-md-3">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Baris I</label>
-                                <p class="fw-semibold mb-0">{{ tiket.baris_i }}</p>
+                                <p class="fw-semibold mb-0">{{ tiket_details.baris_i }}</p>
                             </div>
                         </div>
                         {% endif %}
-                        {% if tiket.baris_u %}
+                        {% if tiket_details.baris_u %}
                         <div class="col-md-3">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Baris U</label>
-                                <p class="fw-semibold mb-0">{{ tiket.baris_u }}</p>
+                                <p class="fw-semibold mb-0">{{ tiket_details.baris_u }}</p>
                             </div>
                         </div>
                         {% endif %}
-                        {% if tiket.baris_res %}
+                        {% if tiket_details.baris_res %}
                         <div class="col-md-3">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Baris Res</label>
-                                <p class="fw-semibold mb-0">{{ tiket.baris_res }}</p>
+                                <p class="fw-semibold mb-0">{{ tiket_details.baris_res }}</p>
                             </div>
                         </div>
                         {% endif %}
-                        {% if tiket.baris_cde %}
+                        {% if tiket_details.baris_cde %}
                         <div class="col-md-3">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Baris CDE</label>
-                                <p class="fw-semibold mb-0">{{ tiket.baris_cde }}</p>
+                                <p class="fw-semibold mb-0">{{ tiket_details.baris_cde }}</p>
                             </div>
                         </div>
                         {% endif %}
-                        {% if tiket.sudah_qc %}
+                        {% if tiket_details.sudah_qc %}
                         <div class="col-md-3">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Sudah QC</label>
-                                <p class="fw-semibold mb-0">{{ tiket.sudah_qc }}</p>
+                                <p class="fw-semibold mb-0">{{ tiket_details.sudah_qc }}</p>
                             </div>
                         </div>
                         {% endif %}
-                        {% if tiket.belum_qc %}
+                        {% if tiket_details.belum_qc %}
                         <div class="col-md-3">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Belum QC</label>
-                                <p class="fw-semibold mb-0">{{ tiket.belum_qc }}</p>
+                                <p class="fw-semibold mb-0">{{ tiket_details.belum_qc }}</p>
                             </div>
                         </div>
                         {% endif %}
-                        {% if tiket.lolos_qc %}
+                        {% if tiket_details.lolos_qc %}
                         <div class="col-md-3">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Lolos QC</label>
-                                <p class="fw-semibold mb-0">{{ tiket.lolos_qc }}</p>
+                                <p class="fw-semibold mb-0">{{ tiket_details.lolos_qc }}</p>
                             </div>
                         </div>
                         {% endif %}
-                        {% if tiket.tidak_lolos_qc %}
+                        {% if tiket_details.tidak_lolos_qc %}
                         <div class="col-md-3">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Tidak Lolos QC</label>
-                                <p class="fw-semibold mb-0">{{ tiket.tidak_lolos_qc }}</p>
+                                <p class="fw-semibold mb-0">{{ tiket_details.tidak_lolos_qc }}</p>
                             </div>
                         </div>
                         {% endif %}
