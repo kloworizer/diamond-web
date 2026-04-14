@@ -51,6 +51,7 @@
                                 </p>
                             </div>
                         </div>
+                        {% if periode_formatted %}
                         <div class="col-md-6">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Periode</label>
@@ -59,6 +60,7 @@
                                 </p>
                             </div>
                         </div>
+                        {% endif %}
                         <div class="col-md-6">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Data Prioritas</label>
@@ -93,12 +95,14 @@
                             </div>
                         </div>
                         {% endif %}
+                        {% if tiket.nomor_surat_pengantar %}
                         <div class="col-md-6">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Nomor Surat Pengantar</label>
-                                <p class="fw-semibold mb-0">{{ tiket.nomor_surat_pengantar|default:"-" }}</p>
+                                <p class="fw-semibold mb-0">{{ tiket.nomor_surat_pengantar }}</p>
                             </div>
                         </div>
+                        {% endif %}
                         <div class="col-md-6">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Tanggal Surat Pengantar</label>
@@ -111,24 +115,30 @@
                                 </p>
                             </div>
                         </div>
+                        {% if tiket.nama_pengirim %}
                         <div class="col-md-6">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Nama Pengirim</label>
-                                <p class="fw-semibold mb-0">{{ tiket.nama_pengirim|default:"-" }}</p>
+                                <p class="fw-semibold mb-0">{{ tiket.nama_pengirim }}</p>
                             </div>
                         </div>
+                        {% endif %}
+                        {% if tiket.id_bentuk_data %}
                         <div class="col-md-6">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Bentuk Data</label>
-                                <p class="fw-semibold mb-0">{{ tiket.id_bentuk_data.deskripsi|default:"-" }}</p>
+                                <p class="fw-semibold mb-0">{{ tiket.id_bentuk_data.deskripsi }}</p>
                             </div>
                         </div>
+                        {% endif %}
+                        {% if tiket.id_cara_penyampaian %}
                         <div class="col-md-6">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Cara Penyampaian</label>
-                                <p class="fw-semibold mb-0">{{ tiket.id_cara_penyampaian.deskripsi|default:"-" }}</p>
+                                <p class="fw-semibold mb-0">{{ tiket.id_cara_penyampaian.deskripsi }}</p>
                             </div>
                         </div>
+                        {% endif %}
                         <div class="col-md-6">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Status Ketersediaan Data</label>
@@ -149,12 +159,14 @@
                             </div>
                         </div>
                         {% endif %}
+                        {% if tiket_details.status_penelitian %}
                         <div class="col-md-6">
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Status Penelitian</label>
-                                <p class="fw-semibold mb-0">{{ tiket.id_status_penelitian.deskripsi|default:"-" }}</p>
+                                <p class="fw-semibold mb-0">{{ tiket_details.status_penelitian }}</p>
                             </div>
                         </div>
+                        {% endif %}
                         {% if tiket.tgl_teliti %}
                         <div class="col-md-6">
                             <div class="info-group">
