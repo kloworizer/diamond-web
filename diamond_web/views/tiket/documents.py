@@ -15,6 +15,7 @@ from ...models.tiket import Tiket
 from ...models.tiket_pic import TiketPIC
 from ...models.docx_template import DocxTemplate
 from ...utils.docx_template import fill_template_with_data
+from ...utils import format_number_with_separator, format_periode
 
 
 def _is_p3de_user(user):
@@ -27,27 +28,23 @@ def _is_p3de_user(user):
 
 
 def _format_periode_tiket(tiket_obj):
-    """Format periode display for a tiket object using periode penerimaan."""
+    """Format periode display for a tiket object using periode penerimaan.
+    
+    This wrapper extracts periode information from the tiket object and calls
+    the centralized format_periode function with Roman numerals for semester,
+    triwulan, and kuartal.
+    """
     if not tiket_obj.id_periode_data or not tiket_obj.id_periode_data.id_periode_pengiriman:
         return '-'
 
     periode_desc = tiket_obj.id_periode_data.id_periode_pengiriman.periode_penerimaan or '-'
-    tahun = str(tiket_obj.tahun) if tiket_obj.tahun else '-'
+    tahun = tiket_obj.tahun if tiket_obj.tahun else None
+    periode = tiket_obj.periode
 
-    if str(periode_desc).lower() == 'bulanan' and tiket_obj.periode:
-        bulan_map = {
-            1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni',
-            7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
-        }
-        bulan = bulan_map.get(tiket_obj.periode, f'Bulan {tiket_obj.periode}')
-        return f"{bulan} {tahun}"
-    if 'semester' in str(periode_desc).lower() and tiket_obj.periode:
-        return f"Semester {tiket_obj.periode} {tahun}"
-    if 'triwulan' in str(periode_desc).lower() and tiket_obj.periode:
-        return f"Triwulan {tiket_obj.periode} {tahun}"
-    if 'mingguan' in str(periode_desc).lower() and tiket_obj.periode:
-        return f"Minggu {tiket_obj.periode} {tahun}"
-    return f"{periode_desc} {tahun}"
+    if tahun is None:
+        return '-'
+
+    return format_periode(periode_desc, periode, tahun)
 
 
 def _safe_filename_part(raw):
@@ -56,13 +53,13 @@ def _safe_filename_part(raw):
 
 
 def _format_date_indonesian(date_obj):
-    """Format a date object as D bulan YYYY in Indonesian."""
+    """Format a date object as D Bulan YYYY in Indonesian with capitalized month names."""
     if not date_obj:
         return '-'
     
     bulan_map = {
-        1: 'januari', 2: 'februari', 3: 'maret', 4: 'april', 5: 'mei', 6: 'juni',
-        7: 'juli', 8: 'agustus', 9: 'september', 10: 'oktober', 11: 'november', 12: 'desember'
+        1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni',
+        7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
     }
     bulan = bulan_map.get(date_obj.month, '')
     return f"{date_obj.day} {bulan} {date_obj.year}"
@@ -171,8 +168,8 @@ def tiket_documents_download(request, pk):
         if tiket.id_periode_data and tiket.id_periode_data.id_sub_jenis_data_ilap
         else None
     )
-    kategori_name = ((ilap.id_kategori.nama_kategori if ilap and ilap.id_kategori else '') or '').lower()
-    if 'regional' in kategori_name and ilap and ilap.id_kpp and ilap.id_kpp.id_kanwil:
+    # For regional ILAPs (those with id_kpp), use nama_kanwil; otherwise use nama_ilap
+    if ilap and ilap.id_kpp and ilap.id_kpp.id_kanwil:
         diterima_dari = ilap.id_kpp.id_kanwil.nama_kanwil
     else:
         diterima_dari = ilap.nama_ilap if ilap else '-'
@@ -218,6 +215,7 @@ def tiket_documents_download(request, pk):
     template_variables = {
         '{{nomor_tiket}}': nomor_tanda_terima,
         '{{nomor_tanda_terima}}': nomor_tanda_terima,
+        '{{tanggal_tanda_terima}}': _format_date_indonesian(tanda_terima.tanggal_tanda_terima) if tanda_terima else '-',
         '{{diterima_dari}}': diterima_dari,
         '{{nama_kantor}}': diterima_dari,
         '{{nomor_surat_pengantar}}': ', '.join(nomor_surat_list) if nomor_surat_list else '-',
@@ -280,38 +278,43 @@ def tiket_documents_download(request, pk):
                 for t in tiket_rows:
                     sub = t.id_periode_data.id_sub_jenis_data_ilap if t.id_periode_data else None
                     ilap_obj = sub.id_ilap if sub else None
-                    kanwil_obj = ilap_obj.id_kpp.id_kanwil if ilap_obj and ilap_obj.id_kpp else None
                     dasar_hukum_list = dasar_hukum_map.get(sub.id, []) if sub else []
                     
-                    # Determine status data based on status_penelitian
-                    status_data = '-'
-                    baris_lengkap = '-'
-                    baris_tidak_lengkap = '-'
-                    if hasattr(t, 'status_penelitian'):
-                        if 'lengkap' in str(t.status_penelitian).lower():
-                            status_data = 'Lengkap'
-                            baris_lengkap = str(t.baris_diterima if t.baris_diterima is not None else '-')
-                        elif 'sebagian' in str(t.status_penelitian).lower():
-                            status_data = 'Lengkap Sebagian'
-                            baris_lengkap = str(t.baris_diterima if t.baris_diterima is not None else '-')
-                            baris_tidak_lengkap = str((t.baris_diterima or 0) - (t.baris_diterima or 0) if t.baris_diterima else '-')
-                        elif 'tidak' in str(t.status_penelitian).lower():
-                            status_data = 'Tidak Lengkap'
-                            baris_tidak_lengkap = str(t.baris_diterima if t.baris_diterima is not None else '-')
+                    # Get kanwil name for regional ILAPs
+                    nama_kanwil = '-'
+                    if ilap_obj and ilap_obj.id_kpp and ilap_obj.id_kpp.id_kanwil:
+                        nama_kanwil = ilap_obj.id_kpp.id_kanwil.nama_kanwil
                     
-                    row_data.append({
-                        'nomor': str(nomor_counter),
-                        'nama_kanwil': kanwil_obj.nama_kanwil if kanwil_obj else '-',
-                        'nama_ilap': f"{ilap_obj.id_ilap} - {ilap_obj.nama_ilap}" if ilap_obj else '-',
-                        'jenis_data': f"{sub.id_sub_jenis_data} - {sub.nama_sub_jenis_data}" if sub else '-',
-                        'periode_tahun': _format_periode_tiket(t),
-                        'status_data': status_data,
-                        'baris_diterima': str(t.baris_diterima if t.baris_diterima is not None else '-'),
-                        'dasar_hukum': ', '.join(dasar_hukum_list) if dasar_hukum_list else '-',
-                        'nomor_tiket': nomor_tanda_terima,
-                        'baris_lengkap': baris_lengkap,
-                        'baris_tidak_lengkap': baris_tidak_lengkap,
-                    })
+                    # Get status data description from JenisDataILAP's id_status_data relationship
+                    status_data = '-'
+                    if sub and sub.id_status_data:
+                        status_data = sub.id_status_data.deskripsi
+                    
+                    # Build row data based on document type
+                    if doc_type == 'lampiran':
+                        # Lampilan tanda terima: nomor, nama_kanwil, nama_ilap, sub_jenis_data, periode_data, status_data, jumlah_baris_diterima, dasar_hukum
+                        row_data.append({
+                            'nomor': str(nomor_counter),
+                            'nama_kanwil': nama_kanwil,
+                            'nama_ilap': ilap_obj.nama_ilap if ilap_obj else '-',
+                            'sub_jenis_data': sub.nama_sub_jenis_data if sub else '-',
+                            'periode_data': _format_periode_tiket(t),
+                            'status_data': status_data,
+                            'jumlah_baris_diterima': format_number_with_separator(t.baris_diterima),
+                            'dasar_hukum': ', '.join(dasar_hukum_list) if dasar_hukum_list else '-',
+                        })
+                    else:  # register
+                        # Register: nomor, nama_kanwil, nama_ilap, sub_jenis_data, periode_data, status_data, jumlah_baris_diterima, dasar_hukum
+                        row_data.append({
+                            'nomor': str(nomor_counter),
+                            'nama_kanwil': nama_kanwil,
+                            'nama_ilap': ilap_obj.nama_ilap if ilap_obj else '-',
+                            'sub_jenis_data': sub.nama_sub_jenis_data if sub else '-',
+                            'periode_data': _format_periode_tiket(t),
+                            'status_data': status_data,
+                            'jumlah_baris_diterima': format_number_with_separator(t.baris_diterima),
+                            'dasar_hukum': ', '.join(dasar_hukum_list) if dasar_hukum_list else '-',
+                        })
                     nomor_counter += 1
 
             # Open the template file using FileField's open method for better compatibility

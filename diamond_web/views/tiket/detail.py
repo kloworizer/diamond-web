@@ -27,6 +27,7 @@ from ...constants.tiket_action_types import (
     get_action_label,
     get_action_badge_class,
 )
+from ...utils import format_number_with_separator, format_periode
 
 
 class TiketDetailView(LoginRequiredMixin, DetailView):
@@ -71,49 +72,7 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
             raise PermissionDenied()
         return obj
 
-    
-    def _format_periode(self, deskripsi_periode, periode, tahun):
-        """Format periodo description into human-readable date range string.
-
-        Converts numeric periodo values and descriptions into readable format.
-        For example, converts (Bulanan, 3, 2026) -> 'Maret 2026' or
-        (Semester, 2, 2026) -> 'Semester 2 2026'.
-
-        Args:
-        - deskripsi_periode (str): Period type (Harian, Mingguan, Bulanan, 
-          Semester, Triwulanan, etc.)
-        - periode (int): Numeric period value (day, week, month number, etc.)
-        - tahun (int): Year value
-
-        Returns:
-        - str: Human-readable period string (e.g., 'Januari 2026', 'Minggu 5 2026')
-        """
-        bulan_names = [
-            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-        ]
         
-        if deskripsi_periode == 'Harian':
-            return f'Hari {periode} - {tahun}'
-        elif deskripsi_periode == 'Mingguan':
-            return f'Minggu {periode} - {tahun}'
-        elif deskripsi_periode == '2 Mingguan':
-            return f'2 Minggu {periode} - {tahun}'
-        elif deskripsi_periode == 'Bulanan':
-            if 1 <= periode <= 12:
-                return f'{bulan_names[periode - 1]} {tahun}'
-            return f'Bulan {periode} - {tahun}'
-        elif deskripsi_periode == 'Triwulanan':
-            return f'Triwulan {periode} - {tahun}'
-        elif deskripsi_periode == 'Kuartal':
-            return f'Kuartal {periode} - {tahun}'
-        elif deskripsi_periode == 'Semester':
-            return f'Semester {periode} - {tahun}'
-        elif deskripsi_periode == 'Tahunan':
-            return str(tahun)
-        else:
-            return f'{periode} - {tahun}'
-    
     def get_context_data(self, **kwargs):
         """Build comprehensive context data for the tiket detail template.
 
@@ -169,7 +128,7 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         jenis_prioritas_text = 'Ya' if self.object.id_jenis_prioritas_data else 'Tidak'
         
         # Format periode based on deskripsi (using periode penerimaan instead of periode penyampaian)
-        periode_formatted = self._format_periode(
+        periode_formatted = format_periode(
             periode_jenis_data.id_periode_pengiriman.periode_penerimaan,
             self.object.periode,
             self.object.tahun
@@ -268,15 +227,23 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
             'penyampaian': self.object.penyampaian,
             'status_ketersediaan_data': 'Ya' if self.object.status_ketersediaan_data else 'Tidak',
             'alasan_ketidaktersediaan': self.object.alasan_ketidaktersediaan or '-',
-            'baris_diterima': self.object.baris_diterima,
+            'baris_diterima': format_number_with_separator(self.object.baris_diterima),
             'satuan_data': 'Baris' if self.object.satuan_data == 1 else self.object.satuan_data,
             'tgl_terima_vertikal': self.object.tgl_terima_vertikal,
             'tgl_terima_dip': self.object.tgl_terima_dip,
             'status_penelitian': self.object.id_status_penelitian.deskripsi if self.object.id_status_penelitian else '-',
             'tgl_teliti': self.object.tgl_teliti,
             'kesesuaian_data': self.object.kesesuaian_data,
-            'baris_lengkap': self.object.baris_lengkap,
-            'baris_tidak_lengkap': self.object.baris_tidak_lengkap,
+            'baris_lengkap': format_number_with_separator(self.object.baris_lengkap),
+            'baris_tidak_lengkap': format_number_with_separator(self.object.baris_tidak_lengkap),
+            'baris_i': format_number_with_separator(self.object.baris_i),
+            'baris_u': format_number_with_separator(self.object.baris_u),
+            'baris_res': format_number_with_separator(self.object.baris_res),
+            'baris_cde': format_number_with_separator(self.object.baris_cde),
+            'sudah_qc': format_number_with_separator(self.object.sudah_qc),
+            'belum_qc': format_number_with_separator(self.object.belum_qc),
+            'lolos_qc': format_number_with_separator(self.object.lolos_qc),
+            'tidak_lolos_qc': format_number_with_separator(self.object.tidak_lolos_qc),
             'tgl_nadine': self.object.tgl_nadine,
             'nomor_nd_nadine': self.object.nomor_nd_nadine or '-',
             'tgl_kirim_pide': self.object.tgl_kirim_pide,

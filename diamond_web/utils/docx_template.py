@@ -37,7 +37,7 @@ from docx.table import _Row as DocxRow
 # ---------------------------------------------------------------------------
 
 def _replace_in_paragraph(paragraph, replacements):
-    """Replace all simple {{key}} placeholders in a paragraph's runs."""
+    """Replace all simple {{key}} placeholders in a paragraph's runs while preserving formatting."""
     if not paragraph.runs:
         return
     full_text = ''.join(run.text for run in paragraph.runs)
@@ -46,10 +46,36 @@ def _replace_in_paragraph(paragraph, replacements):
     new_text = full_text
     for placeholder, value in replacements.items():
         new_text = new_text.replace(placeholder, str(value if value is not None else '-'))
-    for run in paragraph.runs:
-        run._element.getparent().remove(run._element)
-    if new_text:
-        paragraph.add_run(new_text)
+    
+    # Preserve formatting from the first run
+    if paragraph.runs:
+        first_run = paragraph.runs[0]
+        # Store formatting properties
+        fmt = first_run.font
+        bold = fmt.bold
+        italic = fmt.italic
+        size = fmt.size
+        name = fmt.name
+        color = fmt.color
+        
+        # Remove all runs
+        for run in paragraph.runs:
+            run._element.getparent().remove(run._element)
+        
+        # Add new run with preserved formatting
+        if new_text:
+            new_run = paragraph.add_run(new_text)
+            new_fmt = new_run.font
+            new_fmt.bold = bold
+            new_fmt.italic = italic
+            new_fmt.size = size
+            new_fmt.name = name
+            if color and color.rgb:
+                new_fmt.color.rgb = color.rgb
+    else:
+        # No runs to copy formatting from, just add text
+        if new_text:
+            paragraph.add_run(new_text)
 
 
 def _row_has_row_placeholder(row):
@@ -62,7 +88,7 @@ def _row_has_row_placeholder(row):
 
 
 def _fill_row_placeholders(row, row_dict):
-    """Replace ``{{row.field}}`` placeholders in all paragraphs of *row*."""
+    """Replace ``{{row.field}}`` placeholders in all paragraphs of *row* while preserving formatting."""
     for cell in row.cells:
         for para in cell.paragraphs:
             full_text = ''.join(run.text for run in para.runs)
@@ -74,10 +100,36 @@ def _fill_row_placeholders(row, row_dict):
                     '{{row.' + key + '}}',
                     str(value if value is not None else '-'),
                 )
-            for run in para.runs:
-                run._element.getparent().remove(run._element)
-            if new_text:
-                para.add_run(new_text)
+            
+            # Preserve formatting from the first run
+            if para.runs:
+                first_run = para.runs[0]
+                # Store formatting properties
+                fmt = first_run.font
+                bold = fmt.bold
+                italic = fmt.italic
+                size = fmt.size
+                name = fmt.name
+                color = fmt.color
+                
+                # Remove all runs
+                for run in para.runs:
+                    run._element.getparent().remove(run._element)
+                
+                # Add new run with preserved formatting
+                if new_text:
+                    new_run = para.add_run(new_text)
+                    new_fmt = new_run.font
+                    new_fmt.bold = bold
+                    new_fmt.italic = italic
+                    new_fmt.size = size
+                    new_fmt.name = name
+                    if color and color.rgb:
+                        new_fmt.color.rgb = color.rgb
+            else:
+                # No runs to copy formatting from, just add text
+                if new_text:
+                    para.add_run(new_text)
 
 
 def _expand_repeating_rows(table, row_data):
