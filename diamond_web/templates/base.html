@@ -247,6 +247,16 @@
         }
         const csrftoken = getCookie('csrftoken');
 
+        // Global jQuery CSRF header for all same-origin unsafe AJAX methods
+        $.ajaxSetup({
+            beforeSend: function (xhr, settings) {
+                const csrfSafeMethod = /^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type);
+                if (!csrfSafeMethod && !this.crossDomain) {
+                    xhr.setRequestHeader('X-CSRFToken', csrftoken);
+                }
+            }
+        });
+
         // Keep-alive behavior & session warning modal (automatic keep-alive + server-side logout on expiry)
         (function () {
             const SESSION_SECONDS = 30 * 60; // must match server SESSION_COOKIE_AGE

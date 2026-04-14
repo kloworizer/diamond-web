@@ -51,6 +51,7 @@
                                 <h4 class="fs-13 fw-bold mb-2">Login to your account</h4>
                                 <p class="fs-12 fw-medium text-muted">Thank you for get back <strong>Nelel</strong> web applications, let's access our the best recommendation for you.</p>
                                 <form action="{% url 'dashboard_index' %}" class="w-100 mt-4 pt-2">
+                                    {% csrf_token %}
                                     <div class="mb-4">
                                         <input type="email" class="form-control" placeholder="Email or Username" value="wrapcode.info@gmail.com" required>
                                     </div>

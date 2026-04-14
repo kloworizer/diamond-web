@@ -2,7 +2,7 @@
 asgiref==3.11.0
 crispy-bootstrap5==2026.3
 diff-match-patch==20241021
-Django==5.2.12
+Django==5.2.13
 django-crispy-forms==2.6
 django-filter==25.2
 django-import-export==4.4.0

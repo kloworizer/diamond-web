@@ -6,6 +6,7 @@ from django.views.decorators.http import require_GET, require_http_methods
 from django.views.generic import TemplateView
 from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_protect
 from datetime import datetime, timedelta
 from django.db.models import Q
 from io import BytesIO
@@ -57,6 +58,7 @@ class LaporanPengendalianMutuView(LoginRequiredMixin, UserPassesTestMixin, Templ
 @login_required
 @user_passes_test(_is_pmde_user)
 @require_http_methods(["GET", "POST"])
+@csrf_protect
 def laporan_pengendalian_mutu_data(request):
     """DataTables server-side endpoint for Quality Control Report.
     
@@ -275,6 +277,7 @@ def laporan_pengendalian_mutu_data(request):
 @login_required
 @user_passes_test(_is_pmde_user)
 @require_GET
+@csrf_protect
 def laporan_pengendalian_mutu_export(request):
     """Export Laporan Pengendalian Mutu to XLSX file.
     

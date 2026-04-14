@@ -30,6 +30,7 @@
                 </div>
                 <div class="card-body">
                     <form id="filter-form" class="row g-2">
+                {% csrf_token %}
                 <div class="col-12 mb-2">
                     <button type="reset" class="btn btn-secondary btn-sm w-100" id="btn-reset-filter"><i class="ri-refresh-line me-1"></i>Reset</button>
                 </div>
