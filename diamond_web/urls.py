@@ -244,4 +244,8 @@ urlpatterns = [
     path('tiket/<int:pk>/identifikasi/', views.IdentifikasiTiketView.as_view(), name='identifikasi_tiket'),
     path('tiket/<int:pk>/transfer-ke-pmde/', views.TransferKePMDEView.as_view(), name='transfer_ke_pmde'),
     path('tiket/<int:pk>/selesaikan/', views.SelesaikanTiketView.as_view(), name='selesaikan_tiket'),
+
+    path('periode-jns-dt-ilap/',views.periode_ilap_index, name='periode_jns_dt_ilap'),
+    
+
 ]
