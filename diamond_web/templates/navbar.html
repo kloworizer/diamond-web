@@ -17,7 +17,7 @@
                     <a class="nav-link" href="{% url 'tiket_list' %}">Daftar Tiket</a>
                 </li>
                 {% endif %}
-                
+
             </ul>
             <ul class="navbar-nav">
                 {% if user|has_group:"admin" or user|has_group:"user_p3de" %}
@@ -46,12 +46,29 @@
                         PMDE
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'laporan_pengendalian_mutu' %}">Laporan Pengendalian Mutu</a></li>
+                        <li><a class="dropdown-item" href="{% url 'laporan_pengendalian_mutu' %}">Laporan Pengendalian
+                                Mutu</a></li>
                         <li><a class="dropdown-item" href="#">Laporan Kelengkapan Data</a></li>
                         <li><a class="dropdown-item" href="#">Laporan Hasil Pengolahan Data Prioritas</a></li>
                     </ul>
                 </li>
                 {% endif %}
+
+                {% if user|has_group:"admin" or user|has_group:"user_pide" %}
+                <!-- Dropdown Group: PIDE -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                        PIDE
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'laporan_transfer' %}">Laporan Transfer</a></li>
+                        <li><a class="dropdown-item" href="#">Laporan ___ </a></li>
+                        <li><a class="dropdown-item" href="#">Laporan ___ </a></li>
+                    </ul>
+                </li>
+                {% endif %}
+
                 {% if user|has_group:"admin" or user|has_group:"admin_p3de" %}
                 <!-- Dropdown Group -->
                 <li class="nav-item dropdown">
@@ -151,7 +168,8 @@
                                         <div class="notif-title-wrap">
                                             <strong class="notif-title">{{ notif.title }}</strong>
                                         </div>
-                                        <small class="text-muted notif-time">{% if notif.created_at %}{{ notif.created_at|date:"d/m/Y H:i" }}{% endif %}</small>
+                                        <small class="text-muted notif-time">{% if notif.created_at %}{{
+                                            notif.created_at|date:"d/m/Y H:i" }}{% endif %}</small>
                                     </div>
                                     <div class="notif-message small text-muted mt-1">{{ notif.message|safe }}</div>
                                 </div>
