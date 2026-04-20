@@ -1054,9 +1054,11 @@ class TestTiketExportResource:
 
 
 @pytest.mark.django_db
-
+def test_export_no_data_found(client, pmde_user):
+    """Test export when no tickets match filter."""
+    client.login(username='pmde_user', password='testpass123')
+class TestLaporanPengendalianMutuExportEdgeCases:
     """Test edge cases for export functionality."""
-    
     def test_export_no_data_found(self, client, pmde_user):
         """Test export when no tikets match filter."""
         client.login(username='pmde_user', password='testpass123')
@@ -1065,6 +1067,14 @@ class TestTiketExportResource:
             'periode': '12',
             'tahun': '2025'  # No data for this year
         })
+        assert response.status_code == 200
+        assert response['Content-Type'] == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    
+        response = client.get(reverse('laporan_pengendalian_mutu_export'), {
+        'periode_type': 'bulanan',
+        'periode': '12',
+        'tahun': '2025'
+    })
         assert response.status_code == 200
         assert response['Content-Type'] == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     
