@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">    
+    <div class="row mb-4">  
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                 <div>
+                    <h2 class="mb-1">
+                        <i class="ri-file-chart-line me-2"></i>Laporan Kelengkapan Data
+                    </h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                            <li class="breadcrumb-item active">Laporan Kelengkapan Data</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+ <!-- Filter Card -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Filter Data</h5>
+        </div>
+        <div class="card-body">
+            <form id="filter-form" class="row g-3">
+                {% csrf_token %}
+                <div class="col-md-3">
+                    {{ form.periode_type }}
+                    {% if form.periode_type.errors %}
+                        <div class="invalid-feedback d-block">{{ form.periode_type.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    {{ form.periode }}
+                    {% if form.periode.errors %}
+                        <div class="invalid-feedback d-block">{{ form.periode.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    {{ form.tahun }}
+                    {% if form.tahun.errors %}
+                        <div class="invalid-feedback d-block">{{ form.tahun.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3 d-flex align-items-end gap-2">
+                    <button type="button" id="export-btn" class="btn btn-success w-100" disabled>           
+                        <i class="ri-download-2-line me-1"></i>Export XLSX
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
+            <h5 class="mb-0">
+                <i class="ri-file-list-line me-2"></i>Hasil Laporan Kelengkapan Data</h5>
+        </div>
+        <div class="card-body">
+            <table id="report-table" class="table table-bordered table-striped" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>Nama ILAP</th>
+                        <th>Nama Sub Jenis Data</th>
+                        <th>Nama Tabel</th>
+                        <th>Nomor Tiket</th>
+                        <th>Status Tiket</th>
+                        <th>Data Diterima</th>
+                        <th>QC C (Kelengkapan)</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        const ajaxUrl = "{% url 'laporan_kelengkapan_data_data' %}";
+        let table;
+
+       $(document).ready(function () {
+            const csrfToken = $('[name=csrfmiddlewaretoken]').val();
+
+            table = $('#report-table').DataTable({
+                serverSide: true,
+                ajax: {
+                    url: ajaxUrl,
+                    type: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    },
+                data: function (d) {
+                    d.periode_type = $('#filter-periode-type').val();
+                    d.periode = $('#filter-periode').val();
+                    d.tahun = $('#filter-tahun').val();
+                    d.csrfmiddlewaretoken = csrfToken;
+                }
+                },
+                columns: [
+                    { data: 'nama_ilap' },
+                    { data: 'nama_sub_jenis_data' },
+                    { data: 'nama_tabel' },
+                    { data: 'nomor_tiket' },
+                    { data: 'status_tiket' },
+                    { data: 'data_diterima' },
+                    { data: 'qc_c' }
+                ],
+                pageLength: 10,
+                order: [[5, 'desc']],
+                scrollX: true,
+                processing: true,
+                deferLoading: 0 // Don't load data initially
+            });
+
+            // Populate periode options based on periode type
+            $('#filter-periode-type').on('change', function() {
+                const periodeType = $(this).val();
+                const $periodeSelect = $('#filter-periode');
+                $periodeSelect.html('<option value="">-- Pilih Periode --</option>');   
+
+                if (!periodeType) return;
+
+                let defaultValue = null;
+
+                if (periodeType === 'bulanan') {
+                    const months = [
+                        { value: '1', label: 'Januari' },
+                        { value: '2', label: 'Februari' },
+                        { value: '3', label: 'Maret' },
+                        { value: '4', label: 'April' },
+                        { value: '5', label: 'Mei' },
+                        { value: '6', label: 'Juni' },
+                        { value: '7', label: 'Juli' },
+                        { value: '8', label: 'Agustus' },
+                        { value: '9', label: 'September' },
+                        { value: '10', label: 'Oktober' },
+                        { value: '11', label: 'November' },
+                        { value: '12', label: 'Desember' }
+                    ];
+                    months.forEach(month => {
+                        $periodeSelect.append(new Option(month.label, month.value));
+                    });
+                    defaultValue = months[0].value;
+                } else if (periodeType === 'triwulanan') {
+                    const quarters = [
+                        { value: '1', label: 'Triwulan 1 (Jan-Mar)' },
+                        { value: '2', label: 'Triwulan 2 (Apr-Jun)' },
+                        { value: '3', label: 'Triwulan 3 (Jul-Sep)' },
+                        { value: '4', label: 'Triwulan 4 (Oct-Dec)' }
+                    ];
+                    quarters.forEach(quarter => {
+                        $periodeSelect.append(new Option(quarter.label, quarter.value));
+                    });
+                    defaultValue = quarters[0].value;
+                } else if (periodeType === 'semester') {
+                    const semesters = [
+                        { value: '1', label: 'Semester 1 (Jan-Jun)' },
+                        { value: '2', label: 'Semester 2 (Jul-Dec)' }
+                    ];
+                    semesters.forEach(semester => {
+                        $periodeSelect.append(new Option(semester.label, semester.value));
+                    });
+                    defaultValue = semesters[0].value;
+                } else if (periodeType === 'tahunan') {
+                    $periodeSelect.append('<option value="all">Seluruh Tahun</option>');
+                    defaultValue = 'all';
+                }
+
+                // Auto-select first value
+                if (defaultValue) {
+                    $periodeSelect.val(defaultValue);
+                }   
+            }); 
+            // Enable export button when data is loaded
+            table.on('draw.dt', function() {
+                const recordsFiltered = table.page.info().recordsFiltered;
+                $('#export-btn').prop('disabled', recordsFiltered === 0);      
+            });
+
+            $('#filter-periode-type, #filter-periode, #filter-tahun').on('change', function() {
+                const periodeType = $('#filter-periode-type').val();
+                const periode = $('#filter-periode').val();
+                const tahun = $('#filter-tahun').val();
+
+                if (periodeType && periode && tahun) {
+                    table.ajax.reload();
+                }
+            });
+            $('#export-btn').on('click', function(e) {
+                e.preventDefault();
+                const periodeType = $('#filter-periode-type').val();
+                const periode = $('#filter-periode').val();
+                const tahun = $('#filter-tahun').val(); 
+
+                // Create form and submit to export endpoint
+                const form = $('<form></form>');
+                form.attr('method', 'GET');
+                form.attr('action', "{% url 'laporan_kelengkapan_data_export' %}");
+                form.append('<input type="hidden" name="periode_type" value="' + periodeType + '">');
+                form.append('<input type="hidden" name="periode" value="' + periode + '">');
+                form.append('<input type="hidden" name="tahun" value="' + tahun + '">');
+                $('body').append(form);
+                form.submit();
+                form.remove();
+            });
+        });
+    })();
+</script>
+{% endblock %}
+
+
+        

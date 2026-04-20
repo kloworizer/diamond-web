@@ -185,6 +185,11 @@ urlpatterns = [
     path('laporan-pengendalian-mutu/', views.LaporanPengendalianMutuView.as_view(), name='laporan_pengendalian_mutu'),
     path('laporan-pengendalian-mutu/data/', views.laporan_pengendalian_mutu_data, name='laporan_pengendalian_mutu_data'),
     path('laporan-pengendalian-mutu/export/', views.laporan_pengendalian_mutu_export, name='laporan_pengendalian_mutu_export'),
+    # === PMDE Section ===
+    # Laporan Kelengkapan Data
+    path('laporan-kelengkapan-data/', views.LaporanKelengkapanDataView.as_view(), name='laporan_kelengkapan_data'),
+    path('laporan-kelengkapan-data/data/', views.laporan_kelengkapan_data_data, name='laporan_kelengkapan_data_data'),
+    path('laporan-kelengkapan-data/export/', views.laporan_kelengkapan_data_export, name='laporan_kelengkapan_data_export'),
     # PIC PMDE URLs
     path('pic-pmde/', views.PICPMDEListView.as_view(), name='pic_pmde_list'),
     path('pic-pmde/data/', views.pic_pmde_data, name='pic_pmde_data'),
