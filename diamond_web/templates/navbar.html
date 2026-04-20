@@ -167,8 +167,7 @@
                                         <div class="notif-title-wrap">
                                             <strong class="notif-title">{{ notif.title }}</strong>
                                         </div>
-                                        <small class="text-muted notif-time">{% if notif.created_at %}{{
-                                            notif.created_at|date:"d/m/Y H:i" }}{% endif %}</small>
+                                        <small class="text-muted notif-time">{% if notif.created_at %}{{ notif.created_at|date:"d/m/Y H:i" }}{% endif %}</small>
                                     </div>
                                     <div class="notif-message small text-muted mt-1">{{ notif.message|safe }}</div>
                                 </div>
