@@ -156,6 +156,11 @@ urlpatterns = [
     path('monitoring-penyampaian-data/data/', views.monitoring_penyampaian_data_data, name='monitoring_penyampaian_data_data'),
 
     # === PIDE Section ===
+    # Laporan Transfer
+    path('laporan-transfer/', views.LaporanTransferView.as_view(), name='laporan_transfer'),
+    path('laporan-transfer/data/', views.laporan_transfer_data, name='laporan_transfer_data'),
+    path('laporan-transfer/export/', views.laporan_transfer_export, name='laporan_transfer_export'),
+    path('laporan-transfer/filter-options/', views.laporan_transfer_filter_options, name='laporan_transfer_filter_options'),
     # Nama Tabel URLs
     path('nama-tabel/', views.NamaTabelListView.as_view(), name='nama_tabel_list'),
     path('nama-tabel/data/', views.nama_tabel_data, name='nama_tabel_data'),

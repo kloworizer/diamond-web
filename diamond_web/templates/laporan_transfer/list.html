@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="ri-file-chart-line me-2"></i>Laporan Transfer
+                    </h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                            <li class="breadcrumb-item active">Laporan Transfer</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Filter Data</h5>
+        </div>
+        <div class="card-body">
+            <form id="filter-form" class="row g-3">
+                {% csrf_token %}
+                <div class="col-md-3">
+                    <label class="form-label">Tanggal Mulai</label>
+                    {{ form.tgl_mulai }}
+                    {% if form.tgl_mulai.errors %}
+                    <div class="invalid-feedback d-block">{{ form.tgl_mulai.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Tanggal Akhir</label>
+                    {{ form.tgl_akhir }}
+                    {% if form.tgl_akhir.errors %}
+                    <div class="invalid-feedback d-block">{{ form.tgl_akhir.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">ILAP</label>
+                    {{ form.id_ilap }}
+                    {% if form.id_ilap.errors %}
+                    <div class="invalid-feedback d-block">{{ form.id_ilap.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Jenis Data ILAP</label>
+                    {{ form.id_jenis_data }}
+                    {% if form.id_jenis_data.errors %}
+                    <div class="invalid-feedback d-block">{{ form.id_jenis_data.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Nama Subjenis Data</label>
+                    {{ form.nama_sub_jenis_data }}
+                    {% if form.nama_sub_jenis_data.errors %}
+                    <div class="invalid-feedback d-block">{{ form.nama_sub_jenis_data.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Nama Tabel I</label>
+                    {{ form.nama_tabel_I }}
+                    {% if form.nama_tabel_I.errors %}
+                    <div class="invalid-feedback d-block">{{ form.nama_tabel_I.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="button" id="export-btn" class="btn btn-success w-100" disabled>
+                        <i class="ri-download-2-line me-1"></i>Export XLSX
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Data Table Card -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
+            <h5 class="mb-0">
+                <i class="ri-table-line me-2"></i>Data Transfer
+            </h5>
+        </div>
+        <div class="card-body">
+            <table id="laporan-transfer-table" class="table table-striped" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>Nama ILAP</th>
+                        <th>Jenis Data</th>
+                        <th>Subjenis Data</th>
+                        <th>Tabel I</th>
+                        <th>Nomor Tiket</th>
+                        <th>Data Diterima</th>
+                        <th>Data Teridentifikasi (I)</th>
+                        <th>Data Tidak Teridentifikasi (U)</th>
+                        <th>Data Tidak Diidentifikasi (I)</th>
+                        <th>Persentase Identifikasi (%)</th>
+                        <th>Keterangan</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        // Fallback URLs if not defined in context - Note: these should be properly routed in urls.py
+        const ajaxUrl = "{% url 'laporan_transfer_data' %}";
+        let table;
+
+        function updateFilterOptions(changedId) {
+            const params = {
+                id_ilap: $('#filter-id-ilap').val(),
+                id_jenis_data: $('#filter-id-jenis-data').val(),
+                nama_sub_jenis_data: $('#filter-nama-sub-jenis-data').val(),
+                nama_tabel_I: $('#filter-nama-tabel-I').val()
+            };
+
+            $.ajax({
+                url: "{% url 'laporan_transfer_filter_options' %}",
+                data: params,
+                success: function (data) {
+                    // Helper to update a select element while preserving selection if possible
+                    const updateSelect = (id, options, defaultText, isModel, textField) => {
+                        if (id === changedId) return;
+                        const $el = $('#' + id);
+                        const currentVal = $el.val();
+                        
+                        let html = '';
+                        if (id === 'filter-id-ilap' || id === 'filter-id-jenis-data') {
+                            html = '<option value="all">Pilih Semua</option>';
+                        } else {
+                            html = '<option value="all">Pilih Semua</option>';
+                        }
+
+                        options.forEach(opt => {
+                            const val = isModel ? opt.id : opt;
+                            const text = isModel ? opt[textField || 'nama_sub_jenis_data'] : opt;
+                            if (val) html += `<option value="${val}">${text}</option>`;
+                        });
+                        
+                        $el.html(html);
+                        // Restore value if it's still in the new options list
+                        if ($el.find(`option[value="${currentVal}"]`).length > 0) {
+                            $el.val(currentVal);
+                        }
+                    };
+
+                    updateSelect('filter-id-ilap', data.ilaps, 'Pilih ILAP', true, 'nama_ilap');
+                    updateSelect('filter-id-jenis-data', data.jenis_data, '', true);
+                    updateSelect('filter-nama-sub-jenis-data', data.sub_jenis, '', false);
+                    updateSelect('filter-nama-tabel-I', data.tabel_i, '', false);
+                }
+            });
+        }
+
+        $(document).ready(function () {
+            const csrfToken = $('[name=csrfmiddlewaretoken]').val();
+
+            table = $('#laporan-transfer-table').DataTable({
+                serverSide: true,
+                ajax: {
+                    url: ajaxUrl,
+                    type: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    },
+                    data: function (d) {
+                        d.tgl_mulai = $('#filter-tgl-mulai').val();
+                        d.tgl_akhir = $('#filter-tgl-akhir').val();
+                        d.id_ilap = $('#filter-id-ilap').val();
+                        d.id_jenis_data = $('#filter-id-jenis-data').val();
+                        d.nama_sub_jenis_data = $('#filter-nama-sub-jenis-data').val();
+                        d.nama_tabel_I = $('#filter-nama-tabel-I').val();
+                        d.csrfmiddlewaretoken = csrfToken;
+                        return d;
+                    }
+                },
+                columns: [
+                    { data: 'nama_ilap' },
+                    { data: 'nama_jenis_data' },
+                    { data: 'nama_sub_jenis_data' },
+                    { data: 'nama_tabel_I' },
+                    { data: 'nomor_tiket' },
+                    { data: 'data_diterima' },
+                    { data: 'data_teridentifikasi_i' },
+                    { data: 'data_tidak_teridentifikasi_u' },
+                    { data: 'data_tidak_diidentifikasi_i' },
+                    { data: 'persentase_identifikasi' },
+                    { data: 'keterangan_tiket' },
+                ],
+                pageLength: 10,
+                order: [[4, 'asc']], // Order by nomor_tiket (index 4)
+                scrollX: true,
+                processing: true,
+                deferLoading: 0  // Don't load data initially
+            });
+
+            // Initial load
+            table.ajax.reload();
+
+            // Enable export button when data is loaded
+            table.on('draw.dt', function () {
+                const recordsFiltered = table.page.info().recordsFiltered;
+                $('#export-btn').prop('disabled', recordsFiltered === 0);
+            });
+
+            // Dynamic filtering - trigger reload and update other filters
+            $('#filter-id-ilap, #filter-id-jenis-data, #filter-nama-sub-jenis-data, #filter-nama-tabel-I').on('change', function () {
+                updateFilterOptions($(this).attr('id'));
+                table.ajax.reload();
+            });
+
+            // Date filters only trigger table reload
+            $('#filter-tgl-mulai, #filter-tgl-akhir').on('change', function () {
+                table.ajax.reload();
+            });
+
+            // Handle export button
+            $('#export-btn').on('click', function (e) {
+                e.preventDefault();
+                const tgl_mulai = $('#filter-tgl-mulai').val();
+                const tgl_akhir = $('#filter-tgl-akhir').val();
+                const id_ilap = $('#filter-id-ilap').val();
+                const id_jenis_data = $('#filter-id-jenis-data').val();
+                const nama_sub_jenis_data = $('#filter-nama-sub-jenis-data').val();
+                const nama_tabel_I = $('#filter-nama-tabel-I').val();
+
+                // Create form and submit to export endpoint
+                const form = $('<form></form>');
+                form.attr('method', 'GET');
+                form.attr('action', '{% url "laporan_transfer_export" %}');
+                form.append($('<input>').attr('type', 'hidden').attr('name', 'tgl_mulai').val(tgl_mulai));
+                form.append($('<input>').attr('type', 'hidden').attr('name', 'tgl_akhir').val(tgl_akhir));
+                form.append($('<input>').attr('type', 'hidden').attr('name', 'id_ilap').val(id_ilap));
+                form.append($('<input>').attr('type', 'hidden').attr('name', 'id_jenis_data').val(id_jenis_data));
+                form.append($('<input>').attr('type', 'hidden').attr('name', 'nama_sub_jenis_data').val(nama_sub_jenis_data));
+                form.append($('<input>').attr('type', 'hidden').attr('name', 'nama_tabel_I').val(nama_tabel_I));
+                $('body').append(form);
+                form.submit();
+                form.remove();
+            });
+        });
+    })();
+</script>
+{% endblock %}
