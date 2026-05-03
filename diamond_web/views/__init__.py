@@ -29,4 +29,7 @@ from .docx_template import *
 from .laporan_pengendalian_mutu import *
 from .laporan_kelengkapan_data import *
 from .tiket import *
+from .laporan_pide_filter_options import *
 from .laporan_transfer import *
+from .laporan_sla_perekaman import *
+from .laporan_sla_identifikasi import *

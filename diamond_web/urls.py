@@ -156,11 +156,25 @@ urlpatterns = [
     path('monitoring-penyampaian-data/data/', views.monitoring_penyampaian_data_data, name='monitoring_penyampaian_data_data'),
 
     # === PIDE Section ===
+
+    # Filter Options URLs for cascading filter in PIDE reports
+    path('laporan-pide/filter-options/', views.laporan_pide_filter_options, name='laporan_pide_filter_options'),
+
     # Laporan Transfer
     path('laporan-transfer/', views.LaporanTransferView.as_view(), name='laporan_transfer'),
     path('laporan-transfer/data/', views.laporan_transfer_data, name='laporan_transfer_data'),
     path('laporan-transfer/export/', views.laporan_transfer_export, name='laporan_transfer_export'),
-    path('laporan-transfer/filter-options/', views.laporan_transfer_filter_options, name='laporan_transfer_filter_options'),
+
+    # Laporan SLA Perekaman
+    path('laporan-sla-perekaman/', views.LaporanSLAPerekamanView.as_view(), name='laporan_sla_perekaman'),
+    path('laporan-sla-perekaman/data/', views.laporan_sla_perekaman_data, name='laporan_sla_perekaman_data'),
+    path('laporan-sla-perekaman/export/', views.laporan_sla_perekaman_export, name='laporan_sla_perekaman_export'),
+    
+    # Laporan SLA Identifikasi
+    path('laporan-sla-identifikasi/', views.LaporanSLAIdentifikasiView.as_view(), name='laporan_sla_identifikasi'),
+    path('laporan-sla-identifikasi/data/', views.laporan_sla_identifikasi_data, name='laporan_sla_identifikasi_data'),
+    path('laporan-sla-identifikasi/export/', views.laporan_sla_identifikasi_export, name='laporan_sla_identifikasi_export'),
+
     # Nama Tabel URLs
     path('nama-tabel/', views.NamaTabelListView.as_view(), name='nama_tabel_list'),
     path('nama-tabel/data/', views.nama_tabel_data, name='nama_tabel_data'),
