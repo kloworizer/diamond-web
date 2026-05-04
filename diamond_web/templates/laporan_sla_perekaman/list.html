@@ -8,12 +8,12 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h2 class="mb-1">
-                        <i class="ri-file-chart-line me-2"></i>Laporan Transfer
+                        <i class="ri-file-chart-line me-2"></i>Laporan SLA Perekaman
                     </h2>
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-                            <li class="breadcrumb-item active">Laporan Transfer</li>
+                            <li class="breadcrumb-item active">Laporan SLA Perekaman</li>
                         </ol>
                     </nav>
                 </div>
@@ -84,11 +84,11 @@
     <div class="card shadow-sm">
         <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
             <h5 class="mb-0">
-                <i class="ri-table-line me-2"></i>Data Transfer
+                <i class="ri-table-line me-2"></i>Data SLA Perekaman
             </h5>
         </div>
         <div class="card-body">
-            <table id="laporan-transfer-table" class="table table-striped" style="width:100%">
+            <table id="laporan-sla-perekaman-table" class="table table-striped" style="width:100%">
                 <thead>
                     <tr>
                         <th>Nama ILAP</th>
@@ -96,12 +96,9 @@
                         <th>Subjenis Data</th>
                         <th>Tabel I</th>
                         <th>Nomor Tiket</th>
-                        <th>Data Diterima</th>
-                        <th>Data Teridentifikasi (I)</th>
-                        <th>Data Tidak Teridentifikasi (U)</th>
-                        <th>Data Tidak Diidentifikasi (I)</th>
-                        <th>Persentase Identifikasi (%)</th>
-                        <th>Keterangan</th>
+                        <th>Tanggal Terima PIDE</th>
+                        <th>Tanggal Mulai Identifikasi</th>
+                        <th>SLA Perekaman</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -115,7 +112,7 @@
 <script>
     (function () {
         // Fallback URLs if not defined in context - Note: these should be properly routed in urls.py
-        const ajaxUrl = "{% url 'laporan_transfer_data' %}";
+        const ajaxUrl = "{% url 'laporan_sla_perekaman_data' %}";
         let table;
 
         function updateFilterOptions(changedId) {
@@ -167,7 +164,7 @@
         $(document).ready(function () {
             const csrfToken = $('[name=csrfmiddlewaretoken]').val();
 
-            table = $('#laporan-transfer-table').DataTable({
+            table = $('#laporan-sla-perekaman-table').DataTable({
                 serverSide: true,
                 ajax: {
                     url: ajaxUrl,
@@ -192,12 +189,9 @@
                     { data: 'nama_sub_jenis_data' },
                     { data: 'nama_tabel_I' },
                     { data: 'nomor_tiket' },
-                    { data: 'data_diterima' },
-                    { data: 'data_teridentifikasi_i' },
-                    { data: 'data_tidak_teridentifikasi_u' },
-                    { data: 'data_tidak_diidentifikasi_i' },
-                    { data: 'persentase_identifikasi' },
-                    { data: 'keterangan_tiket' },
+                    { data: 'tgl_terima_pide' },
+                    { data: 'tgl_mulai_identifikasi' },
+                    { data: 'sla_perekaman' },
                 ],
                 pageLength: 10,
                 order: [[4, 'asc']], // Order by nomor_tiket (index 4)
@@ -239,7 +233,7 @@
                 // Create form and submit to export endpoint
                 const form = $('<form></form>');
                 form.attr('method', 'GET');
-                form.attr('action', '{% url "laporan_transfer_export" %}');
+                form.attr('action', '{% url "laporan_sla_perekaman_export" %}');
                 form.append($('<input>').attr('type', 'hidden').attr('name', 'tgl_mulai').val(tgl_mulai));
                 form.append($('<input>').attr('type', 'hidden').attr('name', 'tgl_akhir').val(tgl_akhir));
                 form.append($('<input>').attr('type', 'hidden').attr('name', 'id_ilap').val(id_ilap));

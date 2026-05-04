@@ -1,4 +1,4 @@
-"""Laporan Transfer view - Transfer Report."""
+"""Laporan SLA Perekaman view - Load SLA Report."""
 
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -11,8 +11,7 @@ from io import BytesIO
 from openpyxl import Workbook
 
 from ..models.tiket import Tiket
-from ..forms.laporan_transfer import LaporanTransferFilterForm, LaporanTransferExportResource
-from ..constants.jenis_tabel import JENIS_TABEL_DIIDENTIFIKASI, JENIS_TABEL_TIDAK_DIIDENTIFIKASI
+from ..forms.laporan_sla_perekaman import LaporanSLAPerekamanFilterForm, LaporanSLAPerekamanExportResource
 
 
 def _is_pide_user(user):
@@ -40,14 +39,14 @@ def _get_filtered_tikets(params):
         try:
             # datetime-local format: YYYY-MM-DDTHH:MM
             tgl_mulai = datetime.strptime(tgl_mulai_str, '%Y-%m-%dT%H:%M')
-            tikets = tikets.filter(tgl_transfer__gte=tgl_mulai)
+            tikets = tikets.filter(tgl_kirim_pide__gte=tgl_mulai)
         except ValueError:
             pass
             
     if tgl_akhir_str:
         try:
             tgl_akhir = datetime.strptime(tgl_akhir_str, '%Y-%m-%dT%H:%M')
-            tikets = tikets.filter(tgl_transfer__lte=tgl_akhir)
+            tikets = tikets.filter(tgl_kirim_pide__lte=tgl_akhir)
         except ValueError:
             pass
             
@@ -67,15 +66,15 @@ def _get_filtered_tikets(params):
     if nama_tabel_I and nama_tabel_I != 'all' and nama_tabel_I != '':
         tikets = tikets.filter(id_periode_data__id_sub_jenis_data_ilap__nama_tabel_I=nama_tabel_I)
 
-    # Order by transfer date (chronological)
-    return tikets.order_by('tgl_transfer')
+    # Order by sent to PIDE date (chronological)
+    return tikets.order_by('tgl_kirim_pide')
 
 
-class LaporanTransferView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
-    """Display Laporan Transfer by filtering tikets
+class LaporanSLAPerekamanView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    """Display Laporan SLA Perekaman by filtering tikets
     based on a date range and other parameters.
     """
-    template_name = 'laporan_transfer/list.html'
+    template_name = 'laporan_sla_perekaman/list.html'
     
     def test_func(self):
         """Verify user is PIDE user or admin."""
@@ -84,7 +83,7 @@ class LaporanTransferView(LoginRequiredMixin, UserPassesTestMixin, TemplateView)
     def get_context_data(self, **kwargs):
         """Add form to context."""
         context = super().get_context_data(**kwargs)
-        context['form'] = LaporanTransferFilterForm()
+        context['form'] = LaporanSLAPerekamanFilterForm()
         return context
 
 
@@ -92,11 +91,11 @@ class LaporanTransferView(LoginRequiredMixin, UserPassesTestMixin, TemplateView)
 @user_passes_test(_is_pide_user)
 @require_http_methods(["GET", "POST"])
 @csrf_protect
-def laporan_transfer_data(request):
-    """DataTables server-side endpoint for Transfer Report.
+def laporan_sla_perekaman_data(request):
+    """DataTables server-side endpoint for SLA Perekaman Report.
     
     Filters tikets by:
-    - tgl_transfer within specified tgl_mulai and tgl_akhir
+    - tgl_kirim_pide within specified tgl_mulai and tgl_akhir
     - id_ilap, id_jenis_data, nama_sub_jenis_data, nama_tabel_I
     
     Returns JSON with tiket data.
@@ -128,33 +127,30 @@ def laporan_transfer_data(request):
             
         ilap = sub_jenis_data.id_ilap
         
-        # Logic for calculated fields (matching LaporanTransferExportResource)
-        baris_diterima = tiket.baris_diterima or 0
-        baris_u = tiket.baris_u or 0
-        baris_i = tiket.baris_i or 0
-        
-        # Diidentifikasi (id=1), Tidak Diidentifikasi (id=2)
-        id_jenis_tabel = sub_jenis_data.id_jenis_tabel_id
-        
-        data_teridentifikasi_i = baris_i if id_jenis_tabel == JENIS_TABEL_DIIDENTIFIKASI else 0
-        data_tidak_diidentifikasi_i = baris_i if id_jenis_tabel == JENIS_TABEL_TIDAK_DIIDENTIFIKASI else 0
-        
-        persentase_identifikasi = ''
-        if baris_diterima > 0:
-            persentase_identifikasi = f"{(baris_i / baris_diterima * 100):.2f}%"
-        
+        # Logic for calculated fields (matching LaporanSLAPerekamanExportResource)
+        if tiket.tgl_kirim_pide and tiket.tgl_rekam_pide:
+            diff = (tiket.tgl_rekam_pide.date() - tiket.tgl_kirim_pide.date()).days + 1
+            sla_perekaman = f"{diff} hari"
+        else:
+            sla_perekaman = ""
+        if tiket.tgl_kirim_pide:
+            tgl_terima_pide = tiket.tgl_kirim_pide.strftime('%d/%m/%Y')
+        else:
+            tgl_terima_pide = ""
+        if tiket.tgl_rekam_pide:
+            tgl_mulai_identifikasi = tiket.tgl_rekam_pide.strftime('%d/%m/%Y')
+        else:
+            tgl_mulai_identifikasi = ""
+
         row = {
             'nama_ilap': ilap.nama_ilap if ilap else '',
             'nama_jenis_data': sub_jenis_data.nama_jenis_data,
             'nama_sub_jenis_data': sub_jenis_data.nama_sub_jenis_data,
             'nama_tabel_I': sub_jenis_data.nama_tabel_I,
             'nomor_tiket': tiket.nomor_tiket,
-            'data_diterima': baris_diterima,
-            'data_teridentifikasi_i': data_teridentifikasi_i,
-            'data_tidak_teridentifikasi_u': baris_u,
-            'data_tidak_diidentifikasi_i': data_tidak_diidentifikasi_i,
-            'persentase_identifikasi': persentase_identifikasi,
-            'keterangan_tiket': ''
+            'tgl_terima_pide': tgl_terima_pide,
+            'tgl_mulai_identifikasi': tgl_mulai_identifikasi,
+            'sla_perekaman': sla_perekaman,
         }
         data.append(row)
     
@@ -170,19 +166,19 @@ def laporan_transfer_data(request):
 @user_passes_test(_is_pide_user)
 @require_GET
 @csrf_protect
-def laporan_transfer_export(request):
-    """Export Laporan Transfer to XLSX file."""
+def laporan_sla_perekaman_export(request):
+    """Export Laporan SLA Perekaman to XLSX file."""
     # Get filtered tikets using helper
     tikets = _get_filtered_tikets(request.GET)
     
-    # Use LaporanTransferExportResource
-    resource = LaporanTransferExportResource()
+    # Use LaporanSLAPerekamanExportResource
+    resource = LaporanSLAPerekamanExportResource()
     dataset = resource.export(tikets)
     
     # Create Excel workbook using openpyxl
     wb = Workbook()
     ws = wb.active
-    ws.title = "Laporan Transfer"
+    ws.title = "Laporan SLA Perekaman"
     
     # Write headers
     headers = dataset.headers
@@ -200,7 +196,7 @@ def laporan_transfer_export(request):
     excel_data = excel_file.getvalue()
     
     # Create filename
-    filename = "Laporan_Transfer"
+    filename = "Laporan_SLA_Perekaman"
     tgl_mulai_str = request.GET.get('tgl_mulai')
     tgl_akhir_str = request.GET.get('tgl_akhir')
     if tgl_mulai_str and tgl_akhir_str:
