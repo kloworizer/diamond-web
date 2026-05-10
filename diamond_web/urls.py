@@ -175,6 +175,11 @@ urlpatterns = [
     path('laporan-sla-identifikasi/data/', views.laporan_sla_identifikasi_data, name='laporan_sla_identifikasi_data'),
     path('laporan-sla-identifikasi/export/', views.laporan_sla_identifikasi_export, name='laporan_sla_identifikasi_export'),
 
+    # Laporan Metrik Data Eksternal
+    path('laporan-metrik-data-eksternal/', views.LaporanMetrikDataEksternalView.as_view(), name='laporan_metrik_data_eksternal'),
+    path('laporan-metrik-data-eksternal/data/', views.laporan_metrik_data_eksternal_data, name='laporan_metrik_data_eksternal_data'),
+    path('laporan-metrik-data-eksternal/export/', views.laporan_metrik_data_eksternal_export, name='laporan_metrik_data_eksternal_export'),
+
     # Nama Tabel URLs
     path('nama-tabel/', views.NamaTabelListView.as_view(), name='nama_tabel_list'),
     path('nama-tabel/data/', views.nama_tabel_data, name='nama_tabel_data'),

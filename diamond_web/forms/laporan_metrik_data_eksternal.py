@@ -11,8 +11,8 @@ from ..constants.tiket_status import STATUS_LABELS
 from ..constants.jenis_tabel import JENIS_TABEL_DIIDENTIFIKASI, JENIS_TABEL_TIDAK_DIIDENTIFIKASI
 
 
-class LaporanTransferFilterForm(forms.Form):
-    """Form untuk filter Laporan Transfer."""
+class LaporanMetrikDataEksternalFilterForm(forms.Form):
+    """Form untuk filter Laporan Metrik Data Eksternal."""
 
     id_ilap = forms.ChoiceField(
         choices=[('all', 'Pilih Semua')],
@@ -114,8 +114,8 @@ class LaporanTransferFilterForm(forms.Form):
 
 
 
-class LaporanTransferExportResource(resources.ModelResource):
-    """Resource for exporting Laporan Transfer to XLSX."""
+class LaporanMetrikDataEksternalExportResource(resources.ModelResource):
+    """Resource for exporting Laporan Metrik Data Eksternal to XLSX."""
     
     nama_ilap = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__id_ilap__nama_ilap')
     jenis_data = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__nama_jenis_data')
@@ -124,25 +124,24 @@ class LaporanTransferExportResource(resources.ModelResource):
     nomor_tiket = fields.Field(attribute='nomor_tiket')
     jumlah_data_masuk = fields.Field(attribute='baris_diterima')
     jumlah_data_tidak_teridentifikasi = fields.Field(attribute='baris_u')
+    jumlah_data_res = fields.Field(attribute='baris_res')
 
-    # Calculated fields  
+    # Calculated fields 
     jumlah_data_teridentifikasi = fields.Field()
     jumlah_data_tidak_diidentifikasi = fields.Field()
     persentase = fields.Field()
-
-    # Manual entry field
-    keterangan = fields.Field()
     
     class Meta:
         model = Tiket
         fields = (
             'nama_ilap', 'jenis_data', 'subjenis_data', 
             'tabel_bank_data', 'nomor_tiket', 
+            'jumlah_data_masuk', 
             'jumlah_data_teridentifikasi', 
             'jumlah_data_tidak_teridentifikasi', 
             'jumlah_data_tidak_diidentifikasi', 
-            'jumlah_data_masuk', 
-            'persentase', 'keterangan'
+            'jumlah_data_res',
+            'persentase'
         )
         export_order = fields
     
@@ -176,6 +175,10 @@ class LaporanTransferExportResource(resources.ModelResource):
         else:
             return obj.baris_i or 0
 
+    def dehydrate_jumlah_data_res(self, obj):
+        """Return null values as 0."""
+        return obj.baris_res or 0
+
     def dehydrate_persentase(self, obj):
         """Fetch id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel
         to determine if data is Diidentifikasi ('1') or not.
@@ -188,6 +191,3 @@ class LaporanTransferExportResource(resources.ModelResource):
         else:
             return f"{(obj.baris_i or 0) / obj.baris_diterima * 100:.2f}%"
 
-    def dehydrate_keterangan(self, obj):
-        """Return empty string ('')."""
-        return ''
