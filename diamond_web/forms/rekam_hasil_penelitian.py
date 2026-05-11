@@ -7,22 +7,6 @@ from ..utils import validate_not_future_datetime
 class RekamHasilPenelitianForm(AutoRequiredFormMixin, forms.ModelForm):
     """Form for recording research results."""
 
-    KESESUAIAN_CHOICES = [
-        ('', '---------'),
-        (1, 'Sesuai PMK'),
-        (2, 'Sesuai PKS'),
-        (3, 'Sesuai Konfirmasi Ketersediaan Data'),
-    ]
-
-    kesesuaian_data = forms.TypedChoiceField(
-        label='Kesesuaian Data',
-        choices=KESESUAIAN_CHOICES,
-        coerce=lambda x: int(x) if x else None,
-        widget=forms.Select(attrs={'class': 'form-select'}),
-        required=True,
-        empty_value=None,
-    )
-
     catatan = forms.CharField(
         label='Catatan',
         widget=forms.Textarea(attrs={
@@ -35,7 +19,7 @@ class RekamHasilPenelitianForm(AutoRequiredFormMixin, forms.ModelForm):
 
     class Meta:
         model = Tiket
-        fields = ['tgl_teliti', 'kesesuaian_data', 'baris_lengkap', 'baris_tidak_lengkap']
+        fields = ['tgl_teliti', 'baris_lengkap', 'baris_tidak_lengkap']
         labels = {
             'tgl_teliti': 'Tanggal Teliti',
             'baris_lengkap': 'Baris Lengkap',
@@ -76,7 +60,19 @@ class RekamHasilPenelitianForm(AutoRequiredFormMixin, forms.ModelForm):
 
     def clean_tgl_teliti(self):
         value = self.cleaned_data.get('tgl_teliti')
-        return validate_not_future_datetime(value, "Tanggal Teliti")
+        value = validate_not_future_datetime(value, "Tanggal Teliti")
+        if value and self.instance and self.instance.tgl_terima_dip:
+            tgl_terima_dip = self.instance.tgl_terima_dip
+            # Strip timezone info for comparison if needed
+            if hasattr(tgl_terima_dip, 'tzinfo') and tgl_terima_dip.tzinfo is not None:
+                import django.utils.timezone as tz
+                tgl_terima_dip = tz.make_naive(tgl_terima_dip)
+            if value < tgl_terima_dip:
+                raise forms.ValidationError(
+                    f'Tanggal Teliti tidak boleh sebelum Tanggal Terima DIP '
+                    f'({tgl_terima_dip.strftime("%d/%m/%Y %H:%M")}).'
+                )
+        return value
 
     def clean(self):
         cleaned_data = super().clean()

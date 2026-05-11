@@ -1,4 +1,4 @@
-<form method="post" action="{{ form_action }}" id="rekamHasilPenelitianForm" data-baris-diterima="{{ tiket.baris_diterima }}">
+<form method="post" action="{{ form_action }}" id="rekamHasilPenelitianForm" data-baris-diterima="{{ tiket.baris_diterima }}" data-tgl-terima-dip="{{ tiket.tgl_terima_dip|date:'Y-m-d\TH:i' }}">
     {% csrf_token %}
     <div class="modal-body">
         {% if form.non_field_errors %}
@@ -15,19 +15,11 @@
                 {{ form.tgl_teliti.label }} <span class="text-danger">*</span>
             </label>
             {{ form.tgl_teliti }}
+            <small class="text-muted d-block mt-1">
+                Minimal: {{ tiket.tgl_terima_dip|date:"d/m/Y H:i" }} (Tanggal Terima DIP)
+            </small>
             {% if form.tgl_teliti.errors %}
                 <small class="text-danger d-block mt-1">{{ form.tgl_teliti.errors }}</small>
-            {% endif %}
-        </div>
-
-        <!-- Kesesuaian Data -->
-        <div class="mb-3">
-            <label for="{{ form.kesesuaian_data.id_for_label }}" class="form-label fw-semibold">
-                {{ form.kesesuaian_data.label }} <span class="text-danger">*</span>
-            </label>
-            {{ form.kesesuaian_data }}
-            {% if form.kesesuaian_data.errors %}
-                <small class="text-danger d-block mt-1">{{ form.kesesuaian_data.errors }}</small>
             {% endif %}
         </div>
 

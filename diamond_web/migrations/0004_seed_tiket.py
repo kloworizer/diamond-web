@@ -282,7 +282,6 @@ def seed_tiket(apps, schema_editor):
 
             # Status-dependent fields (strict timeline per workflow)
             tgl_teliti = None
-            kesesuaian_data = None
             baris_lengkap = None
             baris_tidak_lengkap = None
             id_status_penelitian = None
@@ -324,8 +323,7 @@ def seed_tiket(apps, schema_editor):
             if status >= 2 or status == 7:
                 tgl_teliti = t_telitian
                 id_status_penelitian = random.choice(status_penelitian_list)
-                kesesuaian_data = random.randint(80, 100)
-                baris_lengkap = int(baris_diterima * kesesuaian_data / 100)
+                baris_lengkap = int(baris_diterima * 0.9)
                 baris_tidak_lengkap = baris_diterima - baris_lengkap
 
             if status in (3, 4, 5, 6, 8):
@@ -425,7 +423,6 @@ def seed_tiket(apps, schema_editor):
                 tanda_terima=False,  # Will be set to True after tanda terima record is created
                 id_status_penelitian=id_status_penelitian,
                 tgl_teliti=tgl_teliti,
-                kesesuaian_data=kesesuaian_data,
                 baris_lengkap=baris_lengkap,
                 baris_tidak_lengkap=baris_tidak_lengkap,
                 tgl_nadine=tgl_nadine,

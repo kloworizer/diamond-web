@@ -111,7 +111,7 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Active
         # Get current timestamp for the audit entry
         now = datetime.now()
 
-        # Save form fields (tgl_teliti, kesesuaian_data, baris_lengkap, baris_tidak_lengkap)
+        # Save form fields (tgl_teliti, baris_lengkap, baris_tidak_lengkap)
         self.object = form.save(commit=False)
         self.object.status_tiket = STATUS_DITELITI
 
