@@ -632,7 +632,7 @@
                                         </button>
                                     {% endif %}
 
-                                    {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti %}
+                                    {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti and tiket.id_status_penelitian.deskripsi != 'Tidak Lengkap' %}
                                         <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#kirimTiketModal">
                                             <i class="ri-send-plane-line me-1"></i>Kirim Tiket ke PIDE
                                         </button>
@@ -726,12 +726,17 @@
                                 <i class="ri-file-word-2-line me-1"></i>Surat PKDI (Sebagian)
                             </button>
                             {% endif %}
+                            {% if tiket.id_status_penelitian.deskripsi == 'Lengkap Sebagian' %}
+                            <button type="button" class="btn btn-sm btn-warning" onclick="downloadKlarifikasi({{ tiket.pk }})">
+                                <i class="ri-file-word-2-line me-1"></i>Surat Klarifikasi
+                            </button>
+                            {% endif %}
                             {% if tiket.id_status_penelitian.deskripsi == 'Tidak Lengkap' %}
                             <button type="button" class="btn btn-sm btn-danger" onclick="downloadKlarifikasi({{ tiket.pk }})">
                                 <i class="ri-file-word-2-line me-1"></i>Surat Klarifikasi
                             </button>
                             {% endif %}
-                            {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti %}
+                            {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti and tiket.id_status_penelitian.deskripsi != 'Tidak Lengkap' %}
                             <button type="button" class="btn btn-sm btn-info" onclick="downloadTiketDoc({{ tiket.pk }}, 'nd_pengantar')">
                                 <i class="ri-file-word-2-line me-1"></i>ND Pengantar ke PIDE
                             </button>
