@@ -146,6 +146,9 @@ urlpatterns = [
     path('laporan-register-penerimaan/', views.LaporanRegisterPenerimaanView.as_view(), name='laporan_register_penerimaan'),
     path('laporan-register-penerimaan/data/', views.laporan_register_penerimaan_data, name='laporan_register_penerimaan_data'),
     path('laporan-register-penerimaan/export/', views.laporan_register_penerimaan_export, name='laporan_register_penerimaan_export'),
+    # Bulk Document Generation (P3DE)
+    path('bulk-generate/pkdi-klarifikasi/', views.bulk_pkdi_klarifikasi, name='bulk_pkdi_klarifikasi'),
+    path('bulk-generate/nd-pengantar-pide/', views.bulk_nd_pengantar_pide, name='bulk_nd_pengantar_pide'),
     # Tanda Terima Data URLs
     path('tanda-terima-data/', views.TandaTerimaDataListView.as_view(), name='tanda_terima_data_list'),
     path('tanda-terima-data/data/', views.tanda_terima_data_data, name='tanda_terima_data_data'),

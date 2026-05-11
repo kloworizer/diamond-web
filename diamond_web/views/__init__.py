@@ -34,3 +34,4 @@ from .laporan_pide_filter_options import *
 from .laporan_transfer import *
 from .laporan_sla_perekaman import *
 from .laporan_sla_identifikasi import *
+from .bulk_document_generation import *
