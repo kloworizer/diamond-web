@@ -142,6 +142,10 @@ urlpatterns = [
     path('docx-template/<int:pk>/update/', views.DocxTemplateUpdateView.as_view(), name='docx_template_update'),
     path('docx-template/<int:pk>/delete/', views.DocxTemplateDeleteView.as_view(), name='docx_template_delete'),
     path('docx-template/<int:pk>/download/', views.docx_template_download, name='docx_template_download'),
+    # Laporan Register Penerimaan Data
+    path('laporan-register-penerimaan/', views.LaporanRegisterPenerimaanView.as_view(), name='laporan_register_penerimaan'),
+    path('laporan-register-penerimaan/data/', views.laporan_register_penerimaan_data, name='laporan_register_penerimaan_data'),
+    path('laporan-register-penerimaan/export/', views.laporan_register_penerimaan_export, name='laporan_register_penerimaan_export'),
     # Tanda Terima Data URLs
     path('tanda-terima-data/', views.TandaTerimaDataListView.as_view(), name='tanda_terima_data_list'),
     path('tanda-terima-data/data/', views.tanda_terima_data_data, name='tanda_terima_data_data'),
@@ -194,7 +198,6 @@ urlpatterns = [
     path('durasi-jatuh-tempo-pide/<int:pk>/update/', views.DurasiJatuhTempoPIDEUpdateView.as_view(), name='durasi_jatuh_tempo_pide_update'),
     path('durasi-jatuh-tempo-pide/<int:pk>/delete/', views.DurasiJatuhTempoPIDEDeleteView.as_view(), name='durasi_jatuh_tempo_pide_delete'),
 
-    # === PMDE Section ===
     # Laporan Pengendalian Mutu
     path('laporan-pengendalian-mutu/', views.LaporanPengendalianMutuView.as_view(), name='laporan_pengendalian_mutu'),
     path('laporan-pengendalian-mutu/data/', views.laporan_pengendalian_mutu_data, name='laporan_pengendalian_mutu_data'),

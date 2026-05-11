@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="ri-file-list-3-line me-2"></i>Register Penerimaan Data
+                    </h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                            <li class="breadcrumb-item active">Register Penerimaan Data</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Filter Data</h5>
+        </div>
+        <div class="card-body">
+            <form id="filter-form" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="filter-bulan" class="form-label fw-semibold">Bulan</label>
+                    <select id="filter-bulan" class="form-select">
+                        <option value="">-- Pilih Bulan --</option>
+                        <option value="1">Januari</option>
+                        <option value="2">Februari</option>
+                        <option value="3">Maret</option>
+                        <option value="4">April</option>
+                        <option value="5">Mei</option>
+                        <option value="6">Juni</option>
+                        <option value="7">Juli</option>
+                        <option value="8">Agustus</option>
+                        <option value="9">September</option>
+                        <option value="10">Oktober</option>
+                        <option value="11">November</option>
+                        <option value="12">Desember</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="filter-tahun" class="form-label fw-semibold">Tahun</label>
+                    <select id="filter-tahun" class="form-select">
+                        <option value="">-- Pilih Tahun --</option>
+                        {% for year in years %}
+                        <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button type="button" id="filter-btn" class="btn btn-primary flex-fill">
+                        <i class="ri-search-line me-1"></i>Tampilkan
+                    </button>
+                    <button type="button" id="export-btn" class="btn btn-success flex-fill" disabled>
+                        <i class="ri-download-2-line me-1"></i>Export XLSX
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Data Table Card -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
+            <h5 class="mb-0">
+                <i class="ri-table-line me-2"></i>Data Penerimaan
+            </h5>
+            <span id="periode-label" class="badge bg-light text-dark fs-6"></span>
+        </div>
+        <div class="card-body">
+            <table id="register-penerimaan-table" class="table table-striped table-bordered" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>No</th>
+                        <th>Nama ILAP</th>
+                        <th>Dasar Hukum</th>
+                        <th>Jenis Data ILAP</th>
+                        <th>Bentuk Data</th>
+                        <th>Periode / Tahun Data</th>
+                        <th>Jumlah Data Diterima</th>
+                        <th>Nomor Surat Pengantar</th>
+                        <th>Tanggal Surat Pengantar</th>
+                        <th>Nomor Tanda Terima</th>
+                        <th>Tanggal Tanda Terima</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        const ajaxUrl = "{% url 'laporan_register_penerimaan_data' %}";
+        const exportUrl = "{% url 'laporan_register_penerimaan_export' %}";
+        const bulanNames = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        let table;
+        let hasLoaded = false;
+
+        $(document).ready(function () {
+            const csrfToken = $('[name=csrfmiddlewaretoken]').val() || '{{ csrf_token }}';
+
+            table = $('#register-penerimaan-table').DataTable({
+                serverSide: true,
+                ajax: {
+                    url: ajaxUrl,
+                    type: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken },
+                    data: function (d) {
+                        d.bulan = $('#filter-bulan').val();
+                        d.tahun = $('#filter-tahun').val();
+                        return d;
+                    }
+                },
+                columns: [
+                    { data: 'no', width: '40px', className: 'text-center' },
+                    { data: 'nama_ilap' },
+                    { data: 'dasar_hukum' },
+                    { data: 'jenis_data_ilap' },
+                    { data: 'bentuk_data', className: 'text-center' },
+                    { data: 'periode_tahun_data', className: 'text-center' },
+                    { data: 'jumlah_data_diterima', className: 'text-end' },
+                    { data: 'nomor_surat_pengantar' },
+                    { data: 'tanggal_surat_pengantar', className: 'text-center' },
+                    { data: 'nomor_tanda_terima' },
+                    { data: 'tanggal_tanda_terima', className: 'text-center' },
+                ],
+                pageLength: 25,
+                order: [[0, 'asc']],
+                scrollX: true,
+                processing: true,
+                deferLoading: 0,
+                language: {
+                    emptyTable: 'Pilih bulan dan tahun lalu klik Tampilkan.',
+                    zeroRecords: 'Tidak ada data untuk periode yang dipilih.',
+                }
+            });
+
+            table.on('draw.dt', function () {
+                const info = table.page.info();
+                $('#export-btn').prop('disabled', info.recordsDisplay === 0);
+            });
+
+            $('#filter-btn').on('click', function () {
+                const bulan = $('#filter-bulan').val();
+                const tahun = $('#filter-tahun').val();
+                if (!bulan || !tahun) {
+                    alert('Pilih bulan dan tahun terlebih dahulu.');
+                    return;
+                }
+                $('#periode-label').text(`${bulanNames[parseInt(bulan)]} ${tahun}`);
+                table.ajax.reload();
+            });
+
+            // Allow pressing Enter in selects
+            $('#filter-bulan, #filter-tahun').on('change', function () {
+                const bulan = $('#filter-bulan').val();
+                const tahun = $('#filter-tahun').val();
+                if (bulan && tahun) {
+                    $('#filter-btn').trigger('click');
+                }
+            });
+
+            $('#export-btn').on('click', function () {
+                const bulan = $('#filter-bulan').val();
+                const tahun = $('#filter-tahun').val();
+                if (!bulan || !tahun) return;
+                window.location.href = `${exportUrl}?bulan=${bulan}&tahun=${tahun}`;
+            });
+        });
+    })();
+</script>
+{% endblock %}
