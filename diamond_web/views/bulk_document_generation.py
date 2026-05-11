@@ -24,6 +24,7 @@ from ..models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ..models.tiket import Tiket
 from ..utils import format_number_with_separator, format_periode
 from ..utils.docx_template import fill_template_with_data
+from .mixins import get_active_p3de_ilap_ids
 
 
 def _is_p3de_user(user):
@@ -244,7 +245,12 @@ def _generate_docx_for_tickets(selected_tickets, doc_type, title_prefix):
 @user_passes_test(_is_p3de_user)
 @require_http_methods(['GET', 'POST'])
 def bulk_pkdi_klarifikasi(request):
-    ilap_options = ILAP.objects.order_by('nama_ilap')
+    # Restrict ILAP list to user's active P3DE assignments unless admin
+    if request.user.is_superuser or request.user.groups.filter(name__in=['admin', 'admin_p3de']).exists():
+        ilap_options = ILAP.objects.order_by('nama_ilap')
+    else:
+        ilap_ids = get_active_p3de_ilap_ids(request.user)
+        ilap_options = ILAP.objects.filter(id__in=ilap_ids).order_by('nama_ilap')
 
     ilap_id = request.GET.get('ilap_id', '')
     tanggal_terima = request.GET.get('tanggal_terima', '')
@@ -292,7 +298,12 @@ def bulk_pkdi_klarifikasi(request):
 @user_passes_test(_is_p3de_user)
 @require_http_methods(['GET', 'POST'])
 def bulk_nd_pengantar_pide(request):
-    ilap_options = ILAP.objects.order_by('nama_ilap')
+    # Restrict ILAP list to user's active P3DE assignments unless admin
+    if request.user.is_superuser or request.user.groups.filter(name__in=['admin', 'admin_p3de']).exists():
+        ilap_options = ILAP.objects.order_by('nama_ilap')
+    else:
+        ilap_ids = get_active_p3de_ilap_ids(request.user)
+        ilap_options = ILAP.objects.filter(id__in=ilap_ids).order_by('nama_ilap')
 
     ilap_id = request.GET.get('ilap_id', '')
     tanggal_terima = request.GET.get('tanggal_terima', '')
