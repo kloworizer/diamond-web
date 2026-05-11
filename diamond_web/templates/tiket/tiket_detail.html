@@ -733,7 +733,7 @@
                                 <i class="ri-file-word-2-line me-1"></i>Surat Klarifikasi
                             </button>
                             {% endif %}
-                            {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti and tiket.id_status_penelitian.deskripsi != 'Tidak Lengkap' %}
+                            {% if tiket.status_tiket == 3 or tiket.status_tiket == 4 or tiket.status_tiket == 5 or tiket.status_tiket == 6 or tiket.status_tiket == 8 %}
                             <button type="button" class="btn btn-sm btn-info" onclick="downloadTiketDoc({{ tiket.pk }}, 'nd_pengantar')">
                                 <i class="ri-file-word-2-line me-1"></i>ND Pengantar ke PIDE
                             </button>
