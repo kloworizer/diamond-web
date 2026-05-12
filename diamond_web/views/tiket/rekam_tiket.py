@@ -306,11 +306,11 @@ class CheckTiketExistsAPIView(View):
             existing_numbers = list(existing_qs.values_list('nomor_tiket', flat=True))
             exists = len(existing_numbers) > 0
             
-            # Get max penyampaian for this combination
-            max_penyampaian_obj = existing_qs.aggregate(max_peny=Max('penyampaian'))
-            max_penyampaian = max_penyampaian_obj.get('max_peny') or 0
+            # Get count of existing tikets for this combination
+            # New penyampaian should be equal to the count (0-indexed: first=0, second=1, etc)
+            tiket_count = existing_qs.count()
 
-            return JsonResponse({'success': True, 'exists': exists, 'nomor_tiket': existing_numbers, 'max_penyampaian': max_penyampaian})
+            return JsonResponse({'success': True, 'exists': exists, 'nomor_tiket': existing_numbers, 'tiket_count': tiket_count})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
@@ -433,6 +433,14 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
         context['page_title'] = 'Rekam Penerimaan Data'
         context['workflow_step'] = 'rekam'
         context['media_backup_list'] = MediaBackup.objects.all()
+        
+        # Get ILAP categories for client-side validation
+        from ...models.ilap import ILAP
+        ilaps_regional = ILAP.objects.filter(
+            id_kategori_wilayah__deskripsi__icontains='regional'
+        ).values_list('id', flat=True)
+        context['ilaps_regional_ids'] = list(ilaps_regional)
+        
         return context
 
     def form_valid(self, form):
