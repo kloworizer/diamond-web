@@ -117,12 +117,12 @@ class LaporanSLAPerekamanExportResource(resources.ModelResource):
     """Resource for exporting Laporan SLA Perekaman to XLSX."""
     
     nama_ilap = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__id_ilap__nama_ilap')
-    nama_jenis_data = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__nama_jenis_data')
-    nama_sub_jenis_data = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data')
-    nama_tabel_I = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__nama_tabel_I')
+    jenis_data = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__nama_jenis_data')
+    subjenis_data = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data')
+    tabel_bank_data = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__nama_tabel_I')
     nomor_tiket = fields.Field(attribute='nomor_tiket')
-    tgl_terima_pide = fields.Field(attribute='tgl_kirim_pide',widget=DateTimeWidget(format='%d/%m/%Y'))
-    tgl_mulai_identifikasi = fields.Field(attribute='tgl_rekam_pide',widget=DateTimeWidget(format='%d/%m/%Y'))
+    tanggal_terima_pide = fields.Field(attribute='tgl_kirim_pide',widget=DateTimeWidget(format='%d/%m/%Y'))
+    tanggal_mulai_identifikasi = fields.Field(attribute='tgl_rekam_pide',widget=DateTimeWidget(format='%d/%m/%Y'))
 
     # Calculated fields 
     sla_perekaman = fields.Field()
@@ -130,8 +130,8 @@ class LaporanSLAPerekamanExportResource(resources.ModelResource):
     class Meta:
         model = Tiket
         fields = (
-            'nama_ilap', 'nama_jenis_data', 'nama_sub_jenis_data', 'nama_tabel_I', 'nomor_tiket', 
-            'tgl_terima_pide', 'tgl_mulai_identifikasi',
+            'nama_ilap', 'jenis_data', 'subjenis_data', 'tabel_bank_data', 'nomor_tiket', 
+            'tanggal_terima_pide', 'tanggal_mulai_identifikasi',
             'sla_perekaman'
         )
         export_order = fields
