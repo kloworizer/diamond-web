@@ -5,7 +5,7 @@
     <div class="row mb-3">
         <div class="col-12">
             <h2 class="mb-1"><i class="ri-file-paper-2-line me-2"></i>{{ page_title }}</h2>
-            <p class="text-muted mb-0">Generate ND Pengantar PIDE untuk banyak tiket dengan status <strong>Dikirim ke PIDE</strong>.</p>
+            <p class="text-muted mb-0">Generate ND Pengantar PIDE untuk banyak tiket. Pilih tanggal kirim PIDE, ILAP (opsional), lalu centang tiket yang akan digenerate.</p>
         </div>
     </div>
 
@@ -13,20 +13,20 @@
         <div class="card-header bg-light"><strong>Filter Tiket</strong></div>
         <div class="card-body">
             <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Tanggal Kirim PIDE</label>
+                    <input type="date" name="tanggal_kirim_pide" class="form-control" value="{{ selected_tanggal_kirim_pide }}" required>
+                </div>
                 <div class="col-md-5">
                     <label class="form-label">ILAP</label>
-                    <select name="ilap_id" class="form-select" required>
-                        <option value="">-- Pilih ILAP --</option>
+                    <select name="ilap_id" class="form-select">
+                        <option value="">-- Semua ILAP --</option>
                         {% for ilap in ilap_options %}
                         <option value="{{ ilap.id }}" {% if selected_ilap_id == ilap.id|stringformat:"s" %}selected{% endif %}>
                             {{ ilap.nama_ilap }}
                         </option>
                         {% endfor %}
                     </select>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Tanggal Terima DIP</label>
-                    <input type="date" name="tanggal_terima" class="form-control" value="{{ selected_tanggal_terima }}" required>
                 </div>
                 <div class="col-md-3 d-grid">
                     <button type="submit" class="btn btn-primary"><i class="ri-search-line me-1"></i>Tampilkan</button>
@@ -44,7 +44,7 @@
             <form method="post">
                 {% csrf_token %}
                 <input type="hidden" name="ilap_id" value="{{ selected_ilap_id }}">
-                <input type="hidden" name="tanggal_terima" value="{{ selected_tanggal_terima }}">
+                <input type="hidden" name="tanggal_kirim_pide" value="{{ selected_tanggal_kirim_pide }}">
 
                 {% if tickets %}
                 <div class="table-responsive">
