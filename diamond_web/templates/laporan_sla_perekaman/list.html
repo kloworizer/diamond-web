@@ -30,42 +30,42 @@
             <form id="filter-form" class="row g-3">
                 {% csrf_token %}
                 <div class="col-md-3">
-                    <label class="form-label">Tanggal Mulai</label>
+                    <label class="form-label">Pilih Tanggal Mulai</label>
                     {{ form.tgl_mulai }}
                     {% if form.tgl_mulai.errors %}
                     <div class="invalid-feedback d-block">{{ form.tgl_mulai.errors }}</div>
                     {% endif %}
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Tanggal Akhir</label>
+                    <label class="form-label">Pilih Tanggal Akhir</label>
                     {{ form.tgl_akhir }}
                     {% if form.tgl_akhir.errors %}
                     <div class="invalid-feedback d-block">{{ form.tgl_akhir.errors }}</div>
                     {% endif %}
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">ILAP</label>
+                    <label class="form-label">Nama ILAP</label>
                     {{ form.id_ilap }}
                     {% if form.id_ilap.errors %}
                     <div class="invalid-feedback d-block">{{ form.id_ilap.errors }}</div>
                     {% endif %}
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Jenis Data ILAP</label>
+                    <label class="form-label">Jenis Data</label>
                     {{ form.id_jenis_data }}
                     {% if form.id_jenis_data.errors %}
                     <div class="invalid-feedback d-block">{{ form.id_jenis_data.errors }}</div>
                     {% endif %}
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Nama Subjenis Data</label>
+                    <label class="form-label">Subjenis Data</label>
                     {{ form.nama_sub_jenis_data }}
                     {% if form.nama_sub_jenis_data.errors %}
                     <div class="invalid-feedback d-block">{{ form.nama_sub_jenis_data.errors }}</div>
                     {% endif %}
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Nama Tabel I</label>
+                    <label class="form-label">Nama Tabel</label>
                     {{ form.nama_tabel_I }}
                     {% if form.nama_tabel_I.errors %}
                     <div class="invalid-feedback d-block">{{ form.nama_tabel_I.errors }}</div>
@@ -73,7 +73,7 @@
                 </div>
                 <div class="col-md-3 d-flex align-items-end">
                     <button type="button" id="export-btn" class="btn btn-success w-100" disabled>
-                        <i class="ri-download-2-line me-1"></i>Export XLSX
+                        <i class="ri-download-2-line me-1"></i>EKSPOR KE EXCEL
                     </button>
                 </div>
             </form>
@@ -91,14 +91,14 @@
             <table id="laporan-sla-perekaman-table" class="table table-striped" style="width:100%">
                 <thead>
                     <tr>
-                        <th>Nama ILAP</th>
-                        <th>Jenis Data</th>
-                        <th>Subjenis Data</th>
-                        <th>Tabel I</th>
-                        <th>Nomor Tiket</th>
-                        <th>Tanggal Terima PIDE</th>
-                        <th>Tanggal Mulai Identifikasi</th>
-                        <th>SLA Perekaman</th>
+                        <th>NAMA ILAP</th>
+                        <th>JENIS DATA</th>
+                        <th>SUBJENIS DATA</th>
+                        <th>TABEL BANK DATA</th>
+                        <th>NOMOR TIKET</th>
+                        <th>TANGGAL TERIMA PIDE</th>
+                        <th>TANGGAL MULAI IDENTIFIKASI</th>
+                        <th>SLA PEREKAMAN</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
