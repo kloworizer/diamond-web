@@ -14,7 +14,7 @@ from ...models.status_penelitian import StatusPenelitian
 from ...forms.rekam_hasil_penelitian import RekamHasilPenelitianForm
 from ...constants.tiket_action_types import TiketActionType
 from ..mixins import UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin
-from ...constants.tiket_status import STATUS_DITELITI
+from ...constants.tiket_status import STATUS_DITELITI, STATUS_SELESAI
 
 
 class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, UpdateView):
@@ -111,9 +111,8 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Active
         # Get current timestamp for the audit entry
         now = datetime.now()
 
-        # Save form fields (tgl_teliti, kesesuaian_data, baris_lengkap, baris_tidak_lengkap)
+        # Save form fields (tgl_teliti, baris_lengkap, baris_tidak_lengkap)
         self.object = form.save(commit=False)
-        self.object.status_tiket = STATUS_DITELITI
 
         # Calculate id_status_penelitian from baris values
         baris_lengkap = form.cleaned_data.get('baris_lengkap') or 0
@@ -121,12 +120,15 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Active
         try:
             if baris_lengkap == baris_diterima:
                 self.object.id_status_penelitian = StatusPenelitian.objects.get(deskripsi='Lengkap')
+                self.object.status_tiket = STATUS_DITELITI
             elif baris_lengkap == 0:
                 self.object.id_status_penelitian = StatusPenelitian.objects.get(deskripsi='Tidak Lengkap')
+                self.object.status_tiket = STATUS_SELESAI
             else:
                 self.object.id_status_penelitian = StatusPenelitian.objects.get(deskripsi='Lengkap Sebagian')
+                self.object.status_tiket = STATUS_DITELITI
         except StatusPenelitian.DoesNotExist:
-            pass
+            self.object.status_tiket = STATUS_DITELITI
 
         self.object.save()
 

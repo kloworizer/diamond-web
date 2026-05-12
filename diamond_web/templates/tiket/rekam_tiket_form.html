@@ -272,8 +272,9 @@
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="{{ form.tgl_terima_vertikal.id_for_label }}" class="form-label">{{ form.tgl_terima_vertikal.label }}</label>
+                            <label for="{{ form.tgl_terima_vertikal.id_for_label }}" class="form-label">{{ form.tgl_terima_vertikal.label }}<span class="text-danger" id="tgl-terima-vertikal-required" style="display: none;">*</span></label>
                             {{ form.tgl_terima_vertikal }}
+                            <small class="form-text text-muted" id="tgl-terima-vertikal-hint" style="display: none;">Tidak dapat diisi untuk kategori ILAP non-Regional</small>
                             {% if form.tgl_terima_vertikal.errors %}
                                 <div class="invalid-feedback d-block">{{ form.tgl_terima_vertikal.errors }}</div>
                             {% endif %}
@@ -518,17 +519,17 @@
                 const data = await response.json();
                 
                 if (data && data.success) {
-                    if (data.exists && data.max_penyampaian !== undefined && data.max_penyampaian !== null) {
-                        // Set penyampaian to max_penyampaian + 1
-                        penyampaianInput.value = data.max_penyampaian + 1;
+                    if (data.tiket_count !== undefined && data.tiket_count !== null) {
+                        // Set penyampaian = count + 1 (starts from 1)
+                        penyampaianInput.value = data.tiket_count + 1;
                     } else {
-                        // No tiket exists, set to 0
-                        penyampaianInput.value = 0;
+                        // Default to 1
+                        penyampaianInput.value = 1;
                     }
                 }
             } catch (error) {
                 console.error('Error updating penyampaian:', error);
-                penyampaianInput.value = 0;
+                penyampaianInput.value = 1;
             }
         };
 
@@ -758,6 +759,47 @@
                 });
         }
 
+        function updateTanggalTerimaVertikal() {
+            const ilapSelect = document.getElementById('id_ilap');
+            const tglTerimaVertikalInput = document.getElementById('id_tgl_terima_vertikal');
+            const requiredIndicator = document.getElementById('tgl-terima-vertikal-required');
+            const hintText = document.getElementById('tgl-terima-vertikal-hint');
+            
+            if (!ilapSelect || !tglTerimaVertikalInput) return;
+            
+            const ilapId = ilapSelect.value;
+            const ilapisRegional = {{ ilaps_regional_ids|safe }};
+            
+            if (!ilapId) {
+                // No ILAP selected, reset to normal (not required, editable)
+                tglTerimaVertikalInput.required = false;
+                tglTerimaVertikalInput.disabled = false;
+                tglTerimaVertikalInput.style.opacity = '1';
+                if (requiredIndicator) requiredIndicator.style.display = 'none';
+                if (hintText) hintText.style.display = 'none';
+            } else {
+                const numIlapId = parseInt(ilapId);
+                const isRegional = ilapisRegional.includes(numIlapId);
+                
+                if (isRegional) {
+                    // Regional: Make required and editable
+                    tglTerimaVertikalInput.required = true;
+                    tglTerimaVertikalInput.disabled = false;
+                    tglTerimaVertikalInput.style.opacity = '1';
+                    if (requiredIndicator) requiredIndicator.style.display = 'inline';
+                    if (hintText) hintText.style.display = 'none';
+                } else {
+                    // Non-Regional: Make readonly (disabled)
+                    tglTerimaVertikalInput.required = false;
+                    tglTerimaVertikalInput.disabled = true;
+                    tglTerimaVertikalInput.style.opacity = '0.6';
+                    tglTerimaVertikalInput.value = '';
+                    if (requiredIndicator) requiredIndicator.style.display = 'none';
+                    if (hintText) hintText.style.display = 'block';
+                }
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             const ilapSelect = document.getElementById('id_ilap');
             const periodeDataSelect = document.getElementById('id_periode_data');
@@ -895,9 +937,13 @@
             // Apply on page load
             hideDataTidakTersediaOptions();
             updateKetersediaanDependents();
+            updateTanggalTerimaVertikal();
             
             if (ilapSelect) {
-                ilapSelect.addEventListener('change', updatePeriodeDataDropdown);
+                ilapSelect.addEventListener('change', function() {
+                    updatePeriodeDataDropdown();
+                    updateTanggalTerimaVertikal();
+                });
             }
 
             if (periodeDataSelect) {
@@ -983,28 +1029,31 @@
 
                 // Step 1: select ILAP
                 ilapSelect.value = prefillIlapId;
+               
+                   // Step 1.5: Trigger change event on ILAP to apply all dependent logic
+                   ilapSelect.dispatchEvent(new Event('change'));
 
                 // Step 2: fetch periode_data options then select the right one
                 updatePeriodeDataDropdown(function () {
-                    if (prefillPeriodeDataId && periodeDataSelect) {
-                        periodeDataSelect.value = prefillPeriodeDataId;
+                                        if (prefillPeriodeDataId && periodeDataSelect) {
+                                            periodeDataSelect.value = prefillPeriodeDataId;
 
-                        // Step 3: fire change — synchronously calls updateJenisDataInfo()
-                        // which populates the periode dropdown
-                        periodeDataSelect.dispatchEvent(new Event('change'));
+                                            // Step 3: fire change — synchronously calls updateJenisDataInfo()
+                                            // which populates the periode dropdown
+                                            periodeDataSelect.dispatchEvent(new Event('change'));
 
-                        // Step 4: select periode value (dropdown is now populated)
-                        if (prefillPeriode) {
-                            const periodeSelect = document.getElementById('id_periode');
-                            if (periodeSelect) periodeSelect.value = prefillPeriode;
-                        }
-
-                        // Step 5: select tahun and fire change for penyampaian calc
-                        if (prefillTahun && tahunSelect) {
-                            tahunSelect.value = prefillTahun;
-                            tahunSelect.dispatchEvent(new Event('change'));
-                        }
-                    }
+                                            // Step 4: select periode value (dropdown is now populated)
+                                            if (prefillPeriode) {
+                                                const periodeSelect = document.getElementById('id_periode');
+                                                if (periodeSelect) periodeSelect.value = prefillPeriode;
+                                            }
+                        
+                                            // Step 5: select tahun if provided
+                                            if (prefillTahun && tahunSelect) {
+                                                tahunSelect.value = prefillTahun;
+                                                tahunSelect.dispatchEvent(new Event('change'));
+                                            }
+                                        }
                 });
             })();
         });

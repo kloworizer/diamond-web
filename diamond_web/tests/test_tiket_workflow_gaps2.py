@@ -294,7 +294,6 @@ class TestRekamHasilPenelitianNonAjax:
                 reverse('rekam_hasil_penelitian', args=[tiket.pk]),
                 {
                     'tgl_teliti': '2024-01-15T10:00',
-                    'kesesuaian_data': 1,
                     'baris_lengkap': 10,
                     'baris_tidak_lengkap': 0,
                     'catatan': 'Hasil penelitian direkam',
@@ -322,7 +321,6 @@ class TestRekamHasilPenelitianNonAjax:
                 reverse('rekam_hasil_penelitian', args=[tiket.pk]),
                 {
                     'tgl_teliti': '2024-01-15T10:00',
-                    'kesesuaian_data': 1,
                     'baris_lengkap': 10,
                     'baris_tidak_lengkap': 0,
                     'catatan': 'Hasil penelitian direkam',

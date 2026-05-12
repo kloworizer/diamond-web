@@ -364,7 +364,6 @@ class Migration(migrations.Migration):
                 ('tanda_terima', models.BooleanField(default=False, verbose_name='Tanda Terima Dibuat')),
                 ('id_status_penelitian', models.ForeignKey(blank=True, db_column='status_penelitian', null=True, on_delete=django.db.models.deletion.PROTECT, to='diamond_web.statuspenelitian', verbose_name='Status Penelitian')),
                 ('tgl_teliti', models.DateTimeField(blank=True, null=True, verbose_name='Tanggal Teliti')),
-                ('kesesuaian_data', models.IntegerField(blank=True, null=True, verbose_name='Kesesuaian Data')),
                 ('baris_lengkap', models.IntegerField(blank=True, null=True, verbose_name='Baris Lengkap')),
                 ('baris_tidak_lengkap', models.IntegerField(blank=True, null=True, verbose_name='Baris Tidak Lengkap')),
                 ('tgl_nadine', models.DateTimeField(blank=True, null=True, verbose_name='Tanggal Nadine')),

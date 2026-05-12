@@ -377,7 +377,6 @@ class TestRekamHasilPenelitianView:
             reverse('rekam_hasil_penelitian', args=[tiket.pk]),
             {
                 'tgl_teliti': '2024-01-01T10:00',
-                'kesesuaian_data': '1',
                 'baris_lengkap': 100,
                 'baris_tidak_lengkap': 0,
                 'catatan': 'Semua data lengkap',
@@ -396,7 +395,6 @@ class TestRekamHasilPenelitianView:
             reverse('rekam_hasil_penelitian', args=[tiket.pk]),
             {
                 'tgl_teliti': '2024-01-01T10:00',
-                'kesesuaian_data': '1',
                 'baris_lengkap': 0,
                 'baris_tidak_lengkap': 100,
                 'catatan': 'Data tidak lengkap',
@@ -415,7 +413,7 @@ class TestRekamHasilPenelitianView:
             reverse('rekam_hasil_penelitian', args=[tiket.pk]),
             {
                 'tgl_teliti': '2024-01-01T10:00',
-                'kesesuaian_data': '2',
+
                 'baris_lengkap': 60,
                 'baris_tidak_lengkap': 40,
                 'catatan': 'Sebagian besar lengkap',
@@ -433,7 +431,7 @@ class TestRekamHasilPenelitianView:
             reverse('rekam_hasil_penelitian', args=[tiket.pk]),
             {
                 'tgl_teliti': '2024-01-01T10:00',
-                'kesesuaian_data': '1',
+
                 'baris_lengkap': 100,
                 'baris_tidak_lengkap': 0,
                 'catatan': 'Lengkap',
@@ -452,7 +450,6 @@ class TestRekamHasilPenelitianView:
             reverse('rekam_hasil_penelitian', args=[tiket.pk]),
             {
                 'tgl_teliti': '2024-01-01T10:00',
-                'kesesuaian_data': '1',
                 'baris_lengkap': 50,
                 'baris_tidak_lengkap': 30,  # 50+30 ≠ 100
                 'catatan': 'Wrong total',
@@ -471,7 +468,6 @@ class TestRekamHasilPenelitianView:
             reverse('rekam_hasil_penelitian', args=[tiket.pk]),
             {
                 'tgl_teliti': '2024-01-01T10:00',
-                'kesesuaian_data': '1',
                 'baris_lengkap': 50,
                 'baris_tidak_lengkap': 30,
                 'catatan': 'Wrong total',

@@ -177,24 +177,6 @@
                             </div>
                         </div>
                         {% endif %}
-                        {% if tiket.kesesuaian_data %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Kesesuaian Data</label>
-                                <p class="fw-semibold mb-0">
-                                    {% if tiket.kesesuaian_data == 1 %}
-                                        Sesuai PMK
-                                    {% elif tiket.kesesuaian_data == 2 %}
-                                        Sesuai PKS
-                                    {% elif tiket.kesesuaian_data == 3 %}
-                                        Sesuai Konfirmasi Ketersediaan Data
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
                         {% if tiket.nomor_nd_nadine %}
                         <div class="col-md-4">
                             <div class="info-group">
@@ -650,7 +632,7 @@
                                         </button>
                                     {% endif %}
 
-                                    {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti %}
+                                    {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti and tiket.id_status_penelitian.deskripsi != 'Tidak Lengkap' %}
                                         <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#kirimTiketModal">
                                             <i class="ri-send-plane-line me-1"></i>Kirim Tiket ke PIDE
                                         </button>
@@ -730,9 +712,6 @@
                             <button type="button" class="btn btn-sm btn-primary" onclick="downloadTiketDoc({{ tiket.pk }}, 'lampiran')">
                                 <i class="ri-file-word-2-line me-1"></i>Lampiran Tanda Terima
                             </button>
-                            <button type="button" class="btn btn-sm btn-primary" onclick="downloadTiketDoc({{ tiket.pk }}, 'register')">
-                                <i class="ri-file-word-2-line me-1"></i>Register Penerimaan Data
-                            </button>
                             {% endif %}
                             {% if tiket.id_status_penelitian.deskripsi == 'Lengkap' %}
                             <button type="button" class="btn btn-sm btn-success" onclick="downloadPKDILengkap({{ tiket.pk }})">
@@ -744,12 +723,17 @@
                                 <i class="ri-file-word-2-line me-1"></i>Surat PKDI (Sebagian)
                             </button>
                             {% endif %}
+                            {% if tiket.id_status_penelitian.deskripsi == 'Lengkap Sebagian' %}
+                            <button type="button" class="btn btn-sm btn-warning" onclick="downloadKlarifikasi({{ tiket.pk }})">
+                                <i class="ri-file-word-2-line me-1"></i>Surat Klarifikasi
+                            </button>
+                            {% endif %}
                             {% if tiket.id_status_penelitian.deskripsi == 'Tidak Lengkap' %}
                             <button type="button" class="btn btn-sm btn-danger" onclick="downloadKlarifikasi({{ tiket.pk }})">
                                 <i class="ri-file-word-2-line me-1"></i>Surat Klarifikasi
                             </button>
                             {% endif %}
-                            {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti %}
+                            {% if tiket.status_tiket == 3 or tiket.status_tiket == 4 or tiket.status_tiket == 5 or tiket.status_tiket == 6 or tiket.status_tiket == 8 %}
                             <button type="button" class="btn btn-sm btn-info" onclick="downloadTiketDoc({{ tiket.pk }}, 'nd_pengantar')">
                                 <i class="ri-file-word-2-line me-1"></i>ND Pengantar ke PIDE
                             </button>
@@ -1598,18 +1582,50 @@
             if (!form) return;
 
             const barisDiterima = parseInt(form.dataset.barisDiterima, 10);
+            const tglTerimaDip = form.dataset.tglTerimaDip || null;
             const barisLengkapInput = container.querySelector('#id_baris_lengkap');
             const barisTidakLengkapInput = container.querySelector('#id_baris_tidak_lengkap');
+            const tglTeliti = container.querySelector('#id_tgl_teliti');
             const simpanBtn = container.querySelector('#rekam-hasil-penelitian-simpan-btn');
             const statusLengkap = container.querySelector('#status-lengkap');
             const statusLengkapSebagian = container.querySelector('#status-lengkap-sebagian');
             const statusTidakLengkap = container.querySelector('#status-tidak-lengkap');
             const hintEl = container.querySelector('#baris-validation-hint');
 
+            // Set min attribute on tgl_teliti to prevent dates before tgl_terima_dip
+            if (tglTeliti && tglTerimaDip) {
+                tglTeliti.setAttribute('min', tglTerimaDip);
+            }
+
+            function isTglTelitValid() {
+                if (!tglTeliti || !tglTerimaDip) return true;
+                const val = tglTeliti.value;
+                if (!val) return false;
+                return val >= tglTerimaDip;
+            }
+
+            function updateTglTelitHint() {
+                let hintTgl = container.querySelector('#tgl-teliti-hint');
+                if (!hintTgl) {
+                    hintTgl = document.createElement('small');
+                    hintTgl.id = 'tgl-teliti-hint';
+                    hintTgl.className = 'text-danger d-block mt-1';
+                    tglTeliti.parentNode.insertBefore(hintTgl, tglTeliti.nextSibling);
+                }
+                if (tglTeliti.value && !isTglTelitValid()) {
+                    const minFormatted = tglTerimaDip.replace('T', ' ').substring(0, 16);
+                    hintTgl.textContent = `Tanggal Teliti tidak boleh sebelum Tanggal Terima DIP (${minFormatted}).`;
+                } else {
+                    hintTgl.textContent = '';
+                }
+            }
+
             function updateStatusAndButton() {
                 const barisLengkap = parseInt(barisLengkapInput ? barisLengkapInput.value : '0', 10) || 0;
                 const barisTidakLengkap = parseInt(barisTidakLengkapInput ? barisTidakLengkapInput.value : '0', 10) || 0;
                 const total = barisLengkap + barisTidakLengkap;
+                const barisValid = total === barisDiterima;
+                const dateValid = isTglTelitValid();
 
                 // Update status penelitian radio buttons
                 if (statusLengkap) statusLengkap.checked = false;
@@ -1638,10 +1654,14 @@
 
                 // Enable/disable submit button
                 if (simpanBtn) {
-                    simpanBtn.disabled = total !== barisDiterima;
+                    simpanBtn.disabled = !barisValid || !dateValid;
                 }
             }
 
+            if (tglTeliti) {
+                tglTeliti.addEventListener('input', () => { updateTglTelitHint(); updateStatusAndButton(); });
+                tglTeliti.addEventListener('change', () => { updateTglTelitHint(); updateStatusAndButton(); });
+            }
             if (barisLengkapInput) {
                 barisLengkapInput.addEventListener('input', updateStatusAndButton);
                 barisLengkapInput.addEventListener('change', updateStatusAndButton);
@@ -1652,6 +1672,7 @@
             }
 
             // Run once on load to handle pre-filled values (edit mode)
+            updateTglTelitHint();
             updateStatusAndButton();
         }
 

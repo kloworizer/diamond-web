@@ -28,9 +28,11 @@ from .monitoring_penyampaian_data import *
 from .docx_template import *
 from .laporan_pengendalian_mutu import *
 from .laporan_kelengkapan_data import *
+from .laporan_register_penerimaan import *
 from .tiket import *
 from .laporan_pide_filter_options import *
 from .laporan_transfer import *
 from .laporan_sla_perekaman import *
 from .laporan_sla_identifikasi import *
 from .laporan_metrik_data_eksternal import *
+from .bulk_document_generation import *
