@@ -283,6 +283,33 @@ def get_active_p3de_ilap_ids(user):
     ).distinct()
 
 
+def get_active_p3de_jenis_data_ilap_ids(user):
+    """Return JenisDataILAP IDs where `user` is an active P3DE PIC.
+
+    Active means `start_date` is in the past and `end_date` is null or in
+    the future. Returns a list of distinct JenisDataILAP primary keys.
+    """
+    if not user or not user.is_authenticated:
+        return []
+
+    from datetime import datetime
+    from django.db.models import Q
+    from ..models.pic import PIC
+
+    today = datetime.now().date()
+
+    return PIC.objects.filter(
+        tipe=PIC.TipePIC.P3DE,
+        id_user=user,
+        start_date__lte=today
+    ).filter(
+        Q(end_date__isnull=True) | Q(end_date__gte=today)
+    ).values_list(
+        'id_sub_jenis_data_ilap_id',
+        flat=True
+    ).distinct()
+
+
 def can_access_tiket_list(user):
     """Return True when `user` should be allowed to view tiket listings.
 
