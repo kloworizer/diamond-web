@@ -347,6 +347,19 @@ def tiket_documents_download(request, pk):
                         'jumlah_baris_tidak_lengkap': format_number_with_separator(t.baris_tidak_lengkap) if t.baris_tidak_lengkap is not None else '-',
                     })
                     nomor_counter += 1
+            elif doc_type == 'klarifikasi':
+                row_data = []
+                nomor_counter = 1
+                for t in tiket_rows:
+                    sub = t.id_periode_data.id_sub_jenis_data_ilap if t.id_periode_data else None
+                    row_data.append({
+                        'nomor': str(nomor_counter),
+                        'sub_jenis_data': sub.nama_sub_jenis_data if sub else '-',
+                        'periode_data': _format_periode_tiket(t),
+                        'jumlah_baris_diterima': format_number_with_separator(t.baris_diterima) if t.baris_diterima is not None else '-',
+                        'jumlah_baris_tidak_lengkap': format_number_with_separator(t.baris_tidak_lengkap) if t.baris_tidak_lengkap is not None else '-',
+                    })
+                    nomor_counter += 1
 
             # Open the template file using FileField's open method for better compatibility
             doc_buffer = fill_template_with_data(template.file_template.open('rb'), template_variables, row_data=row_data)

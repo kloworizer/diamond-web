@@ -26,10 +26,14 @@ Example row_data::
     ]
 """
 
+import logging
+import re
 from copy import deepcopy
 from io import BytesIO
 from docx import Document
 from docx.table import _Row as DocxRow
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -80,9 +84,16 @@ def _replace_in_paragraph(paragraph, replacements):
 
 def _row_has_row_placeholder(row):
     """Return True if any cell in *row* contains a ``{{row.xxx}}`` placeholder."""
+    _ROW_RE = re.compile(r'\{\{row\.\s*\w+')
     for cell in row.cells:
         for para in cell.paragraphs:
-            if '{{row.' in ''.join(run.text for run in para.runs):
+            # Also check raw XML text to catch placeholders split across runs
+            full = ''.join(run.text for run in para.runs)
+            if _ROW_RE.search(full):
+                return True
+            # Fallback: check the full XML text of the paragraph
+            xml_text = para._element.text_content() if hasattr(para._element, 'text_content') else ''
+            if _ROW_RE.search(xml_text):
                 return True
     return False
 
@@ -92,14 +103,12 @@ def _fill_row_placeholders(row, row_dict):
     for cell in row.cells:
         for para in cell.paragraphs:
             full_text = ''.join(run.text for run in para.runs)
-            if '{{row.' not in full_text:
+            if not re.search(r'\{\{row\.\s*\w+', full_text):
                 continue
             new_text = full_text
             for key, value in row_dict.items():
-                new_text = new_text.replace(
-                    '{{row.' + key + '}}',
-                    str(value if value is not None else '-'),
-                )
+                pattern = r'\{\{row\.\s*' + re.escape(key) + r'\s*\}\}'
+                new_text = re.sub(pattern, str(value if value is not None else '-'), new_text)
             
             # Preserve formatting from the first run
             if para.runs:
@@ -166,6 +175,41 @@ def _expand_repeating_rows(table, row_data):
         parent.remove(template_tr)
 
 
+def _iter_nested_tables(table):
+    """Yield *table* and all nested tables inside its cells."""
+    yield table
+    for row in table.rows:
+        for cell in row.cells:
+            for nested in cell.tables:
+                yield from _iter_nested_tables(nested)
+
+
+def _iter_all_tables(doc):
+    """Yield all tables from document body, headers, and footers (including nested tables)."""
+    seen = set()
+
+    def _yield_unique(table):
+        table_id = id(table._element)
+        if table_id in seen:
+            return
+        seen.add(table_id)
+        yield table
+
+    # Body tables
+    for table in doc.tables:
+        for nested_table in _iter_nested_tables(table):
+            yield from _yield_unique(nested_table)
+
+    # Header/footer tables per section
+    for section in doc.sections:
+        for table in section.header.tables:
+            for nested_table in _iter_nested_tables(table):
+                yield from _yield_unique(nested_table)
+        for table in section.footer.tables:
+            for nested_table in _iter_nested_tables(table):
+                yield from _yield_unique(nested_table)
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -190,7 +234,8 @@ def fill_template_with_data(template_file, replacements, row_data=None):
         _replace_in_paragraph(paragraph, replacements)
 
     # 2. Tables — first expand repeating rows, then simple replacements
-    for table in doc.tables:
+    # Includes body tables, header/footer tables, and nested tables.
+    for table in _iter_all_tables(doc):
         _expand_repeating_rows(table, row_data)
         for row in table.rows:
             for cell in row.cells:
