@@ -24,7 +24,7 @@ from ..models.dasar_hukum import DasarHukum
 from ..models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ..models.periode_pengiriman import PeriodePengiriman
 from ..utils import format_periode
-from .mixins import UserP3DERequiredMixin
+from .mixins import UserP3DERequiredMixin, get_active_p3de_jenis_data_ilap_ids
 
 
 class MonitoringPenyampaianDataListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView):
@@ -129,19 +129,113 @@ def monitoring_penyampaian_data_data(request):
     """
     # Check if requesting filter options
     if request.GET.get('get_filter_options'):
-        kanwil_list = Kanwil.objects.all().values('id', 'kode_kanwil', 'nama_kanwil').order_by('kode_kanwil')
-        kpp_list = KPP.objects.all().values('id', 'kode_kpp', 'nama_kpp').order_by('kode_kpp')
-        kategori_wilayah_list = KategoriWilayah.objects.all().values('id', 'deskripsi').order_by('id')
-        kategori_ilap_list = KategoriILAP.objects.all().values('id', 'id_kategori', 'nama_kategori').order_by('nama_kategori')
-        ilap_list = ILAP.objects.all().values('id', 'id_ilap', 'nama_ilap').order_by('id_ilap')
-        jenis_data_list = JenisDataILAP.objects.values('id_jenis_data', 'nama_jenis_data').distinct().order_by('id_jenis_data')
-        sub_jenis_data_list = JenisDataILAP.objects.values('id_sub_jenis_data', 'nama_sub_jenis_data').distinct().order_by('id_sub_jenis_data')
-        jenis_tabel_list = JenisTabel.objects.all().values('id', 'deskripsi').order_by('id')
-        dasar_hukum_list = DasarHukum.objects.all().values('id', 'deskripsi').order_by('id')
-        periode_pengiriman_list = PeriodePengiriman.objects.all().values('id', 'periode_penyampaian').order_by('id')
+        from django.db.models import Min, Max
+        
+        # Determine if user is admin or regular user
+        is_admin = request.user.is_superuser or request.user.groups.filter(name='admin').exists()
+        
+        # Get active JenisDataILAP IDs for current user (used for filtering all dropdowns for non-admin users)
+        active_jenis_data_ilap_ids = get_active_p3de_jenis_data_ilap_ids(request.user) if not is_admin else None
+        
+        # Build filter querysets based on user role
+        if is_admin:
+            # Admin: show all data
+            kanwil_list = Kanwil.objects.all().values('id', 'kode_kanwil', 'nama_kanwil').order_by('kode_kanwil')
+            kpp_list = KPP.objects.all().values('id', 'kode_kpp', 'nama_kpp').order_by('kode_kpp')
+            kategori_wilayah_list = KategoriWilayah.objects.all().values('id', 'deskripsi').order_by('id')
+            kategori_ilap_list = KategoriILAP.objects.all().values('id', 'id_kategori', 'nama_kategori').order_by('nama_kategori')
+            ilap_list = ILAP.objects.all().values('id', 'id_ilap', 'nama_ilap').order_by('id_ilap')
+            jenis_data_list = JenisDataILAP.objects.values('id_jenis_data', 'nama_jenis_data').distinct().order_by('id_jenis_data')
+            sub_jenis_data_list = JenisDataILAP.objects.values('id_sub_jenis_data', 'nama_sub_jenis_data').distinct().order_by('id_sub_jenis_data')
+            jenis_tabel_list = JenisTabel.objects.all().values('id', 'deskripsi').order_by('id')
+            dasar_hukum_list = DasarHukum.objects.all().values('id', 'deskripsi').order_by('id')
+            periode_pengiriman_list = PeriodePengiriman.objects.all().values('id', 'periode_penyampaian').order_by('id')
+        else:
+            # Regular user: filter all data based on active P3DE PIC assignment
+            if active_jenis_data_ilap_ids:
+                active_jenis_data_qs = JenisDataILAP.objects.filter(
+                    id__in=active_jenis_data_ilap_ids
+                ).select_related(
+                    'id_ilap',
+                    'id_ilap__id_kpp',
+                    'id_ilap__id_kpp__id_kanwil',
+                    'id_ilap__id_kategori',
+                    'id_ilap__id_kategori_wilayah',
+                    'id_jenis_tabel',
+                )
+
+                active_ilap_ids = active_jenis_data_qs.values_list('id_ilap_id', flat=True).distinct()
+                ilap_list = ILAP.objects.filter(id__in=active_ilap_ids).values('id', 'id_ilap', 'nama_ilap').order_by('id_ilap')
+                
+                # Get kanwil/kpp from related ILAPs
+                kanwil_set = set()
+                kpp_set = set()
+                for ilap in ILAP.objects.filter(id__in=active_ilap_ids):
+                    if ilap.id_kpp:
+                        kpp_set.add(ilap.id_kpp.id)
+                        if ilap.id_kpp.id_kanwil:
+                            kanwil_set.add(ilap.id_kpp.id_kanwil.id)
+                
+                kanwil_list = Kanwil.objects.filter(id__in=kanwil_set).values('id', 'kode_kanwil', 'nama_kanwil').order_by('kode_kanwil')
+                kpp_list = KPP.objects.filter(id__in=kpp_set).values('id', 'kode_kpp', 'nama_kpp').order_by('kode_kpp')
+                
+                # Get kategori_wilayah from related ILAPs
+                kategori_wilayah_set = set()
+                for ilap in ILAP.objects.filter(id__in=active_ilap_ids):
+                    if ilap.id_kategori_wilayah:
+                        kategori_wilayah_set.add(ilap.id_kategori_wilayah.id)
+                
+                kategori_wilayah_list = KategoriWilayah.objects.filter(id__in=kategori_wilayah_set).values('id', 'deskripsi').order_by('id')
+                
+                # Get kategori_ilap from related ILAPs
+                kategori_ilap_set = set()
+                for ilap in ILAP.objects.filter(id__in=active_ilap_ids):
+                    if ilap.id_kategori:
+                        kategori_ilap_set.add(ilap.id_kategori.id)
+                
+                kategori_ilap_list = KategoriILAP.objects.filter(id__in=kategori_ilap_set).values('id', 'id_kategori', 'nama_kategori').order_by('nama_kategori')
+                
+                # Get jenis_data and sub_jenis_data from active assignment scope
+                jenis_data_list = active_jenis_data_qs.values('id_jenis_data', 'nama_jenis_data').distinct().order_by('id_jenis_data')
+                sub_jenis_data_list = active_jenis_data_qs.values('id_sub_jenis_data', 'nama_sub_jenis_data').distinct().order_by('id_sub_jenis_data')
+                
+                # Get jenis_tabel and dasar_hukum from active ILAPs' sub jenis data
+                jenis_tabel_set = set()
+                for jdd in active_jenis_data_qs:
+                    if jdd.id_jenis_tabel:
+                        jenis_tabel_set.add(jdd.id_jenis_tabel.id)
+                
+                jenis_tabel_list = JenisTabel.objects.filter(id__in=jenis_tabel_set).values('id', 'deskripsi').order_by('id')
+                
+                # Get dasar_hukum from active sub jenis data
+                dasar_hukum_set = set()
+                for kj in KlasifikasiJenisData.objects.filter(id_jenis_data_ilap_id__in=active_jenis_data_ilap_ids):
+                    if kj.id_klasifikasi_tabel:
+                        dasar_hukum_set.add(kj.id_klasifikasi_tabel.id)
+                
+                dasar_hukum_list = DasarHukum.objects.filter(id__in=dasar_hukum_set).values('id', 'deskripsi').order_by('id')
+                
+                # Get periode_pengiriman from active sub jenis data
+                periode_pengiriman_set = set()
+                for pjd in PeriodeJenisData.objects.filter(id_sub_jenis_data_ilap_id__in=active_jenis_data_ilap_ids):
+                    if pjd.id_periode_pengiriman:
+                        periode_pengiriman_set.add(pjd.id_periode_pengiriman.id)
+                
+                periode_pengiriman_list = PeriodePengiriman.objects.filter(id__in=periode_pengiriman_set).values('id', 'periode_penyampaian').order_by('id')
+            else:
+                # No active assignments, return empty lists
+                kanwil_list = []
+                kpp_list = []
+                kategori_wilayah_list = []
+                kategori_ilap_list = []
+                ilap_list = []
+                jenis_data_list = []
+                sub_jenis_data_list = []
+                jenis_tabel_list = []
+                dasar_hukum_list = []
+                periode_pengiriman_list = []
         
         # Get unique tahun from periode_jenis_data and generate range up to current year
-        from django.db.models import Min, Max
         tahun_range = PeriodeJenisData.objects.aggregate(
             min_year=Min('start_date__year'),
             max_year=Max('start_date__year')
@@ -151,7 +245,7 @@ def monitoring_penyampaian_data_data(request):
         tahun_options = [{'id': str(year), 'name': str(year)} for year in range(min_year, max_year + 1)]
         
         # Get PIC P3DE list based on user role
-        if request.user.is_superuser or request.user.groups.filter(name='admin').exists():
+        if is_admin:
             # Admin: show all P3DE users
             pic_p3de_list = PIC.objects.filter(
                 tipe=PIC.TipePIC.P3DE,
@@ -165,13 +259,8 @@ def monitoring_penyampaian_data_data(request):
                 for pic in pic_p3de_list
             ]
         else:
-            # User P3DE: show only their own name
-            user_pic = PIC.objects.filter(
-                id_user=request.user,
-                tipe=PIC.TipePIC.P3DE,
-                end_date__isnull=True
-            ).first()
-            if user_pic:
+            # Regular User P3DE: show only their own name if they have active P3DE PIC
+            if active_jenis_data_ilap_ids:
                 pic_p3de_options = [
                     {
                         'id': str(request.user.id),
@@ -258,7 +347,9 @@ def monitoring_penyampaian_data_data(request):
                 pic_p3de = PIC.objects.filter(
                     id_sub_jenis_data_ilap=jenis_data,
                     tipe=PIC.TipePIC.P3DE,
-                    end_date__isnull=True
+                    start_date__lte=today
+                ).filter(
+                    Q(end_date__isnull=True) | Q(end_date__gte=today)
                 ).first()
                 pic_p3de_id = pic_p3de.id_user_id if pic_p3de else None
                 
@@ -335,15 +426,9 @@ def monitoring_penyampaian_data_data(request):
     # Apply RBAC filtering
     # Admin users see all records
     # Non-admin P3DE users see only records for sub jenis data where they are an active P3DE PIC
-    if not request.user.is_superuser and not request.user.groups.filter(name='admin').exists():
-        # Get jenis_data_ilap IDs where user is active P3DE PIC (end_date is None means active)
-        user_jenis_data_ids = set(
-            PIC.objects.filter(
-                id_user=request.user,
-                tipe=PIC.TipePIC.P3DE,
-                end_date__isnull=True
-            ).values_list('id_sub_jenis_data_ilap_id', flat=True)
-        )
+    if not request.user.is_superuser and not request.user.groups.filter(name__in=['admin', 'admin_p3de', 'admin_pide', 'admin_pmde']).exists():
+        # Get jenis_data_ilap IDs where user is active P3DE PIC
+        user_jenis_data_ids = set(get_active_p3de_jenis_data_ilap_ids(request.user))
         records = [r for r in records if r['id_jenis_data'] in user_jenis_data_ids]
 
     records_total = len(records)

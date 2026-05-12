@@ -1029,28 +1029,31 @@
 
                 // Step 1: select ILAP
                 ilapSelect.value = prefillIlapId;
+               
+                   // Step 1.5: Trigger change event on ILAP to apply all dependent logic
+                   ilapSelect.dispatchEvent(new Event('change'));
 
                 // Step 2: fetch periode_data options then select the right one
                 updatePeriodeDataDropdown(function () {
-                    if (prefillPeriodeDataId && periodeDataSelect) {
-                        periodeDataSelect.value = prefillPeriodeDataId;
+                                        if (prefillPeriodeDataId && periodeDataSelect) {
+                                            periodeDataSelect.value = prefillPeriodeDataId;
 
-                        // Step 3: fire change — synchronously calls updateJenisDataInfo()
-                        // which populates the periode dropdown
-                        periodeDataSelect.dispatchEvent(new Event('change'));
+                                            // Step 3: fire change — synchronously calls updateJenisDataInfo()
+                                            // which populates the periode dropdown
+                                            periodeDataSelect.dispatchEvent(new Event('change'));
 
-                        // Step 4: select periode value (dropdown is now populated)
-                        if (prefillPeriode) {
-                            const periodeSelect = document.getElementById('id_periode');
-                            if (periodeSelect) periodeSelect.value = prefillPeriode;
-                        }
-
-                        // Step 5: select tahun and fire change for penyampaian calc
-                        if (prefillTahun && tahunSelect) {
-                            tahunSelect.value = prefillTahun;
-                            tahunSelect.dispatchEvent(new Event('change'));
-                        }
-                    }
+                                            // Step 4: select periode value (dropdown is now populated)
+                                            if (prefillPeriode) {
+                                                const periodeSelect = document.getElementById('id_periode');
+                                                if (periodeSelect) periodeSelect.value = prefillPeriode;
+                                            }
+                        
+                                            // Step 5: select tahun if provided
+                                            if (prefillTahun && tahunSelect) {
+                                                tahunSelect.value = prefillTahun;
+                                                tahunSelect.dispatchEvent(new Event('change'));
+                                            }
+                                        }
                 });
             })();
         });
