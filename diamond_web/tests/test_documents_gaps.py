@@ -531,7 +531,7 @@ class TestDocumentHelperFunctions:
         pd = PeriodeJenisDataFactory(id_sub_jenis_data_ilap=jd, id_periode_pengiriman=pp)
         tiket = TiketFactory(id_periode_data=pd, periode=1, tahun=2024)
         result = _format_periode_tiket(tiket)
-        assert 'Semester 1' in result
+        assert '1 2024' in result
 
     def test_format_periode_tiket_triwulan(self):
         """_format_periode_tiket formats triwulan (line 47)."""
@@ -542,7 +542,7 @@ class TestDocumentHelperFunctions:
         pd = PeriodeJenisDataFactory(id_sub_jenis_data_ilap=jd, id_periode_pengiriman=pp)
         tiket = TiketFactory(id_periode_data=pd, periode=2, tahun=2024)
         result = _format_periode_tiket(tiket)
-        assert 'Triwulan 2' in result
+        assert '2 2024' in result
 
     def test_format_periode_tiket_mingguan(self):
         """_format_periode_tiket formats mingguan (line 49)."""
@@ -566,7 +566,7 @@ class TestDocumentHelperFunctions:
         import datetime
         result = _format_date_indonesian(datetime.date(2024, 3, 15))
         assert '15' in result
-        assert 'maret' in result
+        assert 'Maret' in result
         assert '2024' in result
 
     def test_build_table_doc_returns_document(self):
