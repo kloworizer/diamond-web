@@ -1,7 +1,8 @@
 from django.db import models
+from .audit import AuditTrailModel
 
 
-class Kanwil(models.Model):
+class Kanwil(AuditTrailModel):
     id = models.AutoField(primary_key=True, verbose_name="ID")
     kode_kanwil = models.CharField(max_length=3, unique=True, verbose_name="Kode Kanwil")
     nama_kanwil = models.CharField(max_length=50, unique=True, verbose_name="Nama Kanwil")

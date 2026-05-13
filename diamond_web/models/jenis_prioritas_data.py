@@ -1,7 +1,8 @@
 from django.db import models
 from .jenis_data_ilap import JenisDataILAP
+from .audit import AuditTrailModel
 
-class JenisPrioritasData(models.Model):
+class JenisPrioritasData(AuditTrailModel):
     id = models.AutoField(primary_key=True, verbose_name="ID")
     start_date = models.DateField(verbose_name="Start Date")
     end_date = models.DateField(blank=True, null=True, default=None, verbose_name="End Date")

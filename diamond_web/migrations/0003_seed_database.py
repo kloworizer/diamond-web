@@ -1,6 +1,23 @@
 # Generated migration - Seed database with initial data
 
+from datetime import date
+
 from django.db import migrations
+
+
+SEED_AUDIT_DATE = date(2024, 1, 1)
+
+
+def seed_audit_defaults(defaults=None):
+    merged_defaults = {
+        "create_date": SEED_AUDIT_DATE,
+        "create_by": "system",
+        "update_date": SEED_AUDIT_DATE,
+        "update_by": "system",
+    }
+    if defaults:
+        merged_defaults.update(defaults)
+    return merged_defaults
 
 KATEGORI_ILAP_DATA = [
     {"kode": "AS", "nama": "ASOSIASI"},
@@ -738,7 +755,7 @@ def seed_kategori_ilap(apps, schema_editor):
     KategoriILAP = apps.get_model("diamond_web", "KategoriILAP")
     for item in KATEGORI_ILAP_DATA:
         KategoriILAP.objects.get_or_create(
-            id_kategori=item["kode"], defaults={"nama_kategori": item["nama"]}
+            id_kategori=item["kode"], defaults=seed_audit_defaults({"nama_kategori": item["nama"]})
         )
 
 
@@ -754,7 +771,8 @@ def seed_kategori_wilayah(apps, schema_editor):
     KategoriWilayah = apps.get_model("diamond_web", "KategoriWilayah")
     for item in KATEGORI_WILAYAH_DATA:
         KategoriWilayah.objects.get_or_create(
-            deskripsi=item["deskripsi"]
+            deskripsi=item["deskripsi"],
+            defaults=seed_audit_defaults()
         )
 
 
@@ -771,7 +789,7 @@ def seed_kanwil(apps, schema_editor):
     for item in KANWIL_DATA:
         Kanwil.objects.get_or_create(
             kode_kanwil=item["kode_kanwil"],
-            defaults={"nama_kanwil": item["nama_kanwil"]}
+            defaults=seed_audit_defaults({"nama_kanwil": item["nama_kanwil"]})
         )
 
 
@@ -790,10 +808,10 @@ def seed_kpp(apps, schema_editor):
         kanwil = Kanwil.objects.get(kode_kanwil=item["kode_kanwil"])
         KPP.objects.get_or_create(
             kode_kpp=item["kode_kpp"],
-            defaults={
+            defaults=seed_audit_defaults({
                 "nama_kpp": item["nama_kpp"],
                 "id_kanwil": kanwil
-            }
+            })
         )
 
 
@@ -809,7 +827,8 @@ def seed_jenis_tabel(apps, schema_editor):
     JenisTabel = apps.get_model("diamond_web", "JenisTabel")
     for item in JENIS_TABEL_DATA:
         JenisTabel.objects.get_or_create(
-            deskripsi=item["deskripsi"]
+            deskripsi=item["deskripsi"],
+            defaults=seed_audit_defaults()
         )
 
 
@@ -825,7 +844,8 @@ def seed_dasar_hukum(apps, schema_editor):
     DasarHukum = apps.get_model("diamond_web", "DasarHukum")
     for item in DASAR_HUKUM_DATA:
         DasarHukum.objects.get_or_create(
-            deskripsi=item["deskripsi"]
+            deskripsi=item["deskripsi"],
+            defaults=seed_audit_defaults()
         )
 
 
@@ -842,7 +862,7 @@ def seed_periode_pengiriman(apps, schema_editor):
     for periode in PERIODE_PENGIRIMAN_DATA:
         PeriodePengiriman.objects.get_or_create(
             periode_penyampaian=periode["periode_penyampaian"],
-            defaults={"periode_penerimaan": periode["periode_penerimaan"]}
+            defaults=seed_audit_defaults({"periode_penerimaan": periode["periode_penerimaan"]})
         )
 
 
@@ -858,7 +878,8 @@ def seed_status_data(apps, schema_editor):
     StatusData = apps.get_model("diamond_web", "StatusData")
     for item in STATUS_DATA_DATA:
         StatusData.objects.get_or_create(
-            deskripsi=item["deskripsi"]
+            deskripsi=item["deskripsi"],
+            defaults=seed_audit_defaults()
         )
 
 
@@ -874,7 +895,8 @@ def seed_bentuk_data(apps, schema_editor):
     BentukData = apps.get_model("diamond_web", "BentukData")
     for item in BENTUK_DATA_DATA:
         BentukData.objects.get_or_create(
-            deskripsi=item["deskripsi"]
+            deskripsi=item["deskripsi"],
+            defaults=seed_audit_defaults()
         )
 
 
@@ -890,7 +912,8 @@ def seed_cara_penyampaian(apps, schema_editor):
     CaraPenyampaian = apps.get_model("diamond_web", "CaraPenyampaian")
     for item in CARA_PENYAMPAIAN_DATA:
         CaraPenyampaian.objects.get_or_create(
-            deskripsi=item["deskripsi"]
+            deskripsi=item["deskripsi"],
+            defaults=seed_audit_defaults()
         )
 
 
@@ -906,7 +929,8 @@ def seed_media_backup(apps, schema_editor):
     MediaBackup = apps.get_model("diamond_web", "MediaBackup")
     for item in MEDIA_BACKUP_DATA:
         MediaBackup.objects.get_or_create(
-            deskripsi=item["deskripsi"]
+            deskripsi=item["deskripsi"],
+            defaults=seed_audit_defaults()
         )
 
 
@@ -922,7 +946,8 @@ def seed_status_penelitian(apps, schema_editor):
     StatusPenelitian = apps.get_model("diamond_web", "StatusPenelitian")
     for item in STATUS_PENELITIAN_DATA:
         StatusPenelitian.objects.get_or_create(
-            deskripsi=item["deskripsi"]
+            deskripsi=item["deskripsi"],
+            defaults=seed_audit_defaults()
         )
 
 
@@ -955,12 +980,26 @@ def seed_ilap(apps, schema_editor):
         
         ILAP.objects.get_or_create(
             id_ilap=item["id_ilap"],
-            defaults={
+            defaults=seed_audit_defaults({
                 "id_kategori": kategori,
                 "nama_ilap": item["nama_ilap"],
                 "id_kpp": kpp,
-                "id_kategori_wilayah": kategori_wilayah
-            }
+                "id_kategori_wilayah": kategori_wilayah,
+                "alamat_ilap": item.get("alamat_ilap"),
+                "kota_ilap": item.get("kota_ilap"),
+                "namapic_ilap": item.get("namapic_ilap"),
+                "telp_kantor": item.get("telp_kantor"),
+                "fax_ilap": item.get("fax_ilap"),
+                "email_picilap": item.get("email_picilap"),
+                "jabatan_picilap": item.get("jabatan_picilap"),
+                "telp_pic": item.get("telp_pic"),
+                "tujuan_surat": item.get("tujuan_surat"),
+                "tembusan": item.get("tembusan"),
+                "create_date": item.get("create_date"),
+                "create_by": item.get("create_by"),
+                "update_date": item.get("update_date"),
+                "update_by": item.get("update_by"),
+            })
         )
 
 
@@ -986,7 +1025,7 @@ def seed_jenis_data_ilap(apps, schema_editor):
             
             JenisDataILAP.objects.get_or_create(
                 id_sub_jenis_data=item["id_sub_jenis_data"],
-                defaults={
+                defaults=seed_audit_defaults({
                     "id_ilap": ilap,
                     "id_jenis_data": item["id_jenis_data"],
                     "nama_jenis_data": item["nama_jenis_data"],
@@ -995,7 +1034,7 @@ def seed_jenis_data_ilap(apps, schema_editor):
                     "nama_tabel_U": item["nama_tabel_U"],
                     "id_jenis_tabel": jenis_tabel,
                     "id_status_data": status_data,
-                }
+                })
             )
         except Exception as e:
             print(f"Warning: Could not create JenisDataILAP {item['id_sub_jenis_data']}: {e}")
@@ -1021,7 +1060,8 @@ def seed_klasifikasi_jenis_data(apps, schema_editor):
             
             KlasifikasiJenisData.objects.get_or_create(
                 id_jenis_data_ilap=jenis_data_ilap,
-                id_klasifikasi_tabel=dasar_hukum
+                id_klasifikasi_tabel=dasar_hukum,
+                defaults=seed_audit_defaults()
             )
         except Exception as e:
             print(f"Warning: Could not create KlasifikasiJenisData for {item['id_sub_jenis_data']} with {item['dasar_hukum']}: {e}")
@@ -1054,11 +1094,11 @@ def seed_periode_jenis_data(apps, schema_editor):
             PeriodeJenisData.objects.get_or_create(
                 id_sub_jenis_data_ilap=jenis_data_ilap,
                 id_periode_pengiriman=periode_pengiriman,
-                defaults={
+                defaults=seed_audit_defaults({
                     "start_date": start_date,
                     "end_date": end_date,
                     "akhir_penyampaian": item["akhir_penyampaian"],
-                }
+                })
             )
         except Exception as e:
             print(f"Warning: Could not create PeriodeJenisData for {item['id_sub_jenis_data']}: {e}")
@@ -1089,11 +1129,11 @@ def seed_jenis_prioritas_data(apps, schema_editor):
             JenisPrioritasData.objects.get_or_create(
                 id_sub_jenis_data_ilap=jenis_data_ilap,
                 tahun=item["tahun"],
-                defaults={
+                defaults=seed_audit_defaults({
                     "start_date": start_date,
                     "end_date": end_date,
                     "no_nd": item["no_nd"],
-                }
+                })
             )
         except Exception as e:
             print(f"Warning: Could not create JenisPrioritasData for {item['id_sub_jenis_data']} tahun {item['tahun']}: {e}")
@@ -1168,11 +1208,11 @@ def seed_pic(apps, schema_editor):
             PIC.objects.get_or_create(
                 tipe=item["tipe"],
                 id_sub_jenis_data_ilap=jenis_data_ilap,
-                defaults={
+                defaults=seed_audit_defaults({
                     'id_user': user,
                     'start_date': start_date,
                     'end_date': None
-                }
+                })
             )
         except Exception as e:
             print(f"Warning: Could not create PIC for {item['id_sub_jenis_data']} {item['tipe']}: {e}")
@@ -1205,11 +1245,11 @@ def seed_durasi_jatuh_tempo(apps, schema_editor):
             DurasiJatuhTempo.objects.get_or_create(
                 id_sub_jenis_data=jenis_data_ilap,
                 seksi=seksi_group,
-                defaults={
+                defaults=seed_audit_defaults({
                     'durasi': item["durasi"],
                     'start_date': start_date,
                     'end_date': None
-                }
+                })
             )
         except Exception as e:
             print(f"Warning: Could not create DurasiJatuhTempo for {item['id_sub_jenis_data']} {item['seksi']}: {e}")

@@ -20,6 +20,10 @@ class Migration(migrations.Migration):
             name='BentukData',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('create_date', models.DateField(blank=True, null=True, verbose_name='Create Date')),
+                ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
+                ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
+                ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
                 ('deskripsi', models.CharField(max_length=25, unique=True, verbose_name='Deskripsi')),
             ],
             options={
@@ -33,6 +37,10 @@ class Migration(migrations.Migration):
             name='CaraPenyampaian',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('create_date', models.DateField(blank=True, null=True, verbose_name='Create Date')),
+                ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
+                ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
+                ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
                 ('deskripsi', models.CharField(max_length=25, unique=True, verbose_name='Deskripsi')),
             ],
             options={
@@ -46,6 +54,10 @@ class Migration(migrations.Migration):
             name='DasarHukum',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('create_date', models.DateField(blank=True, null=True, verbose_name='Create Date')),
+                ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
+                ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
+                ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
                 ('deskripsi', models.CharField(max_length=50, unique=True, verbose_name='Deskripsi')),
             ],
             options={
@@ -59,6 +71,10 @@ class Migration(migrations.Migration):
             name='ILAP',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('create_date', models.DateField(blank=True, null=True, verbose_name='Create Date')),
+                ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
+                ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
+                ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
                 ('id_ilap', models.CharField(max_length=5, unique=True, verbose_name='ID ILAP')),
                 ('nama_ilap', models.CharField(max_length=150, unique=True, verbose_name='Nama ILAP')),
             ],
@@ -73,6 +89,10 @@ class Migration(migrations.Migration):
             name='JenisTabel',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('create_date', models.DateField(blank=True, null=True, verbose_name='Create Date')),
+                ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
+                ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
+                ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
                 ('deskripsi', models.CharField(max_length=50, unique=True, verbose_name='Deskripsi')),
             ],
             options={
@@ -86,6 +106,10 @@ class Migration(migrations.Migration):
             name='Kanwil',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('create_date', models.DateField(blank=True, null=True, verbose_name='Create Date')),
+                ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
+                ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
+                ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
                 ('kode_kanwil', models.CharField(max_length=3, unique=True, verbose_name='Kode Kanwil')),
                 ('nama_kanwil', models.CharField(max_length=50, unique=True, verbose_name='Nama Kanwil')),
             ],
@@ -100,6 +124,10 @@ class Migration(migrations.Migration):
             name='KategoriILAP',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('create_date', models.DateField(blank=True, null=True, verbose_name='Create Date')),
+                ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
+                ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
+                ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
                 ('id_kategori', models.CharField(max_length=2, unique=True, verbose_name='ID Kategori')),
                 ('nama_kategori', models.CharField(max_length=50, unique=True, verbose_name='Nama Kategori')),
             ],
@@ -114,6 +142,10 @@ class Migration(migrations.Migration):
             name='KategoriWilayah',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('create_date', models.DateField(blank=True, null=True, verbose_name='Create Date')),
+                ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
+                ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
+                ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
                 ('deskripsi', models.CharField(max_length=50, unique=True, verbose_name='Deskripsi')),
             ],
             options={
@@ -127,6 +159,10 @@ class Migration(migrations.Migration):
             name='MediaBackup',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('create_date', models.DateField(blank=True, null=True, verbose_name='Create Date')),
+                ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
+                ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
+                ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
                 ('deskripsi', models.CharField(max_length=25, unique=True, verbose_name='Deskripsi')),
             ],
             options={
@@ -140,6 +176,10 @@ class Migration(migrations.Migration):
             name='PeriodePengiriman',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('create_date', models.DateField(blank=True, null=True, verbose_name='Create Date')),
+                ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
+                ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
+                ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
                 ('periode_penyampaian', models.CharField(max_length=50, unique=True, verbose_name='Periode Penyampaian')),
                 ('periode_penerimaan', models.CharField(max_length=50, verbose_name='Periode Penerimaan')),
             ],
@@ -154,6 +194,10 @@ class Migration(migrations.Migration):
             name='StatusData',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('create_date', models.DateField(blank=True, null=True, verbose_name='Create Date')),
+                ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
+                ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
+                ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
                 ('deskripsi', models.CharField(max_length=25, unique=True, verbose_name='Deskripsi')),
             ],
             options={
@@ -167,6 +211,10 @@ class Migration(migrations.Migration):
             name='StatusPenelitian',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('create_date', models.DateField(blank=True, null=True, verbose_name='Create Date')),
+                ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
+                ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
+                ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
                 ('deskripsi', models.CharField(max_length=25, unique=True, verbose_name='Deskripsi')),
             ],
             options={
@@ -180,6 +228,10 @@ class Migration(migrations.Migration):
             name='JenisDataILAP',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('create_date', models.DateField(blank=True, null=True, verbose_name='Create Date')),
+                ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
+                ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
+                ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
                 ('id_jenis_data', models.CharField(max_length=7, verbose_name='ID Jenis Data')),
                 ('id_sub_jenis_data', models.CharField(max_length=9, verbose_name='ID Sub Jenis Data')),
                 ('nama_jenis_data', models.CharField(max_length=255, verbose_name='Nama Jenis Data')),
@@ -201,6 +253,10 @@ class Migration(migrations.Migration):
             name='DurasiJatuhTempo',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('create_date', models.DateField(blank=True, null=True, verbose_name='Create Date')),
+                ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
+                ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
+                ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
                 ('durasi', models.IntegerField(verbose_name='Durasi')),
                 ('start_date', models.DateField(verbose_name='Start Date')),
                 ('end_date', models.DateField(blank=True, default=None, null=True, verbose_name='End Date')),
@@ -218,6 +274,10 @@ class Migration(migrations.Migration):
             name='JenisPrioritasData',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('create_date', models.DateField(blank=True, null=True, verbose_name='Create Date')),
+                ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
+                ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
+                ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
                 ('start_date', models.DateField(verbose_name='Start Date')),
                 ('end_date', models.DateField(blank=True, default=None, null=True, verbose_name='End Date')),
                 ('no_nd', models.CharField(max_length=20, verbose_name='No ND')),
@@ -245,6 +305,10 @@ class Migration(migrations.Migration):
             name='KlasifikasiJenisData',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('create_date', models.DateField(blank=True, null=True, verbose_name='Create Date')),
+                ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
+                ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
+                ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
                 ('id_jenis_data_ilap', models.ForeignKey(db_column='id_jenis_data_ilap', on_delete=django.db.models.deletion.PROTECT, to='diamond_web.jenisdatailap', verbose_name='Jenis Data ILAP')),
                 ('id_klasifikasi_tabel', models.ForeignKey(db_column='id_klasifikasi_tabel', on_delete=django.db.models.deletion.PROTECT, to='diamond_web.dasarhukum', verbose_name='Dasar Hukum')),
             ],
@@ -259,6 +323,10 @@ class Migration(migrations.Migration):
             name='KPP',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('create_date', models.DateField(blank=True, null=True, verbose_name='Create Date')),
+                ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
+                ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
+                ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
                 ('kode_kpp', models.CharField(max_length=3, unique=True, verbose_name='Kode KPP')),
                 ('nama_kpp', models.CharField(max_length=50, unique=True, verbose_name='Nama KPP')),
                 ('id_kanwil', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='kpp', to='diamond_web.kanwil', verbose_name='Kanwil')),
@@ -275,6 +343,56 @@ class Migration(migrations.Migration):
             name='id_kpp',
             field=models.ForeignKey(blank=True, db_column='id_kpp', null=True, on_delete=django.db.models.deletion.PROTECT, to='diamond_web.kpp', verbose_name='KPP'),
         ),
+        migrations.AddField(
+            model_name='ilap',
+            name='alamat_ilap',
+            field=models.CharField(blank=True, max_length=3000, null=True, verbose_name='Alamat ILAP'),
+        ),
+        migrations.AddField(
+            model_name='ilap',
+            name='kota_ilap',
+            field=models.CharField(blank=True, max_length=30, null=True, verbose_name='Kota ILAP'),
+        ),
+        migrations.AddField(
+            model_name='ilap',
+            name='namapic_ilap',
+            field=models.CharField(blank=True, max_length=100, null=True, verbose_name='Nama PIC ILAP'),
+        ),
+        migrations.AddField(
+            model_name='ilap',
+            name='telp_kantor',
+            field=models.CharField(blank=True, max_length=100, null=True, verbose_name='Telp Kantor'),
+        ),
+        migrations.AddField(
+            model_name='ilap',
+            name='fax_ilap',
+            field=models.CharField(blank=True, max_length=100, null=True, verbose_name='Fax ILAP'),
+        ),
+        migrations.AddField(
+            model_name='ilap',
+            name='email_picilap',
+            field=models.CharField(blank=True, max_length=100, null=True, verbose_name='Email PIC ILAP'),
+        ),
+        migrations.AddField(
+            model_name='ilap',
+            name='jabatan_picilap',
+            field=models.CharField(blank=True, max_length=100, null=True, verbose_name='Jabatan PIC ILAP'),
+        ),
+        migrations.AddField(
+            model_name='ilap',
+            name='telp_pic',
+            field=models.CharField(blank=True, max_length=100, null=True, verbose_name='Telp PIC'),
+        ),
+        migrations.AddField(
+            model_name='ilap',
+            name='tujuan_surat',
+            field=models.CharField(blank=True, max_length=200, null=True, verbose_name='Tujuan Surat'),
+        ),
+        migrations.AddField(
+            model_name='ilap',
+            name='tembusan',
+            field=models.CharField(blank=True, max_length=200, null=True, verbose_name='Tembusan'),
+        ),
         migrations.CreateModel(
             name='Notification',
             fields=[
@@ -290,6 +408,10 @@ class Migration(migrations.Migration):
             name='PeriodeJenisData',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('create_date', models.DateField(blank=True, null=True, verbose_name='Create Date')),
+                ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
+                ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
+                ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
                 ('start_date', models.DateField(verbose_name='Start Date')),
                 ('end_date', models.DateField(blank=True, default=None, null=True, verbose_name='End Date')),
                 ('akhir_penyampaian', models.IntegerField(verbose_name='Akhir Penyampaian')),
@@ -307,6 +429,10 @@ class Migration(migrations.Migration):
             name='PIC',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('create_date', models.DateField(blank=True, null=True, verbose_name='Create Date')),
+                ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
+                ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
+                ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
                 ('tipe', models.CharField(choices=[('P3DE', 'PIC P3DE'), ('PIDE', 'PIC PIDE'), ('PMDE', 'PIC PMDE')], db_index=True, max_length=10, verbose_name='Tipe PIC')),
                 ('start_date', models.DateField(verbose_name='Start Date')),
                 ('end_date', models.DateField(blank=True, default=None, null=True, verbose_name='End Date')),

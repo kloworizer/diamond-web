@@ -1,6 +1,7 @@
 from django.db import models
+from .audit import AuditTrailModel
 
-class MediaBackup(models.Model):
+class MediaBackup(AuditTrailModel):
     id = models.AutoField(primary_key=True, verbose_name="ID")
     deskripsi = models.CharField(max_length=25, unique=True, verbose_name="Deskripsi")
 
