@@ -115,74 +115,74 @@
                 }
             });
 
-            $(document).on('click', 'button[data-action]', function () {
-                const action = $(this).data('action');
-                const url = $(this).data('url');
-
-                if (action === 'create') {
-                    $.ajax({
-                        url: '{% url "status_penelitian_create" %}',
-                        method: 'GET',
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                        success: function (html) {
-                            $('#modalBody').html(html);
-                            $('#crudModal').modal('show');
-                        }
-                    });
-                } else if (action === 'edit') {
-                    $.ajax({
-                        url: url,
-                        method: 'GET',
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                        success: function (html) {
-                            $('#modalBody').html(html);
-                            $('#crudModal').modal('show');
-                        }
-                    });
-                } else if (action === 'delete') {
-                    $.ajax({
-                        url: url,
-                        method: 'GET',
-                        data: { ajax: 1 },
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                        success: function (response) {
-                            $('#modalBody').html(response.html);
-                            $('#crudModal').modal('show');
-                        }
-                    });
-                }
+            $('[data-action="create"]').on('click', function () {
+                loadModal('{% url "status_penelitian_create" %}', 'Tambah Status Penelitian');
             });
 
-            $(document).on('submit', '.form-modal', function (e) {
+            $(document).on('click', '[data-action="edit"]', function (e) {
+                e.preventDefault();
+                loadModal($(this).data('url'), 'Edit Status Penelitian');
+            });
+
+            $(document).on('click', '[data-action="delete"]', function (e) {
+                e.preventDefault();
+                loadModal($(this).data('url'), 'Hapus Status Penelitian');
+            });
+
+            $(document).on('submit', '#modalBody form', function (e) {
                 e.preventDefault();
                 const form = $(this);
                 const url = form.attr('action');
+                const formData = new FormData(form[0]);
 
                 $.ajax({
                     url: url,
-                    method: 'POST',
-                    data: form.serialize(),
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
                     success: function (response) {
                         if (response.success) {
                             $('#crudModal').modal('hide');
                             table.ajax.reload();
-                            if (response.message && typeof toastr !== 'undefined') {
-                                toastr.success(response.message);
-                            }
+                            showToast(response.message || 'Data berhasil disimpan.', 'success');
+                        } else {
+                            $('#modalBody').html(response.html);
                         }
                     },
                     error: function (xhr) {
-                        if (xhr.status === 200) {
-                            const html = xhr.responseText;
-                            $('#modalBody').html(html);
-                        } else {
-                            alert('An error occurred. Please try again.');
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.message) {
+                                showToast(response.message, 'danger');
+                            } else {
+                                showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                            }
+                        } catch (e) {
+                            showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
                         }
                     }
                 });
             });
         });
+
+        function loadModal(url, title) {
+            $('#crudModalLabel').text(title);
+            $('#modalBody').html('<div class="text-center"><div class="spinner-border" role="status"></div></div>');
+            $('#crudModal').modal('show');
+
+            $.ajax({
+                url: url,
+                type: 'GET',
+                data: { ajax: '1' },
+                success: function (response) {
+                    $('#modalBody').html(response.html || response);
+                },
+                error: function () {
+                    $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');
+                }
+            });
+        }
     })();
 </script>
 {% endblock %}
