@@ -1,8 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import User
 from .jenis_data_ilap import JenisDataILAP
+from .audit import AuditTrailModel
 
-class PIC(models.Model):
+class PIC(AuditTrailModel):
     """
     Unified Person In Charge model for all PIC types (P3DE, PIDE, PMDE).
     Consolidates the previously separate PICP3DE, PICPIDE, and PICPMDE models.

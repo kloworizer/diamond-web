@@ -2,8 +2,9 @@ from django.db import models
 from .ilap import ILAP
 from .jenis_tabel import JenisTabel
 from .status_data import StatusData
+from .audit import AuditTrailModel
 
-class JenisDataILAP(models.Model):
+class JenisDataILAP(AuditTrailModel):
     id = models.AutoField(primary_key=True, verbose_name="ID")
     id_ilap = models.ForeignKey(
         ILAP,

@@ -357,19 +357,33 @@ def monitoring_penyampaian_data_data(request):
                 tiket = Tiket.objects.filter(
                     id_periode_data=periode_data,
                     periode=period['periode_num'],
-                    tahun=period['start_date'].year
+                    tahun=period['start_date'].year,
+                    penyampaian=1,
                 ).first()
                 
                 tiket_exists = tiket is not None
+
+                # Determine ILAP scope for terlambat calculation
+                # Regional: compare batas waktu vs tanggal terima vertikal
+                # Nasional/Internasional: compare batas waktu vs tanggal terima DIP
+                kategori_wilayah_desc = (
+                    (jenis_data.id_ilap.id_kategori_wilayah.deskripsi or '').lower()
+                    if jenis_data.id_ilap and jenis_data.id_ilap.id_kategori_wilayah
+                    else ''
+                )
+                is_regional_ilap = 'regional' in kategori_wilayah_desc
                 
                 # Determine status
                 if tiket_exists:
                     # Tiket exists means data has been submitted (sudah menyampaikan)
                     status_penyampaian = "Sudah Menyampaikan"
                     status_penyampaian_class = "bg-success"
-                    is_late = False
-                    status_terlambat = "Tidak"
-                    status_terlambat_class = "bg-light"
+
+                    receive_dt = tiket.tgl_terima_vertikal if is_regional_ilap else tiket.tgl_terima_dip
+                    receive_date = receive_dt.date() if receive_dt else None
+                    is_late = bool(receive_date and receive_date > deadline_date)
+                    status_terlambat = "Ya" if is_late else "Tidak"
+                    status_terlambat_class = "bg-danger" if is_late else "bg-light"
                 else:
                     # No tiket created
                     is_late = today > deadline_date

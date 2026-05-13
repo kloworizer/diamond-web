@@ -1,6 +1,7 @@
 from django.db import models
+from .audit import AuditTrailModel
 
-class PeriodePengiriman(models.Model):
+class PeriodePengiriman(AuditTrailModel):
     id = models.AutoField(primary_key=True, verbose_name="ID")
     periode_penyampaian = models.CharField(max_length=50, unique=True, verbose_name="Periode Penyampaian")
     periode_penerimaan = models.CharField(max_length=50, verbose_name="Periode Penerimaan")

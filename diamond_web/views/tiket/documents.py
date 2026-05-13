@@ -369,11 +369,11 @@ def tiket_documents_download(request, pk):
             elif doc_type == 'register':
                 filename = f'register_data_{nomor_safe}_{now_ts}.docx'
             elif doc_type == 'pkdi_lengkap':
-                filename = f'surat_pkdi_lengkap_{nomor_safe}_{now_ts}.docx'
+                filename = f'surat_pkdi_lengkap_{now_ts}.docx'
             elif doc_type == 'pkdi_sebagian':
-                filename = f'surat_pkdi_lengkap_sebagian_{nomor_safe}_{now_ts}.docx'
+                filename = f'surat_pkdi_lengkap_sebagian_{now_ts}.docx'
             elif doc_type == 'klarifikasi':
-                filename = f'surat_klarifikasi_{nomor_safe}_{now_ts}.docx'
+                filename = f'surat_klarifikasi_{now_ts}.docx'
             elif doc_type == 'nd_pengantar':
                 filename = f'nd_pengantar_pide_{nomor_safe}_{now_ts}.docx'
             else:
@@ -441,7 +441,7 @@ def tiket_documents_download(request, pk):
             row[0].text = str(key)
             row[1].text = str(value)
         doc = doc_pkdi
-        filename = f'surat_pkdi_lengkap_{nomor_safe}_{now_ts}.docx'
+        filename = f'surat_pkdi_lengkap_{now_ts}.docx'
     elif doc_type == 'pkdi_sebagian':
         doc_pkdi = Document()
         doc_pkdi.add_heading('Surat PKDI Lengkap Sebagian (Pernyataan Kesesuaian Data)', level=1)
@@ -462,7 +462,7 @@ def tiket_documents_download(request, pk):
             row[0].text = str(key)
             row[1].text = str(value)
         doc = doc_pkdi
-        filename = f'surat_pkdi_lengkap_sebagian_{nomor_safe}_{now_ts}.docx'
+        filename = f'surat_pkdi_lengkap_sebagian_{now_ts}.docx'
     elif doc_type == 'klarifikasi':
         doc_klr = Document()
         doc_klr.add_heading('Surat Klarifikasi Data', level=1)
@@ -483,7 +483,7 @@ def tiket_documents_download(request, pk):
             row[0].text = str(key)
             row[1].text = str(value)
         doc = doc_klr
-        filename = f'surat_klarifikasi_{nomor_safe}_{now_ts}.docx'
+        filename = f'surat_klarifikasi_{now_ts}.docx'
     else:
         doc_tanda = Document()
         doc_tanda.add_heading('Tanda Terima Data', level=1)

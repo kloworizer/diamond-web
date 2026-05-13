@@ -123,6 +123,7 @@ def _generate_docx_for_tickets(selected_tickets, doc_type, title_prefix):
             region_type = 'nasional_internasional'
 
     template_type_map = {
+        'tanda_terima': f'tanda_terima_{region_type}',
         'pkdi_lengkap': f'surat_pkdi_{region_type}_lengkap',
         'pkdi_sebagian': f'surat_pkdi_{region_type}_sebagian',
         'klarifikasi': 'surat_klarifikasi',
@@ -152,6 +153,19 @@ def _generate_docx_for_tickets(selected_tickets, doc_type, title_prefix):
     ).select_related('id_klasifikasi_tabel'):
         dasar_hukum_map.setdefault(row.id_jenis_data_ilap_id, []).append(row.id_klasifikasi_tabel.deskripsi)
 
+    # Header-level variables (aligned with documents.py)
+    if ilap and ilap.id_kpp and ilap.id_kpp.id_kanwil:
+        diterima_dari = ilap.id_kpp.id_kanwil.nama_kanwil
+    else:
+        diterima_dari = ilap.nama_ilap if ilap else '-'
+
+    periode_list, nomor_surat_list, tanggal_surat_list = [], [], []
+    bentuk_data_list, cara_penyampaian_list = [], []
+    nomor_tanda_terima_list, tanggal_tanda_terima_list = [], []
+    seen_periode, seen_nomor_surat, seen_tanggal_surat = set(), set(), set()
+    seen_bentuk_data, seen_cara_penyampaian = set(), set()
+    seen_nomor_tt, seen_tanggal_tt = set(), set()
+
     row_data = []
     for idx, t in enumerate(selected_tickets, start=1):
         sub = t.id_periode_data.id_sub_jenis_data_ilap if t.id_periode_data else None
@@ -168,6 +182,39 @@ def _generate_docx_for_tickets(selected_tickets, doc_type, title_prefix):
         if ilap_obj and ilap_obj.id_kpp and ilap_obj.id_kpp.id_kanwil:
             nama_kanwil = ilap_obj.id_kpp.id_kanwil.nama_kanwil
 
+        periode_label = _format_periode_tiket(t)
+        if periode_label not in seen_periode:
+            seen_periode.add(periode_label)
+            periode_list.append(periode_label)
+
+        nomor_surat = t.nomor_surat_pengantar or '-'
+        if nomor_surat not in seen_nomor_surat:
+            seen_nomor_surat.add(nomor_surat)
+            nomor_surat_list.append(nomor_surat)
+
+        tanggal_surat = _format_date_indonesian(t.tanggal_surat_pengantar) if t.tanggal_surat_pengantar else '-'
+        if tanggal_surat not in seen_tanggal_surat:
+            seen_tanggal_surat.add(tanggal_surat)
+            tanggal_surat_list.append(tanggal_surat)
+
+        bentuk_data = t.id_bentuk_data.deskripsi if getattr(t, 'id_bentuk_data', None) else '-'
+        if bentuk_data not in seen_bentuk_data:
+            seen_bentuk_data.add(bentuk_data)
+            bentuk_data_list.append(bentuk_data)
+
+        cara_penyampaian = t.id_cara_penyampaian.deskripsi if getattr(t, 'id_cara_penyampaian', None) else '-'
+        if cara_penyampaian not in seen_cara_penyampaian:
+            seen_cara_penyampaian.add(cara_penyampaian)
+            cara_penyampaian_list.append(cara_penyampaian)
+
+        if nomor_tt not in seen_nomor_tt:
+            seen_nomor_tt.add(nomor_tt)
+            nomor_tanda_terima_list.append(nomor_tt)
+
+        if tanggal_tt not in seen_tanggal_tt:
+            seen_tanggal_tt.add(tanggal_tt)
+            tanggal_tanda_terima_list.append(tanggal_tt)
+
         row_data.append({
             'nomor': str(idx),
             'nomor_tiket': t.nomor_tiket,
@@ -182,6 +229,8 @@ def _generate_docx_for_tickets(selected_tickets, doc_type, title_prefix):
             'status_penelitian': status_penelitian,
             'jumlah_baris_diterima': format_number_with_separator(t.baris_diterima),
             'jumlah_data_diterima': format_number_with_separator(t.baris_diterima),
+            'jumlah_baris_lengkap': format_number_with_separator(t.baris_lengkap) if t.baris_lengkap is not None else '-',
+            'jumlah_baris_tidak_lengkap': format_number_with_separator(t.baris_tidak_lengkap) if t.baris_tidak_lengkap is not None else '-',
             'dasar_hukum': dasar_hukum if dasar_hukum else '-',
             'nomor_surat_pengantar': t.nomor_surat_pengantar or '-',
             'tanggal_surat_pengantar': _format_date_indonesian(t.tanggal_surat_pengantar),
@@ -190,11 +239,34 @@ def _generate_docx_for_tickets(selected_tickets, doc_type, title_prefix):
         })
 
     now_ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+    tahun_data_list = sorted({str(t.tahun) for t in selected_tickets if t.tahun})
+    nomor_tanda_terima_text = ', '.join(nomor_tanda_terima_list) if nomor_tanda_terima_list else '-'
+
     template_vars = {
+        '{{nomor_tiket}}': nomor_tanda_terima_text,
+        '{{nomor_tanda_terima}}': nomor_tanda_terima_text,
+        '{{tanggal_tanda_terima}}': ', '.join(tanggal_tanda_terima_list) if tanggal_tanda_terima_list else '-',
+        '{{tahun_data}}': ', '.join(tahun_data_list) if tahun_data_list else '-',
+        '{{diterima_dari}}': diterima_dari,
+        '{{nama_kantor}}': diterima_dari,
+        '{{nomor_surat_pengantar}}': ', '.join(nomor_surat_list) if nomor_surat_list else '-',
+        '{{tanggal_surat_pengantar}}': ', '.join(tanggal_surat_list) if tanggal_surat_list else '-',
+        '{{tanggal_penerimaan}}': ', '.join(tanggal_surat_list) if tanggal_surat_list else '-',
+        '{{nama_ilap}}': ilap.nama_ilap if ilap else '-',
+        '{{jenis_data}}': 'Terlampir',
+        '{{periode_data}}': ', '.join(periode_list) if periode_list else '-',
+        '{{bentuk_data}}': ', '.join(bentuk_data_list) if bentuk_data_list else '-',
+        '{{tanggal_terima_dip}}': _format_date_indonesian(first_ticket.tgl_terima_dip),
+        '{{cara_penyampaian}}': ', '.join(cara_penyampaian_list) if cara_penyampaian_list else '-',
+        '{{nama_pic_p3de}}': '-',
+        '{{nama_pic}}': '-',
+        '{{email_pic}}': '-',
+        '{{telepon_pic}}': '-',
+        '{{nama_tabel}}': 'Terlampir',
+        '{{jumlah_record}}': '-',
+        '{{ukuran_file}}': '-',
         '{{tanggal_cetak}}': _format_date_indonesian(datetime.now()),
         '{{jumlah_tiket}}': str(len(selected_tickets)),
-        '{{nama_ilap}}': ilap.nama_ilap if ilap else '-',
-        '{{tanggal_terima_dip}}': _format_date_indonesian(first_ticket.tgl_terima_dip),
         '{{jenis_dokumen}}': doc_type,
     }
 
