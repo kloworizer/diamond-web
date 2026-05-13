@@ -1,8 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import Group
 from .jenis_data_ilap import JenisDataILAP
+from .audit import AuditTrailModel
 
-class DurasiJatuhTempo(models.Model):
+class DurasiJatuhTempo(AuditTrailModel):
     id = models.AutoField(primary_key=True, verbose_name="ID")
     id_sub_jenis_data = models.ForeignKey(
         JenisDataILAP,

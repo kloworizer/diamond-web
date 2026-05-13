@@ -1,8 +1,9 @@
 from django.db import models
 from .kanwil import Kanwil
+from .audit import AuditTrailModel
 
 
-class KPP(models.Model):
+class KPP(AuditTrailModel):
     id = models.AutoField(primary_key=True, verbose_name="ID")
     kode_kpp = models.CharField(max_length=3, unique=True, verbose_name="Kode KPP")
     nama_kpp = models.CharField(max_length=50, unique=True, verbose_name="Nama KPP")

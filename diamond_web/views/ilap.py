@@ -6,6 +6,7 @@ from urllib.parse import quote_plus, unquote_plus
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.utils import timezone
 
 from ..models.ilap import ILAP
 from ..forms.ilap import ILAPForm
@@ -190,6 +191,12 @@ class ILAPCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, 
             id_ilap = self.request.POST.get('id_ilap')
             if id_ilap:
                 form.instance.id_ilap = id_ilap
+        today = timezone.now().date()
+        username = (self.request.user.username or '')[:9]
+        form.instance.create_date = today
+        form.instance.create_by = username
+        form.instance.update_date = today
+        form.instance.update_by = username
         return super().form_valid(form)
 
 
@@ -217,6 +224,17 @@ class ILAPUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, 
         self.object = self.get_object()
         form = self.get_form()
         return self.render_form_response(form)
+
+    def form_valid(self, form):
+        today = timezone.now().date()
+        username = (self.request.user.username or '')[:9]
+        if not form.instance.create_date:
+            form.instance.create_date = today
+        if not form.instance.create_by:
+            form.instance.create_by = username
+        form.instance.update_date = today
+        form.instance.update_by = username
+        return super().form_valid(form)
 
 
 class ILAPDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):

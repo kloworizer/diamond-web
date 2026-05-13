@@ -1,6 +1,7 @@
 from django.db import models
+from .audit import AuditTrailModel
 
-class StatusPenelitian(models.Model):
+class StatusPenelitian(AuditTrailModel):
     id = models.AutoField(primary_key=True, verbose_name="ID")
     deskripsi = models.CharField(max_length=25, unique=True, verbose_name="Deskripsi")
 

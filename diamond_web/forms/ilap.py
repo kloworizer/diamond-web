@@ -28,9 +28,15 @@ class ILAPForm(AutoRequiredFormMixin, forms.ModelForm):
     
     class Meta:
         model = ILAP
-        fields = ['id_kategori', 'id_ilap', 'nama_ilap', 'id_kategori_wilayah', 'id_kpp']
+        fields = [
+            'id_kategori', 'id_ilap', 'nama_ilap', 'id_kategori_wilayah', 'id_kpp',
+            'alamat_ilap', 'kota_ilap', 'namapic_ilap', 'jabatan_picilap',
+            'telp_kantor', 'fax_ilap', 'email_picilap', 'telp_pic',
+            'tujuan_surat', 'tembusan',
+        ]
         widgets = {
             'id_ilap': forms.TextInput(attrs={'readonly': 'readonly'}),
+            'alamat_ilap': forms.Textarea(attrs={'rows': 3}),
         }
     
     def __init__(self, *args, **kwargs):

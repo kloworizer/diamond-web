@@ -1,6 +1,7 @@
 from django.db import models
+from .audit import AuditTrailModel
 
-class JenisTabel(models.Model):
+class JenisTabel(AuditTrailModel):
     id = models.AutoField(primary_key=True, verbose_name="ID")
     deskripsi = models.CharField(max_length=50, unique=True, verbose_name="Deskripsi")
 

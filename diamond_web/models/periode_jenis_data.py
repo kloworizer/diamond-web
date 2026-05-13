@@ -1,8 +1,9 @@
 from django.db import models
 from .jenis_data_ilap import JenisDataILAP
 from .periode_pengiriman import PeriodePengiriman
+from .audit import AuditTrailModel
 
-class PeriodeJenisData(models.Model):
+class PeriodeJenisData(AuditTrailModel):
     id = models.AutoField(primary_key=True, verbose_name="ID")
     id_sub_jenis_data_ilap = models.ForeignKey(
         JenisDataILAP,

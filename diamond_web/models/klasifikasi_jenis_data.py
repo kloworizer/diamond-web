@@ -1,8 +1,9 @@
 from django.db import models
 from .jenis_data_ilap import JenisDataILAP
 from .dasar_hukum import DasarHukum
+from .audit import AuditTrailModel
 
-class KlasifikasiJenisData(models.Model):
+class KlasifikasiJenisData(AuditTrailModel):
     id = models.AutoField(primary_key=True, verbose_name="ID")
     id_jenis_data_ilap = models.ForeignKey(
         JenisDataILAP,
