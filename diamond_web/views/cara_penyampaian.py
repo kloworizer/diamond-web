@@ -89,10 +89,11 @@ class CaraPenyampaianDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERe
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': f'Cara Penyampaian "{name}" berhasil dihapus.'
+                'message': f'Cara Penyampaian "{name}" berhasil dihapus.',
+                'redirect': str(self.success_url)
             })
         messages.success(request, f'Cara Penyampaian "{name}" berhasil dihapus.')
-        return JsonResponse({'success': True, 'redirect': self.success_url})
+        return JsonResponse({'success': True, 'redirect': str(self.success_url)})
 
     def post(self, request, *args, **kwargs):
         return self.delete(request, *args, **kwargs)

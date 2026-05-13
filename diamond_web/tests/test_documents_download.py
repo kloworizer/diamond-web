@@ -16,9 +16,13 @@ def _make_tiket_with_tanda_terima(user, status=1):
     tiket = TiketFactory(status_tiket=status, tanda_terima=True)
     TiketPICFactory(id_tiket=tiket, id_user=user, role=TiketPIC.Role.P3DE, active=True)
     ilap = tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap
+    tahun = 2099
+    max_nomor = TandaTerimaData.objects.filter(tahun_terima=tahun).aggregate(
+        m=__import__('django.db.models', fromlist=['Max']).Max('nomor_tanda_terima')
+    )['m'] or 0
     tt = TandaTerimaData.objects.create(
-        nomor_tanda_terima=1,
-        tahun_terima=timezone.now().year,
+        nomor_tanda_terima=max_nomor + 1,
+        tahun_terima=tahun,
         tanggal_tanda_terima=timezone.now(),
         id_ilap=ilap,
         id_perekam=user,

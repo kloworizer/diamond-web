@@ -4,6 +4,7 @@ from django.contrib.auth.models import Group
 from django.test import RequestFactory
 from django.urls import reverse
 from unittest.mock import patch, MagicMock
+import importlib
 
 from diamond_web.views.home import home
 from diamond_web.views.dashboard import index
@@ -28,7 +29,8 @@ class TestHomeView:
     def test_home_view_p3de_user(self, client, authenticated_user):
         """Test home view identifies P3DE user and computes tiket summary."""
         client.force_login(authenticated_user)
-        with patch('diamond_web.views.home.get_tiket_summary_for_user') as mock_summary:
+        home_module = importlib.import_module('diamond_web.views.home')
+        with patch.object(home_module, 'get_tiket_summary_for_user') as mock_summary:
             mock_summary.return_value = {'test': 'data'}
             response = client.get(reverse('home'))
             assert response.status_code == 200
@@ -39,7 +41,8 @@ class TestHomeView:
     def test_home_view_pide_user(self, client, pide_user):
         """Test home view identifies PIDE user."""
         client.force_login(pide_user)
-        with patch('diamond_web.views.home.get_tiket_summary_for_user_pide') as mock_summary:
+        home_module = importlib.import_module('diamond_web.views.home')
+        with patch.object(home_module, 'get_tiket_summary_for_user_pide') as mock_summary:
             mock_summary.return_value = {'pide': 'data'}
             response = client.get(reverse('home'))
             assert response.status_code == 200
@@ -49,7 +52,8 @@ class TestHomeView:
     def test_home_view_pmde_user(self, client, pmde_user):
         """Test home view identifies PMDE user."""
         client.force_login(pmde_user)
-        with patch('diamond_web.views.home.get_tiket_summary_for_user_pmde') as mock_summary:
+        home_module = importlib.import_module('diamond_web.views.home')
+        with patch.object(home_module, 'get_tiket_summary_for_user_pmde') as mock_summary:
             mock_summary.return_value = {'pmde': 'data'}
             response = client.get(reverse('home'))
             assert response.status_code == 200
@@ -65,9 +69,10 @@ class TestHomeView:
             user.groups.add(group)
         
         client.force_login(user)
-        with patch('diamond_web.views.home.get_tiket_summary_for_user') as mock_p3de, \
-             patch('diamond_web.views.home.get_tiket_summary_for_user_pide') as mock_pide, \
-             patch('diamond_web.views.home.get_tiket_summary_for_user_pmde') as mock_pmde:
+        home_module = importlib.import_module('diamond_web.views.home')
+        with patch.object(home_module, 'get_tiket_summary_for_user') as mock_p3de, \
+            patch.object(home_module, 'get_tiket_summary_for_user_pide') as mock_pide, \
+            patch.object(home_module, 'get_tiket_summary_for_user_pmde') as mock_pmde:
             mock_p3de.return_value = {'p3de': 'data'}
             mock_pide.return_value = {'pide': 'data'}
             mock_pmde.return_value = {'pmde': 'data'}

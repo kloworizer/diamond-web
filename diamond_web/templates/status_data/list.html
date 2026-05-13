@@ -121,80 +121,71 @@
             });
 
             // Bind CRUD Actions
-            $(document).on('click', 'button[data-action]', function () {
-                const action = $(this).data('action');
-                const url = $(this).data('url');
+            $('[data-action="create"]').on('click', function () {
+                loadModal('{% url "status_data_create" %}', 'Tambah Status Data');
+            });
 
-                if (action === 'create') {
-                    $.ajax({
-                        url: '{% url "status_data_create" %}',
-                        method: 'GET',
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                        success: function (html) {
-                            $('#modalBody').html(html);
-                            $('#crudModal').modal('show');
-                        }
-                    });
-                } else if (action === 'edit') {
-                    $.ajax({
-                        url: url,
-                        method: 'GET',
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                        success: function (html) {
-                            $('#modalBody').html(html);
-                            $('#crudModal').modal('show');
-                        }
-                    });
-                } else if (action === 'delete') {
-                    $.ajax({
-                        url: url,
-                        method: 'GET',
-                        data: { ajax: 1 },
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                        success: function (response) {
-                            $('#modalBody').html(response.html);
-                            $('#crudModal').modal('show');
-                        }
-                    });
-                }
+            $(document).on('click', '[data-action="edit"]', function (e) {
+                e.preventDefault();
+                loadModal($(this).data('url'), 'Edit Status Data');
+            });
+
+            $(document).on('click', '[data-action="delete"]', function (e) {
+                e.preventDefault();
+                loadModal($(this).data('url'), 'Hapus Status Data');
             });
 
             // Handle form submission
-            $(document).on('submit', '.form-modal', function (e) {
+            $(document).on('submit', '#modalBody form', function (e) {
                 e.preventDefault();
                 const form = $(this);
                 const url = form.attr('action');
+                const formData = new FormData(form[0]);
 
                 $.ajax({
                     url: url,
-                    method: 'POST',
-                    data: form.serialize(),
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
                     success: function (response) {
                         if (response.success) {
                             $('#crudModal').modal('hide');
                             table.ajax.reload();
-                            if (response.message) {
-                                // Show success toast message (requires toastr or similar)
-                                if (typeof toastr !== 'undefined') {
-                                    toastr.success(response.message);
-                                }
-                            }
+                            showToast(response.message || 'Data berhasil disimpan.', 'success');
+                        } else {
+                            $('#modalBody').html(response.html);
                         }
                     },
                     error: function (xhr) {
-                        if (xhr.status === 200) {
-                            // Successful response but contains form validation errors
-                            const html = xhr.responseText;
-                            $('#modalBody').html(html);
-                        } else {
-                            // Network/server error
-                            alert('An error occurred. Please try again.');
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            showToast(response.message || 'Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                        } catch (e) {
+                            showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
                         }
                     }
                 });
             });
         });
+
+        function loadModal(url, title) {
+            $('#crudModalLabel').text(title);
+            $('#modalBody').html('<div class="text-center"><div class="spinner-border" role="status"></div></div>');
+            $('#crudModal').modal('show');
+
+            $.ajax({
+                url: url,
+                type: 'GET',
+                data: { ajax: '1' },
+                success: function (response) {
+                    $('#modalBody').html(response.html || response);
+                },
+                error: function () {
+                    $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');
+                }
+            });
+        }
     })();
 </script>
 {% endblock %}

@@ -40,6 +40,12 @@ class StatusPenelitianCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, Aja
         context['form_action'] = reverse('status_penelitian_create')
         return context
 
+    def get(self, request, *args, **kwargs):
+        """Return the create form rendered for AJAX or full-page requests."""
+        self.object = None
+        form = self.get_form()
+        return self.render_form_response(form)
+
 class StatusPenelitianUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
     """Update view for `StatusPenelitian`."""
     model = StatusPenelitian
@@ -53,11 +59,45 @@ class StatusPenelitianUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, Aja
         context['form_action'] = reverse('status_penelitian_update', args=[self.object.pk])
         return context
 
+    def get(self, request, *args, **kwargs):
+        """Return the edit form for the requested instance."""
+        self.object = self.get_object()
+        form = self.get_form()
+        return self.render_form_response(form)
+
 class StatusPenelitianDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, SafeDeleteMixin, DeleteView):
     """Delete view for `StatusPenelitian`."""
     model = StatusPenelitian
     template_name = 'status_penelitian/confirm_delete.html'
     success_url = reverse_lazy('status_penelitian_list')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form_action'] = reverse('status_penelitian_delete', args=[self.object.pk])
+        return context
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if request.GET.get('ajax'):
+            from django.template.loader import render_to_string
+            html = render_to_string(self.template_name, self.get_context_data(object=self.object), request=request)
+            return JsonResponse({'html': html})
+        return self.render_to_response(self.get_context_data())
+
+    def delete(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        name = str(self.object)
+        self.object.delete()
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'message': f'Status Penelitian "{name}" berhasil dihapus.'
+            })
+        messages.success(request, f'Status Penelitian "{name}" berhasil dihapus.')
+        return JsonResponse({'success': True, 'redirect': self.success_url})
+
+    def post(self, request, *args, **kwargs):
+        return self.delete(request, *args, **kwargs)
 
     def get_success_url(self):
         """Redirect with success message containing deleted object name."""
