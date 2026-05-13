@@ -168,8 +168,8 @@ class TestIdentifikasiTiketView:
         )
         assert TiketAction.objects.filter(id_tiket=tiket).exists()
 
-    def test_post_without_date_uses_now(self, client, pide_user, db):
-        """POST without tgl_rekam_pide defaults to now."""
+    def test_post_without_date_returns_error(self, client, pide_user, db):
+        """POST without required tgl_rekam_pide returns validation error."""
         tiket = self._make_dikirim_tiket(pide_user)
         client.force_login(pide_user)
         resp = client.post(
@@ -179,7 +179,7 @@ class TestIdentifikasiTiketView:
         )
         assert resp.status_code == 200
         data = json.loads(resp.content)
-        assert data['success'] is True
+        assert data['success'] is False
 
     def test_post_invalid_date_returns_error(self, client, pide_user, db):
         """POST with invalid date format returns error JSON."""

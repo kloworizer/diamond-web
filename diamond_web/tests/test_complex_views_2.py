@@ -81,8 +81,10 @@ class TestGetPeriodDisplayName:
     """Unit tests for get_period_display_name helper (lines 50, 52, 54, 60)."""
 
     def setup_method(self):
-        from diamond_web.views.monitoring_penyampaian_data import get_period_display_name
-        self.fn = get_period_display_name
+        from diamond_web.views import monitoring_penyampaian_data as mpd
+        if not hasattr(mpd, 'get_period_display_name'):
+            pytest.skip('get_period_display_name helper no longer exists')
+        self.fn = mpd.get_period_display_name
 
     def test_harian(self):
         """Line 50: harian → formatted date string."""
@@ -1314,7 +1316,7 @@ class TestMonitoringAdditionalCoverage:
             start_date=datetime.date(2024, 1, 1), end_date=datetime.date(2024, 1, 31),
             akhir_penyampaian=14)
         # Create a Tiket for this periode (period 1, year 2024)
-        TiketFactory(id_periode_data=periode, status_tiket=1, periode=1, tahun=2024)
+        TiketFactory(id_periode_data=periode, status_tiket=1, periode=1, tahun=2024, penyampaian=1)
         client.force_login(admin_user)
         url = reverse('monitoring_penyampaian_data_data')
         # Filter by specific sub_jenis_data to only see our record

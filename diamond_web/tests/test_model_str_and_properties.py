@@ -46,9 +46,11 @@ class TestModelStrMethods:
         ilap = ILAPFactory()
         tiket = TiketFactory()
         user = UserFactory()
+        tahun = 2099
+        nomor = TandaTerimaData.objects.filter(tahun_terima=tahun).count() + 1
         tanda_terima = TandaTerimaData.objects.create(
-            nomor_tanda_terima=1,
-            tahun_terima=2024,
+            nomor_tanda_terima=nomor,
+            tahun_terima=tahun,
             tanggal_tanda_terima=timezone.now(),
             id_ilap=ilap,
             id_perekam=user,
@@ -182,9 +184,11 @@ class TestTandaTerimaDataProperties:
         from django.utils import timezone
         ilap = ILAPFactory(nama_ilap='Test ILAP Name')
         user = UserFactory()
+        tahun = 2099
+        nomor = TandaTerimaData.objects.filter(tahun_terima=tahun).count() + 1
         tanda_terima = TandaTerimaData.objects.create(
-            nomor_tanda_terima=2,
-            tahun_terima=2024,
+            nomor_tanda_terima=nomor,
+            tahun_terima=tahun,
             tanggal_tanda_terima=timezone.now(),
             id_ilap=ilap,
             id_perekam=user,
@@ -198,9 +202,11 @@ class TestTandaTerimaDataProperties:
         ilap = ILAPFactory()
         jenis_data = JenisDataILAPFactory(id_ilap=ilap, nama_jenis_data='Jenis ABC')
         user = UserFactory()
+        tahun = 2099
+        nomor = TandaTerimaData.objects.filter(tahun_terima=tahun).count() + 1
         tanda_terima = TandaTerimaData.objects.create(
-            nomor_tanda_terima=3,
-            tahun_terima=2024,
+            nomor_tanda_terima=nomor,
+            tahun_terima=tahun,
             tanggal_tanda_terima=timezone.now(),
             id_ilap=ilap,
             id_perekam=user,
@@ -225,9 +231,11 @@ class TestTandaTerimaDataProperties:
             akhir_penyampaian=31,
         )
         user = UserFactory()
+        tahun = 2099
+        nomor = TandaTerimaData.objects.filter(tahun_terima=tahun).count() + 1
         tanda_terima = TandaTerimaData.objects.create(
-            nomor_tanda_terima=4,
-            tahun_terima=2024,
+            nomor_tanda_terima=nomor,
+            tahun_terima=tahun,
             tanggal_tanda_terima=timezone.now(),
             id_ilap=ilap,
             id_perekam=user,
@@ -241,9 +249,11 @@ class TestTandaTerimaDataProperties:
         from django.utils import timezone
         ilap = ILAPFactory()
         user = UserFactory()
+        tahun = 2099
+        nomor = TandaTerimaData.objects.filter(tahun_terima=tahun).count() + 1
         tanda_terima = TandaTerimaData.objects.create(
-            nomor_tanda_terima=5,
-            tahun_terima=2024,
+            nomor_tanda_terima=nomor,
+            tahun_terima=tahun,
             tanggal_tanda_terima=timezone.now(),
             id_ilap=ilap,
             id_perekam=user,

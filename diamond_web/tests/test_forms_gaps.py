@@ -520,7 +520,7 @@ class TestTandaTerimaDataFormBranches:
         user = UserFactory()
 
         tanda_terima = TandaTerimaData.objects.create(
-            nomor_tanda_terima=1,
+            nomor_tanda_terima=90001,
             tahun_terima=2024,
             tanggal_tanda_terima=timezone.now(),
             id_ilap=ilap,
@@ -555,7 +555,7 @@ class TestTandaTerimaDataFormBranches:
         ilap = ILAPFactory()
         user = UserFactory()
         tanda_terima = TandaTerimaData.objects.create(
-            nomor_tanda_terima=2,
+            nomor_tanda_terima=90002,
             tahun_terima=2024,
             tanggal_tanda_terima=timezone.now(),
             id_ilap=ilap,
@@ -615,7 +615,7 @@ class TestTandaTerimaDataFormBranches:
 
         # Create another active TandaTerima that already uses this tiket
         other_tt = TandaTerimaData.objects.create(
-            nomor_tanda_terima=99,
+            nomor_tanda_terima=90003,
             tahun_terima=2024,
             tanggal_tanda_terima=timezone.now(),
             id_ilap=ilap,
@@ -706,6 +706,48 @@ class TestTandaTerimaDataFormBranches:
 
         # Fallback: nomor_tanda_terima should be 1 (no existing records for 2025)
         assert result.nomor_tanda_terima >= 1
+
+    def test_save_invalid_formatted_nomor_string_hits_except(self, db, admin_user):
+        """Cover save() except branch when formatted nomor cannot be parsed."""
+        from diamond_web.forms.tanda_terima_data import TandaTerimaDataForm
+        from diamond_web.models.tanda_terima_data import TandaTerimaData
+
+        ilap, _ = self._make_ilap_and_tiket()
+        tahun = 2026
+
+        form = TandaTerimaDataForm(user=admin_user)
+        form.cleaned_data = {
+            'tanggal_tanda_terima': timezone.now(),
+            'tahun_terima': tahun,
+            'id_ilap': ilap,
+            'nomor_tanda_terima': 'not-a-number.TTD/PJ.1031/2026',
+        }
+
+        instance = TandaTerimaData(
+            tanggal_tanda_terima=timezone.now(),
+            tahun_terima=tahun,
+            id_ilap=ilap,
+        )
+
+        with patch.object(TandaTerimaDataForm.__bases__[1], 'save', return_value=instance):
+            result = form.save(commit=False)
+
+        # Should not crash and should leave value unchanged when parse fails
+        assert result is instance
+
+
+@pytest.mark.django_db
+class TestIdentifikasiTiketFormGaps:
+    """Cover remaining branch in forms/identifikasi_tiket.py."""
+
+    def test_init_prefills_tgl_rekam_pide_for_existing_instance(self, db):
+        from diamond_web.forms.identifikasi_tiket import IdentifikasiTiketForm
+
+        tiket = TiketFactory(tgl_rekam_pide=timezone.now())
+        form = IdentifikasiTiketForm(instance=tiket)
+
+        assert 'tgl_rekam_pide' in form.initial
+        assert 'T' in form.initial['tgl_rekam_pide']
 
 
 # ─────────────────────────────────────────────────────────────────────────────
