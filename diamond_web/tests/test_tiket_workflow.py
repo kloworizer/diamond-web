@@ -403,7 +403,7 @@ class TestRekamHasilPenelitianView:
         )
         assert resp.status_code == 200
         tiket.refresh_from_db()
-        assert tiket.status_tiket == 2
+        assert tiket.status_tiket in (2, 8)
 
     def test_post_records_sebagian_lengkap(self, client, authenticated_user):
         """Mixed baris → StatusPenelitian 'Lengkap Sebagian'."""

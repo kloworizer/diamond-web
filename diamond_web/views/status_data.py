@@ -115,10 +115,11 @@ class StatusDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequire
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'message': f'Status Data "{name}" berhasil dihapus.'
+                'message': f'Status Data "{name}" berhasil dihapus.',
+                'redirect': str(self.success_url)
             })
         messages.success(request, f'Status Data "{name}" berhasil dihapus.')
-        return JsonResponse({'success': True, 'redirect': self.success_url})
+        return JsonResponse({'success': True, 'redirect': str(self.success_url)})
 
     def post(self, request, *args, **kwargs):
         return self.delete(request, *args, **kwargs)
