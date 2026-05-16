@@ -1,80 +1,362 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container py-4">
-    {% if user.is_authenticated %}
-    <div class="row align-items-center mb-4">
-        <div class="col-md-12">
-            <div class="bg-white p-4 rounded shadow-sm">
-                <div class="d-flex align-items-center">
-                    <i class="ri-shield-user-line text-primary fs-2 me-3"></i>
-                    <div>
-                        <h2 class="h4 mb-1">Selamat datang kembali{% if user.get_full_name %}, {{ user.get_full_name }}{% endif %}!</h2>
-                        <p class="mb-0 text-muted">Ringkasan cepat ruang kerja dan tugas yang menunggu.</p>
+{% if user.is_authenticated %}
+<div class="nxl-content without-header nxl-full-content">
+
+    <div class="main-content d-flex">
+
+        <!-- [ Sidebar ] start -->
+        <div class="content-sidebar content-sidebar-md" data-scrollbar-target="#psScrollbarInit">
+            <div class="content-sidebar-header bg-white sticky-top hstack justify-content-between">
+                <h4 class="fw-bolder mb-0">Home</h4>
+                <a href="javascript:void(0);" class="app-sidebar-close-trigger d-flex">
+                    <i class="feather-x"></i>
+                </a>
+            </div>
+            <div class="content-sidebar-header">
+                <a href="javascript:void(0);" class="btn btn-primary w-100">
+                    <i class="feather-plus me-2"></i>
+                    <span>Tambah Tugas</span>
+                </a>
+            </div>
+            <div class="content-sidebar-body">
+                <!-- Status -->
+                <ul class="nav flex-column nxl-content-sidebar-item">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="javascript:void(0);">
+                            <i class="feather-list"></i>
+                            <span>Semua</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="javascript:void(0);">
+                            <i class="feather-watch"></i>
+                            <span>Menunggu</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="javascript:void(0);">
+                            <i class="feather-activity"></i>
+                            <span>Sedang Berlangsung</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="javascript:void(0);">
+                            <i class="feather-check-circle"></i>
+                            <span>Selesai</span>
+                        </a>
+                    </li>
+                </ul>
+
+                <!-- Prioritas -->
+                <ul class="nav flex-column nxl-content-sidebar-item">
+                    <li
+                        class="px-4 my-2 fs-10 fw-bold text-uppercase text-muted text-spacing-1 d-flex align-items-center justify-content-between">
+                        <span>Prioritas</span>
+                        <a href="javascript:void(0);">
+                            <span class="avatar-text avatar-sm"><i class="feather-plus"></i></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="javascript:void(0);">
+                            <span class="wd-7 ht-7 bg-dark rounded-circle"></span>
+                            <span>Rendah</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="javascript:void(0);">
+                            <span class="wd-7 ht-7 bg-success rounded-circle"></span>
+                            <span>Normal</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="javascript:void(0);">
+                            <span class="wd-7 ht-7 bg-primary rounded-circle"></span>
+                            <span>Sedang</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="javascript:void(0);">
+                            <span class="wd-7 ht-7 bg-warning rounded-circle"></span>
+                            <span>Tinggi</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="javascript:void(0);">
+                            <span class="wd-7 ht-7 bg-danger rounded-circle"></span>
+                            <span>Mendesak</span>
+                        </a>
+                    </li>
+                </ul>
+
+                <!-- Overview -->
+                <ul class="nav flex-column nxl-content-sidebar-item">
+                    <li
+                        class="px-4 my-2 fs-10 fw-bold text-uppercase text-muted text-spacing-1 d-flex align-items-center justify-content-between">
+                        <span>Overview</span>
+                        <a href="javascript:void(0);">
+                            <span class="avatar-text avatar-sm"><i class="feather-plus"></i></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="javascript:void(0);">
+                            <i class="feather-hash"></i>
+                            <span>Overview</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="javascript:void(0);">
+                            <i class="feather-hash"></i>
+                            <span>Tugas Saya</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="javascript:void(0);">
+                            <i class="feather-hash"></i>
+                            <span>Aktivitas Tugas</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="javascript:void(0);">
+                            <i class="feather-hash"></i>
+                            <span>Lampiran Tugas</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <!-- [ Sidebar ] end -->
+
+        <!-- [ Content Area ] start -->
+        <div class="content-area" data-scrollbar-target="#psScrollbarInit">
+            <div class="content-area-header sticky-top">
+                <div class="page-header-left d-flex align-items-center gap-2">
+                    <a href="javascript:void(0);" class="app-sidebar-open-trigger me-2">
+                        <i class="feather-align-left fs-20"></i>
+                    </a>
+                    <h5 class="mb-0">
+                        <i class="feather-home me-2"></i>Home
+                    </h5>
+                    <ul class="breadcrumb mb-0">
+                        <li class="breadcrumb-item active">Home</li>
+                    </ul>
+                </div>
+                <div class="page-header-right ms-auto d-flex align-items-center gap-2">
+                    <span class="text-muted small">
+                        Selamat datang, {% if user.get_full_name %}{{ user.get_full_name }}{% else %}{{ user.username }}{% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <div class="content-area-body">
+
+                <!-- Card: Tugas Baru -->
+                <div class="card stretch stretch-full mb-3">
+                    <div class="card-header d-flex align-items-center justify-content-between border-bottom">
+                        <h5 class="card-title mb-0">
+                            <i class="feather-list me-2 text-primary"></i>Lorem Ipsum
+                            <span class="badge bg-primary ms-2">5</span>
+                        </h5>
+                        <a href="javascript:void(0);" class="btn btn-sm btn-light-brand">Lihat Semua</a>
+                    </div>
+                    <div class="card-body custom-card-action p-0">
+                        <div class="list-group list-group-flush">
+                            <a href="javascript:void(0);"
+                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
+                                <span
+                                    class="avatar-text avatar-md bg-soft-primary text-primary rounded-circle flex-shrink-0">
+                                    <i class="feather-file-text"></i>
+                                </span>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <h6 class="mb-1 fw-semibold text-truncate">Lorem Ipsum Dolor</h6>
+                                    <small class="text-muted">Sit Amet &bull; Consectetur: 20 Mei 2026</small>
+                                </div>
+                                <span class="badge bg-soft-danger text-danger flex-shrink-0">Mendesak</span>
+                            </a>
+                            <a href="javascript:void(0);"
+                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
+                                <span
+                                    class="avatar-text avatar-md bg-soft-warning text-warning rounded-circle flex-shrink-0">
+                                    <i class="feather-bar-chart-2"></i>
+                                </span>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <h6 class="mb-1 fw-semibold text-truncate">Adipiscing Elit Sed</h6>
+                                    <small class="text-muted">Do Eiusmod &bull; Tempor: 25 Mei 2026</small>
+                                </div>
+                                <span class="badge bg-soft-warning text-warning flex-shrink-0">Tinggi</span>
+                            </a>
+                            <a href="javascript:void(0);"
+                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
+                                <span class="avatar-text avatar-md bg-soft-info text-info rounded-circle flex-shrink-0">
+                                    <i class="feather-users"></i>
+                                </span>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <h6 class="mb-1 fw-semibold text-truncate">Incididunt Ut Labore</h6>
+                                    <small class="text-muted">Et Dolore &bull; Magna: 30 Mei 2026</small>
+                                </div>
+                                <span class="badge bg-soft-primary text-primary flex-shrink-0">Sedang</span>
+                            </a>
+                            <a href="javascript:void(0);"
+                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
+                                <span
+                                    class="avatar-text avatar-md bg-soft-success text-success rounded-circle flex-shrink-0">
+                                    <i class="feather-send"></i>
+                                </span>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <h6 class="mb-1 fw-semibold text-truncate">Aliqua Ut Enim Ad</h6>
+                                    <small class="text-muted">Minim Veniam &bull; Quis: 1 Juni 2026</small>
+                                </div>
+                                <span class="badge bg-soft-success text-success flex-shrink-0">Normal</span>
+                            </a>
+                            <a href="javascript:void(0);"
+                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
+                                <span
+                                    class="avatar-text avatar-md bg-soft-secondary text-secondary rounded-circle flex-shrink-0">
+                                    <i class="feather-clipboard"></i>
+                                </span>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <h6 class="mb-1 fw-semibold text-truncate">Nostrud Exercitation</h6>
+                                    <small class="text-muted">Ullamco &bull; Laboris: 5 Juni 2026</small>
+                                </div>
+                                <span class="badge bg-soft-secondary text-secondary flex-shrink-0">Rendah</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Sedang Berlangsung -->
+                <div class="card stretch stretch-full mb-3">
+                    <div class="card-header d-flex align-items-center justify-content-between border-bottom">
+                        <h5 class="card-title mb-0">
+                            <i class="feather-activity me-2 text-info"></i>Lorem Ipsum
+                            <span class="badge bg-info ms-2">3</span>
+                        </h5>
+                        <a href="javascript:void(0);" class="btn btn-sm btn-light-brand">Lihat Semua</a>
+                    </div>
+                    <div class="card-body custom-card-action p-0">
+                        <div class="list-group list-group-flush">
+                            <a href="javascript:void(0);"
+                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
+                                <span class="avatar-text avatar-md bg-soft-info text-info rounded-circle flex-shrink-0">
+                                    <i class="feather-code"></i>
+                                </span>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <h6 class="mb-1 fw-semibold text-truncate">Nisi Ut Aliquid Ex Ea</h6>
+                                    <div class="progress mt-2" style="height: 5px;">
+                                        <div class="progress-bar bg-info" role="progressbar" style="width: 65%"></div>
+                                    </div>
+                                    <small class="text-muted mt-1 d-block">65% selesai</small>
+                                </div>
+                                <span class="badge bg-soft-warning text-warning flex-shrink-0">Tinggi</span>
+                            </a>
+                            <a href="javascript:void(0);"
+                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
+                                <span
+                                    class="avatar-text avatar-md bg-soft-primary text-primary rounded-circle flex-shrink-0">
+                                    <i class="feather-database"></i>
+                                </span>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <h6 class="mb-1 fw-semibold text-truncate">Migrasi dan Validasi Data</h6>
+                                    <div class="progress mt-2" style="height: 5px;">
+                                        <div class="progress-bar bg-primary" role="progressbar" style="width: 45%">
+                                        </div>
+                                    </div>
+                                    <small class="text-muted mt-1 d-block">45% selesai</small>
+                                </div>
+                                <span class="badge bg-soft-primary text-primary flex-shrink-0">Sedang</span>
+                            </a>
+                            <a href="javascript:void(0);"
+                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
+                                <span
+                                    class="avatar-text avatar-md bg-soft-success text-success rounded-circle flex-shrink-0">
+                                    <i class="feather-edit-3"></i>
+                                </span>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <h6 class="mb-1 fw-semibold text-truncate">Pembaruan Dokumen SOP</h6>
+                                    <div class="progress mt-2" style="height: 5px;">
+                                        <div class="progress-bar bg-success" role="progressbar" style="width: 80%">
+                                        </div>
+                                    </div>
+                                    <small class="text-muted mt-1 d-block">80% selesai</small>
+                                </div>
+                                <span class="badge bg-soft-success text-success flex-shrink-0">Normal</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Selesai -->
+                <div class="card mb-0">
+                    <div class="card-header d-flex align-items-center justify-content-between border-bottom">
+                        <h5 class="card-title mb-0">
+                            <i class="feather-check-circle me-2 text-success"></i>Lorem Ipsum
+                            <span class="badge bg-success ms-2">4</span>
+                        </h5>
+                        <a href="javascript:void(0);" class="btn btn-sm btn-light-brand">Lihat Semua</a>
+                    </div>
+                    <div class="card-body custom-card-action p-0">
+                        <div class="list-group list-group-flush">
+                            <a href="javascript:void(0);"
+                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
+                                <span
+                                    class="avatar-text avatar-md bg-soft-success text-success rounded-circle flex-shrink-0">
+                                    <i class="feather-check"></i>
+                                </span>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <h6 class="mb-1 fw-semibold text-truncate text-decoration-line-through text-muted">
+                                        In Reprehenderit Voluptate</h6>
+                                    <small class="text-muted">Selesai pada: 15 Mei 2026</small>
+                                </div>
+                                <span class="badge bg-soft-success text-success flex-shrink-0">Selesai</span>
+                            </a>
+                            <a href="javascript:void(0);"
+                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
+                                <span
+                                    class="avatar-text avatar-md bg-soft-success text-success rounded-circle flex-shrink-0">
+                                    <i class="feather-check"></i>
+                                </span>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <h6 class="mb-1 fw-semibold text-truncate text-decoration-line-through text-muted">
+                                        Velit Esse Cillum</h6>
+                                    <small class="text-muted">Selesai pada: 14 Mei 2026</small>
+                                </div>
+                                <span class="badge bg-soft-success text-success flex-shrink-0">Selesai</span>
+                            </a>
+                            <a href="javascript:void(0);"
+                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
+                                <span
+                                    class="avatar-text avatar-md bg-soft-success text-success rounded-circle flex-shrink-0">
+                                    <i class="feather-check"></i>
+                                </span>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <h6 class="mb-1 fw-semibold text-truncate text-decoration-line-through text-muted">
+                                        Fugiat Nulla Pariatur</h6>
+                                    <small class="text-muted">Selesai pada: 10 Mei 2026</small>
+                                </div>
+                                <span class="badge bg-soft-success text-success flex-shrink-0">Selesai</span>
+                            </a>
+                            <a href="javascript:void(0);"
+                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
+                                <span
+                                    class="avatar-text avatar-md bg-soft-success text-success rounded-circle flex-shrink-0">
+                                    <i class="feather-check"></i>
+                                </span>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <h6 class="mb-1 fw-semibold text-truncate text-decoration-line-through text-muted">
+                                        Excepteur Sint Occaecat</h6>
+                                    <small class="text-muted">Selesai pada: 08 Mei 2026</small>
+                                </div>
+                                <span class="badge bg-soft-success text-success flex-shrink-0">Selesai</span>
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+        <!-- [ Content Area ] end -->
 
-    <div class="row g-4">
-        {% if is_p3de or is_pide or is_pmde %}
-        <div class="col-lg-6">
-            {% include 'task_to_do.html' %}
-        </div>
-        {% endif %}
-
-        <div class="col-lg-6">
-            <div class="card h-100">
-                <div class="card-header bg-secondary text-white d-flex align-items-center">
-                    <i class="ri-information-line me-2"></i>
-                    <h6 class="mb-0">Status</h6>
-                </div>
-                <div class="card-body">
-                    <p class="mb-2">Sistem berjalan normal.</p>
-                </div>
-            </div>
-        </div>
     </div>
-    {% endif %}
-
-    {% if debug_user_groups %}
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0"><i class="ri-bug-line me-2"></i>Debug Login Users</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        {% for group_name, users in debug_user_groups.items %}
-                            <div class="col-md-4 mb-3">
-                                <h6 class="mb-2 text-uppercase small">{{ group_name|upper }}</h6>
-                                {% if users %}
-                                    <ul class="list-group">
-                                        {% for u in users %}
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <div>
-                                                    <div class="fw-semibold">{{ u.username }}</div>
-                                                    <small class="text-muted">{{ u.full_name }}</small>
-                                                </div>
-                                                <i class="ri-user-3-line text-secondary"></i>
-                                            </li>
-                                        {% endfor %}
-                                    </ul>
-                                {% else %}
-                                    <p class="text-muted mb-0">Tidak ada pengguna di grup ini.</p>
-                                {% endif %}
-                            </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-    
-    <!-- new login untuk ngulik tim front end-->
-    <!-- <a href="{% url 'new_login' %}" class="btn btn-primary btn-lg">Login 2</a>  -->
 </div>
+{% endif %}
 {% endblock %}
