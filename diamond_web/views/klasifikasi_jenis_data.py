@@ -182,8 +182,8 @@ def klasifikasi_jenis_data_data(request):
         data.append({
             'jenis_data_ilap': str(obj.id_jenis_data_ilap),
             'klasifikasi_tabel': str(obj.id_klasifikasi_tabel),
-            'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('klasifikasi_jenis_data_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
-                       f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('klasifikasi_jenis_data_delete', args=[obj.pk])}' title='Delete'><i class='ri-delete-bin-line'></i></button>"
+            'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('klasifikasi_jenis_data_update', args=[obj.pk])}' title='Edit'><i class='feather-edit-2'></i></button>"
+                       f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('klasifikasi_jenis_data_delete', args=[obj.pk])}' title='Delete'><i class='feather-trash-2'></i></button>"
         })
 
     return JsonResponse({

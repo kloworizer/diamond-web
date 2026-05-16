@@ -127,13 +127,13 @@ def docx_template_data(request):
         download_url = reverse_lazy('docx_template_download', kwargs={'pk': template.id})
         actions = f'''
             <button class="btn btn-sm btn-primary" data-action="edit" data-url="{edit_url}">
-                <i class="ri-edit-line"></i>
+                <i class="feather-edit-2"></i>
             </button>
             <a href="{download_url}" class="btn btn-sm btn-info" title="Download">
-                <i class="ri-download-line"></i>
+                <i class="feather-download"></i>
             </a>
             <button class="btn btn-sm btn-danger" data-action="delete" data-url="{delete_url}">
-                <i class="ri-delete-bin-line"></i>
+                <i class="feather-trash-2"></i>
             </button>
         '''
         data.append({
