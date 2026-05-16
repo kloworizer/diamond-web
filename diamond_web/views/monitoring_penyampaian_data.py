@@ -549,11 +549,11 @@ def monitoring_penyampaian_data_data(request):
             f'<div class="btn-group btn-group-sm">'
             f'<a href="/tiket/?{tiket_query}" '
             f'class="btn btn-primary btn-sm" title="Lihat Tiket">'
-            f'<i class="ri-eye-line"></i>'
+            f'<i class="feather-eye"></i>'
             f'</a>'
             f'<a href="/tiket/rekam/create/?{tiket_rekam_query}" '
             f'class="btn btn-success btn-sm" title="Rekam Penerimaan Data">'
-            f'<i class="ri-file-add-line"></i>'
+            f'<i class="feather-file-plus"></i>'
             f'</a>'
             f'</div>'
         )

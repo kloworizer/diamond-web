@@ -1,17 +1,36 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Diamond Web</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- DataTables Bootstrap 5 CSS -->
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="" />
+    <meta name="keyword" content="" />
+    <meta name="author" content="Diamond Web" />
+    <title>{% block title %}Diamond Web{% endblock %}</title>
+
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'assets/images/favicon.ico' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/css/bootstrap.min.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/vendors.min.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/feather.min.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/daterangepicker.min.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/css/theme.min.css' %}" />
+
+    <!-- DataTables Bootstrap 5 CSS (kept for existing tables) -->
     <link href="//cdn.datatables.net/2.3.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
-    <!-- Remix Icon CSS -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css" rel="stylesheet">
+
     <style>
-        /* AdminLTE-like notification style: icon left in colored circle, title+time row, message below, subtle divider */
+        i[class^="feather-"],
+        i[class*=" feather-"] {
+            font-family: feather !important;
+            font-style: normal;
+            font-weight: 400;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
         .notifications-dropdown {
             min-width: 420px;
             max-width: 880px;
@@ -49,7 +68,7 @@
             background: #e9f7ff;
         }
 
-        .notif-icon .ri-mail-open-line {
+        .notif-icon .feather-mail {
             color: #0d6efd;
             font-size: 1.15rem;
         }
@@ -89,79 +108,228 @@
             overflow-wrap: anywhere;
         }
 
-        @media (max-width: 992px) {
-            .notifications-dropdown {
-                min-width: 340px;
-                max-width: 560px;
-            }
-
-            .notif-icon {
-                width: 36px;
-                height: 36px;
-            }
-
-            .notif-icon .ri-mail-open-line {
-                font-size: 1rem;
-            }
-
-            .notif-title {
-                font-size: 0.92rem;
-            }
-
-            .notif-message {
-                font-size: 0.82rem;
-            }
+        .main-content {
+            min-height: calc(100vh - 210px);
         }
 
-        @media (max-width: 576px) {
-            .notifications-dropdown {
-                min-width: 220px;
-                max-width: 320px;
-            }
-
-            .notification-item {
-                padding: 0.45rem 0.5rem;
-                gap: 0.5rem;
-            }
-
-            .notif-icon {
-                width: 32px;
-                height: 32px;
-            }
-
-            .notif-title {
-                font-size: 0.9rem;
-            }
-
-            .notif-message {
-                font-size: 0.78rem;
-            }
+        /* Keep Bootstrap modal above any theme overlay/blur layer */
+        .modal {
+            z-index: 2000 !important;
         }
 
-        /* Ensure links inside notification messages don't create their own hover/background
-           and keep colors consistent (avoids nested-anchor visual issues). */
-        .notification-item .notif-message a {
-            color: #0d6efd;
-            text-decoration: underline;
-            background: transparent;
+        .modal-backdrop {
+            z-index: 1990 !important;
         }
 
-        .notification-item .notif-message a:hover,
-        .notification-item .notif-message a:focus {
-            color: #0b5ed7;
-            text-decoration: underline;
-            background: transparent;
+        .modal-backdrop.show {
+            opacity: .45;
+            backdrop-filter: none !important;
+        }
+
+        body.modal-open .nxl-navigation,
+        body.modal-open .nxl-header,
+        body.modal-open .nxl-content,
+        body.modal-open .nxl-container {
+            filter: none !important;
+        }
+
+        body.modal-open .nxl-overlay,
+        body.modal-open .nxl-mask,
+        body.modal-open .navigation-overlay {
+            display: none !important;
+            pointer-events: none !important;
+        }
+
+        /* Duralux-style DataTables skin (global for all list pages) */
+        .dt-container .dt-layout-row,
+        .dataTables_wrapper .row {
+            margin-left: 0;
+            margin-right: 0;
+        }
+
+        .dt-container .dt-layout-row:first-child,
+        .dataTables_wrapper .row:first-child {
+            padding: .85rem 1rem;
+            border-bottom: 1px solid #e9ecef;
+            background: #fff;
+        }
+
+        .dt-container .dt-layout-row:last-child,
+        .dataTables_wrapper .row:last-child {
+            padding: .85rem 1rem;
+            border-top: 1px solid #e9ecef;
+            background: #fff;
+        }
+
+        .dt-container .dt-search input,
+        .dataTables_filter input {
+            border: 1px solid #d9dee8;
+            border-radius: .5rem;
+            min-height: 38px;
+            padding: .35rem .75rem;
+            font-size: .875rem;
+            background: #fff;
+        }
+
+        .dt-container .dt-length select,
+        .dataTables_length select {
+            border: 1px solid #d9dee8;
+            border-radius: .5rem;
+            min-height: 38px;
+            padding: .25rem 2rem .25rem .75rem;
+            font-size: .875rem;
+            background-color: #fff;
+        }
+
+        .dt-container .dt-paging .dt-paging-button,
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            border: 1px solid #e5e7eb !important;
+            border-radius: .6rem !important;
+            background: #fff !important;
+            color: #1f2937 !important;
+            min-width: 34px;
+            min-height: 34px;
+            line-height: 1.2;
+            margin: 0 .125rem;
+            box-shadow: none !important;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .pagination .page-link,
+        .dt-container .pagination .page-link,
+        .dt-container .dt-paging-button {
+            border: 1px solid #e5e7eb !important;
+            border-radius: .6rem !important;
+            background: #fff !important;
+            color: #1f2937 !important;
+            min-width: 34px !important;
+            min-height: 34px !important;
+            padding: .375rem .65rem !important;
+            box-shadow: none !important;
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dt-container .dt-paging nav .pagination,
+        .dataTables_wrapper .dataTables_paginate ul.pagination {
+            gap: .5rem;
+            margin: 0;
+            align-items: center;
+            list-style: none;
+            padding: 0;
+        }
+
+        .dt-container .dt-paging nav ul.pagination.pagination-common-style,
+        .dataTables_wrapper .dataTables_paginate ul.pagination.pagination-common-style {
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            margin: 0;
+            padding: 0;
+        }
+
+        .dt-container .dt-paging nav .page-item .page-link,
+        .dt-container .dt-paging nav .page-item button.page-link,
+        .dt-container .dt-paging nav .page-item a.page-link,
+        .dataTables_wrapper .dataTables_paginate .page-item .page-link,
+        .dataTables_wrapper .dataTables_paginate .page-item button.page-link,
+        .dataTables_wrapper .dataTables_paginate .page-item a.page-link {
+            border: 1px solid #e5e7eb !important;
+            border-radius: .6rem !important;
+            background: #fff !important;
+            color: #1f2937 !important;
+            min-width: 34px !important;
+            min-height: 34px !important;
+            padding: .375rem .65rem !important;
+            line-height: 1.2 !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+        }
+
+        .dt-container .dt-paging nav .page-item,
+        .dataTables_wrapper .dataTables_paginate .page-item {
+            margin: 0 !important;
+            list-style: none !important;
+        }
+
+        .dt-container .dt-paging nav .page-item.active .page-link,
+        .dataTables_wrapper .dataTables_paginate .page-item.active .page-link {
+            background: var(--bs-primary, #3454d1) !important;
+            border-color: var(--bs-primary, #3454d1) !important;
+            color: #fff !important;
+        }
+
+        .dt-container .dt-paging .dt-paging-button.current,
+        .dataTables_wrapper .dataTables_paginate .pagination .page-item.active .page-link {
+            background: var(--bs-primary, #3454d1) !important;
+            border-color: var(--bs-primary, #3454d1) !important;
+            color: #fff !important;
+        }
+
+        .dt-container .dt-paging nav .page-item:not(.active):not(.disabled) .page-link:hover,
+        .dataTables_wrapper .dataTables_paginate .page-item:not(.active):not(.disabled) .page-link:hover {
+            background: #f8fafc !important;
+            border-color: #e5e7eb !important;
+            color: #1f2937 !important;
+        }
+
+        .dt-container .dt-paging nav .page-item.disabled .page-link,
+        .dataTables_wrapper .dataTables_paginate .page-item.disabled .page-link {
+            background: #f8fafc !important;
+            color: #9ca3af !important;
+            border-color: #e5e7eb !important;
+            opacity: 1 !important;
+        }
+
+        .dataTables_wrapper .dataTables_paginate,
+        .dt-container .dt-paging {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .dt-container .dt-paging .dt-paging-button.current,
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+            background: var(--bs-primary, #3454d1) !important;
+            border-color: var(--bs-primary, #3454d1) !important;
+            color: #fff !important;
+        }
+
+        .dt-container .dt-paging .dt-paging-button:hover,
+        .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+            background: #f8fafc !important;
+            border-color: #e5e7eb !important;
+            color: #1f2937 !important;
+        }
+
+        .dt-container .dt-info,
+        .dataTables_wrapper .dataTables_info {
+            font-size: .8125rem;
+            color: #6b7280;
+        }
+
+        table.dataTable,
+        table.table.dataTable {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
+
+        table.dataTable>thead>tr>th,
+        table.table.dataTable>thead>tr>th {
+            white-space: nowrap;
+            font-size: .75rem;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: #6b7280;
+            border-bottom: 1px solid #e9ecef !important;
         }
     </style>
-    <style>
-        /* make page stretch to full viewport and keep footer at bottom */
-        html, body { height: 100%; }
-        body { min-height: 100vh; display: flex; flex-direction: column; }
-        .content-container { flex: 1 0 auto; }
-    </style>
+
+    {% block extra_head %}{% endblock %}
 </head>
 
-<body class="bg-light">
+<body>
 
     {% include 'navbar.html' %}
 
@@ -174,16 +342,123 @@
         data-messages='[{% for message in messages %}{"level": "{{ message.level_tag }}", "message": "{{ message|escapejs }}", "tags": "{{ message.tags }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'
         id="messagesData"></div>
 
-    <main class="content-container container">
-        {% block content %}
-        {% endblock %}
+    <main class="nxl-container">
+        <div class="nxl-content">
+            <div class="main-content">
+                {% block content %}
+                {% endblock %}
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p class="fs-11 text-muted fw-medium text-uppercase mb-0 copyright">
+                <span>Commit: {{ git_commit|default:"n/a" }}</span>
+                {% if git_commit_info.branch %}<span> &middot; {{ git_commit_info.branch }}</span>{% endif %}
+                {% if git_commit_info.date %}<span> &middot; {{ git_commit_info.date }}</span>{% endif %}
+            </p>
+            <div class="d-flex align-items-center gap-4">
+                <a href="javascript:void(0);" class="fs-11 fw-semibold text-uppercase">Help</a>
+                <a href="javascript:void(0);" class="fs-11 fw-semibold text-uppercase">Terms</a>
+                <a href="javascript:void(0);" class="fs-11 fw-semibold text-uppercase">Privacy</a>
+            </div>
+        </footer>
     </main>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- jQuery and DataTables JS (imported for future integration) -->
+
+    <script src="{% static 'assets/vendors/js/vendors.min.js' %}"></script>
+    <script src="{% static 'assets/vendors/js/daterangepicker.min.js' %}"></script>
+    <script src="{% static 'assets/vendors/js/apexcharts.min.js' %}"></script>
+    <script src="{% static 'assets/vendors/js/circle-progress.min.js' %}"></script>
+    <script src="{% static 'assets/js/common-init.min.js' %}"></script>
+    <script src="{% static 'assets/js/theme-customizer-init.min.js' %}"></script>
+
+    <!-- jQuery and DataTables JS (kept for existing tables) -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="//cdn.datatables.net/2.3.6/js/dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/2.3.6/js/dataTables.bootstrap5.js"></script>
     <script>
+        // Cleanup stale modal backdrops that can block interaction on AJAX-heavy pages.
+        document.addEventListener('hidden.bs.modal', function () {
+            setTimeout(function () {
+                const hasOpenModal = !!document.querySelector('.modal.show');
+                if (!hasOpenModal) {
+                    document.body.classList.remove('modal-open');
+                    document.body.style.removeProperty('padding-right');
+                    document.querySelectorAll('.modal-backdrop').forEach(function (el) {
+                        el.remove();
+                    });
+                }
+            }, 30);
+        });
+
+        // Global Duralux styling for all DataTables in templates
+        (function () {
+            function enhanceTableStructure(table) {
+                const $table = $(table);
+                if (!$table.length) return;
+
+                $table.addClass('table table-hover mb-0 align-middle');
+
+                if (!$table.parent().hasClass('table-responsive')) {
+                    $table.wrap('<div class="table-responsive"></div>');
+                }
+            }
+
+            function enhanceDataTableUI(table) {
+                const $table = $(table);
+                const $container = $table.closest('.dt-container, .dataTables_wrapper');
+                if (!$container.length) return;
+
+                $container.find('.dt-search input, .dataTables_filter input')
+                    .attr('placeholder', 'Search...')
+                    .addClass('form-control form-control-sm');
+
+                $container.find('.dt-length select, .dataTables_length select')
+                    .addClass('form-select form-select-sm');
+
+                $container.find('.dataTables_paginate .pagination').addClass('pagination-common-style list-unstyled d-flex align-items-center gap-2 mb-0');
+                $container.find('.dataTables_paginate .pagination .page-item').addClass('page-item');
+                $container.find('.dataTables_paginate .pagination .page-link').addClass('page-link');
+
+                $container.find('.dt-paging, .dataTables_paginate').addClass('pagination-common-style');
+
+                const $paginationList = $container.find('.dt-paging nav ul.pagination, .dataTables_paginate ul.pagination');
+                $paginationList.addClass('pagination-common-style list-unstyled d-flex align-items-center gap-2 mb-0');
+
+                $container.find('.dt-paging-button, .dataTables_paginate .page-item').addClass('page-item');
+                $container.find('.dt-paging-button .page-link, .dataTables_paginate .page-item .page-link').addClass('page-link');
+            }
+
+            $(document).ready(function () {
+                $('table').each(function () {
+                    enhanceTableStructure(this);
+                });
+
+                if (!$.fn.DataTable) return;
+
+                $.extend(true, $.fn.dataTable.defaults, {
+                    pageLength: 10,
+                    language: {
+                        search: '',
+                        searchPlaceholder: 'Search...',
+                        lengthMenu: '_MENU_'
+                    },
+                    drawCallback: function () {
+                        enhanceDataTableUI(this.api().table().node());
+                    },
+                    initComplete: function () {
+                        enhanceDataTableUI(this.api().table().node());
+                    }
+                });
+
+                $(document).on('init.dt draw.dt', function (e, settings) {
+                    if (!settings || !settings.nTable) return;
+                    enhanceTableStructure(settings.nTable);
+                    enhanceDataTableUI(settings.nTable);
+                });
+
+            });
+        })();
+
         // Standard toast notification function with Indonesian titles
         function showToast(message, type = 'info', title = null) {
             const toastId = 'toast-' + Date.now();
@@ -503,14 +778,6 @@
             }
         }, false);
     </script>
-
-    <footer class="mt-4 py-2 bg-white border-top">
-        <div class="container text-center small text-muted">
-            Commit: {{ git_commit|default:"n/a" }}
-            {% if git_commit_info.branch %} &middot; {{ git_commit_info.branch }}{% endif %}
-            {% if git_commit_info.date %} &middot; {{ git_commit_info.date }}{% endif %}
-        </div>
-    </footer>
 
     {% block scripts %}{% endblock %}
 </body>

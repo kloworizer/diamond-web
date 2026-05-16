@@ -591,7 +591,7 @@ def tiket_data(request):
 
         periode_formatted = _format_periode_tiket(obj)
 
-        detail_btn = f"<a href='{reverse('tiket_detail', args=[obj.pk])}' class='btn btn-sm btn-info' title='View'><i class='ri-eye-line'></i></a>"
+        detail_btn = f"<a href='{reverse('tiket_detail', args=[obj.pk])}' class='btn btn-sm btn-info' title='View'><i class='feather-eye'></i></a>"
         
         actions_html = f"<div class='btn-group btn-group-sm' role='group'>{detail_btn}</div>"
 
