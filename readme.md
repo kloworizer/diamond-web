@@ -70,6 +70,21 @@ config/settings/
     DEBUG=True
     ALLOWED_HOSTS=127.0.0.1,localhost
     DJANGO_SETTINGS_MODULE=config.settings.dev
+
+    # Oracle Sync (wajib jika ingin pakai fitur sync Oracle)
+    ORACLE_USER=your_oracle_user
+    ORACLE_PASSWORD=your_oracle_password
+    ORACLE_HOST=10.10.10.10
+    ORACLE_PORT=1521
+    ORACLE_SERVICE_NAME=ORCLPDB1
+    # atau gunakan ORACLE_SID jika tidak memakai service name
+    # ORACLE_SID=ORCL
+
+    ORACLE_SYNC_SOURCE_TABLE=YOUR_SOURCE_TABLE
+    ORACLE_SYNC_TARGET_MODEL=diamond_web.Kanwil
+    ORACLE_SYNC_TARGET_KEY_FIELD=kode_kanwil
+    ORACLE_SYNC_SOURCE_KEY_COLUMN=KODE_KANWIL
+    ORACLE_SYNC_FIELD_MAP_JSON={"kode_kanwil":"KODE_KANWIL","nama_kanwil":"NAMA_KANWIL"}
     ```
 
 4. **Jalankan migrasi database:**
@@ -85,6 +100,24 @@ python manage.py runserver
 ```
 
 Akses aplikasi di [http://localhost:8000](http://localhost:8000).
+
+## Oracle Sync (Periodic + Admin Page)
+
+- Check perubahan tanpa menulis data:
+
+```bash
+python manage.py sync_oracle_data --check-only
+```
+
+- Jalankan insert/update:
+
+```bash
+python manage.py sync_oracle_data
+```
+
+- Halaman admin (user group `admin`):
+    - Buka menu **Admin P3DE > Sync Data Oracle**
+    - Klik **Cek Data** lalu **Sync Data**
 
 ### Menjalankan dengan Settings Spesifik
 

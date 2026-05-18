@@ -14,6 +14,9 @@ urlpatterns = [
     path('notifications/read/<int:pk>/', views.mark_notification_read, name='mark_notification_read'),
     path('password_change/', auth_views.PasswordChangeView.as_view(template_name='registration/change_password_form.html', success_url=reverse_lazy('user_password_change_done')), name='user_password_change'),
     path('password_change/done/', auth_views.PasswordChangeDoneView.as_view(template_name='registration/change_password_done.html'), name='user_password_change_done'),
+    path('oracle-sync/', views.oracle_sync_page, name='oracle_sync_page'),
+    path('oracle-sync/check/', views.oracle_sync_check, name='oracle_sync_check'),
+    path('oracle-sync/run/', views.oracle_sync_run, name='oracle_sync_run'),
 
     # === new_login Section ===
     # path('new_login/', views.new_login, name='new_login'),
