@@ -41,6 +41,7 @@
         <div class="card-body">
             <form method="post" action="{{ form_action }}" id="tiket-rekam-form">
                 {% csrf_token %}
+                <input type="hidden" name="old_db" value="0">
                 
                 <!-- SECTION A: Data Utama -->
                 <div class="alert alert-light border-start border-primary border-3 mb-4" role="alert">

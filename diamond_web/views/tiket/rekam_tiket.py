@@ -474,6 +474,7 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
 
             with transaction.atomic():
                 self.object = form.save(commit=False)
+                self.object.old_db = False
                 self.object.nomor_tiket = nomor_tiket
                 
                 # Set status based on data availability

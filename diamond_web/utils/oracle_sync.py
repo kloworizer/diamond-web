@@ -1,8 +1,7 @@
-import json
 import logging
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
@@ -19,18 +18,37 @@ class OracleSyncConfigError(Exception):
     """Raised when Oracle sync configuration is invalid."""
 
 
+@dataclass(frozen=True)
+class OracleSyncTableConfig:
+    name: str
+    source_table: str
+    target_model_label: str
+    target_key_field: str
+    source_key_column: str
+    field_map: dict[str, str]
+    foreign_key_lookup_map: dict[str, str] = field(default_factory=dict)
+    derived_field_map: dict[str, str] = field(default_factory=dict)
+    where_clause: str = ""
+
+
 @dataclass
 class OracleSyncSummary:
+    table_name: str
+    source_table: str
+    target_model: str
     source_rows: int
     inserts: int
     updates: int
     unchanged: int
-    errors: list[str]
-    inserted_keys: list[str]
-    updated_keys: list[str]
+    errors: list[str] = field(default_factory=list)
+    inserted_keys: list[str] = field(default_factory=list)
+    updated_keys: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
         return {
+            "table_name": self.table_name,
+            "source_table": self.source_table,
+            "target_model": self.target_model,
             "source_rows": self.source_rows,
             "inserts": self.inserts,
             "updates": self.updates,
@@ -41,8 +59,85 @@ class OracleSyncSummary:
         }
 
 
+@dataclass
+class OracleSyncBatchSummary:
+    source_rows: int
+    inserts: int
+    updates: int
+    unchanged: int
+    errors: list[str]
+    inserted_keys: list[str]
+    updated_keys: list[str]
+    table_summaries: list[OracleSyncSummary]
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "source_rows": self.source_rows,
+            "inserts": self.inserts,
+            "updates": self.updates,
+            "unchanged": self.unchanged,
+            "errors": self.errors,
+            "inserted_keys": self.inserted_keys,
+            "updated_keys": self.updated_keys,
+            "table_summaries": [summary.as_dict() for summary in self.table_summaries],
+        }
+
+
+# NOTE:
+# Hardcode mapping tabel sync di sini.
+# Tambahkan item baru jika source Oracle lebih dari satu tabel.
+HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
+    OracleSyncTableConfig(
+        name="kategori_ilap",
+        source_table="PROD.APP_KATEGORI_ILAP",
+        target_model_label="diamond_web.KategoriILAP",
+        target_key_field="id_kategori",
+        source_key_column="ID_KATEGORI_ILAP",
+        field_map={
+            "nama_kategori": "NAMA_KATEGORI",
+            "create_date": "CREATE_DATE",
+            "create_by": "CREATE_BY",
+        },
+        where_clause="",
+    ),
+    OracleSyncTableConfig(
+        name="ilap",
+        source_table="PROD.APP_ILAP",
+        target_model_label="diamond_web.ILAP",
+        target_key_field="id_ilap",
+        source_key_column="ID_ILAP",
+        field_map={
+            "id_kategori": "ID_KATEGORI_ILAP",
+            "nama_ilap": "NAMA_ILAP",
+            "alamat_ilap": "ALAMAT_ILAP",
+            "kota_ilap": "KOTA_ILAP",
+            "namapic_ilap": "NAMAPIC_ILAP",
+            "telp_kantor": "TELP_KANTOR",
+            "fax_ilap": "FAX_ILAP",
+            "email_picilap": "EMAIL_PICILAP",
+            "create_date": "CREATE_DATE",
+            "create_by": "CREATE_BY",
+            "jabatan_picilap": "JABATAN_PICILAP",
+            "telp_pic": "TELP_PIC",
+            "tujuan_surat": "TUJUAN_SURAT",
+            "tembusan": "TEMBUSAN",
+            "update_date": "UPDATE_DATE",
+            "update_by": "UPDATE_BY",
+        },
+        foreign_key_lookup_map={
+            "id_kategori": "id_kategori",
+            "id_kategori_wilayah": "deskripsi",
+        },
+        derived_field_map={
+            "id_kategori_wilayah": "kategori_wilayah_from_id_kategori",
+        },
+        where_clause="",
+    ),
+]
+
+
 class OracleDataSyncService:
-    """Sync rows from Oracle table into a configured Django model."""
+    """Sync rows from Oracle tables into one or more configured Django models."""
 
     _IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_$.]*$")
 
@@ -54,81 +149,112 @@ class OracleDataSyncService:
         self.oracle_service_name = os.getenv("ORACLE_SERVICE_NAME", "").strip()
         self.oracle_sid = os.getenv("ORACLE_SID", "").strip()
 
-        self.source_table = os.getenv("ORACLE_SYNC_SOURCE_TABLE", "").strip()
-        self.target_model_label = os.getenv("ORACLE_SYNC_TARGET_MODEL", "").strip()
-        self.target_key_field = os.getenv("ORACLE_SYNC_TARGET_KEY_FIELD", "").strip()
-        self.source_key_column = os.getenv("ORACLE_SYNC_SOURCE_KEY_COLUMN", "").strip()
-        self.field_map_json = os.getenv("ORACLE_SYNC_FIELD_MAP_JSON", "").strip()
-        self.where_clause = os.getenv("ORACLE_SYNC_SOURCE_WHERE", "").strip()
+        self._target_model_cache: dict[str, Any] = {}
 
-        self._validate_config()
-        self.target_model = apps.get_model(self.target_model_label)
-        self.field_map = self._load_field_map()
+        self._validate_connection_config()
+        self._validate_sync_configs(HARD_CODED_SYNC_TABLES)
 
     def _validate_identifier(self, value: str, label: str):
         if not self._IDENTIFIER_RE.match(value):
             raise OracleSyncConfigError(f"{label} tidak valid: {value}")
 
-    def _validate_config(self):
+    def _validate_connection_config(self):
         required_values = {
             "ORACLE_USER": self.oracle_user,
             "ORACLE_PASSWORD": self.oracle_password,
             "ORACLE_HOST": self.oracle_host,
-            "ORACLE_SYNC_SOURCE_TABLE": self.source_table,
-            "ORACLE_SYNC_TARGET_MODEL": self.target_model_label,
-            "ORACLE_SYNC_TARGET_KEY_FIELD": self.target_key_field,
-            "ORACLE_SYNC_SOURCE_KEY_COLUMN": self.source_key_column,
-            "ORACLE_SYNC_FIELD_MAP_JSON": self.field_map_json,
         }
         missing = [name for name, value in required_values.items() if not value]
         if missing:
             raise OracleSyncConfigError(
-                "Konfigurasi Oracle sync belum lengkap: " + ", ".join(missing)
+                "Konfigurasi Oracle belum lengkap: " + ", ".join(missing)
             )
 
         if not self.oracle_service_name and not self.oracle_sid:
+            raise OracleSyncConfigError("Set ORACLE_SERVICE_NAME atau ORACLE_SID di .env")
+
+    def _validate_sync_configs(self, sync_configs: list[OracleSyncTableConfig]):
+        if not sync_configs:
             raise OracleSyncConfigError(
-                "Set ORACLE_SERVICE_NAME atau ORACLE_SID di .env"
+                "Konfigurasi sync tabel kosong. Isi HARD_CODED_SYNC_TABLES di utils/oracle_sync.py"
             )
 
-        self._validate_identifier(self.source_table, "ORACLE_SYNC_SOURCE_TABLE")
-        self._validate_identifier(self.source_key_column, "ORACLE_SYNC_SOURCE_KEY_COLUMN")
+        names: set[str] = set()
+        for cfg in sync_configs:
+            if cfg.name in names:
+                raise OracleSyncConfigError(f"Nama config sync duplikat: {cfg.name}")
+            names.add(cfg.name)
 
-    def _load_field_map(self) -> dict[str, str]:
-        try:
-            mapping = json.loads(self.field_map_json)
-        except json.JSONDecodeError as exc:
-            raise OracleSyncConfigError(
-                "ORACLE_SYNC_FIELD_MAP_JSON harus format JSON object"
-            ) from exc
+            self._validate_identifier(cfg.source_table, f"source_table ({cfg.name})")
+            self._validate_identifier(cfg.source_key_column, f"source_key_column ({cfg.name})")
 
-        if not isinstance(mapping, dict) or not mapping:
-            raise OracleSyncConfigError(
-                "ORACLE_SYNC_FIELD_MAP_JSON harus object non-empty"
-            )
+            if not cfg.field_map:
+                raise OracleSyncConfigError(f"field_map kosong untuk config {cfg.name}")
 
-        normalized: dict[str, str] = {}
-        for target_field, source_column in mapping.items():
-            if not isinstance(target_field, str) or not isinstance(source_column, str):
-                raise OracleSyncConfigError(
-                    "Field map hanya boleh berisi pasangan string"
-                )
-            source_column = source_column.strip()
-            self._validate_identifier(source_column, "Source column")
-            normalized[target_field.strip()] = source_column
+            target_model = self._get_target_model(cfg.target_model_label)
+
+            for target_field, source_column in cfg.field_map.items():
+                if not target_field or not isinstance(target_field, str):
+                    raise OracleSyncConfigError(f"target field invalid pada config {cfg.name}")
+                if not source_column or not isinstance(source_column, str):
+                    raise OracleSyncConfigError(f"source column invalid pada config {cfg.name}")
+
+                self._validate_identifier(source_column.strip(), f"source column ({cfg.name})")
+
+                try:
+                    field_obj = target_model._meta.get_field(target_field)
+                    if field_obj.is_relation:
+                        lookup_field = cfg.foreign_key_lookup_map.get(target_field)
+                        if not lookup_field:
+                            raise OracleSyncConfigError(
+                                f"Field relasi butuh foreign_key_lookup_map: {cfg.name}.{target_field}"
+                            )
+
+                        related_model = field_obj.remote_field.model
+                        try:
+                            related_model._meta.get_field(lookup_field)
+                        except FieldDoesNotExist as exc:
+                            raise OracleSyncConfigError(
+                                f"Lookup field relasi tidak ada: {related_model._meta.label}.{lookup_field}"
+                            ) from exc
+                except FieldDoesNotExist as exc:
+                    raise OracleSyncConfigError(
+                        f"Field target tidak ada: {cfg.target_model_label}.{target_field}"
+                    ) from exc
+
+            for target_field in cfg.derived_field_map.keys():
+                try:
+                    field_obj = target_model._meta.get_field(target_field)
+                    if field_obj.is_relation:
+                        lookup_field = cfg.foreign_key_lookup_map.get(target_field)
+                        if not lookup_field:
+                            raise OracleSyncConfigError(
+                                f"Field relasi derived butuh foreign_key_lookup_map: {cfg.name}.{target_field}"
+                            )
+
+                        related_model = field_obj.remote_field.model
+                        try:
+                            related_model._meta.get_field(lookup_field)
+                        except FieldDoesNotExist as exc:
+                            raise OracleSyncConfigError(
+                                f"Lookup field relasi tidak ada: {related_model._meta.label}.{lookup_field}"
+                            ) from exc
+                except FieldDoesNotExist as exc:
+                    raise OracleSyncConfigError(
+                        f"Field target derived tidak ada: {cfg.target_model_label}.{target_field}"
+                    ) from exc
 
             try:
-                field_obj = self.target_model._meta.get_field(target_field)
-                if field_obj.is_relation:
-                    raise OracleSyncConfigError(
-                        f"Field relasi belum didukung untuk sync otomatis: {target_field}"
-                    )
+                target_model._meta.get_field(cfg.target_key_field)
             except FieldDoesNotExist as exc:
                 raise OracleSyncConfigError(
-                    f"Field target tidak ada di model: {target_field}"
+                    f"Target key field tidak ada: {cfg.target_model_label}.{cfg.target_key_field}"
                 ) from exc
 
-        return normalized
+    def _get_target_model(self, model_label: str):
+        if model_label not in self._target_model_cache:
+            self._target_model_cache[model_label] = apps.get_model(model_label)
+        return self._target_model_cache[model_label]
 
     def _connect_oracle(self):
         try:
@@ -138,7 +264,6 @@ class OracleDataSyncService:
                 "Library cx_Oracle belum terpasang. Install dependency terlebih dahulu."
             ) from exc
 
-        dsn = None
         if self.oracle_service_name:
             dsn = cx_Oracle.makedsn(
                 self.oracle_host,
@@ -158,19 +283,6 @@ class OracleDataSyncService:
             dsn=dsn,
         )
 
-    def _build_select_sql(self) -> str:
-        columns = [self.source_key_column, *self.field_map.values()]
-        dedup_columns: list[str] = []
-        for c in columns:
-            if c not in dedup_columns:
-                dedup_columns.append(c)
-
-        columns_sql = ", ".join(dedup_columns)
-        sql = f"SELECT {columns_sql} FROM {self.source_table}"
-        if self.where_clause:
-            sql = f"{sql} WHERE {self.where_clause}"
-        return sql
-
     @staticmethod
     def _normalize_value(value: Any) -> Any:
         if isinstance(value, str):
@@ -183,8 +295,8 @@ class OracleDataSyncService:
             return value.replace(microsecond=0)
         return value
 
-    def _coerce_model_value(self, model_field_name: str, value: Any) -> Any:
-        field_obj = self.target_model._meta.get_field(model_field_name)
+    def _coerce_model_value(self, target_model, model_field_name: str, value: Any) -> Any:
+        field_obj = target_model._meta.get_field(model_field_name)
         if value is None:
             return None
 
@@ -202,10 +314,22 @@ class OracleDataSyncService:
 
         return value
 
-    def _fetch_oracle_rows(self) -> list[dict[str, Any]]:
+    def _build_select_sql(self, cfg: OracleSyncTableConfig) -> str:
+        columns = [cfg.source_key_column, *cfg.field_map.values()]
+        dedup_columns: list[str] = []
+        for column_name in columns:
+            if column_name not in dedup_columns:
+                dedup_columns.append(column_name)
+
+        sql = f"SELECT {', '.join(dedup_columns)} FROM {cfg.source_table}"
+        if cfg.where_clause:
+            sql = f"{sql} WHERE {cfg.where_clause}"
+        return sql
+
+    def _fetch_oracle_rows(self, cfg: OracleSyncTableConfig) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
-        sql = self._build_select_sql()
-        logger.info("Oracle sync query: %s", sql)
+        sql = self._build_select_sql(cfg)
+        logger.info("Oracle sync query [%s]: %s", cfg.name, sql)
 
         with self._connect_oracle() as conn:
             with conn.cursor() as cursor:
@@ -213,28 +337,86 @@ class OracleDataSyncService:
                 columns = [col[0].upper() for col in cursor.description]
 
                 for row in cursor.fetchall():
-                    mapped = {columns[idx]: self._normalize_value(value) for idx, value in enumerate(row)}
+                    mapped = {
+                        columns[idx]: self._normalize_value(value)
+                        for idx, value in enumerate(row)
+                    }
                     rows.append(mapped)
 
         return rows
 
-    def _map_source_to_target(self, source_row: dict[str, Any]) -> tuple[str, dict[str, Any]]:
-        key = source_row.get(self.source_key_column.upper())
+    def _map_source_to_target(
+        self,
+        cfg: OracleSyncTableConfig,
+        target_model,
+        source_row: dict[str, Any],
+    ) -> tuple[str, dict[str, Any]]:
+        key = source_row.get(cfg.source_key_column.upper())
         if key is None:
-            raise ValueError(f"Key source column {self.source_key_column} bernilai NULL")
+            raise ValueError(
+                f"{cfg.name}: Key source column {cfg.source_key_column} bernilai NULL"
+            )
+
+        def _assign_target_value(target_field: str, raw_value: Any):
+            field_obj = target_model._meta.get_field(target_field)
+
+            if field_obj.is_relation:
+                lookup_field = cfg.foreign_key_lookup_map.get(target_field)
+                if not lookup_field:
+                    raise ValueError(
+                        f"{cfg.name}: foreign_key_lookup_map tidak ditemukan untuk field {target_field}"
+                    )
+
+                if raw_value is None:
+                    mapped_values[field_obj.attname] = None
+                else:
+                    related_model = field_obj.remote_field.model
+                    try:
+                        related_obj = related_model.objects.only("pk").get(**{lookup_field: raw_value})
+                    except related_model.DoesNotExist as exc:
+                        raise ValueError(
+                            f"{cfg.name}: referensi {target_field} tidak ditemukan untuk nilai {raw_value}"
+                        ) from exc
+                    mapped_values[field_obj.attname] = related_obj.pk
+                return
+
+            mapped_values[target_field] = self._coerce_model_value(
+                target_model,
+                target_field,
+                raw_value,
+            )
 
         mapped_values: dict[str, Any] = {}
-        for target_field, source_column in self.field_map.items():
+        for target_field, source_column in cfg.field_map.items():
             raw_value = source_row.get(source_column.upper())
-            mapped_values[target_field] = self._coerce_model_value(target_field, raw_value)
+            _assign_target_value(target_field, raw_value)
 
-        key_value = self._coerce_model_value(self.target_key_field, key)
-        mapped_values[self.target_key_field] = key_value
+        for target_field, rule_name in cfg.derived_field_map.items():
+            raw_value = self._resolve_derived_value(rule_name, source_row)
+            _assign_target_value(target_field, raw_value)
+
+        key_value = self._coerce_model_value(target_model, cfg.target_key_field, key)
+        mapped_values[cfg.target_key_field] = key_value
         return str(key_value), mapped_values
 
-    def _calculate_diff(self) -> tuple[OracleSyncSummary, list[dict[str, Any]], list[tuple[Any, dict[str, Any]]]]:
-        source_rows = self._fetch_oracle_rows()
-        key_field = self.target_key_field
+    @staticmethod
+    def _resolve_derived_value(rule_name: str, source_row: dict[str, Any]) -> Any:
+        if rule_name == "kategori_wilayah_from_id_kategori":
+            kategori = str(source_row.get("ID_KATEGORI_ILAP") or "").strip().upper()
+            if kategori in {"PV", "PD"}:
+                return "Regional"
+            if kategori == "EI":
+                return "Internasional"
+            return "Nasional"
+
+        raise ValueError(f"Rule derived tidak dikenali: {rule_name}")
+
+    def _calculate_diff_for_config(
+        self,
+        cfg: OracleSyncTableConfig,
+    ) -> tuple[OracleSyncSummary, Any, list[dict[str, Any]], list[tuple[Any, dict[str, Any]]]]:
+        target_model = self._get_target_model(cfg.target_model_label)
+        source_rows = self._fetch_oracle_rows(cfg)
 
         normalized_rows: list[dict[str, Any]] = []
         key_values: list[Any] = []
@@ -242,13 +424,13 @@ class OracleDataSyncService:
 
         for source_row in source_rows:
             try:
-                _, mapped = self._map_source_to_target(source_row)
+                _, mapped = self._map_source_to_target(cfg, target_model, source_row)
                 normalized_rows.append(mapped)
-                key_values.append(mapped[key_field])
+                key_values.append(mapped[cfg.target_key_field])
             except Exception as exc:
                 errors.append(str(exc))
 
-        existing = self.target_model.objects.in_bulk(key_values, field_name=key_field)
+        existing = target_model.objects.in_bulk(key_values, field_name=cfg.target_key_field)
 
         inserts: list[dict[str, Any]] = []
         updates: list[tuple[Any, dict[str, Any]]] = []
@@ -257,7 +439,7 @@ class OracleDataSyncService:
         updated_keys: list[str] = []
 
         for mapped in normalized_rows:
-            key_value = mapped[key_field]
+            key_value = mapped[cfg.target_key_field]
             obj = existing.get(key_value)
             if obj is None:
                 inserts.append(mapped)
@@ -277,6 +459,9 @@ class OracleDataSyncService:
                 unchanged += 1
 
         summary = OracleSyncSummary(
+            table_name=cfg.name,
+            source_table=cfg.source_table,
+            target_model=cfg.target_model_label,
             source_rows=len(source_rows),
             inserts=len(inserts),
             updates=len(updates),
@@ -285,27 +470,87 @@ class OracleDataSyncService:
             inserted_keys=inserted_keys[:20],
             updated_keys=updated_keys[:20],
         )
-        return summary, inserts, updates
+        return summary, target_model, inserts, updates
 
-    def check(self) -> OracleSyncSummary:
-        summary, _, _ = self._calculate_diff()
-        return summary
+    def _apply_operations(
+        self,
+        target_model,
+        inserts: list[dict[str, Any]],
+        updates: list[tuple[Any, dict[str, Any]]],
+    ):
+        if inserts:
+            target_model.objects.bulk_create([target_model(**data) for data in inserts])
 
-    def sync(self) -> OracleSyncSummary:
-        summary, inserts, updates = self._calculate_diff()
-        if summary.errors:
+        for obj, changed_fields in updates:
+            for field_name, value in changed_fields.items():
+                setattr(obj, field_name, value)
+            obj.save(update_fields=list(changed_fields.keys()))
+
+    def _build_batch_summary(self, table_summaries: list[OracleSyncSummary]) -> OracleSyncBatchSummary:
+        errors: list[str] = []
+        inserted_keys: list[str] = []
+        updated_keys: list[str] = []
+        source_rows = inserts = updates = unchanged = 0
+
+        for summary in table_summaries:
+            source_rows += summary.source_rows
+            inserts += summary.inserts
+            updates += summary.updates
+            unchanged += summary.unchanged
+            errors.extend([f"[{summary.table_name}] {err}" for err in summary.errors])
+            inserted_keys.extend(summary.inserted_keys)
+            updated_keys.extend(summary.updated_keys)
+
+        return OracleSyncBatchSummary(
+            source_rows=source_rows,
+            inserts=inserts,
+            updates=updates,
+            unchanged=unchanged,
+            errors=errors,
+            inserted_keys=inserted_keys[:20],
+            updated_keys=updated_keys[:20],
+            table_summaries=table_summaries,
+        )
+
+    def _run_sequential(self, apply_changes: bool) -> OracleSyncBatchSummary:
+        table_summaries: list[OracleSyncSummary] = []
+
+        for cfg in HARD_CODED_SYNC_TABLES:
+            try:
+                summary, target_model, inserts, updates = self._calculate_diff_for_config(cfg)
+                table_summaries.append(summary)
+
+                if apply_changes and not summary.errors:
+                    self._apply_operations(target_model, inserts, updates)
+            except Exception as exc:
+                table_summaries.append(
+                    OracleSyncSummary(
+                        table_name=cfg.name,
+                        source_table=cfg.source_table,
+                        target_model=cfg.target_model_label,
+                        source_rows=0,
+                        inserts=0,
+                        updates=0,
+                        unchanged=0,
+                        errors=[str(exc)],
+                        inserted_keys=[],
+                        updated_keys=[],
+                    )
+                )
+
+        return self._build_batch_summary(table_summaries)
+
+    def check(self) -> OracleSyncBatchSummary:
+        # Simulasikan apply dalam 1 transaksi agar dependency antar tabel (parent-child)
+        # bisa tervalidasi, lalu rollback supaya data tidak tersimpan.
+        with transaction.atomic():
+            summary = self._run_sequential(apply_changes=True)
+            transaction.set_rollback(True)
             return summary
 
+    def sync(self) -> OracleSyncBatchSummary:
         with transaction.atomic():
-            if inserts:
-                self.target_model.objects.bulk_create([
-                    self.target_model(**data) for data in inserts
-                ])
-
-            for obj, changed_fields in updates:
-                for field_name, value in changed_fields.items():
-                    setattr(obj, field_name, value)
-                update_fields = list(changed_fields.keys())
-                obj.save(update_fields=update_fields)
-
-        return summary
+            summary = self._run_sequential(apply_changes=True)
+            if summary.errors:
+                transaction.set_rollback(True)
+            return summary

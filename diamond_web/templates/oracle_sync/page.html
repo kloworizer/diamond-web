@@ -22,8 +22,11 @@
             <h5 class="card-title mb-0">Oracle to App DB</h5>
         </div>
         <div class="card-body">
-            <p class="text-muted mb-4">Klik <strong>Cek Data</strong> dulu untuk melihat perubahan, lalu <strong>Sync Data</strong> untuk menjalankan insert/update.</p>
+            <p class="text-muted mb-4">Klik <strong>Cek Data</strong> dulu untuk melihat perubahan semua mapping tabel, lalu <strong>Sync Data</strong> untuk menjalankan insert/update.</p>
             <div class="d-flex gap-2 flex-wrap">
+                <button id="btn-test" class="btn btn-secondary" type="button">
+                    <i class="feather-wifi me-1"></i>Test Koneksi
+                </button>
                 <button id="btn-check" class="btn btn-primary" type="button">
                     <i class="feather-search me-1"></i>Cek Data
                 </button>
@@ -55,6 +58,7 @@
 {% block scripts %}
 <script>
     (function () {
+        const btnTest = document.getElementById('btn-test');
         const btnCheck = document.getElementById('btn-check');
         const btnSync = document.getElementById('btn-sync');
         const resultBox = document.getElementById('sync-result');
@@ -112,6 +116,18 @@
             }
             return data;
         }
+
+        btnTest.addEventListener('click', async function () {
+            setLoading(btnTest, true, '<i class="feather-wifi me-1"></i>Test Koneksi', 'Testing...');
+            try {
+                await postJson("{% url 'oracle_sync_test' %}");
+                showToast('Koneksi Oracle berhasil.', 'success');
+            } catch (error) {
+                showToast(error.message, 'danger');
+            } finally {
+                setLoading(btnTest, false, '<i class="feather-wifi me-1"></i>Test Koneksi', 'Testing...');
+            }
+        });
 
         btnCheck.addEventListener('click', async function () {
             setLoading(btnCheck, true, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');

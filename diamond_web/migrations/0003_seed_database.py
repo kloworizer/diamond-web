@@ -1,11 +1,67 @@
 # Generated migration - Seed database with initial data
 
 from datetime import date
+from functools import lru_cache
+from pathlib import Path
 
 from django.db import migrations
+from dotenv import dotenv_values
 
 
 SEED_AUDIT_DATE = date(2024, 1, 1)
+SEED_ENV_VAR = "DB_SEED_ENABLED"
+SEED_TABLE_ENV_VAR = "SEED_TABLE"
+
+
+@lru_cache(maxsize=1)
+def _get_env_values() -> dict[str, str | None]:
+    env_path = Path(__file__).resolve().parents[2] / ".env"
+    return dotenv_values(env_path)
+
+
+def _is_seed_enabled() -> bool:
+    env_values = _get_env_values()
+    raw_value = str(env_values.get(SEED_ENV_VAR, "")).strip().lower()
+    return raw_value in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def _get_seed_table_filter() -> set[str] | None:
+    env_values = _get_env_values()
+    raw_value = str(env_values.get(SEED_TABLE_ENV_VAR, "")).strip()
+    if not raw_value:
+        return None
+
+    selected = {
+        item.strip().upper()
+        for item in raw_value.split(",")
+        if item and item.strip()
+    }
+    return selected or None
+
+
+def _should_run_seed(seed_key: str) -> bool:
+    if not _is_seed_enabled():
+        return False
+
+    selected_tables = _get_seed_table_filter()
+    if selected_tables is None:
+        return True
+
+    return seed_key.upper() in selected_tables
+
+
+def _run_if_seed_enabled(seed_key: str, seed_func):
+    def _wrapped(apps, schema_editor):
+        if not _should_run_seed(seed_key):
+            return
+        return seed_func(apps, schema_editor)
+
+    return _wrapped
 
 
 def seed_audit_defaults(defaults=None):
@@ -1352,25 +1408,25 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(seed_kategori_ilap, reverse_code=unseed_kategori_ilap),
-        migrations.RunPython(seed_kategori_wilayah, reverse_code=unseed_kategori_wilayah),
-        migrations.RunPython(seed_kanwil, reverse_code=unseed_kanwil),
-        migrations.RunPython(seed_kpp, reverse_code=unseed_kpp),
-        migrations.RunPython(seed_jenis_tabel, reverse_code=unseed_jenis_tabel),
-        migrations.RunPython(seed_dasar_hukum, reverse_code=unseed_dasar_hukum),
-        migrations.RunPython(seed_periode_pengiriman, reverse_code=unseed_periode_pengiriman),
-        migrations.RunPython(seed_status_data, reverse_code=unseed_status_data),
-        migrations.RunPython(seed_bentuk_data, reverse_code=unseed_bentuk_data),
-        migrations.RunPython(seed_cara_penyampaian, reverse_code=unseed_cara_penyampaian),
-        migrations.RunPython(seed_media_backup, reverse_code=unseed_media_backup),
-        migrations.RunPython(seed_status_penelitian, reverse_code=unseed_status_penelitian),
-        migrations.RunPython(seed_ilap, reverse_code=unseed_ilap),
-        migrations.RunPython(seed_jenis_data_ilap, reverse_code=unseed_jenis_data_ilap),
-        migrations.RunPython(seed_klasifikasi_jenis_data, reverse_code=unseed_klasifikasi_jenis_data),
-        migrations.RunPython(seed_periode_jenis_data, reverse_code=unseed_periode_jenis_data),
-        migrations.RunPython(seed_jenis_prioritas_data, reverse_code=unseed_jenis_prioritas_data),
-        migrations.RunPython(seed_users, reverse_code=unseed_users),
-        migrations.RunPython(seed_pic, reverse_code=unseed_pic),
-        migrations.RunPython(seed_durasi_jatuh_tempo, reverse_code=unseed_durasi_jatuh_tempo),
-        migrations.RunPython(seed_docx_templates, reverse_code=unseed_docx_templates),
+        migrations.RunPython(_run_if_seed_enabled("KATEGORI_ILAP_DATA", seed_kategori_ilap), reverse_code=unseed_kategori_ilap),
+        migrations.RunPython(_run_if_seed_enabled("KATEGORI_WILAYAH_DATA", seed_kategori_wilayah), reverse_code=unseed_kategori_wilayah),
+        migrations.RunPython(_run_if_seed_enabled("KANWIL_DATA", seed_kanwil), reverse_code=unseed_kanwil),
+        migrations.RunPython(_run_if_seed_enabled("KPP_DATA", seed_kpp), reverse_code=unseed_kpp),
+        migrations.RunPython(_run_if_seed_enabled("JENIS_TABEL_DATA", seed_jenis_tabel), reverse_code=unseed_jenis_tabel),
+        migrations.RunPython(_run_if_seed_enabled("DASAR_HUKUM_DATA", seed_dasar_hukum), reverse_code=unseed_dasar_hukum),
+        migrations.RunPython(_run_if_seed_enabled("PERIODE_PENGIRIMAN_DATA", seed_periode_pengiriman), reverse_code=unseed_periode_pengiriman),
+        migrations.RunPython(_run_if_seed_enabled("STATUS_DATA_DATA", seed_status_data), reverse_code=unseed_status_data),
+        migrations.RunPython(_run_if_seed_enabled("BENTUK_DATA_DATA", seed_bentuk_data), reverse_code=unseed_bentuk_data),
+        migrations.RunPython(_run_if_seed_enabled("CARA_PENYAMPAIAN_DATA", seed_cara_penyampaian), reverse_code=unseed_cara_penyampaian),
+        migrations.RunPython(_run_if_seed_enabled("MEDIA_BACKUP_DATA", seed_media_backup), reverse_code=unseed_media_backup),
+        migrations.RunPython(_run_if_seed_enabled("STATUS_PENELITIAN_DATA", seed_status_penelitian), reverse_code=unseed_status_penelitian),
+        migrations.RunPython(_run_if_seed_enabled("ILAP_DATA", seed_ilap), reverse_code=unseed_ilap),
+        migrations.RunPython(_run_if_seed_enabled("JENIS_DATA_ILAP_DATA", seed_jenis_data_ilap), reverse_code=unseed_jenis_data_ilap),
+        migrations.RunPython(_run_if_seed_enabled("KLASIFIKASI_JENIS_DATA", seed_klasifikasi_jenis_data), reverse_code=unseed_klasifikasi_jenis_data),
+        migrations.RunPython(_run_if_seed_enabled("PERIODE_JENIS_DATA", seed_periode_jenis_data), reverse_code=unseed_periode_jenis_data),
+        migrations.RunPython(_run_if_seed_enabled("JENIS_PRIORITAS_DATA", seed_jenis_prioritas_data), reverse_code=unseed_jenis_prioritas_data),
+        migrations.RunPython(_run_if_seed_enabled("USERS_DATA", seed_users), reverse_code=unseed_users),
+        migrations.RunPython(_run_if_seed_enabled("PIC_DATA", seed_pic), reverse_code=unseed_pic),
+        migrations.RunPython(_run_if_seed_enabled("DURASI_JATUH_TEMPO_DATA", seed_durasi_jatuh_tempo), reverse_code=unseed_durasi_jatuh_tempo),
+        migrations.RunPython(_run_if_seed_enabled("DOCX_TEMPLATE_DATA", seed_docx_templates), reverse_code=unseed_docx_templates),
     ]

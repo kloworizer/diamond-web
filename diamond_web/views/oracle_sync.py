@@ -24,6 +24,25 @@ def oracle_sync_page(request):
 @login_required
 @user_passes_test(_is_admin_user)
 @require_POST
+def oracle_sync_test_connection(request):
+    try:
+        service = OracleDataSyncService()
+        with service._connect_oracle() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT 1 FROM DUAL")
+        return JsonResponse({
+            'success': True,
+            'message': 'Koneksi Oracle berhasil.',
+        })
+    except OracleSyncConfigError as exc:
+        return JsonResponse({'success': False, 'message': str(exc)}, status=400)
+    except Exception as exc:
+        return JsonResponse({'success': False, 'message': f'Gagal koneksi Oracle: {exc}'}, status=500)
+
+
+@login_required
+@user_passes_test(_is_admin_user)
+@require_POST
 def oracle_sync_check(request):
     try:
         service = OracleDataSyncService()

@@ -469,6 +469,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
                 ('nomor_tiket', models.CharField(max_length=17, verbose_name='Nomor Tiket')),
+                ('old_db', models.BooleanField(default=False, verbose_name='Old DB')),
                 ('status_tiket', models.IntegerField(choices=[(1, 'Direkam'), (2, 'Diteliti'), (3, 'Dikembalikan'), (4, 'Dikirim ke PIDE'), (5, 'Identifikasi'), (6, 'Pengendalian Mutu'), (7, 'Dibatalkan'), (8, 'Selesai')], verbose_name='Status Tiket')),
                 ('id_periode_data', models.ForeignKey(db_column='id_periode_data', on_delete=django.db.models.deletion.PROTECT, to='diamond_web.periodejenisdata', verbose_name='Periode Jenis Data')),
                 ('id_jenis_prioritas_data', models.ForeignKey(blank=True, db_column='id_jenis_prioritas_data', null=True, on_delete=django.db.models.deletion.PROTECT, to='diamond_web.jenisprioritasdata', verbose_name='Jenis Prioritas Data')),

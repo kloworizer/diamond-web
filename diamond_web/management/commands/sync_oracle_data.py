@@ -4,7 +4,7 @@ from ...utils.oracle_sync import OracleDataSyncService, OracleSyncConfigError
 
 
 class Command(BaseCommand):
-    help = "Sync data dari Oracle ke tabel Django yang dikonfigurasi lewat .env"
+    help = "Sync data dari Oracle ke tabel Django berdasarkan hardcoded mapping di utils/oracle_sync.py"
 
     def add_arguments(self, parser):
         parser.add_argument(

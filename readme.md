@@ -80,11 +80,8 @@ config/settings/
     # atau gunakan ORACLE_SID jika tidak memakai service name
     # ORACLE_SID=ORCL
 
-    ORACLE_SYNC_SOURCE_TABLE=YOUR_SOURCE_TABLE
-    ORACLE_SYNC_TARGET_MODEL=diamond_web.Kanwil
-    ORACLE_SYNC_TARGET_KEY_FIELD=kode_kanwil
-    ORACLE_SYNC_SOURCE_KEY_COLUMN=KODE_KANWIL
-    ORACLE_SYNC_FIELD_MAP_JSON={"kode_kanwil":"KODE_KANWIL","nama_kanwil":"NAMA_KANWIL"}
+    # Mapping tabel sync TIDAK di .env
+    # Edit hardcoded config di diamond_web/utils/oracle_sync.py (HARD_CODED_SYNC_TABLES)
     ```
 
 4. **Jalankan migrasi database:**
@@ -102,6 +99,8 @@ python manage.py runserver
 Akses aplikasi di [http://localhost:8000](http://localhost:8000).
 
 ## Oracle Sync (Periodic + Admin Page)
+
+Konfigurasi mapping beberapa tabel sync di-hardcode pada `HARD_CODED_SYNC_TABLES` dalam file `diamond_web/utils/oracle_sync.py`.
 
 - Check perubahan tanpa menulis data:
 
