@@ -5,4 +5,4 @@ from .base import AutoRequiredFormMixin
 class DasarHukumForm(AutoRequiredFormMixin, forms.ModelForm):
     class Meta:
         model = DasarHukum
-        fields = ['deskripsi']
+        fields = ['kategori', 'deskripsi']

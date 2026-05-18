@@ -58,6 +58,7 @@ class Migration(migrations.Migration):
                 ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
                 ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
                 ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
+                ('kategori', models.CharField(choices=[('DAPEN', 'DAPEN'), ('EOI', 'EOI'), ('KMK', 'KMK'), ('KSWP', 'KSWP'), ('MOU', 'MOU'), ('PKD', 'PKD'), ('PKS', 'PKS'), ('PMK', 'PMK')], max_length=10, verbose_name='Kategori')),
                 ('deskripsi', models.CharField(max_length=50, unique=True, verbose_name='Deskripsi')),
             ],
             options={
@@ -75,14 +76,17 @@ class Migration(migrations.Migration):
                 ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
                 ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
                 ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
-                ('id_ilap', models.CharField(max_length=5, unique=True, verbose_name='ID ILAP')),
-                ('nama_ilap', models.CharField(max_length=150, unique=True, verbose_name='Nama ILAP')),
+                ('id_ilap', models.CharField(max_length=5, verbose_name='ID ILAP')),
+                ('nama_ilap', models.CharField(max_length=150, verbose_name='Nama ILAP')),
             ],
             options={
                 'verbose_name': 'ILAP',
                 'verbose_name_plural': 'ILAP',
                 'db_table': 'ilap',
                 'ordering': ['id_ilap'],
+                'constraints': [
+                    models.UniqueConstraint(fields=['id_ilap', 'nama_ilap'], name='unique_ilap_id_nama'),
+                ],
             },
         ),
         migrations.CreateModel(

@@ -133,11 +133,11 @@ def dasar_hukum_data(request):
     GET parameters:
     - draw: DataTables draw counter.
     - start, length: paging offset and page size.
-    - columns_search[]: column-specific search values (id, deskripsi).
+    - columns_search[]: column-specific search values (id, kategori, deskripsi).
     - order[0][column], order[0][dir]: ordering index and direction.
 
     Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data` rows.
-    Each row contains: `id`, `deskripsi`, and `actions` HTML for edit/delete.
+    Each row contains: `id`, `kategori`, `deskripsi`, and `actions` HTML for edit/delete.
     """
     try:
         draw = int(request.GET.get('draw', '1'))
@@ -156,15 +156,17 @@ def dasar_hukum_data(request):
                     qs = qs.filter(id=id_value)
                 except ValueError:
                     pass
-            if len(columns_search) > 1 and columns_search[1]:  # Deskripsi
-                qs = qs.filter(deskripsi__icontains=columns_search[1])
+            if len(columns_search) > 1 and columns_search[1]:  # Kategori
+                qs = qs.filter(kategori__icontains=columns_search[1])
+            if len(columns_search) > 2 and columns_search[2]:  # Deskripsi
+                qs = qs.filter(deskripsi__icontains=columns_search[2])
 
         records_filtered = qs.count()
 
         # ordering
         order_col_index = request.GET.get('order[0][column]')
         order_dir = request.GET.get('order[0][dir]', 'asc')
-        columns = ['id', 'deskripsi']
+        columns = ['id', 'kategori', 'deskripsi']
         if order_col_index is not None:
             try:
                 idx = int(order_col_index)
@@ -183,6 +185,7 @@ def dasar_hukum_data(request):
         for obj in qs_page:
             data.append({
                 'id': obj.id,
+                'kategori': obj.get_kategori_display(),
                 'deskripsi': obj.deskripsi,
                 'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('dasar_hukum_update', args=[obj.pk])}' title='Edit'><i class='feather-edit-2'></i></button>"
                            f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('dasar_hukum_delete', args=[obj.pk])}' title='Delete'><i class='feather-trash-2'></i></button>"

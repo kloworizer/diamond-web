@@ -21,13 +21,15 @@ class OracleSyncConfigError(Exception):
 @dataclass(frozen=True)
 class OracleSyncTableConfig:
     name: str
-    source_table: str
     target_model_label: str
     target_key_field: str
     source_key_column: str
     field_map: dict[str, str]
+    source_table: str = ""
+    source_query: str = ""
     foreign_key_lookup_map: dict[str, str] = field(default_factory=dict)
     derived_field_map: dict[str, str] = field(default_factory=dict)
+    match_fields: tuple[str, ...] = field(default_factory=tuple)
     where_clause: str = ""
 
 
@@ -131,6 +133,82 @@ HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
         derived_field_map={
             "id_kategori_wilayah": "kategori_wilayah_from_id_kategori",
         },
+        match_fields=("id_ilap", "nama_ilap"),
+        where_clause="",
+    ),
+    OracleSyncTableConfig(
+        name="jenis_data_ilap",
+        source_query="""
+            SELECT
+                a.id_ilap,
+                a.ID_JENIS_DATA,
+                b.ID_TABEL_DATA AS ID_SUB_JENIS_DATA,
+                a.NAMA_JENIS_DATA,
+                a.NAMA_JENIS_DATA AS NAMA_SUB_JENIS_DATA,
+                b.NAMA_TABEL_TIP AS NAMA_TABEL_I,
+                b.NAMA_TABEL_TIP || '_U' AS NAMA_TABEL_U,
+                CASE
+                    WHEN c."JENIS TABEL" = 'MASTER' THEN 'Diidentifikasi'
+                    WHEN c."JENIS TABEL" = 'TRANSAKSI' THEN 'Tidak Diidentifikasi'
+                    WHEN c."JENIS TABEL" = 'UNSTRUCTURE' THEN 'Tidak Terstruktur'
+                    ELSE NULL
+                END JENIS_TABEL,
+                'Data Utama' STATUS_DATA
+            FROM
+                (
+                SELECT
+                    *
+                FROM
+                    PROD.APP_JENIS_DATA_ILAP) a
+            JOIN 
+                (
+                SELECT
+                    *
+                FROM
+                    PROD.APP_TABEL_DATA_ILAP) b
+            ON
+                a.ID_JENIS_DATA = b.ID_JENIS_DATA
+            JOIN 
+                (
+                SELECT
+                    *
+                FROM
+                    PVPTD.ZA_REKAP_KOLOM_TABEL_PIC) c 
+            ON
+                b.NAMA_TABEL_TIP = c.NM_TABEL_FINAL
+        """,
+        target_model_label="diamond_web.JenisDataILAP",
+        target_key_field="id_sub_jenis_data",
+        source_key_column="ID_SUB_JENIS_DATA",
+        field_map={
+            "id_ilap": "ID_ILAP",
+            "id_jenis_data": "ID_JENIS_DATA",
+            "id_sub_jenis_data": "ID_SUB_JENIS_DATA",
+            "nama_jenis_data": "NAMA_JENIS_DATA",
+            "nama_sub_jenis_data": "NAMA_SUB_JENIS_DATA",
+            "nama_tabel_I": "NAMA_TABEL_I",
+            "nama_tabel_U": "NAMA_TABEL_U",
+            "id_jenis_tabel": "JENIS_TABEL",
+            "id_status_data": "STATUS_DATA",
+        },
+        foreign_key_lookup_map={
+            "id_ilap": "id_ilap",
+            "id_jenis_tabel": "deskripsi",
+            "id_status_data": "deskripsi",
+        },
+        match_fields=("id_ilap", "id_jenis_data", "id_sub_jenis_data"),
+        where_clause="",
+    ),
+    OracleSyncTableConfig(
+        name="dasar_hukum",
+        source_table="PROD.REF_DASAR_HUKUM",
+        target_model_label="diamond_web.DasarHukum",
+        target_key_field="deskripsi",
+        source_key_column="NAMA_DASAR_HUKUM",
+        field_map={
+            "kategori": "ID_KATEGORI_DASAR_HUKUM",
+            "deskripsi": "NAMA_DASAR_HUKUM",
+        },
         where_clause="",
     ),
 ]
@@ -185,7 +263,13 @@ class OracleDataSyncService:
                 raise OracleSyncConfigError(f"Nama config sync duplikat: {cfg.name}")
             names.add(cfg.name)
 
-            self._validate_identifier(cfg.source_table, f"source_table ({cfg.name})")
+            if bool(cfg.source_table.strip()) == bool(cfg.source_query.strip()):
+                raise OracleSyncConfigError(
+                    f"Config {cfg.name} harus isi tepat salah satu: source_table atau source_query"
+                )
+
+            if cfg.source_table:
+                self._validate_identifier(cfg.source_table, f"source_table ({cfg.name})")
             self._validate_identifier(cfg.source_key_column, f"source_key_column ({cfg.name})")
 
             if not cfg.field_map:
@@ -251,6 +335,15 @@ class OracleDataSyncService:
                     f"Target key field tidak ada: {cfg.target_model_label}.{cfg.target_key_field}"
                 ) from exc
 
+            if cfg.match_fields:
+                for match_field in cfg.match_fields:
+                    try:
+                        target_model._meta.get_field(match_field)
+                    except FieldDoesNotExist as exc:
+                        raise OracleSyncConfigError(
+                            f"Match field tidak ada: {cfg.target_model_label}.{match_field}"
+                        ) from exc
+
     def _get_target_model(self, model_label: str):
         if model_label not in self._target_model_cache:
             self._target_model_cache[model_label] = apps.get_model(model_label)
@@ -315,6 +408,9 @@ class OracleDataSyncService:
         return value
 
     def _build_select_sql(self, cfg: OracleSyncTableConfig) -> str:
+        if cfg.source_query.strip():
+            return cfg.source_query.strip().rstrip(";")
+
         columns = [cfg.source_key_column, *cfg.field_map.values()]
         dedup_columns: list[str] = []
         for column_name in columns:
@@ -329,7 +425,7 @@ class OracleDataSyncService:
     def _fetch_oracle_rows(self, cfg: OracleSyncTableConfig) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         sql = self._build_select_sql(cfg)
-        logger.info("Oracle sync query [%s]: %s", cfg.name, sql)
+        logger.debug("Oracle sync query [%s]: %s", cfg.name, sql)
 
         with self._connect_oracle() as conn:
             with conn.cursor() as cursor:
@@ -430,7 +526,11 @@ class OracleDataSyncService:
             except Exception as exc:
                 errors.append(str(exc))
 
-        existing = target_model.objects.in_bulk(key_values, field_name=cfg.target_key_field)
+        match_fields = cfg.match_fields or (cfg.target_key_field,)
+
+        def _storage_field_name(field_name: str) -> str:
+            field_obj = target_model._meta.get_field(field_name)
+            return field_obj.attname if field_obj.is_relation else field_name
 
         inserts: list[dict[str, Any]] = []
         updates: list[tuple[Any, dict[str, Any]]] = []
@@ -440,7 +540,12 @@ class OracleDataSyncService:
 
         for mapped in normalized_rows:
             key_value = mapped[cfg.target_key_field]
-            obj = existing.get(key_value)
+            lookup_kwargs: dict[str, Any] = {}
+            for field_name in match_fields:
+                stored_name = _storage_field_name(field_name)
+                lookup_kwargs[stored_name] = mapped.get(stored_name)
+            obj = target_model.objects.filter(**lookup_kwargs).first()
+            
             if obj is None:
                 inserts.append(mapped)
                 inserted_keys.append(str(key_value))
@@ -460,7 +565,7 @@ class OracleDataSyncService:
 
         summary = OracleSyncSummary(
             table_name=cfg.name,
-            source_table=cfg.source_table,
+            source_table=cfg.source_table or "<query>",
             target_model=cfg.target_model_label,
             source_rows=len(source_rows),
             inserts=len(inserts),
@@ -479,12 +584,26 @@ class OracleDataSyncService:
         updates: list[tuple[Any, dict[str, Any]]],
     ):
         if inserts:
-            target_model.objects.bulk_create([target_model(**data) for data in inserts])
+            try:
+                target_model.objects.bulk_create([target_model(**data) for data in inserts])
+            except Exception as exc:
+                # Try to find which row caused the error
+                for idx, data in enumerate(inserts):
+                    try:
+                        target_model.objects.create(**data)
+                    except Exception as row_exc:
+                        error_details = f"Row {idx}: {dict(data)}"
+                        raise Exception(f"{exc.__class__.__name__}: {str(exc)}\n{error_details}") from row_exc
+                raise
 
         for obj, changed_fields in updates:
             for field_name, value in changed_fields.items():
                 setattr(obj, field_name, value)
-            obj.save(update_fields=list(changed_fields.keys()))
+            try:
+                obj.save(update_fields=list(changed_fields.keys()))
+            except Exception as exc:
+                error_details = f"Object key={getattr(obj, 'pk', 'unknown')}, changes={dict(changed_fields)}"
+                raise Exception(f"{exc.__class__.__name__}: {str(exc)}\n{error_details}") from exc
 
     def _build_batch_summary(self, table_summaries: list[OracleSyncSummary]) -> OracleSyncBatchSummary:
         errors: list[str] = []
@@ -526,7 +645,7 @@ class OracleDataSyncService:
                 table_summaries.append(
                     OracleSyncSummary(
                         table_name=cfg.name,
-                        source_table=cfg.source_table,
+                        source_table=cfg.source_table or "<query>",
                         target_model=cfg.target_model_label,
                         source_rows=0,
                         inserts=0,
