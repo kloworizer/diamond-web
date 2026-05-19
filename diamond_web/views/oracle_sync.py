@@ -27,12 +27,33 @@ def oracle_sync_page(request):
 def oracle_sync_test_connection(request):
     try:
         service = OracleDataSyncService()
-        with service._connect_oracle() as conn:
+        with service._connect_oracle("primary") as conn:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT 1 FROM DUAL")
+
+        secondary = service.oracle_connections.get("secondary")
+        secondary_configured = bool(
+            secondary
+            and secondary.user
+            and secondary.password
+            and secondary.host
+            and (secondary.service_name or secondary.sid)
+        )
+
+        secondary_message = "Secondary tidak dikonfigurasi."
+        if secondary_configured:
+            with service._connect_oracle("secondary") as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute("SELECT 1 FROM DUAL")
+            secondary_message = "Koneksi secondary berhasil."
+
         return JsonResponse({
             'success': True,
             'message': 'Koneksi Oracle berhasil.',
+            'connections': {
+                'primary': 'Koneksi primary berhasil.',
+                'secondary': secondary_message,
+            }
         })
     except OracleSyncConfigError as exc:
         return JsonResponse({'success': False, 'message': str(exc)}, status=400)
