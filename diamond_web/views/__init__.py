@@ -27,6 +27,8 @@ from .tanda_terima_data import *
 from .monitoring_penyampaian_data import *
 from .docx_template import *
 from .laporan_pengendalian_mutu import *
+from .laporan_kelengkapan_data import *
 from .tiket import *
+from .laporan_transfer import *
 from .periode_jns_dt_ilap_views import periode_jns_data_ilap_idx as periode_ilap_index
 from .fe_data_prioritas_views import data_prioritas_idx as data_prioritas_index

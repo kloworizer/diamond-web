@@ -156,6 +156,11 @@ urlpatterns = [
     path('monitoring-penyampaian-data/data/', views.monitoring_penyampaian_data_data, name='monitoring_penyampaian_data_data'),
 
     # === PIDE Section ===
+    # Laporan Transfer
+    path('laporan-transfer/', views.LaporanTransferView.as_view(), name='laporan_transfer'),
+    path('laporan-transfer/data/', views.laporan_transfer_data, name='laporan_transfer_data'),
+    path('laporan-transfer/export/', views.laporan_transfer_export, name='laporan_transfer_export'),
+    path('laporan-transfer/filter-options/', views.laporan_transfer_filter_options, name='laporan_transfer_filter_options'),
     # Nama Tabel URLs
     path('nama-tabel/', views.NamaTabelListView.as_view(), name='nama_tabel_list'),
     path('nama-tabel/data/', views.nama_tabel_data, name='nama_tabel_data'),
@@ -180,6 +185,11 @@ urlpatterns = [
     path('laporan-pengendalian-mutu/', views.LaporanPengendalianMutuView.as_view(), name='laporan_pengendalian_mutu'),
     path('laporan-pengendalian-mutu/data/', views.laporan_pengendalian_mutu_data, name='laporan_pengendalian_mutu_data'),
     path('laporan-pengendalian-mutu/export/', views.laporan_pengendalian_mutu_export, name='laporan_pengendalian_mutu_export'),
+    # === PMDE Section ===
+    # Laporan Kelengkapan Data
+    path('laporan-kelengkapan-data/', views.LaporanKelengkapanDataView.as_view(), name='laporan_kelengkapan_data'),
+    path('laporan-kelengkapan-data/data/', views.laporan_kelengkapan_data_data, name='laporan_kelengkapan_data_data'),
+    path('laporan-kelengkapan-data/export/', views.laporan_kelengkapan_data_export, name='laporan_kelengkapan_data_export'),
     # PIC PMDE URLs
     path('pic-pmde/', views.PICPMDEListView.as_view(), name='pic_pmde_list'),
     path('pic-pmde/data/', views.pic_pmde_data, name='pic_pmde_data'),
