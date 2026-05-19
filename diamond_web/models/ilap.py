@@ -48,6 +48,12 @@ class ILAP(models.Model):
         verbose_name_plural = "ILAP"
         db_table = "ilap"
         ordering = ["id_ilap"]
+        indexes = [
+            models.Index(fields=["id_kpp"], name="ilap_kpp_idx"),
+            models.Index(fields=["id_kategori"], name="ilap_kategori_idx"),
+            models.Index(fields=["id_kategori_wilayah"], name="ilap_kwil_idx"),
+            models.Index(fields=["id_ilap"], name="ilap_id_ilap_idx"),
+        ]
         constraints = [
             UniqueConstraint(fields=["id_ilap", "nama_ilap"], name="unique_ilap_id_nama"),
         ]

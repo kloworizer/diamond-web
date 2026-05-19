@@ -24,6 +24,10 @@ class KlasifikasiJenisData(AuditTrailModel):
         db_table = "klasifikasi_jenis_data"
         ordering = ["id"]
         unique_together = [['id_sub_jenis_data', 'id_klasifikasi_tabel']]
+        indexes = [
+            models.Index(fields=["id_sub_jenis_data"], name="kjd_subjenis_idx"),
+            models.Index(fields=["id_klasifikasi_tabel"], name="kjd_klasif_idx"),
+        ]
 
     def __str__(self):
         return f"{self.id_sub_jenis_data} - {self.id_klasifikasi_tabel}"

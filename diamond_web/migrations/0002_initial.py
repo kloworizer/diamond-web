@@ -607,7 +607,111 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name='pic',
-            index=models.Index(fields=['tipe', 'id_sub_jenis_data_ilap'], name='pic_tipe_7c24ea_idx'),
+            index=models.Index(fields=['tipe', 'id_sub_jenis_data_ilap'], name='pic_tipe_sub_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='pic',
+            index=models.Index(fields=['id_sub_jenis_data_ilap', 'tipe', 'start_date', 'end_date'], name='pic_sub_active_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='pic',
+            index=models.Index(fields=['id_user', 'tipe', 'end_date'], name='pic_user_tipe_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='ilap',
+            index=models.Index(fields=['id_kpp'], name='ilap_kpp_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='ilap',
+            index=models.Index(fields=['id_kategori'], name='ilap_kategori_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='ilap',
+            index=models.Index(fields=['id_kategori_wilayah'], name='ilap_kwil_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='ilap',
+            index=models.Index(fields=['id_ilap'], name='ilap_id_ilap_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='jenisdatailap',
+            index=models.Index(fields=['id_ilap'], name='jdi_id_ilap_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='jenisdatailap',
+            index=models.Index(fields=['id_jenis_tabel'], name='jdi_jtabel_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='jenisdatailap',
+            index=models.Index(fields=['id_status_data'], name='jdi_status_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='jenisdatailap',
+            index=models.Index(fields=['id_jenis_data'], name='jdi_jenis_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='jenisdatailap',
+            index=models.Index(fields=['id_sub_jenis_data'], name='jdi_subjenis_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='jenisdatailap',
+            index=models.Index(fields=['id_ilap', 'id_sub_jenis_data'], name='jdi_ilap_sub_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='klasifikasijenisdata',
+            index=models.Index(fields=['id_sub_jenis_data'], name='kjd_subjenis_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='klasifikasijenisdata',
+            index=models.Index(fields=['id_klasifikasi_tabel'], name='kjd_klasif_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='periodejenisdata',
+            index=models.Index(fields=['id_sub_jenis_data_ilap'], name='pjd_subjenis_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='periodejenisdata',
+            index=models.Index(fields=['id_periode_pengiriman'], name='pjd_periode_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='periodejenisdata',
+            index=models.Index(fields=['start_date'], name='pjd_start_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='periodejenisdata',
+            index=models.Index(fields=['end_date'], name='pjd_end_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='periodejenisdata',
+            index=models.Index(fields=['id_sub_jenis_data_ilap', 'id_periode_pengiriman'], name='pjd_sub_per_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='periodejenisdata',
+            index=models.Index(fields=['id_sub_jenis_data_ilap', 'start_date'], name='pjd_sub_start_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='tiket',
+            index=models.Index(fields=['id_periode_data'], name='tiket_periode_data_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='tiket',
+            index=models.Index(fields=['penyampaian'], name='tiket_penyampaian_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='tiket',
+            index=models.Index(fields=['tahun', 'periode'], name='tiket_thn_prd_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='tiket',
+            index=models.Index(fields=['id_periode_data', 'periode', 'tahun', 'penyampaian'], name='tiket_lookup_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='tiket',
+            index=models.Index(fields=['tgl_terima_dip'], name='tiket_terima_dip_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='tiket',
+            index=models.Index(fields=['tgl_terima_vertikal'], name='tiket_terima_vert_idx'),
         ),
         migrations.AlterUniqueTogether(
             name='tandaterimadata',

@@ -6,6 +6,7 @@ from django.views.decorators.http import require_GET
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Q
 from datetime import datetime, timedelta
+import calendar
 from urllib.parse import urlencode
 
 from ..models.jenis_data_ilap import JenisDataILAP
@@ -45,6 +46,13 @@ def get_periods_for_range(start_date, end_date, periode_type):
     
     Periode count resets to 1 at the beginning of each calendar year.
     """
+    def _add_months_safe(dt, months):
+        month = dt.month - 1 + months
+        year = dt.year + month // 12
+        month = month % 12 + 1
+        day = min(dt.day, calendar.monthrange(year, month)[1])
+        return dt.replace(year=year, month=month, day=day)
+
     periods = []
     current = start_date
     periode_count = 1
@@ -63,38 +71,20 @@ def get_periods_for_range(start_date, end_date, periode_type):
         elif periode_type.lower() == '2 mingguan':
             next_date = current + timedelta(weeks=2)
         elif periode_type.lower() == 'bulanan':
-            # Add 1 month
-            if current.month == 12:
-                next_date = current.replace(year=current.year + 1, month=1)
-            else:
-                next_date = current.replace(month=current.month + 1)
+            # Add 1 month safely (handles 29/30/31)
+            next_date = _add_months_safe(current, 1)
         elif periode_type.lower() == 'triwulanan':
-            # Add 3 months
-            month = current.month + 3
-            year = current.year
-            while month > 12:
-                month -= 12
-                year += 1
-            next_date = current.replace(year=year, month=month)
+            # Add 3 months safely
+            next_date = _add_months_safe(current, 3)
         elif periode_type.lower() == 'kuartal':
-            # Add 3 months
-            month = current.month + 3
-            year = current.year
-            while month > 12:
-                month -= 12
-                year += 1
-            next_date = current.replace(year=year, month=month)
+            # Add 3 months safely
+            next_date = _add_months_safe(current, 3)
         elif periode_type.lower() == 'semester':
-            # Add 6 months
-            month = current.month + 6
-            year = current.year
-            while month > 12:
-                month -= 12
-                year += 1
-            next_date = current.replace(year=year, month=month)
+            # Add 6 months safely
+            next_date = _add_months_safe(current, 6)
         elif periode_type.lower() == 'tahunan':
-            # Add 1 year
-            next_date = current.replace(year=current.year + 1)
+            # Add 12 months safely (handles leap day)
+            next_date = _add_months_safe(current, 12)
         else:
             next_date = current + timedelta(days=1)
         
@@ -164,13 +154,19 @@ def monitoring_penyampaian_data_data(request):
                     'id_jenis_tabel',
                 )
 
-                active_ilap_ids = active_jenis_data_qs.values_list('id_ilap_id', flat=True).distinct()
-                ilap_list = ILAP.objects.filter(id__in=active_ilap_ids).values('id', 'id_ilap', 'nama_ilap').order_by('id_ilap')
-                
+                active_jenis_data = list(active_jenis_data_qs)
+                active_ilap_ids = {j.id_ilap_id for j in active_jenis_data if j.id_ilap_id}
+                ilap_qs = ILAP.objects.filter(id__in=active_ilap_ids).select_related(
+                    'id_kpp__id_kanwil',
+                    'id_kategori',
+                    'id_kategori_wilayah',
+                )
+                ilap_list = ilap_qs.values('id', 'id_ilap', 'nama_ilap').order_by('id_ilap')
+
                 # Get kanwil/kpp from related ILAPs
                 kanwil_set = set()
                 kpp_set = set()
-                for ilap in ILAP.objects.filter(id__in=active_ilap_ids):
+                for ilap in ilap_qs:
                     if ilap.id_kpp:
                         kpp_set.add(ilap.id_kpp.id)
                         if ilap.id_kpp.id_kanwil:
@@ -180,18 +176,20 @@ def monitoring_penyampaian_data_data(request):
                 kpp_list = KPP.objects.filter(id__in=kpp_set).values('id', 'kode_kpp', 'nama_kpp').order_by('kode_kpp')
                 
                 # Get kategori_wilayah from related ILAPs
-                kategori_wilayah_set = set()
-                for ilap in ILAP.objects.filter(id__in=active_ilap_ids):
-                    if ilap.id_kategori_wilayah:
-                        kategori_wilayah_set.add(ilap.id_kategori_wilayah.id)
+                kategori_wilayah_set = {
+                    ilap.id_kategori_wilayah.id
+                    for ilap in ilap_qs
+                    if ilap.id_kategori_wilayah
+                }
                 
                 kategori_wilayah_list = KategoriWilayah.objects.filter(id__in=kategori_wilayah_set).values('id', 'deskripsi').order_by('id')
                 
                 # Get kategori_ilap from related ILAPs
-                kategori_ilap_set = set()
-                for ilap in ILAP.objects.filter(id__in=active_ilap_ids):
-                    if ilap.id_kategori:
-                        kategori_ilap_set.add(ilap.id_kategori.id)
+                kategori_ilap_set = {
+                    ilap.id_kategori.id
+                    for ilap in ilap_qs
+                    if ilap.id_kategori
+                }
                 
                 kategori_ilap_list = KategoriILAP.objects.filter(id__in=kategori_ilap_set).values('id', 'id_kategori', 'nama_kategori').order_by('nama_kategori')
                 
@@ -200,10 +198,11 @@ def monitoring_penyampaian_data_data(request):
                 sub_jenis_data_list = active_jenis_data_qs.values('id_sub_jenis_data', 'nama_sub_jenis_data').distinct().order_by('id_sub_jenis_data')
                 
                 # Get jenis_tabel and dasar_hukum from active ILAPs' sub jenis data
-                jenis_tabel_set = set()
-                for jdd in active_jenis_data_qs:
-                    if jdd.id_jenis_tabel:
-                        jenis_tabel_set.add(jdd.id_jenis_tabel.id)
+                jenis_tabel_set = {
+                    jdd.id_jenis_tabel.id
+                    for jdd in active_jenis_data
+                    if jdd.id_jenis_tabel
+                }
                 
                 jenis_tabel_list = JenisTabel.objects.filter(id__in=jenis_tabel_set).values('id', 'deskripsi').order_by('id')
                 
@@ -294,156 +293,195 @@ def monitoring_penyampaian_data_data(request):
     today = datetime.now().date()
     records = []
 
-    # Build a map of jenis_data_ilap_id -> set of dasar_hukum ids (many-to-many via KlasifikasiJenisData)
+    is_admin = request.user.is_superuser or request.user.groups.filter(
+        name__in=['admin', 'admin_p3de', 'admin_pide', 'admin_pmde']
+    ).exists()
+
+    # Apply RBAC at query level to avoid building records that will be discarded
+    allowed_jenis_data_ids = None
+    if not is_admin:
+        allowed_jenis_data_ids = set(get_active_p3de_jenis_data_ilap_ids(request.user))
+        if not allowed_jenis_data_ids:
+            return JsonResponse({
+                'draw': draw,
+                'recordsTotal': 0,
+                'recordsFiltered': 0,
+                'data': [],
+            })
+
+    periode_data_qs = PeriodeJenisData.objects.select_related(
+        'id_periode_pengiriman',
+        'id_sub_jenis_data_ilap',
+        'id_sub_jenis_data_ilap__id_ilap',
+        'id_sub_jenis_data_ilap__id_ilap__id_kategori',
+        'id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
+        'id_sub_jenis_data_ilap__id_ilap__id_kpp',
+        'id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil',
+        'id_sub_jenis_data_ilap__id_jenis_tabel',
+        'id_sub_jenis_data_ilap__id_status_data',
+    )
+    if allowed_jenis_data_ids is not None:
+        periode_data_qs = periode_data_qs.filter(id_sub_jenis_data_ilap_id__in=allowed_jenis_data_ids)
+
+    periode_data_list = list(periode_data_qs)
+    if not periode_data_list:
+        return JsonResponse({
+            'draw': draw,
+            'recordsTotal': 0,
+            'recordsFiltered': 0,
+            'data': [],
+        })
+
+    jenis_data_ids = {pd.id_sub_jenis_data_ilap_id for pd in periode_data_list}
+    periode_data_ids = {pd.id for pd in periode_data_list}
+
+    # Build a map of jenis_data_ilap_id -> set of dasar_hukum ids
     dasar_hukum_map = {}
-    for kj in KlasifikasiJenisData.objects.values('id_sub_jenis_data_id', 'id_klasifikasi_tabel_id'):
+    for kj in KlasifikasiJenisData.objects.filter(id_sub_jenis_data_id__in=jenis_data_ids).values(
+        'id_sub_jenis_data_id',
+        'id_klasifikasi_tabel_id',
+    ):
         dasar_hukum_map.setdefault(kj['id_sub_jenis_data_id'], set()).add(kj['id_klasifikasi_tabel_id'])
 
-    # Get all jenis_data_ilap with related data
-    jenis_data_ilap_list = JenisDataILAP.objects.select_related(
-        'id_ilap',
-        'id_ilap__id_kategori',
-        'id_ilap__id_kategori_wilayah',
-        'id_ilap__id_kpp',
-        'id_ilap__id_kpp__id_kanwil',
-        'id_jenis_tabel',
-        'id_status_data'
-    ).all()
+    # Build active PIC map once (jenis_data_id -> user_id)
+    pic_p3de_map: dict[int, int] = {}
+    for pic in PIC.objects.filter(
+        id_sub_jenis_data_ilap_id__in=jenis_data_ids,
+        tipe=PIC.TipePIC.P3DE,
+        start_date__lte=today,
+    ).filter(
+        Q(end_date__isnull=True) | Q(end_date__gte=today)
+    ).order_by('id').values('id_sub_jenis_data_ilap_id', 'id_user_id'):
+        pic_p3de_map.setdefault(pic['id_sub_jenis_data_ilap_id'], pic['id_user_id'])
 
-    # For each jenis_data_ilap, generate monitoring records for each period
-    for jenis_data in jenis_data_ilap_list:
-        # Get all periode_jenis_data for this jenis_data_ilap
-        periode_data_list = PeriodeJenisData.objects.filter(
-            id_sub_jenis_data_ilap=jenis_data
-        ).select_related('id_periode_pengiriman').all()
+    # Build tiket lookup once ((periode_data_id, periode, tahun) -> tiket)
+    tiket_map: dict[tuple[int, int, int], Tiket] = {}
+    for tiket in Tiket.objects.filter(
+        id_periode_data_id__in=periode_data_ids,
+        penyampaian=1,
+    ).only(
+        'id',
+        'id_periode_data_id',
+        'periode',
+        'tahun',
+        'tgl_terima_vertikal',
+        'tgl_terima_dip',
+    ).order_by('-id'):
+        key = (tiket.id_periode_data_id, tiket.periode, tiket.tahun)
+        if key not in tiket_map:
+            tiket_map[key] = tiket
 
-        for periode_data in periode_data_list:
-            if not periode_data.id_periode_pengiriman:
-                continue
-                
-            # Get start date and generate periods until today
-            start_date = periode_data.start_date
-            akhir_penyampaian = periode_data.akhir_penyampaian  # days to submit after period end
-            periode_type_penyampaian = periode_data.id_periode_pengiriman.periode_penyampaian
-            periode_type_penerimaan = periode_data.id_periode_pengiriman.periode_penerimaan
+    # Generate monitoring records from preloaded data
+    for periode_data in periode_data_list:
+        jenis_data = periode_data.id_sub_jenis_data_ilap
 
-            # Rule: sub-monthly penyampaian (harian, mingguan, 2 mingguan) is always
-            # received/grouped monthly — override penerimaan to bulanan regardless of DB value
-            if periode_type_penyampaian.lower() in ('harian', 'mingguan', '2 mingguan'):
-                periode_type_penerimaan = 'Bulanan'
+        if not periode_data.id_periode_pengiriman:
+            continue
 
-            # Determine the end date for period generation
-            # If periode_data has an end_date, use it; otherwise use today
-            end_date_for_periods = periode_data.end_date if periode_data.end_date else today
+        # Get start date and generate periods until today
+        start_date = periode_data.start_date
+        akhir_penyampaian = periode_data.akhir_penyampaian  # days to submit after period end
+        periode_type_penyampaian = periode_data.id_periode_pengiriman.periode_penyampaian
+        periode_type_penerimaan = periode_data.id_periode_pengiriman.periode_penerimaan
 
-            # Generate all periods from start_date until end_date_for_periods using effective periode_penerimaan
-            periods = get_periods_for_range(start_date, end_date_for_periods, periode_type_penerimaan)
-            
-            for period in periods:
-                deadline_date = period['end_date'] + timedelta(days=akhir_penyampaian)
-                period_display_name = format_periode(periode_type_penerimaan, period['periode_num'], period['start_date'].year, include_year=False)
-                
-                # Get pic_p3de from PIC model (active P3DE PIC for this jenis_data_ilap)
-                pic_p3de = PIC.objects.filter(
-                    id_sub_jenis_data_ilap=jenis_data,
-                    tipe=PIC.TipePIC.P3DE,
-                    start_date__lte=today
-                ).filter(
-                    Q(end_date__isnull=True) | Q(end_date__gte=today)
-                ).first()
-                pic_p3de_id = pic_p3de.id_user_id if pic_p3de else None
-                
-                # Check if tiket exists for this period
-                tiket = Tiket.objects.filter(
-                    id_periode_data=periode_data,
-                    periode=period['periode_num'],
-                    tahun=period['start_date'].year,
-                    penyampaian=1,
-                ).first()
-                
-                tiket_exists = tiket is not None
+        # Rule: sub-monthly penyampaian (harian, mingguan, 2 mingguan) is always
+        # received/grouped monthly — override penerimaan to bulanan regardless of DB value
+        if periode_type_penyampaian.lower() in ('harian', 'mingguan', '2 mingguan'):
+            periode_type_penerimaan = 'Bulanan'
 
-                # Determine ILAP scope for terlambat calculation
-                # Regional: compare batas waktu vs tanggal terima vertikal
-                # Nasional/Internasional: compare batas waktu vs tanggal terima DIP
-                kategori_wilayah_desc = (
-                    (jenis_data.id_ilap.id_kategori_wilayah.deskripsi or '').lower()
-                    if jenis_data.id_ilap and jenis_data.id_ilap.id_kategori_wilayah
-                    else ''
-                )
-                is_regional_ilap = 'regional' in kategori_wilayah_desc
-                
-                # Determine status
-                if tiket_exists:
-                    # Tiket exists means data has been submitted (sudah menyampaikan)
-                    status_penyampaian = "Sudah Menyampaikan"
-                    status_penyampaian_class = "bg-success"
+        # Determine the end date for period generation
+        # If periode_data has an end_date, use it; otherwise use today
+        end_date_for_periods = periode_data.end_date if periode_data.end_date else today
 
-                    receive_dt = tiket.tgl_terima_vertikal if is_regional_ilap else tiket.tgl_terima_dip
-                    receive_date = receive_dt.date() if receive_dt else None
-                    is_late = bool(receive_date and receive_date > deadline_date)
-                    status_terlambat = "Ya" if is_late else "Tidak"
-                    status_terlambat_class = "bg-danger" if is_late else "bg-light"
+        # Generate all periods from start_date until end_date_for_periods using effective periode_penerimaan
+        periods = get_periods_for_range(start_date, end_date_for_periods, periode_type_penerimaan)
+
+        for period in periods:
+            deadline_date = period['end_date'] + timedelta(days=akhir_penyampaian)
+            period_display_name = format_periode(periode_type_penerimaan, period['periode_num'], period['start_date'].year, include_year=False)
+
+            pic_p3de_id = pic_p3de_map.get(jenis_data.id)
+
+            # Check if tiket exists for this period
+            tiket = tiket_map.get((
+                periode_data.id,
+                period['periode_num'],
+                period['start_date'].year,
+            ))
+
+            tiket_exists = tiket is not None
+
+            # Determine ILAP scope for terlambat calculation
+            # Regional: compare batas waktu vs tanggal terima vertikal
+            # Nasional/Internasional: compare batas waktu vs tanggal terima DIP
+            kategori_wilayah_desc = (
+                (jenis_data.id_ilap.id_kategori_wilayah.deskripsi or '').lower()
+                if jenis_data.id_ilap and jenis_data.id_ilap.id_kategori_wilayah
+                else ''
+            )
+            is_regional_ilap = 'regional' in kategori_wilayah_desc
+
+            # Determine status
+            if tiket_exists:
+                # Tiket exists means data has been submitted (sudah menyampaikan)
+                status_penyampaian = "Sudah Menyampaikan"
+                status_penyampaian_class = "bg-success"
+
+                receive_dt = tiket.tgl_terima_vertikal if is_regional_ilap else tiket.tgl_terima_dip
+                receive_date = receive_dt.date() if receive_dt else None
+                is_late = bool(receive_date and receive_date > deadline_date)
+                status_terlambat = "Ya" if is_late else "Tidak"
+                status_terlambat_class = "bg-danger" if is_late else "bg-light"
+            else:
+                # No tiket created
+                is_late = today > deadline_date
+                status_penyampaian = "Belum Menyampaikan"
+                status_penyampaian_class = "bg-warning"
+                if is_late:
+                    status_terlambat = "Ya"
+                    status_terlambat_class = "bg-danger"
                 else:
-                    # No tiket created
-                    is_late = today > deadline_date
-                    status_penyampaian = "Belum Menyampaikan"
-                    status_penyampaian_class = "bg-warning"
-                    if is_late:
-                        status_terlambat = "Ya"
-                        status_terlambat_class = "bg-danger"
-                    else:
-                        status_terlambat = "Tidak"
-                        status_terlambat_class = "bg-light"
-                
-                # Calculate days from today to deadline
-                days_diff = (deadline_date - today).days
-                
-                records.append({
-                    'id_periode_data': periode_data.id,
-                    'id_jenis_data': jenis_data.id,
-                    'id_sub_jenis_data': jenis_data.id_sub_jenis_data,
-                    'periode_num': period['periode_num'],
-                    'ilap_name': jenis_data.id_ilap.nama_ilap,
-                    'ilap_id': jenis_data.id_ilap.id_ilap,
-                    'ilap_jenis_data_id': jenis_data.id_ilap.id,
-                    'jenis_data': jenis_data.nama_jenis_data,
-                    'jenis_data_id': jenis_data.id,
-                    'sub_jenis_data': jenis_data.nama_sub_jenis_data,
-                    'periode_penyampaian': periode_type_penyampaian,
-                    'periode_penerimaan': periode_type_penerimaan,
-                    'periode': period['periode_num'],
-                    'periode_display_name': period_display_name,
-                    'tahun': period['start_date'].year,
-                    'start_date': period['start_date'],
-                    'end_date': period['end_date'],
-                    'deadline_date': deadline_date,
-                    'status_penyampaian': status_penyampaian,
-                    'status_penyampaian_class': status_penyampaian_class,
-                    'status_terlambat': status_terlambat,
-                    'status_terlambat_class': status_terlambat_class,
-                    'tiket_exists': tiket_exists,
-                    'is_late': is_late,
-                    'days_diff': days_diff,
-                    'pic_p3de_id': pic_p3de_id,
-                    'kanwil_id': (jenis_data.id_ilap.id_kpp.id_kanwil_id if jenis_data.id_ilap.id_kpp else ''),
-                    'kpp_id': (jenis_data.id_ilap.id_kpp.id if jenis_data.id_ilap.id_kpp else ''),
-                    'kategori_wilayah_id': jenis_data.id_ilap.id_kategori_wilayah.id if jenis_data.id_ilap.id_kategori_wilayah else '',
-                    'kategori_ilap_id': jenis_data.id_ilap.id_kategori.id if jenis_data.id_ilap.id_kategori else '',
-                    'jenis_tabel_id': jenis_data.id_jenis_tabel_id,
-                    'periode_pengiriman_id': periode_data.id_periode_pengiriman_id,
-                    'dasar_hukum_ids': dasar_hukum_map.get(jenis_data.id, set()),
-                })
+                    status_terlambat = "Tidak"
+                    status_terlambat_class = "bg-light"
 
-    records_total = len(records)
+            # Calculate days from today to deadline
+            days_diff = (deadline_date - today).days
 
-    # Apply RBAC filtering
-    # Admin users see all records
-    # Non-admin P3DE users see only records for sub jenis data where they are an active P3DE PIC
-    if not request.user.is_superuser and not request.user.groups.filter(name__in=['admin', 'admin_p3de', 'admin_pide', 'admin_pmde']).exists():
-        # Get jenis_data_ilap IDs where user is active P3DE PIC
-        user_jenis_data_ids = set(get_active_p3de_jenis_data_ilap_ids(request.user))
-        records = [r for r in records if r['id_jenis_data'] in user_jenis_data_ids]
+            records.append({
+                'id_periode_data': periode_data.id,
+                'id_jenis_data': jenis_data.id,
+                'id_sub_jenis_data': jenis_data.id_sub_jenis_data,
+                'periode_num': period['periode_num'],
+                'ilap_name': jenis_data.id_ilap.nama_ilap,
+                'ilap_id': jenis_data.id_ilap.id_ilap,
+                'ilap_jenis_data_id': jenis_data.id_ilap.id,
+                'jenis_data': jenis_data.nama_jenis_data,
+                'jenis_data_id': jenis_data.id,
+                'sub_jenis_data': jenis_data.nama_sub_jenis_data,
+                'periode_penyampaian': periode_type_penyampaian,
+                'periode_penerimaan': periode_type_penerimaan,
+                'periode': period['periode_num'],
+                'periode_display_name': period_display_name,
+                'tahun': period['start_date'].year,
+                'start_date': period['start_date'],
+                'end_date': period['end_date'],
+                'deadline_date': deadline_date,
+                'status_penyampaian': status_penyampaian,
+                'status_penyampaian_class': status_penyampaian_class,
+                'status_terlambat': status_terlambat,
+                'status_terlambat_class': status_terlambat_class,
+                'tiket_exists': tiket_exists,
+                'is_late': is_late,
+                'days_diff': days_diff,
+                'pic_p3de_id': pic_p3de_id,
+                'kanwil_id': (jenis_data.id_ilap.id_kpp.id_kanwil_id if jenis_data.id_ilap.id_kpp else ''),
+                'kpp_id': (jenis_data.id_ilap.id_kpp.id if jenis_data.id_ilap.id_kpp else ''),
+                'kategori_wilayah_id': jenis_data.id_ilap.id_kategori_wilayah.id if jenis_data.id_ilap.id_kategori_wilayah else '',
+                'kategori_ilap_id': jenis_data.id_ilap.id_kategori.id if jenis_data.id_ilap.id_kategori else '',
+                'jenis_tabel_id': jenis_data.id_jenis_tabel_id,
+                'periode_pengiriman_id': periode_data.id_periode_pengiriman_id,
+                'dasar_hukum_ids': dasar_hukum_map.get(jenis_data.id, set()),
+            })
 
     records_total = len(records)
 

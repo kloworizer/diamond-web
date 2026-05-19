@@ -122,6 +122,14 @@ class Tiket(models.Model):
         verbose_name_plural = "Tiket"
         db_table = "tiket"
         ordering = ["id"]
+        indexes = [
+            models.Index(fields=["id_periode_data"], name="tiket_periode_data_idx"),
+            models.Index(fields=["penyampaian"], name="tiket_penyampaian_idx"),
+            models.Index(fields=["tahun", "periode"], name="tiket_thn_prd_idx"),
+            models.Index(fields=["id_periode_data", "periode", "tahun", "penyampaian"], name="tiket_lookup_idx"),
+            models.Index(fields=["tgl_terima_dip"], name="tiket_terima_dip_idx"),
+            models.Index(fields=["tgl_terima_vertikal"], name="tiket_terima_vert_idx"),
+        ]
 
     def __str__(self):
         return f"Tiket {self.id} - Periode {self.periode} Tahun {self.tahun}"
