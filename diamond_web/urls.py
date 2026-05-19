@@ -259,5 +259,7 @@ urlpatterns = [
 
     path('data-prioritas-index/',views.data_prioritas_index, name='data_prioritas_ilap'),
 
+    path('blank/', views.blank_index, name='blank_index'),
+
 
 ]

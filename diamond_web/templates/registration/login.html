@@ -44,11 +44,11 @@
                     <div class="row flex-1 g-0">
                         <div class="col-lg-6 h-100 my-auto order-1 order-lg-0">
                             <div class="wd-50 bg-white p-2 rounded-circle shadow-lg position-absolute translate-middle top-50 start-50 d-none d-lg-block">
-                                <img src="{% static 'assets/images/logo-abbr.png' %}" alt="" class="img-fluid">
+                                <img src="{% static 'assets/images/logo-abbr-1.png' %}" alt="" class="img-fluid">
                             </div>
                             <div class="creative-card-body card-body p-sm-5">
-                                <h2 class="fs-20 fw-bolder mb-4">Login</h2>
-                                <h4 class="fs-13 fw-bold mb-2">Login to your account</h4>
+                                <h2 class="fs-20 fw-bolder mb-4">Masuk</h2>
+                                <h4 class="fs-13 fw-bold mb-2">Masuk ke dalam akun New Diamond</h4>
                                 <p class="fs-12 fw-medium text-muted">Thank you for get back <strong>Nelel</strong> web applications, let's access our the best recommendation for you.</p>
                                 <!-- <form action="{% url 'dashboard_index' %}" class="w-100 mt-4 pt-2"> -->
                                 <form method="post" class="w-100 mt-4 pt-2">
@@ -58,40 +58,37 @@
                                     </div>
                                     {% endif %}   
                                     <div class="mb-4">
-                                        <label class="form-label">Username</label>
-                                        <input type="text" name="username" class="form-control" placeholder="Username" required>
+                                        <label class="form-label">NIP SIKKA</label>
+                                        <input type="text" name="username" class="form-control" placeholder="Masukkan NIP SIKKA" required>
                                         <div class="text-danger">{{ form.username.errors }}</div>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label">Password</label>
-                                        <input type="password" name="password" class="form-control" placeholder="Password" required>
+                                        <label class="form-label">Kata Sandi</label>
+                                        <input type="password" name="password" class="form-control" placeholder="Masukkan kata sandi" required>
                                         <div class="text-danger">{{ form.password.errors }}</div>
                                     </div>
                                     <div class="d-flex align-items-center justify-content-between">
                                         <div>
                                             <div class="custom-control custom-checkbox">
                                                 <input type="checkbox" class="custom-control-input" id="rememberMe">
-                                                <label class="custom-control-label c-pointer" for="rememberMe">Remember Me</label>
+                                                <label class="custom-control-label c-pointer" for="rememberMe">Ingat Saya</label>
                                             </div>
                                         </div>
                                         <div>
-                                            <a href="auth-reset-creative.html" class="fs-11 text-primary">Forget password?</a>
+                                            <a href="auth-reset-creative.html" class="fs-11 text-primary">Lupa kata sandi?</a>
                                         </div>
                                     </div>
                                     <div class="mt-5">
-                                        <button type="submit" class="btn btn-lg btn-primary w-100">Login</button>
+                                        <button type="submit" class="btn btn-lg btn-primary w-100">Masuk</button>
                                     </div>
                                 </form>
                                 
-                                <div class="mt-5 text-muted">
-                                    <span> Don't have an account?</span>
-                                    <a href="auth-register-creative.html" class="fw-bold">Create an Account</a>
-                                </div>
+                                
                             </div>
                         </div>
                         <div class="col-lg-6 bg-primary order-0 order-lg-1">
                             <div class="h-100 d-flex align-items-center justify-content-center">
-                                <img src="./static/assets/images/auth/auth-user.png" alt="" class="img-fluid">
+                                <img src="{% static 'assets/images/auth/image 72.png' %}" alt="" class="img-fluid">
                             </div>
                         </div>
                     </div>
@@ -101,13 +98,6 @@
     </main>
     <!--! ================================================================ !-->
     <!--! [End] Main Content !-->
-    <!--! ================================================================ !-->
-    <!--! ================================================================ !-->
-    <!--! BEGIN: Theme Customizer !-->
-    <!--! ================================================================ !-->
-    
-    <!--! ================================================================ !-->
-    <!--! [End] Theme Customizer !-->
     <!--! ================================================================ !-->
     <!--! ================================================================ !-->
     <!--! Footer Script !-->
