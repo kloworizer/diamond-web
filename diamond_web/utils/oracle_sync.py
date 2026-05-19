@@ -106,13 +106,20 @@ HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
     ),
     OracleSyncTableConfig(
         name="dasar_hukum",
-        source_table="PROD.REF_DASAR_HUKUM",
+        source_query="""
+            SELECT
+                ID_DSR_HUKUM,
+                KET_DSR_HUKUM
+            FROM P3DE.REF_DTL_DSR_HUKUM
+        """,
         target_model_label="diamond_web.DasarHukum",
         target_key_field="deskripsi",
-        source_key_column="NAMA_DASAR_HUKUM",
+        source_key_column="KET_DSR_HUKUM",
         field_map={
-            "kategori": "ID_KATEGORI_DASAR_HUKUM",
-            "deskripsi": "NAMA_DASAR_HUKUM",
+            "deskripsi": "KET_DSR_HUKUM",
+        },
+        derived_field_map={
+            "kategori": "kategori_from_id_dsr_hukum",
         },
         where_clause="",
     ),
@@ -303,15 +310,13 @@ HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
                 P3DE.REF_DSR_HUKUM a
             JOIN P3DE.REF_DTL_DSR_HUKUM b ON
                 a.ID_DSR_HUKUM = b.ID_DSR_HUKUM
-            WHERE
-                a.ID_TABEL IN (SELECT ID_TABEL_DATA FROM PROD.APP_TABEL_DATA_ILAP)
         """,
         target_model_label="diamond_web.KlasifikasiJenisData",
         target_key_field="id_sub_jenis_data",
         source_key_column="ID_TABEL",
         field_map={
             "id_sub_jenis_data": "ID_TABEL",
-            "id_klasifikasi_tabel": "NAMA_DASAR_HUKUM",
+            "id_klasifikasi_tabel": "KET_DSR_HUKUM",
         },
         foreign_key_lookup_map={
             "id_sub_jenis_data": "id_sub_jenis_data",
@@ -612,7 +617,16 @@ class OracleDataSyncService:
             _assign_target_value(target_field, raw_value)
 
         key_value = self._coerce_model_value(target_model, cfg.target_key_field, key)
-        mapped_values[cfg.target_key_field] = key_value
+        # Only set the key directly if it's NOT a relation field.
+        # Relation fields are already handled by _assign_target_value above (which sets
+        # the attname FK column, e.g. id_sub_jenis_data_id). Setting the plain field name
+        # again with a raw string value would create a conflicting key that Django
+        # cannot assign as a model instance.
+        key_field_obj = target_model._meta.get_field(cfg.target_key_field)
+        if not key_field_obj.is_relation:
+            mapped_values[cfg.target_key_field] = key_value
+        # Always store human-readable key for reporting (never passed to model constructor)
+        mapped_values["__sync_key__"] = str(key_value)
         return str(key_value), mapped_values
 
     @staticmethod
@@ -624,6 +638,12 @@ class OracleDataSyncService:
             if kategori == "EI":
                 return "Internasional"
             return "Nasional"
+
+        if rule_name == "kategori_from_id_dsr_hukum":
+            id_dsr_hukum = str(source_row.get("ID_DSR_HUKUM") or "").strip()
+            if "-" in id_dsr_hukum:
+                return id_dsr_hukum.split("-")[0].upper()
+            return id_dsr_hukum.upper()
 
         raise ValueError(f"Rule derived tidak dikenali: {rule_name}")
 
@@ -642,7 +662,7 @@ class OracleDataSyncService:
             try:
                 _, mapped = self._map_source_to_target(cfg, target_model, source_row)
                 normalized_rows.append(mapped)
-                key_values.append(mapped[cfg.target_key_field])
+                key_values.append(mapped["__sync_key__"])
             except Exception as exc:
                 errors.append(str(exc))
 
@@ -659,20 +679,22 @@ class OracleDataSyncService:
         updated_keys: list[str] = []
 
         for mapped in normalized_rows:
-            key_value = mapped[cfg.target_key_field]
+            key_value = mapped["__sync_key__"]
+            # Strip the sentinel before any DB operations
+            model_data = {k: v for k, v in mapped.items() if k != "__sync_key__"}
             lookup_kwargs: dict[str, Any] = {}
             for field_name in match_fields:
                 stored_name = _storage_field_name(field_name)
-                lookup_kwargs[stored_name] = mapped.get(stored_name)
+                lookup_kwargs[stored_name] = model_data.get(stored_name)
             obj = target_model.objects.filter(**lookup_kwargs).first()
-            
+
             if obj is None:
-                inserts.append(mapped)
+                inserts.append(model_data)
                 inserted_keys.append(str(key_value))
                 continue
 
             changed_fields: dict[str, Any] = {}
-            for field_name, new_value in mapped.items():
+            for field_name, new_value in model_data.items():
                 current_value = getattr(obj, field_name)
                 if self._normalize_value(current_value) != self._normalize_value(new_value):
                     changed_fields[field_name] = new_value
