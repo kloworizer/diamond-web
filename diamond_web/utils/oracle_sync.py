@@ -31,6 +31,18 @@ class OracleSyncTableConfig:
     derived_field_map: dict[str, str] = field(default_factory=dict)
     match_fields: tuple[str, ...] = field(default_factory=tuple)
     where_clause: str = ""
+    source_connection: str = "primary"
+
+
+@dataclass(frozen=True)
+class OracleConnectionConfig:
+    name: str
+    user: str
+    password: str
+    host: str
+    port: int
+    service_name: str
+    sid: str
 
 
 @dataclass
@@ -398,36 +410,109 @@ class OracleDataSyncService:
     _IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_$.]*$")
 
     def __init__(self):
-        self.oracle_user = os.getenv("ORACLE_USER", "").strip()
-        self.oracle_password = os.getenv("ORACLE_PASSWORD", "").strip()
-        self.oracle_host = os.getenv("ORACLE_HOST", "").strip()
-        self.oracle_port = int(os.getenv("ORACLE_PORT", "1521"))
-        self.oracle_service_name = os.getenv("ORACLE_SERVICE_NAME", "").strip()
-        self.oracle_sid = os.getenv("ORACLE_SID", "").strip()
+        self.oracle_connections = self._load_oracle_connections()
 
         self._target_model_cache: dict[str, Any] = {}
 
         self._validate_connection_config()
         self._validate_sync_configs(HARD_CODED_SYNC_TABLES)
 
+    @staticmethod
+    def _safe_int(value: str, default: int) -> int:
+        try:
+            return int(str(value).strip())
+        except Exception:
+            return default
+
+    def _load_oracle_connections(self) -> dict[str, OracleConnectionConfig]:
+        # Backward compatibility:
+        # - ORACLE_* is treated as primary
+        # - ORACLE_PRIMARY_* can override ORACLE_*
+        primary_user = os.getenv("ORACLE_PRIMARY_USER", os.getenv("ORACLE_USER", "")).strip()
+        primary_password = os.getenv("ORACLE_PRIMARY_PASSWORD", os.getenv("ORACLE_PASSWORD", "")).strip()
+        primary_host = os.getenv("ORACLE_PRIMARY_HOST", os.getenv("ORACLE_HOST", "")).strip()
+        primary_port = self._safe_int(os.getenv("ORACLE_PRIMARY_PORT", os.getenv("ORACLE_PORT", "1521")), 1521)
+        primary_service = os.getenv("ORACLE_PRIMARY_SERVICE_NAME", os.getenv("ORACLE_SERVICE_NAME", "")).strip()
+        primary_sid = os.getenv("ORACLE_PRIMARY_SID", os.getenv("ORACLE_SID", "")).strip()
+
+        secondary_user = os.getenv("ORACLE_SECONDARY_USER", "").strip()
+        secondary_password = os.getenv("ORACLE_SECONDARY_PASSWORD", "").strip()
+        secondary_host = os.getenv("ORACLE_SECONDARY_HOST", "").strip()
+        secondary_port = self._safe_int(os.getenv("ORACLE_SECONDARY_PORT", "1521"), 1521)
+        secondary_service = os.getenv("ORACLE_SECONDARY_SERVICE_NAME", "").strip()
+        secondary_sid = os.getenv("ORACLE_SECONDARY_SID", "").strip()
+
+        return {
+            "primary": OracleConnectionConfig(
+                name="primary",
+                user=primary_user,
+                password=primary_password,
+                host=primary_host,
+                port=primary_port,
+                service_name=primary_service,
+                sid=primary_sid,
+            ),
+            "secondary": OracleConnectionConfig(
+                name="secondary",
+                user=secondary_user,
+                password=secondary_password,
+                host=secondary_host,
+                port=secondary_port,
+                service_name=secondary_service,
+                sid=secondary_sid,
+            ),
+        }
+
     def _validate_identifier(self, value: str, label: str):
         if not self._IDENTIFIER_RE.match(value):
             raise OracleSyncConfigError(f"{label} tidak valid: {value}")
 
     def _validate_connection_config(self):
+        primary = self.oracle_connections["primary"]
         required_values = {
-            "ORACLE_USER": self.oracle_user,
-            "ORACLE_PASSWORD": self.oracle_password,
-            "ORACLE_HOST": self.oracle_host,
+            "ORACLE_USER / ORACLE_PRIMARY_USER": primary.user,
+            "ORACLE_PASSWORD / ORACLE_PRIMARY_PASSWORD": primary.password,
+            "ORACLE_HOST / ORACLE_PRIMARY_HOST": primary.host,
         }
         missing = [name for name, value in required_values.items() if not value]
         if missing:
             raise OracleSyncConfigError(
-                "Konfigurasi Oracle belum lengkap: " + ", ".join(missing)
+                "Konfigurasi Oracle (primary) belum lengkap: " + ", ".join(missing)
             )
 
-        if not self.oracle_service_name and not self.oracle_sid:
-            raise OracleSyncConfigError("Set ORACLE_SERVICE_NAME atau ORACLE_SID di .env")
+        if not primary.service_name and not primary.sid:
+            raise OracleSyncConfigError(
+                "Set ORACLE_SERVICE_NAME / ORACLE_PRIMARY_SERVICE_NAME atau ORACLE_SID / ORACLE_PRIMARY_SID di .env"
+            )
+
+        secondary = self.oracle_connections["secondary"]
+        has_any_secondary = any(
+            [
+                secondary.user,
+                secondary.password,
+                secondary.host,
+                secondary.service_name,
+                secondary.sid,
+            ]
+        )
+        if has_any_secondary:
+            missing_secondary = [
+                name
+                for name, value in {
+                    "ORACLE_SECONDARY_USER": secondary.user,
+                    "ORACLE_SECONDARY_PASSWORD": secondary.password,
+                    "ORACLE_SECONDARY_HOST": secondary.host,
+                }.items()
+                if not value
+            ]
+            if missing_secondary:
+                raise OracleSyncConfigError(
+                    "Konfigurasi Oracle (secondary) belum lengkap: " + ", ".join(missing_secondary)
+                )
+            if not secondary.service_name and not secondary.sid:
+                raise OracleSyncConfigError(
+                    "Set ORACLE_SECONDARY_SERVICE_NAME atau ORACLE_SECONDARY_SID di .env"
+                )
 
     def _validate_sync_configs(self, sync_configs: list[OracleSyncTableConfig]):
         if not sync_configs:
@@ -444,6 +529,22 @@ class OracleDataSyncService:
             if bool(cfg.source_table.strip()) == bool(cfg.source_query.strip()):
                 raise OracleSyncConfigError(
                     f"Config {cfg.name} harus isi tepat salah satu: source_table atau source_query"
+                )
+
+            conn_name = cfg.source_connection or "primary"
+            if conn_name not in self.oracle_connections:
+                raise OracleSyncConfigError(
+                    f"source_connection tidak dikenali di config {cfg.name}: {conn_name}"
+                )
+
+            conn_cfg = self.oracle_connections[conn_name]
+            if not conn_cfg.user or not conn_cfg.password or not conn_cfg.host:
+                raise OracleSyncConfigError(
+                    f"Config {cfg.name} memakai connection '{conn_name}' tapi env belum lengkap"
+                )
+            if not conn_cfg.service_name and not conn_cfg.sid:
+                raise OracleSyncConfigError(
+                    f"Config {cfg.name} memakai connection '{conn_name}' tapi SERVICE_NAME/SID belum diisi"
                 )
 
             if cfg.source_table:
@@ -527,7 +628,7 @@ class OracleDataSyncService:
             self._target_model_cache[model_label] = apps.get_model(model_label)
         return self._target_model_cache[model_label]
 
-    def _connect_oracle(self):
+    def _connect_oracle(self, connection_name: str = "primary"):
         try:
             import cx_Oracle
         except Exception as exc:
@@ -535,22 +636,37 @@ class OracleDataSyncService:
                 "Library cx_Oracle belum terpasang. Install dependency terlebih dahulu."
             ) from exc
 
-        if self.oracle_service_name:
+        if connection_name not in self.oracle_connections:
+            raise OracleSyncConfigError(f"Connection Oracle tidak dikenali: {connection_name}")
+
+        conn_cfg = self.oracle_connections[connection_name]
+
+        if not conn_cfg.user or not conn_cfg.password or not conn_cfg.host:
+            raise OracleSyncConfigError(
+                f"Konfigurasi Oracle ({connection_name}) belum lengkap"
+            )
+
+        if not conn_cfg.service_name and not conn_cfg.sid:
+            raise OracleSyncConfigError(
+                f"Set SERVICE_NAME atau SID untuk connection Oracle ({connection_name})"
+            )
+
+        if conn_cfg.service_name:
             dsn = cx_Oracle.makedsn(
-                self.oracle_host,
-                self.oracle_port,
-                service_name=self.oracle_service_name,
+                conn_cfg.host,
+                conn_cfg.port,
+                service_name=conn_cfg.service_name,
             )
         else:
             dsn = cx_Oracle.makedsn(
-                self.oracle_host,
-                self.oracle_port,
-                sid=self.oracle_sid,
+                conn_cfg.host,
+                conn_cfg.port,
+                sid=conn_cfg.sid,
             )
 
         return cx_Oracle.connect(
-            user=self.oracle_user,
-            password=self.oracle_password,
+            user=conn_cfg.user,
+            password=conn_cfg.password,
             dsn=dsn,
         )
 
@@ -603,9 +719,10 @@ class OracleDataSyncService:
     def _fetch_oracle_rows(self, cfg: OracleSyncTableConfig) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         sql = self._build_select_sql(cfg)
-        logger.debug("Oracle sync query [%s]: %s", cfg.name, sql)
+        conn_name = cfg.source_connection or "primary"
+        logger.debug("Oracle sync query [%s/%s]: %s", conn_name, cfg.name, sql)
 
-        with self._connect_oracle() as conn:
+        with self._connect_oracle(conn_name) as conn:
             with conn.cursor() as cursor:
                 cursor.execute(sql)
                 columns = [col[0].upper() for col in cursor.description]
