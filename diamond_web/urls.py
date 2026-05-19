@@ -23,6 +23,7 @@ urlpatterns = [
     # path('new_login/', views.new_login, name='new_login'),
 
     # === Dashboard Section ===
+    path('dashboard/', views.DashboardMonitoringView.as_view(), name='dashboard_monitoring'),
     # path('dashboard/', views.index, name='dashboard_index'),
 
     # === P3DE Section ===

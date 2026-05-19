@@ -313,7 +313,7 @@ class Migration(migrations.Migration):
                 ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
                 ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
                 ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
-                ('id_jenis_data_ilap', models.ForeignKey(db_column='id_jenis_data_ilap', on_delete=django.db.models.deletion.PROTECT, to='diamond_web.jenisdatailap', verbose_name='Jenis Data ILAP')),
+                ('id_sub_jenis_data', models.ForeignKey(db_column='id_sub_jenis_data', on_delete=django.db.models.deletion.PROTECT, to='diamond_web.jenisdatailap', verbose_name='Sub Jenis Data ILAP')),
                 ('id_klasifikasi_tabel', models.ForeignKey(db_column='id_klasifikasi_tabel', on_delete=django.db.models.deletion.PROTECT, to='diamond_web.dasarhukum', verbose_name='Dasar Hukum')),
             ],
             options={
@@ -603,7 +603,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name='klasifikasijenisdata',
-            unique_together={('id_jenis_data_ilap', 'id_klasifikasi_tabel')},
+            unique_together={('id_sub_jenis_data', 'id_klasifikasi_tabel')},
         ),
         migrations.AddIndex(
             model_name='pic',

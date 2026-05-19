@@ -19,6 +19,13 @@
                     </a>
                 </li>
 
+                <li class="nxl-item">
+                    <a class="nxl-link" href="{% url 'dashboard_monitoring' %}">
+                        <span class="nxl-micon"><i class="feather-bar-chart-2"></i></span>
+                        <span class="nxl-mtext">Dashboard</span>
+                    </a>
+                </li>
+
                 {% if user.is_authenticated %}
                 <li class="nxl-item">
                     <a class="nxl-link" href="{% url 'tiket_list' %}">

@@ -144,7 +144,7 @@ def klasifikasi_jenis_data_data(request):
     length = int(request.GET.get('length', '10'))
 
     qs = KlasifikasiJenisData.objects.select_related(
-        'id_jenis_data_ilap',
+        'id_sub_jenis_data',
         'id_klasifikasi_tabel'
     ).all()
     records_total = qs.count()
@@ -152,8 +152,8 @@ def klasifikasi_jenis_data_data(request):
     # Column-specific filtering
     columns_search = request.GET.getlist('columns_search[]')
     if columns_search:
-        if columns_search[0]:  # Jenis Data ILAP
-            qs = qs.filter(id_jenis_data_ilap__nama_sub_jenis_data__icontains=columns_search[0])
+        if columns_search[0]:  # Sub Jenis Data ILAP
+            qs = qs.filter(id_sub_jenis_data__nama_sub_jenis_data__icontains=columns_search[0])
         if len(columns_search) > 1 and columns_search[1]:  # Dasar Hukum
             qs = qs.filter(id_klasifikasi_tabel__deskripsi__icontains=columns_search[1])
 
@@ -162,7 +162,7 @@ def klasifikasi_jenis_data_data(request):
     # ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id_jenis_data_ilap__nama_sub_jenis_data', 'id_klasifikasi_tabel__deskripsi']
+    columns = ['id_sub_jenis_data__nama_sub_jenis_data', 'id_klasifikasi_tabel__deskripsi']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -180,7 +180,7 @@ def klasifikasi_jenis_data_data(request):
     data = []
     for obj in qs_page:
         data.append({
-            'jenis_data_ilap': str(obj.id_jenis_data_ilap),
+            'jenis_data_ilap': str(obj.id_sub_jenis_data),
             'klasifikasi_tabel': str(obj.id_klasifikasi_tabel),
             'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('klasifikasi_jenis_data_update', args=[obj.pk])}' title='Edit'><i class='feather-edit-2'></i></button>"
                        f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('klasifikasi_jenis_data_delete', args=[obj.pk])}' title='Delete'><i class='feather-trash-2'></i></button>"
