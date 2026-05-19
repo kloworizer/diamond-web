@@ -209,7 +209,7 @@ def monitoring_penyampaian_data_data(request):
                 
                 # Get dasar_hukum from active sub jenis data
                 dasar_hukum_set = set()
-                for kj in KlasifikasiJenisData.objects.filter(id_jenis_data_ilap_id__in=active_jenis_data_ilap_ids):
+                for kj in KlasifikasiJenisData.objects.filter(id_sub_jenis_data_id__in=active_jenis_data_ilap_ids):
                     if kj.id_klasifikasi_tabel:
                         dasar_hukum_set.add(kj.id_klasifikasi_tabel.id)
                 
@@ -296,8 +296,8 @@ def monitoring_penyampaian_data_data(request):
 
     # Build a map of jenis_data_ilap_id -> set of dasar_hukum ids (many-to-many via KlasifikasiJenisData)
     dasar_hukum_map = {}
-    for kj in KlasifikasiJenisData.objects.values('id_jenis_data_ilap_id', 'id_klasifikasi_tabel_id'):
-        dasar_hukum_map.setdefault(kj['id_jenis_data_ilap_id'], set()).add(kj['id_klasifikasi_tabel_id'])
+    for kj in KlasifikasiJenisData.objects.values('id_sub_jenis_data_id', 'id_klasifikasi_tabel_id'):
+        dasar_hukum_map.setdefault(kj['id_sub_jenis_data_id'], set()).add(kj['id_klasifikasi_tabel_id'])
 
     # Get all jenis_data_ilap with related data
     jenis_data_ilap_list = JenisDataILAP.objects.select_related(

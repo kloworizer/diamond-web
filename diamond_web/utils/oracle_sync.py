@@ -325,6 +325,70 @@ HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
         match_fields=("id_sub_jenis_data", "id_klasifikasi_tabel"),
         where_clause="",
     ),
+    # 5. Depends on jenis_data_ilap and periode_pengiriman
+    OracleSyncTableConfig(
+        name="periode_jenis_data",
+        source_query="""
+            WITH CombinedData AS (
+                SELECT
+                    b.ID_TABEL_DATA AS ID_SUB_JENIS_DATA,
+                    CASE 
+                        WHEN a.PERIODE_PENGIRIMAN = 'Triwulan' THEN 'Triwulanan'
+                        ELSE a.PERIODE_PENGIRIMAN
+                    END AS PERIODE_PENGIRIMAN,
+                    a.TGL_PENYAMPAIAN_PERTAMA,
+                    a.JADWAL_PENYAMPAIAN,
+                    1 AS PRIORITY
+                FROM
+                    PROD.APP_JENIS_DATA_ILAP a
+                JOIN PROD.APP_TABEL_DATA_ILAP b ON
+                    a.ID_JENIS_DATA = b.ID_JENIS_DATA
+                UNION ALL
+                SELECT
+                    ID_TABEL AS ID_SUB_JENIS_DATA,
+                    NULL AS PERIODE_PENGIRIMAN,
+                    NULL AS TGL_PENYAMPAIAN_PERTAMA,
+                    NULL AS JADWAL_PENYAMPAIAN,
+                    2 AS PRIORITY
+                FROM P3DE.REF_DATA_ILAP
+            ),
+            RankedData AS (
+                SELECT
+                    c.*,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY c.ID_SUB_JENIS_DATA
+                        ORDER BY c.PRIORITY ASC
+                    ) AS rn
+                FROM CombinedData c
+            )
+            SELECT 
+                ID_SUB_JENIS_DATA,
+                PERIODE_PENGIRIMAN,
+                TGL_PENYAMPAIAN_PERTAMA,
+                JADWAL_PENYAMPAIAN
+            FROM RankedData
+            WHERE rn = 1
+                AND ID_SUB_JENIS_DATA IS NOT NULL
+                AND PERIODE_PENGIRIMAN IS NOT NULL 
+                AND TGL_PENYAMPAIAN_PERTAMA IS NOT NULL
+                AND JADWAL_PENYAMPAIAN IS NOT NULL
+        """,
+        target_model_label="diamond_web.PeriodeJenisData",
+        target_key_field="id_sub_jenis_data_ilap",
+        source_key_column="ID_SUB_JENIS_DATA",
+        field_map={
+            "id_sub_jenis_data_ilap": "ID_SUB_JENIS_DATA",
+            "id_periode_pengiriman": "PERIODE_PENGIRIMAN",
+            "start_date": "TGL_PENYAMPAIAN_PERTAMA",
+            "akhir_penyampaian": "JADWAL_PENYAMPAIAN",
+        },
+        foreign_key_lookup_map={
+            "id_sub_jenis_data_ilap": "id_sub_jenis_data",
+            "id_periode_pengiriman": "periode_penyampaian",
+        },
+        match_fields=("id_sub_jenis_data_ilap", "id_periode_pengiriman"),
+        where_clause="",
+    ),
 ]
 
 

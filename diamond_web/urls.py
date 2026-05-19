@@ -149,8 +149,8 @@ urlpatterns = [
     path('docx-template/<int:pk>/download/', views.docx_template_download, name='docx_template_download'),
     # Register Penerimaan Data
     path('register-penerimaan-data/', views.LaporanRegisterPenerimaanView.as_view(), name='register_penerimaan_data'),
-    path('register-penerimaan-data/data/', views.laporan_register_penerimaan_data, name='register_penerimaan_data_data'),
-    path('register-penerimaan-data/export/', views.laporan_register_penerimaan_export, name='register_penerimaan_data_export'),
+    path('register-penerimaan-data/data/', views.register_penerimaan_data, name='register_penerimaan_data'),
+    path('register-penerimaan-data/export/', views.register_penerimaan_export, name='register_penerimaan_export'),
     # Bulk Document Generation (P3DE)
     path('bulk-generate/pkdi-klarifikasi/', views.bulk_pkdi_klarifikasi, name='bulk_pkdi_klarifikasi'),
     path('bulk-generate/nd-pengantar-pide/', views.bulk_nd_pengantar_pide, name='bulk_nd_pengantar_pide'),
