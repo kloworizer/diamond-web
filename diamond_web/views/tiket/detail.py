@@ -118,7 +118,7 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         # Get klasifikasi
         try:
             klasifikasi_list = KlasifikasiJenisData.objects.filter(
-                id_jenis_data_ilap=jenis_data
+                id_sub_jenis_data=jenis_data
             ).select_related('id_klasifikasi_tabel')
             klasifikasi_items = [item.id_klasifikasi_tabel.deskripsi for item in klasifikasi_list]
         except Exception:

@@ -88,7 +88,9 @@ class OracleSyncBatchSummary:
 # NOTE:
 # Hardcode mapping tabel sync di sini.
 # Tambahkan item baru jika source Oracle lebih dari satu tabel.
+# PENTING: Urutan tabel harus mengikuti dependency (parent sebelum child)
 HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
+    # 1. Independent tables (no dependencies)
     OracleSyncTableConfig(
         name="kategori_ilap",
         source_table="PROD.APP_KATEGORI_ILAP",
@@ -103,8 +105,80 @@ HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
         where_clause="",
     ),
     OracleSyncTableConfig(
+        name="dasar_hukum",
+        source_table="PROD.REF_DASAR_HUKUM",
+        target_model_label="diamond_web.DasarHukum",
+        target_key_field="deskripsi",
+        source_key_column="NAMA_DASAR_HUKUM",
+        field_map={
+            "kategori": "ID_KATEGORI_DASAR_HUKUM",
+            "deskripsi": "NAMA_DASAR_HUKUM",
+        },
+        where_clause="",
+    ),
+    # 2. Depends on kategori_ilap
+    OracleSyncTableConfig(
         name="ilap",
-        source_table="PROD.APP_ILAP",
+        source_query="""
+            WITH CombinedData AS (
+                SELECT
+                    app.*,
+                    1 AS PRIORITY 
+                FROM
+                    PROD.APP_ILAP app
+                UNION ALL
+                SELECT
+                    ID_ILAP,
+                    ID_KATEGORI AS ID_KATEGORI_ILAP,
+                    NAMA_ILAP,
+                    NULL AS ALAMAT_ILAP,
+                    NULL AS KOTA_ILAP,
+                    NULL AS NAMAPIC_ILAP,
+                    NULL AS TELP_KANTOR,
+                    NULL AS FAX_ILAP,
+                    NULL AS EMAIL_PICILAP,
+                    NULL AS CREATE_DATE,
+                    NULL AS CREATE_BY,
+                    NULL AS JABATAN_PICILAP,
+                    NULL AS TELP_PIC,
+                    NULL AS TUJUAN_SURAT,
+                    NULL AS TEMBUSAN,
+                    NULL AS UPDATE_DATE,
+                    NULL AS UPDATE_BY,
+                    2 AS PRIORITY 
+                FROM
+                    PROD.REF_ILAP
+            ),
+            RankedData AS (
+                SELECT 
+                    c.*,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY c.ID_ILAP 
+                        ORDER BY c.PRIORITY ASC
+                    ) AS rn
+                FROM CombinedData c
+            )
+            SELECT 
+                ID_ILAP,
+                ID_KATEGORI_ILAP,
+                NAMA_ILAP,
+                ALAMAT_ILAP,
+                KOTA_ILAP,
+                NAMAPIC_ILAP,
+                TELP_KANTOR,
+                FAX_ILAP,
+                EMAIL_PICILAP,
+                CREATE_DATE,
+                CREATE_BY,
+                JABATAN_PICILAP,
+                TELP_PIC,
+                TUJUAN_SURAT,
+                TEMBUSAN,
+                UPDATE_DATE,
+                UPDATE_BY
+            FROM RankedData
+            WHERE rn = 1
+        """,
         target_model_label="diamond_web.ILAP",
         target_key_field="id_ilap",
         source_key_column="ID_ILAP",
@@ -136,9 +210,11 @@ HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
         match_fields=("id_ilap", "nama_ilap"),
         where_clause="",
     ),
+    # 3. Depends on ilap
     OracleSyncTableConfig(
         name="jenis_data_ilap",
         source_query="""
+            WITH CombinedData AS (
             SELECT
                 a.id_ilap,
                 a.ID_JENIS_DATA,
@@ -148,34 +224,51 @@ HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
                 b.NAMA_TABEL_TIP AS NAMA_TABEL_I,
                 b.NAMA_TABEL_TIP || '_U' AS NAMA_TABEL_U,
                 CASE
-                    WHEN c."JENIS TABEL" = 'MASTER' THEN 'Diidentifikasi'
-                    WHEN c."JENIS TABEL" = 'TRANSAKSI' THEN 'Tidak Diidentifikasi'
-                    WHEN c."JENIS TABEL" = 'UNSTRUCTURE' THEN 'Tidak Terstruktur'
+                    WHEN b.JENIS_TABEL = 'Referensi' THEN 'Diidentifikasi'
+                    WHEN b.JENIS_TABEL = 'Transaksi' THEN 'Tidak Diidentifikasi'
+                    WHEN b.JENIS_TABEL = 'Unstructured' THEN 'Tidak Terstruktur'
                     ELSE NULL
-                END JENIS_TABEL,
-                'Data Utama' STATUS_DATA
-            FROM
-                (
-                SELECT
-                    *
-                FROM
-                    PROD.APP_JENIS_DATA_ILAP) a
-            JOIN 
-                (
-                SELECT
-                    *
-                FROM
-                    PROD.APP_TABEL_DATA_ILAP) b
-            ON
-                a.ID_JENIS_DATA = b.ID_JENIS_DATA
-            JOIN 
-                (
-                SELECT
-                    *
-                FROM
-                    PVPTD.ZA_REKAP_KOLOM_TABEL_PIC) c 
-            ON
-                b.NAMA_TABEL_TIP = c.NM_TABEL_FINAL
+                END AS JENIS_TABEL,
+                'Data Utama' AS STATUS_DATA,
+                1 AS PRIORITY -- Highest priority (First Table Join)
+            FROM PROD.APP_JENIS_DATA_ILAP a
+            JOIN PROD.APP_TABEL_DATA_ILAP b ON a.ID_JENIS_DATA = b.ID_JENIS_DATA
+            UNION ALL 
+            SELECT
+                ID_ILAP,
+                ID_JENIS_DATA,
+                ID_TABEL AS ID_SUB_JENIS_DATA,
+                JENIS_DATA AS NAMA_JENIS_DATA,
+                JENIS_DATA AS NAMA_SUB_JENIS_DATA, -- Fixed: Added column to match the 9 columns above
+                'KPDE_' || NAMA_TABEL AS NAMA_TABEL_I,
+                'KPDE_' || NAMA_TABEL || '_U' AS NAMA_TABEL_U,
+                'Diidentifikasi' AS JENIS_TABEL,
+                'Data Utama' AS STATUS_DATA,
+                2 AS PRIORITY -- Lower priority (Second Table)
+            FROM P3DE.REF_DATA_ILAP
+        ),
+        RankedData AS (
+            SELECT 
+                c.*,
+                ROW_NUMBER() OVER (
+                    PARTITION BY c.ID_SUB_JENIS_DATA 
+                    ORDER BY c.PRIORITY ASC
+                ) AS rn
+            FROM CombinedData c
+        )
+        SELECT 
+            ID_ILAP,
+            ID_JENIS_DATA,
+            ID_SUB_JENIS_DATA,
+            NAMA_JENIS_DATA,
+            NAMA_SUB_JENIS_DATA,
+            NAMA_TABEL_I,
+            NAMA_TABEL_U,
+            JENIS_TABEL,
+            STATUS_DATA
+        FROM RankedData
+        WHERE rn = 1
+            AND ID_SUB_JENIS_DATA IS NOT NULL
         """,
         target_model_label="diamond_web.JenisDataILAP",
         target_key_field="id_sub_jenis_data",
@@ -199,16 +292,32 @@ HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
         match_fields=("id_ilap", "id_jenis_data", "id_sub_jenis_data"),
         where_clause="",
     ),
+    # 4. Depends on jenis_data_ilap and dasar_hukum
     OracleSyncTableConfig(
-        name="dasar_hukum",
-        source_table="PROD.REF_DASAR_HUKUM",
-        target_model_label="diamond_web.DasarHukum",
-        target_key_field="deskripsi",
-        source_key_column="NAMA_DASAR_HUKUM",
+        name="klasifikasi_jenis_data",
+        source_query="""
+           SELECT
+                a.ID_TABEL,
+                b.KET_DSR_HUKUM
+            FROM
+                P3DE.REF_DSR_HUKUM a
+            JOIN P3DE.REF_DTL_DSR_HUKUM b ON
+                a.ID_DSR_HUKUM = b.ID_DSR_HUKUM
+            WHERE
+                a.ID_TABEL IN (SELECT ID_TABEL_DATA FROM PROD.APP_TABEL_DATA_ILAP)
+        """,
+        target_model_label="diamond_web.KlasifikasiJenisData",
+        target_key_field="id_sub_jenis_data",
+        source_key_column="ID_TABEL",
         field_map={
-            "kategori": "ID_KATEGORI_DASAR_HUKUM",
-            "deskripsi": "NAMA_DASAR_HUKUM",
+            "id_sub_jenis_data": "ID_TABEL",
+            "id_klasifikasi_tabel": "NAMA_DASAR_HUKUM",
         },
+        foreign_key_lookup_map={
+            "id_sub_jenis_data": "id_sub_jenis_data",
+            "id_klasifikasi_tabel": "deskripsi",
+        },
+        match_fields=("id_sub_jenis_data", "id_klasifikasi_tabel"),
         where_clause="",
     ),
 ]
@@ -472,6 +581,17 @@ class OracleDataSyncService:
                     except related_model.DoesNotExist as exc:
                         raise ValueError(
                             f"{cfg.name}: referensi {target_field} tidak ditemukan untuk nilai {raw_value}"
+                        ) from exc
+                    except related_model.MultipleObjectsReturned as exc:
+                        # Get details about the duplicates for debugging
+                        duplicate_objs = related_model.objects.filter(**{lookup_field: raw_value})
+                        duplicate_details = [
+                            f"pk={obj.pk}" + (f", {', '.join([f'{k}={getattr(obj, k, None)}' for k in ['id_ilap', 'id_jenis_data', 'id_sub_jenis_data'] if hasattr(obj, k)])}" if hasattr(obj, 'id_jenis_data') else "")
+                            for obj in duplicate_objs[:5]
+                        ]
+                        raise ValueError(
+                            f"{cfg.name}: referensi {target_field} ditemukan {duplicate_objs.count()} records untuk {lookup_field}={raw_value}. "
+                            f"Details (max 5): [{', '.join(duplicate_details)}]"
                         ) from exc
                     mapped_values[field_obj.attname] = related_obj.pk
                 return
