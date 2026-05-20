@@ -662,6 +662,13 @@ def _initialize_oracledb_thick_mode():
     Set ORACLE_CLIENT_HOME environment variable or use LD_LIBRARY_PATH to specify
     the location of Oracle Client libraries.
     
+    For RHEL/CentOS systems:
+    - Install oracle-instantclient-basic and oracle-instantclient-devel
+    - Set LD_LIBRARY_PATH=/usr/lib/oracle/<version>/client<arch>/lib
+    
+    For Windows systems:
+    - Set ORACLE_CLIENT_HOME to Oracle Client installation directory
+    
     Raises:
         Exception: If Oracle Client libraries are not found (Windows) or 
                   LD_LIBRARY_PATH not set properly (Linux/Unix)
@@ -678,7 +685,16 @@ def _initialize_oracledb_thick_mode():
             oracledb.init_oracle_client()
             logger.info("Initialized oracledb in thick mode")
         except Exception as e:
-            logger.error(f"Failed to initialize oracledb thick mode: {e}")
+            error_msg = str(e)
+            # Catch "Unexpected token" errors which indicate Oracle Client not found
+            if "Unexpected token" in error_msg or "html" in error_msg.lower() or "<" in error_msg:
+                logger.error(
+                    "Failed to initialize oracledb thick mode - Oracle Client libraries not found or misconfigured. "
+                    "Error: %s. For RHEL9, ensure Oracle InstantClient is installed and LD_LIBRARY_PATH is set correctly.",
+                    error_msg[:200]
+                )
+            else:
+                logger.error(f"Failed to initialize oracledb thick mode: {error_msg[:200]}")
             logger.error(
                 "Thick mode requires Oracle Client libraries. "
                 "Install Oracle Client or set ORACLE_CLIENT_HOME / LD_LIBRARY_PATH"
@@ -973,11 +989,30 @@ class OracleDataSyncService:
         else:
             dsn = f"{conn_cfg.host}:{conn_cfg.port}/{conn_cfg.sid}"
 
-        return oracledb.connect(
-            user=conn_cfg.user,
-            password=conn_cfg.password,
-            dsn=dsn,
-        )
+        try:
+            return oracledb.connect(
+                user=conn_cfg.user,
+                password=conn_cfg.password,
+                dsn=dsn,
+            )
+        except Exception as e:
+            error_msg = str(e)
+            # Provide better error messages for common issues
+            if "Unexpected token" in error_msg or "html" in error_msg.lower():
+                logger.error(
+                    f"Failed to connect to Oracle ({connection_name}): Oracle Client not properly configured. "
+                    f"DSN: {dsn}. Error: {error_msg[:150]}"
+                )
+                raise OracleSyncConfigError(
+                    f"Oracle Client error ({connection_name}). Ensure Oracle InstantClient is installed on RHEL9 "
+                    f"and LD_LIBRARY_PATH is set correctly."
+                ) from e
+            logger.error(
+                f"Failed to connect to Oracle ({connection_name}): {error_msg}. DSN: {dsn}"
+            )
+            raise OracleSyncConfigError(
+                f"Gagal terhubung ke Oracle ({connection_name}): {error_msg}"
+            ) from e
 
     @staticmethod
     def _normalize_value(value: Any) -> Any:
