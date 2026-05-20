@@ -1,60 +1,211 @@
-{% extends "base.html" %}
-{% load crispy_forms_tags %}
+{% load static %}
 
+<!DOCTYPE html>
+<html lang="zxx">
 
-{% block content %}
-<div class="container mt-4">
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h2 class="mb-1">
-                        <i class="ri-calendar-2-line me-2"></i>Periode Jenis Data
-                    </h2>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-                            <li class="breadcrumb-item active">Periode Jenis Data</li>
-                        </ol>
-                    </nav>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="keyword" content="">
+    <meta name="author" content="theme_ocean">
+    <!--! The above 6 meta tags *must* come first in the head; any other head content must come *after* these tags !-->
+    <!--! BEGIN: Apps Title-->
+    <title>Diamond || Periode Jenis Data ILAP</title>
+    <!--! END:  Apps Title-->
+    <!--! BEGIN: Favicon-->
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'assets/images/favicon.ico' %}">
+    <!--! END: Favicon-->
+    <!--! BEGIN: Bootstrap CSS-->
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/css/bootstrap.min.css' %}">
+    <!--! END: Bootstrap CSS-->
+    <!--! BEGIN: Vendors CSS-->
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/vendors.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/dataTables.bs5.min.css' %}">
+    <!--! END: Vendors CSS-->
+    <!--! BEGIN: Custom CSS-->
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/css/theme.min.css' %}">
+    <!--! END: Custom CSS-->
+    <!--! HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries !-->
+    <!--! WARNING: Respond.js doesn"t work if you view the page via file: !-->
+    <!--[if lt IE 9]>
+			<script src="https:oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+			<script src="https:oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+		<![endif]-->
+</head>
+
+<body>
+    
+    {% include 'navbar_full.html' %}
+    <!--! ================================================================ !-->
+    <!--! [Start] Header !-->
+    <!--! ================================================================ !-->
+    <header class="nxl-header">
+        <div class="header-wrapper">
+            <!--! [Start] Header Left !-->
+            <div class="header-left d-flex align-items-center gap-4">
+                <!--! [Start] nxl-head-mobile-toggler !-->
+                <a href="javascript:void(0);" class="nxl-head-mobile-toggler" id="mobile-collapse">
+                    <div class="hamburger hamburger--arrowturn">
+                        <div class="hamburger-box">
+                            <div class="hamburger-inner"></div>
+                        </div>
+                    </div>
+                </a>
+                <!--! [Start] nxl-head-mobile-toggler !-->
+                <!--! [Start] nxl-navigation-toggle !-->
+                <div class="nxl-navigation-toggle">
+                    <a href="javascript:void(0);" id="menu-mini-button">
+                        <i class="feather-align-left"></i>
+                    </a>
+                    <a href="javascript:void(0);" id="menu-expend-button" style="display: none">
+                        <i class="feather-arrow-right"></i>
+                    </a>
+                </div>
+                <!--! [End] nxl-navigation-toggle !-->
+            </div>
+            <!--! [End] Header Left !-->
+            <!--! [Start] Header Right !-->
+            <div class="header-right ms-auto">
+                <div class="d-flex align-items-center">
+                    <div class="dropdown nxl-h-item">
+                        <a class="nxl-head-link me-3" data-bs-toggle="dropdown" href="#" role="button" data-bs-auto-close="outside">
+                            <i class="feather-bell"></i>
+                            <span class="badge bg-danger nxl-h-badge">1</span>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end nxl-h-dropdown nxl-notifications-menu">
+                            <div class="d-flex justify-content-between align-items-center notifications-head">
+                                <h6 class="fw-bold text-dark mb-0">Notifications</h6>
+                            </div>
+                            <div class="text-center notifications-footer">
+                                <a href="javascript:void(0);" class="fs-13 fw-semibold text-dark">All Notifications</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dropdown nxl-h-item">
+                        <a href="javascript:void(0);" data-bs-toggle="dropdown" role="button" data-bs-auto-close="outside">
+                            <img src="{% static 'assets/images/avatar/1.png' %}" alt="user-image" class="img-fluid user-avtar me-0">
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end nxl-h-dropdown nxl-user-dropdown">
+                            <div class="dropdown-header">
+                                <div class="d-flex align-items-center">
+                                    <img src="{% static 'assets/images/avatar/1.png' %}" alt="user-image" class="img-fluid user-avtar">
+                                    <div>
+                                        <h6 class="text-dark mb-0">User <span class="badge bg-soft-success text-success ms-1">PRO</span></h6>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <a href="{% url 'user_password_change' %}" class="dropdown-item">
+                                <i class="feather-lock"></i>
+                                <span>Change Password</span>
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <form action="{% url 'logout' %}" method="post" class="d-inline w-100">
+                            {% csrf_token %}
+                            <button type="submit" class="dropdown-item" style="border: none; background: none; width: 100%; text-align: left;">
+                                <i class="feather-log-out"></i>
+                                <span>Logout</span>
+                            </button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
+            <!--! [End] Header Right !-->
         </div>
-    </div>
+    </header>
+    <!--! ================================================================ !-->
+    <!--! [End] Header !-->
+    <!--! ================================================================ !-->
+    <!--! ================================================================ !-->
+    <!--! [Start] Main Content !-->
+    <!--! ================================================================ !-->
+    <main class="nxl-container">
+        <div class="nxl-content">
+            <!-- [ page-header ] start -->
+            <div class="page-header">
+                <div class="page-header-left d-flex align-items-center">
+                    <div class="page-header-title">
+                        <h5 class="m-b-10">Periode Jenis Data ILAP</h5>
+                    </div>
+                    <ul class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'dashboard_index' %}">Kelola ILAP</a></li>
+                        <li class="breadcrumb-item">Periode Jenis Data ILAP</li>
+                    </ul>
+                </div>
+                <div class="page-header-right ms-auto">
+                    <div class="page-header-right-items">
+                        <div class="d-flex align-items-center gap-2 page-header-right-items-wrapper">
+                            <button type="button" class="btn btn-primary" data-action="create">
+                                <i class="feather-plus me-2"></i>
+                                <span>Tambah</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="d-md-none d-flex align-items-center">
+                        <a href="javascript:void(0)" class="page-header-right-open-toggle">
+                            <i class="feather-align-right fs-20"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <!-- [ page-header ] end -->
 
-    <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
-            <h5 class="mb-0"><i class="ri-calendar-2-line me-2"></i>Daftar Periode Jenis Data</h5>
-            <button type="button" class="btn btn-success" data-action="create"><i class="ri-add-line me-1"></i>Tambah</button>
+            <!-- [ Main Content ] start -->
+            <div class="main-content">
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="card stretch stretch-full">
+                            <div class="card-body p-0">
+                                <div class="card-header">
+                                    <h5 class="card-title">Periode Jenis Data ILAP</h5>
+                                </div>
+                                <div class="card-body custom-card-action p-0">
+                                    <div class="table-responsive">
+                                        <table id="periode-jenis-data-table" class="table table-hover mb-0" style="width:100%">
+                                            <thead>
+                                                <tr class="border-b">
+                                                    <th>Sub Jenis Data ILAP</th>
+                                                    <th>Periode Pengiriman</th>
+                                                    <th>Akhir Penyampaian</th>
+                                                    <th>Tanggal Mulai</th>
+                                                    <th>Tanggal Selesai</th>
+                                                    <th class="text-end">Aksi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="card-footer">
+                                    <ul class="list-unstyled d-flex align-items-center gap-2 mb-0 pagination-common-style" id="pagination-wrapper">
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- [ Main Content ] end -->
         </div>
-        <div class="card-body">
-            <table id="periode-jenis-data-table" class="table table-striped" style="width:100%">
-                <thead>
-                    <tr>
-                        <th>Sub Jenis Data ILAP</th>
-                        <th>Periode Pengiriman</th>
-                        <th>Akhir Penyampaian</th>
-                        <th>Start Date</th>
-                        <th>End Date</th>
-                        <th>Actions</th>
-                    </tr>
-                    <tr id="column-search-row">
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Sub Jenis Data" data-column="0" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Periode" data-column="1" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Akhir Penyampaian" data-column="2" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Start Date" data-column="3" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search End Date" data-column="4" /></th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-    </div>
+
+        <!-- [ Footer ] start -->
+        <footer class="footer">
+            <p class="fs-11 text-muted fw-medium text-uppercase mb-0 copyright">
+                <span>Copyright © 2026</span>
+            </p>
+            <p><span>By: <a>Diamond Team</a></span></p>
+        </footer>
+        <!-- [ Footer ] end -->
+    </main>
+    <!--! [End] Main Content !-->
+    <!--! ================================================================ !-->
 
     <!-- Modal for Create/Edit/Delete -->
     <div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="crudModalLabel">Form</h5>
@@ -66,143 +217,204 @@
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
 
-{% block scripts %}
-<script>
-    (function () {
-        const ajaxUrl = "{% url 'periode_jenis_data_data' %}";
-        let table;
+    <!--! BEGIN: Vendors JS !-->
+    <script src="{% static 'assets/vendors/js/vendors.min.js' %}"></script>
+    <script src="{% static 'assets/vendors/js/dataTables.min.js' %}"></script>
+    <script src="{% static 'assets/vendors/js/dataTables.bs5.min.js' %}"></script>
+    <!--! END: Vendors JS !-->
+    <!--! BEGIN: Apps Init !-->
+    <script src="{% static 'assets/js/common-init.min.js' %}"></script>
+    <!--! END: Apps Init !-->
+    <!--! BEGIN: Theme Customizer !-->
+    <script src="{% static 'assets/js/theme-customizer-init.min.js' %}"></script>
+    <!--! END: Theme Customizer !-->
 
-        $(document).ready(function () {
-            table = $('#periode-jenis-data-table').DataTable({
-                serverSide: true,
-                layout: {
-                    topStart: null,
-                    topEnd: null
-                },
-                ajax: {
-                    url: ajaxUrl,
-                    dataSrc: 'data',
-                    data: function (d) {
-                        // Add column search values
-                        d.columns_search = [];
-                        $('#column-search-row input').each(function (i) {
-                            d.columns_search[i] = $(this).val();
-                        });
-                        return d;
+
+    <script>
+        (function () {
+            const ajaxUrl = "{% url 'periode_jenis_data_data' %}";
+            let table;
+
+            $(document).ready(function () {
+                table = $('#periode-jenis-data-table').DataTable({
+                    serverSide: true,
+                    processing: true,
+                    paging: true,
+                    pageLength: 10,
+                    ajax: {
+                        url: ajaxUrl,
+                        dataSrc: 'data',
+                        data: function (d) {
+                            return d;
+                        }
+                    },
+                    columns: [
+                        { data: 'sub_jenis_data_ilap' },
+                        { data: 'periode_pengiriman' },
+                        { data: 'akhir_penyampaian' },
+                        { data: 'start_date' },
+                        { data: 'end_date' },
+                        { data: 'actions', orderable: false, searchable: false }
+                    ],
+                    columnDefs: [
+                        { targets: 5, render: function (data, type, row, meta) { return data; } }
+                    ],
+                    order: [[0, 'asc']],
+                    layout: {
+                        topStart: null,
+                        topEnd: null,
+                        bottomStart: null,
+                        bottomEnd: null
+                    },
+                    drawCallback: function(settings) {
+                        updatePagination(settings);
                     }
-                },
-                pageLength: 10,
-                columns: [
-                    { data: 'sub_jenis_data_ilap' },
-                    { data: 'periode_pengiriman' },
-                    { data: 'akhir_penyampaian' },
-                    { data: 'start_date' },
-                    { data: 'end_date' },
-                    { data: 'actions', orderable: false, searchable: false }
-                ],
-                columnDefs: [
-                    { targets: 5, render: function (data, type, row, meta) { return data; } }
-                ],
-                order: [[0, 'asc']]
+                });
+
+                // Handle create button
+                $('[data-action="create"]').on('click', function () {
+                    loadModal('{% url "periode_jenis_data_create" %}', 'Tambah Periode Jenis Data');
+                });
+
+                // Handle edit/delete buttons (delegated event)
+                $(document).on('click', '[data-action="edit"]', function (e) {
+                    e.preventDefault();
+                    const url = $(this).data('url');
+                    loadModal(url, 'Edit Periode Jenis Data');
+                });
+
+                $(document).on('click', '[data-action="delete"]', function (e) {
+                    e.preventDefault();
+                    const url = $(this).data('url');
+                    loadModal(url, 'Hapus Periode Jenis Data');
+                });
+
+                // Handle form submission
+                $(document).on('submit', '#modalBody form', function (e) {
+                    e.preventDefault();
+                    const form = $(this);
+                    const url = form.attr('action');
+                    const formData = new FormData(form[0]);
+
+                    $.ajax({
+                        url: url,
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        success: function (response) {
+                            if (response.success) {
+                                $('#crudModal').modal('hide');
+                                table.ajax.reload();
+                                showToast(response.message || 'Data berhasil disimpan.', 'success');
+                            } else {
+                                $('#modalBody').html(response.html);
+                            }
+                        },
+                        error: function (xhr) {
+                            try {
+                                const response = JSON.parse(xhr.responseText);
+                                if (response.message) {
+                                    showToast(response.message, 'danger');
+                                } else {
+                                    showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                                }
+                            } catch (e) {
+                                showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                            }
+                        }
+                    });
+                });
+
+                const modalElement = document.getElementById('crudModal');
+                modalElement.addEventListener('hidden.bs.modal', function () {
+                    document.getElementById('modalBody').innerHTML = '';
+                });
             });
 
-            // Add individual column search
-            $('#column-search-row input').on('keyup change', function () {
-                table.ajax.reload();
-            });
-
-            // Handle modal hide to prevent aria-hidden conflicts
-            const modalElement = document.getElementById('crudModal');
-            modalElement.addEventListener('hidden.bs.modal', function () {
-                // Reset modal body
-                document.getElementById('modalBody').innerHTML = '';
-            });
-
-            modalElement.addEventListener('hide.bs.modal', function () {
-                // Clear focus from form elements
-                const focusedElement = document.activeElement;
-                if (focusedElement && modalElement.contains(focusedElement)) {
-                    focusedElement.blur();
-                }
-            });
-
-            // Handle create button
-            $('[data-action="create"]').on('click', function () {
-                loadModal('{% url "periode_jenis_data_create" %}', 'Tambah Periode Jenis Data');
-            });
-
-            // Handle edit/delete buttons (delegated event)
-            $(document).on('click', '[data-action="edit"]', function (e) {
-                e.preventDefault();
-                const url = $(this).data('url');
-                loadModal(url, 'Edit Periode Jenis Data');
-            });
-
-            $(document).on('click', '[data-action="delete"]', function (e) {
-                e.preventDefault();
-                const url = $(this).data('url');
-                loadModal(url, 'Hapus Periode Jenis Data');
-            });
-
-            // Handle form submission
-            $(document).on('submit', '#modalBody form', function (e) {
-                e.preventDefault();
-                const form = $(this);
-                const url = form.attr('action');
-                const formData = new FormData(form[0]);
+            function loadModal(url, title) {
+                $('#crudModalLabel').text(title);
+                $('#modalBody').html('<div class="text-center"><div class="spinner-border" role="status"></div></div>');
+                $('#crudModal').modal('show');
 
                 $.ajax({
                     url: url,
-                    type: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
+                    type: 'GET',
+                    data: { ajax: '1' },
                     success: function (response) {
-                        if (response.success) {
-                            $('#crudModal').modal('hide');
-                            table.ajax.reload();
-                            showToast(response.message || 'Data berhasil disimpan.', 'success');
-                        } else {
-                            $('#modalBody').html(response.html);
-                        }
+                        $('#modalBody').html(response.html || response);
                     },
-                    error: function (xhr) {
-                        try {
-                            const response = JSON.parse(xhr.responseText);
-                            if (response.message) {
-                                showToast(response.message, 'danger');
-                            } else {
-                                showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
-                            }
-                        } catch (e) {
-                            showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
-                        }
+                    error: function () {
+                        $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');
                     }
                 });
-            });
-        });
+            }
 
-        function loadModal(url, title) {
-            $('#crudModalLabel').text(title);
-            $('#modalBody').html('<div class="text-center"><div class="spinner-border" role="status"></div></div>');
-            $('#crudModal').modal('show');
+            function updatePagination(settings) {
+                const api = settings.oInstance.api();
+                const totalPages = Math.ceil(api.page.info().recordsTotal / api.page.info().length);
+                const currentPage = api.page.info().page + 1;
+                let paginationHtml = '';
 
-            $.ajax({
-                url: url,
-                type: 'GET',
-                data: { ajax: '1' },
-                success: function (response) {
-                    $('#modalBody').html(response.html || response);
-                },
-                error: function () {
-                    $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');
+                // Previous button
+                paginationHtml += '<li><a href="javascript:void(0);" class="' + (currentPage === 1 ? 'disabled' : '') + '" data-page="prev"><i class="bi bi-arrow-left"></i></a></li>';
+
+                // Page numbers
+                for (let i = 1; i <= totalPages; i++) {
+                    paginationHtml += '<li><a href="javascript:void(0);" class="' + (i === currentPage ? 'active' : '') + '" data-page="' + i + '">' + i + '</a></li>';
                 }
-            });
-        }
 
-    })();
-</script>
-{% endblock %}
+                // Next button
+                paginationHtml += '<li><a href="javascript:void(0);" class="' + (currentPage === totalPages ? 'disabled' : '') + '" data-page="next"><i class="bi bi-arrow-right"></i></a></li>';
+
+                $('#pagination-wrapper').html(paginationHtml);
+
+                // Pagination click handlers
+                $('#pagination-wrapper a').on('click', function (e) {
+                    e.preventDefault();
+                    const page = $(this).data('page');
+                    
+                    if (page === 'prev') {
+                        api.page('previous').draw('page');
+                    } else if (page === 'next') {
+                        api.page('next').draw('page');
+                    } else {
+                        api.page(page - 1).draw('page');
+                    }
+                });
+            }
+
+            function showToast(message, type = 'info', title = null) {
+                const toastId = 'toast-' + Date.now();
+                const bgClass = type === 'success' ? 'bg-success' : type === 'danger' ? 'bg-danger' : type === 'warning' ? 'bg-warning' : 'bg-info';
+                const defaultTitles = {
+                    'success': 'Berhasil',
+                    'danger': 'Kesalahan',
+                    'warning': 'Peringatan',
+                    'info': 'Informasi'
+                };
+                const displayTitle = title || defaultTitles[type] || 'Pemberitahuan';
+                const toastHtml = `
+                    <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+                        <div class="toast-header ${bgClass} text-white">
+                            <strong class="me-auto">${displayTitle}</strong>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                    </div>
+                `;
+                $('body').append(toastHtml);
+                const toastElement = document.getElementById(toastId);
+                const toast = new bootstrap.Toast(toastElement);
+                toast.show();
+                toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
+            }
+
+        })();
+    </script>
+</body>
+
+</html>

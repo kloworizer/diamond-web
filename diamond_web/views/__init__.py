@@ -32,6 +32,12 @@ from .laporan_register_penerimaan import *
 from .tiket import *
 from .laporan_pide_filter_options import *
 from .laporan_transfer import *
+from .periode_jns_dt_ilap_views import periode_jns_data_ilap_idx as periode_ilap_index
+
+from .fe_data_prioritas_views import data_prioritas_idx as data_prioritas_index
+
+from .blank import blank_index
+
 from .laporan_sla_perekaman import *
 from .laporan_sla_identifikasi import *
 from .laporan_metrik_data_eksternal import *
