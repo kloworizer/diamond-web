@@ -110,6 +110,15 @@
                 credentials: 'same-origin',
                 body: JSON.stringify({}),
             });
+            
+            // Check content type
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                // Response is not JSON (might be error HTML page)
+                const text = await response.text();
+                throw new Error('Server error: ' + (text.substring(0, 100) || 'Unknown error'));
+            }
+            
             const data = await response.json();
             if (!response.ok || !data.success) {
                 throw new Error(data.message || 'Terjadi kesalahan');

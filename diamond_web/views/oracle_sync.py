@@ -57,9 +57,13 @@ def oracle_sync_test_connection(request):
             }
         })
     except OracleSyncConfigError as exc:
-        return JsonResponse({'success': False, 'message': str(exc)}, status=400)
+        error_msg = str(exc).strip()
+        return JsonResponse({'success': False, 'message': error_msg}, status=400)
     except Exception as exc:
-        return JsonResponse({'success': False, 'message': f'Gagal koneksi Oracle: {exc}'}, status=500)
+        error_msg = str(exc).strip()
+        if not error_msg or '<' in error_msg:
+            error_msg = 'Gagal koneksi ke Oracle server. Periksa konfigurasi dan konektivitas network.'
+        return JsonResponse({'success': False, 'message': error_msg}, status=500)
 
 
 @login_required
@@ -83,9 +87,13 @@ def oracle_sync_check(request):
             'summary': summary.as_dict(),
         })
     except OracleSyncConfigError as exc:
-        return JsonResponse({'success': False, 'message': str(exc)}, status=400)
+        error_msg = str(exc).strip()
+        return JsonResponse({'success': False, 'message': error_msg}, status=400)
     except Exception as exc:
-        return JsonResponse({'success': False, 'message': f'Gagal cek data: {exc}'}, status=500)
+        error_msg = str(exc).strip()
+        if not error_msg or '<' in error_msg:
+            error_msg = 'Gagal melakukan check data. Periksa koneksi Oracle.'
+        return JsonResponse({'success': False, 'message': error_msg}, status=500)
 
 
 @login_required
@@ -117,6 +125,10 @@ def oracle_sync_run(request):
             'message': 'Sync Oracle selesai.',
         })
     except OracleSyncConfigError as exc:
-        return JsonResponse({'success': False, 'message': str(exc)}, status=400)
+        error_msg = str(exc).strip()
+        return JsonResponse({'success': False, 'message': error_msg}, status=400)
     except Exception as exc:
-        return JsonResponse({'success': False, 'message': f'Gagal sync data: {exc}'}, status=500)
+        error_msg = str(exc).strip()
+        if not error_msg or '<' in error_msg:
+            error_msg = 'Gagal melakukan sync data. Periksa koneksi Oracle.'
+        return JsonResponse({'success': False, 'message': error_msg}, status=500)
