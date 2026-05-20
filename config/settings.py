@@ -149,24 +149,27 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Jakarta"
 USE_I18N = True
-USE_TZ = False
+USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 STATIC_URL = "/static/"
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATIC_ROOT = BASE_DIR / "staticfiles"
+if not DEBUG:
+    STATICFILES_STORAGE = "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
 
-# Media files (User uploads)
+# Media files
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "diamond_web", "media")
+MEDIA_ROOT = BASE_DIR / "media"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Authentication URLs
-LOGIN_REDIRECT_URL = "/"
-LOGOUT_REDIRECT_URL = "/"
+# Authentication settings
+LOGIN_URL = "login"  # Redirect to login page when user not authenticated
+LOGIN_REDIRECT_URL = "home"  # Redirect to home after successful login
+LOGOUT_REDIRECT_URL = "login"  # Redirect to login after logout
 
 # Crispy forms configuration
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"

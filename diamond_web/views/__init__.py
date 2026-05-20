@@ -1,6 +1,5 @@
 from .home import *
 from .notification import *
-# from .new_login import *
 from .dashboard import *
 from .kategori_ilap import *
 from .ilap import *
