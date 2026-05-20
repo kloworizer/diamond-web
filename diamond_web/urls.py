@@ -7,6 +7,10 @@ import sys
 print("--- Loading diamond_web/urls.py ---", file=sys.stderr)
 
 urlpatterns = [
+    # === Authentication URLs ===
+    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
+    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    
     path('tanda-terima-data/<int:pk>/view/', views.TandaTerimaDataViewOnly.as_view(), name='tanda_terima_data_view'),
     path('', views.home, name='home'),
     path('keep-alive/', keep_alive, name='keep_alive'),
@@ -18,9 +22,6 @@ urlpatterns = [
     path('oracle-sync/test/', views.oracle_sync_test_connection, name='oracle_sync_test'),
     path('oracle-sync/check/', views.oracle_sync_check, name='oracle_sync_check'),
     path('oracle-sync/run/', views.oracle_sync_run, name='oracle_sync_run'),
-
-    # === new_login Section ===
-    path('new_login/', auth_views.LoginView.as_view(template_name='auth-login-creative.html'), name='new_login'),
 
     # === Dashboard Section ===
     path('dashboard/', views.DashboardMonitoringView.as_view(), name='dashboard_monitoring'),
@@ -149,7 +150,7 @@ urlpatterns = [
     path('docx-template/<int:pk>/download/', views.docx_template_download, name='docx_template_download'),
     # Register Penerimaan Data
     path('register-penerimaan-data/', views.LaporanRegisterPenerimaanView.as_view(), name='register_penerimaan_data'),
-    path('register-penerimaan-data/data/', views.register_penerimaan_data, name='register_penerimaan_data'),
+    path('register-penerimaan-data/data/', views.register_penerimaan_data, name='register_penerimaan_data_data'),
     path('register-penerimaan-data/export/', views.register_penerimaan_export, name='register_penerimaan_export'),
     # Bulk Document Generation (P3DE)
     path('bulk-generate/pkdi-klarifikasi/', views.bulk_pkdi_klarifikasi, name='bulk_pkdi_klarifikasi'),
