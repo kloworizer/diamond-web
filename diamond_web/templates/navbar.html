@@ -19,6 +19,7 @@
                     </a>
                 </li>
 
+                {% if user.is_authenticated %}
                 <li class="nxl-item">
                     <a class="nxl-link" href="{% url 'dashboard_monitoring' %}">
                         <span class="nxl-micon"><i class="feather-bar-chart-2"></i></span>
@@ -26,10 +27,9 @@
                     </a>
                 </li>
 
-                {% if user.is_authenticated %}
                 <li class="nxl-item">
                     <a class="nxl-link" href="{% url 'tiket_list' %}">
-                        <span class="nxl-micon"><i class="feather-file-text"></i></span>
+                        <span class="nxl-micon"><i class="feather-inbox"></i></span>
                         <span class="nxl-mtext">Daftar Tiket</span>
                     </a>
                 </li>
@@ -38,7 +38,7 @@
                 {% if user|has_group:"admin" or user|has_group:"user_p3de" %}
                 <li class="nxl-item nxl-hasmenu">
                     <a href="javascript:void(0);" class="nxl-link">
-                        <span class="nxl-micon"><i class="feather-send"></i></span>
+                        <span class="nxl-micon"><i class="feather-database"></i></span>
                         <span class="nxl-mtext">P3DE</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                     </a>
                     <ul class="nxl-submenu">
@@ -57,7 +57,7 @@
                 {% if user|has_group:"admin" or user|has_group:"user_pide" %}
                 <li class="nxl-item nxl-hasmenu">
                     <a href="javascript:void(0);" class="nxl-link">
-                        <span class="nxl-micon"><i class="feather-clipboard"></i></span>
+                        <span class="nxl-micon"><i class="feather-layers"></i></span>
                         <span class="nxl-mtext">PIDE</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                     </a>
                     <ul class="nxl-submenu">
@@ -72,7 +72,7 @@
                 {% if user|has_group:"admin" or user|has_group:"user_pmde" %}
                 <li class="nxl-item nxl-hasmenu">
                     <a href="javascript:void(0);" class="nxl-link">
-                        <span class="nxl-micon"><i class="feather-check-circle"></i></span>
+                        <span class="nxl-micon"><i class="feather-award"></i></span>
                         <span class="nxl-mtext">PMDE</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                     </a>
                     <ul class="nxl-submenu">
@@ -86,7 +86,7 @@
                 <li class="nxl-item nxl-hasmenu">
                     <a href="javascript:void(0);" class="nxl-link">
                         <span class="nxl-micon"><i class="feather-settings"></i></span>
-                        <span class="nxl-mtext">Admin P3DE</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+                        <span class="nxl-mtext">Kelola Referensi P3DE</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                     </a>
                     <ul class="nxl-submenu">
                         {% if user|has_group:"admin" %}
@@ -104,11 +104,33 @@
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'cara_penyampaian_list' %}">Cara Penyampaian</a></li>
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'media_backup_list' %}">Media Backup</a></li>
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'status_penelitian_list' %}">Status Penelitian</a></li>
+                    </ul>
+                </li>
+                {% endif %}
+                
+                {% if user|has_group:"admin" or user|has_group:"admin_p3de" %}
+                <li class="nxl-item nxl-hasmenu">
+                    <a href="javascript:void(0);" class="nxl-link">
+                        <span class="nxl-micon"><i class="feather-settings"></i></span>
+                        <span class="nxl-mtext">Kelola ILAP</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+                    </a>
+                    <ul class="nxl-submenu">
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'ilap_list' %}">ILAP</a></li>
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'jenis_data_ilap_list' %}">Jenis Data ILAP</a></li>
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'klasifikasi_jenis_data_list' %}">Klasifikasi Jenis Data</a></li>
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'periode_jenis_data_list' %}">Periode Jenis Data</a></li>
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'jenis_prioritas_data_list' %}">Data Prioritas</a></li>
+                    </ul>
+                </li>
+                {% endif %}
+                
+                {% if user|has_group:"admin" or user|has_group:"admin_p3de" %}
+                <li class="nxl-item nxl-hasmenu">
+                    <a href="javascript:void(0);" class="nxl-link">
+                        <span class="nxl-micon"><i class="feather-settings"></i></span>
+                        <span class="nxl-mtext">Admin P3DE</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+                    </a>
+                    <ul class="nxl-submenu">
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'pic_p3de_list' %}">PIC P3DE</a></li>
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'docx_template_list' %}">Template Dokumen</a></li>
                     </ul>
@@ -118,7 +140,7 @@
                 {% if user|has_group:"admin" or user|has_group:"admin_pide" %}
                 <li class="nxl-item nxl-hasmenu">
                     <a href="javascript:void(0);" class="nxl-link">
-                        <span class="nxl-micon"><i class="feather-tool"></i></span>
+                        <span class="nxl-micon"><i class="feather-settings"></i></span>
                         <span class="nxl-mtext">Admin PIDE</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                     </a>
                     <ul class="nxl-submenu">
@@ -132,7 +154,7 @@
                 {% if user|has_group:"admin" or user|has_group:"admin_pmde" %}
                 <li class="nxl-item nxl-hasmenu">
                     <a href="javascript:void(0);" class="nxl-link">
-                        <span class="nxl-micon"><i class="feather-sliders"></i></span>
+                        <span class="nxl-micon"><i class="feather-settings"></i></span>
                         <span class="nxl-mtext">Admin PMDE</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                     </a>
                     <ul class="nxl-submenu">
