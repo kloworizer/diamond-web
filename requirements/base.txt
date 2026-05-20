@@ -1,7 +1,7 @@
 # Base requirements - shared between dev and production
 asgiref==3.11.0
 crispy-bootstrap5==2026.3
-cx-Oracle==8.3.0
+oracledb>=2.0.0
 diff-match-patch==20241021
 Django==5.2.14
 django-crispy-forms==2.6
