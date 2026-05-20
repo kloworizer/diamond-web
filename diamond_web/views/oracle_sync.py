@@ -2,6 +2,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.cache import never_cache
 
 from ..utils.oracle_sync import OracleDataSyncService, OracleSyncConfigError
 
@@ -64,10 +65,18 @@ def oracle_sync_test_connection(request):
 @login_required
 @user_passes_test(_is_admin_user)
 @require_POST
+@never_cache
 def oracle_sync_check(request):
     try:
+        # Prevent session from being deleted during long-running operation
+        request.session.modified = False
+        
         service = OracleDataSyncService()
         summary = service.check()
+        
+        # Refresh session to prevent timeout
+        request.session.create()
+        
         return JsonResponse({
             'success': True,
             'mode': 'check',
@@ -82,10 +91,18 @@ def oracle_sync_check(request):
 @login_required
 @user_passes_test(_is_admin_user)
 @require_POST
+@never_cache
 def oracle_sync_run(request):
     try:
+        # Prevent session from being deleted during long-running operation
+        request.session.modified = False
+        
         service = OracleDataSyncService()
         summary = service.sync()
+        
+        # Refresh session to prevent timeout
+        request.session.create()
+        
         if summary.errors:
             return JsonResponse({
                 'success': False,

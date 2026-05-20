@@ -557,21 +557,90 @@ JENIS_PRIORITAS_DATA = [
 ]
 
 USERS_DATA = [
-    # user_p3de group (3 users) - username and password are the same (9-digit number)
-    {"username": "334070720", "first_name": "Ahmad", "last_name": "Wijaya", "group": "user_p3de"},
-    {"username": "219166966", "first_name": "Budi", "last_name": "Santoso", "group": "user_p3de"},
-    {"username": "469817665", "first_name": "Citra", "last_name": "Dewi", "group": "user_p3de"},
-    
-    # user_pide group (3 users) - username and password are the same (9-digit number)
-    {"username": "235512708", "first_name": "Dwi", "last_name": "Purwanto", "group": "user_pide"},
-    {"username": "778511709", "first_name": "Eka", "last_name": "Prasetya", "group": "user_pide"},
-    {"username": "648726232", "first_name": "Farhan", "last_name": "Hidayat", "group": "user_pide"},
-    
-    # user_pmde group (3 users) - username and password are the same (9-digit number)
-    {"username": "446674438", "first_name": "Gitawati", "last_name": "Handini", "group": "user_pmde"},
-    {"username": "090860740", "first_name": "Hendra", "last_name": "Kusuma", "group": "user_pmde"},
-    {"username": "897882042", "first_name": "Irwan", "last_name": "Setiawan", "group": "user_pmde"},
+    # Full data dari CSV produksi (nama sudah dimask, tanpa nama asli)
+    {"username": "060090892", "role": "user_p3de", "nama": "Mexxx Daxxxxxxxx"},
+    {"username": "060098973", "role": "user_p3de", "nama": "Raxxx Fexxxxxxxx Dexxx Yuxxxxxxx"},
+    {"username": "060102843", "role": "user_p3de", "nama": "Anxxx Waxxx Anxxxxx"},
+    {"username": "060106391", "role": "user_p3de", "nama": "Yuxxx Baxxxxxx Rixxx"},
+    {"username": "060114626", "role": "user_p3de", "nama": "Yaxxxx Mixx Sixxxxxxxx"},
+    {"username": "808320250", "role": "user_p3de", "nama": "Fexxxxxxx Swxxxxxxx"},
+    {"username": "810202119", "role": "user_p3de", "nama": "Muxx Raxxxx Wixxxx"},
+    {"username": "815101362", "role": "user_p3de", "nama": "Mixxxxxxx Rixxx Khxxxx"},
+    {"username": "830200611", "role": "user_p3de", "nama": "Anxxxx Prxxxxxx"},
+    {"username": "830602552", "role": "user_p3de", "nama": "Kuxxxx Nuxxxxx Ruxxxxxx"},
+    {"username": "860014666", "role": "user_p3de", "nama": "Wixxxx Trx Saxxxxx"},
+    {"username": "881200659", "role": "user_p3de", "nama": "Vixxx Nux Azxxx"},
+    {"username": "908219329", "role": "user_p3de", "nama": "Luxxxxx Maxxxxxx"},
+    {"username": "910222374", "role": "user_p3de", "nama": "Chxxxxx Wixxxx"},
+    {"username": "921002181", "role": "user_p3de", "nama": "Dyxx Asxxxx Syxxxxx"},
+    {"username": "930102302", "role": "user_p3de", "nama": "Asxxxx Jexxxx"},
+    {"username": "930402838", "role": "user_p3de", "nama": "Apxxxxx Raxxxxxxxx"},
+    {"username": "943213121", "role": "user_p3de", "nama": "Sixx Saxxx Soxxxxx"},
+    {"username": "958631168", "role": "user_p3de", "nama": "Adxxxx Sexxxxxx"},
+    {"username": "958632140", "role": "user_p3de", "nama": "Haxxxxx Baxxx Prxxxxxxxx"},
+    {"username": "958635135", "role": "user_p3de", "nama": "Saxxxxxxx Nixxxxx Suxx"},
+    {"username": "958635595", "role": "user_p3de", "nama": "Krxxxxxx Taxxxxx"},
+    {"username": "958635599", "role": "user_p3de", "nama": "Lexxxxx Ayx"},
+    {"username": "060096685", "role": "user_pide", "nama": "Efxxxxxx"},
+    {"username": "060103503", "role": "user_pide", "nama": "Boxxx Adxxxxx"},
+    {"username": "060109072", "role": "user_pide", "nama": "Yuxxx Chxxxxxxxx"},
+    {"username": "060111736", "role": "user_pide", "nama": "Paxxxxx"},
+    {"username": "810201441", "role": "user_pide", "nama": "Haxxxxxxxx Pixxxxxx Caxxxxxxxxxx"},
+    {"username": "810201463", "role": "user_pide", "nama": "Icxxx Prxxx Arxxxxx Raxxxxxx"},
+    {"username": "810201528", "role": "user_pide", "nama": "Adxxxx Yaxxxxx"},
+    {"username": "810201792", "role": "user_pide", "nama": "Fixxxxx Hexxxxx Anxxx Prxxxxx"},
+    {"username": "810202070", "role": "user_pide", "nama": "Dhxxxxxxx Sixx Acxxxx"},
+    {"username": "810203119", "role": "user_pide", "nama": "Wexxx Inxxxxxxx"},
+    {"username": "815101537", "role": "user_pide", "nama": "Baxxx Puxxx Anxxxx"},
+    {"username": "817932310", "role": "user_pide", "nama": "Anxxx Puxxxxxxxxx"},
+    {"username": "817933146", "role": "user_pide", "nama": "Muxxxxxx Naxxxx Maxxx Wixxxx"},
+    {"username": "830203331", "role": "user_pide", "nama": "Inxxxx Paxxxxxxxxxxxx"},
+    {"username": "830203398", "role": "user_pide", "nama": "Maxxxxx Agxxxx Puxxx"},
+    {"username": "830602294", "role": "user_pide", "nama": "Auxxxx Noxxxx Thxxxxxx"},
+    {"username": "830602334", "role": "user_pide", "nama": "Daxxxxxx Sixxx"},
+    {"username": "830602736", "role": "user_pide", "nama": "Rexxx Rexxx Caxxxxxx"},
+    {"username": "830602906", "role": "user_pide", "nama": "Zuxxxxxxxx Asxxxxxxxxxx"},
+    {"username": "910223210", "role": "user_pide", "nama": "Muxxxxxx Sixxx Jaxxxxx"},
+    {"username": "958390352", "role": "user_pide", "nama": "Laxxxxxxx Ayx Laxxx"},
+    {"username": "958635581", "role": "user_pide", "nama": "Alxxxx Adxx Prxxxxx"},
+    {"username": "958635582", "role": "user_pide", "nama": "Muxxxxxx Ikxxxx Haxxxx"},
+    {"username": "958635586", "role": "user_pide", "nama": "Evxxx Chxxxxx Maxxxxxxx"},
+    {"username": "958635588", "role": "user_pide", "nama": "Haxxxxx Rixxx Waxxxxx"},
+    {"username": "060104310", "role": "user_pmde", "nama": "Hexx Hexxxxxxxx"},
+    {"username": "060109162", "role": "user_pmde", "nama": "Esxx Inxxx Suxxxxx"},
+    {"username": "060112025", "role": "user_pmde", "nama": "Anxxx Wixxxxxx"},
+    {"username": "808360308", "role": "user_pmde", "nama": "Dyxx Toxxx Arx Kuxxxx"},
+    {"username": "810201379", "role": "user_pmde", "nama": "Ahxxx Arxxxxx"},
+    {"username": "810201435", "role": "user_pmde", "nama": "Doxx Hexxxxxxxx"},
+    {"username": "810201510", "role": "user_pmde", "nama": "Texxx Arxxxxxx"},
+    {"username": "817932134", "role": "user_pmde", "nama": "Yoxxxxx Dexxxxx Sixxxx"},
+    {"username": "817933155", "role": "user_pmde", "nama": "Okxx Dwx Anxxxxx"},
+    {"username": "830602653", "role": "user_pmde", "nama": "Naxxxx Ghxxx Naxxxxxxx"},
+    {"username": "917330464", "role": "user_pmde", "nama": "Agxxx Yuxxxxxxxx"},
+    {"username": "958635186", "role": "user_pmde", "nama": "Yoxx Mixxxxx Maxxxxxxx"},
+    {"username": "958635587", "role": "user_pmde", "nama": "Anxx Lexxxxx Saxxxxx"},
+    {"username": "958636768", "role": "user_pmde", "nama": "Laxxx Nux Inxxx Saxx"},
 ]
+
+
+def _split_masked_name(masked_full_name: str) -> tuple[str, str]:
+    parts = [part for part in str(masked_full_name or "").strip().split() if part]
+    if not parts:
+        return "User", "Masked"
+    if len(parts) == 1:
+        return parts[0], "Masked"
+    return parts[0], " ".join(parts[1:])
+
+
+def _role_to_group_name(role_value: str) -> str:
+    role = str(role_value or "").strip().lower()
+    if role in {"p3de", "user_p3de"}:
+        return "user_p3de"
+    if role in {"pide", "user_pide"}:
+        return "user_pide"
+    if role in {"pmde", "user_pmde"}:
+        return "user_pmde"
+    return role
 
 
 # PIC data - fixed assignments with one user per seksi for each JenisDataILAP
@@ -1204,7 +1273,7 @@ def unseed_jenis_prioritas_data(apps, schema_editor):
 
 
 def seed_users(apps, schema_editor):
-    """Seeds the User model with fixed users (3 per group) with fixed 9-digit usernames and passwords."""
+    """Seed auth user dari data CSV-mapped: username, role, nama(masked)."""
     from django.contrib.auth.hashers import make_password
     
     User = apps.get_model("auth", "User")
@@ -1212,20 +1281,19 @@ def seed_users(apps, schema_editor):
     
     for item in USERS_DATA:
         try:
-            group = Group.objects.get(name=item["group"])
+            group = Group.objects.get(name=_role_to_group_name(item.get("role")))
             
-            # Use fixed username from USERS_DATA
             username = item["username"]
-            # Password is same as username
             password = username
             email = f"{username}@diamond.pde"
+            first_name, last_name = _split_masked_name(item.get("nama"))
             
             # Create user with hashed password (skip if already exists)
             user, created = User.objects.get_or_create(
                 username=username,
                 defaults={
-                    "first_name": item["first_name"],
-                    "last_name": item["last_name"],
+                    "first_name": first_name,
+                    "last_name": last_name,
                     "email": email,
                     "password": make_password(password)
                 }
@@ -1234,7 +1302,7 @@ def seed_users(apps, schema_editor):
             # Add to group
             user.groups.add(group)
         except Exception as e:
-            print(f"Warning: Could not create user {item['first_name']} {item['last_name']}: {e}")
+            print(f"Warning: Could not create user {item['username']}: {e}")
 
 
 def unseed_users(apps, schema_editor):

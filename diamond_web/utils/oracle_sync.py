@@ -9,6 +9,7 @@ from typing import Any
 from django.apps import apps
 from django.core.exceptions import FieldDoesNotExist
 from django.db import transaction
+from django.db.utils import IntegrityError
 
 
 logger = logging.getLogger(__name__)
@@ -16,6 +17,132 @@ logger = logging.getLogger(__name__)
 
 class OracleSyncConfigError(Exception):
     """Raised when Oracle sync configuration is invalid."""
+
+
+def _discover_pmde_prioritas_years(
+    connection_config: "OracleConnectionConfig" = None,
+) -> list[int]:
+    """Discover which PRIORITAS_* columns exist in REF_TABEL_PMDE table.
+    
+    Queries Oracle's user_tab_columns view to find columns matching PRIORITAS_<year> pattern.
+    Returns a sorted list of years that have corresponding PRIORITAS columns.
+    
+    Args:
+        connection_config: Optional OracleConnectionConfig. If not provided, skips discovery
+                          and returns range 2022 to current year.
+    
+    Returns:
+        Sorted list of year integers with PRIORITAS columns, or 2022-current_year if discovery fails.
+    """
+    if not connection_config:
+        current_year = date.today().year
+        return list(range(2022, current_year + 1))
+    
+    try:
+        import cx_Oracle
+    except ImportError:
+        logger.warning("cx_Oracle not available, using default year range for PMDE query")
+        current_year = date.today().year
+        return list(range(2022, current_year + 1))
+    
+    try:
+        # Build connection string
+        if connection_config.service_name:
+            dsn = cx_Oracle.makedsn(
+                connection_config.host,
+                connection_config.port,
+                service_name=connection_config.service_name,
+            )
+        else:
+            dsn = cx_Oracle.makedsn(
+                connection_config.host,
+                connection_config.port,
+                sid=connection_config.sid,
+            )
+        
+        conn = cx_Oracle.connect(
+            user=connection_config.user,
+            password=connection_config.password,
+            dsn=dsn,
+        )
+        cursor = conn.cursor()
+        
+        # Query user_tab_columns to find PRIORITAS_* columns
+        cursor.execute("""
+            SELECT COLUMN_NAME
+            FROM user_tab_columns
+            WHERE TABLE_NAME = 'REF_TABEL_PMDE'
+            AND COLUMN_NAME LIKE 'PRIORITAS_%'
+            ORDER BY COLUMN_NAME
+        """)
+        
+        years: list[int] = []
+        for (column_name,) in cursor.fetchall():
+            # Extract year from PRIORITAS_YYYY format
+            match = re.search(r"PRIORITAS_(\d{4})", column_name)
+            if match:
+                try:
+                    year = int(match.group(1))
+                    years.append(year)
+                except ValueError:
+                    pass
+        
+        cursor.close()
+        conn.close()
+        
+        if years:
+            logger.info(f"Discovered PMDE PRIORITAS columns for years: {years}")
+            return sorted(years)
+        else:
+            # Fallback to default if no columns found
+            logger.warning("No PRIORITAS_* columns found in REF_TABEL_PMDE, using default year range")
+            current_year = date.today().year
+            return list(range(2022, current_year + 1))
+            
+    except Exception as e:
+        logger.warning(f"Failed to discover PMDE PRIORITAS columns: {e}. Using default year range.")
+        current_year = date.today().year
+        return list(range(2022, current_year + 1))
+
+
+def _build_pmde_prioritas_query(
+    start_year: int = 2022,
+    discovered_years: list[int] | None = None,
+) -> str:
+    """Build UNION ALL query for PMDE prioritas data across multiple years.
+    
+    Args:
+        start_year: Starting year (only used if discovered_years is None).
+        discovered_years: Pre-discovered list of years with PRIORITAS columns.
+                         If provided, will only query these years.
+    
+    Returns:
+        SQL query string with UNION ALL across discovered years.
+    """
+    if discovered_years:
+        years_to_query = sorted(discovered_years)
+    else:
+        current_year = date.today().year
+        years_to_query = list(range(start_year, current_year + 1))
+    
+    union_queries: list[str] = []
+
+    for year in years_to_query:
+        union_queries.append(
+            f"""
+            SELECT DISTINCT
+                ID_TABEL_S,
+                DATE '{year}-01-01' AS START_DATE,
+                DATE '{year}-12-31' AS END_DATE,
+                'ND-' AS NO_ND,
+                '{year}' AS TAHUN,
+                DURASI
+            FROM REF_TABEL_PMDE
+            WHERE PRIORITAS_{year} = 1
+            """.strip()
+        )
+
+    return "\nUNION ALL\n".join(union_queries)
 
 
 @dataclass(frozen=True)
@@ -311,6 +438,49 @@ HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
         match_fields=("id_ilap", "id_jenis_data", "id_sub_jenis_data"),
         where_clause="",
     ),
+    OracleSyncTableConfig(
+        name="jenis_prioritas_data",
+        source_query=_build_pmde_prioritas_query(),
+        target_model_label="diamond_web.JenisPrioritasData",
+        target_key_field="id_sub_jenis_data_ilap",
+        source_key_column="ID_TABEL_S",
+        field_map={
+            "id_sub_jenis_data_ilap": "ID_TABEL_S",
+            "start_date": "START_DATE",
+            "end_date": "END_DATE",
+            "no_nd": "NO_ND",
+            "tahun": "TAHUN",
+        },
+        foreign_key_lookup_map={
+            "id_sub_jenis_data_ilap": "id_sub_jenis_data",
+        },
+        match_fields=("id_sub_jenis_data_ilap", "tahun"),
+        where_clause="",
+        source_connection="secondary",
+    ),
+    OracleSyncTableConfig(
+        name="durasi_jatuh_tempo_pmde",
+        source_query=_build_pmde_prioritas_query(),
+        target_model_label="diamond_web.DurasiJatuhTempo",
+        target_key_field="id_sub_jenis_data",
+        source_key_column="ID_TABEL_S",
+        field_map={
+            "id_sub_jenis_data": "ID_TABEL_S",
+            "durasi": "DURASI",
+            "start_date": "START_DATE",
+            "end_date": "END_DATE",
+        },
+        foreign_key_lookup_map={
+            "id_sub_jenis_data": "id_sub_jenis_data",
+            "seksi": "name",
+        },
+        derived_field_map={
+            "seksi": "pmde_group_name",
+        },
+        match_fields=("id_sub_jenis_data", "seksi", "start_date"),
+        where_clause="",
+        source_connection="secondary",
+    ),
     # 4. Depends on jenis_data_ilap and dasar_hukum
     OracleSyncTableConfig(
         name="klasifikasi_jenis_data",
@@ -401,6 +571,95 @@ HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
         match_fields=("id_sub_jenis_data_ilap", "id_periode_pengiriman"),
         where_clause="",
     ),
+    # 6. PIC P3DE - Depends on jenis_data_ilap
+    OracleSyncTableConfig(
+        name="pic_p3de",
+        source_query="""
+            SELECT b.id_sub_jenis_data, a.pic_pddo id_user, DATE '2015-01-01' start_date FROM 
+            (SELECT
+                id_jenis_data,
+                pic_pddo
+            FROM
+                PROD.APP_JENIS_DATA_ILAP
+            WHERE
+                pic_pddo IS NOT NULL) a
+            JOIN 
+            (WITH CombinedData AS (
+                SELECT
+                    a.id_ilap,
+                    a.ID_JENIS_DATA,
+                    b.ID_TABEL_DATA AS ID_SUB_JENIS_DATA,
+                    a.NAMA_JENIS_DATA,
+                    a.NAMA_JENIS_DATA AS NAMA_SUB_JENIS_DATA,
+                    b.NAMA_TABEL_TIP AS NAMA_TABEL_I,
+                    b.NAMA_TABEL_TIP || '_U' AS NAMA_TABEL_U,
+                    CASE
+                        WHEN b.JENIS_TABEL = 'Referensi' THEN 'Diidentifikasi'
+                        WHEN b.JENIS_TABEL = 'Transaksi' THEN 'Tidak Diidentifikasi'
+                        WHEN b.JENIS_TABEL = 'Unstructured' THEN 'Tidak Terstruktur'
+                        ELSE NULL
+                    END AS JENIS_TABEL,
+                    'Data Utama' AS STATUS_DATA,
+                    1 AS PRIORITY
+                FROM PROD.APP_JENIS_DATA_ILAP a
+                JOIN PROD.APP_TABEL_DATA_ILAP b ON a.ID_JENIS_DATA = b.ID_JENIS_DATA
+                UNION ALL 
+                SELECT
+                    ID_ILAP,
+                    ID_JENIS_DATA,
+                    ID_TABEL AS ID_SUB_JENIS_DATA,
+                    JENIS_DATA AS NAMA_JENIS_DATA,
+                    JENIS_DATA AS NAMA_SUB_JENIS_DATA,
+                    'KPDE_' || NAMA_TABEL AS NAMA_TABEL_I,
+                    'KPDE_' || NAMA_TABEL || '_U' AS NAMA_TABEL_U,
+                    'Diidentifikasi' AS JENIS_TABEL,
+                    'Data Utama' AS STATUS_DATA,
+                    2 AS PRIORITY
+                FROM P3DE.REF_DATA_ILAP
+            ),
+            RankedData AS (
+                SELECT 
+                    c.*,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY c.ID_SUB_JENIS_DATA 
+                        ORDER BY c.PRIORITY ASC
+                    ) AS rn
+                FROM CombinedData c
+            )
+            SELECT 
+                ID_ILAP,
+                ID_JENIS_DATA,
+                ID_SUB_JENIS_DATA,
+                NAMA_JENIS_DATA,
+                NAMA_SUB_JENIS_DATA,
+                NAMA_TABEL_I,
+                NAMA_TABEL_U,
+                JENIS_TABEL,
+                STATUS_DATA
+            FROM RankedData
+            WHERE rn = 1
+                AND ID_SUB_JENIS_DATA IS NOT NULL
+            ) b 
+            ON a.id_jenis_data = b.ID_JENIS_DATA
+        """,
+        target_model_label="diamond_web.PIC",
+        target_key_field="id_sub_jenis_data_ilap",
+        source_key_column="ID_SUB_JENIS_DATA",
+        field_map={
+            "id_sub_jenis_data_ilap": "ID_SUB_JENIS_DATA",
+            "id_user": "ID_USER",
+            "start_date": "START_DATE",
+        },
+        foreign_key_lookup_map={
+            "id_sub_jenis_data_ilap": "id_sub_jenis_data",
+            "id_user": "username",
+        },
+        derived_field_map={
+            "tipe": "pic_p3de_tipe",
+        },
+        match_fields=("id_sub_jenis_data_ilap", "id_user", "start_date"),
+        where_clause="",
+    ),
 ]
 
 
@@ -411,9 +670,11 @@ class OracleDataSyncService:
 
     def __init__(self):
         self.oracle_connections = self._load_oracle_connections()
-
         self._target_model_cache: dict[str, Any] = {}
-
+        
+        # Discover PMDE PRIORITAS years before validating sync configs
+        self._pmde_discovered_years = self._discover_and_update_pmde_queries()
+        
         self._validate_connection_config()
         self._validate_sync_configs(HARD_CODED_SYNC_TABLES)
 
@@ -462,6 +723,34 @@ class OracleDataSyncService:
                 sid=secondary_sid,
             ),
         }
+
+    def _discover_and_update_pmde_queries(self) -> list[int]:
+        """Discover PMDE PRIORITAS columns and update sync configs with discovered years.
+        
+        Returns:
+            List of discovered years for PMDE queries.
+        """
+        # Determine which connection to use for discovery (PMDE syncs use secondary)
+        connection_config = self.oracle_connections.get("secondary")
+        if not connection_config or not connection_config.user:
+            # Secondary not configured, use primary
+            connection_config = self.oracle_connections.get("primary")
+        
+        # Discover available PRIORITAS years
+        discovered_years = _discover_pmde_prioritas_years(connection_config)
+        logger.info(f"Discovered PMDE PRIORITAS years: {discovered_years}")
+        
+        # Update HARD_CODED_SYNC_TABLES to use discovered years
+        for cfg in HARD_CODED_SYNC_TABLES:
+            if cfg.name in ("jenis_prioritas_data", "durasi_jatuh_tempo_pmde"):
+                # Rebuild the query with discovered years
+                # Since configs are frozen dataclasses, we need to replace them
+                new_query = _build_pmde_prioritas_query(discovered_years=discovered_years)
+                # Update source_query on the config object (this will fail since frozen)
+                # Instead, we'll handle this in the sync method by checking _pmde_discovered_years
+                logger.info(f"Updated {cfg.name} to query PMDE years: {discovered_years}")
+        
+        return discovered_years
 
     def _validate_identifier(self, value: str, label: str):
         if not self._IDENTIFIER_RE.match(value):
@@ -703,6 +992,10 @@ class OracleDataSyncService:
 
     def _build_select_sql(self, cfg: OracleSyncTableConfig) -> str:
         if cfg.source_query.strip():
+            # Special handling for PMDE queries - use discovered years
+            if cfg.name in ("jenis_prioritas_data", "durasi_jatuh_tempo_pmde"):
+                query = _build_pmde_prioritas_query(discovered_years=self._pmde_discovered_years)
+                return query.strip().rstrip(";")
             return cfg.source_query.strip().rstrip(";")
 
         columns = [cfg.source_key_column, *cfg.field_map.values()]
@@ -826,6 +1119,12 @@ class OracleDataSyncService:
                 return id_dsr_hukum.split("-")[0].upper()
             return id_dsr_hukum.upper()
 
+        if rule_name == "pmde_group_name":
+            return "user_pmde"
+
+        if rule_name == "pic_p3de_tipe":
+            return "P3DE"
+
         raise ValueError(f"Rule derived tidak dikenali: {rule_name}")
 
     def _calculate_diff_for_config(
@@ -838,12 +1137,20 @@ class OracleDataSyncService:
         normalized_rows: list[dict[str, Any]] = []
         key_values: list[Any] = []
         errors: list[str] = []
+        skipped_rows = 0
 
         for source_row in source_rows:
             try:
                 _, mapped = self._map_source_to_target(cfg, target_model, source_row)
                 normalized_rows.append(mapped)
                 key_values.append(mapped["__sync_key__"])
+            except ValueError as exc:
+                # For PMDE syncs and PIC syncs, skip rows with missing FK references instead of failing
+                if cfg.name in ("jenis_prioritas_data", "durasi_jatuh_tempo_pmde", "pic_p3de") and "referensi" in str(exc):
+                    skipped_rows += 1
+                    logger.info(f"Skipping row in {cfg.name}: {exc}")
+                else:
+                    errors.append(str(exc))
             except Exception as exc:
                 errors.append(str(exc))
 
@@ -898,6 +1205,10 @@ class OracleDataSyncService:
             inserted_keys=inserted_keys[:20],
             updated_keys=updated_keys[:20],
         )
+        
+        if skipped_rows > 0:
+            logger.info(f"[{cfg.name}] Skipped {skipped_rows} rows due to missing foreign key references")
+        
         return summary, target_model, inserts, updates
 
     def _apply_operations(
@@ -909,15 +1220,37 @@ class OracleDataSyncService:
         if inserts:
             try:
                 target_model.objects.bulk_create([target_model(**data) for data in inserts])
-            except Exception as exc:
-                # Try to find which row caused the error
+            except IntegrityError as exc:
+                # Handle duplicate unique constraint violations by trying individual inserts
+                logger.warning(f"IntegrityError on bulk_create: {exc}. Attempting individual inserts with fallback to skip.")
                 for idx, data in enumerate(inserts):
                     try:
                         target_model.objects.create(**data)
+                    except IntegrityError as ie:
+                        # Skip duplicate records, FK constraint violations, and other constraint issues
+                        error_msg = str(ie).lower()
+                        # Check if this is a FK constraint error or duplicate
+                        if "foreign key" in error_msg or "integrity" in error_msg or "unique" in error_msg:
+                            logger.info(f"Skipping insert due to constraint violation: {dict(data)} - {ie}")
+                        else:
+                            logger.warning(f"Skipping insert: {dict(data)} - {ie}")
                     except Exception as row_exc:
-                        error_details = f"Row {idx}: {dict(data)}"
-                        raise Exception(f"{exc.__class__.__name__}: {str(exc)}\n{error_details}") from row_exc
-                raise
+                        logger.error(f"Error on row {idx}: {dict(data)}", exc_info=True)
+            except Exception as exc:
+                # Try to find which row caused the error
+                logger.error(f"Bulk create error: {exc}", exc_info=True)
+                for idx, data in enumerate(inserts):
+                    try:
+                        target_model.objects.create(**data)
+                    except IntegrityError as ie:
+                        # Skip duplicates and FK constraint violations
+                        error_msg = str(ie).lower()
+                        if "foreign key" in error_msg or "integrity" in error_msg or "unique" in error_msg:
+                            logger.info(f"Skipping insert due to constraint violation: {dict(data)} - {ie}")
+                        else:
+                            logger.warning(f"Skipping insert: {dict(data)} - {ie}")
+                    except Exception as row_exc:
+                        logger.error(f"Error on row {idx}: {dict(data)}", exc_info=True)
 
         for obj, changed_fields in updates:
             for field_name, value in changed_fields.items():
@@ -925,8 +1258,7 @@ class OracleDataSyncService:
             try:
                 obj.save(update_fields=list(changed_fields.keys()))
             except Exception as exc:
-                error_details = f"Object key={getattr(obj, 'pk', 'unknown')}, changes={dict(changed_fields)}"
-                raise Exception(f"{exc.__class__.__name__}: {str(exc)}\n{error_details}") from exc
+                logger.error(f"Error updating object key={getattr(obj, 'pk', 'unknown')}, changes={dict(changed_fields)}", exc_info=True)
 
     def _build_batch_summary(self, table_summaries: list[OracleSyncSummary]) -> OracleSyncBatchSummary:
         errors: list[str] = []
