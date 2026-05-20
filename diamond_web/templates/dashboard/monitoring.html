@@ -3,28 +3,42 @@
 {% block title %}Monitoring Dashboard{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h2 class="mb-1">
-                        <i class="ri-dashboard-2-line me-2"></i>Monitoring Dashboard
-                    </h2>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-                            <li class="breadcrumb-item active">Monitoring Dashboard</li>
-                        </ol>
-                    </nav>
-                </div>
+<div class="page-header">
+    <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+            <h5 class="m-b-10">
+                <i class="feather-bar-chart-2 me-2"></i>Monitoring Dashboard
+            </h5>
+        </div>
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item active">Monitoring Dashboard</li>
+        </ul>
+    </div>
+    <div class="page-header-right ms-auto">
+        <div class="page-header-right-items">
+            <div class="d-flex d-md-none">
+                <a href="javascript:void(0)" class="page-header-right-close-toggle">
+                    <i class="feather-arrow-left me-2"></i>
+                    <span>Back</span>
+                </a>
             </div>
         </div>
+        <div class="d-md-none d-flex align-items-center">
+            <a href="javascript:void(0)" class="page-header-right-open-toggle">
+                <i class="feather-align-right fs-20"></i>
+            </a>
+        </div>
     </div>
+</div>
 
-    <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="ri-bar-chart-2-line me-2"></i>DDE - Monitoring Tiket</h5>
+<div class="main-content">
+    <!-- Monitoring Card -->
+    <div class="card stretch stretch-full h-100">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="feather-bar-chart-2 me-2"></i>DDE - Monitoring Tiket
+            </h5>
         </div>
         <div class="card-body p-0">
             <iframe 

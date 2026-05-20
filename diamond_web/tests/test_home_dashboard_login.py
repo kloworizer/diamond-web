@@ -99,18 +99,18 @@ class TestDashboardView:
 
     def test_dashboard_unauthenticated(self, client):
         """Test dashboard redirects unauthenticated user."""
-        response = client.get(reverse('dashboard_index'), follow=False)
+        response = client.get(reverse('dashboard_monitoring'), follow=False)
         # Should redirect to login
         assert response.status_code in [302, 403]
 
     def test_dashboard_authenticated(self, client, authenticated_user):
         """Test dashboard renders for authenticated user."""
         client.force_login(authenticated_user)
-        response = client.get(reverse('dashboard_index'))
+        response = client.get(reverse('dashboard_monitoring'))
         assert response.status_code == 200
 
     def test_dashboard_returns_correct_template(self, client, authenticated_user):
         """Test dashboard uses correct template."""
         client.force_login(authenticated_user)
-        response = client.get(reverse('dashboard_index'))
+        response = client.get(reverse('dashboard_monitoring'))
         assert 'dashboard/index.html' in [t.name for t in response.templates]
