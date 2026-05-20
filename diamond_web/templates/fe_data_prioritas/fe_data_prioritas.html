@@ -1,0 +1,472 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="zxx">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="keyword" content="">
+    <meta name="author" content="theme_ocean">
+    <!--! The above 6 meta tags *must* come first in the head; any other head content must come *after* these tags !-->
+    <!--! BEGIN: Apps Title-->
+    <title>New Diamond || Data Prioritas</title>
+    <!--! END:  Apps Title-->
+    <!--! BEGIN: Favicon-->
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'assets/images/favicon.ico' %}">
+    <!--! END: Favicon-->
+    <!--! BEGIN: Bootstrap CSS-->
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/css/bootstrap.min.css' %}">
+    <!--! END: Bootstrap CSS-->
+    <!--! BEGIN: Vendors CSS-->
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/vendors.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/dataTables.bs5.min.css' %}">
+    <!--! END: Vendors CSS-->
+    <!--! BEGIN: Custom CSS-->
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/css/theme.min.css' %}">
+    <!--! END: Custom CSS-->
+    <!--! HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries !-->
+    <!--! WARNING: Respond.js doesn"t work if you view the page via file: !-->
+    <!--[if lt IE 9]>
+			<script src="https:oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+			<script src="https:oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+		<![endif]-->
+</head>
+
+<body>
+    <!--! ================================================================ !-->
+    <!--! [Start] Navigation Manu !-->
+    <!--! ================================================================ !-->
+    <nav class="nxl-navigation">
+        <div class="navbar-wrapper">
+            <div class="m-header">
+                <a href="{% url 'dashboard_index' %}" class="b-brand">
+                    <!-- ========   change your logo hear   ============ -->
+                    <img src="{% static 'assets/images/logo-full.png' %}" alt="" class="logo logo-lg">
+                    <img src="{% static 'assets/images/logo-abbr.png' %}" alt="" class="logo logo-sm">
+                </a>
+            </div>
+            <div class="navbar-content">
+                <ul class="nxl-navbar">
+                    <li class="nxl-item nxl-caption">
+                        <label>Navigation</label>
+                    </li>
+                    <li class="nxl-item nxl-hasmenu">
+                        <a href="javascript:void(0);" class="nxl-link">
+                            <span class="nxl-micon"><i class="feather-airplay"></i></span>
+                            <span class="nxl-mtext">Dashboards</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+                        </a>
+                        <ul class="nxl-submenu">
+                            <li class="nxl-item"><a class="nxl-link" href="index.html">CRM</a></li>
+                            <li class="nxl-item"><a class="nxl-link" href="analytics.html">Analytics</a></li>
+                        </ul>
+                    </li>
+                    <li class="nxl-item nxl-hasmenu">
+                        <a href="javascript:void(0);" class="nxl-link">
+                            <span class="nxl-micon"><i class="feather-cast"></i></span>
+                            <span class="nxl-mtext">Kelola Referensi P3DE</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+                        </a>
+                        <ul class="nxl-submenu">
+                            <li class="nxl-item"><a class="nxl-link" href="reports-sales.html">Sales Report</a></li>
+                            <li class="nxl-item"><a class="nxl-link" href="reports-leads.html">Leads Report</a></li>
+                            <li class="nxl-item"><a class="nxl-link" href="reports-project.html">Project Report</a></li>
+                            <li class="nxl-item"><a class="nxl-link" href="reports-timesheets.html">Timesheets Report</a></li>
+                        </ul>
+                    </li>
+                    <li class="nxl-item nxl-hasmenu">
+                        <a href="javascript:void(0);" class="nxl-link">
+                            <span class="nxl-micon"><i class="feather-send"></i></span>
+                            <span class="nxl-mtext">Kelola ILAP</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+                        </a>
+                        <ul class="nxl-submenu">
+                            <li class="nxl-item"><a class="nxl-link" href="apps-chat.html">ILAP</a></li>
+                            <li class="nxl-item"><a class="nxl-link" href="apps-email.html">Jenis Data ILAP</a></li>
+                            <li class="nxl-item"><a class="nxl-link" href="apps-tasks.html">Klasifikasi Jenis Data ILAP</a></li>
+                            <li class="nxl-item"><a class="nxl-link" href="apps-notes.html">Periode Jenis Data ILAP</a></li>
+                            <li class="nxl-item"><a class="nxl-link" href="{% url 'data_prioritas_ilap' %}">Data Prioritas</a></li>
+                            <li class="nxl-item"><a class="nxl-link" href="apps-calendar.html">PIC Data di P3DE</a></li>
+                        </ul>
+                    </li>
+                    <li class="nxl-item nxl-hasmenu">
+                        <a href="javascript:void(0);" class="nxl-link">
+                            <span class="nxl-micon"><i class="feather-at-sign"></i></span>
+                            <span class="nxl-mtext">PIC P3DE</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+                        </a>
+                        <ul class="nxl-submenu">
+                            <li class="nxl-item"><a class="nxl-link" href="proposal.html">Proposal</a></li>
+                            <li class="nxl-item"><a class="nxl-link" href="proposal-view.html">Proposal View</a></li>
+                            <li class="nxl-item"><a class="nxl-link" href="proposal-edit.html">Proposal Edit</a></li>
+                            <li class="nxl-item"><a class="nxl-link" href="proposal-create.html">Proposal Create</a></li>
+                        </ul>
+                    </li>
+                    
+                </ul>
+                
+            </div>
+        </div>
+    </nav>
+    <!--! ================================================================ !-->
+    <!--! [End]  Navigation Manu !-->
+    <!--! ================================================================ !-->
+    <!--! ================================================================ !-->
+    <!--! [Start] Header !-->
+    <!--! ================================================================ !-->
+    <header class="nxl-header">
+        <div class="header-wrapper">
+            <!--! [Start] Header Left !-->
+            <div class="header-left d-flex align-items-center gap-4">
+                <!--! [Start] nxl-head-mobile-toggler !-->
+                <a href="javascript:void(0);" class="nxl-head-mobile-toggler" id="mobile-collapse">
+                    <div class="hamburger hamburger--arrowturn">
+                        <div class="hamburger-box">
+                            <div class="hamburger-inner"></div>
+                        </div>
+                    </div>
+                </a>
+                <!--! [Start] nxl-head-mobile-toggler !-->
+                <!--! [Start] nxl-navigation-toggle !-->
+                <div class="nxl-navigation-toggle">
+                    <a href="javascript:void(0);" id="menu-mini-button">
+                        <i class="feather-align-left"></i>
+                    </a>
+                    <a href="javascript:void(0);" id="menu-expend-button" style="display: none">
+                        <i class="feather-arrow-right"></i>
+                    </a>
+                </div>
+                <!--! [End] nxl-navigation-toggle !-->
+                <!--! [Start] nxl-lavel-mega-menu-toggle !-->
+                <div class="nxl-lavel-mega-menu-toggle d-flex d-lg-none">
+                    <a href="javascript:void(0);" id="nxl-lavel-mega-menu-open">
+                        <i class="feather-align-left"></i>
+                    </a>
+                </div>
+                <!--! [End] nxl-lavel-mega-menu-toggle !-->
+                <!--! [Start] nxl-lavel-mega-menu !-->
+                <div class="nxl-drp-link nxl-lavel-mega-menu">
+                    <!--  -->
+                    <!--! [Start] nxl-lavel-mega-menu-wrapper !-->
+                    <div class="nxl-lavel-mega-menu-wrapper d-flex gap-3">
+                        <!--! [Start] nxl-lavel-menu !-->
+                        <div class="dropdown nxl-h-item nxl-lavel-menu">
+                            
+                            <div class="dropdown-menu nxl-h-dropdown">
+                                
+                                <div class="dropdown-divider"></div>
+                                
+                            </div>
+                        </div>
+                        <!--! [End] nxl-lavel-menu !-->
+                        <!--! [Start] nxl-h-item nxl-mega-menu !-->
+                        <div class="dropdown nxl-h-item nxl-mega-menu">
+                            <!-- <a href="javascript:void(0);" class="btn btn-light-brand" data-bs-toggle="dropdown" data-bs-auto-close="outside"> Mega Menu </a> -->
+                            <div class="dropdown-menu nxl-h-dropdown" id="mega-menu-dropdown">
+                                <div class="d-lg-flex align-items-start">
+                                    <!--! [Start] nxl-mega-menu-tabs !-->
+                                    
+                                    <!--! [End] nxl-mega-menu-tabs !-->
+                                    <!--! [Start] nxl-mega-menu-tabs-content !-->
+                                    <!--! [End] nxl-mega-menu-tabs-content !-->
+                                </div>
+                            </div>
+                        </div>
+                        <!--! [End] nxl-h-item nxl-mega-menu !-->
+                    </div>
+                    <!--! [End] nxl-lavel-mega-menu-wrapper !-->
+                </div>
+                <!--! [End] nxl-lavel-mega-menu !-->
+            </div>
+            <!--! [End] Header Left !-->
+            <!--! [Start] Header Right !-->
+            <div class="header-right ms-auto">
+                <div class="d-flex align-items-center">
+                    <div class="dropdown nxl-h-item nxl-header-search">
+                        
+                    </div>
+                    <div class="dropdown nxl-h-item nxl-header-language d-none d-sm-flex">
+                        
+                    </div>
+                    <div class="nxl-h-item d-none d-sm-flex">
+                        
+                    </div>
+                    <div class="nxl-h-item dark-light-theme">
+                        
+                    </div>
+                    <div class="dropdown nxl-h-item">
+                        
+                    </div>
+                    <div class="dropdown nxl-h-item">
+                        <a class="nxl-head-link me-3" data-bs-toggle="dropdown" href="#" role="button" data-bs-auto-close="outside">
+                            <i class="feather-bell"></i>
+                            <span class="badge bg-danger nxl-h-badge">1</span>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end nxl-h-dropdown nxl-notifications-menu">
+                            <div class="d-flex justify-content-between align-items-center notifications-head">
+                                <h6 class="fw-bold text-dark mb-0">Notifications</h6>
+                                <a href="javascript:void(0);" class="fs-11 text-success text-end ms-auto" data-bs-toggle="tooltip" title="Make as Read">
+                                    <i class="feather-check"></i>
+                                    <span>Make as Read</span>
+                                </a>
+                            </div>
+                            <div class="notifications-item">
+                                <img src="{% static 'assets/images/avatar/2.png' %}" alt="" class="rounded me-3 border">
+                                <div class="notifications-desc">
+                                    <a href="javascript:void(0);" class="font-body text-truncate-2-line"> <span class="fw-semibold text-dark">Malanie Hanvey</span> We should talk about that at lunch!</a>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="notifications-date text-muted border-bottom border-bottom-dashed">2 minutes ago</div>
+                                        <div class="d-flex align-items-center float-end gap-2">
+                                            <a href="javascript:void(0);" class="d-block wd-8 ht-8 rounded-circle bg-gray-300" data-bs-toggle="tooltip" title="Make as Read"></a>
+                                            <a href="javascript:void(0);" class="text-danger" data-bs-toggle="tooltip" title="Remove">
+                                                <i class="feather-x fs-12"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="text-center notifications-footer">
+                                <a href="javascript:void(0);" class="fs-13 fw-semibold text-dark">Alls Notifications</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dropdown nxl-h-item">
+                        <a href="javascript:void(0);" data-bs-toggle="dropdown" role="button" data-bs-auto-close="outside">
+                            <img src="{% static 'assets/images/avatar/1.png' %}" alt="user-image" class="img-fluid user-avtar me-0">
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end nxl-h-dropdown nxl-user-dropdown">
+                            <div class="dropdown-header">
+                                <div class="d-flex align-items-center">
+                                    <img src="{% static 'assets/images/avatar/1.png' %}" alt="user-image" class="img-fluid user-avtar">
+                                    <div>
+                                        <h6 class="text-dark mb-0">Dharmawan Uchiha <span class="badge bg-soft-success text-success ms-1">PRO</span></h6>
+                                        <span class="fs-12 fw-medium text-muted">dharmawan-uchiha@akatsuki.com</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="dropdown">
+                                <a href="javascript:void(0);" class="dropdown-item" data-bs-toggle="dropdown">
+                                    <span class="hstack">
+                                        <i class="wd-10 ht-10 border border-2 border-gray-1 bg-success rounded-circle me-2"></i>
+                                        <span>Active</span>
+                                    </span>
+                                    <i class="feather-chevron-right ms-auto me-0"></i>
+                                </a>
+                                <div class="dropdown-menu">
+                                    <a href="javascript:void(0);" class="dropdown-item">
+                                        <span class="hstack">
+                                            <i class="wd-10 ht-10 border border-2 border-gray-1 bg-warning rounded-circle me-2"></i>
+                                            <span>Always</span>
+                                        </span>
+                                    </a>
+                                    <a href="javascript:void(0);" class="dropdown-item">
+                                        <span class="hstack">
+                                            <i class="wd-10 ht-10 border border-2 border-gray-1 bg-success rounded-circle me-2"></i>
+                                            <span>Active</span>
+                                        </span>
+                                    </a>
+                                    <a href="javascript:void(0);" class="dropdown-item">
+                                        <span class="hstack">
+                                            <i class="wd-10 ht-10 border border-2 border-gray-1 bg-danger rounded-circle me-2"></i>
+                                            <span>Bussy</span>
+                                        </span>
+                                    </a>
+                                    <a href="javascript:void(0);" class="dropdown-item">
+                                        <span class="hstack">
+                                            <i class="wd-10 ht-10 border border-2 border-gray-1 bg-info rounded-circle me-2"></i>
+                                            <span>Inactive</span>
+                                        </span>
+                                    </a>
+                                    <a href="javascript:void(0);" class="dropdown-item">
+                                        <span class="hstack">
+                                            <i class="wd-10 ht-10 border border-2 border-gray-1 bg-dark rounded-circle me-2"></i>
+                                            <span>Disabled</span>
+                                        </span>
+                                    </a>
+                                    <div class="dropdown-divider"></div>
+                                    <a href="javascript:void(0);" class="dropdown-item">
+                                        <span class="hstack">
+                                            <i class="wd-10 ht-10 border border-2 border-gray-1 bg-primary rounded-circle me-2"></i>
+                                            <span>Cutomization</span>
+                                        </span>
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div class="dropdown">
+                                
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <a href="javascript:void(0);" class="dropdown-item">
+                                <i class="feather-user"></i>
+                                <span>Profile Details</span>
+                            </a>
+                            
+                            <div class="dropdown-divider"></div>
+                            <a href="./auth-login-minimal.html" class="dropdown-item">
+                                <i class="feather-log-out"></i>
+                                <span>Logout</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!--! [End] Header Right !-->
+        </div>
+    </header>
+    <!--! ================================================================ !-->
+    <!--! [End] Header !-->
+    <!--! ================================================================ !-->
+    <!--! ================================================================ !-->
+    <!--! [Start] Main Content !-->
+    
+		<main class="nxl-container">
+		<div class="nxl-content">
+		<!-- [ page-header ] start -->
+		<div class="page-header">
+		<div class="page-header-left d-flex align-items-center">
+		<div class="page-header-title">
+		<h5 class="m-b-10">Data Prioritas</h5>
+		</div>
+		<ul class="breadcrumb">
+		<li class="breadcrumb-item"><a href="index.html">Kelola ILAP</a></li>
+		<!-- <li class="breadcrumb-item">Menu</li> -->
+		<li class="breadcrumb-item">Data Prioritas</li>
+		</ul>
+		</div>
+		<div class="page-header-right ms-auto">
+		<div class="page-header-right-items">
+		<div class="d-flex align-items-center gap-2 page-header-right-items-wrapper">
+		
+
+		<a href="invoice-create.html" class="btn btn-primary">
+		<i class="feather-plus me-2"></i>
+		<span>Tambah</span>
+		</a>
+		</div>
+		</div>
+		<div class="d-md-none d-flex align-items-center">
+		<a href="javascript:void(0)" class="page-header-right-open-toggle">
+		<i class="feather-align-right fs-20"></i>
+		</a>
+		</div>
+		</div>
+		</div>
+		<!-- [ page-header ] end -->
+		<!-- [ Main Content ] start -->
+		<div class="main-content">
+		<div class="row">
+		<div class="col-lg-12">
+		<div class="card stretch stretch-full">
+		<div class="card-body p-0">
+		<div class="card-header">
+                                <h5 class="card-title">Data Prioritas</h5>
+                                
+                            </div>
+		<div class="card-body custom-card-action p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead>
+                                            <tr class="border-b">
+                                                <th scope="row">Subjenis Data</th>
+                                                <th>No ND</th>
+                                                <th>Tahun</th>
+												<th>Tanggal Mulai</th>
+                                                <th>Tanggal Selesai</th>
+                                                <th class="text-end">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-items-center gap-3">
+                                                        <a href="javascript:void(0);">
+                                                            <span class="d-block">LM0030101 - Data Penduduk</span>
+                                                        </a>
+                                                    </div>
+                                                </td>
+												<td>
+                                                    <span class="badge bg-gray-200 text-dark">ND-123/2026</span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-gray-200 text-dark">Tahunan</span>
+                                                </td>
+                                                <td>2026-01-01</td>
+                                                <td>
+                                                    <span class="badge bg-soft-success text-success">2026-01-01</span>
+                                                </td>
+                                                
+												<td class="text-end">
+                                                    <div class="hstack gap-2 justify-content-end">
+                                                        <a href="javascript:void(0);" class="avatar-text avatar-md" data-bs-toggle="tooltip" title="Edit">
+                                                            <i class="feather-edit"></i>
+                                                        </a>
+                                                        <a href="javascript:void(0);" class="avatar-text avatar-md" data-bs-toggle="tooltip" title="Delete">
+                                                            <i class="feather-delete"></i>
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <ul class="list-unstyled d-flex align-items-center gap-2 mb-0 pagination-common-style">
+                                    <li>
+                                        <a href="javascript:void(0);"><i class="bi bi-arrow-left"></i></a>
+                                    </li>
+                                    <li><a href="javascript:void(0);" class="active">1</a></li>
+                                    <li><a href="javascript:void(0);">2</a></li>
+                                    <li>
+                                        <a href="javascript:void(0);"><i class="bi bi-dot"></i></a>
+                                    </li>
+                                    <li><a href="javascript:void(0);">8</a></li>
+                                    <li><a href="javascript:void(0);">9</a></li>
+                                    <li>
+                                        <a href="javascript:void(0);"><i class="bi bi-arrow-right"></i></a>
+                                    </li>
+                                </ul>
+                            </div>
+		</div>
+		</div>
+		</div>
+		</div>
+		</div>
+		
+		<!-- [ Main Content ] end -->
+		</div>
+		<!-- [ Footer ] start -->
+		<footer class="footer">
+		<p class="fs-11 text-muted fw-medium text-uppercase mb-0 copyright">
+		<span>Copyright © 2026</span>		
+		</p>
+		<p><span>By: <a>Diamond Team</a></span></p>
+		
+		</footer>
+		<!-- [ Footer ] end -->
+		</main>
+	
+    <!--! [End] Main Content !-->
+    <!--! ================================================================ !-->
+    <!--! ================================================================ !-->
+    
+    <!--! Footer Script !-->
+    <!--! ================================================================ !-->
+    <!--! BEGIN: Vendors JS !-->
+    <script src="{% static 'assets/vendors/js/vendors.min.js' %}"></script>
+    <!-- vendors.min.js {always must need to be top} -->
+    <script src="{% static 'assets/vendors/js/dataTables.min.js' %}"></script>
+    <script src="{% static 'assets/vendors/js/dataTables.bs5.min.js' %}"></script>
+    <!--! END: Vendors JS !-->
+    <!--! BEGIN: Apps Init  !-->
+    <script src="{% static 'assets/js/common-init.min.js' %}"></script>
+    <script src="{% static 'assets/js/payment-init.min.js' %}"></script>
+    <!--! END: Apps Init !-->
+    <!--! BEGIN: Theme Customizer  !-->
+    <script src="{% static 'assets/js/theme-customizer-init.min.js' %}"></script>
+    <!--! END: Theme Customizer !-->
+</body>
+
+</html>
