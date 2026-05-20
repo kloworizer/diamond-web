@@ -39,28 +39,20 @@ def _discover_pmde_prioritas_years(
         return list(range(2022, current_year + 1))
     
     try:
-        import cx_Oracle
+        import oracledb
     except ImportError:
-        logger.warning("cx_Oracle not available, using default year range for PMDE query")
+        logger.warning("oracledb not available, using default year range for PMDE query")
         current_year = date.today().year
         return list(range(2022, current_year + 1))
     
     try:
-        # Build connection string
+        # Build connection string for oracledb
         if connection_config.service_name:
-            dsn = cx_Oracle.makedsn(
-                connection_config.host,
-                connection_config.port,
-                service_name=connection_config.service_name,
-            )
+            dsn = f"{connection_config.host}:{connection_config.port}/{connection_config.service_name}"
         else:
-            dsn = cx_Oracle.makedsn(
-                connection_config.host,
-                connection_config.port,
-                sid=connection_config.sid,
-            )
+            dsn = f"{connection_config.host}:{connection_config.port}/{connection_config.sid}"
         
-        conn = cx_Oracle.connect(
+        conn = oracledb.connect(
             user=connection_config.user,
             password=connection_config.password,
             dsn=dsn,
@@ -663,12 +655,48 @@ HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
 ]
 
 
+def _initialize_oracledb_thick_mode():
+    """Initialize oracledb in thick mode if not already initialized.
+    
+    Thick mode requires Oracle Client libraries to be installed on the system.
+    Set ORACLE_CLIENT_HOME environment variable or use LD_LIBRARY_PATH to specify
+    the location of Oracle Client libraries.
+    
+    Raises:
+        Exception: If Oracle Client libraries are not found (Windows) or 
+                  LD_LIBRARY_PATH not set properly (Linux/Unix)
+    """
+    try:
+        import oracledb
+        
+        # Check if already initialized
+        if hasattr(oracledb, '_is_thick_mode') and oracledb._is_thick_mode:
+            return
+        
+        # Try to initialize thick mode
+        try:
+            oracledb.init_oracle_client()
+            logger.info("Initialized oracledb in thick mode")
+        except Exception as e:
+            logger.error(f"Failed to initialize oracledb thick mode: {e}")
+            logger.error(
+                "Thick mode requires Oracle Client libraries. "
+                "Install Oracle Client or set ORACLE_CLIENT_HOME / LD_LIBRARY_PATH"
+            )
+            raise
+    except ImportError:
+        logger.warning("oracledb not available, skipping thick mode initialization")
+
+
 class OracleDataSyncService:
     """Sync rows from Oracle tables into one or more configured Django models."""
 
     _IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_$.]*$")
 
     def __init__(self):
+        # Initialize thick mode before any connections
+        _initialize_oracledb_thick_mode()
+        
         self.oracle_connections = self._load_oracle_connections()
         self._target_model_cache: dict[str, Any] = {}
         
@@ -919,10 +947,10 @@ class OracleDataSyncService:
 
     def _connect_oracle(self, connection_name: str = "primary"):
         try:
-            import cx_Oracle
+            import oracledb
         except Exception as exc:
             raise OracleSyncConfigError(
-                "Library cx_Oracle belum terpasang. Install dependency terlebih dahulu."
+                "Library oracledb belum terpasang. Install dependency terlebih dahulu."
             ) from exc
 
         if connection_name not in self.oracle_connections:
@@ -941,19 +969,11 @@ class OracleDataSyncService:
             )
 
         if conn_cfg.service_name:
-            dsn = cx_Oracle.makedsn(
-                conn_cfg.host,
-                conn_cfg.port,
-                service_name=conn_cfg.service_name,
-            )
+            dsn = f"{conn_cfg.host}:{conn_cfg.port}/{conn_cfg.service_name}"
         else:
-            dsn = cx_Oracle.makedsn(
-                conn_cfg.host,
-                conn_cfg.port,
-                sid=conn_cfg.sid,
-            )
+            dsn = f"{conn_cfg.host}:{conn_cfg.port}/{conn_cfg.sid}"
 
-        return cx_Oracle.connect(
+        return oracledb.connect(
             user=conn_cfg.user,
             password=conn_cfg.password,
             dsn=dsn,
