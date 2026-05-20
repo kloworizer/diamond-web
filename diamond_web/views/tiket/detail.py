@@ -233,7 +233,6 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
             'tgl_terima_dip': self.object.tgl_terima_dip,
             'status_penelitian': self.object.id_status_penelitian.deskripsi if self.object.id_status_penelitian else None,
             'tgl_teliti': self.object.tgl_teliti,
-            'kesesuaian_data': self.object.kesesuaian_data,
             'baris_lengkap': format_number_with_separator(self.object.baris_lengkap) if self.object.baris_lengkap else None,
             'baris_tidak_lengkap': format_number_with_separator(self.object.baris_tidak_lengkap) if self.object.baris_tidak_lengkap else None,
             'baris_i': format_number_with_separator(self.object.baris_i) if self.object.baris_i else None,

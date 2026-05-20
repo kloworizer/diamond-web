@@ -210,12 +210,15 @@ def tiket_documents_download(request, pk):
     nomor_tanda_terima = tanda_terima.nomor_tanda_terima_format if tanda_terima else '-'
     tgl_terima_dip = _format_date_indonesian(tiket.tgl_terima_dip) if tiket.tgl_terima_dip else '-'
 
+    tahun_data_list = sorted({str(t.tahun) for t in tiket_rows if t.tahun})
+
     # Build variable dictionary for template filling
     # These placeholders match the ones defined in the templates
     template_variables = {
         '{{nomor_tiket}}': nomor_tanda_terima,
         '{{nomor_tanda_terima}}': nomor_tanda_terima,
         '{{tanggal_tanda_terima}}': _format_date_indonesian(tanda_terima.tanggal_tanda_terima) if tanda_terima else '-',
+        '{{tahun_data}}': ', '.join(tahun_data_list) if tahun_data_list else '-',
         '{{diterima_dari}}': diterima_dari,
         '{{nama_kantor}}': diterima_dari,
         '{{nomor_surat_pengantar}}': ', '.join(nomor_surat_list) if nomor_surat_list else '-',
@@ -316,6 +319,47 @@ def tiket_documents_download(request, pk):
                             'dasar_hukum': ', '.join(dasar_hukum_list) if dasar_hukum_list else '-',
                         })
                     nomor_counter += 1
+            elif doc_type == 'pkdi_lengkap':
+                row_data = []
+                nomor_counter = 1
+                for t in tiket_rows:
+                    sub = t.id_periode_data.id_sub_jenis_data_ilap if t.id_periode_data else None
+                    row_data.append({
+                        'nomor': str(nomor_counter),
+                        'sub_jenis_data': sub.nama_sub_jenis_data if sub else '-',
+                        'periode_data': _format_periode_tiket(t),
+                        'jumlah_baris_diterima': format_number_with_separator(t.baris_diterima) if t.baris_diterima is not None else '-',
+                        'jumlah_baris_lengkap': format_number_with_separator(t.baris_lengkap) if t.baris_lengkap is not None else '-',
+                        'jumlah_baris_tidak_lengkap': format_number_with_separator(t.baris_tidak_lengkap) if t.baris_tidak_lengkap is not None else '-',
+                    })
+                    nomor_counter += 1
+            elif doc_type == 'pkdi_sebagian':
+                row_data = []
+                nomor_counter = 1
+                for t in tiket_rows:
+                    sub = t.id_periode_data.id_sub_jenis_data_ilap if t.id_periode_data else None
+                    row_data.append({
+                        'nomor': str(nomor_counter),
+                        'sub_jenis_data': sub.nama_sub_jenis_data if sub else '-',
+                        'periode_data': _format_periode_tiket(t),
+                        'jumlah_baris_diterima': format_number_with_separator(t.baris_diterima) if t.baris_diterima is not None else '-',
+                        'jumlah_baris_lengkap': format_number_with_separator(t.baris_lengkap) if t.baris_lengkap is not None else '-',
+                        'jumlah_baris_tidak_lengkap': format_number_with_separator(t.baris_tidak_lengkap) if t.baris_tidak_lengkap is not None else '-',
+                    })
+                    nomor_counter += 1
+            elif doc_type == 'klarifikasi':
+                row_data = []
+                nomor_counter = 1
+                for t in tiket_rows:
+                    sub = t.id_periode_data.id_sub_jenis_data_ilap if t.id_periode_data else None
+                    row_data.append({
+                        'nomor': str(nomor_counter),
+                        'sub_jenis_data': sub.nama_sub_jenis_data if sub else '-',
+                        'periode_data': _format_periode_tiket(t),
+                        'jumlah_baris_diterima': format_number_with_separator(t.baris_diterima) if t.baris_diterima is not None else '-',
+                        'jumlah_baris_tidak_lengkap': format_number_with_separator(t.baris_tidak_lengkap) if t.baris_tidak_lengkap is not None else '-',
+                    })
+                    nomor_counter += 1
 
             # Open the template file using FileField's open method for better compatibility
             doc_buffer = fill_template_with_data(template.file_template.open('rb'), template_variables, row_data=row_data)
@@ -325,11 +369,11 @@ def tiket_documents_download(request, pk):
             elif doc_type == 'register':
                 filename = f'register_data_{nomor_safe}_{now_ts}.docx'
             elif doc_type == 'pkdi_lengkap':
-                filename = f'surat_pkdi_lengkap_{nomor_safe}_{now_ts}.docx'
+                filename = f'surat_pkdi_lengkap_{now_ts}.docx'
             elif doc_type == 'pkdi_sebagian':
-                filename = f'surat_pkdi_lengkap_sebagian_{nomor_safe}_{now_ts}.docx'
+                filename = f'surat_pkdi_lengkap_sebagian_{now_ts}.docx'
             elif doc_type == 'klarifikasi':
-                filename = f'surat_klarifikasi_{nomor_safe}_{now_ts}.docx'
+                filename = f'surat_klarifikasi_{now_ts}.docx'
             elif doc_type == 'nd_pengantar':
                 filename = f'nd_pengantar_pide_{nomor_safe}_{now_ts}.docx'
             else:
@@ -397,7 +441,7 @@ def tiket_documents_download(request, pk):
             row[0].text = str(key)
             row[1].text = str(value)
         doc = doc_pkdi
-        filename = f'surat_pkdi_lengkap_{nomor_safe}_{now_ts}.docx'
+        filename = f'surat_pkdi_lengkap_{now_ts}.docx'
     elif doc_type == 'pkdi_sebagian':
         doc_pkdi = Document()
         doc_pkdi.add_heading('Surat PKDI Lengkap Sebagian (Pernyataan Kesesuaian Data)', level=1)
@@ -418,7 +462,7 @@ def tiket_documents_download(request, pk):
             row[0].text = str(key)
             row[1].text = str(value)
         doc = doc_pkdi
-        filename = f'surat_pkdi_lengkap_sebagian_{nomor_safe}_{now_ts}.docx'
+        filename = f'surat_pkdi_lengkap_sebagian_{now_ts}.docx'
     elif doc_type == 'klarifikasi':
         doc_klr = Document()
         doc_klr.add_heading('Surat Klarifikasi Data', level=1)
@@ -439,7 +483,7 @@ def tiket_documents_download(request, pk):
             row[0].text = str(key)
             row[1].text = str(value)
         doc = doc_klr
-        filename = f'surat_klarifikasi_{nomor_safe}_{now_ts}.docx'
+        filename = f'surat_klarifikasi_{now_ts}.docx'
     else:
         doc_tanda = Document()
         doc_tanda.add_heading('Tanda Terima Data', level=1)

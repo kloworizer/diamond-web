@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2 class="mb-1"><i class="ri-file-paper-2-line me-2"></i>{{ page_title }}</h2>
+            <p class="text-muted mb-0">Generate ND Pengantar PIDE untuk banyak tiket. Pilih tanggal kirim PIDE, ILAP (opsional), lalu centang tiket yang akan digenerate.</p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-header bg-light"><strong>Filter Tiket</strong></div>
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Tanggal Kirim PIDE</label>
+                    <input type="date" name="tanggal_kirim_pide" class="form-control" value="{{ selected_tanggal_kirim_pide }}" required>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">ILAP</label>
+                    <select name="ilap_id" class="form-select">
+                        <option value="">-- Semua ILAP --</option>
+                        {% for ilap in ilap_options %}
+                        <option value="{{ ilap.id }}" {% if selected_ilap_id == ilap.id|stringformat:"s" %}selected{% endif %}>
+                            {{ ilap.nama_ilap }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-grid">
+                    <button type="submit" class="btn btn-primary"><i class="ri-search-line me-1"></i>Tampilkan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <strong>Daftar Tiket Dikirim ke PIDE</strong>
+            <span class="badge bg-light text-dark">{{ tickets|length }} tiket</span>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="ilap_id" value="{{ selected_ilap_id }}">
+                <input type="hidden" name="tanggal_kirim_pide" value="{{ selected_tanggal_kirim_pide }}">
+
+                {% if tickets %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-bordered align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width:40px;"><input type="checkbox" id="check-all"></th>
+                                <th>Nomor Tiket</th>
+                                <th>Jenis Data</th>
+                                <th>Periode Data</th>
+                                <th>Baris Diterima</th>
+                                <th>Tgl Kirim PIDE</th>
+                                <th>Status Tiket</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in tickets %}
+                            <tr>
+                                <td class="text-center"><input type="checkbox" name="ticket_ids" value="{{ t.id }}" class="ticket-check"></td>
+                                <td>{{ t.nomor_tiket }}</td>
+                                <td>{% if t.id_periode_data and t.id_periode_data.id_sub_jenis_data_ilap %}{{ t.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}{% else %}-{% endif %}</td>
+                                <td>{{ t.periode }} / {{ t.tahun }}</td>
+                                <td class="text-end">{{ t.baris_diterima|default:0 }}</td>
+                                <td>{% if t.tgl_kirim_pide %}{{ t.tgl_kirim_pide|date:"d/m/Y H:i" }}{% else %}-{% endif %}</td>
+                                <td>{{ t.get_status_tiket_display }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-end mt-3">
+                    <button type="submit" class="btn btn-success" id="generate-btn" disabled>
+                        <i class="ri-download-2-line me-1"></i>Generate ND Pengantar PIDE
+                    </button>
+                </div>
+                {% else %}
+                <div class="alert alert-info mb-0">Tidak ada tiket status Dikirim ke PIDE untuk filter ini.</div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        const checkAll = document.getElementById('check-all');
+        const checks = document.querySelectorAll('.ticket-check');
+        const generateBtn = document.getElementById('generate-btn');
+
+        function updateButtonState() {
+            if (!generateBtn) return;
+            const checked = document.querySelectorAll('.ticket-check:checked').length;
+            generateBtn.disabled = checked === 0;
+        }
+
+        if (checkAll) {
+            checkAll.addEventListener('change', function () {
+                checks.forEach((c) => {
+                    c.checked = checkAll.checked;
+                });
+                updateButtonState();
+            });
+        }
+
+        checks.forEach((c) => {
+            c.addEventListener('change', function () {
+                if (checkAll && !c.checked) {
+                    checkAll.checked = false;
+                }
+                updateButtonState();
+            });
+        });
+
+        updateButtonState();
+    })();
+</script>
+{% endblock %}

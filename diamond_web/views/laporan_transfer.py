@@ -12,7 +12,6 @@ from openpyxl import Workbook
 
 from ..models.tiket import Tiket
 from ..forms.laporan_transfer import LaporanTransferFilterForm, LaporanTransferExportResource
-from ..constants.tiket_status import STATUS_PENGENDALIAN_MUTU
 from ..constants.jenis_tabel import JENIS_TABEL_DIIDENTIFIKASI, JENIS_TABEL_TIDAK_DIIDENTIFIKASI
 
 
@@ -31,7 +30,7 @@ def _get_filtered_tikets(params):
     nama_tabel_I = params.get('nama_tabel_I')
 
     # Query base
-    tikets = Tiket.objects.filter(status_tiket=STATUS_PENGENDALIAN_MUTU).select_related(
+    tikets = Tiket.objects.all().select_related(
         'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
         'id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel'
     )
@@ -114,7 +113,7 @@ def laporan_transfer_data(request):
     # Get filtered tikets using helper
     tikets = _get_filtered_tikets(params)
     
-    records_total = Tiket.objects.filter(status_tiket=STATUS_PENGENDALIAN_MUTU).count()
+    records_total = Tiket.objects.count()
     records_filtered = tikets.count()
     
     # Pagination
@@ -215,50 +214,3 @@ def laporan_transfer_export(request):
     response['Content-Disposition'] = f'attachment; filename="{filename}.xlsx"'
     return response
 
-@login_required
-@user_passes_test(_is_pide_user)
-@require_GET
-@csrf_protect
-def laporan_transfer_filter_options(request):
-    """AJAX endpoint to return filtered options for cascading dropdowns."""
-    id_ilap = request.GET.get('id_ilap')
-    id_jenis_data = request.GET.get('id_jenis_data')
-    nama_sub_jenis_data = request.GET.get('nama_sub_jenis_data')
-    nama_tabel_I = request.GET.get('nama_tabel_I')
-    
-    from ..models.jenis_data_ilap import JenisDataILAP
-    from ..models.ilap import ILAP
-    
-    # Base queryset for subjenis datailap
-    qs = JenisDataILAP.objects.all()
-    
-    # Apply filters to narrow down the available choices
-    if id_ilap and id_ilap != 'all' and id_ilap != '':
-        qs = qs.filter(id_ilap_id=id_ilap)
-    if id_jenis_data and id_jenis_data != 'all' and id_jenis_data != '':
-        qs = qs.filter(id=id_jenis_data)
-    if nama_sub_jenis_data and nama_sub_jenis_data != 'all' and nama_sub_jenis_data != '':
-        qs = qs.filter(nama_sub_jenis_data=nama_sub_jenis_data)
-    if nama_tabel_I and nama_tabel_I != 'all' and nama_tabel_I != '':
-        qs = qs.filter(nama_tabel_I=nama_tabel_I)
-        
-    # Get distinct values for each field based on the narrowed queryset
-    # 1. ILAPs: If no ILAP selected, show all available ones
-    ilap_ids = qs.values_list('id_ilap_id', flat=True).distinct()
-    ilaps = ILAP.objects.filter(id__in=ilap_ids).values('id', 'nama_ilap').order_by('nama_ilap')
-    
-    # 2. Jenis Data (Subjenis level in our form)
-    jenis_data = qs.values('id', 'nama_sub_jenis_data', 'id_sub_jenis_data').order_by('nama_sub_jenis_data').distinct()
-    
-    # 3. nama_sub_jenis_data (CharField group)
-    sub_jenis_choices = qs.values_list('nama_sub_jenis_data', flat=True).order_by('nama_sub_jenis_data').distinct()
-    
-    # 4. nama_tabel_I (CharField group)
-    tabel_i_choices = qs.values_list('nama_tabel_I', flat=True).order_by('nama_tabel_I').distinct()
-    
-    return JsonResponse({
-        'ilaps': list(ilaps),
-        'jenis_data': list(jenis_data),
-        'sub_jenis': list(sub_jenis_choices),
-        'tabel_i': list(tabel_i_choices)
-    })

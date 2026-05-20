@@ -30,42 +30,42 @@
             <form id="filter-form" class="row g-3">
                 {% csrf_token %}
                 <div class="col-md-3">
-                    <label class="form-label">Tanggal Mulai</label>
+                    <label class="form-label">Pilih Tanggal Mulai</label>
                     {{ form.tgl_mulai }}
                     {% if form.tgl_mulai.errors %}
                     <div class="invalid-feedback d-block">{{ form.tgl_mulai.errors }}</div>
                     {% endif %}
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Tanggal Akhir</label>
+                    <label class="form-label">Pilih Tanggal Akhir</label>
                     {{ form.tgl_akhir }}
                     {% if form.tgl_akhir.errors %}
                     <div class="invalid-feedback d-block">{{ form.tgl_akhir.errors }}</div>
                     {% endif %}
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">ILAP</label>
+                    <label class="form-label">Nama ILAP</label>
                     {{ form.id_ilap }}
                     {% if form.id_ilap.errors %}
                     <div class="invalid-feedback d-block">{{ form.id_ilap.errors }}</div>
                     {% endif %}
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Jenis Data ILAP</label>
+                    <label class="form-label">Jenis Data</label>
                     {{ form.id_jenis_data }}
                     {% if form.id_jenis_data.errors %}
                     <div class="invalid-feedback d-block">{{ form.id_jenis_data.errors }}</div>
                     {% endif %}
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Nama Subjenis Data</label>
+                    <label class="form-label">Subjenis Data</label>
                     {{ form.nama_sub_jenis_data }}
                     {% if form.nama_sub_jenis_data.errors %}
                     <div class="invalid-feedback d-block">{{ form.nama_sub_jenis_data.errors }}</div>
                     {% endif %}
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Nama Tabel I</label>
+                    <label class="form-label">Nama Tabel</label>
                     {{ form.nama_tabel_I }}
                     {% if form.nama_tabel_I.errors %}
                     <div class="invalid-feedback d-block">{{ form.nama_tabel_I.errors }}</div>
@@ -73,7 +73,7 @@
                 </div>
                 <div class="col-md-3 d-flex align-items-end">
                     <button type="button" id="export-btn" class="btn btn-success w-100" disabled>
-                        <i class="ri-download-2-line me-1"></i>Export XLSX
+                        <i class="ri-download-2-line me-1"></i>EKSPOR KE EXCEL
                     </button>
                 </div>
             </form>
@@ -91,17 +91,17 @@
             <table id="laporan-transfer-table" class="table table-striped" style="width:100%">
                 <thead>
                     <tr>
-                        <th>Nama ILAP</th>
-                        <th>Jenis Data</th>
-                        <th>Subjenis Data</th>
-                        <th>Tabel I</th>
-                        <th>Nomor Tiket</th>
-                        <th>Data Diterima</th>
-                        <th>Data Teridentifikasi (I)</th>
-                        <th>Data Tidak Teridentifikasi (U)</th>
-                        <th>Data Tidak Diidentifikasi (I)</th>
-                        <th>Persentase Identifikasi (%)</th>
-                        <th>Keterangan</th>
+                        <th>NAMA ILAP</th>
+                        <th>JENIS DATA</th>
+                        <th>SUBJENIS DATA</th>
+                        <th>TABEL BANK DATA</th>
+                        <th>NOMOR TIKET</th>
+                        <th>JUMLAH DATA TERIDENTIFIKASI</th>
+                        <th>JUMLAH DATA TIDAK TERIDENTIFIKASI</th>
+                        <th>JUMLAH DATA TIDAK DIIDENTIFIKASI</th>
+                        <th>JUMLAH DATA MASUK</th>
+                        <th>PERSENTASE</th>
+                        <th>KETERANGAN</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -127,7 +127,7 @@
             };
 
             $.ajax({
-                url: "{% url 'laporan_transfer_filter_options' %}",
+                url: "{% url 'laporan_pide_filter_options' %}",
                 data: params,
                 success: function (data) {
                     // Helper to update a select element while preserving selection if possible
@@ -135,7 +135,7 @@
                         if (id === changedId) return;
                         const $el = $('#' + id);
                         const currentVal = $el.val();
-                        
+
                         let html = '';
                         if (id === 'filter-id-ilap' || id === 'filter-id-jenis-data') {
                             html = '<option value="all">Pilih Semua</option>';
@@ -148,7 +148,7 @@
                             const text = isModel ? opt[textField || 'nama_sub_jenis_data'] : opt;
                             if (val) html += `<option value="${val}">${text}</option>`;
                         });
-                        
+
                         $el.html(html);
                         // Restore value if it's still in the new options list
                         if ($el.find(`option[value="${currentVal}"]`).length > 0) {
@@ -192,10 +192,10 @@
                     { data: 'nama_sub_jenis_data' },
                     { data: 'nama_tabel_I' },
                     { data: 'nomor_tiket' },
-                    { data: 'data_diterima' },
                     { data: 'data_teridentifikasi_i' },
                     { data: 'data_tidak_teridentifikasi_u' },
                     { data: 'data_tidak_diidentifikasi_i' },
+                    { data: 'data_diterima' },
                     { data: 'persentase_identifikasi' },
                     { data: 'keterangan_tiket' },
                 ],

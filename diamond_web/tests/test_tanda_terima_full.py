@@ -19,9 +19,11 @@ from diamond_web.tests.conftest import (
 
 def _make_tanda_terima(ilap, user, tiket=None):
     """Create a TandaTerimaData with a linked tiket and DetilTandaTerima."""
+    tahun = 2099
+    next_nomor = (TandaTerimaData.objects.filter(tahun_terima=tahun).count() + 1)
     tt = TandaTerimaData.objects.create(
-        nomor_tanda_terima=1,
-        tahun_terima=timezone.now().year,
+        nomor_tanda_terima=next_nomor,
+        tahun_terima=tahun,
         tanggal_tanda_terima=timezone.now(),
         id_ilap=ilap,
         id_perekam=user,
@@ -224,18 +226,20 @@ class TestTandaTerimaNextNumber:
         """Next number is incremented when records exist."""
         from diamond_web.tests.conftest import ILAPFactory
         ilap = ILAPFactory()
+        tahun = 2099
+        nomor = (TandaTerimaData.objects.filter(tahun_terima=tahun).count() + 5)
         TandaTerimaData.objects.create(
-            nomor_tanda_terima=5,
-            tahun_terima=2025,
+            nomor_tanda_terima=nomor,
+            tahun_terima=tahun,
             tanggal_tanda_terima=timezone.now(),
             id_ilap=ilap,
             id_perekam=authenticated_user,
         )
         client.force_login(authenticated_user)
-        resp = client.get(reverse('tanda_terima_next_number'), {'tanggal': '2025-06-01'})
+        resp = client.get(reverse('tanda_terima_next_number'), {'tanggal': '2099-06-01'})
         assert resp.status_code == 200
         data = json.loads(resp.content)
-        assert data['nomor_sequence'] == 6
+        assert data['nomor_sequence'] == nomor + 1
 
 
 # ============================================================

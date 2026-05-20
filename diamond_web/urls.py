@@ -142,6 +142,13 @@ urlpatterns = [
     path('docx-template/<int:pk>/update/', views.DocxTemplateUpdateView.as_view(), name='docx_template_update'),
     path('docx-template/<int:pk>/delete/', views.DocxTemplateDeleteView.as_view(), name='docx_template_delete'),
     path('docx-template/<int:pk>/download/', views.docx_template_download, name='docx_template_download'),
+    # Laporan Register Penerimaan Data
+    path('laporan-register-penerimaan/', views.LaporanRegisterPenerimaanView.as_view(), name='laporan_register_penerimaan'),
+    path('laporan-register-penerimaan/data/', views.laporan_register_penerimaan_data, name='laporan_register_penerimaan_data'),
+    path('laporan-register-penerimaan/export/', views.laporan_register_penerimaan_export, name='laporan_register_penerimaan_export'),
+    # Bulk Document Generation (P3DE)
+    path('bulk-generate/pkdi-klarifikasi/', views.bulk_pkdi_klarifikasi, name='bulk_pkdi_klarifikasi'),
+    path('bulk-generate/nd-pengantar-pide/', views.bulk_nd_pengantar_pide, name='bulk_nd_pengantar_pide'),
     # Tanda Terima Data URLs
     path('tanda-terima-data/', views.TandaTerimaDataListView.as_view(), name='tanda_terima_data_list'),
     path('tanda-terima-data/data/', views.tanda_terima_data_data, name='tanda_terima_data_data'),
@@ -156,11 +163,30 @@ urlpatterns = [
     path('monitoring-penyampaian-data/data/', views.monitoring_penyampaian_data_data, name='monitoring_penyampaian_data_data'),
 
     # === PIDE Section ===
+
+    # Filter Options URLs for cascading filter in PIDE reports
+    path('laporan-pide/filter-options/', views.laporan_pide_filter_options, name='laporan_pide_filter_options'),
+
     # Laporan Transfer
     path('laporan-transfer/', views.LaporanTransferView.as_view(), name='laporan_transfer'),
     path('laporan-transfer/data/', views.laporan_transfer_data, name='laporan_transfer_data'),
     path('laporan-transfer/export/', views.laporan_transfer_export, name='laporan_transfer_export'),
-    path('laporan-transfer/filter-options/', views.laporan_transfer_filter_options, name='laporan_transfer_filter_options'),
+
+    # Laporan SLA Perekaman
+    path('laporan-sla-perekaman/', views.LaporanSLAPerekamanView.as_view(), name='laporan_sla_perekaman'),
+    path('laporan-sla-perekaman/data/', views.laporan_sla_perekaman_data, name='laporan_sla_perekaman_data'),
+    path('laporan-sla-perekaman/export/', views.laporan_sla_perekaman_export, name='laporan_sla_perekaman_export'),
+    
+    # Laporan SLA Identifikasi
+    path('laporan-sla-identifikasi/', views.LaporanSLAIdentifikasiView.as_view(), name='laporan_sla_identifikasi'),
+    path('laporan-sla-identifikasi/data/', views.laporan_sla_identifikasi_data, name='laporan_sla_identifikasi_data'),
+    path('laporan-sla-identifikasi/export/', views.laporan_sla_identifikasi_export, name='laporan_sla_identifikasi_export'),
+
+    # Laporan Metrik Data Eksternal
+    path('laporan-metrik-data-eksternal/', views.LaporanMetrikDataEksternalView.as_view(), name='laporan_metrik_data_eksternal'),
+    path('laporan-metrik-data-eksternal/data/', views.laporan_metrik_data_eksternal_data, name='laporan_metrik_data_eksternal_data'),
+    path('laporan-metrik-data-eksternal/export/', views.laporan_metrik_data_eksternal_export, name='laporan_metrik_data_eksternal_export'),
+
     # Nama Tabel URLs
     path('nama-tabel/', views.NamaTabelListView.as_view(), name='nama_tabel_list'),
     path('nama-tabel/data/', views.nama_tabel_data, name='nama_tabel_data'),
@@ -180,7 +206,6 @@ urlpatterns = [
     path('durasi-jatuh-tempo-pide/<int:pk>/update/', views.DurasiJatuhTempoPIDEUpdateView.as_view(), name='durasi_jatuh_tempo_pide_update'),
     path('durasi-jatuh-tempo-pide/<int:pk>/delete/', views.DurasiJatuhTempoPIDEDeleteView.as_view(), name='durasi_jatuh_tempo_pide_delete'),
 
-    # === PMDE Section ===
     # Laporan Pengendalian Mutu
     path('laporan-pengendalian-mutu/', views.LaporanPengendalianMutuView.as_view(), name='laporan_pengendalian_mutu'),
     path('laporan-pengendalian-mutu/data/', views.laporan_pengendalian_mutu_data, name='laporan_pengendalian_mutu_data'),

@@ -118,39 +118,43 @@ class LaporanTransferExportResource(resources.ModelResource):
     """Resource for exporting Laporan Transfer to XLSX."""
     
     nama_ilap = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__id_ilap__nama_ilap')
-    nama_jenis_data = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__nama_jenis_data')
-    nama_sub_jenis_data = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data')
-    nama_tabel_I = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__nama_tabel_I')
+    jenis_data = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__nama_jenis_data')
+    subjenis_data = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data')
+    tabel_bank_data = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__nama_tabel_I')
     nomor_tiket = fields.Field(attribute='nomor_tiket')
-    data_diterima = fields.Field(attribute='baris_diterima')
-    data_tidak_teridentifikasi_u = fields.Field(attribute='baris_u')
+    jumlah_data_masuk = fields.Field(attribute='baris_diterima')
+    jumlah_data_tidak_teridentifikasi = fields.Field(attribute='baris_u')
 
-    # Calculated fields 
-    data_teridentifikasi_i = fields.Field()
-    data_tidak_diidentifikasi_i = fields.Field()
-    persentase_identifikasi = fields.Field()
+    # Calculated fields  
+    jumlah_data_teridentifikasi = fields.Field()
+    jumlah_data_tidak_diidentifikasi = fields.Field()
+    persentase = fields.Field()
 
     # Manual entry field
-    keterangan_tiket = fields.Field()
+    keterangan = fields.Field()
     
     class Meta:
         model = Tiket
         fields = (
-            'nama_ilap', 'nama_jenis_data', 'nama_sub_jenis_data', 'nama_tabel_I', 'nomor_tiket', 
-            'data_diterima', 'data_teridentifikasi_i', 'data_tidak_teridentifikasi_u', 'data_tidak_diidentifikasi_i',
-            'persentase_identifikasi', 'keterangan_tiket'
+            'nama_ilap', 'jenis_data', 'subjenis_data', 
+            'tabel_bank_data', 'nomor_tiket', 
+            'jumlah_data_teridentifikasi', 
+            'jumlah_data_tidak_teridentifikasi', 
+            'jumlah_data_tidak_diidentifikasi', 
+            'jumlah_data_masuk', 
+            'persentase', 'keterangan'
         )
         export_order = fields
     
-    def dehydrate_data_diterima(self, obj):
+    def dehydrate_jumlah_data_masuk(self, obj):
         """Return null values as 0."""
         return obj.baris_diterima or 0
     
-    def dehydrate_data_tidak_teridentifikasi_u(self, obj):
+    def dehydrate_jumlah_data_tidak_teridentifikasi(self, obj):
         """Return null values as 0."""
         return obj.baris_u or 0
 
-    def dehydrate_data_teridentifikasi_i(self, obj):
+    def dehydrate_jumlah_data_teridentifikasi(self, obj):
         """Fetch id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel
         to determine if data is Diidentifikasi or not.
         Return 0 if baris_i is null, or if id_jenis_tabel is not Diidentifikasi.
@@ -161,7 +165,7 @@ class LaporanTransferExportResource(resources.ModelResource):
         else:
             return obj.baris_i or 0
 
-    def dehydrate_data_tidak_diidentifikasi_i(self, obj):
+    def dehydrate_jumlah_data_tidak_diidentifikasi(self, obj):
         """Fetch id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel
         to determine if data is Tidak Diidentifikasi or not.
         Return 0 if baris_i is null, or if id_jenis_tabel is not Tidak Diidentifikasi.
@@ -172,7 +176,7 @@ class LaporanTransferExportResource(resources.ModelResource):
         else:
             return obj.baris_i or 0
 
-    def dehydrate_persentase_identifikasi(self, obj):
+    def dehydrate_persentase(self, obj):
         """Fetch id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel
         to determine if data is Diidentifikasi ('1') or not.
         Return empty string ('') if baris_diterima is 0, or if id_jenis_tabel is not '1' (Diidentifikasi).
@@ -184,6 +188,6 @@ class LaporanTransferExportResource(resources.ModelResource):
         else:
             return f"{(obj.baris_i or 0) / obj.baris_diterima * 100:.2f}%"
 
-    def dehydrate_keterangan_tiket(self, obj):
+    def dehydrate_keterangan(self, obj):
         """Return empty string ('')."""
         return ''

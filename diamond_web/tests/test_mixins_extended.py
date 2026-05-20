@@ -281,9 +281,11 @@ class TestActiveTiketPICRequiredMixinPaths:
         user.groups.add(group)
         tiket = TiketFactory()
         ilap = tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap
+        tahun = 2099
+        nomor = TandaTerimaData.objects.filter(tahun_terima=tahun).count() + 1
         tt = TandaTerimaData.objects.create(
-            nomor_tanda_terima=1,
-            tahun_terima=2025,
+            nomor_tanda_terima=nomor,
+            tahun_terima=tahun,
             tanggal_tanda_terima='2025-01-01',
             id_ilap=ilap,
             id_perekam=user,
@@ -302,9 +304,11 @@ class TestActiveTiketPICRequiredMixinPaths:
         TiketPICFactory(id_tiket=tiket, id_user=authenticated_user,
                         role=TiketPIC.Role.P3DE, active=True)
         ilap = tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap
+        tahun = 2099
+        nomor = TandaTerimaData.objects.filter(tahun_terima=tahun).count() + 1
         tt = TandaTerimaData.objects.create(
-            nomor_tanda_terima=1,
-            tahun_terima=2025,
+            nomor_tanda_terima=nomor,
+            tahun_terima=tahun,
             tanggal_tanda_terima='2025-01-01',
             id_ilap=ilap,
             id_perekam=authenticated_user,

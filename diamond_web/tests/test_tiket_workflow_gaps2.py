@@ -294,7 +294,6 @@ class TestRekamHasilPenelitianNonAjax:
                 reverse('rekam_hasil_penelitian', args=[tiket.pk]),
                 {
                     'tgl_teliti': '2024-01-15T10:00',
-                    'kesesuaian_data': 1,
                     'baris_lengkap': 10,
                     'baris_tidak_lengkap': 0,
                     'catatan': 'Hasil penelitian direkam',
@@ -313,16 +312,14 @@ class TestRekamHasilPenelitianNonAjax:
         # Create tiket WITHOUT creating StatusPenelitian objects → DoesNotExist
         tiket = TiketFactory(status_tiket=1, baris_diterima=10)
         TiketPICFactory(id_tiket=tiket, id_user=p3de_user, role=TiketPIC.Role.P3DE, active=True)
-        # Ensure StatusPenelitian does NOT exist
-        StatusPenelitian.objects.all().delete()
 
         client.force_login(p3de_user)
-        with patch.object(RekamHasilPenelitianView, 'get_success_url', return_value='/'):
+        with patch.object(RekamHasilPenelitianView, 'get_success_url', return_value='/'), \
+            patch('diamond_web.views.tiket.rekam_hasil_penelitian.StatusPenelitian.objects.get', side_effect=StatusPenelitian.DoesNotExist):
             resp = client.post(
                 reverse('rekam_hasil_penelitian', args=[tiket.pk]),
                 {
                     'tgl_teliti': '2024-01-15T10:00',
-                    'kesesuaian_data': 1,
                     'baris_lengkap': 10,
                     'baris_tidak_lengkap': 0,
                     'catatan': 'Hasil penelitian direkam',

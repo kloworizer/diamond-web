@@ -271,7 +271,6 @@ class TestRekamHasilPenelitianDoesNotExist:
             reverse('rekam_hasil_penelitian', args=[tiket.pk]),
             {
                 'tgl_teliti': '2024-01-01T10:00',
-                'kesesuaian_data': '1',
                 'baris_lengkap': 100,
                 'baris_tidak_lengkap': 0,
                 'catatan': 'All lengkap',

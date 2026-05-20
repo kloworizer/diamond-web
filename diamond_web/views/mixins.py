@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.http import JsonResponse, HttpResponseForbidden
 from django.template.loader import render_to_string
 from django.contrib.auth.mixins import UserPassesTestMixin
+from django.utils import timezone
 from ..models.tiket_pic import TiketPIC
 
 
@@ -283,6 +284,33 @@ def get_active_p3de_ilap_ids(user):
     ).distinct()
 
 
+def get_active_p3de_jenis_data_ilap_ids(user):
+    """Return JenisDataILAP IDs where `user` is an active P3DE PIC.
+
+    Active means `start_date` is in the past and `end_date` is null or in
+    the future. Returns a list of distinct JenisDataILAP primary keys.
+    """
+    if not user or not user.is_authenticated:
+        return []
+
+    from datetime import datetime
+    from django.db.models import Q
+    from ..models.pic import PIC
+
+    today = datetime.now().date()
+
+    return PIC.objects.filter(
+        tipe=PIC.TipePIC.P3DE,
+        id_user=user,
+        start_date__lte=today
+    ).filter(
+        Q(end_date__isnull=True) | Q(end_date__gte=today)
+    ).values_list(
+        'id_sub_jenis_data_ilap_id',
+        flat=True
+    ).distinct()
+
+
 def can_access_tiket_list(user):
     """Return True when `user` should be allowed to view tiket listings.
 
@@ -371,6 +399,7 @@ class AjaxFormMixin:
         The method also registers `success_message` into Django messages so
         that client-side toasts can be rendered after a redirect.
         """
+        self._apply_audit_fields(form)
         self.object = form.save()
         message = self.get_success_message(form)
         if self.is_ajax():
@@ -408,6 +437,21 @@ class AjaxFormMixin:
             return self.success_message.format(object=self.object)
         except Exception:
             return self.success_message
+
+    def _apply_audit_fields(self, form):
+        """Stamp audit fields when the bound model supports them."""
+        instance = form.instance
+        today = timezone.now().date()
+        username = (getattr(self.request.user, 'username', '') or '')[:9]
+
+        if hasattr(instance, 'create_date') and not getattr(instance, 'create_date', None):
+            instance.create_date = today
+        if hasattr(instance, 'create_by') and not getattr(instance, 'create_by', None):
+            instance.create_by = username
+        if hasattr(instance, 'update_date'):
+            instance.update_date = today
+        if hasattr(instance, 'update_by'):
+            instance.update_by = username
 
 class SafeDeleteMixin:
     """Mixin to handle deletion errors gracefully.
