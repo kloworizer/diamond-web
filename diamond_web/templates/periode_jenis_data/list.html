@@ -68,7 +68,7 @@
 
     <!-- Modal for Create/Edit/Delete -->
     <div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="crudModalLabel">Form</h5>
@@ -89,134 +89,185 @@
         const ajaxUrl = "{% url 'periode_jenis_data_data' %}";
         let table;
 
-        $(document).ready(function () {
-            table = $('#periode-jenis-data-table').DataTable({
-                serverSide: true,
-                layout: {
-                    topStart: null,
-                    topEnd: null
-                },
-                ajax: {
-                    url: ajaxUrl,
-                    dataSrc: 'data',
-                    data: function (d) {
-                        // Add column search values
-                        d.columns_search = [];
-                        $('#column-search-row input').each(function (i) {
-                            d.columns_search[i] = $(this).val();
-                        });
-                        return d;
+            $(document).ready(function () {
+                table = $('#periode-jenis-data-table').DataTable({
+                    serverSide: true,
+                    processing: true,
+                    paging: true,
+                    pageLength: 10,
+                    ajax: {
+                        url: ajaxUrl,
+                        dataSrc: 'data',
+                        data: function (d) {
+                            return d;
+                        }
+                    },
+                    columns: [
+                        { data: 'sub_jenis_data_ilap' },
+                        { data: 'periode_pengiriman' },
+                        { data: 'akhir_penyampaian' },
+                        { data: 'start_date' },
+                        { data: 'end_date' },
+                        { data: 'actions', orderable: false, searchable: false }
+                    ],
+                    columnDefs: [
+                        { targets: 5, render: function (data, type, row, meta) { return data; } }
+                    ],
+                    order: [[0, 'asc']],
+                    layout: {
+                        topStart: null,
+                        topEnd: null,
+                        bottomStart: null,
+                        bottomEnd: null
+                    },
+                    drawCallback: function(settings) {
+                        updatePagination(settings);
                     }
-                },
-                pageLength: 10,
-                columns: [
-                    { data: 'sub_jenis_data_ilap' },
-                    { data: 'periode_pengiriman' },
-                    { data: 'akhir_penyampaian' },
-                    { data: 'start_date' },
-                    { data: 'end_date' },
-                    { data: 'actions', orderable: false, searchable: false }
-                ],
-                columnDefs: [
-                    { targets: 5, render: function (data, type, row, meta) { return data; } }
-                ],
-                order: [[0, 'asc']]
+                });
+
+                // Handle create button
+                $('[data-action="create"]').on('click', function () {
+                    loadModal('{% url "periode_jenis_data_create" %}', 'Tambah Periode Jenis Data');
+                });
+
+                // Handle edit/delete buttons (delegated event)
+                $(document).on('click', '[data-action="edit"]', function (e) {
+                    e.preventDefault();
+                    const url = $(this).data('url');
+                    loadModal(url, 'Edit Periode Jenis Data');
+                });
+
+                $(document).on('click', '[data-action="delete"]', function (e) {
+                    e.preventDefault();
+                    const url = $(this).data('url');
+                    loadModal(url, 'Hapus Periode Jenis Data');
+                });
+
+                // Handle form submission
+                $(document).on('submit', '#modalBody form', function (e) {
+                    e.preventDefault();
+                    const form = $(this);
+                    const url = form.attr('action');
+                    const formData = new FormData(form[0]);
+
+                    $.ajax({
+                        url: url,
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        success: function (response) {
+                            if (response.success) {
+                                $('#crudModal').modal('hide');
+                                table.ajax.reload();
+                                showToast(response.message || 'Data berhasil disimpan.', 'success');
+                            } else {
+                                $('#modalBody').html(response.html);
+                            }
+                        },
+                        error: function (xhr) {
+                            try {
+                                const response = JSON.parse(xhr.responseText);
+                                if (response.message) {
+                                    showToast(response.message, 'danger');
+                                } else {
+                                    showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                                }
+                            } catch (e) {
+                                showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                            }
+                        }
+                    });
+                });
+
+                const modalElement = document.getElementById('crudModal');
+                modalElement.addEventListener('hidden.bs.modal', function () {
+                    document.getElementById('modalBody').innerHTML = '';
+                });
             });
 
-            // Add individual column search
-            $('#column-search-row input').on('keyup change', function () {
-                table.ajax.reload();
-            });
-
-            // Handle modal hide to prevent aria-hidden conflicts
-            const modalElement = document.getElementById('crudModal');
-            modalElement.addEventListener('hidden.bs.modal', function () {
-                // Reset modal body
-                document.getElementById('modalBody').innerHTML = '';
-            });
-
-            modalElement.addEventListener('hide.bs.modal', function () {
-                // Clear focus from form elements
-                const focusedElement = document.activeElement;
-                if (focusedElement && modalElement.contains(focusedElement)) {
-                    focusedElement.blur();
-                }
-            });
-
-            // Handle create button
-            $('[data-action="create"]').on('click', function () {
-                loadModal('{% url "periode_jenis_data_create" %}', 'Tambah Periode Jenis Data');
-            });
-
-            // Handle edit/delete buttons (delegated event)
-            $(document).on('click', '[data-action="edit"]', function (e) {
-                e.preventDefault();
-                const url = $(this).data('url');
-                loadModal(url, 'Edit Periode Jenis Data');
-            });
-
-            $(document).on('click', '[data-action="delete"]', function (e) {
-                e.preventDefault();
-                const url = $(this).data('url');
-                loadModal(url, 'Hapus Periode Jenis Data');
-            });
-
-            // Handle form submission
-            $(document).on('submit', '#modalBody form', function (e) {
-                e.preventDefault();
-                const form = $(this);
-                const url = form.attr('action');
-                const formData = new FormData(form[0]);
+            function loadModal(url, title) {
+                $('#crudModalLabel').text(title);
+                $('#modalBody').html('<div class="text-center"><div class="spinner-border" role="status"></div></div>');
+                $('#crudModal').modal('show');
 
                 $.ajax({
                     url: url,
-                    type: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
+                    type: 'GET',
+                    data: { ajax: '1' },
                     success: function (response) {
-                        if (response.success) {
-                            $('#crudModal').modal('hide');
-                            table.ajax.reload();
-                            showToast(response.message || 'Data berhasil disimpan.', 'success');
-                        } else {
-                            $('#modalBody').html(response.html);
-                        }
+                        $('#modalBody').html(response.html || response);
                     },
-                    error: function (xhr) {
-                        try {
-                            const response = JSON.parse(xhr.responseText);
-                            if (response.message) {
-                                showToast(response.message, 'danger');
-                            } else {
-                                showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
-                            }
-                        } catch (e) {
-                            showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
-                        }
+                    error: function () {
+                        $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');
                     }
                 });
-            });
-        });
+            }
 
-        function loadModal(url, title) {
-            $('#crudModalLabel').text(title);
-            $('#modalBody').html('<div class="text-center"><div class="spinner-border" role="status"></div></div>');
-            $('#crudModal').modal('show');
+            function updatePagination(settings) {
+                const api = settings.oInstance.api();
+                const totalPages = Math.ceil(api.page.info().recordsTotal / api.page.info().length);
+                const currentPage = api.page.info().page + 1;
+                let paginationHtml = '';
 
-            $.ajax({
-                url: url,
-                type: 'GET',
-                data: { ajax: '1' },
-                success: function (response) {
-                    $('#modalBody').html(response.html || response);
-                },
-                error: function () {
-                    $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');
+                // Previous button
+                paginationHtml += '<li><a href="javascript:void(0);" class="' + (currentPage === 1 ? 'disabled' : '') + '" data-page="prev"><i class="bi bi-arrow-left"></i></a></li>';
+
+                // Page numbers
+                for (let i = 1; i <= totalPages; i++) {
+                    paginationHtml += '<li><a href="javascript:void(0);" class="' + (i === currentPage ? 'active' : '') + '" data-page="' + i + '">' + i + '</a></li>';
                 }
-            });
-        }
 
-    })();
-</script>
-{% endblock %}
+                // Next button
+                paginationHtml += '<li><a href="javascript:void(0);" class="' + (currentPage === totalPages ? 'disabled' : '') + '" data-page="next"><i class="bi bi-arrow-right"></i></a></li>';
+
+                $('#pagination-wrapper').html(paginationHtml);
+
+                // Pagination click handlers
+                $('#pagination-wrapper a').on('click', function (e) {
+                    e.preventDefault();
+                    const page = $(this).data('page');
+                    
+                    if (page === 'prev') {
+                        api.page('previous').draw('page');
+                    } else if (page === 'next') {
+                        api.page('next').draw('page');
+                    } else {
+                        api.page(page - 1).draw('page');
+                    }
+                });
+            }
+
+            function showToast(message, type = 'info', title = null) {
+                const toastId = 'toast-' + Date.now();
+                const bgClass = type === 'success' ? 'bg-success' : type === 'danger' ? 'bg-danger' : type === 'warning' ? 'bg-warning' : 'bg-info';
+                const defaultTitles = {
+                    'success': 'Berhasil',
+                    'danger': 'Kesalahan',
+                    'warning': 'Peringatan',
+                    'info': 'Informasi'
+                };
+                const displayTitle = title || defaultTitles[type] || 'Pemberitahuan';
+                const toastHtml = `
+                    <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+                        <div class="toast-header ${bgClass} text-white">
+                            <strong class="me-auto">${displayTitle}</strong>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                    </div>
+                `;
+                $('body').append(toastHtml);
+                const toastElement = document.getElementById(toastId);
+                const toast = new bootstrap.Toast(toastElement);
+                toast.show();
+                toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
+            }
+
+        })();
+    </script>
+</body>
+
+</html>

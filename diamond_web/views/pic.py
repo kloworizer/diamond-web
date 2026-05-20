@@ -713,8 +713,10 @@ def _pic_data_common(request, tipe):
             'user': user_display,
             'start_date': obj.start_date.strftime('%Y-%m-%d') if obj.start_date else '',
             'end_date': obj.end_date.strftime('%Y-%m-%d') if obj.end_date else '',
-            'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse(update_url_name, args=[obj.pk])}' title='Edit'><i class='feather-edit-2'></i></button>"
-                       f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse(delete_url_name, args=[obj.pk])}' title='Delete'><i class='feather-trash-2'></i></button>"
+            'actions': (
+                f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse(update_url_name, args=[obj.pk])}' title='Edit'><i class='feather-edit'></i></button>"
+                f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse(delete_url_name, args=[obj.pk])}' title='Delete'><i class='feather-trash-2'></i></button>"
+            ),
         })
 
     return JsonResponse({

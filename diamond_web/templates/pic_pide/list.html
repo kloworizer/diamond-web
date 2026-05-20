@@ -86,133 +86,126 @@
         const ajaxUrl = "{% url 'pic_pide_data' %}";
         let table;
 
-        $(document).ready(function () {
-            table = $('#pic-pide-table').DataTable({
-                serverSide: true,
-                layout: {
-                    topStart: null,
-                    topEnd: null
-                },
-                ajax: {
-                    url: ajaxUrl,
-                    dataSrc: 'data',
-                    data: function (d) {
-                        // Add column search values
-                        d.columns_search = [];
-                        $('#column-search-row input').each(function (i) {
-                            d.columns_search[i] = $(this).val();
-                        });
-                        return d;
+            $(document).ready(function () {
+                table = $('#pic-pide-table').DataTable({
+                    serverSide: true,
+                    layout: {
+                        topStart: null,
+                        topEnd: null
+                    },
+                    ajax: {
+                        url: ajaxUrl,
+                        dataSrc: 'data',
+                        data: function (d) {
+                            d.columns_search = [];
+                            $('#column-search-row input').each(function (i) {
+                                d.columns_search[i] = $(this).val();
+                            });
+                            return d;
+                        }
+                    },
+                    pageLength: 10,
+                    columns: [
+                        { data: 'sub_jenis_data_ilap' },
+                        { data: 'user' },
+                        { data: 'start_date' },
+                        { data: 'end_date' },
+                        { data: 'actions', orderable: false, searchable: false }
+                    ],
+                    columnDefs: [
+                        { targets: 4, render: function (data, type, row, meta) { return data; } }
+                    ],
+                    order: [[0, 'asc']]
+                });
+
+                $('#column-search-row input').on('keyup change', function () {
+                    table.ajax.reload();
+                });
+
+                const modalElement = document.getElementById('crudModal');
+                modalElement.addEventListener('hidden.bs.modal', function () {
+                    document.getElementById('modalBody').innerHTML = '';
+                });
+
+                modalElement.addEventListener('hide.bs.modal', function () {
+                    const focusedElement = document.activeElement;
+                    if (focusedElement && modalElement.contains(focusedElement)) {
+                        focusedElement.blur();
                     }
-                },
-                pageLength: 10,
-                columns: [
-                    { data: 'sub_jenis_data_ilap' },
-                    { data: 'user' },
-                    { data: 'start_date' },
-                    { data: 'end_date' },
-                    { data: 'actions', orderable: false, searchable: false }
-                ],
-                columnDefs: [
-                    { targets: 4, render: function (data, type, row, meta) { return data; } }
-                ],
-                order: [[0, 'asc']]
+                });
+
+                $('[data-action="create"]').on('click', function () {
+                    loadModal('{% url "pic_pide_create" %}', 'Tambah PIC PIDE');
+                });
+
+                $(document).on('click', '[data-action="edit"]', function (e) {
+                    e.preventDefault();
+                    const url = $(this).data('url');
+                    loadModal(url, 'Edit PIC PIDE');
+                });
+
+                $(document).on('click', '[data-action="delete"]', function (e) {
+                    e.preventDefault();
+                    const url = $(this).data('url');
+                    loadModal(url, 'Hapus PIC PIDE');
+                });
+
+                $(document).on('submit', '#modalBody form', function (e) {
+                    e.preventDefault();
+                    const form = $(this);
+                    const url = form.attr('action');
+                    const formData = new FormData(form[0]);
+
+                    $.ajax({
+                        url: url,
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        success: function (response) {
+                            if (response.success) {
+                                $('#crudModal').modal('hide');
+                                table.ajax.reload();
+                                showToast(response.message || 'Data berhasil disimpan.', 'success');
+                            } else {
+                                $('#modalBody').html(response.html);
+                            }
+                        },
+                        error: function (xhr) {
+                            try {
+                                const response = JSON.parse(xhr.responseText);
+                                if (response.message) {
+                                    showToast(response.message, 'danger');
+                                } else {
+                                    showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                                }
+                            } catch (e) {
+                                showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                            }
+                        }
+                    });
+                });
             });
 
-            // Add individual column search
-            $('#column-search-row input').on('keyup change', function () {
-                table.ajax.reload();
-            });
-
-            // Handle modal hide to prevent aria-hidden conflicts
-            const modalElement = document.getElementById('crudModal');
-            modalElement.addEventListener('hidden.bs.modal', function () {
-                // Reset modal body
-                document.getElementById('modalBody').innerHTML = '';
-            });
-
-            modalElement.addEventListener('hide.bs.modal', function () {
-                // Clear focus from form elements
-                const focusedElement = document.activeElement;
-                if (focusedElement && modalElement.contains(focusedElement)) {
-                    focusedElement.blur();
-                }
-            });
-
-            // Handle create button
-            $('[data-action="create"]').on('click', function () {
-                loadModal('{% url "pic_pide_create" %}', 'Tambah PIC PIDE');
-            });
-
-            // Handle edit/delete buttons (delegated event)
-            $(document).on('click', '[data-action="edit"]', function (e) {
-                e.preventDefault();
-                const url = $(this).data('url');
-                loadModal(url, 'Edit PIC PIDE');
-            });
-
-            $(document).on('click', '[data-action="delete"]', function (e) {
-                e.preventDefault();
-                const url = $(this).data('url');
-                loadModal(url, 'Hapus PIC PIDE');
-            });
-
-            // Handle form submission
-            $(document).on('submit', '#modalBody form', function (e) {
-                e.preventDefault();
-                const form = $(this);
-                const url = form.attr('action');
-                const formData = new FormData(form[0]);
+            function loadModal(url, title) {
+                $('#crudModalLabel').text(title);
+                $('#modalBody').html('<div class="text-center"><div class="spinner-border" role="status"></div></div>');
+                $('#crudModal').modal('show');
 
                 $.ajax({
                     url: url,
-                    type: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
+                    type: 'GET',
+                    data: { ajax: '1' },
                     success: function (response) {
-                        if (response.success) {
-                            $('#crudModal').modal('hide');
-                            table.ajax.reload();
-                            showToast(response.message || 'Data berhasil disimpan.', 'success');
-                        } else {
-                            $('#modalBody').html(response.html);
-                        }
+                        $('#modalBody').html(response.html || response);
                     },
-                    error: function (xhr) {
-                        try {
-                            const response = JSON.parse(xhr.responseText);
-                            if (response.message) {
-                                showToast(response.message, 'danger');
-                            } else {
-                                showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
-                            }
-                        } catch (e) {
-                            showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
-                        }
+                    error: function () {
+                        $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');
                     }
                 });
-            });
-        });
+            }
+        })();
+    </script>
+</body>
 
-        function loadModal(url, title) {
-            $('#crudModalLabel').text(title);
-            $('#modalBody').html('<div class="text-center"><div class="spinner-border" role="status"></div></div>');
-            $('#crudModal').modal('show');
-
-            $.ajax({
-                url: url,
-                type: 'GET',
-                data: { ajax: '1' },
-                success: function (response) {
-                    $('#modalBody').html(response.html || response);
-                },
-                error: function () {
-                    $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');
-                }
-            });
-        }
-
-    })();
-</script>
-{% endblock %}
+</html>

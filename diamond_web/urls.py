@@ -20,7 +20,7 @@ urlpatterns = [
     path('oracle-sync/run/', views.oracle_sync_run, name='oracle_sync_run'),
 
     # === new_login Section ===
-    # path('new_login/', views.new_login, name='new_login'),
+    path('new_login/', auth_views.LoginView.as_view(template_name='auth-login-creative.html'), name='new_login'),
 
     # === Dashboard Section ===
     path('dashboard/', views.DashboardMonitoringView.as_view(), name='dashboard_monitoring'),
@@ -284,4 +284,12 @@ urlpatterns = [
     path('tiket/<int:pk>/identifikasi/', views.IdentifikasiTiketView.as_view(), name='identifikasi_tiket'),
     path('tiket/<int:pk>/transfer-ke-pmde/', views.TransferKePMDEView.as_view(), name='transfer_ke_pmde'),
     path('tiket/<int:pk>/selesaikan/', views.SelesaikanTiketView.as_view(), name='selesaikan_tiket'),
+
+    path('periode-jns-dt-ilap/',views.periode_ilap_index, name='periode_jns_dt_ilap'),
+
+    path('data-prioritas-index/',views.data_prioritas_index, name='data_prioritas_ilap'),
+
+    path('blank/', views.blank_index, name='blank_index'),
+
+
 ]
