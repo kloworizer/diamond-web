@@ -52,6 +52,8 @@ def _discover_pmde_prioritas_years(
         else:
             dsn = f"{connection_config.host}:{connection_config.port}/{connection_config.sid}"
         
+        logger.debug(f"Attempting to discover PMDE PRIORITAS columns from: {dsn}")
+        
         conn = oracledb.connect(
             user=connection_config.user,
             password=connection_config.password,
@@ -83,7 +85,7 @@ def _discover_pmde_prioritas_years(
         conn.close()
         
         if years:
-            logger.info(f"Discovered PMDE PRIORITAS columns for years: {years}")
+            logger.info(f"✓ Discovered PMDE PRIORITAS columns for years: {years}")
             return sorted(years)
         else:
             # Fallback to default if no columns found
@@ -92,7 +94,19 @@ def _discover_pmde_prioritas_years(
             return list(range(2022, current_year + 1))
             
     except Exception as e:
-        logger.warning(f"Failed to discover PMDE PRIORITAS columns: {e}. Using default year range.")
+        error_msg = str(e)
+        if "ORA-12170" in error_msg or "timeout" in error_msg.lower():
+            logger.warning(
+                f"Failed to discover PMDE PRIORITAS columns: Network timeout connecting to {connection_config.host}. "
+                f"Using default year range. This may be a temporary issue."
+            )
+        elif "ORA-01017" in error_msg or "invalid" in error_msg.lower():
+            logger.warning(
+                f"Failed to discover PMDE PRIORITAS columns: Invalid credentials. "
+                f"Check ORACLE_SECONDARY_USER and ORACLE_SECONDARY_PASSWORD."
+            )
+        else:
+            logger.warning(f"Failed to discover PMDE PRIORITAS columns: {error_msg}. Using default year range.")
         current_year = date.today().year
         return list(range(2022, current_year + 1))
 
@@ -711,13 +725,21 @@ class OracleDataSyncService:
 
     def __init__(self):
         # Initialize thick mode before any connections
-        _initialize_oracledb_thick_mode()
+        try:
+            _initialize_oracledb_thick_mode()
+        except Exception as e:
+            logger.error(f"Failed to initialize oracledb thick mode: {e}")
+            # Continue anyway - may work in thin mode
         
         self.oracle_connections = self._load_oracle_connections()
         self._target_model_cache: dict[str, Any] = {}
         
         # Discover PMDE PRIORITAS years before validating sync configs
-        self._pmde_discovered_years = self._discover_and_update_pmde_queries()
+        try:
+            self._pmde_discovered_years = self._discover_and_update_pmde_queries()
+        except Exception as e:
+            logger.warning(f"Failed to discover PMDE years, using default range: {e}")
+            self._pmde_discovered_years = list(range(2022, date.today().year + 1))
         
         self._validate_connection_config()
         self._validate_sync_configs(HARD_CODED_SYNC_TABLES)
@@ -997,22 +1019,8 @@ class OracleDataSyncService:
             )
         except Exception as e:
             error_msg = str(e)
-            # Provide better error messages for common issues
-            if "Unexpected token" in error_msg or "html" in error_msg.lower():
-                logger.error(
-                    f"Failed to connect to Oracle ({connection_name}): Oracle Client not properly configured. "
-                    f"DSN: {dsn}. Error: {error_msg[:150]}"
-                )
-                raise OracleSyncConfigError(
-                    f"Oracle Client error ({connection_name}). Ensure Oracle InstantClient is installed on RHEL9 "
-                    f"and LD_LIBRARY_PATH is set correctly."
-                ) from e
-            logger.error(
-                f"Failed to connect to Oracle ({connection_name}): {error_msg}. DSN: {dsn}"
-            )
-            raise OracleSyncConfigError(
-                f"Gagal terhubung ke Oracle ({connection_name}): {error_msg}"
-            ) from e
+            logger.error(f"Oracle Connection Error ({connection_name}): {error_msg}")
+            raise OracleSyncConfigError(error_msg) from e
 
     @staticmethod
     def _normalize_value(value: Any) -> Any:
