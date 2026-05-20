@@ -149,8 +149,8 @@ def tiket_documents_download(request, pk):
         if t.id_periode_data and t.id_periode_data.id_sub_jenis_data_ilap_id
     }
     dasar_hukum_map = {}
-    for row in KlasifikasiJenisData.objects.filter(id_jenis_data_ilap_id__in=jenis_data_ids).select_related('id_klasifikasi_tabel'):
-        dasar_hukum_map.setdefault(row.id_jenis_data_ilap_id, []).append(row.id_klasifikasi_tabel.deskripsi)
+    for row in KlasifikasiJenisData.objects.filter(id_sub_jenis_data_id__in=jenis_data_ids).select_related('id_klasifikasi_tabel'):
+        dasar_hukum_map.setdefault(row.id_sub_jenis_data_id, []).append(row.id_klasifikasi_tabel.deskripsi)
 
     # PIC P3DE name
     p3de = TiketPIC.objects.select_related('id_user').filter(

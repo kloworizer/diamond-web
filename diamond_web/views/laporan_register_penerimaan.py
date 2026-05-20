@@ -46,7 +46,7 @@ class LaporanRegisterPenerimaanView(LoginRequiredMixin, UserPassesTestMixin, Tem
 @user_passes_test(_is_p3de_user)
 @require_http_methods(["GET", "POST"])
 @csrf_protect
-def laporan_register_penerimaan_data(request):
+def register_penerimaan_data(request):
     """DataTables server-side endpoint for Register Penerimaan Data.
 
     Filters tikets by tgl_terima_dip within the specified month and year.
@@ -167,7 +167,7 @@ def laporan_register_penerimaan_data(request):
 @login_required
 @user_passes_test(_is_p3de_user)
 @require_GET
-def laporan_register_penerimaan_export(request):
+def register_penerimaan_export(request):
     """Export Register Penerimaan Data to XLSX.
 
     GET Parameters:

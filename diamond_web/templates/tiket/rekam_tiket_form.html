@@ -2,37 +2,50 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h2 class="mb-1">
-                        <i class="ri-file-add-line me-2"></i>{{ page_title|default:"Rekam Penerimaan Data" }}
-                    </h2>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-                            <li class="breadcrumb-item"><a href="{% url 'tiket_list' %}">Tiket</a></li>
-                            <li class="breadcrumb-item active">Rekam Tiket Baru</li>
-                        </ol>
-                    </nav>
-                </div>
+<div class="page-header">
+    <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+            <h5 class="m-b-10">
+                <i class="feather-file-plus me-2"></i>{{ page_title|default:"Rekam Penerimaan Data" }}
+            </h5>
+        </div>
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="javascript:void(0);">P3DE</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'tiket_list' %}">Daftar Tiket</a></li>
+            <li class="breadcrumb-item active">Rekam Tiket Baru</li>
+        </ul>
+    </div>
+    <div class="page-header-right ms-auto">
+        <div class="page-header-right-items">
+            <div class="d-flex d-md-none">
+                <a href="javascript:void(0)" class="page-header-right-close-toggle">
+                    <i class="feather-arrow-left me-2"></i>
+                    <span>Back</span>
+                </a>
             </div>
         </div>
+        <div class="d-md-none d-flex align-items-center">
+            <a href="javascript:void(0)" class="page-header-right-open-toggle">
+                <i class="feather-align-right fs-20"></i>
+            </a>
+        </div>
     </div>
+</div>
 
-    <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="ri-file-list-3-line me-2"></i>Form Rekam Tiket</h5>
+<div class="main-content">
+    <div class="card stretch stretch-full h-100">
+        <div class="card-header">
+            <h5 class="card-title mb-0"><i class="feather-file-text me-2"></i>Form Rekam Tiket</h5>
         </div>
         <div class="card-body">
             <form method="post" action="{{ form_action }}" id="tiket-rekam-form">
                 {% csrf_token %}
+                <input type="hidden" name="old_db" value="0">
                 
                 <!-- SECTION A: Data Utama -->
                 <div class="alert alert-light border-start border-primary border-3 mb-4" role="alert">
-                    <h6 class="mb-0"><i class="ri-checkbox-multiple-line me-2"></i><strong>Bagian A: Data Utama</strong></h6>
+                    <h6 class="mb-0"><i class="feather-check-square me-2"></i><strong>Bagian A: Data Utama</strong></h6>
                 </div>
 
                 <!-- Status Ketersediaan Data and Alasan Ketidaktersediaan side-by-side -->
@@ -88,7 +101,7 @@
                 <!-- Jenis Data Information Section -->
                 <div id="jenis-data-info" class="card border-primary mb-4" style="display: none;">
                     <div class="card-header bg-light">
-                        <h6 class="mb-0"><i class="ri-information-line me-2"></i>Informasi Jenis Data ILAP</h6>
+                        <h6 class="mb-0"><i class="feather-info me-2"></i>Informasi Jenis Data ILAP</h6>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
@@ -127,7 +140,7 @@
                         </div>
                     </div>
                     <div class="card-footer bg-light">
-                        <strong><i class="ri-team-line me-2"></i>PIC (Penanggung Jawab)</strong>
+                        <strong><i class="feather-users me-2"></i>PIC (Penanggung Jawab)</strong>
                         <div class="row g-2 mt-2">
                             <div class="col-md-4">
                                 <div class="info-group">
@@ -194,7 +207,7 @@
 
                 <!-- SECTION B: Surat Pengantar & Penerimaan -->
                 <div class="alert alert-light border-start border-primary border-3 mb-4" role="alert">
-                    <h6 class="mb-0"><i class="ri-mail-line me-2"></i><strong>Bagian B: Surat Pengantar & Penerimaan Data</strong></h6>
+                    <h6 class="mb-0"><i class="feather-mail me-2"></i><strong>Bagian B: Surat Pengantar & Penerimaan Data</strong></h6>
                 </div>
 
                 <!-- Nomor Surat Pengantar, Tanggal Surat Pengantar, Nama Pengirim -->
@@ -296,7 +309,7 @@
                 <!-- BAGIAN C: Backup Data (Optional) -->
                 <div class="alert alert-light border-start border-primary border-3 mb-3 mt-4" role="alert">
                     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                        <h6 class="mb-0"><i class="ri-database-2-line me-2"></i><strong>Bagian C: Rekam Backup Data</strong></h6>
+                        <h6 class="mb-0"><i class="feather-database me-2"></i><strong>Bagian C: Rekam Backup Data</strong></h6>
                         <div class="form-check form-switch mb-0">
                             <input class="form-check-input" type="checkbox" role="switch" id="rekam-backup-checkbox" name="rekam_backup" value="1">
                             <label class="form-check-label" for="rekam-backup-checkbox">Rekam Backup Data Sekarang</label>
@@ -342,7 +355,6 @@
     </div>
 </div>
 
-<!-- Duplicate Tiket Warning Modal -->
 <div class="modal fade" id="duplicateTiketModal" tabindex="-1" aria-labelledby="duplicateTiketModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">

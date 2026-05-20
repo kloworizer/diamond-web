@@ -2,25 +2,37 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h2 class="mb-1">
-                        <i class="ri-file-chart-line me-2"></i>Laporan Transfer
-                    </h2>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-                            <li class="breadcrumb-item active">Laporan Transfer</li>
-                        </ol>
-                    </nav>
+<div class="page-header">
+        <div class="page-header-left d-flex align-items-center">
+            <div class="page-header-title">
+                <h5 class="m-b-10">
+                    <i class="feather-bar-chart-2 me-2"></i>Laporan Transfer
+                </h5>
+            </div>
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item"><a href="javascript:void(0);">PIDE</a></li>
+                <li class="breadcrumb-item active">Laporan Transfer</li>
+            </ul>
+        </div>
+        <div class="page-header-right ms-auto">
+            <div class="page-header-right-items">
+                <div class="d-flex d-md-none">
+                    <a href="javascript:void(0)" class="page-header-right-close-toggle">
+                        <i class="feather-arrow-left me-2"></i>
+                        <span>Back</span>
+                    </a>
                 </div>
+            </div>
+            <div class="d-md-none d-flex align-items-center">
+                <a href="javascript:void(0)" class="page-header-right-open-toggle">
+                    <i class="feather-align-right fs-20"></i>
+                </a>
             </div>
         </div>
     </div>
 
+    <div class="main-content">
     <!-- Filter Card -->
     <div class="card shadow-sm mb-3">
         <div class="card-header bg-light">
@@ -73,7 +85,7 @@
                 </div>
                 <div class="col-md-3 d-flex align-items-end">
                     <button type="button" id="export-btn" class="btn btn-success w-100" disabled>
-                        <i class="ri-download-2-line me-1"></i>EKSPOR KE EXCEL
+                        <i class="feather-download me-1"></i>EKSPOR KE EXCEL
                     </button>
                 </div>
             </form>
@@ -81,14 +93,15 @@
     </div>
 
     <!-- Data Table Card -->
-    <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
-            <h5 class="mb-0">
-                <i class="ri-table-line me-2"></i>Data Transfer
+    <div class="card stretch stretch-full h-100">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="feather-grid me-2"></i>Data Transfer
             </h5>
         </div>
-        <div class="card-body">
-            <table id="laporan-transfer-table" class="table table-striped" style="width:100%">
+        <div class="card-body custom-card-action p-0">
+            <div class="table-responsive">
+            <table id="laporan-transfer-table" class="table table-hover mb-0" style="width:100%">
                 <thead>
                     <tr>
                         <th>NAMA ILAP</th>
@@ -106,11 +119,12 @@
                 </thead>
                 <tbody></tbody>
             </table>
+            </div>
         </div>
     </div>
-</div>
-{% endblock %}
+    </div>
 
+{% endblock %}
 {% block scripts %}
 <script>
     (function () {

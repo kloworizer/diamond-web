@@ -3,25 +3,37 @@
 
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h2 class="mb-1">
-                        <i class="ri-send-plane-line me-2"></i>Monitor Penyampaian Data
-                    </h2>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-                            <li class="breadcrumb-item active">Monitor Penyampaian Data</li>
-                        </ol>
-                    </nav>
+<div class="page-header">
+        <div class="page-header-left d-flex align-items-center">
+            <div class="page-header-title">
+                <h5 class="m-b-10">
+                    <i class="feather-send me-2"></i>Monitor Penyampaian Data
+                </h5>
+            </div>
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item"><a href="javascript:void(0);">P3DE</a></li>
+                <li class="breadcrumb-item active">Monitor Penyampaian Data</li>
+            </ul>
+        </div>
+        <div class="page-header-right ms-auto">
+            <div class="page-header-right-items">
+                <div class="d-flex d-md-none">
+                    <a href="javascript:void(0)" class="page-header-right-close-toggle">
+                        <i class="feather-arrow-left me-2"></i>
+                        <span>Back</span>
+                    </a>
                 </div>
+            </div>
+            <div class="d-md-none d-flex align-items-center">
+                <a href="javascript:void(0)" class="page-header-right-open-toggle">
+                    <i class="feather-align-right fs-20"></i>
+                </a>
             </div>
         </div>
     </div>
 
+    <div class="main-content">
     <div class="row g-3">
         <div class="col-12 col-xl-2">
             <div class="card shadow-sm h-100">
@@ -32,7 +44,7 @@
                     <form id="filter-form" class="row g-2">
                 {% csrf_token %}
                 <div class="col-12 mb-2">
-                    <button type="reset" class="btn btn-secondary btn-sm w-100" id="btn-reset-filter"><i class="ri-refresh-line me-1"></i>Reset</button>
+                    <button type="reset" class="btn btn-secondary btn-sm w-100" id="btn-reset-filter"><i class="feather-refresh-cw me-1"></i>Reset</button>
                 </div>
                 <div class="col-12">
                     <label for="filter-tahun" class="form-label">Tahun</label>
@@ -128,12 +140,13 @@
         </div>
 
         <div class="col-12 col-xl-10">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
-                    <h5 class="mb-0"><i class="ri-send-plane-line me-2"></i>Daftar Penyampaian Data dari ILAP</h5>
+            <div class="card stretch stretch-full h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="feather-send me-2"></i>Daftar Penyampaian Data dari ILAP</h5>
                 </div>
-                <div class="card-body">
-                    <table id="monitoring-penyampaian-data-table" class="table table-striped" style="width:100%">
+                <div class="card-body custom-card-action p-0">
+                    <div class="table-responsive">
+                    <table id="monitoring-penyampaian-data-table" class="table table-hover mb-0" style="width:100%">
                         <thead>
                             <tr>
                                 <th>ILAP</th>
@@ -150,13 +163,14 @@
                         </thead>
                         <tbody></tbody>
                     </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
+    </div>
 
+{% endblock %}
 {% block scripts %}
 <script>
     (function () {
@@ -206,8 +220,7 @@
                 columnDefs: [
                     { targets: 8, render: function (data, type, row, meta) { return data; } }
                 ],
-                order: [[0, 'asc']],
-                scrollX: true
+                order: [[0, 'asc']]
             });
 
             // Filter dropdowns — dynamic, reload on change

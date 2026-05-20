@@ -1,6 +1,5 @@
 from .home import *
 from .notification import *
-from .new_login import *
 from .dashboard import *
 from .kategori_ilap import *
 from .ilap import *
@@ -42,3 +41,4 @@ from .laporan_sla_perekaman import *
 from .laporan_sla_identifikasi import *
 from .laporan_metrik_data_eksternal import *
 from .bulk_document_generation import *
+from .oracle_sync import *

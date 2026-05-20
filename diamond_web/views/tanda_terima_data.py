@@ -135,7 +135,7 @@ def tanda_terima_data_data(request):
         actions_html = ''
         # Show view button only for active PIC
         if is_active_pic:
-            actions_html = f"<button class='btn btn-sm btn-info me-1' data-action='view' data-url='{reverse('tanda_terima_data_view', args=[obj.pk])}' title='Detail'><i class='ri-eye-line'></i></button>"
+            actions_html = f"<button class='btn btn-sm btn-info me-1' data-action='view' data-url='{reverse('tanda_terima_data_view', args=[obj.pk])}' title='Detail'><i class='feather-eye'></i></button>"
         
         # Show download button - get first tiket from this tanda terima
         tiket_item = obj.detil_items.select_related('id_tiket').first()
@@ -143,7 +143,7 @@ def tanda_terima_data_data(request):
             pk = tiket_item.id_tiket.pk
             actions_html += f"""<div class="btn-group me-1" role="group">
                 <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Download Dokumen">
-                    <i class="ri-file-word-2-line me-1"></i>Tanda Terima
+                    <i class="feather-file-text me-1"></i>Tanda Terima
                 </button>
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item" href="#" onclick="downloadTandaTerimaDoc({pk}, 'tanda_terima'); return false;">Tanda Terima</a></li>
@@ -154,7 +154,7 @@ def tanda_terima_data_data(request):
         
         # Show delete button only for active PIC when tanda terima is active
         if obj.active and can_edit and is_active_pic:
-            actions_html += f"<button class='btn btn-sm btn-warning' data-action='delete' data-url='{reverse('tanda_terima_data_delete', args=[obj.pk])}' title='Batalkan'><i class='ri-close-circle-line'></i></button>"
+            actions_html += f"<button class='btn btn-sm btn-warning' data-action='delete' data-url='{reverse('tanda_terima_data_delete', args=[obj.pk])}' title='Batalkan'><i class='feather-x-circle'></i></button>"
         
         # Get ILAP name and jenis data from first tiket
         jenis_data_list = []

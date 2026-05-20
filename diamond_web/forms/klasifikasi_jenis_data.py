@@ -6,6 +6,6 @@ class KlasifikasiJenisDataForm(AutoRequiredFormMixin, forms.ModelForm):
     class Meta:
         model = KlasifikasiJenisData
         fields = [
-            'id_jenis_data_ilap',
+            'id_sub_jenis_data',
             'id_klasifikasi_tabel'
         ]

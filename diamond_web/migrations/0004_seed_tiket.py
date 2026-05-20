@@ -2,7 +2,65 @@
 
 import random
 from datetime import date, datetime, timedelta
+from functools import lru_cache
+from pathlib import Path
 from django.db import migrations
+from dotenv import dotenv_values
+
+
+SEED_ENV_VAR = "DB_SEED_ENABLED"
+SEED_TABLE_ENV_VAR = "SEED_TABLE"
+
+
+@lru_cache(maxsize=1)
+def _get_env_values() -> dict[str, str | None]:
+    env_path = Path(__file__).resolve().parents[2] / ".env"
+    return dotenv_values(env_path)
+
+
+def _is_seed_enabled() -> bool:
+    env_values = _get_env_values()
+    raw_value = str(env_values.get(SEED_ENV_VAR, "")).strip().lower()
+    return raw_value in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def _get_seed_table_filter() -> set[str] | None:
+    env_values = _get_env_values()
+    raw_value = str(env_values.get(SEED_TABLE_ENV_VAR, "")).strip()
+    if not raw_value:
+        return None
+
+    selected = {
+        item.strip().upper()
+        for item in raw_value.split(",")
+        if item and item.strip()
+    }
+    return selected or None
+
+
+def _should_run_seed(seed_key: str) -> bool:
+    if not _is_seed_enabled():
+        return False
+
+    selected_tables = _get_seed_table_filter()
+    if selected_tables is None:
+        return True
+
+    return seed_key.upper() in selected_tables
+
+
+def _run_if_seed_enabled(seed_key: str, seed_func):
+    def _wrapped(apps, schema_editor):
+        if not _should_run_seed(seed_key):
+            return
+        return seed_func(apps, schema_editor)
+
+    return _wrapped
 
 
 # All sub_jenis_data IDs seeded in 0003
@@ -402,6 +460,7 @@ def seed_tiket(apps, schema_editor):
 
             tiket = Tiket.objects.create(
                 nomor_tiket=nomor_tiket,
+                old_db=False,
                 status_tiket=status,
                 id_periode_data=periode_data,
                 id_jenis_prioritas_data=jpd,
@@ -612,5 +671,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(seed_tiket, reverse_code=unseed_tiket),
+        migrations.RunPython(_run_if_seed_enabled("TIKET_DATA", seed_tiket), reverse_code=unseed_tiket),
     ]

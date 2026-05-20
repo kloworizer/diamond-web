@@ -42,7 +42,9 @@ class PIC(AuditTrailModel):
         db_table = "pic"
         ordering = ["tipe", "id"]
         indexes = [
-            models.Index(fields=['tipe', 'id_sub_jenis_data_ilap']),
+            models.Index(fields=['tipe', 'id_sub_jenis_data_ilap'], name='pic_tipe_sub_idx'),
+            models.Index(fields=['id_sub_jenis_data_ilap', 'tipe', 'start_date', 'end_date'], name='pic_sub_active_idx'),
+            models.Index(fields=['id_user', 'tipe', 'end_date'], name='pic_user_tipe_idx'),
         ]
 
     def __str__(self):

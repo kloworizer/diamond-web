@@ -26,6 +26,14 @@ class PeriodeJenisData(AuditTrailModel):
         verbose_name_plural = "Periode Jenis Data"
         db_table = "periode_jenis_data"
         ordering = ["id"]
+        indexes = [
+            models.Index(fields=["id_sub_jenis_data_ilap"], name="pjd_subjenis_idx"),
+            models.Index(fields=["id_periode_pengiriman"], name="pjd_periode_idx"),
+            models.Index(fields=["start_date"], name="pjd_start_idx"),
+            models.Index(fields=["end_date"], name="pjd_end_idx"),
+            models.Index(fields=["id_sub_jenis_data_ilap", "id_periode_pengiriman"], name="pjd_sub_per_idx"),
+            models.Index(fields=["id_sub_jenis_data_ilap", "start_date"], name="pjd_sub_start_idx"),
+        ]
 
     def __str__(self):
         return f"{self.id_sub_jenis_data_ilap} - {self.id_periode_pengiriman}"
