@@ -8,7 +8,6 @@ import importlib
 
 from diamond_web.views.home import home
 from diamond_web.views.dashboard import index
-from diamond_web.views.new_login import new_login
 
 
 @pytest.mark.django_db
@@ -115,25 +114,3 @@ class TestDashboardView:
         client.force_login(authenticated_user)
         response = client.get(reverse('dashboard_index'))
         assert 'dashboard/index.html' in [t.name for t in response.templates]
-
-
-@pytest.mark.django_db
-class TestNewLoginView:
-    """Tests for the new login view."""
-
-    def test_new_login_view(self, client):
-        """Test login view renders correctly."""
-        response = client.get(reverse('new_login'))
-        assert response.status_code == 200
-        assert 'login/auth-login-creative.html' in [t.name for t in response.templates]
-
-    def test_new_login_unauthenticated(self, client):
-        """Test login view accessible to unauthenticated user."""
-        response = client.get(reverse('new_login'))
-        assert response.status_code == 200
-
-    def test_new_login_authenticated(self, client, authenticated_user):
-        """Test authenticated user can still view login page."""
-        client.force_login(authenticated_user)
-        response = client.get(reverse('new_login'))
-        assert response.status_code == 200

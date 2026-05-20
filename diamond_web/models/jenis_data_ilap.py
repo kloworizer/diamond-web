@@ -38,6 +38,14 @@ class JenisDataILAP(AuditTrailModel):
         verbose_name_plural = "Jenis Data ILAP"
         db_table = "jenis_data_ilap"
         ordering = ["id"]
+        indexes = [
+            models.Index(fields=["id_ilap"], name="jdi_id_ilap_idx"),
+            models.Index(fields=["id_jenis_tabel"], name="jdi_jtabel_idx"),
+            models.Index(fields=["id_status_data"], name="jdi_status_idx"),
+            models.Index(fields=["id_jenis_data"], name="jdi_jenis_idx"),
+            models.Index(fields=["id_sub_jenis_data"], name="jdi_subjenis_idx"),
+            models.Index(fields=["id_ilap", "id_sub_jenis_data"], name="jdi_ilap_sub_idx"),
+        ]
 
     def __str__(self):
         return f"{self.id_sub_jenis_data} - {self.nama_sub_jenis_data}"

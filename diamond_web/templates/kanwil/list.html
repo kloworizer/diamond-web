@@ -3,32 +3,45 @@
 
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h2 class="mb-1">
-                        <i class="ri-building-2-line me-2"></i>Kanwil
-                    </h2>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-                            <li class="breadcrumb-item active">Kanwil</li>
-                        </ol>
-                    </nav>
+<div class="page-header">
+        <div class="page-header-left d-flex align-items-center">
+            <div class="page-header-title">
+                <h5 class="m-b-10">
+                    <i class="feather-home me-2"></i>Kanwil
+                </h5>
+            </div>
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item"><a href="javascript:void(0);">Admin P3DE</a></li>
+                <li class="breadcrumb-item active">Kanwil</li>
+            </ul>
+        </div>
+        <div class="page-header-right ms-auto">
+            <div class="page-header-right-items">
+                <div class="d-flex d-md-none">
+                    <a href="javascript:void(0)" class="page-header-right-close-toggle">
+                        <i class="feather-arrow-left me-2"></i>
+                        <span>Back</span>
+                    </a>
                 </div>
+            </div>
+            <div class="d-md-none d-flex align-items-center">
+                <a href="javascript:void(0)" class="page-header-right-open-toggle">
+                    <i class="feather-align-right fs-20"></i>
+                </a>
             </div>
         </div>
     </div>
 
-    <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
-            <h5 class="mb-0"><i class="ri-building-2-line me-2"></i>Daftar Kanwil</h5>
-            <button type="button" class="btn btn-success" data-action="create"><i class="ri-add-line me-1"></i>Tambah</button>
+    <div class="main-content">
+    <div class="card stretch stretch-full h-100">
+        <div class="card-header">
+            <h5 class="card-title mb-0"><i class="feather-home me-2"></i>Daftar Kanwil</h5>
+            <button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>
         </div>
-        <div class="card-body">
-            <table id="kanwil-table" class="table table-striped" style="width:100%">
+        <div class="card-body custom-card-action p-0">
+            <div class="table-responsive">
+            <table id="kanwil-table" class="table table-hover mb-0" style="width:100%">
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -45,6 +58,7 @@
                 </thead>
                 <tbody></tbody>
             </table>
+            </div>
         </div>
     </div>
 
@@ -62,9 +76,8 @@
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
 
+{% endblock %}
 {% block scripts %}
 <script>
     (function () {

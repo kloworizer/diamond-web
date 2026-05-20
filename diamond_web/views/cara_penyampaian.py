@@ -149,8 +149,8 @@ def cara_penyampaian_data(request):
             data.append({
                 'id': obj.id,
                 'deskripsi': obj.deskripsi,
-                'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('cara_penyampaian_update', args=[obj.pk])}' title='Edit'><i class='ri-edit-line'></i></button>"
-                           f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('cara_penyampaian_delete', args=[obj.pk])}' title='Delete'><i class='ri-delete-bin-line'></i></button>"
+                'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('cara_penyampaian_update', args=[obj.pk])}' title='Edit'><i class='feather-edit-2'></i></button>"
+                           f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('cara_penyampaian_delete', args=[obj.pk])}' title='Delete'><i class='feather-trash-2'></i></button>"
             })
 
         return JsonResponse({

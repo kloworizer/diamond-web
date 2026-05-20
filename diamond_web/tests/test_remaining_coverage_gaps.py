@@ -81,8 +81,8 @@ from diamond_web.views.laporan_metrik_data_eksternal import (
 )
 from diamond_web.views.laporan_pide_filter_options import laporan_pide_filter_options
 from diamond_web.views.laporan_register_penerimaan import (
-    laporan_register_penerimaan_data,
-    laporan_register_penerimaan_export,
+    register_penerimaan_data,
+    register_penerimaan_export,
 )
 from diamond_web.views.laporan_sla_identifikasi import (
     laporan_sla_identifikasi_data,
@@ -266,7 +266,7 @@ class TestRemainingViewCoverage:
         assert client.get(reverse('laporan_transfer')).status_code == 200
         assert client.get(reverse('laporan_metrik_data_eksternal')).status_code == 200
 
-        register_data = client.get(reverse('laporan_register_penerimaan_data'), {'bulan': '1', 'tahun': '2024', 'draw': '1', 'start': '0', 'length': '10'})
+        register_data = client.get(reverse('register_penerimaan_data'), {'bulan': '1', 'tahun': '2024', 'draw': '1', 'start': '0', 'length': '10'})
         assert register_data.status_code == 200
         assert json.loads(register_data.content)['recordsFiltered'] == 1
 
@@ -279,12 +279,12 @@ class TestRemainingViewCoverage:
         assert transfer_data.status_code == 200
         assert metrik_data.status_code == 200
 
-        assert client.get(reverse('laporan_register_penerimaan_export'), {'bulan': '1', 'tahun': '2024'}).status_code == 200
+        assert client.get(reverse('register_penerimaan_export'), {'bulan': '1', 'tahun': '2024'}).status_code == 200
         assert client.get(reverse('laporan_sla_perekaman_export'), {'tgl_mulai': '2024-01-01T00:00', 'tgl_akhir': '2024-01-31T23:59'}).status_code == 200
         assert client.get(reverse('laporan_sla_identifikasi_export'), {'tgl_mulai': '2024-01-01T00:00', 'tgl_akhir': '2024-01-31T23:59'}).status_code == 200
         assert client.get(reverse('laporan_transfer_export'), {'tgl_mulai': '2024-01-01T00:00', 'tgl_akhir': '2024-01-31T23:59'}).status_code == 200
         assert client.get(reverse('laporan_metrik_data_eksternal_export'), {'tgl_mulai': '2024-01-01T00:00', 'tgl_akhir': '2024-01-31T23:59'}).status_code == 200
-        assert client.get(reverse('laporan_register_penerimaan_export'), {'bulan': '13', 'tahun': '2024'}).status_code == 400
+        assert client.get(reverse('register_penerimaan_export'), {'bulan': '13', 'tahun': '2024'}).status_code == 400
 
     def test_pide_filter_options_and_monitoring(self, client):
         bundle = _make_bundle()

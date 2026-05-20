@@ -58,6 +58,7 @@ class Migration(migrations.Migration):
                 ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
                 ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
                 ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
+                ('kategori', models.CharField(choices=[('DAPEN', 'DAPEN'), ('EOI', 'EOI'), ('KMK', 'KMK'), ('KSWP', 'KSWP'), ('MOU', 'MOU'), ('PKD', 'PKD'), ('PKS', 'PKS'), ('PMK', 'PMK')], max_length=10, verbose_name='Kategori')),
                 ('deskripsi', models.CharField(max_length=50, unique=True, verbose_name='Deskripsi')),
             ],
             options={
@@ -75,14 +76,17 @@ class Migration(migrations.Migration):
                 ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
                 ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
                 ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
-                ('id_ilap', models.CharField(max_length=5, unique=True, verbose_name='ID ILAP')),
-                ('nama_ilap', models.CharField(max_length=150, unique=True, verbose_name='Nama ILAP')),
+                ('id_ilap', models.CharField(max_length=5, verbose_name='ID ILAP')),
+                ('nama_ilap', models.CharField(max_length=150, verbose_name='Nama ILAP')),
             ],
             options={
                 'verbose_name': 'ILAP',
                 'verbose_name_plural': 'ILAP',
                 'db_table': 'ilap',
                 'ordering': ['id_ilap'],
+                'constraints': [
+                    models.UniqueConstraint(fields=['id_ilap', 'nama_ilap'], name='unique_ilap_id_nama'),
+                ],
             },
         ),
         migrations.CreateModel(
@@ -309,7 +313,7 @@ class Migration(migrations.Migration):
                 ('create_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Create By')),
                 ('update_date', models.DateField(blank=True, null=True, verbose_name='Update Date')),
                 ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
-                ('id_jenis_data_ilap', models.ForeignKey(db_column='id_jenis_data_ilap', on_delete=django.db.models.deletion.PROTECT, to='diamond_web.jenisdatailap', verbose_name='Jenis Data ILAP')),
+                ('id_sub_jenis_data', models.ForeignKey(db_column='id_sub_jenis_data', on_delete=django.db.models.deletion.PROTECT, to='diamond_web.jenisdatailap', verbose_name='Sub Jenis Data ILAP')),
                 ('id_klasifikasi_tabel', models.ForeignKey(db_column='id_klasifikasi_tabel', on_delete=django.db.models.deletion.PROTECT, to='diamond_web.dasarhukum', verbose_name='Dasar Hukum')),
             ],
             options={
@@ -469,6 +473,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
                 ('nomor_tiket', models.CharField(max_length=17, verbose_name='Nomor Tiket')),
+                ('old_db', models.BooleanField(default=False, verbose_name='Old DB')),
                 ('status_tiket', models.IntegerField(choices=[(1, 'Direkam'), (2, 'Diteliti'), (3, 'Dikembalikan'), (4, 'Dikirim ke PIDE'), (5, 'Identifikasi'), (6, 'Pengendalian Mutu'), (7, 'Dibatalkan'), (8, 'Selesai')], verbose_name='Status Tiket')),
                 ('id_periode_data', models.ForeignKey(db_column='id_periode_data', on_delete=django.db.models.deletion.PROTECT, to='diamond_web.periodejenisdata', verbose_name='Periode Jenis Data')),
                 ('id_jenis_prioritas_data', models.ForeignKey(blank=True, db_column='id_jenis_prioritas_data', null=True, on_delete=django.db.models.deletion.PROTECT, to='diamond_web.jenisprioritasdata', verbose_name='Jenis Prioritas Data')),
@@ -598,11 +603,115 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name='klasifikasijenisdata',
-            unique_together={('id_jenis_data_ilap', 'id_klasifikasi_tabel')},
+            unique_together={('id_sub_jenis_data', 'id_klasifikasi_tabel')},
         ),
         migrations.AddIndex(
             model_name='pic',
-            index=models.Index(fields=['tipe', 'id_sub_jenis_data_ilap'], name='pic_tipe_7c24ea_idx'),
+            index=models.Index(fields=['tipe', 'id_sub_jenis_data_ilap'], name='pic_tipe_sub_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='pic',
+            index=models.Index(fields=['id_sub_jenis_data_ilap', 'tipe', 'start_date', 'end_date'], name='pic_sub_active_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='pic',
+            index=models.Index(fields=['id_user', 'tipe', 'end_date'], name='pic_user_tipe_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='ilap',
+            index=models.Index(fields=['id_kpp'], name='ilap_kpp_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='ilap',
+            index=models.Index(fields=['id_kategori'], name='ilap_kategori_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='ilap',
+            index=models.Index(fields=['id_kategori_wilayah'], name='ilap_kwil_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='ilap',
+            index=models.Index(fields=['id_ilap'], name='ilap_id_ilap_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='jenisdatailap',
+            index=models.Index(fields=['id_ilap'], name='jdi_id_ilap_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='jenisdatailap',
+            index=models.Index(fields=['id_jenis_tabel'], name='jdi_jtabel_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='jenisdatailap',
+            index=models.Index(fields=['id_status_data'], name='jdi_status_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='jenisdatailap',
+            index=models.Index(fields=['id_jenis_data'], name='jdi_jenis_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='jenisdatailap',
+            index=models.Index(fields=['id_sub_jenis_data'], name='jdi_subjenis_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='jenisdatailap',
+            index=models.Index(fields=['id_ilap', 'id_sub_jenis_data'], name='jdi_ilap_sub_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='klasifikasijenisdata',
+            index=models.Index(fields=['id_sub_jenis_data'], name='kjd_subjenis_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='klasifikasijenisdata',
+            index=models.Index(fields=['id_klasifikasi_tabel'], name='kjd_klasif_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='periodejenisdata',
+            index=models.Index(fields=['id_sub_jenis_data_ilap'], name='pjd_subjenis_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='periodejenisdata',
+            index=models.Index(fields=['id_periode_pengiriman'], name='pjd_periode_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='periodejenisdata',
+            index=models.Index(fields=['start_date'], name='pjd_start_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='periodejenisdata',
+            index=models.Index(fields=['end_date'], name='pjd_end_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='periodejenisdata',
+            index=models.Index(fields=['id_sub_jenis_data_ilap', 'id_periode_pengiriman'], name='pjd_sub_per_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='periodejenisdata',
+            index=models.Index(fields=['id_sub_jenis_data_ilap', 'start_date'], name='pjd_sub_start_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='tiket',
+            index=models.Index(fields=['id_periode_data'], name='tiket_periode_data_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='tiket',
+            index=models.Index(fields=['penyampaian'], name='tiket_penyampaian_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='tiket',
+            index=models.Index(fields=['tahun', 'periode'], name='tiket_thn_prd_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='tiket',
+            index=models.Index(fields=['id_periode_data', 'periode', 'tahun', 'penyampaian'], name='tiket_lookup_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='tiket',
+            index=models.Index(fields=['tgl_terima_dip'], name='tiket_terima_dip_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='tiket',
+            index=models.Index(fields=['tgl_terima_vertikal'], name='tiket_terima_vert_idx'),
         ),
         migrations.AlterUniqueTogether(
             name='tandaterimadata',

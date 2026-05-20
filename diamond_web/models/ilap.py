@@ -1,18 +1,19 @@
 from django.db import models
+from django.db.models import UniqueConstraint
 from .kategori_ilap import KategoriILAP
 from .kpp import KPP
 from .kategori_wilayah import KategoriWilayah
 
 class ILAP(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="ID")
-    id_ilap = models.CharField(max_length=5, unique=True, verbose_name="ID ILAP")
+    id_ilap = models.CharField(max_length=5, verbose_name="ID ILAP")
     id_kategori = models.ForeignKey(
         KategoriILAP,
         on_delete=models.PROTECT,
         db_column="id_kategori",
         verbose_name="ID Kategori"
     )
-    nama_ilap = models.CharField(max_length=150, unique=True, verbose_name="Nama ILAP")
+    nama_ilap = models.CharField(max_length=150, verbose_name="Nama ILAP")
     id_kategori_wilayah = models.ForeignKey(
         KategoriWilayah,
         on_delete=models.PROTECT,
@@ -47,6 +48,15 @@ class ILAP(models.Model):
         verbose_name_plural = "ILAP"
         db_table = "ilap"
         ordering = ["id_ilap"]
+        indexes = [
+            models.Index(fields=["id_kpp"], name="ilap_kpp_idx"),
+            models.Index(fields=["id_kategori"], name="ilap_kategori_idx"),
+            models.Index(fields=["id_kategori_wilayah"], name="ilap_kwil_idx"),
+            models.Index(fields=["id_ilap"], name="ilap_id_ilap_idx"),
+        ]
+        constraints = [
+            UniqueConstraint(fields=["id_ilap", "nama_ilap"], name="unique_ilap_id_nama"),
+        ]
 
     def __str__(self):
         return f"{self.id_ilap} - {self.nama_ilap}"

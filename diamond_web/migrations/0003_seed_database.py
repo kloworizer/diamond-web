@@ -1,11 +1,67 @@
 # Generated migration - Seed database with initial data
 
 from datetime import date
+from functools import lru_cache
+from pathlib import Path
 
 from django.db import migrations
+from dotenv import dotenv_values
 
 
 SEED_AUDIT_DATE = date(2024, 1, 1)
+SEED_ENV_VAR = "DB_SEED_ENABLED"
+SEED_TABLE_ENV_VAR = "SEED_TABLE"
+
+
+@lru_cache(maxsize=1)
+def _get_env_values() -> dict[str, str | None]:
+    env_path = Path(__file__).resolve().parents[2] / ".env"
+    return dotenv_values(env_path)
+
+
+def _is_seed_enabled() -> bool:
+    env_values = _get_env_values()
+    raw_value = str(env_values.get(SEED_ENV_VAR, "")).strip().lower()
+    return raw_value in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def _get_seed_table_filter() -> set[str] | None:
+    env_values = _get_env_values()
+    raw_value = str(env_values.get(SEED_TABLE_ENV_VAR, "")).strip()
+    if not raw_value:
+        return None
+
+    selected = {
+        item.strip().upper()
+        for item in raw_value.split(",")
+        if item and item.strip()
+    }
+    return selected or None
+
+
+def _should_run_seed(seed_key: str) -> bool:
+    if not _is_seed_enabled():
+        return False
+
+    selected_tables = _get_seed_table_filter()
+    if selected_tables is None:
+        return True
+
+    return seed_key.upper() in selected_tables
+
+
+def _run_if_seed_enabled(seed_key: str, seed_func):
+    def _wrapped(apps, schema_editor):
+        if not _should_run_seed(seed_key):
+            return
+        return seed_func(apps, schema_editor)
+
+    return _wrapped
 
 
 def seed_audit_defaults(defaults=None):
@@ -137,7 +193,7 @@ PERIODE_PENGIRIMAN_DATA = [
     {"periode_penyampaian": "2 Mingguan", "periode_penerimaan": "Bulanan"},
     {"periode_penyampaian": "Bulanan", "periode_penerimaan": "Bulanan"},
     {"periode_penyampaian": "Triwulanan", "periode_penerimaan": "Triwulanan"},
-    {"periode_penyampaian": "Semester", "periode_penerimaan": "Semester"},
+    {"periode_penyampaian": "Semesteran", "periode_penerimaan": "Semesteran"},
     {"periode_penyampaian": "Tahunan", "periode_penerimaan": "Tahunan"},
 ]
 
@@ -501,21 +557,90 @@ JENIS_PRIORITAS_DATA = [
 ]
 
 USERS_DATA = [
-    # user_p3de group (3 users) - username and password are the same (9-digit number)
-    {"username": "334070720", "first_name": "Ahmad", "last_name": "Wijaya", "group": "user_p3de"},
-    {"username": "219166966", "first_name": "Budi", "last_name": "Santoso", "group": "user_p3de"},
-    {"username": "469817665", "first_name": "Citra", "last_name": "Dewi", "group": "user_p3de"},
-    
-    # user_pide group (3 users) - username and password are the same (9-digit number)
-    {"username": "235512708", "first_name": "Dwi", "last_name": "Purwanto", "group": "user_pide"},
-    {"username": "778511709", "first_name": "Eka", "last_name": "Prasetya", "group": "user_pide"},
-    {"username": "648726232", "first_name": "Farhan", "last_name": "Hidayat", "group": "user_pide"},
-    
-    # user_pmde group (3 users) - username and password are the same (9-digit number)
-    {"username": "446674438", "first_name": "Gitawati", "last_name": "Handini", "group": "user_pmde"},
-    {"username": "090860740", "first_name": "Hendra", "last_name": "Kusuma", "group": "user_pmde"},
-    {"username": "897882042", "first_name": "Irwan", "last_name": "Setiawan", "group": "user_pmde"},
+    # Full data dari CSV produksi (nama sudah dimask, tanpa nama asli)
+    {"username": "060090892", "role": "user_p3de", "nama": "Mexxx Daxxxxxxxx"},
+    {"username": "060098973", "role": "user_p3de", "nama": "Raxxx Fexxxxxxxx Dexxx Yuxxxxxxx"},
+    {"username": "060102843", "role": "user_p3de", "nama": "Anxxx Waxxx Anxxxxx"},
+    {"username": "060106391", "role": "user_p3de", "nama": "Yuxxx Baxxxxxx Rixxx"},
+    {"username": "060114626", "role": "user_p3de", "nama": "Yaxxxx Mixx Sixxxxxxxx"},
+    {"username": "808320250", "role": "user_p3de", "nama": "Fexxxxxxx Swxxxxxxx"},
+    {"username": "810202119", "role": "user_p3de", "nama": "Muxx Raxxxx Wixxxx"},
+    {"username": "815101362", "role": "user_p3de", "nama": "Mixxxxxxx Rixxx Khxxxx"},
+    {"username": "830200611", "role": "user_p3de", "nama": "Anxxxx Prxxxxxx"},
+    {"username": "830602552", "role": "user_p3de", "nama": "Kuxxxx Nuxxxxx Ruxxxxxx"},
+    {"username": "860014666", "role": "user_p3de", "nama": "Wixxxx Trx Saxxxxx"},
+    {"username": "881200659", "role": "user_p3de", "nama": "Vixxx Nux Azxxx"},
+    {"username": "908219329", "role": "user_p3de", "nama": "Luxxxxx Maxxxxxx"},
+    {"username": "910222374", "role": "user_p3de", "nama": "Chxxxxx Wixxxx"},
+    {"username": "921002181", "role": "user_p3de", "nama": "Dyxx Asxxxx Syxxxxx"},
+    {"username": "930102302", "role": "user_p3de", "nama": "Asxxxx Jexxxx"},
+    {"username": "930402838", "role": "user_p3de", "nama": "Apxxxxx Raxxxxxxxx"},
+    {"username": "943213121", "role": "user_p3de", "nama": "Sixx Saxxx Soxxxxx"},
+    {"username": "958631168", "role": "user_p3de", "nama": "Adxxxx Sexxxxxx"},
+    {"username": "958632140", "role": "user_p3de", "nama": "Haxxxxx Baxxx Prxxxxxxxx"},
+    {"username": "958635135", "role": "user_p3de", "nama": "Saxxxxxxx Nixxxxx Suxx"},
+    {"username": "958635595", "role": "user_p3de", "nama": "Krxxxxxx Taxxxxx"},
+    {"username": "958635599", "role": "user_p3de", "nama": "Lexxxxx Ayx"},
+    {"username": "060096685", "role": "user_pide", "nama": "Efxxxxxx"},
+    {"username": "060103503", "role": "user_pide", "nama": "Boxxx Adxxxxx"},
+    {"username": "060109072", "role": "user_pide", "nama": "Yuxxx Chxxxxxxxx"},
+    {"username": "060111736", "role": "user_pide", "nama": "Paxxxxx"},
+    {"username": "810201441", "role": "user_pide", "nama": "Haxxxxxxxx Pixxxxxx Caxxxxxxxxxx"},
+    {"username": "810201463", "role": "user_pide", "nama": "Icxxx Prxxx Arxxxxx Raxxxxxx"},
+    {"username": "810201528", "role": "user_pide", "nama": "Adxxxx Yaxxxxx"},
+    {"username": "810201792", "role": "user_pide", "nama": "Fixxxxx Hexxxxx Anxxx Prxxxxx"},
+    {"username": "810202070", "role": "user_pide", "nama": "Dhxxxxxxx Sixx Acxxxx"},
+    {"username": "810203119", "role": "user_pide", "nama": "Wexxx Inxxxxxxx"},
+    {"username": "815101537", "role": "user_pide", "nama": "Baxxx Puxxx Anxxxx"},
+    {"username": "817932310", "role": "user_pide", "nama": "Anxxx Puxxxxxxxxx"},
+    {"username": "817933146", "role": "user_pide", "nama": "Muxxxxxx Naxxxx Maxxx Wixxxx"},
+    {"username": "830203331", "role": "user_pide", "nama": "Inxxxx Paxxxxxxxxxxxx"},
+    {"username": "830203398", "role": "user_pide", "nama": "Maxxxxx Agxxxx Puxxx"},
+    {"username": "830602294", "role": "user_pide", "nama": "Auxxxx Noxxxx Thxxxxxx"},
+    {"username": "830602334", "role": "user_pide", "nama": "Daxxxxxx Sixxx"},
+    {"username": "830602736", "role": "user_pide", "nama": "Rexxx Rexxx Caxxxxxx"},
+    {"username": "830602906", "role": "user_pide", "nama": "Zuxxxxxxxx Asxxxxxxxxxx"},
+    {"username": "910223210", "role": "user_pide", "nama": "Muxxxxxx Sixxx Jaxxxxx"},
+    {"username": "958390352", "role": "user_pide", "nama": "Laxxxxxxx Ayx Laxxx"},
+    {"username": "958635581", "role": "user_pide", "nama": "Alxxxx Adxx Prxxxxx"},
+    {"username": "958635582", "role": "user_pide", "nama": "Muxxxxxx Ikxxxx Haxxxx"},
+    {"username": "958635586", "role": "user_pide", "nama": "Evxxx Chxxxxx Maxxxxxxx"},
+    {"username": "958635588", "role": "user_pide", "nama": "Haxxxxx Rixxx Waxxxxx"},
+    {"username": "060104310", "role": "user_pmde", "nama": "Hexx Hexxxxxxxx"},
+    {"username": "060109162", "role": "user_pmde", "nama": "Esxx Inxxx Suxxxxx"},
+    {"username": "060112025", "role": "user_pmde", "nama": "Anxxx Wixxxxxx"},
+    {"username": "808360308", "role": "user_pmde", "nama": "Dyxx Toxxx Arx Kuxxxx"},
+    {"username": "810201379", "role": "user_pmde", "nama": "Ahxxx Arxxxxx"},
+    {"username": "810201435", "role": "user_pmde", "nama": "Doxx Hexxxxxxxx"},
+    {"username": "810201510", "role": "user_pmde", "nama": "Texxx Arxxxxxx"},
+    {"username": "817932134", "role": "user_pmde", "nama": "Yoxxxxx Dexxxxx Sixxxx"},
+    {"username": "817933155", "role": "user_pmde", "nama": "Okxx Dwx Anxxxxx"},
+    {"username": "830602653", "role": "user_pmde", "nama": "Naxxxx Ghxxx Naxxxxxxx"},
+    {"username": "917330464", "role": "user_pmde", "nama": "Agxxx Yuxxxxxxxx"},
+    {"username": "958635186", "role": "user_pmde", "nama": "Yoxx Mixxxxx Maxxxxxxx"},
+    {"username": "958635587", "role": "user_pmde", "nama": "Anxx Lexxxxx Saxxxxx"},
+    {"username": "958636768", "role": "user_pmde", "nama": "Laxxx Nux Inxxx Saxx"},
 ]
+
+
+def _split_masked_name(masked_full_name: str) -> tuple[str, str]:
+    parts = [part for part in str(masked_full_name or "").strip().split() if part]
+    if not parts:
+        return "User", "Masked"
+    if len(parts) == 1:
+        return parts[0], "Masked"
+    return parts[0], " ".join(parts[1:])
+
+
+def _role_to_group_name(role_value: str) -> str:
+    role = str(role_value or "").strip().lower()
+    if role in {"p3de", "user_p3de"}:
+        return "user_p3de"
+    if role in {"pide", "user_pide"}:
+        return "user_pide"
+    if role in {"pmde", "user_pmde"}:
+        return "user_pmde"
+    return role
 
 
 # PIC data - fixed assignments with one user per seksi for each JenisDataILAP
@@ -1148,7 +1273,7 @@ def unseed_jenis_prioritas_data(apps, schema_editor):
 
 
 def seed_users(apps, schema_editor):
-    """Seeds the User model with fixed users (3 per group) with fixed 9-digit usernames and passwords."""
+    """Seed auth user dari data CSV-mapped: username, role, nama(masked)."""
     from django.contrib.auth.hashers import make_password
     
     User = apps.get_model("auth", "User")
@@ -1156,20 +1281,19 @@ def seed_users(apps, schema_editor):
     
     for item in USERS_DATA:
         try:
-            group = Group.objects.get(name=item["group"])
+            group = Group.objects.get(name=_role_to_group_name(item.get("role")))
             
-            # Use fixed username from USERS_DATA
             username = item["username"]
-            # Password is same as username
             password = username
             email = f"{username}@diamond.pde"
+            first_name, last_name = _split_masked_name(item.get("nama"))
             
             # Create user with hashed password (skip if already exists)
             user, created = User.objects.get_or_create(
                 username=username,
                 defaults={
-                    "first_name": item["first_name"],
-                    "last_name": item["last_name"],
+                    "first_name": first_name,
+                    "last_name": last_name,
                     "email": email,
                     "password": make_password(password)
                 }
@@ -1178,7 +1302,7 @@ def seed_users(apps, schema_editor):
             # Add to group
             user.groups.add(group)
         except Exception as e:
-            print(f"Warning: Could not create user {item['first_name']} {item['last_name']}: {e}")
+            print(f"Warning: Could not create user {item['username']}: {e}")
 
 
 def unseed_users(apps, schema_editor):
@@ -1352,25 +1476,25 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(seed_kategori_ilap, reverse_code=unseed_kategori_ilap),
-        migrations.RunPython(seed_kategori_wilayah, reverse_code=unseed_kategori_wilayah),
-        migrations.RunPython(seed_kanwil, reverse_code=unseed_kanwil),
-        migrations.RunPython(seed_kpp, reverse_code=unseed_kpp),
-        migrations.RunPython(seed_jenis_tabel, reverse_code=unseed_jenis_tabel),
-        migrations.RunPython(seed_dasar_hukum, reverse_code=unseed_dasar_hukum),
-        migrations.RunPython(seed_periode_pengiriman, reverse_code=unseed_periode_pengiriman),
-        migrations.RunPython(seed_status_data, reverse_code=unseed_status_data),
-        migrations.RunPython(seed_bentuk_data, reverse_code=unseed_bentuk_data),
-        migrations.RunPython(seed_cara_penyampaian, reverse_code=unseed_cara_penyampaian),
-        migrations.RunPython(seed_media_backup, reverse_code=unseed_media_backup),
-        migrations.RunPython(seed_status_penelitian, reverse_code=unseed_status_penelitian),
-        migrations.RunPython(seed_ilap, reverse_code=unseed_ilap),
-        migrations.RunPython(seed_jenis_data_ilap, reverse_code=unseed_jenis_data_ilap),
-        migrations.RunPython(seed_klasifikasi_jenis_data, reverse_code=unseed_klasifikasi_jenis_data),
-        migrations.RunPython(seed_periode_jenis_data, reverse_code=unseed_periode_jenis_data),
-        migrations.RunPython(seed_jenis_prioritas_data, reverse_code=unseed_jenis_prioritas_data),
-        migrations.RunPython(seed_users, reverse_code=unseed_users),
-        migrations.RunPython(seed_pic, reverse_code=unseed_pic),
-        migrations.RunPython(seed_durasi_jatuh_tempo, reverse_code=unseed_durasi_jatuh_tempo),
-        migrations.RunPython(seed_docx_templates, reverse_code=unseed_docx_templates),
+        migrations.RunPython(_run_if_seed_enabled("KATEGORI_ILAP_DATA", seed_kategori_ilap), reverse_code=unseed_kategori_ilap),
+        migrations.RunPython(_run_if_seed_enabled("KATEGORI_WILAYAH_DATA", seed_kategori_wilayah), reverse_code=unseed_kategori_wilayah),
+        migrations.RunPython(_run_if_seed_enabled("KANWIL_DATA", seed_kanwil), reverse_code=unseed_kanwil),
+        migrations.RunPython(_run_if_seed_enabled("KPP_DATA", seed_kpp), reverse_code=unseed_kpp),
+        migrations.RunPython(_run_if_seed_enabled("JENIS_TABEL_DATA", seed_jenis_tabel), reverse_code=unseed_jenis_tabel),
+        migrations.RunPython(_run_if_seed_enabled("DASAR_HUKUM_DATA", seed_dasar_hukum), reverse_code=unseed_dasar_hukum),
+        migrations.RunPython(_run_if_seed_enabled("PERIODE_PENGIRIMAN_DATA", seed_periode_pengiriman), reverse_code=unseed_periode_pengiriman),
+        migrations.RunPython(_run_if_seed_enabled("STATUS_DATA_DATA", seed_status_data), reverse_code=unseed_status_data),
+        migrations.RunPython(_run_if_seed_enabled("BENTUK_DATA_DATA", seed_bentuk_data), reverse_code=unseed_bentuk_data),
+        migrations.RunPython(_run_if_seed_enabled("CARA_PENYAMPAIAN_DATA", seed_cara_penyampaian), reverse_code=unseed_cara_penyampaian),
+        migrations.RunPython(_run_if_seed_enabled("MEDIA_BACKUP_DATA", seed_media_backup), reverse_code=unseed_media_backup),
+        migrations.RunPython(_run_if_seed_enabled("STATUS_PENELITIAN_DATA", seed_status_penelitian), reverse_code=unseed_status_penelitian),
+        migrations.RunPython(_run_if_seed_enabled("ILAP_DATA", seed_ilap), reverse_code=unseed_ilap),
+        migrations.RunPython(_run_if_seed_enabled("JENIS_DATA_ILAP_DATA", seed_jenis_data_ilap), reverse_code=unseed_jenis_data_ilap),
+        migrations.RunPython(_run_if_seed_enabled("KLASIFIKASI_JENIS_DATA", seed_klasifikasi_jenis_data), reverse_code=unseed_klasifikasi_jenis_data),
+        migrations.RunPython(_run_if_seed_enabled("PERIODE_JENIS_DATA", seed_periode_jenis_data), reverse_code=unseed_periode_jenis_data),
+        migrations.RunPython(_run_if_seed_enabled("JENIS_PRIORITAS_DATA", seed_jenis_prioritas_data), reverse_code=unseed_jenis_prioritas_data),
+        migrations.RunPython(_run_if_seed_enabled("USERS_DATA", seed_users), reverse_code=unseed_users),
+        migrations.RunPython(_run_if_seed_enabled("PIC_DATA", seed_pic), reverse_code=unseed_pic),
+        migrations.RunPython(_run_if_seed_enabled("DURASI_JATUH_TEMPO_DATA", seed_durasi_jatuh_tempo), reverse_code=unseed_durasi_jatuh_tempo),
+        migrations.RunPython(_run_if_seed_enabled("DOCX_TEMPLATE_DATA", seed_docx_templates), reverse_code=unseed_docx_templates),
     ]

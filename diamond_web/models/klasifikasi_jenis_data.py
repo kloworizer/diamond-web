@@ -5,11 +5,11 @@ from .audit import AuditTrailModel
 
 class KlasifikasiJenisData(AuditTrailModel):
     id = models.AutoField(primary_key=True, verbose_name="ID")
-    id_jenis_data_ilap = models.ForeignKey(
+    id_sub_jenis_data = models.ForeignKey(
         JenisDataILAP,
         on_delete=models.PROTECT,
-        db_column="id_jenis_data_ilap",
-        verbose_name="Jenis Data ILAP"
+        db_column="id_sub_jenis_data",
+        verbose_name="Sub Jenis Data ILAP"
     )
     id_klasifikasi_tabel = models.ForeignKey(
         DasarHukum,
@@ -23,7 +23,11 @@ class KlasifikasiJenisData(AuditTrailModel):
         verbose_name_plural = "Klasifikasi Jenis Data"
         db_table = "klasifikasi_jenis_data"
         ordering = ["id"]
-        unique_together = [['id_jenis_data_ilap', 'id_klasifikasi_tabel']]
+        unique_together = [['id_sub_jenis_data', 'id_klasifikasi_tabel']]
+        indexes = [
+            models.Index(fields=["id_sub_jenis_data"], name="kjd_subjenis_idx"),
+            models.Index(fields=["id_klasifikasi_tabel"], name="kjd_klasif_idx"),
+        ]
 
     def __str__(self):
-        return f"{self.id_jenis_data_ilap} - {self.id_klasifikasi_tabel}"
+        return f"{self.id_sub_jenis_data} - {self.id_klasifikasi_tabel}"

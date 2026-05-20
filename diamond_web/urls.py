@@ -7,6 +7,10 @@ import sys
 print("--- Loading diamond_web/urls.py ---", file=sys.stderr)
 
 urlpatterns = [
+    # === Authentication URLs ===
+    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
+    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    
     path('tanda-terima-data/<int:pk>/view/', views.TandaTerimaDataViewOnly.as_view(), name='tanda_terima_data_view'),
     path('', views.home, name='home'),
     path('keep-alive/', keep_alive, name='keep_alive'),
@@ -14,12 +18,14 @@ urlpatterns = [
     path('notifications/read/<int:pk>/', views.mark_notification_read, name='mark_notification_read'),
     path('password_change/', auth_views.PasswordChangeView.as_view(template_name='registration/change_password_form.html', success_url=reverse_lazy('user_password_change_done')), name='user_password_change'),
     path('password_change/done/', auth_views.PasswordChangeDoneView.as_view(template_name='registration/change_password_done.html'), name='user_password_change_done'),
-
-    # === new_login Section ===
-    path('new_login/', auth_views.LoginView.as_view(template_name='auth-login-creative.html'), name='new_login'),
+    path('oracle-sync/', views.oracle_sync_page, name='oracle_sync_page'),
+    path('oracle-sync/test/', views.oracle_sync_test_connection, name='oracle_sync_test'),
+    path('oracle-sync/check/', views.oracle_sync_check, name='oracle_sync_check'),
+    path('oracle-sync/run/', views.oracle_sync_run, name='oracle_sync_run'),
 
     # === Dashboard Section ===
-    path('dashboard/', views.index, name='dashboard_index'),
+    path('dashboard/', views.DashboardMonitoringView.as_view(), name='dashboard_monitoring'),
+    # path('dashboard/', views.index, name='dashboard_index'),
 
     # === P3DE Section ===
     # Kategori ILAP URLs
@@ -142,10 +148,10 @@ urlpatterns = [
     path('docx-template/<int:pk>/update/', views.DocxTemplateUpdateView.as_view(), name='docx_template_update'),
     path('docx-template/<int:pk>/delete/', views.DocxTemplateDeleteView.as_view(), name='docx_template_delete'),
     path('docx-template/<int:pk>/download/', views.docx_template_download, name='docx_template_download'),
-    # Laporan Register Penerimaan Data
-    path('laporan-register-penerimaan/', views.LaporanRegisterPenerimaanView.as_view(), name='laporan_register_penerimaan'),
-    path('laporan-register-penerimaan/data/', views.laporan_register_penerimaan_data, name='laporan_register_penerimaan_data'),
-    path('laporan-register-penerimaan/export/', views.laporan_register_penerimaan_export, name='laporan_register_penerimaan_export'),
+    # Register Penerimaan Data
+    path('register-penerimaan-data/', views.LaporanRegisterPenerimaanView.as_view(), name='register_penerimaan_data'),
+    path('register-penerimaan-data/data/', views.register_penerimaan_data, name='register_penerimaan_data_data'),
+    path('register-penerimaan-data/export/', views.register_penerimaan_export, name='register_penerimaan_export'),
     # Bulk Document Generation (P3DE)
     path('bulk-generate/pkdi-klarifikasi/', views.bulk_pkdi_klarifikasi, name='bulk_pkdi_klarifikasi'),
     path('bulk-generate/nd-pengantar-pide/', views.bulk_nd_pengantar_pide, name='bulk_nd_pengantar_pide'),

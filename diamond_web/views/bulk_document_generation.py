@@ -149,9 +149,9 @@ def _generate_docx_for_tickets(selected_tickets, doc_type, title_prefix):
     }
     dasar_hukum_map = {}
     for row in KlasifikasiJenisData.objects.filter(
-        id_jenis_data_ilap_id__in=jenis_data_ids
+        id_sub_jenis_data_id__in=jenis_data_ids
     ).select_related('id_klasifikasi_tabel'):
-        dasar_hukum_map.setdefault(row.id_jenis_data_ilap_id, []).append(row.id_klasifikasi_tabel.deskripsi)
+        dasar_hukum_map.setdefault(row.id_sub_jenis_data_id, []).append(row.id_klasifikasi_tabel.deskripsi)
 
     # Header-level variables (aligned with documents.py)
     if ilap and ilap.id_kpp and ilap.id_kpp.id_kanwil:
