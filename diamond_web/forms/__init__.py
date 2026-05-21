@@ -17,3 +17,4 @@ from .tanda_terima_data import TandaTerimaDataForm
 from .nama_tabel import NamaTabelForm
 from .tiket import TiketForm
 from .laporan_pengendalian_mutu import LaporanPengendalianMutuFilterForm
+from .laporan_hasil_pengolahan_data_prioritas import LaporanHasilPengolahanDataPrioritasFilterForm
