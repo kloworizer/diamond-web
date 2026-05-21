@@ -5,13 +5,13 @@
     <div class="page-header-left d-flex align-items-center">
         <div class="page-header-title">
             <h5 class="m-b-10">
-                <i class="feather-refresh-cw me-2"></i>Sync Data Oracle
+                <i class="feather-refresh-cw me-2"></i>Sinkronisasi Data Tiket
             </h5>
         </div>
         <ul class="breadcrumb">
             <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
             <li class="breadcrumb-item"><a href="javascript:void(0);">Admin</a></li>
-            <li class="breadcrumb-item active">Sync Oracle</li>
+            <li class="breadcrumb-item active">Sinkronisasi Data Tiket</li>
         </ul>
     </div>
 </div>
@@ -19,13 +19,16 @@
 <div class="main-content">
     <div class="card stretch stretch-full h-100">
         <div class="card-header d-flex align-items-center justify-content-between">
-            <h5 class="card-title mb-0">Oracle to App DB</h5>
+            <h5 class="card-title mb-0">Sinkronisasi Data Tiket</h5>
         </div>
         <div class="card-body">
-            <p class="text-muted mb-4">Klik <strong>Cek Data</strong> dulu untuk melihat perubahan semua mapping tabel, lalu <strong>Sync Data</strong> untuk menjalankan insert/update.</p>
+            <p class="text-muted mb-4">Klik <strong>Cek Data</strong> dulu untuk melihat jumlah tiket yang akan disinkronisasi, lalu <strong>Sync Data</strong> untuk menjalankan insert/update.</p>
             <div class="d-flex gap-2 flex-wrap">
                 <button id="btn-test" class="btn btn-secondary" type="button">
                     <i class="feather-wifi me-1"></i>Test Koneksi
+                </button>
+                <button id="btn-truncate" class="btn btn-danger" type="button">
+                    <i class="feather-trash-2 me-1"></i>Truncate Tabel Tiket
                 </button>
                 <button id="btn-check" class="btn btn-primary" type="button">
                     <i class="feather-search me-1"></i>Cek Data
@@ -33,6 +36,21 @@
                 <button id="btn-sync" class="btn btn-success" type="button" disabled>
                     <i class="feather-upload me-1"></i>Sync Data
                 </button>
+                <button id="btn-stop" class="btn btn-warning" type="button" disabled style="display:none;">
+                    <i class="feather-square me-1"></i>Stop Sync
+                </button>
+            </div>
+
+            <div id="sync-progress" class="mt-4" style="display:none;">
+                <h6 class="mb-2">Progress Sinkronisasi</h6>
+                <div class="progress mb-2" style="height: 25px;">
+                    <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;">
+                        <span id="progress-text">0%</span>
+                    </div>
+                </div>
+                <p class="text-muted small mb-0">
+                    <span id="progress-counter">0 / 0</span> | Insert: <span id="progress-inserts">0</span> | Update: <span id="progress-updates">0</span> | Error: <span id="progress-errors">0</span>
+                </p>
             </div>
 
             <div id="sync-result" class="mt-4" style="display:none;">
@@ -59,8 +77,11 @@
 <script>
     (function () {
         const btnTest = document.getElementById('btn-test');
+        const btnTruncate = document.getElementById('btn-truncate');
         const btnCheck = document.getElementById('btn-check');
         const btnSync = document.getElementById('btn-sync');
+        const btnStop = document.getElementById('btn-stop');
+        const progressBox = document.getElementById('sync-progress');
         const resultBox = document.getElementById('sync-result');
 
         const resultSource = document.getElementById('result-source');
@@ -69,6 +90,16 @@
         const resultUnchanged = document.getElementById('result-unchanged');
         const resultError = document.getElementById('result-error');
         const resultDetails = document.getElementById('result-details');
+        
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const progressCounter = document.getElementById('progress-counter');
+        const progressInserts = document.getElementById('progress-inserts');
+        const progressUpdates = document.getElementById('progress-updates');
+        const progressErrors = document.getElementById('progress-errors');
+
+        let currentSyncId = null;
+        let syncIntervalId = null;
 
         function setLoading(button, isLoading, defaultText, loadingText) {
             button.disabled = isLoading;
@@ -100,7 +131,18 @@
             btnSync.disabled = (summary.inserts + summary.updates) === 0 || (summary.errors || []).length > 0;
         }
 
-        async function postJson(url) {
+        function updateProgress(progressData) {
+            if (!progressData) return;
+            const pct = Math.min(100, progressData.percentage || 0);
+            progressBar.style.width = pct + '%';
+            progressText.textContent = pct + '%';
+            progressCounter.textContent = progressData.current + ' / ' + progressData.total;
+            progressInserts.textContent = progressData.inserts || 0;
+            progressUpdates.textContent = progressData.updates || 0;
+            progressErrors.textContent = progressData.errors || 0;
+        }
+
+        async function postJson(url, body = {}) {
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -108,7 +150,7 @@
                     'Content-Type': 'application/json',
                 },
                 credentials: 'same-origin',
-                body: JSON.stringify({}),
+                body: JSON.stringify(body),
             });
             
             // Check content type
@@ -129,7 +171,7 @@
         btnTest.addEventListener('click', async function () {
             setLoading(btnTest, true, '<i class="feather-wifi me-1"></i>Test Koneksi', 'Testing...');
             try {
-                await postJson("{% url 'oracle_sync_test' %}");
+                await postJson("{% url 'sync_tiket_test' %}");
                 showToast('Koneksi Oracle berhasil.', 'success');
             } catch (error) {
                 showToast(error.message, 'danger');
@@ -138,11 +180,26 @@
             }
         });
 
+        btnTruncate.addEventListener('click', async function () {
+            if (!confirm('Anda yakin ingin menghapus semua data tiket? Tindakan ini tidak dapat dibatalkan.')) {
+                return;
+            }
+            setLoading(btnTruncate, true, '<i class="feather-trash-2 me-1"></i>Truncate Tabel Tiket', 'Truncating...');
+            try {
+                const data = await postJson("{% url 'sync_tiket_truncate' %}");
+                showToast(data.message, 'success');
+            } catch (error) {
+                showToast(error.message, 'danger');
+            } finally {
+                setLoading(btnTruncate, false, '<i class="feather-trash-2 me-1"></i>Truncate Tabel Tiket', 'Truncating...');
+            }
+        });
+
         btnCheck.addEventListener('click', async function () {
             setLoading(btnCheck, true, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
             btnSync.disabled = true;
             try {
-                const data = await postJson("{% url 'oracle_sync_check' %}");
+                const data = await postJson("{% url 'sync_tiket_check' %}");
                 renderSummary(data.summary);
                 showToast('Check data selesai.', 'success');
             } catch (error) {
@@ -155,15 +212,69 @@
         btnSync.addEventListener('click', async function () {
             setLoading(btnSync, true, '<i class="feather-upload me-1"></i>Sync Data', 'Syncing...');
             btnCheck.disabled = true;
+            progressBox.style.display = 'block';
+            resultBox.style.display = 'none';
+            btnStop.style.display = 'inline-block';
+            btnStop.disabled = false;
+            
             try {
-                const data = await postJson("{% url 'oracle_sync_run' %}");
-                renderSummary(data.summary);
-                showToast(data.message || 'Sync selesai.', 'success');
+                // Start sync (returns immediately with sync_id)
+                const startResp = await postJson("{% url 'sync_tiket_run' %}");
+                currentSyncId = startResp.sync_id;
+                showToast(startResp.message, 'info');
+                
+                // Poll for progress until done
+                let isDone = false;
+                syncIntervalId = setInterval(async function() {
+                    try {
+                        const progressResp = await fetch("{% url 'sync_tiket_progress' %}?sync_id=" + currentSyncId, {
+                            method: 'GET',
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                        });
+                        const progressData = await progressResp.json();
+                        
+                        if (progressData.success && progressData.progress) {
+                            updateProgress(progressData.progress);
+                        }
+                        
+                        if (progressData.done) {
+                            isDone = true;
+                            clearInterval(syncIntervalId);
+                            
+                            if (!progressData.success) {
+                                // Error occurred
+                                showToast(progressData.message || 'Sync error', 'danger');
+                            } else if (progressData.summary) {
+                                // Sync completed successfully
+                                renderSummary(progressData.summary);
+                                showToast(progressData.message || 'Sync selesai.', 'success');
+                            }
+                        }
+                    } catch (e) {
+                        logger.error('Progress fetch error:', e);
+                    }
+                }, 500);
+                
             } catch (error) {
+                clearInterval(syncIntervalId);
+                progressBox.style.display = 'none';
+                btnStop.style.display = 'none';
                 showToast(error.message, 'danger');
             } finally {
                 btnCheck.disabled = false;
                 setLoading(btnSync, false, '<i class="feather-upload me-1"></i>Sync Data', 'Syncing...');
+            }
+        });
+
+        btnStop.addEventListener('click', async function () {
+            if (!currentSyncId) return;
+            btnStop.disabled = true;
+            try {
+                await postJson("{% url 'sync_tiket_stop' %}", { sync_id: currentSyncId });
+                showToast('Permintaan stop dikirim. Menunggu sync selesai...', 'info');
+            } catch (error) {
+                showToast(error.message, 'danger');
+                btnStop.disabled = false;
             }
         });
     })();

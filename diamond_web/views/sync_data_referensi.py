@@ -19,7 +19,7 @@ def _is_admin_user(user):
 @user_passes_test(_is_admin_user)
 @require_GET
 def oracle_sync_page(request):
-    return render(request, 'oracle_sync/page.html')
+    return render(request, 'oracle_sync/referensi.html')
 
 
 @login_required

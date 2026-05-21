@@ -90,9 +90,7 @@
                         <span class="nxl-mtext">Kelola Referensi P3DE</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                     </a>
                     <ul class="nxl-submenu">
-                        {% if user|has_group:"admin" %}
-                        <li class="nxl-item"><a class="nxl-link" href="{% url 'oracle_sync_page' %}">Sync Data Oracle</a></li>
-                        {% endif %}
+                        
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'kategori_ilap_list' %}">Kategori ILAP</a></li>
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'kategori_wilayah_list' %}">Kategori Wilayah</a></li>
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'kanwil_list' %}">Kanwil</a></li>
@@ -161,6 +159,20 @@
                     <ul class="nxl-submenu">
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'durasi_jatuh_tempo_pmde_list' %}">Durasi Jatuh Tempo PMDE</a></li>
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'pic_pmde_list' %}">PIC PMDE</a></li>
+                    </ul>
+                </li>
+                {% endif %}
+
+                {% comment %} Sinkronisasi Data menu moved here from Kelola Referensi P3DE {% endcomment %}
+                {% if user|has_group:"admin" or user|has_group:"admin_pmde" %}
+                <li class="nxl-item nxl-hasmenu">
+                    <a href="javascript:void(0);" class="nxl-link">
+                        <span class="nxl-micon"><i class="feather-refresh-cw"></i></span>
+                        <span class="nxl-mtext">Sinkronisasi Data</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+                    </a>
+                    <ul class="nxl-submenu">
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'oracle_sync_page' %}">Sinkronisasi Data Referensi</a></li>
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'sync_tiket_page' %}">Sinkronisasi Data Tiket</a></li>
                     </ul>
                 </li>
                 {% endif %}

@@ -18,10 +18,18 @@ urlpatterns = [
     path('notifications/read/<int:pk>/', views.mark_notification_read, name='mark_notification_read'),
     path('password_change/', auth_views.PasswordChangeView.as_view(template_name='registration/change_password_form.html', success_url=reverse_lazy('user_password_change_done')), name='user_password_change'),
     path('password_change/done/', auth_views.PasswordChangeDoneView.as_view(template_name='registration/change_password_done.html'), name='user_password_change_done'),
-    path('oracle-sync/', views.oracle_sync_page, name='oracle_sync_page'),
-    path('oracle-sync/test/', views.oracle_sync_test_connection, name='oracle_sync_test'),
-    path('oracle-sync/check/', views.oracle_sync_check, name='oracle_sync_check'),
-    path('oracle-sync/run/', views.oracle_sync_run, name='oracle_sync_run'),
+    path('sync-data-referensi/', views.oracle_sync_page, name='oracle_sync_page'),
+    path('sync-data-referensi/test/', views.oracle_sync_test_connection, name='oracle_sync_test'),
+    path('sync-data-referensi/check/', views.oracle_sync_check, name='oracle_sync_check'),
+    path('sync-data-referensi/run/', views.oracle_sync_run, name='oracle_sync_run'),
+    
+    path('sync-tiket/', views.sync_tiket_page, name='sync_tiket_page'),
+    path('sync-tiket/test/', views.sync_tiket_test_connection, name='sync_tiket_test'),
+    path('sync-tiket/check/', views.sync_tiket_check, name='sync_tiket_check'),
+    path('sync-tiket/run/', views.sync_tiket_run, name='sync_tiket_run'),
+    path('sync-tiket/stop/', views.sync_tiket_stop, name='sync_tiket_stop'),
+    path('sync-tiket/progress/', views.sync_tiket_progress, name='sync_tiket_progress'),
+    path('sync-tiket/truncate/', views.sync_tiket_truncate, name='sync_tiket_truncate'),
 
     # === Dashboard Section ===
     path('dashboard/', views.DashboardMonitoringView.as_view(), name='dashboard_monitoring'),
