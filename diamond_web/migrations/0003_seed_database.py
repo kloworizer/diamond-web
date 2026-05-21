@@ -509,7 +509,7 @@ PERIODE_JENIS_DATA = [
     
     # Exchange of Information (EI)
     {"id_sub_jenis_data": "EI0010101", "periode": "Tahunan", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 60},
-    {"id_sub_jenis_data": "EI0010102", "periode": "Semester", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 45},
+    {"id_sub_jenis_data": "EI0010102", "periode": "Semesteran", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 45},
     
     # Kementerian (KM)
     {"id_sub_jenis_data": "KM0330101", "periode": "Bulanan", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 15},
@@ -1184,7 +1184,7 @@ def seed_klasifikasi_jenis_data(apps, schema_editor):
             dasar_hukum = DasarHukum.objects.get(deskripsi=item["dasar_hukum"])
             
             KlasifikasiJenisData.objects.get_or_create(
-                id_jenis_data_ilap=jenis_data_ilap,
+                id_sub_jenis_data=jenis_data_ilap,
                 id_klasifikasi_tabel=dasar_hukum,
                 defaults=seed_audit_defaults()
             )
@@ -1197,7 +1197,7 @@ def unseed_klasifikasi_jenis_data(apps, schema_editor):
     KlasifikasiJenisData = apps.get_model("diamond_web", "KlasifikasiJenisData")
     sub_jenis_data_ids = [item["id_sub_jenis_data"] for item in KLASIFIKASI_JENIS_DATA]
     # Delete all KlasifikasiJenisData records associated with the seeded JenisDataILAP records
-    KlasifikasiJenisData.objects.filter(id_jenis_data_ilap__id_sub_jenis_data__in=sub_jenis_data_ids).delete()
+    KlasifikasiJenisData.objects.filter(id_sub_jenis_data__id_sub_jenis_data__in=sub_jenis_data_ids).delete()
 
 
 def seed_periode_jenis_data(apps, schema_editor):
@@ -1488,12 +1488,12 @@ class Migration(migrations.Migration):
         migrations.RunPython(_run_if_seed_enabled("CARA_PENYAMPAIAN_DATA", seed_cara_penyampaian), reverse_code=unseed_cara_penyampaian),
         migrations.RunPython(_run_if_seed_enabled("MEDIA_BACKUP_DATA", seed_media_backup), reverse_code=unseed_media_backup),
         migrations.RunPython(_run_if_seed_enabled("STATUS_PENELITIAN_DATA", seed_status_penelitian), reverse_code=unseed_status_penelitian),
+        migrations.RunPython(_run_if_seed_enabled("USERS_DATA", seed_users), reverse_code=unseed_users),
         migrations.RunPython(_run_if_seed_enabled("ILAP_DATA", seed_ilap), reverse_code=unseed_ilap),
         migrations.RunPython(_run_if_seed_enabled("JENIS_DATA_ILAP_DATA", seed_jenis_data_ilap), reverse_code=unseed_jenis_data_ilap),
         migrations.RunPython(_run_if_seed_enabled("KLASIFIKASI_JENIS_DATA", seed_klasifikasi_jenis_data), reverse_code=unseed_klasifikasi_jenis_data),
         migrations.RunPython(_run_if_seed_enabled("PERIODE_JENIS_DATA", seed_periode_jenis_data), reverse_code=unseed_periode_jenis_data),
         migrations.RunPython(_run_if_seed_enabled("JENIS_PRIORITAS_DATA", seed_jenis_prioritas_data), reverse_code=unseed_jenis_prioritas_data),
-        migrations.RunPython(_run_if_seed_enabled("USERS_DATA", seed_users), reverse_code=unseed_users),
         migrations.RunPython(_run_if_seed_enabled("PIC_DATA", seed_pic), reverse_code=unseed_pic),
         migrations.RunPython(_run_if_seed_enabled("DURASI_JATUH_TEMPO_DATA", seed_durasi_jatuh_tempo), reverse_code=unseed_durasi_jatuh_tempo),
         migrations.RunPython(_run_if_seed_enabled("DOCX_TEMPLATE_DATA", seed_docx_templates), reverse_code=unseed_docx_templates),
