@@ -34,36 +34,218 @@
     </div>
 
     <div class="main-content">
-    <div class="card stretch stretch-full h-100">
+
+
+    <div class="card stretch stretch-full h-100">    
+        
+        <div class="card-body">
+							<!-- Header: Judul & Deskripsi -->
+							<div class="mb-4">
+								<h5 class="fw-bold text-dark mb-2">Backup Data</h5>
+								<p class="fs-12 text-muted mb-0">
+									Administrasi backup data menyediakan daftar rekapitulasi penyimpanan data mentah atas data yang diterima pada media backup yang tersedia di Subdirektorat Pengelolaan Data Eksternal.
+								</p>
+							</div>
+
+							<!-- Section: Filter & Mini Cards -->
+							<div class="d-flex flex-wrap align-items-center gap-3">
+								
+								<!-- Filter Pilih Tahun -->
+								<div class="d-flex align-items-center gap-2">
+									<label class="fs-12 text-muted text-nowrap mb-0">Pilih Tahun</label>
+									<select class="form-select form-select-sm bg-light-subtle border-gray-200" style="width: 120px; font-size: 13px;">
+										<option selected>2026</option>
+										<option>2025</option>
+										<option>2024</option>
+									</select>
+								</div>
+
+								<!-- Divider (Garis Vertikal khas Duralux) -->
+								<div class="vr text-gray-300 mx-1" style="height: 35px; opacity: 1;"></div>
+
+								<!-- List Mini Cards -->
+								<div class="d-flex flex-wrap gap-2">
+									
+									<!-- NAS Card -->
+									<div class="d-flex align-items-center border border-gray-200 rounded px-3 py-2 bg-white">
+										<div class="me-3 text-secondary">
+											<!-- Ikon Database (Gunakan SVG atau FontAwesome/Bootstrap Icon) -->
+											<i class="feather-database"></i> 
+										</div>
+										<div class="d-flex align-items-center gap-2">
+											<span class="fw-bold text-dark fs-13">NAS</span>
+											<span class="badge rounded-pill border border-gray-300 text-muted fw-normal px-2" style="font-size: 11px;">99339</span>
+										</div>
+									</div>
+
+									<!-- Server KPDE Card -->
+									<div class="d-flex align-items-center border border-gray-200 rounded px-3 py-2 bg-white">
+										<div class="me-3 text-secondary">
+											<i class="feather-database"></i>
+										</div>
+										<div class="d-flex align-items-center gap-2">
+											<span class="fw-bold text-dark fs-13">Server KPDE</span>
+											<span class="badge rounded-pill border border-gray-300 text-muted fw-normal px-2" style="font-size: 11px;">99339</span>
+										</div>
+									</div>
+
+									<!-- Skema New DWH Card -->
+									<div class="d-flex align-items-center border border-gray-200 rounded px-3 py-2 bg-white">
+										<div class="me-3 text-secondary">
+											<i class="feather-database"></i>
+										</div>
+										<div class="d-flex align-items-center gap-2">
+											<span class="fw-bold text-dark fs-13">Skema New DWH</span>
+											<span class="badge rounded-pill border border-gray-300 text-muted fw-normal px-2" style="font-size: 11px;">99339</span>
+										</div>
+									</div>
+
+								</div>
+							</div>
+						</div>
+        
         <div class="card-header">
             <h5 class="card-title mb-0"><i class="feather-database me-2"></i>Daftar Backup Data</h5>
             <button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>
         </div>
-        <div class="card-body custom-card-action p-0">
-            <div class="table-responsive">
-            <table id="backup-data-table" class="table table-hover mb-0" style="width:100%">
-                <thead>
-                    <tr>
-                        <th class="d-none">ID</th>
-                        <th>No Tiket</th>
-                        <th>Lokasi Backup</th>
-                        <th>Nama File</th>
-                        <th>Media Backup</th>
-                        <th>Actions</th>
-                    </tr>
-                    <tr id="column-search-row">
-                        <th class="d-none"></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search No Tiket" data-column="1" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Lokasi" data-column="2" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Nama File" data-column="3" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Media" data-column="4" /></th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-            </div>
-        </div>
+        <div class="card border-top-0 rounded-0 shadow-none">
+                                <div class="card-body">
+                                    <form action="#" method="GET">
+                                        <!-- Row Filter Utama -->
+                                        <div class="row">
+                                            <!-- Kolom Kiri -->
+                                            <div class="col-md-6">
+                                                <div class="row mb-3 align-items-center">
+                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Nama ILAP</label>
+                                                    <div class="col-sm-8">
+                                                        <select class="form-select form-select-sm border-gray-200 fs-12 text-muted">
+                                                            <option selected>Pilih ILAP</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="row mb-3 align-items-center">
+                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Jenis Data</label>
+                                                    <div class="col-sm-8">
+                                                        <select class="form-select form-select-sm border-gray-200 fs-12 text-muted">
+                                                            <option selected>Pilih Jenis Data</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="row mb-3 align-items-center">
+                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Subjenis Data</label>
+                                                    <div class="col-sm-8">
+                                                        <select class="form-select form-select-sm border-gray-200 fs-12 text-muted">
+                                                            <option selected>Pilih Subjenis Data</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="row mb-3 align-items-center">
+                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Kategori ILAP</label>
+                                                    <div class="col-sm-8">
+                                                        <select class="form-select form-select-sm border-gray-200 fs-12 text-muted">
+                                                            <option selected>Pilih Kategori ILAP</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Kolom Kanan -->
+                                            <div class="col-md-6">
+                                                <div class="row mb-3 align-items-center">
+                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Periode Data</label>
+                                                    <div class="col-sm-8">
+                                                        <select class="form-select form-select-sm border-gray-200 fs-12 text-muted">
+                                                            <option selected>Pilih Periode Data</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="row mb-3 align-items-center">
+                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Periode Pengiriman</label>
+                                                    <div class="col-sm-8">
+                                                        <select class="form-select form-select-sm border-gray-200 fs-12 text-muted">
+                                                            <option selected>Pilih Periode Pengiriman</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="row mb-3 align-items-center">
+                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Media Backup</label>
+                                                    <div class="col-sm-8">
+                                                        <select class="form-select form-select-sm border-gray-200 fs-12 text-muted">
+                                                            <option selected>Pilih Media Backup</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="row mb-3 align-items-center">
+                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">PIC P3DE</label>
+                                                    <div class="col-sm-8">
+                                                        <select class="form-select form-select-sm border-gray-200 fs-12 text-muted">
+                                                            <option selected>Pilih PIC P3DE</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Bagian Tombol Aksi -->
+                                        <div class="d-flex flex-wrap align-items-center justify-content-between mt-4 pt-3 border-top border-gray-100">
+                                            <!-- Tombol Ekspor -->
+                                            <div class="d-flex gap-2">
+                                                <button type="button" class="btn btn-sm btn-outline-success d-flex align-items-center gap-2 fs-11 fw-bold">
+                                                    <i class="feather-file-text"></i> EKSPOR KE EXCEL
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-2 fs-11 fw-bold">
+                                                    <i class="feather-file-text"></i> EKSPOR KE PDF
+                                                </button>
+                                            </div>
+
+                                            <!-- Tombol Filter & Cari -->
+                                            <div class="d-flex align-items-center gap-3">
+                                                <a href="#" class="btn border-0 text-primary text-decoration-none p-0 fw-bold">
+                                                    <i class="feather-x me-2"></i> Hapus Filter
+                                                </a>
+                                                
+                                                <button type="button" class="btn btn-primary" data-action="create"><i class="feather-search me-1"></i>Cari</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+    <div class="card-body custom-card-action p-0">
+    <!-- Menambahkan class text-nowrap agar teks kolom tidak turun ke bawah dan merusak layout -->
+    <div class="table-responsive text-nowrap">
+        <!-- Mengubah inline style width:100% menjadi min-width: 1200px (sesuaikan dengan jumlah kolommu) -->
+        <table id="backup-data-table" class="table table-hover mb-0" style="min-width: 1400px;">
+            <thead>
+                <tr>
+                    <th>Kategori ILAP</th>
+                    <th>Nama ILAP</th>
+                    <th>Jenis Data</th>
+                    <th>Subjenis Data</th>
+                    <th>Periode Data</th>
+                    <th>Nomor Tiket</th>
+                    <th>Media Backup</th>
+                    <th>Lokasi Penyimpanan</th>
+                    <th>PIC P3DE</th>
+                    <th>Jumlah Data</th>
+                </tr>
+                <tr id="column-search-row">
+                    <!-- Menyelaraskan jumlah kolom input search dengan kolom header di atas (total 10 kolom) -->
+                    <th><input type="text" class="form-control form-control-sm" placeholder="Search Kategori ILAP" data-column="0" /></th>
+                    <th><input type="text" class="form-control form-control-sm" placeholder="Search Nama ILAP" data-column="1" /></th>
+                    <th><input type="text" class="form-control form-control-sm" placeholder="Search Jenis Data" data-column="2" /></th>
+                    <th><input type="text" class="form-control form-control-sm" placeholder="Search Subjenis Data" data-column="3" /></th>
+                    <th><input type="text" class="form-control form-control-sm" placeholder="Search Periode Data" data-column="4" /></th>
+                    <th><input type="text" class="form-control form-control-sm" placeholder="Search Nomor Tiket" data-column="5" /></th>
+                    <th><input type="text" class="form-control form-control-sm" placeholder="Search Media Backup" data-column="6" /></th>
+                    <th><input type="text" class="form-control form-control-sm" placeholder="Search Lokasi Penyimpanan" data-column="7" /></th>
+                    <th><input type="text" class="form-control form-control-sm" placeholder="Search PIC P3DE" data-column="8" /></th>
+                    <th><input type="text" class="form-control form-control-sm" placeholder="Search Jumlah Data" data-column="9" /></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
     </div>
 
     <!-- Modal for Create/Edit/Delete -->
