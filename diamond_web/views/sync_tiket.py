@@ -139,16 +139,12 @@ def sync_tiket_test_connection(request):
 @never_cache
 def sync_tiket_check(request):
     try:
-        request.session.modified = False
-        
         logger.info('Starting tiket check...')
         service = OracleDataSyncService()
         logger.info('OracleDataSyncService initialized')
         
         tiket_summary = _check_tiket_data(service)
         logger.info(f'Tiket check completed: {tiket_summary}')
-        
-        request.session.create()
         
         return JsonResponse({
             'success': True,
@@ -197,8 +193,6 @@ def _sync_tiket_data_background(sync_id, request_user=None):
 @never_cache
 def sync_tiket_run(request):
     try:
-        request.session.modified = False
-        
         # Generate unique sync ID for tracking progress and stop signals
         sync_id = str(uuid.uuid4())
         cache.set(f'sync_tiket_stop_{sync_id}', False, timeout=3600)
@@ -215,7 +209,6 @@ def sync_tiket_run(request):
         thread.start()
         
         logger.info(f'Background sync thread started (sync_id={sync_id})')
-        request.session.create()
         
         # Return immediately with sync_id so client can start polling
         return JsonResponse({
@@ -237,33 +230,47 @@ def sync_tiket_run(request):
         return JsonResponse({'success': False, 'message': error_msg}, status=500)
 
 
-@login_required
-@user_passes_test(_is_admin_user)
 @require_POST
 @never_cache
 def sync_tiket_stop(request):
-    """Stop an in-progress sync operation."""
+    """Stop an in-progress sync operation (no auth check to avoid session locks)."""
     try:
         data = json.loads(request.body)
         sync_id = data.get('sync_id')
         if sync_id:
-            cache.set(f'sync_tiket_stop_{sync_id}', True, timeout=3600)
+            # Validate sync_id format (UUID)
+            try:
+                uuid.UUID(sync_id)
+                cache.set(f'sync_tiket_stop_{sync_id}', True, timeout=3600)
+            except (ValueError, TypeError):
+                return JsonResponse({'success': False, 'message': 'invalid sync_id'}, status=400)
+        
+        # Mark session as not modified to prevent session DB access
+        request.session.modified = False
+        
         return JsonResponse({'success': True, 'message': 'Sync dihentikan.'})
     except Exception as exc:
         error_msg = str(exc).strip()
         return JsonResponse({'success': False, 'message': error_msg}, status=500)
 
 
-@login_required
-@user_passes_test(_is_admin_user)
 @require_GET
 @never_cache
 def sync_tiket_progress(request):
-    """Get current progress of in-progress sync."""
+    """Get current progress of in-progress sync (no auth check to avoid session locks during sync)."""
     try:
         sync_id = request.GET.get('sync_id')
         if not sync_id:
             return JsonResponse({'success': False, 'message': 'sync_id required'}, status=400)
+        
+        # Validate sync_id format (UUID)
+        try:
+            uuid.UUID(sync_id)
+        except (ValueError, TypeError):
+            return JsonResponse({'success': False, 'message': 'invalid sync_id'}, status=400)
+        
+        # Mark session as not modified to prevent session DB access
+        request.session.modified = False
         
         # Check if sync is done
         is_done = cache.get(f'sync_tiket_done_{sync_id}', False)
@@ -351,38 +358,17 @@ def _make_aware_datetime(dt):
 
 
 def _assign_tiket_pics_sync(tiket, periode_jenis_data, today, base_time, request):
-    """Assign all active P3DE, PIDE, PMDE PICs to a synced tiket.
+    """Assign all active P3DE, PIDE, PMDE PICs to a synced tiket from the PIC table only.
     
-    Similar to rekam_tiket._assign_tiket_pics but simplified for sync operations.
-    Automatically adds all active PICs from the PIC table for this sub_jenis_data_ilap.
+    Only adds PICs that are already configured in the PIC table for this sub_jenis_data_ilap.
+    Does NOT automatically add the current user.
     """
     try:
-        if not request or not request.user:
+        if not periode_jenis_data:
             return
         
-        # Add current user as P3DE PIC if not already in PIC table
-        current_user_is_p3de_pic = PIC.objects.filter(
-            tipe=PIC.TipePIC.P3DE,
-            id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap,
-            id_user=request.user,
-            start_date__lte=today,
-            end_date__isnull=True
-        ).exists()
-        
-        if not current_user_is_p3de_pic:
-            TiketPIC.objects.create(
-                id_tiket=tiket,
-                id_user=request.user,
-                timestamp=timezone.now(),
-                role=TiketPIC.Role.P3DE
-            )
-            TiketAction.objects.create(
-                id_tiket=tiket,
-                id_user=request.user,
-                timestamp=base_time + timedelta(microseconds=1),
-                action=PICActionType.DITAMBAHKAN,
-                catatan=f'P3DE {request.user.username} ditambahkan'
-            )
+        from django.contrib.auth.models import User
+        admin_user = User.objects.get(username='admin')
         
         # Add all active P3DE, PIDE, PMDE PICs from PIC table
         active_filter = Q(start_date__lte=today) & Q(end_date__isnull=True)
@@ -405,7 +391,7 @@ def _assign_tiket_pics_sync(tiket, periode_jenis_data, today, base_time, request
                 )
                 TiketAction.objects.create(
                     id_tiket=tiket,
-                    id_user=request.user,
+                    id_user=admin_user,  # Always log as admin (system action)
                     timestamp=base_time + timedelta(microseconds=1 + idx),
                     action=PICActionType.DITAMBAHKAN,
                     catatan=f'{tipe_label} {pic.id_user.username} ditambahkan'
@@ -898,9 +884,13 @@ def _sync_tiket_data(service, sync_id=None, request=None):
                 if tiket is None:
                     continue  # Skip if upsert failed
                 
-                # Note: TiketPIC assignment is skipped during sync for performance
-                # PICs are assigned during rekam_tiket workflow when tikets are manually created
-                # Synced tikets from Oracle can have PICs assigned via separate batch operation if needed
+                # Assign TiketPICs for new tikets only (to avoid redundant work for updates)
+                if created and periode_jenis_data_obj:
+                    try:
+                        _assign_tiket_pics_sync(tiket, periode_jenis_data_obj, today, base_time, request)
+                    except Exception as pic_error:
+                        logger.warning(f"Failed to assign PICs for tiket {nomor_tiket}: {str(pic_error)}")
+                        # Don't fail the sync if PIC assignment fails
                 
                 if created:
                     inserts += 1

@@ -295,4 +295,7 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         context['STATUS_DIBATALKAN'] = STATUS_DIBATALKAN
         context['STATUS_SELESAI'] = STATUS_SELESAI
         
+        # Add old_db flag to indicate if this tiket is from migrated data
+        context['is_old_db'] = self.object.old_db
+        
         return context
