@@ -14,12 +14,18 @@ import signal
 import threading
 import time
 from functools import wraps
+import os
+import csv
 
 from ..models import Tiket, BentukData, CaraPenyampaian, PeriodeJenisData, JenisPrioritasData, StatusPenelitian, PIC, TiketPIC, TiketAction
 from ..constants.tiket_action_types import PICActionType
 from ..utils.oracle_sync import OracleDataSyncService, OracleSyncConfigError
 
 logger = logging.getLogger(__name__)
+
+# Create logs directory if it doesn't exist
+SYNC_LOGS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'sync_logs')
+os.makedirs(SYNC_LOGS_DIR, exist_ok=True)
 
 
 def retry_on_db_lock(max_retries=5, initial_delay=0.1, backoff_factor=2.0):
@@ -73,13 +79,6 @@ class SyncTimeoutError(Exception):
 
 def timeout_handler(signum, frame):
     raise SyncTimeoutError('Sinkronisasi timeout (> 5 menit)')
-
-
-@login_required
-@user_passes_test(_is_admin_user)
-@require_GET
-def sync_tiket_page(request):
-    return render(request, 'oracle_sync/tiket.html')
 
 
 @login_required
@@ -346,6 +345,46 @@ def sync_tiket_truncate(request):
         return JsonResponse({'success': False, 'message': error_msg}, status=500)
 
 
+def _log_failed_row(sync_id, nomor_tiket, periode_str, jenis_prioritas_str, tahun_data, error_msg, row_number=None):
+    """Log a failed row to CSV file for review and debugging."""
+    try:
+        # Create CSV log file for this sync run
+        log_filename = os.path.join(SYNC_LOGS_DIR, f'sync_failed_rows_{sync_id}.csv')
+        
+        # Write header if file doesn't exist
+        file_exists = os.path.exists(log_filename)
+        
+        with open(log_filename, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            
+            # Write header on first row
+            if not file_exists:
+                writer.writerow([
+                    'Timestamp',
+                    'Row Number',
+                    'Nomor Tiket',
+                    'Jenis Prioritas',
+                    'Tahun',
+                    'Periode',
+                    'Error Reason'
+                ])
+            
+            # Write failed row data
+            writer.writerow([
+                timezone.now().isoformat(),
+                row_number or '-',
+                nomor_tiket or '-',
+                jenis_prioritas_str or '-',
+                tahun_data or '-',
+                periode_str or '-',
+                error_msg or 'Unknown error'
+            ])
+        
+        logger.debug(f"Failed row logged to {log_filename}")
+    except Exception as e:
+        logger.error(f"Failed to log error row: {str(e)}")
+
+
 def _make_aware_datetime(dt):
     """Convert naive datetime to timezone-aware. Return None if dt is None."""
     if dt is None:
@@ -428,25 +467,40 @@ def _parse_jenis_prioritas_data(jenis_prioritas_str):
         return None, None
 
 
-def _map_periode_data(periode_str, tahun_value=None):
+def _map_periode_data(periode_str, jenis_prioritas_obj=None, tahun_value=None):
     """
-    Map Oracle periode_data values to PeriodeJenisData ID.
+    Map Oracle periode_data values to PeriodeJenisData.
     Oracle values: 'tahun', 'april', 'triwulan I', 'semester I', etc.
-    Maps to periode_pengiriman entries like 'Bulanan', 'Tahunan', etc.
     
     Strategy:
-    1. For month names (janvier, avril, etc.) -> map to 'Bulanan'
-    2. For 'triwulan i/ii/iii/iv' -> map to 'Triwulanan'
-    3. For 'semester i/ii' -> map to 'Semester'
-    4. For 'tahun' -> map to 'Tahunan'
-    5. For 'mingguan' -> map to 'Mingguan'
-    6. For '2 mingguan' or similar -> map to '2 Mingguan'
-    7. For 'harian' -> map to 'Harian'
+    1. Validate periode value (e.g., triwulan must be I/II/III/IV, not V or invalid)
+    2. Map to periode_penyampaian category ('Bulanan', 'Triwulanan', etc.)
+    3. Find PeriodePengiriman matching that category
+    4. If jenis_prioritas_obj provided, use it to find the correct id_sub_jenis_data_ilap
+    5. Find active PeriodeJenisData for that combination
+    
+    Returns: PeriodeJenisData object or None
     """
     if not periode_str:
         return None
     
-    periode_str = periode_str.strip().lower()
+    periode_str = periode_str.strip()
+    periode_lower = periode_str.lower()
+    
+    # Validate specific periode values
+    # Triwulan must be I, II, III, or IV (not V or higher)
+    if 'triwulan' in periode_lower:
+        valid_triwulan = ['i', 'ii', 'iii', 'iv']
+        if not any(f'triwulan {tw}' in periode_lower for tw in valid_triwulan):
+            # Invalid triwulan (e.g., 'triwulan v', 'triwulan 5')
+            logger.warning(f"Invalid triwulan value: '{periode_str}', skipping")
+            return None
+    
+    # Semester must be I or II
+    if 'semester' in periode_lower:
+        if not any(f'semester {s}' in periode_lower for s in ['i', 'ii']):
+            logger.warning(f"Invalid semester value: '{periode_str}', skipping")
+            return None
     
     # Month names that map to 'Bulanan' (Monthly)
     month_names = {
@@ -457,36 +511,53 @@ def _map_periode_data(periode_str, tahun_value=None):
     # Determine the periode_penyampaian category
     django_period = None
     
-    if periode_str in month_names:
+    if periode_lower in month_names:
         django_period = 'Bulanan'
-    elif 'triwulan' in periode_str:
+    elif 'triwulan' in periode_lower:
         django_period = 'Triwulanan'
-    elif 'semester' in periode_str:
+    elif 'semester' in periode_lower:
         django_period = 'Semesteran'
-    elif 'tahun' in periode_str:
+    elif periode_lower == 'tahun' or periode_lower == 'tahunan':
         django_period = 'Tahunan'
-    elif '2' in periode_str and 'minggu' in periode_str:
+    elif '2' in periode_str and 'minggu' in periode_lower:
         django_period = '2 Mingguan'
-    elif 'minggu' in periode_str:
+    elif 'minggu' in periode_lower:
         django_period = 'Mingguan'
-    elif 'hari' in periode_str or 'harian' in periode_str:
+    elif 'hari' in periode_lower or 'harian' in periode_lower:
         django_period = 'Harian'
     
     if not django_period:
+        logger.warning(f"Unknown periode value: '{periode_str}', unable to map")
         return None
     
-    # Find PeriodeJenisData that uses this periode_penyampaian
-    # First get the PeriodePengiriman matching the periode_penyampaian name
+    # Find PeriodePengiriman matching the category
     from ..models.periode_pengiriman import PeriodePengiriman
     periode_pengiriman = PeriodePengiriman.objects.filter(
         periode_penyampaian__exact=django_period
     ).first()
     
     if not periode_pengiriman:
+        logger.warning(f"No PeriodePengiriman found for category: '{django_period}'")
         return None
     
-    # Then get a PeriodeJenisData that uses this periode_pengiriman
-    # Try to find one that's currently active (start_date <= today and end_date is null or future)
+    # If we have jenis_prioritas_obj, use its id_sub_jenis_data_ilap to find the correct PeriodeJenisData
+    if jenis_prioritas_obj and hasattr(jenis_prioritas_obj, 'id_sub_jenis_data_ilap'):
+        from django.utils import timezone as tz
+        today = tz.now().date()
+        
+        # Find active PeriodeJenisData for this specific sub_jenis_data_ilap + periode
+        periode_jenis_data = PeriodeJenisData.objects.filter(
+            id_sub_jenis_data_ilap=jenis_prioritas_obj.id_sub_jenis_data_ilap,
+            id_periode_pengiriman=periode_pengiriman,
+            start_date__lte=today
+        ).exclude(
+            end_date__lt=today
+        ).first()
+        
+        if periode_jenis_data:
+            return periode_jenis_data
+    
+    # Fallback: find any active PeriodeJenisData with this periode_pengiriman
     from django.utils import timezone as tz
     today = tz.now().date()
     
@@ -775,12 +846,15 @@ def _sync_tiket_data(service, sync_id=None, request=None):
                 jenis_prioritas_obj, tahun_data = _parse_jenis_prioritas_data(jenis_prioritas_str)
                 
                 # Parse periode_data to get PeriodeJenisData (REQUIRED field)
+                # Pass jenis_prioritas_obj so it can find the correct PeriodeJenisData for that sub_jenis_data_ilap
                 periode_str = row_dict.get('periode_data')
-                periode_jenis_data_obj = _map_periode_data(periode_str, tahun_data)
+                periode_jenis_data_obj = _map_periode_data(periode_str, jenis_prioritas_obj=jenis_prioritas_obj, tahun_value=tahun_data)
                 
                 # Skip rows without valid periode_jenis_data (required field)
                 if not periode_jenis_data_obj:
-                    errors.append(f"Tiket {nomor_tiket}: Periode '{periode_str}' not found in database")
+                    error_msg = f"Periode '{periode_str}' not found in database"
+                    errors.append(f"Tiket {nomor_tiket}: {error_msg}")
+                    _log_failed_row(sync_id, nomor_tiket, periode_str, jenis_prioritas_str, tahun_data, error_msg, row_number=idx+1)
                     continue
                 
                 # Extract periode and tahun from PeriodeJenisData if available
@@ -906,13 +980,21 @@ def _sync_tiket_data(service, sync_id=None, request=None):
                     time.sleep(0.01)  # 10ms delay every 5 rows
                         
             except Exception as e:
-                error_msg = str(e).lower()
+                error_msg = str(e)
                 # Log database lock errors separately for monitoring
-                if 'locked' in error_msg:
+                if 'locked' in error_msg.lower():
                     logger.warning(f"Tiket {row_dict.get('id_tiket', '?')}: database is locked after retries")
-                    errors.append(f"Tiket {row_dict.get('id_tiket', '?')}: database is locked")
+                    err_msg = "Database is locked after retries"
+                    errors.append(f"Tiket {row_dict.get('id_tiket', '?')}: {err_msg}")
+                    _log_failed_row(sync_id, row_dict.get('id_tiket'), row_dict.get('periode_data'), 
+                                  row_dict.get('jenis_prioritas_data'), row_dict.get('tahun_data'), 
+                                  err_msg, row_number=idx+1)
                 else:
-                    errors.append(f"Tiket {row_dict.get('id_tiket', '?')}: {str(e)[:150]}")
+                    err_msg = error_msg[:150]
+                    errors.append(f"Tiket {row_dict.get('id_tiket', '?')}: {err_msg}")
+                    _log_failed_row(sync_id, row_dict.get('id_tiket'), row_dict.get('periode_data'), 
+                                  row_dict.get('jenis_prioritas_data'), row_dict.get('tahun_data'), 
+                                  err_msg, row_number=idx+1)
         
         return {
             'source_rows': len(rows),
