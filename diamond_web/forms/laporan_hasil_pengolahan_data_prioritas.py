@@ -103,12 +103,12 @@ class LaporanHasilPengolahanDataPrioritasExportResource(resources.ModelResource)
     id_tiket = fields.Field(column_name='ID_TIKET', attribute='nomor_tiket')
     periode_tiket = fields.Field(column_name='PERIODE_TIKET')
     
-    data_diterima = fields.Field(column_name='DATA DITERIMA', attribute='baris_diterima')
-    data_lengkap = fields.Field(column_name='DATA LENGKAP', attribute='baris_lengkap')
-    data_klarifikasi = fields.Field(column_name='DATA KLARIFIKASI', attribute='baris_tidak_lengkap')
+    data_diterima = fields.Field(column_name='DATA DITERIMA (P3DE)', attribute='baris_diterima')
+    data_lengkap = fields.Field(column_name='DATA LENGKAP (P3DE)', attribute='baris_lengkap')
+    data_klarifikasi = fields.Field(column_name='DATA KLARIFIKASI (P3DE)', attribute='baris_tidak_lengkap')
     
     # Kolom DATA DITERIMA berulang sesuai permintaan input
-    data_diterima_v2 = fields.Field(column_name='DATA DITERIMA', attribute='baris_diterima')
+    data_diterima_v2 = fields.Field(column_name='DATA DITERIMA (PIDE)', attribute='baris_diterima')
     
     data_direkam = fields.Field(column_name='DATA DIREKAM')
     data_teridentifikasi = fields.Field(column_name='DATA TERIDENTIFIKASI')
