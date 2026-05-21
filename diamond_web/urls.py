@@ -216,6 +216,10 @@ urlpatterns = [
     path('laporan-pengendalian-mutu/', views.LaporanPengendalianMutuView.as_view(), name='laporan_pengendalian_mutu'),
     path('laporan-pengendalian-mutu/data/', views.laporan_pengendalian_mutu_data, name='laporan_pengendalian_mutu_data'),
     path('laporan-pengendalian-mutu/export/', views.laporan_pengendalian_mutu_export, name='laporan_pengendalian_mutu_export'),
+    # Laporan Hasil Pengolahan Data Prioritas
+    path('laporan-hasil-pengolahan-data-prioritas/', views.LaporanHasilPengolahanDataPrioritasView.as_view(), name='laporan_hasil_pengolahan_data_prioritas'),
+    path('laporan-hasil-pengolahan-data-prioritas/data/', views.laporan_hasil_pengolahan_data_prioritas_data, name='laporan_hasil_pengolahan_data_prioritas_data'),
+    path('laporan-hasil-pengolahan-data-prioritas/export/', views.laporan_hasil_pengolahan_data_prioritas_export, name='laporan_hasil_pengolahan_data_prioritas_export'),
     # === PMDE Section ===
     # Laporan Kelengkapan Data
     path('laporan-kelengkapan-data/', views.LaporanKelengkapanDataView.as_view(), name='laporan_kelengkapan_data'),
