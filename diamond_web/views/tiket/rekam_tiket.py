@@ -72,32 +72,8 @@ class ILAPPeriodeDataAPIView(View):
             
             # Get only valid PeriodeJenisData for the given ILAP with:
             # 1. Active PIC P3DE
-            # 2. Active PIDE durasi
-            # 3. Active PMDE durasi
             periode_data_list = PeriodeJenisData.objects.filter(
                 id_sub_jenis_data_ilap__id_ilap_id=ilap_id,
-            ).filter(
-                Q(
-                    id_sub_jenis_data_ilap__durasijatuhtempo__seksi=pide_group,
-                    id_sub_jenis_data_ilap__durasijatuhtempo__start_date__lte=today,
-                    id_sub_jenis_data_ilap__durasijatuhtempo__end_date__isnull=True
-                ) |
-                Q(
-                    id_sub_jenis_data_ilap__durasijatuhtempo__seksi=pide_group,
-                    id_sub_jenis_data_ilap__durasijatuhtempo__start_date__lte=today,
-                    id_sub_jenis_data_ilap__durasijatuhtempo__end_date__gte=today
-                )
-            ).filter(
-                Q(
-                    id_sub_jenis_data_ilap__durasijatuhtempo__seksi=pmde_group,
-                    id_sub_jenis_data_ilap__durasijatuhtempo__start_date__lte=today,
-                    id_sub_jenis_data_ilap__durasijatuhtempo__end_date__isnull=True
-                ) |
-                Q(
-                    id_sub_jenis_data_ilap__durasijatuhtempo__seksi=pmde_group,
-                    id_sub_jenis_data_ilap__durasijatuhtempo__start_date__lte=today,
-                    id_sub_jenis_data_ilap__durasijatuhtempo__end_date__gte=today
-                )
             )
 
             if not (request.user.is_superuser or request.user.groups.filter(name='admin').exists()):
