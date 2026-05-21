@@ -148,11 +148,15 @@ class PICCreateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Cr
         from ..models.tiket_action import TiketAction
         from django.utils import timezone
         from django.db.models import Q
+        from django.contrib.auth.models import User
         
         response = super().form_valid(form)
         
         # Get the newly created PIC object
         pic = self.object
+        
+        # Get admin user for PIC action logging
+        admin_user = User.objects.get(username='admin')
         
         # Map PIC tipe to TiketPIC role
         tipe_to_role = {
@@ -212,7 +216,7 @@ class PICCreateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Cr
                         
                         TiketAction.objects.create(
                             id_tiket=tiket,
-                            id_user=self.request.user,
+                            id_user=admin_user,
                             timestamp=current_time,
                             action=action_type,
                             catatan=message
@@ -231,7 +235,7 @@ class PICCreateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Cr
                     # Add log to TiketAction
                     TiketAction.objects.create(
                         id_tiket=tiket,
-                        id_user=self.request.user,
+                        id_user=admin_user,
                         timestamp=current_time,
                         action=PICActionType.DITAMBAHKAN,
                         catatan=f'{tipe_label} {pic.id_user.username} ditambahkan'
@@ -351,7 +355,7 @@ class PICUpdateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Up
                     # Add log to TiketAction
                     TiketAction.objects.create(
                         id_tiket=tiket_pic.id_tiket,
-                        id_user=self.request.user,
+                        id_user=admin_user,
                         timestamp=current_time,
                         action=PICActionType.TIDAK_AKTIF,
                         catatan=f'{tipe_label} {self.object.id_user.username} tidak aktif'
@@ -400,7 +404,7 @@ class PICUpdateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Up
                         if is_reactivation or filled_timestamp:
                             TiketAction.objects.create(
                                 id_tiket=tiket,
-                                id_user=self.request.user,
+                                id_user=admin_user,
                                 timestamp=current_time,
                                 action=PICActionType.DIAKTIFKAN_KEMBALI,
                                 catatan=f'{tipe_label} {self.object.id_user.username} diaktifkan kembali'
@@ -419,7 +423,7 @@ class PICUpdateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Up
                         # Add log for new assignment
                         TiketAction.objects.create(
                             id_tiket=tiket,
-                            id_user=self.request.user,
+                            id_user=admin_user,
                             timestamp=current_time,
                             action=PICActionType.DITAMBAHKAN,
                             catatan=f'{tipe_label} {self.object.id_user.username} ditambahkan'
@@ -505,10 +509,14 @@ class PICDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminAnyRequiredMixin, 
         from ..models.tiket_pic import TiketPIC
         from ..models.tiket_action import TiketAction
         from django.utils import timezone
+        from django.contrib.auth.models import User
         
         self.object = self.get_object()
         name = str(self.object)
         pic = self.object
+        
+        # Get admin user for PIC action logging
+        admin_user = User.objects.get(username='admin')
         
         # Map PIC tipe to TiketPIC role
         tipe_to_role = {
@@ -536,7 +544,7 @@ class PICDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminAnyRequiredMixin, 
                 # Add log to TiketAction
                 TiketAction.objects.create(
                     id_tiket=tiket,
-                    id_user=request.user,
+                    id_user=admin_user,
                     timestamp=current_time,
                     action=PICActionType.TIDAK_AKTIF,
                     catatan=f'{tipe_label} {pic.id_user.username} dihapus'

@@ -641,6 +641,10 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
             start_date__lte=today,
             end_date__isnull=True
         ).exists()
+        
+        # Get admin user for PIC action logging
+        from django.contrib.auth.models import User
+        admin_user = User.objects.get(username='admin')
         if not current_user_is_p3de_pic:
             TiketPIC.objects.create(
                 id_tiket=self.object,
@@ -653,7 +657,7 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
             action_time = (base_time + timedelta(microseconds=1)) if base_time else datetime.now()
             TiketAction.objects.create(
                 id_tiket=self.object,
-                id_user=self.request.user,
+                id_user=admin_user,
                 timestamp=action_time,
                 action=PICActionType.DITAMBAHKAN,
                 catatan=f'{tipe_label} {self.request.user.username} ditambahkan'
@@ -686,7 +690,7 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
 
                 TiketAction.objects.create(
                     id_tiket=self.object,
-                    id_user=self.request.user,
+                    id_user=admin_user,
                     timestamp=action_time,
                     action=PICActionType.DITAMBAHKAN,
                     catatan=f'{tipe_label} {pic.id_user.username} ditambahkan'

@@ -39,6 +39,9 @@
                 <button id="btn-stop" class="btn btn-warning" type="button" disabled style="display:none;">
                     <i class="feather-square me-1"></i>Stop Sync
                 </button>
+                <button id="btn-force-stop" class="btn btn-danger" type="button" style="display:none;">
+                    <i class="feather-x me-1"></i>Force Clear
+                </button>
             </div>
 
             <div id="sync-progress" class="mt-4" style="display:none;">
@@ -81,6 +84,7 @@
         const btnCheck = document.getElementById('btn-check');
         const btnSync = document.getElementById('btn-sync');
         const btnStop = document.getElementById('btn-stop');
+        const btnForceStop = document.getElementById('btn-force-stop');
         const progressBox = document.getElementById('sync-progress');
         const resultBox = document.getElementById('sync-result');
 
@@ -100,6 +104,95 @@
 
         let currentSyncId = null;
         let syncIntervalId = null;
+        
+        const SYNC_ID_STORAGE_KEY = 'tiket_sync_id';
+        
+        // Check if there's an active sync from a previous page load
+        function resumeActiveSyncIfExists() {
+            const storedSyncId = localStorage.getItem(SYNC_ID_STORAGE_KEY);
+            if (storedSyncId) {
+                currentSyncId = storedSyncId;
+                // Check if sync is still running
+                fetch("{% url 'sync_tiket_progress' %}?sync_id=" + currentSyncId, {
+                    method: 'GET',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                }).then(res => res.json()).then(data => {
+                    if (data.success && !data.done) {
+                        // Sync is still running, resume polling
+                        console.log('Resuming active sync:', currentSyncId);
+                        progressBox.style.display = 'block';
+                        btnStop.style.display = 'inline-block';
+                        btnStop.disabled = false;
+                        btnForceStop.style.display = 'none';  // Hidden until needed
+                        btnSync.disabled = true;
+                        btnCheck.disabled = true;
+                        
+                        // Update progress with cached data
+                        if (data.progress) {
+                            updateProgress(data.progress);
+                        }
+                        
+                        // Resume polling
+                        startProgressPolling();
+                    } else if (data.done) {
+                        // Sync completed, clean up
+                        localStorage.removeItem(SYNC_ID_STORAGE_KEY);
+                        if (data.success && data.summary) {
+                            renderSummary(data.summary);
+                            showToast(data.message || 'Sync selesai.', 'success');
+                        }
+                    } else {
+                        // Unexpected response, clear stuck session
+                        console.warn('Unexpected sync status, clearing stuck session');
+                        localStorage.removeItem(SYNC_ID_STORAGE_KEY);
+                        currentSyncId = null;
+                    }
+                }).catch(e => {
+                    console.error('Error checking sync status:', e);
+                    // If we can't reach the server or sync_id is invalid, clean up
+                    localStorage.removeItem(SYNC_ID_STORAGE_KEY);
+                    currentSyncId = null;
+                });
+            }
+        }
+
+        function startProgressPolling() {
+            if (syncIntervalId) clearInterval(syncIntervalId);
+            
+            syncIntervalId = setInterval(async function() {
+                try {
+                    const progressResp = await fetch("{% url 'sync_tiket_progress' %}?sync_id=" + currentSyncId, {
+                        method: 'GET',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    const progressData = await progressResp.json();
+                    
+                    if (progressData.success && progressData.progress) {
+                        updateProgress(progressData.progress);
+                    }
+                    
+                    if (progressData.done) {
+                        clearInterval(syncIntervalId);
+                        localStorage.removeItem(SYNC_ID_STORAGE_KEY);
+                        
+                        if (!progressData.success) {
+                            showToast(progressData.message || 'Sync error', 'danger');
+                        } else if (progressData.summary) {
+                            renderSummary(progressData.summary);
+                            showToast(progressData.message || 'Sync selesai.', 'success');
+                        }
+                        
+                        progressBox.style.display = 'none';
+                        btnStop.style.display = 'none';
+                        btnForceStop.style.display = 'none';
+                        btnSync.disabled = false;
+                        btnCheck.disabled = false;
+                    }
+                } catch (e) {
+                    console.error('Progress fetch error:', e);
+                }
+            }, 500);
+        }
 
         function setLoading(button, isLoading, defaultText, loadingText) {
             button.disabled = isLoading;
@@ -221,44 +314,20 @@
                 // Start sync (returns immediately with sync_id)
                 const startResp = await postJson("{% url 'sync_tiket_run' %}");
                 currentSyncId = startResp.sync_id;
+                
+                // Store sync_id in localStorage for page refresh persistence
+                localStorage.setItem(SYNC_ID_STORAGE_KEY, currentSyncId);
+                
                 showToast(startResp.message, 'info');
                 
-                // Poll for progress until done
-                let isDone = false;
-                syncIntervalId = setInterval(async function() {
-                    try {
-                        const progressResp = await fetch("{% url 'sync_tiket_progress' %}?sync_id=" + currentSyncId, {
-                            method: 'GET',
-                            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                        });
-                        const progressData = await progressResp.json();
-                        
-                        if (progressData.success && progressData.progress) {
-                            updateProgress(progressData.progress);
-                        }
-                        
-                        if (progressData.done) {
-                            isDone = true;
-                            clearInterval(syncIntervalId);
-                            
-                            if (!progressData.success) {
-                                // Error occurred
-                                showToast(progressData.message || 'Sync error', 'danger');
-                            } else if (progressData.summary) {
-                                // Sync completed successfully
-                                renderSummary(progressData.summary);
-                                showToast(progressData.message || 'Sync selesai.', 'success');
-                            }
-                        }
-                    } catch (e) {
-                        logger.error('Progress fetch error:', e);
-                    }
-                }, 500);
+                // Start polling for progress
+                startProgressPolling();
                 
             } catch (error) {
                 clearInterval(syncIntervalId);
                 progressBox.style.display = 'none';
                 btnStop.style.display = 'none';
+                localStorage.removeItem(SYNC_ID_STORAGE_KEY);
                 showToast(error.message, 'danger');
             } finally {
                 btnCheck.disabled = false;
@@ -269,13 +338,51 @@
         btnStop.addEventListener('click', async function () {
             if (!currentSyncId) return;
             btnStop.disabled = true;
+            
             try {
                 await postJson("{% url 'sync_tiket_stop' %}", { sync_id: currentSyncId });
                 showToast('Permintaan stop dikirim. Menunggu sync selesai...', 'info');
+                
+                // Set a timeout to force recovery if sync doesn't stop within 30 seconds
+                const forceStopTimeout = setTimeout(() => {
+                    console.warn('Sync stop timeout reached, forcing UI recovery');
+                    showToast('Timeout menunggu sync. Klik Force Clear untuk membersihkan.', 'warning');
+                    btnForceStop.style.display = 'inline-block';
+                }, 30000);
+                
+                // Store the timeout so btnForceStop can clear it
+                btnForceStop.dataset.timeoutId = forceStopTimeout;
+                
             } catch (error) {
                 showToast(error.message, 'danger');
                 btnStop.disabled = false;
             }
+        });
+        
+        btnForceStop.addEventListener('click', function () {
+            // Clear the timeout if it exists
+            if (btnForceStop.dataset.timeoutId) {
+                clearTimeout(parseInt(btnForceStop.dataset.timeoutId));
+            }
+            
+            // Immediately clear everything
+            clearInterval(syncIntervalId);
+            localStorage.removeItem(SYNC_ID_STORAGE_KEY);
+            currentSyncId = null;
+            
+            // Reset UI
+            progressBox.style.display = 'none';
+            btnStop.style.display = 'none';
+            btnForceStop.style.display = 'none';
+            btnSync.disabled = false;
+            btnCheck.disabled = false;
+            
+            showToast('Sync session cleared. Anda bisa mulai lagi.', 'success');
+        });
+        
+        // Resume active sync on page load if it exists
+        document.addEventListener('DOMContentLoaded', function() {
+            resumeActiveSyncIfExists();
         });
     })();
 </script>
