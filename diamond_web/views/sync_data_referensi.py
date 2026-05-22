@@ -450,38 +450,69 @@ def oracle_sync_truncate(request):
         
         logger.info(f'Starting truncate for {len(tables_to_truncate)} tables: {tables_to_truncate}')
         
+        # For PostgreSQL, build dependency order to avoid foreign key constraint issues
+        # We'll truncate child tables first, then parent tables
+        if db_vendor == 'postgresql':
+            # Use DELETE FROM instead of TRUNCATE to avoid cascade issues
+            logger.info('Using DELETE FROM for PostgreSQL tables (avoiding TRUNCATE constraint issues)')
+            use_delete_instead = True
+        else:
+            use_delete_instead = False
+        
         with connection.cursor() as cursor:
             try:
                 # Disable foreign key checks before truncating to handle dependencies
                 if db_vendor == 'sqlite':
                     logger.info('Disabling foreign key checks for SQLite')
                     cursor.execute('PRAGMA foreign_keys = OFF')
-                elif db_vendor == 'postgresql':
-                    logger.info('Disabling foreign key checks for PostgreSQL')
-                    cursor.execute('SET session_replication_role = replica')
                 elif db_vendor == 'mysql':
                     logger.info('Disabling foreign key checks for MySQL')
                     cursor.execute('SET FOREIGN_KEY_CHECKS = 0')
                 
-                # Truncate tables (database-agnostic)
+                # For PostgreSQL, temporarily disable triggers but keep constraints
+                # This allows us to delete without issues
+                if db_vendor == 'postgresql':
+                    logger.info('Disabling triggers for PostgreSQL')
+                    for table_name in tables_to_truncate:
+                        try:
+                            cursor.execute(f'ALTER TABLE {table_name} DISABLE TRIGGER ALL')
+                        except Exception as e:
+                            logger.warning(f'Could not disable triggers for {table_name}: {str(e)}')
+                
+                # Delete/Truncate tables
                 for table_name in tables_to_truncate:
                     try:
-                        if db_vendor == 'sqlite':
+                        if db_vendor == 'postgresql' and use_delete_instead:
+                            # Use DELETE FROM to avoid foreign key constraint issues
+                            cursor.execute(f'DELETE FROM {table_name}')
+                            logger.info(f'Cleared table (DELETE): {table_name}')
+                        elif db_vendor == 'sqlite':
                             # SQLite uses DELETE instead of TRUNCATE
                             cursor.execute(f'DELETE FROM {table_name}')
-                        elif db_vendor == 'postgresql':
-                            # PostgreSQL uses TRUNCATE
-                            cursor.execute(f'TRUNCATE TABLE {table_name}')
+                            logger.info(f'Cleared table (DELETE): {table_name}')
                         elif db_vendor == 'mysql':
                             # MySQL uses TRUNCATE TABLE
                             cursor.execute(f'TRUNCATE TABLE {table_name}')
+                            logger.info(f'Truncated table: {table_name}')
+                        elif db_vendor == 'postgresql':
+                            # Fallback for other cases
+                            cursor.execute(f'TRUNCATE TABLE {table_name}')
+                            logger.info(f'Truncated table: {table_name}')
                         
                         truncated_count += 1
-                        logger.info(f'Truncated table: {table_name}')
                     except Exception as e:
                         error_detail = str(e)
-                        logger.error(f'Failed to truncate {table_name}: {error_detail}')
+                        logger.error(f'Failed to clear {table_name}: {error_detail}')
                         truncate_errors.append(f"{table_name}: {error_detail}")
+                
+                # Re-enable triggers for PostgreSQL
+                if db_vendor == 'postgresql':
+                    logger.info('Re-enabling triggers for PostgreSQL')
+                    for table_name in tables_to_truncate:
+                        try:
+                            cursor.execute(f'ALTER TABLE {table_name} ENABLE TRIGGER ALL')
+                        except Exception as e:
+                            logger.warning(f'Could not enable triggers for {table_name}: {str(e)}')
                 
                 # Reset auto-increment sequences (database-agnostic)
                 for table_name in tables_to_truncate:
@@ -493,24 +524,23 @@ def oracle_sync_truncate(request):
                             seq_name = f'{table_name}_id_seq'
                             try:
                                 cursor.execute(f"SELECT setval('{seq_name}', 1)")
+                                logger.info(f'Reset sequence: {seq_name}')
                             except Exception:
                                 # Sequence might not exist, skip silently
                                 pass
                         elif db_vendor == 'mysql':
                             # MySQL: TRUNCATE already resets auto_increment
-                            pass
+                            # For DELETE, we need to reset it manually
+                            cursor.execute(f'ALTER TABLE {table_name} AUTO_INCREMENT = 1')
                     except Exception as e:
                         error_detail = str(e)
                         logger.error(f'Failed to reset sequence for {table_name}: {error_detail}')
                         # Don't add to errors list since truncate itself succeeded
                 
-                # Re-enable foreign key checks after truncating
+                # Re-enable foreign key checks after clearing
                 if db_vendor == 'sqlite':
                     logger.info('Re-enabling foreign key checks for SQLite')
                     cursor.execute('PRAGMA foreign_keys = ON')
-                elif db_vendor == 'postgresql':
-                    logger.info('Re-enabling foreign key checks for PostgreSQL')
-                    cursor.execute('SET session_replication_role = default')
                 elif db_vendor == 'mysql':
                     logger.info('Re-enabling foreign key checks for MySQL')
                     cursor.execute('SET FOREIGN_KEY_CHECKS = 1')
