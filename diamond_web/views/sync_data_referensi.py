@@ -450,14 +450,8 @@ def oracle_sync_truncate(request):
         
         logger.info(f'Starting truncate for {len(tables_to_truncate)} tables: {tables_to_truncate}')
         
-        # For PostgreSQL, build dependency order to avoid foreign key constraint issues
-        # We'll truncate child tables first, then parent tables
-        if db_vendor == 'postgresql':
-            # Use DELETE FROM instead of TRUNCATE to avoid cascade issues
-            logger.info('Using DELETE FROM for PostgreSQL tables (avoiding TRUNCATE constraint issues)')
-            use_delete_instead = True
-        else:
-            use_delete_instead = False
+        # Store constraint definitions for PostgreSQL
+        constraint_definitions = []
         
         with connection.cursor() as cursor:
             try:
@@ -468,34 +462,61 @@ def oracle_sync_truncate(request):
                 elif db_vendor == 'mysql':
                     logger.info('Disabling foreign key checks for MySQL')
                     cursor.execute('SET FOREIGN_KEY_CHECKS = 0')
-                
-                # For PostgreSQL, temporarily disable triggers but keep constraints
-                # This allows us to delete without issues
-                if db_vendor == 'postgresql':
-                    logger.info('Disabling triggers for PostgreSQL')
+                elif db_vendor == 'postgresql':
+                    # PostgreSQL: Save and disable all constraints temporarily
+                    logger.info('Saving and disabling constraints for PostgreSQL')
                     for table_name in tables_to_truncate:
                         try:
+                            # Disable all triggers on the table
                             cursor.execute(f'ALTER TABLE {table_name} DISABLE TRIGGER ALL')
+                            logger.info(f'Disabled triggers for {table_name}')
                         except Exception as e:
                             logger.warning(f'Could not disable triggers for {table_name}: {str(e)}')
+                    
+                    # Get all foreign key constraints for later recreation
+                    try:
+                        cursor.execute("""
+                            SELECT tc.constraint_name, tc.table_name, tc.table_schema,
+                                   kcu.column_name, ccu.table_name AS foreign_table_name,
+                                   ccu.column_name AS foreign_column_name,
+                                   rc.update_rule, rc.delete_rule
+                            FROM information_schema.table_constraints AS tc
+                            JOIN information_schema.key_column_usage AS kcu
+                              ON tc.constraint_name = kcu.constraint_name
+                              AND tc.table_schema = kcu.table_schema
+                            JOIN information_schema.constraint_column_usage AS ccu
+                              ON ccu.constraint_name = tc.constraint_name
+                              AND ccu.table_schema = tc.table_schema
+                            JOIN information_schema.referential_constraints AS rc
+                              ON rc.constraint_name = tc.constraint_name
+                            WHERE tc.constraint_type = 'FOREIGN KEY'
+                        """)
+                        constraints = cursor.fetchall()
+                        constraint_definitions = constraints
+                        
+                        # Drop all foreign key constraints
+                        for constraint_name, table_name, table_schema, *rest in constraints:
+                            try:
+                                cursor.execute(f'ALTER TABLE "{table_schema}"."{table_name}" DROP CONSTRAINT "{constraint_name}"')
+                                logger.info(f'Dropped constraint {constraint_name} on {table_name}')
+                            except Exception as e:
+                                logger.warning(f'Could not drop constraint {constraint_name}: {str(e)}')
+                    except Exception as e:
+                        logger.warning(f'Error managing constraints: {str(e)}')
                 
                 # Delete/Truncate tables
                 for table_name in tables_to_truncate:
                     try:
-                        if db_vendor == 'postgresql' and use_delete_instead:
-                            # Use DELETE FROM to avoid foreign key constraint issues
+                        if db_vendor == 'sqlite':
+                            # SQLite uses DELETE instead of TRUNCATE
                             cursor.execute(f'DELETE FROM {table_name}')
                             logger.info(f'Cleared table (DELETE): {table_name}')
-                        elif db_vendor == 'sqlite':
-                            # SQLite uses DELETE instead of TRUNCATE
+                        elif db_vendor == 'postgresql':
+                            # PostgreSQL uses DELETE (all constraints are already dropped)
                             cursor.execute(f'DELETE FROM {table_name}')
                             logger.info(f'Cleared table (DELETE): {table_name}')
                         elif db_vendor == 'mysql':
                             # MySQL uses TRUNCATE TABLE
-                            cursor.execute(f'TRUNCATE TABLE {table_name}')
-                            logger.info(f'Truncated table: {table_name}')
-                        elif db_vendor == 'postgresql':
-                            # Fallback for other cases
                             cursor.execute(f'TRUNCATE TABLE {table_name}')
                             logger.info(f'Truncated table: {table_name}')
                         
@@ -504,15 +525,6 @@ def oracle_sync_truncate(request):
                         error_detail = str(e)
                         logger.error(f'Failed to clear {table_name}: {error_detail}')
                         truncate_errors.append(f"{table_name}: {error_detail}")
-                
-                # Re-enable triggers for PostgreSQL
-                if db_vendor == 'postgresql':
-                    logger.info('Re-enabling triggers for PostgreSQL')
-                    for table_name in tables_to_truncate:
-                        try:
-                            cursor.execute(f'ALTER TABLE {table_name} ENABLE TRIGGER ALL')
-                        except Exception as e:
-                            logger.warning(f'Could not enable triggers for {table_name}: {str(e)}')
                 
                 # Reset auto-increment sequences (database-agnostic)
                 for table_name in tables_to_truncate:
@@ -537,13 +549,41 @@ def oracle_sync_truncate(request):
                         logger.error(f'Failed to reset sequence for {table_name}: {error_detail}')
                         # Don't add to errors list since truncate itself succeeded
                 
-                # Re-enable foreign key checks after clearing
+                # Re-enable foreign key checks and constraints
                 if db_vendor == 'sqlite':
                     logger.info('Re-enabling foreign key checks for SQLite')
                     cursor.execute('PRAGMA foreign_keys = ON')
                 elif db_vendor == 'mysql':
                     logger.info('Re-enabling foreign key checks for MySQL')
                     cursor.execute('SET FOREIGN_KEY_CHECKS = 1')
+                elif db_vendor == 'postgresql':
+                    # Recreate foreign key constraints
+                    logger.info('Recreating foreign key constraints for PostgreSQL')
+                    if constraint_definitions:
+                        for constraint_name, table_name, table_schema, column_name, foreign_table_name, foreign_column_name, update_rule, delete_rule in constraint_definitions:
+                            try:
+                                # Build the foreign key constraint
+                                fk_sql = f'ALTER TABLE "{table_schema}"."{table_name}" ADD CONSTRAINT "{constraint_name}" FOREIGN KEY ("{column_name}") REFERENCES "{foreign_table_name}"("{foreign_column_name}")'
+                                
+                                # Add update and delete rules if specified
+                                if update_rule and update_rule != 'RESTRICT':
+                                    fk_sql += f' ON UPDATE {update_rule}'
+                                if delete_rule and delete_rule != 'RESTRICT':
+                                    fk_sql += f' ON DELETE {delete_rule}'
+                                
+                                cursor.execute(fk_sql)
+                                logger.info(f'Recreated constraint {constraint_name}')
+                            except Exception as e:
+                                logger.warning(f'Could not recreate constraint {constraint_name}: {str(e)}')
+                    
+                    # Re-enable triggers
+                    logger.info('Re-enabling triggers for PostgreSQL')
+                    for table_name in tables_to_truncate:
+                        try:
+                            cursor.execute(f'ALTER TABLE {table_name} ENABLE TRIGGER ALL')
+                            logger.info(f'Enabled triggers for {table_name}')
+                        except Exception as e:
+                            logger.warning(f'Could not enable triggers for {table_name}: {str(e)}')
                     
             except Exception as e:
                 # Log the error
