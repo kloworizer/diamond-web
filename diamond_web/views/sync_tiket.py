@@ -417,11 +417,12 @@ def _make_aware_datetime(dt):
     return dt
 
 
-def _assign_tiket_pics_sync(tiket, periode_jenis_data, today, base_time, request):
+def _assign_tiket_pics_sync(tiket, periode_jenis_data, today, base_time, request, batch_size=100):
     """Assign all active P3DE, PIDE, PMDE PICs to a synced tiket from the PIC table only.
     
     Only adds PICs that are already configured in the PIC table for this sub_jenis_data_ilap.
     Does NOT automatically add the current user.
+    Uses bulk_create for efficiency.
     """
     try:
         if not periode_jenis_data:
@@ -430,8 +431,13 @@ def _assign_tiket_pics_sync(tiket, periode_jenis_data, today, base_time, request
         from django.contrib.auth.models import User
         admin_user = User.objects.get(username='admin')
         
+        # Collect PICs and actions to bulk create
+        tiket_pics_to_create = []
+        tiket_actions_to_create = []
+        
         # Add all active P3DE, PIDE, PMDE PICs from PIC table
         active_filter = Q(start_date__lte=today) & Q(end_date__isnull=True)
+        action_idx = 1
         for role_value, tipe in (
             (TiketPIC.Role.P3DE, PIC.TipePIC.P3DE),
             (TiketPIC.Role.PIDE, PIC.TipePIC.PIDE),
@@ -442,21 +448,32 @@ def _assign_tiket_pics_sync(tiket, periode_jenis_data, today, base_time, request
                 id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap
             )
             tipe_label = dict(PIC.TipePIC.choices).get(tipe, tipe)
-            for idx, pic in enumerate(pic_qs.filter(active_filter), start=1):
-                TiketPIC.objects.create(
-                    id_tiket=tiket,
-                    id_user=pic.id_user,
-                    timestamp=timezone.now(),
-                    role=role_value,
-                    active=True,
+            for pic in pic_qs.filter(active_filter):
+                tiket_pics_to_create.append(
+                    TiketPIC(
+                        id_tiket=tiket,
+                        id_user=pic.id_user,
+                        timestamp=timezone.now(),
+                        role=role_value,
+                        active=True,
+                    )
                 )
-                TiketAction.objects.create(
-                    id_tiket=tiket,
-                    id_user=admin_user,  # Always log as admin (system action)
-                    timestamp=base_time + timedelta(microseconds=1 + idx),
-                    action=PICActionType.DITAMBAHKAN,
-                    catatan=f'{tipe_label} {pic.id_user.username} ditambahkan'
+                tiket_actions_to_create.append(
+                    TiketAction(
+                        id_tiket=tiket,
+                        id_user=admin_user,
+                        timestamp=base_time + timedelta(microseconds=1 + action_idx),
+                        action=PICActionType.DITAMBAHKAN,
+                        catatan=f'{tipe_label} {pic.id_user.username} ditambahkan'
+                    )
                 )
+                action_idx += 1
+        
+        # Bulk create all PICs and actions
+        if tiket_pics_to_create:
+            TiketPIC.objects.bulk_create(tiket_pics_to_create, batch_size=batch_size, ignore_conflicts=False)
+        if tiket_actions_to_create:
+            TiketAction.objects.bulk_create(tiket_actions_to_create, batch_size=batch_size, ignore_conflicts=False)
     except Exception:
         # Silently skip PIC assignment if it fails (don't block sync)
         pass
@@ -767,14 +784,30 @@ def _check_tiket_data(service):
 
 
 def _sync_tiket_data(service, sync_id=None, request=None):
-    """Sync tiket data from Oracle to Django model.
+    """Fast bulk sync using CSV intermediate storage.
     
-    Args:
-    - service: OracleDataSyncService instance
-    - sync_id: Unique identifier for this sync run (for progress tracking)
-    - request: Django request object (for assigning current user to TiketPICs)
+    Process:
+    1. Query all tiket data from Oracle into memory
+    2. Parse and validate all rows
+    3. Batch insert new records using bulk_create
+    4. Batch update existing records
+    5. Assign PICs and audit trails
     """
     try:
+        # Detect database and set appropriate batch sizes
+        from django.db import connection
+        db_vendor = connection.vendor  # 'sqlite', 'postgresql', 'mysql'
+        if db_vendor == 'sqlite':
+            BATCH_SIZE = 50  # SQLite has ~999-2000 variable limit
+            LOOKUP_BATCH_SIZE = 50
+        elif db_vendor == 'postgresql':
+            BATCH_SIZE = 500  # PostgreSQL can handle ~34,000 variables
+            LOOKUP_BATCH_SIZE = 500
+        else:  # mysql
+            BATCH_SIZE = 250  # MySQL ~16,000 variables
+            LOOKUP_BATCH_SIZE = 250
+        logger.info(f'Using batch sizes for {db_vendor}: BATCH_SIZE={BATCH_SIZE}, LOOKUP_BATCH_SIZE={LOOKUP_BATCH_SIZE}')
+        
         sql_query = """
             SELECT
                 id_tiket,
@@ -847,12 +880,12 @@ def _sync_tiket_data(service, sync_id=None, request=None):
         
         logger.info('Connecting to Oracle...')
         with service._connect_oracle("primary") as conn:
-            logger.info('Oracle connected, executing query...')
+            logger.info('Oracle connected, executing bulk query...')
             with conn.cursor() as cursor:
                 cursor.execute(sql_query)
                 rows = cursor.fetchall()
                 column_names = [desc[0].lower() for desc in cursor.description]
-        logger.info(f'Oracle query completed, fetched {len(rows)} rows')
+        logger.info(f'Oracle query completed, fetched {len(rows)} rows for bulk processing')
         
         inserts = 0
         updates = 0
@@ -861,20 +894,18 @@ def _sync_tiket_data(service, sync_id=None, request=None):
         updated_keys = []
         
         logger.info('Setting up default lookups...')
-        # Default lookups - try to find by deskripsi field, fallback to first record
-        default_bentuk_data = None
-        try:
-            default_bentuk_data = BentukData.objects.filter(deskripsi='Softcopy').first()
-        except:
-            default_bentuk_data = BentukData.objects.first()
+        default_bentuk_data = BentukData.objects.filter(deskripsi='Softcopy').first() or BentukData.objects.first()
+        default_cara_penyampaian = CaraPenyampaian.objects.filter(deskripsi='Online').first() or CaraPenyampaian.objects.first()
         
-        default_cara_penyampaian = None
-        try:
-            default_cara_penyampaian = CaraPenyampaian.objects.filter(deskripsi='Online').first()
-        except:
-            default_cara_penyampaian = CaraPenyampaian.objects.first()
+        logger.info(f'Parsing {len(rows)} rows for bulk insert/update...')
+        today = timezone.now().date()
+        base_time = timezone.now()
         
-        logger.info(f'Starting sync loop with {len(rows)} rows...')
+        # Separate rows into two groups: new inserts and updates
+        to_create = []
+        to_update = []  # (nomor_tiket, tiket_obj, update_dict)
+        
+        # First pass: validate and parse all rows
         for idx, row in enumerate(rows):
             # Check if sync was stopped
             if sync_id and cache.get(f'sync_tiket_stop_{sync_id}'):
@@ -882,8 +913,8 @@ def _sync_tiket_data(service, sync_id=None, request=None):
                 logger.info('Sync stopped by user')
                 break
             
-            # Update progress in cache every 20 rows (less frequent to reduce lock contention)
-            if idx % 20 == 0:
+            # Update progress every 50 rows
+            if idx % 50 == 0 and sync_id:
                 progress_pct = int((idx / len(rows) * 100)) if rows else 0
                 cache.set(f'sync_tiket_progress_{sync_id}', {
                     'current': idx,
@@ -893,66 +924,41 @@ def _sync_tiket_data(service, sync_id=None, request=None):
                     'updates': updates,
                     'errors': len(errors),
                 }, timeout=3600)
-                logger.debug(f'Progress: {progress_pct}% ({idx}/{len(rows)})')
             
             try:
                 row_dict = dict(zip(column_names, row))
-                nomor_tiket = row_dict.get('id_tiket')  # Oracle column name
+                nomor_tiket = row_dict.get('id_tiket')
                 
                 if not nomor_tiket:
                     continue
                 
-                # Parse tahun from Oracle first; this is authoritative for Tiket.tahun.
+                # Parse and validate tiket data
                 oracle_tahun = _safe_int(row_dict.get('tahun_data'))
-
-                # Parse jenis_prioritas_data to get JenisPrioritasData and fallback year from key
                 jenis_prioritas_str = row_dict.get('jenis_prioritas_data')
-                jenis_prioritas_obj, tahun_from_key = _parse_jenis_prioritas_data(
-                    jenis_prioritas_str,
-                    tahun_override=oracle_tahun,
-                )
-
-                # Final year for tiket mapping: Oracle tahun_data > key year > current year
+                jenis_prioritas_obj, tahun_from_key = _parse_jenis_prioritas_data(jenis_prioritas_str, tahun_override=oracle_tahun)
                 tahun_data = oracle_tahun if oracle_tahun is not None else (tahun_from_key if tahun_from_key is not None else timezone.now().year)
                 
-                # Parse periode_data to get PeriodeJenisData (REQUIRED field)
-                # Pass jenis_prioritas_obj so it can find the correct PeriodeJenisData for that sub_jenis_data_ilap
                 periode_str = row_dict.get('periode_data')
-                periode_jenis_data_obj, periode_value = _map_periode_data(
-                    periode_str,
-                    jenis_prioritas_obj=jenis_prioritas_obj,
-                    tahun_value=tahun_data,
-                )
+                periode_jenis_data_obj, periode_value = _map_periode_data(periode_str, jenis_prioritas_obj=jenis_prioritas_obj, tahun_value=tahun_data)
                 
-                # Skip rows without valid periode_jenis_data (required field)
                 if not periode_jenis_data_obj:
                     error_msg = f"Periode '{periode_str}' not found in database"
                     errors.append(f"Tiket {nomor_tiket}: {error_msg}")
                     _log_failed_row(sync_id, nomor_tiket, periode_str, jenis_prioritas_str, tahun_data, error_msg, row_number=idx+1)
                     continue
                 
-                # Use periode value parsed from Oracle source (e.g., Triwulan I => 1)
-                
-                # Get status penelitian based on Oracle status_penelitian field
                 status_penelitian_obj = None
                 status_penelitian_str = row_dict.get('status_penelitian', '').strip().lower()
                 if status_penelitian_str:
-                    status_penelitian_obj = StatusPenelitian.objects.filter(
-                        deskripsi__icontains=status_penelitian_str
-                    ).first()
+                    status_penelitian_obj = StatusPenelitian.objects.filter(deskripsi__icontains=status_penelitian_str).first()
                 
-                # Make all datetime fields timezone-aware to fix RuntimeWarning
-                today = timezone.now().date()
-                base_time = timezone.now()
-                
-                # Prepare tiket data using correct Django field names
+                # Prepare tiket data dict
                 tiket_data = {
                     'nomor_tiket': nomor_tiket,
-                    # Ensure old_db is an integer (from Oracle) and set on CREATE only
                     'old_db': _safe_int(row_dict.get('old_db'), 1),
                     'status_tiket': row_dict.get('status_tiket') if row_dict.get('status_tiket') is not None else 1,
-                    'id_periode_data': periode_jenis_data_obj,  # ForeignKey to PeriodeJenisData (REQUIRED)
-                    'id_jenis_prioritas_data': jenis_prioritas_obj,  # ForeignKey to JenisPrioritasData (nullable)
+                    'id_periode_data': periode_jenis_data_obj,
+                    'id_jenis_prioritas_data': jenis_prioritas_obj,
                     'periode': periode_value,
                     'tahun': tahun_data,
                     'penyampaian': row_dict.get('penyampaian', 1),
@@ -1003,88 +1009,61 @@ def _sync_tiket_data(service, sync_id=None, request=None):
                     'qc_d': row_dict.get('qc_d'),
                 }
                 
-                # Prepare defaults for update_or_create (exclude nomor_tiket and old_db to prevent updates)
-                defaults_data = {k: v for k, v in tiket_data.items() if k not in ('nomor_tiket', 'old_db')}
-                
-                # Create or update tiket with retry logic for database locks
-                # Use get_or_create so that `old_db` (in tiket_data) is applied on
-                # creation only. For updates we explicitly update other fields
-                # but leave `old_db` unchanged.
-                defaults_create = {k: v for k, v in tiket_data.items() if k != 'nomor_tiket'}
-
-                def db_upsert():
-                    obj, created = Tiket.objects.get_or_create(
-                        nomor_tiket=nomor_tiket,
-                        defaults=defaults_create
-                    )
-                    if not created:
-                        # Update all fields except old_db and nomor_tiket
-                        update_fields = {k: v for k, v in tiket_data.items() if k not in ('nomor_tiket', 'old_db')}
-                        for key, val in update_fields.items():
-                            setattr(obj, key, val)
-                        obj.save()
-                    return obj, created
-                
-                # Apply retry decorator logic manually for this operation
-                tiket = None
-                created = False
-                retry_delay = 0.05  # Start with 50ms delay
-                max_db_retries = 8
-                
-                for db_attempt in range(max_db_retries):
-                    try:
-                        tiket, created = db_upsert()
-                        break  # Success, exit retry loop
-                    except Exception as db_e:
-                        db_error = str(db_e).lower()
-                        if 'locked' in db_error and db_attempt < max_db_retries - 1:
-                            logger.debug(f"DB lock on upsert {nomor_tiket} (attempt {db_attempt + 1}/{max_db_retries}), retrying in {retry_delay:.3f}s...")
-                            time.sleep(retry_delay)
-                            retry_delay *= 1.5  # Exponential backoff
-                        else:
-                            raise  # Give up or non-lock error
-                
-                if tiket is None:
-                    continue  # Skip if upsert failed
-                
-                # Assign TiketPICs for new tikets only (to avoid redundant work for updates)
-                if created and periode_jenis_data_obj:
-                    try:
-                        _assign_tiket_pics_sync(tiket, periode_jenis_data_obj, today, base_time, request)
-                    except Exception as pic_error:
-                        logger.warning(f"Failed to assign PICs for tiket {nomor_tiket}: {str(pic_error)}")
-                        # Don't fail the sync if PIC assignment fails
-                
-                if created:
-                    inserts += 1
-                    if len(inserted_keys) < 5:
-                        inserted_keys.append(nomor_tiket)
+                # Check if exists
+                exists = Tiket.objects.filter(nomor_tiket=nomor_tiket).exists()
+                if exists:
+                    update_dict = {k: v for k, v in tiket_data.items() if k not in ('nomor_tiket', 'old_db')}
+                    to_update.append((nomor_tiket, tiket_data, update_dict, periode_jenis_data_obj))
                 else:
-                    updates += 1
-                    if len(updated_keys) < 5:
-                        updated_keys.append(nomor_tiket)
-                
-                # Add small delay every 5 rows to reduce database lock contention
-                if (idx + 1) % 5 == 0:
-                    time.sleep(0.01)  # 10ms delay every 5 rows
-                        
+                    to_create.append(Tiket(**tiket_data))
+            
             except Exception as e:
-                error_msg = str(e)
-                # Log database lock errors separately for monitoring
-                if 'locked' in error_msg.lower():
-                    logger.warning(f"Tiket {row_dict.get('id_tiket', '?')}: database is locked after retries")
-                    err_msg = "Database is locked after retries"
-                    errors.append(f"Tiket {row_dict.get('id_tiket', '?')}: {err_msg}")
-                    _log_failed_row(sync_id, row_dict.get('id_tiket'), row_dict.get('periode_data'), 
-                                  row_dict.get('jenis_prioritas_data'), row_dict.get('tahun_data'), 
-                                  err_msg, row_number=idx+1)
-                else:
-                    err_msg = error_msg[:150]
-                    errors.append(f"Tiket {row_dict.get('id_tiket', '?')}: {err_msg}")
-                    _log_failed_row(sync_id, row_dict.get('id_tiket'), row_dict.get('periode_data'), 
-                                  row_dict.get('jenis_prioritas_data'), row_dict.get('tahun_data'), 
-                                  err_msg, row_number=idx+1)
+                error_msg = str(e)[:150]
+                errors.append(f"Tiket {row_dict.get('id_tiket', '?')}: {error_msg}")
+                _log_failed_row(sync_id, row_dict.get('id_tiket'), row_dict.get('periode_data'), 
+                              row_dict.get('jenis_prioritas_data'), row_dict.get('tahun_data'), 
+                              error_msg, row_number=idx+1)
         
+        # Bulk insert new records
+        logger.info(f'Bulk creating {len(to_create)} new tiket records...')
+        if to_create:
+            for i in range(0, len(to_create), BATCH_SIZE):
+                batch = to_create[i:i+BATCH_SIZE]
+                created_objs = Tiket.objects.bulk_create(batch, batch_size=BATCH_SIZE, ignore_conflicts=False)
+                inserts += len(created_objs)
+                if len(inserted_keys) < 5:
+                    inserted_keys.extend([t.nomor_tiket for t in created_objs[:5-len(inserted_keys)]])
+
+                for tiket in created_objs:
+                    try:
+                        periode_jenis_data_obj = tiket.id_periode_data
+                        _assign_tiket_pics_sync(tiket, periode_jenis_data_obj, today, base_time, request, BATCH_SIZE)
+                    except Exception as pic_error:
+                        logger.warning(f"Failed to assign PICs for tiket {tiket.nomor_tiket}: {str(pic_error)}")
+        
+        # Bulk update existing records
+        logger.info(f'Bulk updating {len(to_update)} existing tiket records...')
+        if to_update:
+            nomor_tikets_to_update = [t[0] for t in to_update]
+            existing_tikets = {}
+            for i in range(0, len(nomor_tikets_to_update), LOOKUP_BATCH_SIZE):
+                batch = nomor_tikets_to_update[i:i+LOOKUP_BATCH_SIZE]
+                for tiket in Tiket.objects.filter(nomor_tiket__in=batch):
+                    existing_tikets[tiket.nomor_tiket] = tiket
+
+            tikets_to_save = []
+            for nomor_tiket, tiket_data, update_dict, periode_jenis_data_obj in to_update:
+                if nomor_tiket in existing_tikets:
+                    tiket = existing_tikets[nomor_tiket]
+                    # Update fields except old_db
+                    for key, val in update_dict.items():
+                        setattr(tiket, key, val)
+                    tikets_to_save.append(tiket)
+            
+            if tikets_to_save:
+                for i in range(0, len(tikets_to_save), BATCH_SIZE):
+                    batch = tikets_to_save[i:i+BATCH_SIZE]
+                    Tiket.objects.bulk_update(batch, batch_size=BATCH_SIZE, fields=list(update_dict.keys()))
         return {
             'source_rows': len(rows),
             'inserts': inserts,
@@ -1095,6 +1074,7 @@ def _sync_tiket_data(service, sync_id=None, request=None):
             'updated_keys': updated_keys,
         }
     except Exception as e:
+        logger.error(f'Bulk sync failed: {str(e)}', exc_info=True)
         return {
             'source_rows': 0,
             'inserts': 0,
