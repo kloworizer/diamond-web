@@ -72,32 +72,8 @@ class ILAPPeriodeDataAPIView(View):
             
             # Get only valid PeriodeJenisData for the given ILAP with:
             # 1. Active PIC P3DE
-            # 2. Active PIDE durasi
-            # 3. Active PMDE durasi
             periode_data_list = PeriodeJenisData.objects.filter(
                 id_sub_jenis_data_ilap__id_ilap_id=ilap_id,
-            ).filter(
-                Q(
-                    id_sub_jenis_data_ilap__durasijatuhtempo__seksi=pide_group,
-                    id_sub_jenis_data_ilap__durasijatuhtempo__start_date__lte=today,
-                    id_sub_jenis_data_ilap__durasijatuhtempo__end_date__isnull=True
-                ) |
-                Q(
-                    id_sub_jenis_data_ilap__durasijatuhtempo__seksi=pide_group,
-                    id_sub_jenis_data_ilap__durasijatuhtempo__start_date__lte=today,
-                    id_sub_jenis_data_ilap__durasijatuhtempo__end_date__gte=today
-                )
-            ).filter(
-                Q(
-                    id_sub_jenis_data_ilap__durasijatuhtempo__seksi=pmde_group,
-                    id_sub_jenis_data_ilap__durasijatuhtempo__start_date__lte=today,
-                    id_sub_jenis_data_ilap__durasijatuhtempo__end_date__isnull=True
-                ) |
-                Q(
-                    id_sub_jenis_data_ilap__durasijatuhtempo__seksi=pmde_group,
-                    id_sub_jenis_data_ilap__durasijatuhtempo__start_date__lte=today,
-                    id_sub_jenis_data_ilap__durasijatuhtempo__end_date__gte=today
-                )
             )
 
             if not (request.user.is_superuser or request.user.groups.filter(name='admin').exists()):
@@ -665,6 +641,10 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
             start_date__lte=today,
             end_date__isnull=True
         ).exists()
+        
+        # Get admin user for PIC action logging
+        from django.contrib.auth.models import User
+        admin_user = User.objects.get(username='admin')
         if not current_user_is_p3de_pic:
             TiketPIC.objects.create(
                 id_tiket=self.object,
@@ -677,7 +657,7 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
             action_time = (base_time + timedelta(microseconds=1)) if base_time else datetime.now()
             TiketAction.objects.create(
                 id_tiket=self.object,
-                id_user=self.request.user,
+                id_user=admin_user,
                 timestamp=action_time,
                 action=PICActionType.DITAMBAHKAN,
                 catatan=f'{tipe_label} {self.request.user.username} ditambahkan'
@@ -710,7 +690,7 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
 
                 TiketAction.objects.create(
                     id_tiket=self.object,
-                    id_user=self.request.user,
+                    id_user=admin_user,
                     timestamp=action_time,
                     action=PICActionType.DITAMBAHKAN,
                     catatan=f'{tipe_label} {pic.id_user.username} ditambahkan'
