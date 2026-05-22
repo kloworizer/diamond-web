@@ -108,14 +108,17 @@ class Tiket(models.Model):
     qc_p = models.IntegerField(null=True, blank=True, verbose_name="QC P")
     qc_x = models.IntegerField(null=True, blank=True, verbose_name="QC X")
     qc_w = models.IntegerField(null=True, blank=True, verbose_name="QC W")
-    qc_v = models.IntegerField(null=True, blank=True, verbose_name="QC V")
+    qc_f = models.IntegerField(null=True, blank=True, verbose_name="QC F")
     qc_a = models.IntegerField(null=True, blank=True, verbose_name="QC A")
+    qc_c = models.IntegerField(null=True, blank=True, verbose_name="QC C")
     qc_n = models.IntegerField(null=True, blank=True, verbose_name="QC N")
     qc_y = models.IntegerField(null=True, blank=True, verbose_name="QC Y")
     qc_z = models.IntegerField(null=True, blank=True, verbose_name="QC Z")
-    qc_d = models.IntegerField(null=True, blank=True, verbose_name="QC D")
     qc_u = models.IntegerField(null=True, blank=True, verbose_name="QC U")
-    qc_c = models.IntegerField(null=True, blank=True, verbose_name="QC C")
+    qc_e = models.IntegerField(null=True, blank=True, verbose_name="QC E")
+    qc_v = models.IntegerField(null=True, blank=True, verbose_name="QC V")
+    qc_r = models.IntegerField(null=True, blank=True, verbose_name="QC R")
+    qc_d = models.IntegerField(null=True, blank=True, verbose_name="QC D")
 
     class Meta:
         verbose_name = "Tiket"

@@ -93,7 +93,6 @@ def tiket_documents_download(request, pk):
     - ``register``               — Register Data
 
     Access is restricted to admins/superusers and assigned TiketPIC members.
-    Returns HTTP 400 if tanda_terima has not been created yet.
     
     If active DOCX templates exist for the document type, uses them to generate
     the document by filling placeholders. Otherwise, falls back to default generation.
@@ -119,9 +118,6 @@ def tiket_documents_download(request, pk):
         has_access = TiketPIC.objects.filter(id_tiket=tiket, id_user=request.user, active=True).exists()
         if not has_access:
             return HttpResponse('Tidak memiliki akses ke tiket ini.', status=403)
-
-    if not tiket.tanda_terima:
-        return HttpResponse('Dokumen hanya tersedia jika tanda terima sudah dibuat.', status=400)
 
     # Collect tanda-terima group and associated tiket rows
     detil = DetilTandaTerima.objects.select_related('id_tanda_terima').filter(id_tiket=tiket).order_by('-id').first()

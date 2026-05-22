@@ -124,6 +124,10 @@ else:
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
+            "OPTIONS": {
+                # Give SQLite more time to wait for locks during heavy background sync.
+                "timeout": 30,
+            },
         }
     }
 
@@ -186,7 +190,7 @@ MESSAGE_TAGS = {
 
 # Session settings: 30 minutes
 SESSION_COOKIE_AGE = 30 * 60  # 30 minutes (in seconds)
-SESSION_SAVE_EVERY_REQUEST = True  # refresh session expiry on each request
+SESSION_SAVE_EVERY_REQUEST = False  # avoid write-on-every-request (reduces SQLite lock contention)
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
 # Email configuration

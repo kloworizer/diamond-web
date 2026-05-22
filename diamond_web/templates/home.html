@@ -9,9 +9,67 @@
         <!-- [ Sidebar ] start -->
         <div class="content-sidebar content-sidebar-md" data-scrollbar-target="#psScrollbarInit">
             <div class="content-sidebar-header bg-white sticky-top hstack justify-content-between">
-                <h4 class="fw-bolder mb-0">Home</h4>
+                <h4 class="fw-bolder mb-0">Task To Do</h4>
                 
             </div>
+            {% if is_p3de %}
+            <div class="content-sidebar-header">
+                <a href="{% url 'tiket_rekam_create' %}" class="btn btn-primary w-100">
+                    <i class="feather-plus me-2"></i>
+                    <span>Rekam Tiket</span>
+                </a>
+            </div>
+            <div class="content-sidebar-body">
+                <!-- Tiket Status Categories for P3DE -->
+                <ul class="nav flex-column nxl-content-sidebar-item" id="tiketFilterMenu">
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link active" href="javascript:void(0);" data-filter="belum_rekam_backup_data">
+                            <i class="feather-database"></i>
+                            <span>Belum Rekam Backup Data</span>
+                            {% if p3de_tiket_categories.belum_rekam_backup_data %}
+                            <span class="badge bg-warning ms-auto">{{ p3de_tiket_categories.belum_rekam_backup_data|length }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="belum_dibuat_tanda_terima">
+                            <i class="feather-file-text"></i>
+                            <span>Belum Dibuat Tanda Terima</span>
+                            {% if p3de_tiket_categories.belum_dibuat_tanda_terima %}
+                            <span class="badge bg-info ms-auto">{{ p3de_tiket_categories.belum_dibuat_tanda_terima|length }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="belum_diteliti">
+                            <i class="feather-check-circle"></i>
+                            <span>Belum Diteliti</span>
+                            {% if p3de_tiket_categories.belum_diteliti %}
+                            <span class="badge bg-success ms-auto">{{ p3de_tiket_categories.belum_diteliti|length }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="belum_dikirim_ke_pide">
+                            <i class="feather-send"></i>
+                            <span>Belum Dikirim ke PIDE</span>
+                            {% if p3de_tiket_categories.belum_dikirim_ke_pide %}
+                            <span class="badge bg-primary ms-auto">{{ p3de_tiket_categories.belum_dikirim_ke_pide|length }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="dikembalikan_dari_pide">
+                            <i class="feather-alert-circle"></i>
+                            <span>Dikembalikan dari PIDE</span>
+                            {% if p3de_tiket_categories.dikembalikan_dari_pide %}
+                            <span class="badge bg-danger ms-auto">{{ p3de_tiket_categories.dikembalikan_dari_pide|length }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            {% else %}
             <div class="content-sidebar-header">
                 <a href="javascript:void(0);" class="btn btn-primary w-100">
                     <i class="feather-plus me-2"></i>
@@ -46,83 +104,8 @@
                         </a>
                     </li>
                 </ul>
-
-                <!-- Prioritas -->
-                <ul class="nav flex-column nxl-content-sidebar-item">
-                    <li
-                        class="px-4 my-2 fs-10 fw-bold text-uppercase text-muted text-spacing-1 d-flex align-items-center justify-content-between">
-                        <span>Prioritas</span>
-                        <a href="javascript:void(0);">
-                            <span class="avatar-text avatar-sm"><i class="feather-plus"></i></span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="javascript:void(0);">
-                            <span class="wd-7 ht-7 bg-dark rounded-circle"></span>
-                            <span>Rendah</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="javascript:void(0);">
-                            <span class="wd-7 ht-7 bg-success rounded-circle"></span>
-                            <span>Normal</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="javascript:void(0);">
-                            <span class="wd-7 ht-7 bg-primary rounded-circle"></span>
-                            <span>Sedang</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="javascript:void(0);">
-                            <span class="wd-7 ht-7 bg-warning rounded-circle"></span>
-                            <span>Tinggi</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="javascript:void(0);">
-                            <span class="wd-7 ht-7 bg-danger rounded-circle"></span>
-                            <span>Mendesak</span>
-                        </a>
-                    </li>
-                </ul>
-
-                <!-- Overview -->
-                <ul class="nav flex-column nxl-content-sidebar-item">
-                    <li
-                        class="px-4 my-2 fs-10 fw-bold text-uppercase text-muted text-spacing-1 d-flex align-items-center justify-content-between">
-                        <span>Overview</span>
-                        <a href="javascript:void(0);">
-                            <span class="avatar-text avatar-sm"><i class="feather-plus"></i></span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="javascript:void(0);">
-                            <i class="feather-hash"></i>
-                            <span>Overview</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="javascript:void(0);">
-                            <i class="feather-hash"></i>
-                            <span>Tugas Saya</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="javascript:void(0);">
-                            <i class="feather-hash"></i>
-                            <span>Aktivitas Tugas</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="javascript:void(0);">
-                            <i class="feather-hash"></i>
-                            <span>Lampiran Tugas</span>
-                        </a>
-                    </li>
-                </ul>
             </div>
+            {% endif %}
         </div>
         <!-- [ Sidebar ] end -->
 
@@ -134,22 +117,191 @@
                         <i class="feather-align-left fs-20"></i>
                     </a>
                     <h5 class="mb-0">
-                        <i class="feather-home me-2"></i>Home
+                        <i class="feather-check-circle me-2"></i>Task To Do
                     </h5>
                     <ul class="breadcrumb mb-0">
-                        <li class="breadcrumb-item active">Home</li>
+                        <li class="breadcrumb-item active">Task To Do</li>
                     </ul>
                 </div>
                 <div class="page-header-right ms-auto d-flex align-items-center gap-2">
-                    <span class="text-muted small">
-                        Selamat datang, {% if user.get_full_name %}{{ user.get_full_name }}{% else %}{{ user.username }}{% endif %}
-                    </span>
+                    
                 </div>
             </div>
 
+            {% if is_p3de %}
             <div class="content-area-body">
+                <!-- Belum Rekam Backup Data -->
+                <div class="card stretch stretch-full" data-category="belum_rekam_backup_data">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Nomor Tiket</th>
+                                        <th>Periode</th>
+                                        <th>Tahun</th>
+                                        <th>Bentuk Data</th>
+                                        <th>Tgl Terima DIP</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for tiket in p3de_tiket_categories.belum_rekam_backup_data %}
+                                    <tr>
+                                        <td>{{ tiket.nomor_tiket }}</td>
+                                        <td>{{ tiket.periode }}</td>
+                                        <td>{{ tiket.tahun }}</td>
+                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
+                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
 
-                <!-- Card: Tugas Baru -->
+                <!-- Belum Dibuat Tanda Terima -->
+                <div class="card stretch stretch-full" data-category="belum_dibuat_tanda_terima" style="display:none;">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Nomor Tiket</th>
+                                        <th>Periode</th>
+                                        <th>Tahun</th>
+                                        <th>Bentuk Data</th>
+                                        <th>Tgl Terima DIP</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for tiket in p3de_tiket_categories.belum_dibuat_tanda_terima %}
+                                    <tr>
+                                        <td>{{ tiket.nomor_tiket }}</td>
+                                        <td>{{ tiket.periode }}</td>
+                                        <td>{{ tiket.tahun }}</td>
+                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
+                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Belum Diteliti -->
+                <div class="card stretch stretch-full" data-category="belum_diteliti" style="display:none;">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Nomor Tiket</th>
+                                        <th>Periode</th>
+                                        <th>Tahun</th>
+                                        <th>Bentuk Data</th>
+                                        <th>Tgl Terima DIP</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for tiket in p3de_tiket_categories.belum_diteliti %}
+                                    <tr>
+                                        <td>{{ tiket.nomor_tiket }}</td>
+                                        <td>{{ tiket.periode }}</td>
+                                        <td>{{ tiket.tahun }}</td>
+                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
+                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Belum Dikirim ke PIDE -->
+                <div class="card stretch stretch-full" data-category="belum_dikirim_ke_pide" style="display:none;">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Nomor Tiket</th>
+                                        <th>Periode</th>
+                                        <th>Tahun</th>
+                                        <th>Bentuk Data</th>
+                                        <th>Tgl Terima DIP</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for tiket in p3de_tiket_categories.belum_dikirim_ke_pide %}
+                                    <tr>
+                                        <td>{{ tiket.nomor_tiket }}</td>
+                                        <td>{{ tiket.periode }}</td>
+                                        <td>{{ tiket.tahun }}</td>
+                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
+                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dikembalikan dari PIDE -->
+                <div class="card stretch stretch-full" data-category="dikembalikan_dari_pide" style="display:none;">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Nomor Tiket</th>
+                                        <th>Periode</th>
+                                        <th>Tahun</th>
+                                        <th>Bentuk Data</th>
+                                        <th>Tgl Terima DIP</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for tiket in p3de_tiket_categories.dikembalikan_dari_pide %}
+                                    <tr>
+                                        <td>{{ tiket.nomor_tiket }}</td>
+                                        <td>{{ tiket.periode }}</td>
+                                        <td>{{ tiket.tahun }}</td>
+                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
+                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="content-area-body">
                 <div class="card stretch stretch-full mb-3">
                     <div class="card-header d-flex align-items-center justify-content-between border-bottom">
                         <h5 class="card-title mb-0">
@@ -351,10 +503,71 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
         </div>
         <!-- [ Content Area ] end -->
 
     </div>
 </div>
 {% endif %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const filterLinks = document.querySelectorAll('.tiket-filter-link');
+        const cards = document.querySelectorAll('[data-category]');
+        const datatableTables = {};
+        
+        // Initialize datatables for each category
+        document.querySelectorAll('.tiket-datatable').forEach(table => {
+            const category = table.closest('[data-category]').getAttribute('data-category');
+            datatableTables[category] = $(table).DataTable({
+                paging: true,
+                pageLength: 10,
+                searching: true,
+                ordering: true,
+                info: true,
+                lengthChange: true,
+                columnDefs: [
+                    { orderable: false, targets: 5 }
+                ]
+            });
+        });
+        
+        // Set first category as default visible
+        if (cards.length > 0) {
+            cards.forEach(card => card.style.display = 'none');
+            const firstCategory = filterLinks[0]?.getAttribute('data-filter');
+            if (firstCategory) {
+                const firstCard = document.querySelector(`[data-category="${firstCategory}"]`);
+                if (firstCard) firstCard.style.display = 'block';
+            }
+        }
+        
+        filterLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Update active link
+                filterLinks.forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Show/hide cards based on filter
+                const filter = this.getAttribute('data-filter');
+                cards.forEach(card => {
+                    if (card.getAttribute('data-category') === filter) {
+                        card.style.display = 'block';
+                        // Redraw datatable to adjust columns
+                        setTimeout(() => {
+                            if (datatableTables[filter]) {
+                                datatableTables[filter].columns.adjust().draw();
+                            }
+                        }, 100);
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+    });
+</script>
 {% endblock %}

@@ -7,6 +7,13 @@ from diamond_web.views.task_to_do import (
     get_tiket_summary_for_user_pide,
     get_tiket_summary_for_user_pmde,
 )
+from diamond_web.models.tiket import Tiket
+from diamond_web.models.tiket_pic import TiketPIC
+from diamond_web.constants.tiket_status import (
+    STATUS_DIREKAM,
+    STATUS_DITELITI,
+    STATUS_DIKEMBALIKAN,
+)
 
 @login_required
 def home(request):
@@ -19,6 +26,8 @@ def home(request):
       actionable tiket items for the logged-in P3DE (uses
       `get_tiket_summary_for_user`). Example keys: `rekam_backup_data`,
       `buat_tanda_terima`, `rekam_hasil_penelitian`, `kirim_ke_pide`.
+    - `p3de_tiket_categories` (dict): when `is_p3de` is True, contains filtered
+      lists of tikets by category for the P3DE user.
     - `debug_user_groups` (dict): only present when `settings.DEBUG` is
       True; includes three admin groups and their member lists for UI
       debugging.
@@ -40,6 +49,37 @@ def home(request):
     # compute task summary based on user role
     if is_p3de:
         context['tiket_summary'] = get_tiket_summary_for_user(request.user)
+        # Get tikets for P3DE user with specific categories
+        p3de_pic = TiketPIC.objects.filter(id_user=request.user, role=TiketPIC.Role.P3DE, active=True)
+        tiket_ids = p3de_pic.values_list('id_tiket', flat=True)
+        
+        # Get tikets for each category
+        context['p3de_tiket_categories'] = {
+            'belum_rekam_backup_data': Tiket.objects.filter(
+                id__in=tiket_ids, 
+                status_tiket=STATUS_DIREKAM, 
+                backup=False
+            ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian').order_by('-id'),
+            'belum_dibuat_tanda_terima': Tiket.objects.filter(
+                id__in=tiket_ids, 
+                status_tiket=STATUS_DIREKAM, 
+                tanda_terima=False
+            ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian').order_by('-id'),
+            'belum_diteliti': Tiket.objects.filter(
+                id__in=tiket_ids, 
+                status_tiket=STATUS_DIREKAM, 
+                backup=True, 
+                tanda_terima=True
+            ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian').order_by('-id'),
+            'belum_dikirim_ke_pide': Tiket.objects.filter(
+                id__in=tiket_ids, 
+                status_tiket=STATUS_DITELITI
+            ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian').order_by('-id'),
+            'dikembalikan_dari_pide': Tiket.objects.filter(
+                id__in=tiket_ids, 
+                status_tiket=STATUS_DIKEMBALIKAN
+            ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian').order_by('-id'),
+        }
     if is_pide:
         context['tiket_summary_pide'] = get_tiket_summary_for_user_pide(request.user)
     if is_pmde:

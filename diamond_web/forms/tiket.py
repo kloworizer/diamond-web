@@ -76,24 +76,11 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
                 id_ilap_id__in=allowed_ilap_ids
             ).values_list('id_sub_jenis_data', flat=True).distinct()
         
-        # JenisData with active PIDE durasi
-        jenis_data_with_pide = JenisDataILAP.objects.filter(
-            durasijatuhtempo__seksi=pide_group,
-            durasijatuhtempo__start_date__lte=today
-        ).filter(
-            Q(durasijatuhtempo__end_date__isnull=True) | Q(durasijatuhtempo__end_date__gte=today)
-        ).values_list('id_sub_jenis_data', flat=True).distinct()
-        
-        # JenisData with active PMDE durasi
-        jenis_data_with_pmde = JenisDataILAP.objects.filter(
-            durasijatuhtempo__seksi=pmde_group,
-            durasijatuhtempo__start_date__lte=today
-        ).filter(
-            Q(durasijatuhtempo__end_date__isnull=True) | Q(durasijatuhtempo__end_date__gte=today)
-        ).values_list('id_sub_jenis_data', flat=True).distinct()
-        
-        # Get intersection - JenisData that have ALL three requirements
-        valid_jenis_data_ids = set(jenis_data_with_pic) & set(jenis_data_with_pide) & set(jenis_data_with_pmde)
+        # Previously we required active PIDE/PMDE durasi here which hid ILAPs when
+        # durasi entries were missing. Keep only the P3DE PIC requirement so ILAPs
+        # with assigned P3DE are shown; durasi validation is enforced later
+        # during tiket creation in the view.
+        valid_jenis_data_ids = set(jenis_data_with_pic)
         
         # Get valid PeriodeJenisData IDs
         valid_periode_ids = PeriodeJenisData.objects.filter(
