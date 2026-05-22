@@ -26,6 +26,7 @@ from .tanda_terima_data import *
 from .monitoring_penyampaian_data import *
 from .docx_template import *
 from .laporan_pengendalian_mutu import *
+from .laporan_hasil_pengolahan_data_prioritas import *
 from .laporan_kelengkapan_data import *
 from .laporan_register_penerimaan import *
 from .tiket import *
