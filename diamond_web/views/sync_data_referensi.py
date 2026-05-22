@@ -79,19 +79,23 @@ def oracle_sync_test_connection(request):
 @never_cache
 def oracle_sync_check(request):
     try:
-        # Prevent session from being deleted during long-running operation
-        request.session.modified = False
-        
-        service = OracleDataSyncService()
-        summary = service.check()
-        
-        # Refresh session to prevent timeout
-        request.session.create()
-        
+        check_id = str(uuid.uuid4())
+
+        bg_thread = threading.Thread(
+            target=_check_referensi_data_background,
+            args=(check_id,),
+            daemon=True
+        )
+        bg_thread.start()
+
+        cache.set(f'check_referensi_in_progress_{check_id}', True, timeout=3600)
+        cache.set(f'check_referensi_started_at_{check_id}', datetime.now().isoformat(), timeout=3600)
+
         return JsonResponse({
             'success': True,
             'mode': 'check',
-            'summary': summary.as_dict(),
+            'message': 'Check data dimulai di background.',
+            'check_id': check_id,
         })
     except OracleSyncConfigError as exc:
         error_msg = str(exc).strip()
@@ -101,6 +105,25 @@ def oracle_sync_check(request):
         if not error_msg or '<' in error_msg:
             error_msg = 'Gagal melakukan check data. Periksa koneksi Oracle.'
         return JsonResponse({'success': False, 'message': error_msg}, status=500)
+
+
+def _check_referensi_data_background(check_id):
+    """Run check data in background thread to avoid reverse proxy timeout."""
+    try:
+        logger.info(f'[BG] Starting referensi check (check_id={check_id})...')
+        service = OracleDataSyncService()
+        summary = service.check()
+        summary_dict = summary.as_dict() if hasattr(summary, 'as_dict') else {}
+
+        cache.set(f'check_referensi_result_{check_id}', summary_dict, timeout=3600)
+        cache.set(f'check_referensi_done_{check_id}', True, timeout=3600)
+        cache.set(f'check_referensi_in_progress_{check_id}', False, timeout=3600)
+        logger.info(f'[BG] Referensi check completed (check_id={check_id})')
+    except Exception as e:
+        logger.error(f'[BG] Exception in background check: {str(e)}', exc_info=True)
+        cache.set(f'check_referensi_error_{check_id}', str(e), timeout=3600)
+        cache.set(f'check_referensi_done_{check_id}', True, timeout=3600)
+        cache.set(f'check_referensi_in_progress_{check_id}', False, timeout=3600)
 
 
 def _sync_referensi_data_background(sync_id, request_user=None):
@@ -186,8 +209,42 @@ def oracle_sync_stop(request):
 @require_GET
 @never_cache
 def oracle_sync_progress(request):
-    """Get current progress of in-progress sync (no auth check to avoid session locks during sync)."""
+    """Get current progress of in-progress sync/check (no auth check to avoid session locks during long operations)."""
     try:
+        mode = request.GET.get('mode', 'sync')
+
+        if mode == 'check':
+            check_id = request.GET.get('check_id', '')
+            if not check_id:
+                return JsonResponse({'success': False, 'message': 'check_id tidak ditemukan'}, status=400)
+
+            is_done = cache.get(f'check_referensi_done_{check_id}', False)
+            if is_done:
+                result = cache.get(f'check_referensi_result_{check_id}')
+                error = cache.get(f'check_referensi_error_{check_id}')
+
+                if error:
+                    return JsonResponse({
+                        'success': False,
+                        'done': True,
+                        'mode': 'check',
+                        'message': error,
+                    })
+
+                return JsonResponse({
+                    'success': True,
+                    'done': True,
+                    'mode': 'check',
+                    'result': result or {},
+                })
+
+            return JsonResponse({
+                'success': True,
+                'done': False,
+                'mode': 'check',
+                'message': 'Check data masih berjalan...',
+            })
+
         sync_id = request.GET.get('sync_id', '')
         if not sync_id:
             return JsonResponse({'success': False, 'message': 'sync_id tidak ditemukan'}, status=400)

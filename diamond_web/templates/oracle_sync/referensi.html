@@ -104,6 +104,7 @@
 
         let currentSyncId = null;
         let syncIntervalId = null;
+        let checkIntervalId = null;
         
         const SYNC_ID_STORAGE_KEY = 'referensi_sync_id';
         
@@ -192,6 +193,37 @@
                     console.error('Progress fetch error:', e);
                 }
             }, 500);
+        }
+
+        function startCheckPolling(checkId) {
+            if (checkIntervalId) clearInterval(checkIntervalId);
+
+            checkIntervalId = setInterval(async function() {
+                try {
+                    const progressResp = await fetch("{% url 'oracle_sync_progress' %}?mode=check&check_id=" + checkId, {
+                        method: 'GET',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    const progressData = await progressResp.json();
+
+                    if (progressData.done) {
+                        clearInterval(checkIntervalId);
+                        setLoading(btnCheck, false, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
+
+                        if (!progressData.success) {
+                            showToast(progressData.message || 'Check data error', 'danger');
+                            btnSync.disabled = true;
+                            return;
+                        }
+
+                        const summary = progressData.result || {};
+                        renderSummary(summary);
+                        showToast('Check data selesai.', 'success');
+                    }
+                } catch (e) {
+                    console.error('Check progress fetch error:', e);
+                }
+            }, 1000);
         }
 
         function setLoading(button, isLoading, defaultText, loadingText) {
@@ -293,11 +325,10 @@
             btnSync.disabled = true;
             try {
                 const data = await postJson("{% url 'oracle_sync_check' %}");
-                renderSummary(data.summary);
-                showToast('Check data selesai.', 'success');
+                showToast(data.message || 'Check data dimulai.', 'info');
+                startCheckPolling(data.check_id);
             } catch (error) {
                 showToast(error.message, 'danger');
-            } finally {
                 setLoading(btnCheck, false, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
             }
         });
