@@ -139,20 +139,27 @@
                         // Sync completed, clean up
                         localStorage.removeItem(SYNC_ID_STORAGE_KEY);
                         if (data.success && data.result) {
-                            renderSummary(data.result);
+                            renderSummary(data.result, data.error_log_url);
                             showToast(data.message || 'Sync selesai.', 'success');
                         }
+                        currentSyncId = null;
                     } else {
                         // Unexpected response, clear stuck session
                         console.warn('Unexpected sync status, clearing stuck session');
                         localStorage.removeItem(SYNC_ID_STORAGE_KEY);
                         currentSyncId = null;
+                        progressBox.style.display = 'none';
+                        btnStop.style.display = 'none';
+                        btnForceStop.style.display = 'none';
                     }
                 }).catch(e => {
                     console.error('Error checking sync status:', e);
-                    // If we can't reach the server or sync_id is invalid, clean up
-                    localStorage.removeItem(SYNC_ID_STORAGE_KEY);
-                    currentSyncId = null;
+                    // If we can't reach the server or sync_id is invalid, show Force Clear
+                    console.warn('Showing Force Clear button - sync_id might be stuck');
+                    btnForceStop.style.display = 'inline-block';
+                    progressBox.style.display = 'block';
+                    btnStop.style.display = 'inline-block';
+                    showToast('Session sync mungkin stuck. Klik Force Clear untuk membersihkan.', 'warning');
                 });
             }
         }
@@ -179,7 +186,7 @@
                         if (!progressData.success) {
                             showToast(progressData.message || 'Sync error', 'danger');
                         } else if (progressData.result) {
-                            renderSummary(progressData.result);
+                            renderSummary(progressData.result, progressData.error_log_url);
                             showToast(progressData.message || 'Sync selesai.', 'success');
                         }
                         
@@ -233,7 +240,7 @@
                 : defaultText;
         }
 
-        function renderSummary(summary) {
+        function renderSummary(summary, errorLogUrl) {
             resultBox.style.display = 'block';
             resultSource.textContent = summary.source_rows || 0;
             resultInsert.textContent = summary.inserts || 0;
@@ -250,6 +257,10 @@
             }
             if (summary.errors && summary.errors.length) {
                 details += `<div class="alert alert-danger mb-0"><strong>Error:</strong><br>${summary.errors.join('<br>')}</div>`;
+            }
+            // Add download link if error log exists (both errors and skipped rows)
+            if (errorLogUrl) {
+                details += `<div class="alert alert-secondary mt-3 mb-0"><strong>Error Log:</strong> <a href="${errorLogUrl}" class="alert-link" download>Download CSV</a></div>`;
             }
             resultDetails.innerHTML = details;
 
@@ -388,18 +399,33 @@
         });
 
         btnForceStop.addEventListener('click', async function () {
-            // Force UI recovery without waiting for backend
-            clearInterval(syncIntervalId);
-            localStorage.removeItem(SYNC_ID_STORAGE_KEY);
-            currentSyncId = null;
+            if (!currentSyncId) {
+                showToast('Tidak ada sync session yang aktif.', 'info');
+                return;
+            }
             
-            progressBox.style.display = 'none';
-            btnStop.style.display = 'none';
-            btnForceStop.style.display = 'none';
-            btnSync.disabled = false;
-            btnCheck.disabled = false;
+            btnForceStop.disabled = true;
             
-            showToast('UI direset. Sync background mungkin masih berjalan.', 'info');
+            try {
+                // Clear session on backend
+                await postJson("{% url 'oracle_sync_clear_session' %}", { sync_id: currentSyncId });
+                
+                // Force UI recovery
+                clearInterval(syncIntervalId);
+                localStorage.removeItem(SYNC_ID_STORAGE_KEY);
+                currentSyncId = null;
+                
+                progressBox.style.display = 'none';
+                btnStop.style.display = 'none';
+                btnForceStop.style.display = 'none';
+                btnSync.disabled = false;
+                btnCheck.disabled = false;
+                
+                showToast('Session dan cache dibersihkan.', 'success');
+            } catch (error) {
+                showToast(error.message, 'danger');
+                btnForceStop.disabled = false;
+            }
         });
 
         // Resume any active sync on page load

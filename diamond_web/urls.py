@@ -23,8 +23,10 @@ urlpatterns = [
     path('sync-data-referensi/check/', views.oracle_sync_check, name='oracle_sync_check'),
     path('sync-data-referensi/run/', views.oracle_sync_run, name='oracle_sync_run'),
     path('sync-data-referensi/stop/', views.oracle_sync_stop, name='oracle_sync_stop'),
+    path('sync-data-referensi/clear-session/', views.oracle_sync_clear_session, name='oracle_sync_clear_session'),
     path('sync-data-referensi/progress/', views.oracle_sync_progress, name='oracle_sync_progress'),
     path('sync-data-referensi/truncate/', views.oracle_sync_truncate, name='oracle_sync_truncate'),
+    path('sync-data-referensi/download-errors/<str:sync_id>/', views.oracle_sync_download_errors, name='oracle_sync_download_errors'),
     
     path('sync-tiket/', views.sync_tiket_page, name='sync_tiket_page'),
     path('sync-tiket/test/', views.sync_tiket_test_connection, name='sync_tiket_test'),

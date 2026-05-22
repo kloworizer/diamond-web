@@ -1029,17 +1029,42 @@ def _sync_tiket_data(service, sync_id=None, request=None):
         if to_create:
             for i in range(0, len(to_create), BATCH_SIZE):
                 batch = to_create[i:i+BATCH_SIZE]
-                created_objs = Tiket.objects.bulk_create(batch, batch_size=BATCH_SIZE, ignore_conflicts=False)
-                inserts += len(created_objs)
-                if len(inserted_keys) < 5:
-                    inserted_keys.extend([t.nomor_tiket for t in created_objs[:5-len(inserted_keys)]])
+                try:
+                    created_objs = Tiket.objects.bulk_create(batch, batch_size=BATCH_SIZE, ignore_conflicts=False)
+                    inserts += len(created_objs)
+                    if len(inserted_keys) < 5:
+                        inserted_keys.extend([t.nomor_tiket for t in created_objs[:5-len(inserted_keys)]])
 
-                for tiket in created_objs:
-                    try:
-                        periode_jenis_data_obj = tiket.id_periode_data
-                        _assign_tiket_pics_sync(tiket, periode_jenis_data_obj, today, base_time, request, BATCH_SIZE)
-                    except Exception as pic_error:
-                        logger.warning(f"Failed to assign PICs for tiket {tiket.nomor_tiket}: {str(pic_error)}")
+                    for tiket in created_objs:
+                        try:
+                            periode_jenis_data_obj = tiket.id_periode_data
+                            _assign_tiket_pics_sync(tiket, periode_jenis_data_obj, today, base_time, request, BATCH_SIZE)
+                        except Exception as pic_error:
+                            logger.warning(f"Failed to assign PICs for tiket {tiket.nomor_tiket}: {str(pic_error)}")
+                except Exception as bulk_error:
+                    # Bulk insert failed, try one-by-one to identify bad records
+                    logger.warning(f"Bulk insert failed: {str(bulk_error)}, trying one-by-one...")
+                    for tiket_obj in batch:
+                        try:
+                            created = Tiket.objects.create(**{k: v for k, v in tiket_obj.__dict__.items() if not k.startswith('_')})
+                            inserts += 1
+                            if len(inserted_keys) < 5:
+                                inserted_keys.append(created.nomor_tiket)
+                            
+                            try:
+                                periode_jenis_data_obj = created.id_periode_data
+                                _assign_tiket_pics_sync(created, periode_jenis_data_obj, today, base_time, request, BATCH_SIZE)
+                            except Exception as pic_error:
+                                logger.warning(f"Failed to assign PICs for tiket {created.nomor_tiket}: {str(pic_error)}")
+                        except Exception as single_error:
+                            error_msg = str(single_error)[:150]
+                            errors.append(f"Tiket {tiket_obj.nomor_tiket}: {error_msg}")
+                            logger.error(f"Failed to insert tiket {tiket_obj.nomor_tiket}: {error_msg}")
+                            _log_failed_row(sync_id, tiket_obj.nomor_tiket, 
+                                          getattr(tiket_obj, 'periode', '?'), 
+                                          getattr(tiket_obj, 'id_jenis_prioritas_data', '?'), 
+                                          getattr(tiket_obj, 'tahun', '?'),
+                                          error_msg)
         
         # Bulk update existing records
         logger.info(f'Bulk updating {len(to_update)} existing tiket records...')
@@ -1058,12 +1083,39 @@ def _sync_tiket_data(service, sync_id=None, request=None):
                     # Update fields except old_db
                     for key, val in update_dict.items():
                         setattr(tiket, key, val)
-                    tikets_to_save.append(tiket)
+                    tikets_to_save.append((nomor_tiket, tiket, update_dict))
             
             if tikets_to_save:
                 for i in range(0, len(tikets_to_save), BATCH_SIZE):
                     batch = tikets_to_save[i:i+BATCH_SIZE]
-                    Tiket.objects.bulk_update(batch, batch_size=BATCH_SIZE, fields=list(update_dict.keys()))
+                    batch_objs = [t[1] for t in batch]
+                    batch_updates = batch[0][2] if batch else {}
+                    
+                    try:
+                        Tiket.objects.bulk_update(batch_objs, batch_size=BATCH_SIZE, fields=list(batch_updates.keys()))
+                        updates += len(batch)
+                        if len(updated_keys) < 5:
+                            updated_keys.extend([t[0] for t in batch[:5-len(updated_keys)]])
+                    except Exception as bulk_error:
+                        # Bulk update failed, try one-by-one
+                        logger.warning(f"Bulk update failed: {str(bulk_error)}, trying one-by-one...")
+                        for nomor_tiket, tiket_obj, upd_dict in batch:
+                            try:
+                                for key, val in upd_dict.items():
+                                    setattr(tiket_obj, key, val)
+                                tiket_obj.save()
+                                updates += 1
+                                if len(updated_keys) < 5:
+                                    updated_keys.append(nomor_tiket)
+                            except Exception as single_error:
+                                error_msg = str(single_error)[:150]
+                                errors.append(f"Tiket {nomor_tiket}: {error_msg}")
+                                logger.error(f"Failed to update tiket {nomor_tiket}: {error_msg}")
+                                _log_failed_row(sync_id, nomor_tiket, 
+                                              getattr(tiket_obj, 'periode', '?'),
+                                              getattr(tiket_obj, 'id_jenis_prioritas_data', '?'),
+                                              getattr(tiket_obj, 'tahun', '?'),
+                                              error_msg)
         return {
             'source_rows': len(rows),
             'inserts': inserts,
