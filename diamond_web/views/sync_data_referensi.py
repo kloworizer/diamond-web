@@ -1,17 +1,88 @@
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.http import JsonResponse
+from django.http import JsonResponse, FileResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.cache import never_cache
 from django.core.cache import cache
+from django.utils import timezone
+from django.urls import reverse
 from datetime import datetime, timedelta
 import uuid
 import threading
 import logging
+import os
+import csv
 
 from ..utils.oracle_sync import OracleDataSyncService, OracleSyncConfigError
 
 logger = logging.getLogger(__name__)
+
+# Create logs directory if it doesn't exist
+SYNC_LOGS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'sync_logs')
+os.makedirs(SYNC_LOGS_DIR, exist_ok=True)
+
+
+@require_GET
+@never_cache
+def oracle_sync_download_errors(request, sync_id):
+    """Download error log CSV file for a completed sync."""
+    try:
+        # Validate sync_id format (UUID)
+        try:
+            uuid.UUID(sync_id)
+        except (ValueError, TypeError):
+            return JsonResponse({'success': False, 'message': 'Invalid sync_id format'}, status=400)
+        
+        error_log_path = os.path.join(SYNC_LOGS_DIR, f'sync_referensi_failed_rows_{sync_id}.csv')
+        
+        # Check if file exists
+        if not os.path.exists(error_log_path):
+            return JsonResponse({'success': False, 'message': 'Error log file not found'}, status=404)
+        
+        # Return file as download
+        response = FileResponse(open(error_log_path, 'rb'), content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="sync_referensi_errors_{sync_id}.csv"'
+        return response
+    except Exception as exc:
+        error_msg = str(exc).strip()
+        logger.error(f'Error downloading sync log: {error_msg}', exc_info=True)
+        return JsonResponse({'success': False, 'message': error_msg or 'Gagal download error log'}, status=500)
+
+
+def _log_failed_row(sync_id, row_identifier, category, error_msg, row_number=None):
+    """Log a failed row to CSV file for review and debugging."""
+    try:
+        # Create CSV log file for this sync run
+        log_filename = os.path.join(SYNC_LOGS_DIR, f'sync_referensi_failed_rows_{sync_id}.csv')
+        
+        # Write header if file doesn't exist
+        file_exists = os.path.exists(log_filename)
+        
+        with open(log_filename, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            
+            # Write header on first row
+            if not file_exists:
+                writer.writerow([
+                    'Timestamp',
+                    'Row Number',
+                    'Identifier',
+                    'Category',
+                    'Error Reason'
+                ])
+            
+            # Write failed row data
+            writer.writerow([
+                timezone.now().isoformat(),
+                row_number or '-',
+                row_identifier or '-',
+                category or '-',
+                error_msg or 'Unknown error'
+            ])
+        
+        logger.debug(f"Failed row logged to {log_filename}")
+    except Exception as e:
+        logger.error(f"Failed to log error row: {str(e)}")
 
 
 def _is_admin_user(user):
@@ -144,10 +215,12 @@ def _sync_referensi_data_background(sync_id, request_user=None):
         # Cache the final result
         cache.set(f'sync_referensi_result_{sync_id}', sync_summary, timeout=3600)
         cache.set(f'sync_referensi_done_{sync_id}', True, timeout=3600)
+        cache.set(f'sync_referensi_in_progress_{sync_id}', False, timeout=3600)
     except Exception as e:
         logger.error(f'[BG] Exception in background sync: {str(e)}', exc_info=True)
         cache.set(f'sync_referensi_error_{sync_id}', str(e), timeout=3600)
         cache.set(f'sync_referensi_done_{sync_id}', True, timeout=3600)
+        cache.set(f'sync_referensi_in_progress_{sync_id}', False, timeout=3600)
 
 
 @login_required
@@ -158,6 +231,11 @@ def oracle_sync_run(request):
     try:
         sync_id = str(uuid.uuid4())
         
+        # Initialize cache values for progress tracking BEFORE starting thread
+        cache.set(f'sync_referensi_in_progress_{sync_id}', True, timeout=3600)
+        cache.set(f'sync_referensi_done_{sync_id}', False, timeout=3600)
+        cache.set(f'sync_referensi_started_at_{sync_id}', datetime.now().isoformat(), timeout=3600)
+        
         # Start background thread
         bg_thread = threading.Thread(
             target=_sync_referensi_data_background,
@@ -165,10 +243,6 @@ def oracle_sync_run(request):
             daemon=True
         )
         bg_thread.start()
-        
-        # Initialize cache values for progress tracking
-        cache.set(f'sync_referensi_in_progress_{sync_id}', True, timeout=3600)
-        cache.set(f'sync_referensi_started_at_{sync_id}', datetime.now().isoformat(), timeout=3600)
         
         return JsonResponse({
             'success': True,
@@ -204,6 +278,37 @@ def oracle_sync_stop(request):
     except Exception as exc:
         error_msg = str(exc).strip()
         return JsonResponse({'success': False, 'message': error_msg or 'Gagal menghentikan sync'}, status=500)
+
+
+@require_POST
+@never_cache
+def oracle_sync_clear_session(request):
+    """Clear a sync session by deleting all related cache keys."""
+    try:
+        sync_id = request.POST.get('sync_id', '')
+        if not sync_id:
+            return JsonResponse({'success': False, 'message': 'sync_id tidak ditemukan'}, status=400)
+        
+        # Delete all cache keys related to this sync
+        cache_keys = [
+            f'sync_referensi_in_progress_{sync_id}',
+            f'sync_referensi_done_{sync_id}',
+            f'sync_referensi_started_at_{sync_id}',
+            f'sync_referensi_result_{sync_id}',
+            f'sync_referensi_error_{sync_id}',
+            f'sync_referensi_stop_requested_{sync_id}',
+        ]
+        
+        for key in cache_keys:
+            cache.delete(key)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Session {sync_id} cleared.',
+        })
+    except Exception as exc:
+        error_msg = str(exc).strip()
+        return JsonResponse({'success': False, 'message': error_msg or 'Gagal clear session'}, status=500)
 
 
 @require_GET
@@ -264,11 +369,19 @@ def oracle_sync_progress(request):
                     'message': error,
                 })
             
-            return JsonResponse({
+            # Build response with download link if error log exists
+            response_data = {
                 'success': True,
                 'done': True,
                 'result': result or {},
-            })
+            }
+            
+            # Add error log download URL if errors were logged
+            error_log_path = os.path.join(SYNC_LOGS_DIR, f'sync_referensi_failed_rows_{sync_id}.csv')
+            if os.path.exists(error_log_path):
+                response_data['error_log_url'] = reverse('oracle_sync_download_errors', kwargs={'sync_id': sync_id})
+            
+            return JsonResponse(response_data)
         
         # Still in progress
         return JsonResponse({
@@ -294,29 +407,62 @@ def oracle_sync_truncate(request):
         
         # Extract table names dynamically from HARD_CODED_SYNC_TABLES configurations
         tables_to_truncate = []
+        failed_configs = []
+        
         for config in HARD_CODED_SYNC_TABLES:
             try:
+                # Check if config has target_model_label
+                if not hasattr(config, 'target_model_label') or not config.target_model_label:
+                    logger.warning(f"Config {config.name} has no target_model_label, skipping")
+                    failed_configs.append((config.name, "No target_model_label"))
+                    continue
+                
                 # Parse target_model_label (e.g., "diamond_web.KategoriILAP")
-                app_label, model_name = config.target_model_label.split('.')
+                parts = config.target_model_label.split('.')
+                if len(parts) != 2:
+                    logger.warning(f"Invalid target_model_label format for {config.name}: {config.target_model_label}")
+                    failed_configs.append((config.name, f"Invalid label format: {config.target_model_label}"))
+                    continue
+                
+                app_label, model_name = parts
                 model = apps.get_model(app_label, model_name)
                 table_name = model._meta.db_table
                 if table_name not in tables_to_truncate:
                     tables_to_truncate.append(table_name)
-                logger.info(f"Identified table for truncate: {table_name} (from {config.name})")
+                    logger.info(f"Identified table for truncate: {table_name} (from {config.name})")
+                else:
+                    logger.info(f"Table {table_name} already in truncate list (from {config.name})")
             except Exception as e:
-                logger.warning(f"Failed to identify table for {config.name}: {str(e)}")
+                error_msg = str(e)
+                logger.error(f"Failed to identify table for {config.name}: {error_msg}")
+                failed_configs.append((config.name, error_msg))
         
         if not tables_to_truncate:
+            error_detail = "; ".join([f"{name}: {err}" for name, err in failed_configs]) if failed_configs else "Unknown error"
             return JsonResponse({
                 'success': False,
-                'message': 'No tables found to truncate from sync configurations.'
+                'message': f'No tables found to truncate. Details: {error_detail}'
             }, status=400)
         
         truncated_count = 0
+        truncate_errors = []
         db_vendor = connection.vendor  # 'sqlite', 'postgresql', 'mysql'
+        
+        logger.info(f'Starting truncate for {len(tables_to_truncate)} tables: {tables_to_truncate}')
         
         with connection.cursor() as cursor:
             try:
+                # Disable foreign key checks before truncating to handle dependencies
+                if db_vendor == 'sqlite':
+                    logger.info('Disabling foreign key checks for SQLite')
+                    cursor.execute('PRAGMA foreign_keys = OFF')
+                elif db_vendor == 'postgresql':
+                    logger.info('Disabling foreign key checks for PostgreSQL')
+                    cursor.execute('SET session_replication_role = replica')
+                elif db_vendor == 'mysql':
+                    logger.info('Disabling foreign key checks for MySQL')
+                    cursor.execute('SET FOREIGN_KEY_CHECKS = 0')
+                
                 # Truncate tables (database-agnostic)
                 for table_name in tables_to_truncate:
                     try:
@@ -324,8 +470,8 @@ def oracle_sync_truncate(request):
                             # SQLite uses DELETE instead of TRUNCATE
                             cursor.execute(f'DELETE FROM {table_name}')
                         elif db_vendor == 'postgresql':
-                            # PostgreSQL uses TRUNCATE CASCADE to handle dependencies
-                            cursor.execute(f'TRUNCATE TABLE {table_name} CASCADE')
+                            # PostgreSQL uses TRUNCATE
+                            cursor.execute(f'TRUNCATE TABLE {table_name}')
                         elif db_vendor == 'mysql':
                             # MySQL uses TRUNCATE TABLE
                             cursor.execute(f'TRUNCATE TABLE {table_name}')
@@ -333,8 +479,9 @@ def oracle_sync_truncate(request):
                         truncated_count += 1
                         logger.info(f'Truncated table: {table_name}')
                     except Exception as e:
-                        logger.debug(f'Failed to truncate {table_name}: {str(e)}')
-                        # Continue with other tables
+                        error_detail = str(e)
+                        logger.error(f'Failed to truncate {table_name}: {error_detail}')
+                        truncate_errors.append(f"{table_name}: {error_detail}")
                 
                 # Reset auto-increment sequences (database-agnostic)
                 for table_name in tables_to_truncate:
@@ -344,22 +491,46 @@ def oracle_sync_truncate(request):
                         elif db_vendor == 'postgresql':
                             # PostgreSQL: reset sequence for each table
                             seq_name = f'{table_name}_id_seq'
-                            cursor.execute(f"SELECT setval('{seq_name}', 1)")
+                            try:
+                                cursor.execute(f"SELECT setval('{seq_name}', 1)")
+                            except Exception:
+                                # Sequence might not exist, skip silently
+                                pass
                         elif db_vendor == 'mysql':
                             # MySQL: TRUNCATE already resets auto_increment
                             pass
                     except Exception as e:
-                        logger.debug(f'Failed to reset sequence for {table_name}: {str(e)}')
+                        error_detail = str(e)
+                        logger.error(f'Failed to reset sequence for {table_name}: {error_detail}')
+                        # Don't add to errors list since truncate itself succeeded
+                
+                # Re-enable foreign key checks after truncating
+                if db_vendor == 'sqlite':
+                    logger.info('Re-enabling foreign key checks for SQLite')
+                    cursor.execute('PRAGMA foreign_keys = ON')
+                elif db_vendor == 'postgresql':
+                    logger.info('Re-enabling foreign key checks for PostgreSQL')
+                    cursor.execute('SET session_replication_role = default')
+                elif db_vendor == 'mysql':
+                    logger.info('Re-enabling foreign key checks for MySQL')
+                    cursor.execute('SET FOREIGN_KEY_CHECKS = 1')
+                    
             except Exception as e:
                 # Log the error
                 logger.error(f'Error during truncate: {str(e)}')
                 raise e
         
+        message = f'Tabel referensi berhasil dihapus ({truncated_count} dari {len(tables_to_truncate)} tabel).'
+        if truncate_errors:
+            message += f' Errors: {"; ".join(truncate_errors)}'
+        
         return JsonResponse({
-            'success': True,
-            'message': f'Tabel referensi berhasil dihapus ({truncated_count} tabel).',
+            'success': truncated_count == len(tables_to_truncate),
+            'message': message,
             'truncated_tables': truncated_count,
+            'total_tables': len(tables_to_truncate),
             'tables': tables_to_truncate,
+            'errors': truncate_errors,
         })
     except Exception as exc:
         error_msg = str(exc).strip()
@@ -378,7 +549,52 @@ def _sync_referensi_data(service, sync_id=None, request=None):
     """
     try:
         summary = service.sync()
-        return summary.as_dict() if hasattr(summary, 'as_dict') else {'message': 'Sync completed'}
+        summary_dict = summary.as_dict() if hasattr(summary, 'as_dict') else {'message': 'Sync completed'}
+        
+        # Log any errors to CSV file
+        has_data_to_log = False
+        
+        if sync_id and hasattr(summary, 'errors') and summary.errors:
+            has_data_to_log = True
+            for idx, error_msg in enumerate(summary.errors, 1):
+                _log_failed_row(
+                    sync_id,
+                    row_identifier=f"Error {idx}",
+                    category="Sync Error",
+                    error_msg=error_msg,
+                    row_number=idx
+                )
+        
+        # Log skipped rows from table summaries
+        if sync_id and hasattr(summary, 'table_summaries') and summary.table_summaries:
+            row_idx = 1
+            for table_summary in summary.table_summaries:
+                # Calculate skipped rows: source_rows - (inserts + updates + unchanged)
+                if hasattr(table_summary, 'source_rows'):
+                    total_processed = (
+                        getattr(table_summary, 'inserts', 0) + 
+                        getattr(table_summary, 'updates', 0) + 
+                        getattr(table_summary, 'unchanged', 0)
+                    )
+                    skipped = table_summary.source_rows - total_processed
+                    
+                    if skipped > 0:
+                        has_data_to_log = True
+                        table_name = getattr(table_summary, 'table_name', 'unknown')
+                        _log_failed_row(
+                            sync_id,
+                            row_identifier=f"{table_name}",
+                            category="Skipped Rows",
+                            error_msg=f"{skipped} row(s) skipped due to foreign key constraint or validation errors",
+                            row_number=row_idx
+                        )
+                        row_idx += 1
+        
+        # Store flag indicating if error log exists
+        if sync_id and has_data_to_log:
+            summary_dict['has_error_log'] = True
+        
+        return summary_dict
     except Exception as e:
         logger.error(f'Error in referensi sync: {str(e)}', exc_info=True)
         raise
