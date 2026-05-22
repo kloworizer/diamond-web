@@ -327,6 +327,8 @@ def sync_tiket_progress(request):
 @never_cache
 def sync_tiket_truncate(request):
     try:
+        from django.db import connection
+        
         # Delete dependent records first (TiketPIC and TiketAction) due to PROTECT constraint
         from ..models import TiketPIC, TiketAction
         TiketPIC.objects.all().delete()
@@ -334,9 +336,22 @@ def sync_tiket_truncate(request):
         
         count = Tiket.objects.all().count()
         Tiket.objects.all().delete()
+        
+        # Reset auto-increment (database-agnostic)
+        db_vendor = connection.vendor  # 'sqlite', 'postgresql', 'mysql'
+        with connection.cursor() as cursor:
+            if db_vendor == 'sqlite':
+                cursor.execute('DELETE FROM sqlite_sequence WHERE name="tiket"')
+            elif db_vendor == 'postgresql':
+                # PostgreSQL uses sequences
+                cursor.execute("SELECT setval('tiket_id_seq', 1)")
+            elif db_vendor == 'mysql':
+                # MySQL auto-increment is reset by TRUNCATE, already done by delete
+                pass
+        
         return JsonResponse({
             'success': True,
-            'message': f'Tabel tiket berhasil dihapus ({count} baris).',
+            'message': f'Tabel tiket berhasil dihapus ({count} baris) dan primary key direset.',
             'deleted_count': count,
         })
     except Exception as exc:
@@ -982,11 +997,14 @@ def _sync_tiket_data(service, sync_id=None, request=None):
                     'qc_d': row_dict.get('qc_d'),
                 }
                 
+                # Prepare defaults for update_or_create (exclude nomor_tiket and old_db to prevent updates)
+                defaults_data = {k: v for k, v in tiket_data.items() if k not in ('nomor_tiket', 'old_db')}
+                
                 # Create or update tiket with retry logic for database locks
                 def db_upsert():
                     return Tiket.objects.update_or_create(
                         nomor_tiket=nomor_tiket,
-                        defaults=tiket_data
+                        defaults=defaults_data
                     )
                 
                 # Apply retry decorator logic manually for this operation
