@@ -166,7 +166,50 @@
                 </li>
                 {% endif %}
 
+<<<<<<< izam-frontend-navbar
                                 
+=======
+                {% if user|has_group:"admin" or user|has_group:"admin_p3de" %}
+                <li class="nxl-item nxl-hasmenu">
+                    <a href="javascript:void(0);" class="nxl-link">
+                        <span class="nxl-micon"><i class="feather-settings"></i></span>
+                        <span class="nxl-mtext">Kelola Referensi P3DE</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+                    </a>
+                    <ul class="nxl-submenu">
+                        
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'kategori_ilap_list' %}">Kategori ILAP</a></li>
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'kategori_wilayah_list' %}">Kategori Wilayah</a></li>
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'kanwil_list' %}">Kanwil</a></li>
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'kpp_list' %}">KPP</a></li>
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'jenis_tabel_list' %}">Jenis Tabel</a></li>
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'dasar_hukum_list' %}">Dasar Hukum</a></li>
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'periode_pengiriman_list' %}">Periode Pengiriman</a></li>
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'status_data_list' %}">Status Data</a></li>
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'bentuk_data_list' %}">Bentuk Data</a></li>
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'cara_penyampaian_list' %}">Cara Penyampaian</a></li>
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'media_backup_list' %}">Media Backup</a></li>
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'status_penelitian_list' %}">Status Penelitian</a></li>
+                    </ul>
+                </li>
+                {% endif %}
+                
+                {% if user|has_group:"admin" or user|has_group:"admin_p3de" %}
+                <li class="nxl-item nxl-hasmenu">
+                    <a href="javascript:void(0);" class="nxl-link">
+                        <span class="nxl-micon"><i class="feather-settings"></i></span>
+                        <span class="nxl-mtext">Kelola ILAP</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+                    </a>
+                    <ul class="nxl-submenu">
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'ilap_list' %}">ILAP</a></li>
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'jenis_data_ilap_list' %}">Jenis Data ILAP</a></li>
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'klasifikasi_jenis_data_list' %}">Klasifikasi Jenis Data</a></li>
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'periode_jenis_data_list' %}">Periode Jenis Data</a></li>
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'jenis_prioritas_data_list' %}">Data Prioritas</a></li>
+                    </ul>
+                </li>
+                {% endif %}
+                
+>>>>>>> main
                 {% if user|has_group:"admin" or user|has_group:"admin_p3de" %}
                 <li class="nxl-item nxl-hasmenu">
                     <a href="javascript:void(0);" class="nxl-link">
@@ -274,6 +317,20 @@
                                 <li class="nxl-item"><a class="nxl-link" href="{% url 'pic_pmde_list' %}">PIC PMDE</a></li>
                             </ul>
                         </li>
+                    </ul>
+                </li>
+                {% endif %}
+
+                {% comment %} Sinkronisasi Data menu moved here from Kelola Referensi P3DE {% endcomment %}
+                {% if user|has_group:"admin" or user|has_group:"admin_pmde" %}
+                <li class="nxl-item nxl-hasmenu">
+                    <a href="javascript:void(0);" class="nxl-link">
+                        <span class="nxl-micon"><i class="feather-refresh-cw"></i></span>
+                        <span class="nxl-mtext">Sinkronisasi Data</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+                    </a>
+                    <ul class="nxl-submenu">
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'oracle_sync_page' %}">Sinkronisasi Data Referensi</a></li>
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'sync_tiket_page' %}">Sinkronisasi Data Tiket</a></li>
                     </ul>
                 </li>
                 {% endif %}

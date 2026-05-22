@@ -606,7 +606,17 @@
                     <h5 class="mb-0"><i class="feather-settings me-2"></i>Aksi</h5>
                 </div>
                 <div class="card-body">
-                    {% if not user_is_active_pic %}
+                    {% if is_old_db %}
+                    <div class="alert alert-warning mb-4">
+                        <i class="feather-alert-triangle me-2"></i><strong>Data Migrasi</strong> - Tiket ini berasal dari database lama dan tidak dapat dilakukan tindakan apapun.
+                    </div>
+                    {% endif %}
+                    
+                    {% if is_old_db %}
+                    <div class="text-center text-muted py-2">
+                        <i class="feather-lock me-1"></i>Aksi tidak tersedia untuk tiket dari data migrasi.
+                    </div>
+                    {% elif not user_is_active_pic %}
                     <div class="alert alert-info mb-0">
                         <i class="feather-info me-2"></i>Anda bukan PIC aktif untuk tiket ini. Anda hanya dapat melihat, tidak dapat melakukan perubahan.
                     </div>

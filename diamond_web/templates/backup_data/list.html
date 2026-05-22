@@ -53,10 +53,11 @@
 								<!-- Filter Pilih Tahun -->
 								<div class="d-flex align-items-center gap-2">
 									<label class="fs-12 text-muted text-nowrap mb-0">Pilih Tahun</label>
-									<select class="form-select form-select-sm bg-light-subtle border-gray-200" style="width: 120px; font-size: 13px;">
-										<option selected>2026</option>
-										<option>2025</option>
-										<option>2024</option>
+									<select id="filter-tahun" class="form-select form-select-sm bg-light-subtle border-gray-200" style="width: 120px; font-size: 13px;">
+										<option value="">Semua Tahun</option>
+										{% for tahun in tahun_list %}
+										<option value="{{ tahun }}">{{ tahun }}</option>
+										{% endfor %}
 									</select>
 								</div>
 
@@ -65,41 +66,17 @@
 
 								<!-- List Mini Cards -->
 								<div class="d-flex flex-wrap gap-2">
-									
-									<!-- NAS Card -->
+									{% for mb in media_backup_list %}
 									<div class="d-flex align-items-center border border-gray-200 rounded px-3 py-2 bg-white">
 										<div class="me-3 text-secondary">
-											<!-- Ikon Database (Gunakan SVG atau FontAwesome/Bootstrap Icon) -->
 											<i class="feather-database"></i> 
 										</div>
 										<div class="d-flex align-items-center gap-2">
-											<span class="fw-bold text-dark fs-13">NAS</span>
-											<span class="badge rounded-pill border border-gray-300 text-muted fw-normal px-2" style="font-size: 11px;">99339</span>
+											<span class="fw-bold text-dark fs-13">{{ mb.deskripsi }}</span>
+											<span class="badge rounded-pill border border-gray-300 text-muted fw-normal px-2" style="font-size: 11px;">{{ mb.count }}</span>
 										</div>
 									</div>
-
-									<!-- Server KPDE Card -->
-									<div class="d-flex align-items-center border border-gray-200 rounded px-3 py-2 bg-white">
-										<div class="me-3 text-secondary">
-											<i class="feather-database"></i>
-										</div>
-										<div class="d-flex align-items-center gap-2">
-											<span class="fw-bold text-dark fs-13">Server KPDE</span>
-											<span class="badge rounded-pill border border-gray-300 text-muted fw-normal px-2" style="font-size: 11px;">99339</span>
-										</div>
-									</div>
-
-									<!-- Skema New DWH Card -->
-									<div class="d-flex align-items-center border border-gray-200 rounded px-3 py-2 bg-white">
-										<div class="me-3 text-secondary">
-											<i class="feather-database"></i>
-										</div>
-										<div class="d-flex align-items-center gap-2">
-											<span class="fw-bold text-dark fs-13">Skema New DWH</span>
-											<span class="badge rounded-pill border border-gray-300 text-muted fw-normal px-2" style="font-size: 11px;">99339</span>
-										</div>
-									</div>
-
+									{% endfor %}
 								</div>
 							</div>
 						</div>
@@ -118,32 +95,44 @@
                                                 <div class="row mb-3 align-items-center">
                                                     <label class="col-sm-4 col-form-label fs-12 text-muted">Nama ILAP</label>
                                                     <div class="col-sm-8">
-                                                        <select class="form-select form-select-sm border-gray-200 fs-12 text-muted">
-                                                            <option selected>Pilih ILAP</option>
+                                                        <select id="filter-ilap" class="form-select form-select-sm border-gray-200 fs-12 text-muted">
+                                                            <option value="">Pilih ILAP</option>
+                                                            {% for ilap in filter_options.ilap %}
+                                                            <option value="{{ ilap.id }}">{{ ilap.deskripsi }}</option>
+                                                            {% endfor %}
                                                         </select>
                                                     </div>
                                                 </div>
                                                 <div class="row mb-3 align-items-center">
                                                     <label class="col-sm-4 col-form-label fs-12 text-muted">Jenis Data</label>
                                                     <div class="col-sm-8">
-                                                        <select class="form-select form-select-sm border-gray-200 fs-12 text-muted">
-                                                            <option selected>Pilih Jenis Data</option>
+                                                        <select id="filter-jenis-data" class="form-select form-select-sm border-gray-200 fs-12 text-muted">
+                                                            <option value="">Pilih Jenis Data</option>
+                                                            {% for jd in filter_options.jenis_data %}
+                                                            <option value="{{ jd.id }}">{{ jd.deskripsi }}</option>
+                                                            {% endfor %}
                                                         </select>
                                                     </div>
                                                 </div>
                                                 <div class="row mb-3 align-items-center">
                                                     <label class="col-sm-4 col-form-label fs-12 text-muted">Subjenis Data</label>
                                                     <div class="col-sm-8">
-                                                        <select class="form-select form-select-sm border-gray-200 fs-12 text-muted">
-                                                            <option selected>Pilih Subjenis Data</option>
+                                                        <select id="filter-subjenis-data" class="form-select form-select-sm border-gray-200 fs-12 text-muted">
+                                                            <option value="">Pilih Subjenis Data</option>
+                                                            {% for sd in filter_options.subjenis_data %}
+                                                            <option value="{{ sd.id }}">{{ sd.deskripsi }}</option>
+                                                            {% endfor %}
                                                         </select>
                                                     </div>
                                                 </div>
                                                 <div class="row mb-3 align-items-center">
                                                     <label class="col-sm-4 col-form-label fs-12 text-muted">Kategori ILAP</label>
                                                     <div class="col-sm-8">
-                                                        <select class="form-select form-select-sm border-gray-200 fs-12 text-muted">
-                                                            <option selected>Pilih Kategori ILAP</option>
+                                                        <select id="filter-kategori-ilap" class="form-select form-select-sm border-gray-200 fs-12 text-muted">
+                                                            <option value="">Pilih Kategori ILAP</option>
+                                                            {% for ki in filter_options.kategori_ilap %}
+                                                            <option value="{{ ki.id }}">{{ ki.deskripsi }}</option>
+                                                            {% endfor %}
                                                         </select>
                                                     </div>
                                                 </div>
@@ -154,32 +143,44 @@
                                                 <div class="row mb-3 align-items-center">
                                                     <label class="col-sm-4 col-form-label fs-12 text-muted">Periode Data</label>
                                                     <div class="col-sm-8">
-                                                        <select class="form-select form-select-sm border-gray-200 fs-12 text-muted">
-                                                            <option selected>Pilih Periode Data</option>
+                                                        <select id="filter-periode-data" class="form-select form-select-sm border-gray-200 fs-12 text-muted">
+                                                            <option value="">Pilih Periode Data</option>
+                                                            {% for pd in filter_options.periode_data %}
+                                                            <option value="{{ pd.id }}">{{ pd.deskripsi }}</option>
+                                                            {% endfor %}
                                                         </select>
                                                     </div>
                                                 </div>
                                                 <div class="row mb-3 align-items-center">
                                                     <label class="col-sm-4 col-form-label fs-12 text-muted">Periode Pengiriman</label>
                                                     <div class="col-sm-8">
-                                                        <select class="form-select form-select-sm border-gray-200 fs-12 text-muted">
-                                                            <option selected>Pilih Periode Pengiriman</option>
+                                                        <select id="filter-periode-pengiriman" class="form-select form-select-sm border-gray-200 fs-12 text-muted">
+                                                            <option value="">Pilih Periode Pengiriman</option>
+                                                            {% for pp in filter_options.periode_pengiriman %}
+                                                            <option value="{{ pp.id }}">{{ pp.deskripsi }}</option>
+                                                            {% endfor %}
                                                         </select>
                                                     </div>
                                                 </div>
                                                 <div class="row mb-3 align-items-center">
                                                     <label class="col-sm-4 col-form-label fs-12 text-muted">Media Backup</label>
                                                     <div class="col-sm-8">
-                                                        <select class="form-select form-select-sm border-gray-200 fs-12 text-muted">
-                                                            <option selected>Pilih Media Backup</option>
+                                                        <select id="filter-media-backup" class="form-select form-select-sm border-gray-200 fs-12 text-muted">
+                                                            <option value="">Pilih Media Backup</option>
+                                                            {% for mb in media_backup_list %}
+                                                            <option value="{{ mb.id }}">{{ mb.deskripsi }}</option>
+                                                            {% endfor %}
                                                         </select>
                                                     </div>
                                                 </div>
                                                 <div class="row mb-3 align-items-center">
                                                     <label class="col-sm-4 col-form-label fs-12 text-muted">PIC P3DE</label>
                                                     <div class="col-sm-8">
-                                                        <select class="form-select form-select-sm border-gray-200 fs-12 text-muted">
-                                                            <option selected>Pilih PIC P3DE</option>
+                                                        <select id="filter-pic-p3de" class="form-select form-select-sm border-gray-200 fs-12 text-muted">
+                                                            <option value="">Pilih PIC P3DE</option>
+                                                            {% for pic in filter_options.pic_p3de %}
+                                                            <option value="{{ pic.id }}">{{ pic.nama }}</option>
+                                                            {% endfor %}
                                                         </select>
                                                     </div>
                                                 </div>
@@ -200,11 +201,11 @@
 
                                             <!-- Tombol Filter & Cari -->
                                             <div class="d-flex align-items-center gap-3">
-                                                <a href="#" class="btn border-0 text-primary text-decoration-none p-0 fw-bold">
+                                                <a href="#" id="btn-clear-filter" class="btn border-0 text-primary text-decoration-none p-0 fw-bold">
                                                     <i class="feather-x me-2"></i> Hapus Filter
                                                 </a>
                                                 
-                                                <button type="button" class="btn btn-primary" data-action="create"><i class="feather-search me-1"></i>Cari</button>
+                                                <button type="button" id="btn-search" class="btn btn-primary"><i class="feather-search me-1"></i>Cari</button>
                                             </div>
                                         </div>
                                     </form>
@@ -268,61 +269,96 @@
 <script>
     (function () {
         const ajaxUrl = "{% url 'backup_data_data' %}";
-        let table;
+        let table = null;
+        let isInitialized = false;
 
         $(document).ready(function () {
-            table = $('#backup-data-table').DataTable({
-                serverSide: true,
-                layout: {
-                    topStart: null,
-                    topEnd: null
-                },
-                ajax: {
-                    url: ajaxUrl,
-                    dataSrc: 'data',
-                    data: function (d) {
-                        // Add column search values
-                        d.columns_search = [];
-                        $('#column-search-row input').each(function (i) {
-                            d.columns_search[i] = $(this).val();
-                        });
-                        return d;
-                    }
-                },
-                pageLength: 10,
-                columns: [
-                    { data: 'id', visible: false, searchable: false },
-                    { data: 'no_tiket' },
-                    { data: 'lokasi_backup' },
-                    { data: 'nama_file' },
-                    { data: 'media_backup' },
-                    { data: 'actions', orderable: false, searchable: false }
-                ],
-                columnDefs: [
-                    { targets: 3, render: function (data, type, row, meta) { return data; } }
-                ],
-                order: [[0, 'desc']]
+
+            // Initialize DataTable (NOT on page load - only when searching)
+            const initializeTable = function() {
+                if (isInitialized) return;
+                
+                table = $('#backup-data-table').DataTable({
+                    serverSide: true,
+                    layout: {
+                        topStart: null,
+                        topEnd: null
+                    },
+                    ajax: {
+                        url: ajaxUrl,
+                        dataSrc: 'data',
+                        data: function (d) {
+                            // Add filter values
+                            d.tahun = $('#filter-tahun').val();
+                            d.id_ilap = $('#filter-ilap').val();
+                            d.id_jenis_data = $('#filter-jenis-data').val();
+                            d.id_sub_jenis_data_ilap = $('#filter-subjenis-data').val();
+                            d.id_kategori_ilap = $('#filter-kategori-ilap').val();
+                            d.id_media_backup = $('#filter-media-backup').val();
+                            
+                            // Add column search values
+                            d.columns_search = [];
+                            $('#column-search-row input').each(function (i) {
+                                d.columns_search[i] = $(this).val();
+                            });
+                            return d;
+                        }
+                    },
+                    pageLength: 10,
+                    columns: [
+                        { data: 'id', visible: false, searchable: false },
+                        { data: 'no_tiket' },
+                        { data: 'lokasi_backup' },
+                        { data: 'nama_file' },
+                        { data: 'media_backup' },
+                        { data: 'actions', orderable: false, searchable: false }
+                    ],
+                    columnDefs: [
+                        { targets: 3, render: function (data, type, row, meta) { return data; } }
+                    ],
+                    order: [[0, 'desc']]
+                });
+                isInitialized = true;
+            };
+
+            // Search button click
+            $('#btn-search').on('click', function () {
+                initializeTable();
+                if (table) {
+                    table.ajax.reload();
+                }
             });
 
-            // Add individual column search
-            $('#column-search-row input').on('keyup change', function () {
-                table.ajax.reload();
+            // Clear filter button
+            $('#btn-clear-filter').on('click', function (e) {
+                e.preventDefault();
+                $('#filter-tahun').val('');
+                $('#filter-ilap').val('');
+                $('#filter-jenis-data').val('');
+                $('#filter-subjenis-data').val('');
+                $('#filter-kategori-ilap').val('');
+                $('#filter-media-backup').val('');
+                $('#column-search-row input').val('');
+                
+                if (table) {
+                    table.ajax.reload();
+                }
             });
 
             // Handle modal hide to prevent aria-hidden conflicts
             const modalElement = document.getElementById('crudModal');
-            modalElement.addEventListener('hidden.bs.modal', function () {
-                // Reset modal body
-                document.getElementById('modalBody').innerHTML = '';
-            });
+            if (modalElement) {
+                modalElement.addEventListener('hidden.bs.modal', function () {
+                    document.getElementById('modalBody').innerHTML = '';
+                });
 
-            modalElement.addEventListener('hide.bs.modal', function () {
-                // Clear focus from form elements
-                const focusedElement = document.activeElement;
-                if (focusedElement && modalElement.contains(focusedElement)) {
-                    focusedElement.blur();
-                }
-            });
+                modalElement.addEventListener('hide.bs.modal', function () {
+                    const focusedElement = document.activeElement;
+                    if (focusedElement && modalElement.contains(focusedElement)) {
+                        focusedElement.blur();
+                    }
+                });
+            }
 
             // Handle create button
             $('[data-action="create"]').on('click', function () {
@@ -358,7 +394,9 @@
                     success: function (response) {
                         if (response.success) {
                             $('#crudModal').modal('hide');
-                            table.ajax.reload();
+                            if (table) {
+                                table.ajax.reload();
+                            }
                             showToast(response.message || 'Data berhasil disimpan.', 'success');
                         } else {
                             $('#modalBody').html(response.html);

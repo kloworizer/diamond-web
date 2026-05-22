@@ -6,11 +6,13 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_GET
+from django.db.models import Count, Q
 
 from ..models.backup_data import BackupData
 from ..models.tiket import Tiket
 from ..models.tiket_action import TiketAction
 from ..models.tiket_pic import TiketPIC
+from ..models.media_backup import MediaBackup
 from ..forms.backup_data import BackupDataForm
 from ..constants.tiket_action_types import BackupActionType
 from ..constants.tiket_status import STATUS_DIKIRIM_KE_PIDE, STATUS_DIREKAM, STATUS_DITELITI
@@ -47,8 +49,119 @@ class BackupDataListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView
 
     Renders the `backup_data/list.html` template. Access restricted to
     authenticated users in `user_p3de` (or admin) via `UserP3DERequiredMixin`.
+    
+    Context data includes:
+    - tahun_list: Distinct tahun values from accessible tikets
+    - media_backup_list: MediaBackup objects with backup counts
+    - filter_options: ILAP, Jenis Data, Subjenis Data, Kategori ILAP options
     """
     template_name = 'backup_data/list.html'
+
+    def get_accessible_tikets(self):
+        """Get tikets accessible by current user (user's P3DE tikets or all if admin)."""
+        if self.request.user.is_superuser or self.request.user.groups.filter(name='admin').exists():
+            return Tiket.objects.all()
+        else:
+            # Only tikets where user is active P3DE PIC
+            return Tiket.objects.filter(
+                tiketpic__id_user=self.request.user,
+                tiketpic__role=TiketPIC.Role.P3DE,
+                tiketpic__active=True
+            ).distinct()
+
+    def get_context_data(self, **kwargs):
+        """Provide filter data for the template."""
+        context = super().get_context_data(**kwargs)
+        accessible_tikets = self.get_accessible_tikets()
+        
+        # Get distinct tahun values from accessible tikets
+        tahun_list = accessible_tikets.values_list('tahun', flat=True).distinct().order_by('-tahun')
+        
+        # Get MediaBackup with backup counts
+        media_backup_list = []
+        for mb in MediaBackup.objects.all():
+            count = BackupData.objects.filter(id_media_backup=mb).count()
+            media_backup_list.append({
+                'id': mb.id,
+                'deskripsi': mb.deskripsi,
+                'count': count
+            })
+        
+        # Get filter options with full model data (not just IDs)
+        from django.contrib.auth.models import User
+        
+        # Get accessible tikets with select_related for better query performance
+        tikets_with_data = accessible_tikets.select_related(
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap'
+        )
+        
+        # Extract unique ILAP and Jenis Data IDs
+        ilap_set = set()
+        jenis_data_ids = set()
+        pic_p3de_set = set()
+        
+        for tiket in tikets_with_data:
+            if tiket.id_periode_data and tiket.id_periode_data.id_sub_jenis_data_ilap:
+                # Get ILAP
+                ilap = tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap
+                if ilap:
+                    ilap_set.add(ilap.id)
+                # Get Jenis Data ID
+                jenis_data_ids.add(tiket.id_periode_data.id_sub_jenis_data_ilap.id)
+        
+        # Get PIC P3DE for accessible tikets
+        pic_p3de_set = set(
+            TiketPIC.objects.filter(
+                id_tiket__in=accessible_tikets,
+                role=TiketPIC.Role.P3DE,
+                active=True
+            ).values_list('id_user', flat=True).distinct()
+        )
+        
+        # Query the model objects
+        ilap_options = []
+        jenis_data_options = []
+        pic_p3de_options = []
+        
+        if ilap_set:
+            from ..models.ilap import ILAP
+            ilap_options = list(ILAP.objects.filter(id__in=ilap_set).values('id', 'nama_ilap').order_by('nama_ilap'))
+            # Rename field for consistency
+            for ilap in ilap_options:
+                ilap['deskripsi'] = ilap.pop('nama_ilap')
+        
+        # Get all Jenis Data ILAP from tikets (these are actually sub jenis data)
+        if jenis_data_ids:
+            from ..models.jenis_data_ilap import JenisDataILAP
+            jenis_data_options = list(
+                JenisDataILAP.objects.filter(id__in=jenis_data_ids).values(
+                    'id', 'nama_sub_jenis_data'
+                ).order_by('nama_sub_jenis_data')
+            )
+            # Rename field for consistency
+            for jd in jenis_data_options:
+                jd['deskripsi'] = jd.pop('nama_sub_jenis_data')
+        
+        if pic_p3de_set:
+            pic_p3de_options = list(
+                User.objects.filter(id__in=pic_p3de_set).values('id', 'first_name', 'last_name').order_by('first_name', 'last_name')
+            )
+            # Format nama as first_name + last_name
+            for pic in pic_p3de_options:
+                pic['nama'] = f"{pic.get('first_name', '')} {pic.get('last_name', '')}".strip()
+        
+        context.update({
+            'tahun_list': list(tahun_list),
+            'media_backup_list': media_backup_list,
+            'filter_options': {
+                'ilap': ilap_options,
+                'jenis_data': jenis_data_options,
+                'subjenis_data': jenis_data_options,  # Same as jenis_data for now
+                'kategori_ilap': [],  # Can be added if needed
+                'pic_p3de': pic_p3de_options,
+            }
+        })
+        return context
 
 class BackupDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxFormMixin, CreateView):
     """Create view for `BackupData`.
@@ -347,6 +460,12 @@ def backup_data_data(request):
     GET parameters:
     - draw: DataTables draw counter.
     - start, length: paging offset and page size.
+    - tahun: filter by tahun
+    - id_ilap: filter by ILAP
+    - id_jenis_data: filter by Jenis Data
+    - id_sub_jenis_data_ilap: filter by Subjenis Data
+    - id_kategori_ilap: filter by Kategori ILAP
+    - id_media_backup: filter by Media Backup
     - columns_search[]: column-specific search values (nomor_tiket, lokasi_backup).
     - order[0][column], order[0][dir]: ordering index and direction.
 
@@ -378,6 +497,36 @@ def backup_data_data(request):
         ).distinct()
     
     records_total = qs.count()
+
+    # Apply filters
+    tahun = request.GET.get('tahun', '').strip()
+    if tahun:
+        try:
+            tahun = int(tahun)
+            qs = qs.filter(id_tiket__tahun=tahun)
+        except (ValueError, TypeError):
+            pass
+    
+    id_ilap = request.GET.get('id_ilap', '').strip()
+    if id_ilap:
+        qs = qs.filter(id_tiket__id_periode_data__id_sub_jenis_data_ilap__id_ilap=id_ilap)
+    
+    # id_jenis_data is actually id_sub_jenis_data_ilap (the subjenis)
+    id_jenis_data = request.GET.get('id_jenis_data', '').strip()
+    if id_jenis_data:
+        qs = qs.filter(id_tiket__id_periode_data__id_sub_jenis_data_ilap=id_jenis_data)
+    
+    id_sub_jenis_data_ilap = request.GET.get('id_sub_jenis_data_ilap', '').strip()
+    if id_sub_jenis_data_ilap:
+        qs = qs.filter(id_tiket__id_periode_data__id_sub_jenis_data_ilap=id_sub_jenis_data_ilap)
+    
+    id_kategori_ilap = request.GET.get('id_kategori_ilap', '').strip()
+    if id_kategori_ilap:
+        qs = qs.filter(id_tiket__id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori=id_kategori_ilap)
+    
+    id_media_backup = request.GET.get('id_media_backup', '').strip()
+    if id_media_backup:
+        qs = qs.filter(id_media_backup=id_media_backup)
 
     # Column-specific filtering
     columns_search = request.GET.getlist('columns_search[]')
