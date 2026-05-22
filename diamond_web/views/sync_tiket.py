@@ -242,6 +242,11 @@ def sync_tiket_stop(request):
             try:
                 uuid.UUID(sync_id)
                 cache.set(f'sync_tiket_stop_{sync_id}', True, timeout=3600)
+                # Also mark the sync as done and set a user-facing message so the
+                # progress polling on the client side receives a single final
+                # response and doesn't repeatedly show duplicate toasts.
+                cache.set(f'sync_tiket_error_{sync_id}', 'Sync dihentikan oleh pengguna', timeout=3600)
+                cache.set(f'sync_tiket_done_{sync_id}', True, timeout=3600)
             except (ValueError, TypeError):
                 return JsonResponse({'success': False, 'message': 'invalid sync_id'}, status=400)
         
@@ -943,7 +948,8 @@ def _sync_tiket_data(service, sync_id=None, request=None):
                 # Prepare tiket data using correct Django field names
                 tiket_data = {
                     'nomor_tiket': nomor_tiket,
-                    'old_db': row_dict.get('old_db', 1),
+                    # Ensure old_db is an integer (from Oracle) and set on CREATE only
+                    'old_db': _safe_int(row_dict.get('old_db'), 1),
                     'status_tiket': row_dict.get('status_tiket') if row_dict.get('status_tiket') is not None else 1,
                     'id_periode_data': periode_jenis_data_obj,  # ForeignKey to PeriodeJenisData (REQUIRED)
                     'id_jenis_prioritas_data': jenis_prioritas_obj,  # ForeignKey to JenisPrioritasData (nullable)
@@ -1001,11 +1007,23 @@ def _sync_tiket_data(service, sync_id=None, request=None):
                 defaults_data = {k: v for k, v in tiket_data.items() if k not in ('nomor_tiket', 'old_db')}
                 
                 # Create or update tiket with retry logic for database locks
+                # Use get_or_create so that `old_db` (in tiket_data) is applied on
+                # creation only. For updates we explicitly update other fields
+                # but leave `old_db` unchanged.
+                defaults_create = {k: v for k, v in tiket_data.items() if k != 'nomor_tiket'}
+
                 def db_upsert():
-                    return Tiket.objects.update_or_create(
+                    obj, created = Tiket.objects.get_or_create(
                         nomor_tiket=nomor_tiket,
-                        defaults=defaults_data
+                        defaults=defaults_create
                     )
+                    if not created:
+                        # Update all fields except old_db and nomor_tiket
+                        update_fields = {k: v for k, v in tiket_data.items() if k not in ('nomor_tiket', 'old_db')}
+                        for key, val in update_fields.items():
+                            setattr(obj, key, val)
+                        obj.save()
+                    return obj, created
                 
                 # Apply retry decorator logic manually for this operation
                 tiket = None
