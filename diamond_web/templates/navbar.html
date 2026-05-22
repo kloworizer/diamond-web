@@ -42,11 +42,28 @@
                         <span class="nxl-mtext">P3DE</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                     </a>
                     <ul class="nxl-submenu">
-                        <li class="nxl-item"><a class="nxl-link" href="{% url 'monitoring_penyampaian_data_list' %}">Monitor Penyampaian Data</a></li>
-                        <li class="nxl-item"><a class="nxl-link" href="{% url 'tiket_create' %}">Rekam Penerimaan Data</a></li>
-                        <li class="nxl-item"><a class="nxl-link" href="{% url 'backup_data_list' %}">Kelola Backup Data</a></li>
-                        <li class="nxl-item"><a class="nxl-link" href="{% url 'tanda_terima_data_list' %}">Kelola Tanda Terima</a></li>
-                        <li class="nxl-item"><a class="nxl-link" href="{% url 'kirim_tiket' %}">Kirim Tiket</a></li>
+                        <li class="nxl-item nxl-hasmenu">
+                            <a class="nxl-link" href="javascript:void(0);">
+                                <span class="nxl-micon"><i class="feather-monitor"></i></span>
+                                <span class="nxl-mtext">Penerimaan Data</span>
+                                <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+                            </a>
+                            <!-- Ini adalah wadah untuk sub-submenu tingkat ke-3 -->
+                            <ul class="nxl-submenu">
+                                <li class="nxl-item"><a class="nxl-link" href="{% url 'monitoring_penyampaian_data_list' %}">Daftar Monitor</a></li>
+                                <li class="nxl-item"><a class="nxl-link" href="{% url 'tanda_terima_data_list' %}">Kelola Tanda Terima</a></li>
+                                <li class="nxl-item"><a class="nxl-link" href="{% url 'tiket_create' %}">Rekam Penerimaan Data</a></li>
+                            </ul>
+                        </li>
+                        
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'backup_data_list' %}">
+                            <span class="nxl-micon"><i class="feather-database"></i></span>
+                            <span class="nxl-mtext">Kelola Backup Data</span>
+                        </a></li>
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'kirim_tiket' %}">
+                            <span class="nxl-micon"><i class="feather-send"></i></span>
+                            <span class="nxl-mtext">Kirim Tiket</span>0
+                        </a></li>
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'bulk_pkdi_klarifikasi' %}">Generate PKDI/Klarifikasi (Bulk)</a></li>
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'bulk_nd_pengantar_pide' %}">Generate ND Pengantar PIDE (Bulk)</a></li>
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'register_penerimaan_data' %}">Register Penerimaan Data</a></li>
@@ -61,10 +78,41 @@
                         <span class="nxl-mtext">PIDE</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                     </a>
                     <ul class="nxl-submenu">
-                        <li class="nxl-item"><a class="nxl-link" href="{% url 'laporan_transfer' %}">Laporan Transfer</a></li>
-                        <li class="nxl-item"><a class="nxl-link" href="{% url 'laporan_sla_perekaman' %}">Laporan SLA Perekaman</a></li>
-                        <li class="nxl-item"><a class="nxl-link" href="{% url 'laporan_sla_identifikasi' %}">Laporan SLA Identifikasi</a></li>
-                        <li class="nxl-item"><a class="nxl-link" href="{% url 'laporan_metrik_data_eksternal' %}">Laporan Metrik Data Eksternal</a></li>
+
+                        <li class="nxl-item">
+                            <a class="nxl-link" href="{% url 'laporan_sla_perekaman' %}">
+                                <span class="nxl-micon"><i class="feather-user-check"></i></span>
+                                <span class="nxl-mtext">Identifikasi</span>
+                            </a>
+                        </li>
+                        <li class="nxl-item">
+                            <a class="nxl-link" href="{% url 'laporan_sla_perekaman' %}">
+                                <span class="nxl-micon"><i class="feather-file-text"></i></span>
+                                <span class="nxl-mtext">Tracking dan Pengembalian Tiket</span>
+                            </a>
+                        </li>
+                        <li class="nxl-item">
+                            <a class="nxl-link" href="{% url 'pic_pide_list' %}">
+                                <span class="nxl-micon"><i class="feather-user"></i></span>
+                                <span class="nxl-mtext">PIC Data di PIDE</span>
+                            </a>
+                        </li>
+
+                        <li class="nxl-item nxl-hasmenu">
+                            <a class="nxl-link" href="javascript:void(0);">
+                                <span class="nxl-micon"><i class="feather-home"></i></span>
+                                <span class="nxl-mtext">Laporan</span>
+                                <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+                            </a>
+                            <!-- Ini adalah wadah untuk sub-submenu tingkat ke-3 -->
+                            <ul class="nxl-submenu">
+                                <li class="nxl-item"><a class="nxl-link" href="{% url 'laporan_sla_perekaman' %}">Laporan SLA Perekaman</a></li>
+                                <li class="nxl-item"><a class="nxl-link" href="{% url 'laporan_sla_identifikasi' %}">Laporan SLA Identifikasi</a></li>
+                                <li class="nxl-item"><a class="nxl-link" href="{% url 'laporan_transfer' %}">Laporan Transfer</a></li>
+                                <li class="nxl-item"><a class="nxl-link" href="{% url 'laporan_metrik_data_eksternal' %}">Laporan Metrik Data Eksternal</a></li>
+                            </ul>
+                        </li>
+
                     </ul>
                 </li>
                 {% endif %}
@@ -76,9 +124,44 @@
                         <span class="nxl-mtext">PMDE</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                     </a>
                     <ul class="nxl-submenu">
-                        <li class="nxl-item"><a class="nxl-link" href="{% url 'laporan_pengendalian_mutu' %}">Laporan Pengendalian Mutu</a></li>
-                        <li class="nxl-item"><a class="nxl-link" href="{% url 'laporan_kelengkapan_data' %}">Laporan Kelengkapan Data</a></li>
-                        <li class="nxl-item"><a class="nxl-link" href="{% url 'laporan_hasil_pengolahan_data_prioritas' %}">Laporan Hasil Pengolahan Data Prioritas</a></li>
+                        
+                    </ul>
+                    <ul class="nxl-submenu">
+
+                        <li class="nxl-item">
+                            <a class="nxl-link" href="{% url 'laporan_sla_perekaman' %}">
+                                <span class="nxl-micon"><i class="feather-user-check"></i></span>
+                                <span class="nxl-mtext">Quality Control</span>
+                            </a>
+                        </li>
+                        <li class="nxl-item">
+                            <a class="nxl-link" href="{% url 'laporan_sla_perekaman' %}">
+                                <span class="nxl-micon"><i class="feather-file-text"></i></span>
+                                <span class="nxl-mtext">Tracking dan Pengembalian Tiket</span>
+                            </a>
+                        </li>
+                        <li class="nxl-item">
+                            <a class="nxl-link" href="{% url 'pic_pmde_list' %}">
+                                <span class="nxl-micon"><i class="feather-user"></i></span>
+                                <span class="nxl-mtext">PIC Data di PMDE</span>
+                            </a>
+                        </li>
+
+                        <li class="nxl-item nxl-hasmenu">
+                            <a class="nxl-link" href="javascript:void(0);">
+                                <span class="nxl-micon"><i class="feather-home"></i></span>
+                                <span class="nxl-mtext">Laporan</span>
+                                <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+                            </a>
+                            <!-- Ini adalah wadah untuk sub-submenu tingkat ke-3 -->
+                            <ul class="nxl-submenu">
+                                <li class="nxl-item"><a class="nxl-link" href="{% url 'laporan_pengendalian_mutu' %}">Laporan Pengendalian Mutu</a></li>
+                                <li class="nxl-item"><a class="nxl-link" href="{% url 'laporan_kelengkapan_data' %}">Laporan Kelengkapan Data</a></li>
+                                <li class="nxl-item"><a class="nxl-link" href="{% url 'laporan_hasil_pengolahan_data_prioritas' %}">Laporan Hasil Pengolahan Data Prioritas</a></li>
+                            </ul>
+                        </li>
+
+                        
                     </ul>
                 </li>
                 {% endif %}
