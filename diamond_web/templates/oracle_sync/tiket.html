@@ -104,6 +104,14 @@
 
         let currentSyncId = null;
         let syncIntervalId = null;
+        let lastProgressSnapshot = {
+            current: 0,
+            total: 0,
+            percentage: 0,
+            inserts: 0,
+            updates: 0,
+            errors: 0,
+        };
         
         const SYNC_ID_STORAGE_KEY = 'tiket_sync_id';
         
@@ -226,13 +234,47 @@
 
         function updateProgress(progressData) {
             if (!progressData) return;
-            const pct = Math.min(100, progressData.percentage || 0);
+
+            // Some production setups can return intermittent empty progress snapshots
+            // (e.g., non-shared cache across workers). Keep UI monotonic and ignore regressions.
+            const incoming = {
+                current: Number(progressData.current || 0),
+                total: Number(progressData.total || 0),
+                percentage: Number(progressData.percentage || 0),
+                inserts: Number(progressData.inserts || 0),
+                updates: Number(progressData.updates || 0),
+                errors: Number(progressData.errors || 0),
+            };
+
+            const isTransientZero = (
+                incoming.current === 0 &&
+                incoming.total === 0 &&
+                incoming.percentage === 0 &&
+                (lastProgressSnapshot.current > 0 || lastProgressSnapshot.total > 0 || lastProgressSnapshot.percentage > 0)
+            );
+
+            if (isTransientZero) {
+                return;
+            }
+
+            const merged = {
+                current: Math.max(lastProgressSnapshot.current, incoming.current),
+                total: Math.max(lastProgressSnapshot.total, incoming.total),
+                percentage: Math.max(lastProgressSnapshot.percentage, incoming.percentage),
+                inserts: Math.max(lastProgressSnapshot.inserts, incoming.inserts),
+                updates: Math.max(lastProgressSnapshot.updates, incoming.updates),
+                errors: Math.max(lastProgressSnapshot.errors, incoming.errors),
+            };
+
+            lastProgressSnapshot = merged;
+
+            const pct = Math.min(100, merged.percentage || 0);
             progressBar.style.width = pct + '%';
             progressText.textContent = pct + '%';
-            progressCounter.textContent = progressData.current + ' / ' + progressData.total;
-            progressInserts.textContent = progressData.inserts || 0;
-            progressUpdates.textContent = progressData.updates || 0;
-            progressErrors.textContent = progressData.errors || 0;
+            progressCounter.textContent = merged.current + ' / ' + merged.total;
+            progressInserts.textContent = merged.inserts || 0;
+            progressUpdates.textContent = merged.updates || 0;
+            progressErrors.textContent = merged.errors || 0;
         }
 
         async function postJson(url, body = {}) {
@@ -305,6 +347,14 @@
         btnSync.addEventListener('click', async function () {
             setLoading(btnSync, true, '<i class="feather-upload me-1"></i>Sync Data', 'Syncing...');
             btnCheck.disabled = true;
+            lastProgressSnapshot = {
+                current: 0,
+                total: 0,
+                percentage: 0,
+                inserts: 0,
+                updates: 0,
+                errors: 0,
+            };
             progressBox.style.display = 'block';
             resultBox.style.display = 'none';
             btnStop.style.display = 'inline-block';
