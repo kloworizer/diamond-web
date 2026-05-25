@@ -8,12 +8,12 @@ from django.utils import timezone
 from django.urls import reverse
 from datetime import datetime, timedelta
 import uuid
-import threading
 import logging
 import os
 import csv
 
 from ..utils.oracle_sync import OracleDataSyncService, OracleSyncConfigError
+from ..tasks import check_referensi_data_task, sync_referensi_data_task
 
 logger = logging.getLogger(__name__)
 
@@ -152,15 +152,10 @@ def oracle_sync_check(request):
     try:
         check_id = str(uuid.uuid4())
 
-        bg_thread = threading.Thread(
-            target=_check_referensi_data_background,
-            args=(check_id,),
-            daemon=True
-        )
-        bg_thread.start()
-
         cache.set(f'check_referensi_in_progress_{check_id}', True, timeout=3600)
         cache.set(f'check_referensi_started_at_{check_id}', datetime.now().isoformat(), timeout=3600)
+
+        check_referensi_data_task.delay(check_id)
 
         return JsonResponse({
             'success': True,
@@ -179,48 +174,14 @@ def oracle_sync_check(request):
 
 
 def _check_referensi_data_background(check_id):
-    """Run check data in background thread to avoid reverse proxy timeout."""
-    try:
-        logger.info(f'[BG] Starting referensi check (check_id={check_id})...')
-        service = OracleDataSyncService()
-        summary = service.check()
-        summary_dict = summary.as_dict() if hasattr(summary, 'as_dict') else {}
-
-        cache.set(f'check_referensi_result_{check_id}', summary_dict, timeout=3600)
-        cache.set(f'check_referensi_done_{check_id}', True, timeout=3600)
-        cache.set(f'check_referensi_in_progress_{check_id}', False, timeout=3600)
-        logger.info(f'[BG] Referensi check completed (check_id={check_id})')
-    except Exception as e:
-        logger.error(f'[BG] Exception in background check: {str(e)}', exc_info=True)
-        cache.set(f'check_referensi_error_{check_id}', str(e), timeout=3600)
-        cache.set(f'check_referensi_done_{check_id}', True, timeout=3600)
-        cache.set(f'check_referensi_in_progress_{check_id}', False, timeout=3600)
+    """Deprecated: kept as a thin shim; use check_referensi_data_task instead."""
+    check_referensi_data_task.delay(check_id)
 
 
 def _sync_referensi_data_background(sync_id, request_user=None):
-    """Run sync in background thread."""
-    try:
-        logger.info(f'[BG] Starting referensi sync (sync_id={sync_id})...')
-        service = OracleDataSyncService()
-        logger.info(f'[BG] OracleDataSyncService initialized')
-        
-        class FakeRequest:
-            def __init__(self, user):
-                self.user = user
-        
-        fake_request = FakeRequest(request_user) if request_user else None
-        sync_summary = _sync_referensi_data(service, sync_id=sync_id, request=fake_request)
-        logger.info(f'[BG] Referensi sync completed (sync_id={sync_id}): {sync_summary}')
-        
-        # Cache the final result
-        cache.set(f'sync_referensi_result_{sync_id}', sync_summary, timeout=3600)
-        cache.set(f'sync_referensi_done_{sync_id}', True, timeout=3600)
-        cache.set(f'sync_referensi_in_progress_{sync_id}', False, timeout=3600)
-    except Exception as e:
-        logger.error(f'[BG] Exception in background sync: {str(e)}', exc_info=True)
-        cache.set(f'sync_referensi_error_{sync_id}', str(e), timeout=3600)
-        cache.set(f'sync_referensi_done_{sync_id}', True, timeout=3600)
-        cache.set(f'sync_referensi_in_progress_{sync_id}', False, timeout=3600)
+    """Deprecated: kept as a thin shim; use sync_referensi_data_task instead."""
+    user_id = getattr(request_user, 'pk', None)
+    sync_referensi_data_task.delay(sync_id, user_id)
 
 
 @login_required
@@ -230,20 +191,14 @@ def _sync_referensi_data_background(sync_id, request_user=None):
 def oracle_sync_run(request):
     try:
         sync_id = str(uuid.uuid4())
-        
-        # Initialize cache values for progress tracking BEFORE starting thread
+
+        # Initialize cache values for progress tracking BEFORE dispatching
         cache.set(f'sync_referensi_in_progress_{sync_id}', True, timeout=3600)
         cache.set(f'sync_referensi_done_{sync_id}', False, timeout=3600)
         cache.set(f'sync_referensi_started_at_{sync_id}', datetime.now().isoformat(), timeout=3600)
-        
-        # Start background thread
-        bg_thread = threading.Thread(
-            target=_sync_referensi_data_background,
-            args=(sync_id, request.user),
-            daemon=True
-        )
-        bg_thread.start()
-        
+
+        sync_referensi_data_task.delay(sync_id, request.user.pk)
+
         return JsonResponse({
             'success': True,
             'message': 'Sync referensi dimulai di background.',
@@ -343,11 +298,13 @@ def oracle_sync_progress(request):
                     'result': result or {},
                 })
 
+            progress = cache.get(f'check_referensi_progress_{check_id}')
             return JsonResponse({
                 'success': True,
                 'done': False,
                 'mode': 'check',
                 'message': 'Check data masih berjalan...',
+                'progress': progress,
             })
 
         sync_id = request.GET.get('sync_id', '')
@@ -384,10 +341,12 @@ def oracle_sync_progress(request):
             return JsonResponse(response_data)
         
         # Still in progress
+        progress = cache.get(f'sync_referensi_progress_{sync_id}')
         return JsonResponse({
             'success': True,
             'done': False,
             'message': 'Sync masih berjalan...',
+            'progress': progress,
         })
     except Exception as exc:
         error_msg = str(exc).strip()
@@ -609,16 +568,17 @@ def oracle_sync_truncate(request):
         return JsonResponse({'success': False, 'message': error_msg}, status=500)
 
 
-def _sync_referensi_data(service, sync_id=None, request=None):
+def _sync_referensi_data(service, sync_id=None, request=None, progress_callback=None):
     """Sync reference data from Oracle to Django models.
     
     Args:
     - service: OracleDataSyncService instance
     - sync_id: Unique identifier for this sync run (for progress tracking)
     - request: Django request object (for logging current user)
+    - progress_callback: optional callable for per-table progress updates
     """
     try:
-        summary = service.sync()
+        summary = service.sync(progress_callback=progress_callback)
         summary_dict = summary.as_dict() if hasattr(summary, 'as_dict') else {'message': 'Sync completed'}
         
         # Log any errors to CSV file

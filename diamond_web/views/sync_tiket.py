@@ -11,7 +11,6 @@ import uuid
 import json
 import logging
 import signal
-import threading
 import time
 import re
 from functools import wraps
@@ -21,6 +20,7 @@ import csv
 from ..models import Tiket, BentukData, CaraPenyampaian, PeriodeJenisData, JenisPrioritasData, StatusPenelitian, PIC, TiketPIC, TiketAction
 from ..constants.tiket_action_types import PICActionType
 from ..utils.oracle_sync import OracleDataSyncService, OracleSyncConfigError
+from ..tasks import sync_tiket_data_task, check_tiket_data_task
 
 logger = logging.getLogger(__name__)
 
@@ -139,17 +139,18 @@ def sync_tiket_test_connection(request):
 @never_cache
 def sync_tiket_check(request):
     try:
-        logger.info('Starting tiket check...')
-        service = OracleDataSyncService()
-        logger.info('OracleDataSyncService initialized')
-        
-        tiket_summary = _check_tiket_data(service)
-        logger.info(f'Tiket check completed: {tiket_summary}')
-        
+        check_id = str(uuid.uuid4())
+        cache.set(f'check_tiket_done_{check_id}', False, timeout=3600)
+        cache.set(f'check_tiket_in_progress_{check_id}', True, timeout=3600)
+
+        logger.info(f'Dispatching tiket check task (check_id={check_id})...')
+        check_tiket_data_task.delay(check_id)
+
         return JsonResponse({
             'success': True,
             'mode': 'check',
-            'summary': tiket_summary,
+            'check_id': check_id,
+            'message': 'Check dimulai. Silakan tunggu...',
         })
     except OracleSyncConfigError as exc:
         error_msg = str(exc).strip()
@@ -164,27 +165,9 @@ def sync_tiket_check(request):
 
 
 def _sync_tiket_data_background(sync_id, request_user=None):
-    """Run sync in background thread."""
-    try:
-        logger.info(f'[BG] Starting tiket sync (sync_id={sync_id})...')
-        service = OracleDataSyncService()
-        logger.info(f'[BG] OracleDataSyncService initialized')
-        
-        class FakeRequest:
-            def __init__(self, user):
-                self.user = user
-        
-        fake_request = FakeRequest(request_user) if request_user else None
-        tiket_summary = _sync_tiket_data(service, sync_id=sync_id, request=fake_request)
-        logger.info(f'[BG] Tiket sync completed (sync_id={sync_id}): {tiket_summary}')
-        
-        # Cache the final result
-        cache.set(f'sync_tiket_result_{sync_id}', tiket_summary, timeout=3600)
-        cache.set(f'sync_tiket_done_{sync_id}', True, timeout=3600)
-    except Exception as e:
-        logger.error(f'[BG] Exception in background sync: {str(e)}', exc_info=True)
-        cache.set(f'sync_tiket_error_{sync_id}', str(e), timeout=3600)
-        cache.set(f'sync_tiket_done_{sync_id}', True, timeout=3600)
+    """Deprecated: kept as a thin shim; use sync_tiket_data_task instead."""
+    user_id = getattr(request_user, 'pk', None)
+    sync_tiket_data_task.delay(sync_id, user_id)
 
 
 @login_required
@@ -197,19 +180,14 @@ def sync_tiket_run(request):
         sync_id = str(uuid.uuid4())
         cache.set(f'sync_tiket_stop_{sync_id}', False, timeout=3600)
         cache.set(f'sync_tiket_done_{sync_id}', False, timeout=3600)
-        
+        cache.set(f'sync_tiket_in_progress_{sync_id}', True, timeout=3600)
+
         logger.info(f'Starting tiket sync (sync_id={sync_id})...')
-        
-        # Start sync in background thread - don't block the response
-        thread = threading.Thread(
-            target=_sync_tiket_data_background,
-            args=(sync_id, request.user),
-            daemon=True
-        )
-        thread.start()
-        
-        logger.info(f'Background sync thread started (sync_id={sync_id})')
-        
+
+        sync_tiket_data_task.delay(sync_id, request.user.pk)
+
+        logger.info(f'Celery sync task dispatched (sync_id={sync_id})')
+
         # Return immediately with sync_id so client can start polling
         return JsonResponse({
             'success': True,
@@ -262,8 +240,49 @@ def sync_tiket_stop(request):
 @require_GET
 @never_cache
 def sync_tiket_progress(request):
-    """Get current progress of in-progress sync (no auth check to avoid session locks during sync)."""
+    """Get current progress of in-progress check or sync (no auth check to avoid session locks)."""
     try:
+        mode = request.GET.get('mode', 'sync')
+        request.session.modified = False
+
+        if mode == 'check':
+            check_id = request.GET.get('check_id')
+            if not check_id:
+                return JsonResponse({'success': False, 'message': 'check_id required'}, status=400)
+            try:
+                uuid.UUID(check_id)
+            except (ValueError, TypeError):
+                return JsonResponse({'success': False, 'message': 'invalid check_id'}, status=400)
+
+            is_done = cache.get(f'check_tiket_done_{check_id}')   # None = key absent
+            is_in_progress = cache.get(f'check_tiket_in_progress_{check_id}')  # None = key absent
+            progress_data = cache.get(f'check_tiket_progress_{check_id}') or {
+                'current': 0, 'total': 0, 'percentage': 0,
+                'inserts': 0, 'updates': 0, 'errors': 0,
+            }
+
+            # Both keys absent → session expired or never started → tell browser to clear up
+            if is_done is None and is_in_progress is None:
+                return JsonResponse({'success': False, 'done': True, 'progress': progress_data,
+                                     'message': 'Session check kadaluarsa atau tidak ditemukan.'})
+
+            if is_done:
+                result = cache.get(f'check_tiket_result_{check_id}')
+                error = cache.get(f'check_tiket_error_{check_id}')
+                if error:
+                    return JsonResponse({'success': False, 'done': True, 'progress': progress_data, 'message': error})
+                if result:
+                    return JsonResponse({
+                        'success': True, 'done': True,
+                        'progress': progress_data, 'summary': result,
+                        'message': f"Check selesai: {result.get('inserts', 0)} akan insert, {result.get('updates', 0)} akan update",
+                    })
+                # Done but no result yet (race), treat as still running
+                return JsonResponse({'success': True, 'done': False, 'progress': progress_data})
+
+            return JsonResponse({'success': True, 'done': False, 'progress': progress_data})
+
+        # Default: mode=sync
         sync_id = request.GET.get('sync_id')
         if not sync_id:
             return JsonResponse({'success': False, 'message': 'sync_id required'}, status=400)
@@ -274,12 +293,17 @@ def sync_tiket_progress(request):
         except (ValueError, TypeError):
             return JsonResponse({'success': False, 'message': 'invalid sync_id'}, status=400)
         
-        # Mark session as not modified to prevent session DB access
-        request.session.modified = False
-        
         # Check if sync is done
-        is_done = cache.get(f'sync_tiket_done_{sync_id}', False)
-        
+        is_done = cache.get(f'sync_tiket_done_{sync_id}')          # None = key absent
+        is_in_progress = cache.get(f'sync_tiket_in_progress_{sync_id}')  # None = key absent
+
+        # Both keys absent → session expired → tell browser to clean up
+        if is_done is None and is_in_progress is None:
+            return JsonResponse({'success': False, 'done': True,
+                                 'progress': {'current': 0, 'total': 0, 'percentage': 0,
+                                              'inserts': 0, 'updates': 0, 'errors': 0},
+                                 'message': 'Session sync kadaluarsa atau tidak ditemukan.'})
+
         # Get progress data
         progress_data = cache.get(f'sync_tiket_progress_{sync_id}')
         if progress_data is None:
@@ -655,8 +679,12 @@ def _map_periode_data(periode_str, jenis_prioritas_obj=None, tahun_value=None):
     return periode_jenis_data, periode_value
 
 
-def _check_tiket_data(service):
-    """Check tiket data from Oracle without inserting."""
+def _check_tiket_data(service, check_id=None):
+    """Check tiket data from Oracle without inserting.
+    
+    Uses a single bulk DB query for exists-check instead of per-row .exists().
+    Writes progress to cache every 1000 rows when check_id is provided.
+    """
     try:
         sql_query = """
             SELECT DISTINCT 
@@ -728,30 +756,57 @@ def _check_tiket_data(service):
             LEFT JOIN PVPTD.ZA_REKAP_TARIKAN b ON a.ID_TIKET = b.NO_TIKET
         """
         
+        if check_id:
+            cache.set(f'check_tiket_progress_{check_id}', {
+                'current': 0, 'total': 0, 'percentage': 0,
+                'inserts': 0, 'updates': 0, 'errors': 0,
+                'table_name': 'Menghubungkan ke Oracle...',
+            }, timeout=3600)
+
         with service._connect_oracle("primary") as conn:
             with conn.cursor() as cursor:
                 cursor.execute(sql_query)
                 rows = cursor.fetchall()
                 column_names = [desc[0].lower() for desc in cursor.description]
         
-        # Get column names from cursor
+        total = len(rows)
         inserts = 0
         updates = 0
         errors = []
         inserted_keys = []
         updated_keys = []
-        
+
+        if check_id:
+            cache.set(f'check_tiket_progress_{check_id}', {
+                'current': 0, 'total': total, 'percentage': 0,
+                'inserts': 0, 'updates': 0, 'errors': 0,
+                'table_name': f'Memeriksa {total:,} baris...',
+            }, timeout=3600)
+
+        # --- Bulk exists check: one DB query instead of N queries ---
+        all_nomor_tikets = set()
         for row in rows:
+            row_dict = dict(zip(column_names, row))
+            nt = row_dict.get('id_tiket')
+            if nt:
+                all_nomor_tikets.add(nt)
+
+        existing_set = set(
+            Tiket.objects.filter(nomor_tiket__in=all_nomor_tikets)
+            .values_list('nomor_tiket', flat=True)
+        )
+        logger.info(f'Bulk exists check: {len(existing_set)} existing / {total} oracle rows')
+
+        # --- Classify rows using the pre-fetched set ---
+        for idx, row in enumerate(rows):
             try:
                 row_dict = dict(zip(column_names, row))
-                nomor_tiket = row_dict.get('id_tiket')  # Oracle column name is id_tiket, but Django field is nomor_tiket
-                
+                nomor_tiket = row_dict.get('id_tiket')
+
                 if not nomor_tiket:
                     continue
-                
-                # Check if exists
-                exists = Tiket.objects.filter(nomor_tiket=nomor_tiket).exists()
-                if exists:
+
+                if nomor_tiket in existing_set:
                     updates += 1
                     if len(updated_keys) < 5:
                         updated_keys.append(nomor_tiket)
@@ -761,12 +816,21 @@ def _check_tiket_data(service):
                         inserted_keys.append(nomor_tiket)
             except Exception as e:
                 errors.append(f"Row error: {str(e)[:100]}")
+
+            # Write progress every 1000 rows
+            if check_id and (idx % 1000 == 0 or idx == total - 1):
+                pct = int((idx + 1) / total * 100) if total else 100
+                cache.set(f'check_tiket_progress_{check_id}', {
+                    'current': idx + 1, 'total': total, 'percentage': pct,
+                    'inserts': inserts, 'updates': updates, 'errors': len(errors),
+                    'table_name': 'Memeriksa baris...',
+                }, timeout=3600)
         
         return {
-            'source_rows': len(rows),
+            'source_rows': total,
             'inserts': inserts,
             'updates': updates,
-            'unchanged': len(rows) - inserts - updates,
+            'unchanged': total - inserts - updates,
             'errors': errors,
             'inserted_keys': inserted_keys,
             'updated_keys': updated_keys,
