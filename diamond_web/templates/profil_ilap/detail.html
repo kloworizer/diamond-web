@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% load auth_extras %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+            <h5 class="m-b-10">
+                <i class="feather-file-text me-2"></i>Profil ILAP - {{ ilap.nama_ilap }}
+            </h5>
+        </div>
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="javascript:void(0);">Admin P3DE</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'profil_ilap_list' %}">Profil ILAP</a></li>
+            <li class="breadcrumb-item active">{{ ilap.nama_ilap }}</li>
+        </ul>
+    </div>
+    <div class="page-header-right ms-auto">
+        <div class="page-header-right-items">
+            <a href="{% url 'profil_ilap_list' %}" class="btn btn-secondary">
+                <i class="feather-arrow-left me-2"></i>Back
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="main-content">
+    <!-- ILAP Information Card -->
+    <div class="card stretch stretch-full mb-3">
+        <div class="card-header">
+            <h5 class="card-title mb-0"><i class="feather-info me-2"></i>Informasi ILAP</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">ID ILAP</label>
+                        <p>{{ ilap.id_ilap }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nama ILAP</label>
+                        <p>{{ ilap.nama_ilap }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Kategori</label>
+                        <p>{{ ilap.id_kategori.nama_kategori }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Kategori Wilayah</label>
+                        <p>{{ ilap.id_kategori_wilayah.deskripsi }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">KPP</label>
+                        <p>{{ ilap.id_kpp.nama_kpp|default:"---" }}</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Alamat</label>
+                        <p>{{ ilap.alamat_ilap|default:"---" }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Kota</label>
+                        <p>{{ ilap.kota_ilap|default:"---" }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">PIC ILAP</label>
+                        <p>{{ ilap.namapic_ilap|default:"---" }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Email PIC</label>
+                        <p>{{ ilap.email_picilap|default:"---" }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Telp Kantor</label>
+                        <p>{{ ilap.telp_kantor|default:"---" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Jenis Data ILAP Card -->
+    <div class="card stretch stretch-full h-100">
+        <div class="card-header">
+            <h5 class="card-title mb-0"><i class="feather-table me-2"></i>Data Jenis ILAP dan Tiket</h5>
+        </div>
+        <div class="card-body custom-card-action p-0">
+            {% if jenis_data_details %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>Jenis Data</th>
+                            <th>Sub Jenis Data</th>
+                            <th>Dasar Hukum</th>
+                            <th>Periode Penyampaian</th>
+                            <th>Periode Penerimaan</th>
+                            {% for year in years %}
+                            <th class="text-center">{{ year }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for detail in jenis_data_details %}
+                        <tr>
+                            <td>{{ detail.jenis_data.nama_jenis_data }}</td>
+                            <td>{{ detail.jenis_data.nama_sub_jenis_data }}</td>
+                            <td>
+                                <small>{{ detail.dasar_hukum|default:"---" }}</small>
+                            </td>
+                            <td>{{ detail.periode_penyampaian }}</td>
+                            <td>{{ detail.periode_penerimaan }}</td>
+                            {% for year in years %}
+                            <td class="text-center">
+                                <span class="badge bg-primary">
+                                    {{ detail.year_data|get_item:year }}
+                                </span>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="p-4 text-center">
+                <p class="text-muted">Tidak ada data jenis ILAP untuk ILAP ini.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Custom template filter to get dictionary items
+</script>
+{% endblock %}
