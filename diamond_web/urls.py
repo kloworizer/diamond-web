@@ -255,6 +255,9 @@ urlpatterns = [
     # Backup Data URLs
     path('backup-data/', views.BackupDataListView.as_view(), name='backup_data_list'),
     path('backup-data/data/', views.backup_data_data, name='backup_data_data'),
+    path('backup-data/filter-options/', views.backup_data_filter_options, name='backup_data_filter_options'),
+    path('backup-data/export/excel/', views.backup_data_export_excel, name='backup_data_export_excel'),
+    path('backup-data/export/pdf/', views.backup_data_export_pdf, name='backup_data_export_pdf'),
     path('backup-data/create/', views.BackupDataCreateView.as_view(), name='backup_data_create'),
     path('backup-data/from-tiket/<int:tiket_pk>/create/', views.BackupDataFromTiketCreateView.as_view(), name='backup_data_from_tiket_create'),
     path('backup-data/<int:pk>/update/', views.BackupDataUpdateView.as_view(), name='backup_data_update'),
