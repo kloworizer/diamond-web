@@ -44,3 +44,4 @@ from .laporan_metrik_data_eksternal import *
 from .bulk_document_generation import *
 from .sync_data_referensi import *
 from .sync_tiket import *
+from .profil_ilap import *
