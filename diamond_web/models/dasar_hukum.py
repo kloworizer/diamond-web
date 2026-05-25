@@ -20,6 +20,8 @@ class DasarHukum(AuditTrailModel):
         verbose_name="Kategori"
     )
     deskripsi = models.CharField(max_length=50, unique=True, verbose_name="Deskripsi")
+    start_date = models.DateField(null=True, blank=True, verbose_name="Tanggal Mulai")
+    end_date = models.DateField(null=True, blank=True, verbose_name="Tanggal Berakhir")
 
     class Meta:
         verbose_name = "Dasar Hukum"

@@ -60,6 +60,8 @@ class Migration(migrations.Migration):
                 ('update_by', models.CharField(blank=True, max_length=9, null=True, verbose_name='Update By')),
                 ('kategori', models.CharField(choices=[('DAPEN', 'DAPEN'), ('EOI', 'EOI'), ('KMK', 'KMK'), ('KSWP', 'KSWP'), ('MOU', 'MOU'), ('PKD', 'PKD'), ('PKS', 'PKS'), ('PMK', 'PMK')], max_length=10, verbose_name='Kategori')),
                 ('deskripsi', models.CharField(max_length=50, unique=True, verbose_name='Deskripsi')),
+                ('start_date', models.DateField(blank=True, null=True, verbose_name='Tanggal Mulai')),
+                ('end_date', models.DateField(blank=True, null=True, verbose_name='Tanggal Berakhir')),
             ],
             options={
                 'verbose_name': 'Dasar Hukum',
