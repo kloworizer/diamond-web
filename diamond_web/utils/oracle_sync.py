@@ -190,6 +190,7 @@ class OracleSyncSummary:
     errors: list[str] = field(default_factory=list)
     inserted_keys: list[str] = field(default_factory=list)
     updated_keys: list[str] = field(default_factory=list)
+    skipped_rows_detail: list[dict] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -464,29 +465,6 @@ HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
         where_clause="",
         source_connection="secondary",
     ),
-    OracleSyncTableConfig(
-        name="durasi_jatuh_tempo_pmde",
-        source_query=_build_pmde_prioritas_query(),
-        target_model_label="diamond_web.DurasiJatuhTempo",
-        target_key_field="id_sub_jenis_data",
-        source_key_column="ID_TABEL_S",
-        field_map={
-            "id_sub_jenis_data": "ID_TABEL_S",
-            "durasi": "DURASI",
-            "start_date": "START_DATE",
-            "end_date": "END_DATE",
-        },
-        foreign_key_lookup_map={
-            "id_sub_jenis_data": "id_sub_jenis_data",
-            "seksi": "name",
-        },
-        derived_field_map={
-            "seksi": "pmde_group_name",
-        },
-        match_fields=("id_sub_jenis_data", "seksi", "start_date"),
-        where_clause="",
-        source_connection="secondary",
-    ),
     # 4. Depends on jenis_data_ilap and dasar_hukum
     OracleSyncTableConfig(
         name="klasifikasi_jenis_data",
@@ -666,6 +644,88 @@ HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
         match_fields=("id_sub_jenis_data_ilap", "id_user", "start_date"),
         where_clause="",
     ),
+    # 7. PIC PIDE - Depends on jenis_data_ilap
+    OracleSyncTableConfig(
+        name="pic_pide",
+        source_query="""
+            SELECT
+                a.id_tabel id_sub_jenis_data,
+                b.nip_match,
+                DATE '2015-01-01' AS start_date
+            FROM
+                PVPTD.ZA_REKAP_PEMBAGIAN_PIC_PIDE a
+            JOIN PVPTD.ZA_REKAP_PIC_PIDE b
+            ON a.pic = b.nama_match
+            WHERE
+                a.id_tabel IS NOT NULL
+        """,
+        target_model_label="diamond_web.PIC",
+        target_key_field="id_sub_jenis_data_ilap",
+        source_key_column="ID_SUB_JENIS_DATA",
+        field_map={
+            "id_sub_jenis_data_ilap": "ID_SUB_JENIS_DATA",
+            "id_user": "NIP_MATCH",
+            "start_date": "START_DATE",
+        },
+        foreign_key_lookup_map={
+            "id_sub_jenis_data_ilap": "id_sub_jenis_data",
+            "id_user": "username",
+        },
+        derived_field_map={
+            "tipe": "pic_pide_tipe",
+        },
+        match_fields=("id_sub_jenis_data_ilap", "id_user", "start_date"),
+        where_clause="",
+    ),
+    # 8. PIC PMDE - Depends on jenis_data_ilap (via id_ilap)
+    OracleSyncTableConfig(
+        name="pic_pmde",
+        source_query="""
+            SELECT id_ilap, nip_pic username FROM REF_PIC_ILAP_PMDE
+        """,
+        target_model_label="diamond_web.PIC",
+        target_key_field="id_sub_jenis_data_ilap",
+        source_key_column="ID_SUB_JENIS_DATA",
+        field_map={
+            "id_sub_jenis_data_ilap": "ID_SUB_JENIS_DATA",
+            "id_user": "USERNAME",
+            "start_date": "START_DATE",
+        },
+        foreign_key_lookup_map={
+            "id_sub_jenis_data_ilap": "id_sub_jenis_data",
+            "id_user": "username",
+        },
+        derived_field_map={
+            "tipe": "pic_pmde_tipe",
+        },
+        match_fields=("id_sub_jenis_data_ilap", "id_user", "start_date"),
+        where_clause="",
+        source_connection="secondary",
+    ),
+    # 9. DurasiJatuhTempo - depends on jenis_data_ilap
+    OracleSyncTableConfig(
+        name="durasi_jatuh_tempo_pmde",
+        source_query=_build_pmde_prioritas_query(),
+        target_model_label="diamond_web.DurasiJatuhTempo",
+        target_key_field="id_sub_jenis_data",
+        source_key_column="ID_TABEL_S",
+        field_map={
+            "id_sub_jenis_data": "ID_TABEL_S",
+            "durasi": "DURASI",
+            "start_date": "START_DATE",
+            "end_date": "END_DATE",
+        },
+        foreign_key_lookup_map={
+            "id_sub_jenis_data": "id_sub_jenis_data",
+            "seksi": "name",
+        },
+        derived_field_map={
+            "seksi": "pmde_group_name",
+        },
+        match_fields=("id_sub_jenis_data", "seksi", "start_date"),
+        where_clause="",
+        source_connection="secondary",
+    ),
 ]
 
 
@@ -723,7 +783,15 @@ class OracleDataSyncService:
 
     _IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_$.]*$")
 
-    def __init__(self):
+    def __init__(self, connection_only: bool = False):
+        """Initialize the service.
+
+        Args:
+            connection_only: When True, skip PMDE year discovery and sync config
+                             validation. Use this when only Oracle connections are
+                             needed (e.g. tiket sync/check tasks) to avoid the
+                             secondary-connection round-trip for PMDE column discovery.
+        """
         # Initialize thick mode before any connections
         try:
             _initialize_oracledb_thick_mode()
@@ -733,6 +801,11 @@ class OracleDataSyncService:
         
         self.oracle_connections = self._load_oracle_connections()
         self._target_model_cache: dict[str, Any] = {}
+
+        if connection_only:
+            # Skip PMDE discovery and config validation – not needed for tiket tasks
+            self._pmde_discovered_years = list(range(2022, date.today().year + 1))
+            return
         
         # Discover PMDE PRIORITAS years before validating sync configs
         try:
@@ -1197,11 +1270,257 @@ class OracleDataSyncService:
         if rule_name == "pic_p3de_tipe":
             return "P3DE"
 
+        if rule_name == "pic_pide_tipe":
+            return "PIDE"
+
+        if rule_name == "pic_pmde_tipe":
+            return "PMDE"
+
         raise ValueError(f"Rule derived tidak dikenali: {rule_name}")
+
+    def _expand_pic_pide_rows(
+        self,
+        source_rows: list[dict[str, Any]],
+    ) -> tuple[list[dict[str, Any]], list[dict]]:
+        """Expand pic_pide source rows: one source row (id_jenis_data, nm_tabel_final, nip_match)
+        is expanded into one row per id_sub_jenis_data found in JenisDataILAP.
+
+        Lookup strategy:
+        1. Match JenisDataILAP by id_jenis_data.
+        2. If no match, fall back to matching by nama_tabel_I == nm_tabel_final.
+
+        Rows where nip_match is NULL or no JenisDataILAP is found are recorded as skipped.
+        """
+        from datetime import date as _date
+        from diamond_web.models import JenisDataILAP
+
+        expanded: list[dict[str, Any]] = []
+        skipped: list[dict] = []
+
+        for row_idx, row in enumerate(source_rows, 1):
+            id_jenis_data = row.get("ID_JENIS_DATA")
+            nm_tabel_final = row.get("NM_TABEL_FINAL")
+            nip_match = row.get("NIP_MATCH")
+
+            if not nip_match:
+                skipped.append({
+                    "row_number": row_idx,
+                    "key": str(id_jenis_data or nm_tabel_final or "-"),
+                    "reason": "NIP_MATCH bernilai NULL (tidak ada user PIC PIDE yang cocok)",
+                })
+                continue
+
+            # Primary lookup: match by id_jenis_data
+            jdi_ids = list(
+                JenisDataILAP.objects
+                .filter(id_jenis_data=id_jenis_data)
+                .values_list("id_sub_jenis_data", flat=True)
+            )
+
+            if not jdi_ids:
+                # Fallback: match by nama_tabel_I
+                jdi_ids = list(
+                    JenisDataILAP.objects
+                    .filter(nama_tabel_I=nm_tabel_final)
+                    .values_list("id_sub_jenis_data", flat=True)
+                )
+
+            if not jdi_ids:
+                skipped.append({
+                    "row_number": row_idx,
+                    "key": str(id_jenis_data or "-"),
+                    "reason": (
+                        f"Tidak ditemukan JenisDataILAP untuk "
+                        f"id_jenis_data={id_jenis_data}, nm_tabel_final={nm_tabel_final}"
+                    ),
+                })
+                continue
+
+            for id_sub_jenis_data in jdi_ids:
+                expanded.append({
+                    **row,
+                    "ID_SUB_JENIS_DATA": id_sub_jenis_data,
+                    "START_DATE": _date(2015, 1, 1),
+                })
+
+        return expanded, skipped
+
+    def _expand_pic_pmde_rows(
+        self,
+        source_rows: list[dict[str, Any]],
+    ) -> tuple[list[dict[str, Any]], list[dict]]:
+        """Expand pic_pmde source rows: one source row (id_ilap, username) is expanded
+        into one row per id_sub_jenis_data found in JenisDataILAP for that id_ilap.
+
+        For id_ilap values starting with 'PV' or 'PD' (regional/private ILAPs that do
+        not appear in JenisDataILAP directly), a fallback lookup is used:
+        query REF_TABEL_PMDE (secondary connection) for (tabel_i, nip_pic), then match
+        tabel_i → nama_tabel_I in JenisDataILAP to resolve id_sub_jenis_data values.
+        """
+        from datetime import date as _date
+        from diamond_web.models import JenisDataILAP
+
+        expanded: list[dict[str, Any]] = []
+        skipped: list[dict] = []
+
+        # Lazily fetched fallback data from REF_TABEL_PMDE (secondary connection).
+        # Maps nip_pic -> list[id_sub_jenis_data] resolved via nama_tabel_I.
+        _ref_tabel_pmde_by_nip: dict[str, list[str]] | None = None
+
+        def _get_ref_tabel_pmde_by_nip() -> dict[str, list[str]]:
+            """Fetch REF_TABEL_PMDE once and build nip_pic -> [id_sub_jenis_data] map."""
+            result: dict[str, list[str]] = {}
+            try:
+                with self._connect_oracle("secondary") as conn:
+                    with conn.cursor() as cursor:
+                        cursor.execute(
+                            "SELECT tabel_i, nip_pic FROM REF_TABEL_PMDE WHERE tabel_i IS NOT NULL AND nip_pic IS NOT NULL"
+                        )
+                        rows = cursor.fetchall()
+
+                # Build tabel_i -> [id_sub_jenis_data] map from JenisDataILAP
+                tabel_i_values = list({str(r[0]).strip() for r in rows if r[0]})
+                tabel_map: dict[str, list[str]] = {}
+                for jdi in JenisDataILAP.objects.filter(nama_tabel_I__in=tabel_i_values).values("nama_tabel_I", "id_sub_jenis_data"):
+                    tabel_map.setdefault(jdi["nama_tabel_I"], []).append(jdi["id_sub_jenis_data"])
+
+                for tabel_i_raw, nip_pic_raw in rows:
+                    tabel_i = str(tabel_i_raw).strip() if tabel_i_raw else ""
+                    nip_pic = str(nip_pic_raw).strip() if nip_pic_raw else ""
+                    if not nip_pic or not tabel_i:
+                        continue
+                    for sub_id in tabel_map.get(tabel_i, []):
+                        result.setdefault(nip_pic, [])
+                        if sub_id not in result[nip_pic]:
+                            result[nip_pic].append(sub_id)
+
+                logger.info(
+                    f"[pic_pmde fallback] Loaded REF_TABEL_PMDE: "
+                    f"{len(rows)} rows → {sum(len(v) for v in result.values())} (nip,sub_jenis) pairs"
+                )
+            except Exception as exc:
+                logger.warning(f"[pic_pmde fallback] Failed to fetch REF_TABEL_PMDE: {exc}")
+            return result
+
+        # Prefixes that trigger fallback lookup
+        FALLBACK_PREFIXES = ("PV", "PD", "PK")
+
+        for row_idx, row in enumerate(source_rows, 1):
+            id_ilap = row.get("ID_ILAP")
+            username = row.get("USERNAME")
+            id_ilap_str = str(id_ilap or "").strip().upper()
+
+            if not username:
+                skipped.append({
+                    "row_number": row_idx,
+                    "key": str(id_ilap or "-"),
+                    "reason": "USERNAME (nip_pic) bernilai NULL",
+                })
+                continue
+
+            # --- Fallback path for PV*/PD* ILAPs ---
+            if any(id_ilap_str.startswith(pfx) for pfx in FALLBACK_PREFIXES):
+                if _ref_tabel_pmde_by_nip is None:
+                    _ref_tabel_pmde_by_nip = _get_ref_tabel_pmde_by_nip()
+
+                username_str = str(username).strip()
+                jdi_ids = _ref_tabel_pmde_by_nip.get(username_str, [])
+
+                if not jdi_ids:
+                    skipped.append({
+                        "row_number": row_idx,
+                        "key": f"{id_ilap_str}:{username_str}",
+                        "reason": (
+                            f"Fallback REF_TABEL_PMDE: tidak ditemukan id_sub_jenis_data "
+                            f"untuk nip_pic={username_str}"
+                        ),
+                    })
+                    continue
+
+                for id_sub_jenis_data in jdi_ids:
+                    expanded.append({
+                        **row,
+                        "ID_SUB_JENIS_DATA": id_sub_jenis_data,
+                        "START_DATE": _date(2015, 1, 1),
+                    })
+                continue
+
+            # --- Normal path: lookup by id_ilap ---
+            jdi_ids = list(
+                JenisDataILAP.objects
+                .filter(id_ilap__id_ilap=id_ilap)
+                .values_list("id_sub_jenis_data", flat=True)
+            )
+
+            if not jdi_ids:
+                skipped.append({
+                    "row_number": row_idx,
+                    "key": str(id_ilap or "-"),
+                    "reason": f"Tidak ditemukan JenisDataILAP untuk id_ilap={id_ilap}",
+                })
+                continue
+
+            for id_sub_jenis_data in jdi_ids:
+                expanded.append({
+                    **row,
+                    "ID_SUB_JENIS_DATA": id_sub_jenis_data,
+                    "START_DATE": _date(2015, 1, 1),
+                })
+
+        return expanded, skipped
+
+    def _expand_durasi_jatuh_tempo_default_rows(
+        self,
+        oracle_rows: list[dict[str, Any]],
+        discovered_years: list[int],
+    ) -> tuple[list[dict[str, Any]], list[dict]]:
+        """Supplement durasi_jatuh_tempo_pmde oracle rows with default rows (durasi=90)
+        for every (id_sub_jenis_data, year) pair in JenisDataILAP that has no PMDE
+        PRIORITAS record in oracle_rows.
+
+        Example: if oracle has records for LM0081401 in 2025 and 2026, and
+        discovered_years = [2022, 2023, 2024, 2025, 2026], then default rows are
+        generated for LM0081401 × [2022, 2023, 2024] with durasi=90.
+        """
+        from datetime import date as _date
+        from diamond_web.models import JenisDataILAP
+
+        # Build set of (ID_TABEL_S, TAHUN) that already exist in oracle data
+        oracle_covered: set[tuple[str, str]] = {
+            (str(row.get("ID_TABEL_S") or ""), str(row.get("TAHUN") or ""))
+            for row in oracle_rows
+        }
+
+        # Get all id_sub_jenis_data values from Django model
+        all_sub_jenis = list(
+            JenisDataILAP.objects.values_list("id_sub_jenis_data", flat=True).distinct()
+        )
+
+        default_rows: list[dict[str, Any]] = []
+        for id_sub_jenis_data in all_sub_jenis:
+            for year in discovered_years:
+                key = (str(id_sub_jenis_data), str(year))
+                if key not in oracle_covered:
+                    default_rows.append({
+                        "ID_TABEL_S": id_sub_jenis_data,
+                        "START_DATE": _date(year, 1, 1),
+                        "END_DATE": _date(year, 12, 31),
+                        "NO_ND": "ND-",
+                        "TAHUN": str(year),
+                        "DURASI": 90,
+                    })
+
+        logger.info(
+            f"[durasi_jatuh_tempo_pmde] Oracle rows: {len(oracle_rows)}, "
+            f"Default rows generated: {len(default_rows)}"
+        )
+        # No skipped rows for this expansion (all generated rows have valid IDs from Django)
+        return oracle_rows + default_rows, []
 
     def _calculate_diff_for_config(
         self,
         cfg: OracleSyncTableConfig,
+        stop_checker=None,
     ) -> tuple[OracleSyncSummary, Any, list[dict[str, Any]], list[tuple[Any, dict[str, Any]]]]:
         target_model = self._get_target_model(cfg.target_model_label)
         source_rows = self._fetch_oracle_rows(cfg)
@@ -1209,18 +1528,41 @@ class OracleDataSyncService:
         normalized_rows: list[dict[str, Any]] = []
         key_values: list[Any] = []
         errors: list[str] = []
-        skipped_rows = 0
+        skipped_rows_detail: list[dict] = []
 
-        for source_row in source_rows:
+        # For pic_pmde: expand each source row (id_ilap, username) into one row per id_sub_jenis_data
+        if cfg.name == "pic_pmde":
+            source_rows, expansion_skipped = self._expand_pic_pmde_rows(source_rows)
+            skipped_rows_detail.extend(expansion_skipped)
+
+        # For durasi_jatuh_tempo_pmde: supplement oracle rows with default (durasi=90) rows
+        # for every (id_sub_jenis_data, year) in JenisDataILAP not covered by oracle data
+        if cfg.name == "durasi_jatuh_tempo_pmde":
+            source_rows, expansion_skipped = self._expand_durasi_jatuh_tempo_default_rows(
+                source_rows, self._pmde_discovered_years
+            )
+            skipped_rows_detail.extend(expansion_skipped)
+
+        for row_idx, source_row in enumerate(source_rows, 1):
+            # Check stop signal during row iteration
+            if stop_checker and stop_checker():
+                logger.warning(f'[{cfg.name}] Stop signal received after processing {row_idx-1} rows')
+                break
+            
             try:
                 _, mapped = self._map_source_to_target(cfg, target_model, source_row)
                 normalized_rows.append(mapped)
                 key_values.append(mapped["__sync_key__"])
             except ValueError as exc:
                 # For PMDE syncs and PIC syncs, skip rows with missing FK references instead of failing
-                if cfg.name in ("jenis_prioritas_data", "durasi_jatuh_tempo_pmde", "pic_p3de") and "referensi" in str(exc):
-                    skipped_rows += 1
-                    logger.info(f"Skipping row in {cfg.name}: {exc}")
+                if cfg.name in ("jenis_prioritas_data", "durasi_jatuh_tempo_pmde", "pic_p3de", "pic_pide", "pic_pmde") and "referensi" in str(exc):
+                    row_key = source_row.get(cfg.source_key_column.upper()) if isinstance(source_row, dict) else None
+                    skipped_rows_detail.append({
+                        'row_number': row_idx,
+                        'key': str(row_key) if row_key is not None else '-',
+                        'reason': str(exc),
+                    })
+                    logger.info(f"Skipping row in {cfg.name} (key={row_key}): {exc}")
                 else:
                     errors.append(str(exc))
             except Exception as exc:
@@ -1276,10 +1618,11 @@ class OracleDataSyncService:
             errors=errors,
             inserted_keys=inserted_keys[:20],
             updated_keys=updated_keys[:20],
+            skipped_rows_detail=skipped_rows_detail,
         )
         
-        if skipped_rows > 0:
-            logger.info(f"[{cfg.name}] Skipped {skipped_rows} rows due to missing foreign key references")
+        if skipped_rows_detail:
+            logger.info(f"[{cfg.name}] Skipped {len(skipped_rows_detail)} rows due to missing foreign key references")
         
         return summary, target_model, inserts, updates
 
@@ -1358,13 +1701,14 @@ class OracleDataSyncService:
             table_summaries=table_summaries,
         )
 
-    def _run_sequential(self, apply_changes: bool, progress_callback=None) -> OracleSyncBatchSummary:
+    def _run_sequential(self, apply_changes: bool, progress_callback=None, stop_checker=None) -> OracleSyncBatchSummary:
         """Run sync/check sequentially over all configured tables.
 
         Args:
             apply_changes: whether to persist inserts/updates to the DB.
             progress_callback: optional callable(current, total, table_name, cumulative_inserts,
                 cumulative_updates, cumulative_errors) called after each table finishes.
+            stop_checker: optional callable() that returns True if sync should stop.
         """
         table_summaries: list[OracleSyncSummary] = []
         total_tables = len(HARD_CODED_SYNC_TABLES)
@@ -1373,8 +1717,13 @@ class OracleDataSyncService:
         cumulative_errors = 0
 
         for idx, cfg in enumerate(HARD_CODED_SYNC_TABLES, start=1):
+            # Check stop signal before processing each table
+            if stop_checker and stop_checker():
+                logger.info(f'Stop signal received before processing table {idx}/{total_tables}')
+                break
+                
             try:
-                summary, target_model, inserts, updates = self._calculate_diff_for_config(cfg)
+                summary, target_model, inserts, updates = self._calculate_diff_for_config(cfg, stop_checker=stop_checker)
                 table_summaries.append(summary)
 
                 if apply_changes and not summary.errors:
@@ -1395,6 +1744,7 @@ class OracleDataSyncService:
                     errors=[str(exc)],
                     inserted_keys=[],
                     updated_keys=[],
+                    skipped_rows_detail=[],
                 )
                 table_summaries.append(err_summary)
                 cumulative_errors += 1
@@ -1414,17 +1764,29 @@ class OracleDataSyncService:
 
         return self._build_batch_summary(table_summaries)
 
-    def check(self, progress_callback=None) -> OracleSyncBatchSummary:
+    def check(self, progress_callback=None, stop_checker=None) -> OracleSyncBatchSummary:
+        """Check differences without applying changes (runs in atomic transaction and rolls back).
+        
+        Args:
+            progress_callback: optional callable for progress reporting.
+            stop_checker: optional callable() that returns True if check should stop.
+        """
         # Simulasikan apply dalam 1 transaksi agar dependency antar tabel (parent-child)
         # bisa tervalidasi, lalu rollback supaya data tidak tersimpan.
         with transaction.atomic():
-            summary = self._run_sequential(apply_changes=True, progress_callback=progress_callback)
+            summary = self._run_sequential(apply_changes=True, progress_callback=progress_callback, stop_checker=stop_checker)
             transaction.set_rollback(True)
             return summary
 
-    def sync(self, progress_callback=None) -> OracleSyncBatchSummary:
+    def sync(self, progress_callback=None, stop_checker=None) -> OracleSyncBatchSummary:
+        """Sync reference data from Oracle to Django models, applying changes to DB.
+        
+        Args:
+            progress_callback: optional callable for progress reporting.
+            stop_checker: optional callable() that returns True if sync should stop.
+        """
         with transaction.atomic():
-            summary = self._run_sequential(apply_changes=True, progress_callback=progress_callback)
+            summary = self._run_sequential(apply_changes=True, progress_callback=progress_callback, stop_checker=stop_checker)
             if summary.errors:
                 transaction.set_rollback(True)
             return summary

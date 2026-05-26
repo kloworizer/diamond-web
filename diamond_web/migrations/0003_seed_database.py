@@ -581,6 +581,12 @@ USERS_DATA = [
     {"username": "958635135", "role": "user_p3de", "nama": "Saxxxxxxx Nixxxxx Suxx"},
     {"username": "958635595", "role": "user_p3de", "nama": "Krxxxxxx Taxxxxx"},
     {"username": "958635599", "role": "user_p3de", "nama": "Lexxxxx Ayx"},
+    {"username": "060116221", "role": "user_p3de", "nama": "Nuxxxxxx Agxxx Cxxxxxxx", "is_active": False},
+    {"username": "830060364", "role": "user_p3de", "nama": "Txxxxx Axxx Hxxxx Dxxxxx", "is_active": False},
+    {"username": "830601263", "role": "user_p3de", "nama": "Stxxxxx Sxxxxxx Axxxxxxx Hxxxxxxxxx", "is_active": False},
+    {"username": "908001842", "role": "user_p3de", "nama": "Tyxxxxxx Uxxxxx", "is_active": False},
+    {"username": "060100713", "role": "user_p3de", "nama": "Hxxx Wixx Axxxxx", "is_active": False},
+    {"username": "060110920", "role": "user_p3de", "nama": "Axx Yxxxx Pxxxxxxx", "is_active": False},
     {"username": "060096685", "role": "user_pide", "nama": "Efxxxxxx"},
     {"username": "060103503", "role": "user_pide", "nama": "Boxxx Adxxxxx"},
     {"username": "060109072", "role": "user_pide", "nama": "Yuxxx Chxxxxxxxx"},
@@ -1295,7 +1301,8 @@ def seed_users(apps, schema_editor):
                     "first_name": first_name,
                     "last_name": last_name,
                     "email": email,
-                    "password": make_password(password)
+                    "password": make_password(password),
+                    "is_active": item.get("is_active", True),
                 }
             )
             

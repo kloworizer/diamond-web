@@ -33,14 +33,14 @@
                 <button id="btn-check" class="btn btn-primary" type="button">
                     <i class="feather-search me-1"></i>Cek Data
                 </button>
+                <button id="btn-stop-check" class="btn btn-warning" type="button" style="display:none;">
+                    <i class="feather-square me-1"></i>Stop Cek
+                </button>
                 <button id="btn-sync" class="btn btn-success" type="button" disabled>
                     <i class="feather-upload me-1"></i>Sync Data
                 </button>
                 <button id="btn-stop" class="btn btn-warning" type="button" disabled style="display:none;">
                     <i class="feather-square me-1"></i>Stop Sync
-                </button>
-                <button id="btn-force-stop" class="btn btn-danger" type="button" style="display:none;">
-                    <i class="feather-x me-1"></i>Force Clear
                 </button>
             </div>
 
@@ -84,7 +84,7 @@
         const btnCheck = document.getElementById('btn-check');
         const btnSync = document.getElementById('btn-sync');
         const btnStop = document.getElementById('btn-stop');
-        const btnForceStop = document.getElementById('btn-force-stop');
+        const btnStopCheck = document.getElementById('btn-stop-check');
         const progressBox = document.getElementById('sync-progress');
         const resultBox = document.getElementById('sync-result');
         const progressPhase = document.getElementById('progress-phase');
@@ -133,7 +133,6 @@
                         progressBox.style.display = 'block';
                         btnStop.style.display = 'inline-block';
                         btnStop.disabled = false;
-                        btnForceStop.style.display = 'none';
                         setLoading(btnSync, true, '<i class="feather-upload me-1"></i>Sync Data', 'Syncing...');
                         btnCheck.disabled = true;
                         if (data.progress) updateProgress(data.progress);
@@ -173,17 +172,21 @@
                     progressBox.style.display = 'block';
                     btnCheck.disabled = true;
                     btnSync.disabled = true;
+                    btnStopCheck.style.display = 'inline-block';
+                    btnStopCheck.disabled = false;
                     setLoading(btnCheck, true, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
                     if (data.progress) updateProgress(data.progress);
                     startCheckPolling(currentCheckId);
                 } else if (data.done) {
                     localStorage.removeItem(CHECK_ID_STORAGE_KEY);
+                    btnStopCheck.style.display = 'none';
                     if (data.success && data.summary) {
                         renderSummary(data.summary);
                         showToast(data.message || 'Check selesai.', 'success');
                     }
                 } else {
                     localStorage.removeItem(CHECK_ID_STORAGE_KEY);
+                    btnStopCheck.style.display = 'none';
                     currentCheckId = null;
                 }
             }).catch(() => {
@@ -212,6 +215,7 @@
                         localStorage.removeItem(CHECK_ID_STORAGE_KEY);
                         progressBox.style.display = 'none';
                         progressPhase.textContent = '';
+                        btnStopCheck.style.display = 'none';
                         setLoading(btnCheck, false, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
                         btnCheck.disabled = false;
 
@@ -252,14 +256,13 @@
                         if (!progressData.success) {
                             showToast(progressData.message || 'Sync error', 'danger');
                         } else if (progressData.summary) {
-                            renderSummary(progressData.summary);
+                            renderSummary(progressData.summary, progressData.error_log_url);
                             showToast(progressData.message || 'Sync selesai.', 'success');
                         }
                         
                         progressBox.style.display = 'none';
                         progressPhase.textContent = '';
                         btnStop.style.display = 'none';
-                        btnForceStop.style.display = 'none';
                         setLoading(btnSync, false, '<i class="feather-upload me-1"></i>Sync Data', 'Syncing...');
                         btnCheck.disabled = false;
                     }
@@ -276,7 +279,7 @@
                 : defaultText;
         }
 
-        function renderSummary(summary) {
+        function renderSummary(summary, errorLogUrl) {
             resultBox.style.display = 'block';
             resultSource.textContent = summary.source_rows;
             resultInsert.textContent = summary.inserts;
@@ -293,6 +296,9 @@
             }
             if (summary.errors && summary.errors.length) {
                 details += `<div class="alert alert-danger mb-0"><strong>Error:</strong><br>${summary.errors.join('<br>')}</div>`;
+            }
+            if (errorLogUrl) {
+                details += `<div class="alert alert-secondary mt-3 mb-0"><strong>Error Log:</strong> <a href="${errorLogUrl}" class="alert-link" download>Download CSV</a></div>`;
             }
             resultDetails.innerHTML = details;
 
@@ -408,6 +414,8 @@
                 currentCheckId = data.check_id;
                 localStorage.setItem(CHECK_ID_STORAGE_KEY, currentCheckId);
                 showToast(data.message || 'Check dimulai...', 'info');
+                btnStopCheck.style.display = 'inline-block';
+                btnStopCheck.disabled = false;
                 startCheckPolling(currentCheckId);
             } catch (error) {
                 clearInterval(checkIntervalId);
@@ -416,6 +424,18 @@
                 setLoading(btnCheck, false, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
                 btnSync.disabled = false;
                 showToast(error.message, 'danger');
+            }
+        });
+
+        btnStopCheck.addEventListener('click', async function () {
+            if (!currentCheckId) return;
+            btnStopCheck.disabled = true;
+            try {
+                await postJson("{% url 'sync_tiket_stop_check' %}", { check_id: currentCheckId });
+                showToast('Permintaan stop cek data dikirim.', 'info');
+            } catch (error) {
+                showToast(error.message, 'danger');
+                btnStopCheck.disabled = false;
             }
         });
 
@@ -462,50 +482,13 @@
         btnStop.addEventListener('click', async function () {
             if (!currentSyncId) return;
             btnStop.disabled = true;
-            
             try {
                 await postJson("{% url 'sync_tiket_stop' %}", { sync_id: currentSyncId });
                 showToast('Permintaan stop dikirim. Menunggu sync selesai...', 'info');
-                
-                // Set a timeout to force recovery if sync doesn't stop within 30 seconds
-                const forceStopTimeout = setTimeout(() => {
-                    console.warn('Sync stop timeout reached, forcing UI recovery');
-                    showToast('Timeout menunggu sync. Klik Force Clear untuk membersihkan.', 'warning');
-                    btnForceStop.style.display = 'inline-block';
-                }, 30000);
-                
-                // Store the timeout so btnForceStop can clear it
-                btnForceStop.dataset.timeoutId = forceStopTimeout;
-                
             } catch (error) {
                 showToast(error.message, 'danger');
                 btnStop.disabled = false;
             }
-        });
-        
-        btnForceStop.addEventListener('click', function () {
-            // Clear the timeout if it exists
-            if (btnForceStop.dataset.timeoutId) {
-                clearTimeout(parseInt(btnForceStop.dataset.timeoutId));
-            }
-            
-            // Immediately clear everything
-            clearInterval(syncIntervalId);
-            clearInterval(checkIntervalId);
-            localStorage.removeItem(SYNC_ID_STORAGE_KEY);
-            localStorage.removeItem(CHECK_ID_STORAGE_KEY);
-            currentSyncId = null;
-            currentCheckId = null;
-            
-            // Reset UI
-            progressBox.style.display = 'none';
-            btnStop.style.display = 'none';
-            btnForceStop.style.display = 'none';
-            btnSync.disabled = false;
-            setLoading(btnCheck, false, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
-            btnCheck.disabled = false;
-            
-            showToast('Session cleared. Anda bisa mulai lagi.', 'success');
         });
         
         // Resume active sync on page load if it exists
