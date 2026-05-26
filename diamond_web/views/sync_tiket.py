@@ -1,11 +1,12 @@
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.http import JsonResponse
+from django.http import JsonResponse, FileResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.cache import never_cache
 from django.db.models import Q
 from django.utils import timezone
 from django.core.cache import cache
+from django.urls import reverse
 from datetime import datetime, timedelta
 import uuid
 import json
@@ -144,7 +145,8 @@ def sync_tiket_check(request):
         cache.set(f'check_tiket_in_progress_{check_id}', True, timeout=3600)
 
         logger.info(f'Dispatching tiket check task (check_id={check_id})...')
-        check_tiket_data_task.delay(check_id)
+        task_result = check_tiket_data_task.delay(check_id)
+        cache.set(f'check_tiket_celery_task_id_{check_id}', task_result.id, timeout=3600)
 
         return JsonResponse({
             'success': True,
@@ -330,13 +332,18 @@ def sync_tiket_progress(request):
                 })
             
             if result:
-                return JsonResponse({
+                response_data = {
                     'success': True,
                     'done': True,
                     'progress': progress_data,
                     'summary': result,
                     'message': f"Sync selesai: {result.get('inserts', 0)} insert, {result.get('updates', 0)} update, {len(result.get('errors', []))} error",
-                })
+                }
+                # Add error log download URL if CSV exists
+                error_log_path = os.path.join(SYNC_LOGS_DIR, f'sync_failed_rows_{sync_id}.csv')
+                if os.path.exists(error_log_path):
+                    response_data['error_log_url'] = reverse('sync_tiket_download_errors', kwargs={'sync_id': sync_id})
+                return JsonResponse(response_data)
         
         return JsonResponse({
             'success': True,
@@ -428,6 +435,65 @@ def _log_failed_row(sync_id, nomor_tiket, periode_str, jenis_prioritas_str, tahu
         logger.debug(f"Failed row logged to {log_filename}")
     except Exception as e:
         logger.error(f"Failed to log error row: {str(e)}")
+
+
+@require_GET
+@never_cache
+def sync_tiket_download_errors(request, sync_id):
+    """Download error log CSV file for a completed tiket sync."""
+    try:
+        try:
+            uuid.UUID(sync_id)
+        except (ValueError, TypeError):
+            return JsonResponse({'success': False, 'message': 'Invalid sync_id format'}, status=400)
+        
+        error_log_path = os.path.join(SYNC_LOGS_DIR, f'sync_failed_rows_{sync_id}.csv')
+        
+        if not os.path.exists(error_log_path):
+            return JsonResponse({'success': False, 'message': 'Error log file not found'}, status=404)
+        
+        response = FileResponse(open(error_log_path, 'rb'), content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="sync_tiket_errors_{sync_id}.csv"'
+        return response
+    except Exception as exc:
+        error_msg = str(exc).strip()
+        logger.error(f'Error downloading tiket sync log: {error_msg}', exc_info=True)
+        return JsonResponse({'success': False, 'message': error_msg or 'Gagal download error log'}, status=500)
+
+
+@require_POST
+@never_cache
+def sync_tiket_stop_check(request):
+    """Stop an in-progress tiket check operation."""
+    try:
+        data = json.loads(request.body)
+        check_id = data.get('check_id', '')
+        if not check_id:
+            return JsonResponse({'success': False, 'message': 'check_id tidak ditemukan'}, status=400)
+        try:
+            uuid.UUID(check_id)
+        except (ValueError, TypeError):
+            return JsonResponse({'success': False, 'message': 'invalid check_id'}, status=400)
+        
+        # Revoke and terminate the Celery task if we have its task ID
+        celery_task_id = cache.get(f'check_tiket_celery_task_id_{check_id}')
+        if celery_task_id:
+            try:
+                from celery import current_app
+                current_app.control.revoke(celery_task_id, terminate=True, signal='SIGTERM')
+                logger.info(f'Revoked Celery task {celery_task_id} for check {check_id}')
+            except Exception as revoke_err:
+                logger.warning(f'Failed to revoke Celery task {celery_task_id}: {revoke_err}')
+        
+        cache.set(f'check_tiket_stop_requested_{check_id}', True, timeout=3600)
+        cache.set(f'check_tiket_error_{check_id}', 'Cek Data dihentikan oleh pengguna', timeout=3600)
+        cache.set(f'check_tiket_done_{check_id}', True, timeout=3600)
+        
+        request.session.modified = False
+        return JsonResponse({'success': True, 'message': 'Permintaan stop cek data telah dikirim.'})
+    except Exception as exc:
+        error_msg = str(exc).strip()
+        return JsonResponse({'success': False, 'message': error_msg or 'Gagal menghentikan cek data'}, status=500)
 
 
 def _make_aware_datetime(dt):
@@ -679,11 +745,16 @@ def _map_periode_data(periode_str, jenis_prioritas_obj=None, tahun_value=None):
     return periode_jenis_data, periode_value
 
 
-def _check_tiket_data(service, check_id=None):
+def _check_tiket_data(service, check_id=None, stop_checker=None):
     """Check tiket data from Oracle without inserting.
     
     Uses a single bulk DB query for exists-check instead of per-row .exists().
     Writes progress to cache every 1000 rows when check_id is provided.
+    
+    Args:
+        service: OracleDataSyncService instance
+        check_id: optional UUID for tracking check progress
+        stop_checker: optional callable() that returns True if check should stop
     """
     try:
         sql_query = """
@@ -799,6 +870,11 @@ def _check_tiket_data(service, check_id=None):
 
         # --- Classify rows using the pre-fetched set ---
         for idx, row in enumerate(rows):
+            # Check stop signal during row iteration
+            if stop_checker and stop_checker():
+                logger.warning(f'Stop signal received during check after {idx} rows')
+                break
+                
             try:
                 row_dict = dict(zip(column_names, row))
                 nomor_tiket = row_dict.get('id_tiket')
@@ -847,7 +923,7 @@ def _check_tiket_data(service, check_id=None):
         }
 
 
-def _sync_tiket_data(service, sync_id=None, request=None):
+def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
     """Fast bulk sync using CSV intermediate storage.
     
     Process:
@@ -856,6 +932,12 @@ def _sync_tiket_data(service, sync_id=None, request=None):
     3. Batch insert new records using bulk_create
     4. Batch update existing records
     5. Assign PICs and audit trails
+    
+    Args:
+        service: OracleDataSyncService instance
+        sync_id: optional UUID for tracking sync progress
+        request: optional Django request for user info
+        stop_checker: optional callable() that returns True if sync should stop
     """
     try:
         # Detect database and set appropriate batch sizes
@@ -975,6 +1057,11 @@ def _sync_tiket_data(service, sync_id=None, request=None):
             if sync_id and cache.get(f'sync_tiket_stop_{sync_id}'):
                 errors.append('Sync dihentikan oleh pengguna')
                 logger.info('Sync stopped by user')
+                break
+            
+            # Check stop_checker callable (from tasks/tests)
+            if stop_checker and stop_checker():
+                logger.warning(f'Stop signal received during sync after {idx} rows')
                 break
             
             # Update progress every 50 rows

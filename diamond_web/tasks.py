@@ -27,20 +27,33 @@ def check_referensi_data_task(self, check_id):
         service = OracleDataSyncService()
 
         def _on_progress(current, total, table_name, inserts, updates, errors):
+            # Check stop signal - if set, raise to halt service
+            if cache.get(f'check_referensi_stop_requested_{check_id}'):
+                logger.info(f'[TASK] Stop requested for check {check_id}, raising interrupt')
+                raise InterruptedError('Cek Data dihentikan oleh pengguna')
             pct = int(current / total * 100) if total else 0
             cache.set(f'check_referensi_progress_{check_id}', {
                 'current': current, 'total': total, 'percentage': pct,
                 'table_name': table_name, 'inserts': inserts,
                 'updates': updates, 'errors': errors,
             }, timeout=3600)
+        
+        def _stop_checker():
+            """Check if stop was requested; called frequently during row iteration."""
+            return bool(cache.get(f'check_referensi_stop_requested_{check_id}'))
 
-        summary = service.check(progress_callback=_on_progress)
+        summary = service.check(progress_callback=_on_progress, stop_checker=_stop_checker)
         summary_dict = summary.as_dict() if hasattr(summary, 'as_dict') else {}
 
         cache.set(f'check_referensi_result_{check_id}', summary_dict, timeout=3600)
         cache.set(f'check_referensi_done_{check_id}', True, timeout=3600)
         cache.set(f'check_referensi_in_progress_{check_id}', False, timeout=3600)
         logger.info(f'[TASK] Referensi check completed (check_id={check_id})')
+    except InterruptedError as e:
+        logger.info(f'[TASK] Referensi check interrupted: {str(e)}')
+        cache.set(f'check_referensi_error_{check_id}', str(e), timeout=3600)
+        cache.set(f'check_referensi_done_{check_id}', True, timeout=3600)
+        cache.set(f'check_referensi_in_progress_{check_id}', False, timeout=3600)
     except Exception as e:
         logger.error(f'[TASK] Exception in referensi check: {str(e)}', exc_info=True)
         cache.set(f'check_referensi_error_{check_id}', str(e), timeout=3600)
@@ -95,13 +108,34 @@ def check_tiket_data_task(self, check_id):
         from .utils.oracle_sync import OracleDataSyncService
         from .views.sync_tiket import _check_tiket_data
 
-        service = OracleDataSyncService()
-        summary = _check_tiket_data(service, check_id=check_id)
-        logger.info(f'[TASK] Tiket check completed (check_id={check_id})')
+        # Check if stop was requested before task even starts
+        if cache.get(f'check_tiket_stop_requested_{check_id}'):
+            logger.info(f'[TASK] Tiket check stop requested before start (check_id={check_id})')
+            cache.set(f'check_tiket_error_{check_id}', 'Cek Data dihentikan oleh pengguna', timeout=3600)
+            cache.set(f'check_tiket_done_{check_id}', True, timeout=3600)
+            cache.set(f'check_tiket_in_progress_{check_id}', False, timeout=3600)
+            return
 
+        service = OracleDataSyncService()
+        
+        def _stop_checker():
+            """Check if stop was requested; called frequently during row iteration."""
+            return bool(cache.get(f'check_tiket_stop_requested_{check_id}'))
+        
+        # Wrap the check operation to handle stop requests
+        try:
+            summary = _check_tiket_data(service, check_id=check_id, stop_checker=_stop_checker)
+        except InterruptedError as e:
+            logger.info(f'[TASK] Tiket check interrupted: {str(e)}')
+            cache.set(f'check_tiket_error_{check_id}', str(e), timeout=3600)
+            cache.set(f'check_tiket_done_{check_id}', True, timeout=3600)
+            cache.set(f'check_tiket_in_progress_{check_id}', False, timeout=3600)
+            return
+            
         cache.set(f'check_tiket_result_{check_id}', summary, timeout=3600)
         cache.set(f'check_tiket_done_{check_id}', True, timeout=3600)
         cache.set(f'check_tiket_in_progress_{check_id}', False, timeout=3600)
+        logger.info(f'[TASK] Tiket check completed (check_id={check_id})')
     except Exception as e:
         logger.error(f'[TASK] Exception in tiket check: {str(e)}', exc_info=True)
         cache.set(f'check_tiket_error_{check_id}', str(e), timeout=3600)

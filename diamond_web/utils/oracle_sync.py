@@ -190,6 +190,7 @@ class OracleSyncSummary:
     errors: list[str] = field(default_factory=list)
     inserted_keys: list[str] = field(default_factory=list)
     updated_keys: list[str] = field(default_factory=list)
+    skipped_rows_detail: list[dict] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -1202,6 +1203,7 @@ class OracleDataSyncService:
     def _calculate_diff_for_config(
         self,
         cfg: OracleSyncTableConfig,
+        stop_checker=None,
     ) -> tuple[OracleSyncSummary, Any, list[dict[str, Any]], list[tuple[Any, dict[str, Any]]]]:
         target_model = self._get_target_model(cfg.target_model_label)
         source_rows = self._fetch_oracle_rows(cfg)
@@ -1209,9 +1211,14 @@ class OracleDataSyncService:
         normalized_rows: list[dict[str, Any]] = []
         key_values: list[Any] = []
         errors: list[str] = []
-        skipped_rows = 0
+        skipped_rows_detail: list[dict] = []
 
-        for source_row in source_rows:
+        for row_idx, source_row in enumerate(source_rows, 1):
+            # Check stop signal during row iteration
+            if stop_checker and stop_checker():
+                logger.warning(f'[{cfg.name}] Stop signal received after processing {row_idx-1} rows')
+                break
+            
             try:
                 _, mapped = self._map_source_to_target(cfg, target_model, source_row)
                 normalized_rows.append(mapped)
@@ -1219,8 +1226,13 @@ class OracleDataSyncService:
             except ValueError as exc:
                 # For PMDE syncs and PIC syncs, skip rows with missing FK references instead of failing
                 if cfg.name in ("jenis_prioritas_data", "durasi_jatuh_tempo_pmde", "pic_p3de") and "referensi" in str(exc):
-                    skipped_rows += 1
-                    logger.info(f"Skipping row in {cfg.name}: {exc}")
+                    row_key = source_row.get(cfg.source_key_column.upper()) if isinstance(source_row, dict) else None
+                    skipped_rows_detail.append({
+                        'row_number': row_idx,
+                        'key': str(row_key) if row_key is not None else '-',
+                        'reason': str(exc),
+                    })
+                    logger.info(f"Skipping row in {cfg.name} (key={row_key}): {exc}")
                 else:
                     errors.append(str(exc))
             except Exception as exc:
@@ -1276,10 +1288,11 @@ class OracleDataSyncService:
             errors=errors,
             inserted_keys=inserted_keys[:20],
             updated_keys=updated_keys[:20],
+            skipped_rows_detail=skipped_rows_detail,
         )
         
-        if skipped_rows > 0:
-            logger.info(f"[{cfg.name}] Skipped {skipped_rows} rows due to missing foreign key references")
+        if skipped_rows_detail:
+            logger.info(f"[{cfg.name}] Skipped {len(skipped_rows_detail)} rows due to missing foreign key references")
         
         return summary, target_model, inserts, updates
 
@@ -1358,13 +1371,14 @@ class OracleDataSyncService:
             table_summaries=table_summaries,
         )
 
-    def _run_sequential(self, apply_changes: bool, progress_callback=None) -> OracleSyncBatchSummary:
+    def _run_sequential(self, apply_changes: bool, progress_callback=None, stop_checker=None) -> OracleSyncBatchSummary:
         """Run sync/check sequentially over all configured tables.
 
         Args:
             apply_changes: whether to persist inserts/updates to the DB.
             progress_callback: optional callable(current, total, table_name, cumulative_inserts,
                 cumulative_updates, cumulative_errors) called after each table finishes.
+            stop_checker: optional callable() that returns True if sync should stop.
         """
         table_summaries: list[OracleSyncSummary] = []
         total_tables = len(HARD_CODED_SYNC_TABLES)
@@ -1373,8 +1387,13 @@ class OracleDataSyncService:
         cumulative_errors = 0
 
         for idx, cfg in enumerate(HARD_CODED_SYNC_TABLES, start=1):
+            # Check stop signal before processing each table
+            if stop_checker and stop_checker():
+                logger.info(f'Stop signal received before processing table {idx}/{total_tables}')
+                break
+                
             try:
-                summary, target_model, inserts, updates = self._calculate_diff_for_config(cfg)
+                summary, target_model, inserts, updates = self._calculate_diff_for_config(cfg, stop_checker=stop_checker)
                 table_summaries.append(summary)
 
                 if apply_changes and not summary.errors:
@@ -1395,6 +1414,7 @@ class OracleDataSyncService:
                     errors=[str(exc)],
                     inserted_keys=[],
                     updated_keys=[],
+                    skipped_rows_detail=[],
                 )
                 table_summaries.append(err_summary)
                 cumulative_errors += 1
@@ -1414,17 +1434,29 @@ class OracleDataSyncService:
 
         return self._build_batch_summary(table_summaries)
 
-    def check(self, progress_callback=None) -> OracleSyncBatchSummary:
+    def check(self, progress_callback=None, stop_checker=None) -> OracleSyncBatchSummary:
+        """Check differences without applying changes (runs in atomic transaction and rolls back).
+        
+        Args:
+            progress_callback: optional callable for progress reporting.
+            stop_checker: optional callable() that returns True if check should stop.
+        """
         # Simulasikan apply dalam 1 transaksi agar dependency antar tabel (parent-child)
         # bisa tervalidasi, lalu rollback supaya data tidak tersimpan.
         with transaction.atomic():
-            summary = self._run_sequential(apply_changes=True, progress_callback=progress_callback)
+            summary = self._run_sequential(apply_changes=True, progress_callback=progress_callback, stop_checker=stop_checker)
             transaction.set_rollback(True)
             return summary
 
-    def sync(self, progress_callback=None) -> OracleSyncBatchSummary:
+    def sync(self, progress_callback=None, stop_checker=None) -> OracleSyncBatchSummary:
+        """Sync reference data from Oracle to Django models, applying changes to DB.
+        
+        Args:
+            progress_callback: optional callable for progress reporting.
+            stop_checker: optional callable() that returns True if sync should stop.
+        """
         with transaction.atomic():
-            summary = self._run_sequential(apply_changes=True, progress_callback=progress_callback)
+            summary = self._run_sequential(apply_changes=True, progress_callback=progress_callback, stop_checker=stop_checker)
             if summary.errors:
                 transaction.set_rollback(True)
             return summary
