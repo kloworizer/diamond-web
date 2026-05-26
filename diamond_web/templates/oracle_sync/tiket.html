@@ -45,7 +45,7 @@
             </div>
 
             <div id="sync-progress" class="mt-4" style="display:none;">
-                <h6 class="mb-2">Progress Sinkronisasi</h6>
+                <h6 class="mb-2">Progress Sinkronisasi <span id="progress-phase" class="badge bg-secondary ms-1"></span></h6>
                 <div class="progress mb-2" style="height: 25px;">
                     <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;">
                         <span id="progress-text">0%</span>
@@ -87,6 +87,7 @@
         const btnForceStop = document.getElementById('btn-force-stop');
         const progressBox = document.getElementById('sync-progress');
         const resultBox = document.getElementById('sync-result');
+        const progressPhase = document.getElementById('progress-phase');
 
         const resultSource = document.getElementById('result-source');
         const resultInsert = document.getElementById('result-insert');
@@ -103,7 +104,9 @@
         const progressErrors = document.getElementById('progress-errors');
 
         let currentSyncId = null;
+        let currentCheckId = null;
         let syncIntervalId = null;
+        let checkIntervalId = null;
         let lastProgressSnapshot = {
             current: 0,
             total: 0,
@@ -114,58 +117,121 @@
         };
         
         const SYNC_ID_STORAGE_KEY = 'tiket_sync_id';
+        const CHECK_ID_STORAGE_KEY = 'tiket_check_id';
         
-        // Check if there's an active sync from a previous page load
+        // Check if there's an active sync or check from a previous page load
         function resumeActiveSyncIfExists() {
             const storedSyncId = localStorage.getItem(SYNC_ID_STORAGE_KEY);
             if (storedSyncId) {
                 currentSyncId = storedSyncId;
-                // Check if sync is still running
                 fetch("{% url 'sync_tiket_progress' %}?sync_id=" + currentSyncId, {
                     method: 'GET',
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 }).then(res => res.json()).then(data => {
                     if (data.success && !data.done) {
-                        // Sync is still running, resume polling
                         console.log('Resuming active sync:', currentSyncId);
                         progressBox.style.display = 'block';
                         btnStop.style.display = 'inline-block';
                         btnStop.disabled = false;
-                        btnForceStop.style.display = 'none';  // Hidden until needed
-                        btnSync.disabled = true;
+                        btnForceStop.style.display = 'none';
+                        setLoading(btnSync, true, '<i class="feather-upload me-1"></i>Sync Data', 'Syncing...');
                         btnCheck.disabled = true;
-                        
-                        // Update progress with cached data
-                        if (data.progress) {
-                            updateProgress(data.progress);
-                        }
-                        
-                        // Resume polling
+                        if (data.progress) updateProgress(data.progress);
                         startProgressPolling();
                     } else if (data.done) {
-                        // Sync completed, clean up
                         localStorage.removeItem(SYNC_ID_STORAGE_KEY);
                         if (data.success && data.summary) {
                             renderSummary(data.summary);
                             showToast(data.message || 'Sync selesai.', 'success');
                         }
                     } else {
-                        // Unexpected response, clear stuck session
-                        console.warn('Unexpected sync status, clearing stuck session');
                         localStorage.removeItem(SYNC_ID_STORAGE_KEY);
                         currentSyncId = null;
+                        resumeCheckIfExists();
                     }
                 }).catch(e => {
                     console.error('Error checking sync status:', e);
-                    // If we can't reach the server or sync_id is invalid, clean up
                     localStorage.removeItem(SYNC_ID_STORAGE_KEY);
                     currentSyncId = null;
+                    resumeCheckIfExists();
                 });
+                return; // don't check for check if sync is being queried
             }
+            resumeCheckIfExists();
+        }
+
+        function resumeCheckIfExists() {
+            const storedCheckId = localStorage.getItem(CHECK_ID_STORAGE_KEY);
+            if (!storedCheckId) return;
+            currentCheckId = storedCheckId;
+            fetch("{% url 'sync_tiket_progress' %}?mode=check&check_id=" + currentCheckId, {
+                method: 'GET',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            }).then(res => res.json()).then(data => {
+                if (data.success && !data.done) {
+                    console.log('Resuming active check:', currentCheckId);
+                    progressBox.style.display = 'block';
+                    btnCheck.disabled = true;
+                    btnSync.disabled = true;
+                    setLoading(btnCheck, true, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
+                    if (data.progress) updateProgress(data.progress);
+                    startCheckPolling(currentCheckId);
+                } else if (data.done) {
+                    localStorage.removeItem(CHECK_ID_STORAGE_KEY);
+                    if (data.success && data.summary) {
+                        renderSummary(data.summary);
+                        showToast(data.message || 'Check selesai.', 'success');
+                    }
+                } else {
+                    localStorage.removeItem(CHECK_ID_STORAGE_KEY);
+                    currentCheckId = null;
+                }
+            }).catch(() => {
+                localStorage.removeItem(CHECK_ID_STORAGE_KEY);
+                currentCheckId = null;
+            });
+        }
+
+        function startCheckPolling(checkId) {
+            if (checkIntervalId) clearInterval(checkIntervalId);
+            progressPhase.textContent = 'Memeriksa…';
+            progressPhase.className = 'badge bg-info ms-1';
+
+            checkIntervalId = setInterval(async function() {
+                try {
+                    const res = await fetch("{% url 'sync_tiket_progress' %}?mode=check&check_id=" + checkId, {
+                        method: 'GET',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    const data = await res.json();
+
+                    if (data.success && data.progress) updateProgress(data.progress);
+
+                    if (data.done) {
+                        clearInterval(checkIntervalId);
+                        localStorage.removeItem(CHECK_ID_STORAGE_KEY);
+                        progressBox.style.display = 'none';
+                        progressPhase.textContent = '';
+                        setLoading(btnCheck, false, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
+                        btnCheck.disabled = false;
+
+                        if (!data.success) {
+                            showToast(data.message || 'Check error', 'danger');
+                        } else if (data.summary) {
+                            renderSummary(data.summary);
+                            showToast(data.message || 'Check data selesai.', 'success');
+                        }
+                    }
+                } catch (e) {
+                    console.error('Check progress fetch error:', e);
+                }
+            }, 800);
         }
 
         function startProgressPolling() {
             if (syncIntervalId) clearInterval(syncIntervalId);
+            progressPhase.textContent = 'Menyinkronkan…';
+            progressPhase.className = 'badge bg-primary ms-1';
             
             syncIntervalId = setInterval(async function() {
                 try {
@@ -191,9 +257,10 @@
                         }
                         
                         progressBox.style.display = 'none';
+                        progressPhase.textContent = '';
                         btnStop.style.display = 'none';
                         btnForceStop.style.display = 'none';
-                        btnSync.disabled = false;
+                        setLoading(btnSync, false, '<i class="feather-upload me-1"></i>Sync Data', 'Syncing...');
                         btnCheck.disabled = false;
                     }
                 } catch (e) {
@@ -333,14 +400,22 @@
         btnCheck.addEventListener('click', async function () {
             setLoading(btnCheck, true, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
             btnSync.disabled = true;
+            lastProgressSnapshot = { current: 0, total: 0, percentage: 0, inserts: 0, updates: 0, errors: 0 };
+            progressBox.style.display = 'block';
+            resultBox.style.display = 'none';
             try {
                 const data = await postJson("{% url 'sync_tiket_check' %}");
-                renderSummary(data.summary);
-                showToast('Check data selesai.', 'success');
+                currentCheckId = data.check_id;
+                localStorage.setItem(CHECK_ID_STORAGE_KEY, currentCheckId);
+                showToast(data.message || 'Check dimulai...', 'info');
+                startCheckPolling(currentCheckId);
             } catch (error) {
-                showToast(error.message, 'danger');
-            } finally {
+                clearInterval(checkIntervalId);
+                progressBox.style.display = 'none';
+                localStorage.removeItem(CHECK_ID_STORAGE_KEY);
                 setLoading(btnCheck, false, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
+                btnSync.disabled = false;
+                showToast(error.message, 'danger');
             }
         });
 
@@ -370,7 +445,7 @@
                 
                 showToast(startResp.message, 'info');
                 
-                // Start polling for progress
+                // Start polling for progress — spinner stays until polling completes
                 startProgressPolling();
                 
             } catch (error) {
@@ -378,10 +453,9 @@
                 progressBox.style.display = 'none';
                 btnStop.style.display = 'none';
                 localStorage.removeItem(SYNC_ID_STORAGE_KEY);
-                showToast(error.message, 'danger');
-            } finally {
-                btnCheck.disabled = false;
                 setLoading(btnSync, false, '<i class="feather-upload me-1"></i>Sync Data', 'Syncing...');
+                btnCheck.disabled = false;
+                showToast(error.message, 'danger');
             }
         });
 
@@ -417,17 +491,21 @@
             
             // Immediately clear everything
             clearInterval(syncIntervalId);
+            clearInterval(checkIntervalId);
             localStorage.removeItem(SYNC_ID_STORAGE_KEY);
+            localStorage.removeItem(CHECK_ID_STORAGE_KEY);
             currentSyncId = null;
+            currentCheckId = null;
             
             // Reset UI
             progressBox.style.display = 'none';
             btnStop.style.display = 'none';
             btnForceStop.style.display = 'none';
             btnSync.disabled = false;
+            setLoading(btnCheck, false, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
             btnCheck.disabled = false;
             
-            showToast('Sync session cleared. Anda bisa mulai lagi.', 'success');
+            showToast('Session cleared. Anda bisa mulai lagi.', 'success');
         });
         
         // Resume active sync on page load if it exists

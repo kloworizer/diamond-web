@@ -54,9 +54,9 @@
 								<div class="d-flex align-items-center gap-2">
 									<label class="fs-12 text-muted text-nowrap mb-0">Pilih Tahun</label>
 									<select id="filter-tahun" class="form-select form-select-sm bg-light-subtle border-gray-200" style="width: 120px; font-size: 13px;">
-										<option value="">Semua Tahun</option>
+                                        <option value="">Semua Tahun</option>
 										{% for tahun in tahun_list %}
-										<option value="{{ tahun }}">{{ tahun }}</option>
+                                        <option value="{{ tahun }}" {% if tahun == default_tahun %}selected{% endif %}>{{ tahun }}</option>
 										{% endfor %}
 									</select>
 								</div>
@@ -65,15 +65,15 @@
 								<div class="vr text-gray-300 mx-1" style="height: 35px; opacity: 1;"></div>
 
 								<!-- List Mini Cards -->
-								<div class="d-flex flex-wrap gap-2">
+                                <div class="d-flex flex-wrap gap-2" id="media-backup-cards">
 									{% for mb in media_backup_list %}
-									<div class="d-flex align-items-center border border-gray-200 rounded px-3 py-2 bg-white">
+                                    <div class="d-flex align-items-center border border-gray-200 rounded px-3 py-2 bg-white" data-media-id="{{ mb.id }}">
 										<div class="me-3 text-secondary">
 											<i class="feather-database"></i> 
 										</div>
 										<div class="d-flex align-items-center gap-2">
 											<span class="fw-bold text-dark fs-13">{{ mb.deskripsi }}</span>
-											<span class="badge rounded-pill border border-gray-300 text-muted fw-normal px-2" style="font-size: 11px;">{{ mb.count }}</span>
+                                            <span class="badge rounded-pill border border-gray-300 text-muted fw-normal px-2 media-count" style="font-size: 11px;">{{ mb.count }}</span>
 										</div>
 									</div>
 									{% endfor %}
@@ -106,33 +106,24 @@
                                                 <div class="row mb-3 align-items-center">
                                                     <label class="col-sm-4 col-form-label fs-12 text-muted">Jenis Data</label>
                                                     <div class="col-sm-8">
-                                                        <select id="filter-jenis-data" class="form-select form-select-sm border-gray-200 fs-12 text-muted">
-                                                            <option value="">Pilih Jenis Data</option>
-                                                            {% for jd in filter_options.jenis_data %}
-                                                            <option value="{{ jd.id }}">{{ jd.deskripsi }}</option>
-                                                            {% endfor %}
+                                                        <select id="filter-jenis-data" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
+                                                            <option value="">Semua Jenis Data</option>
                                                         </select>
                                                     </div>
                                                 </div>
                                                 <div class="row mb-3 align-items-center">
                                                     <label class="col-sm-4 col-form-label fs-12 text-muted">Subjenis Data</label>
                                                     <div class="col-sm-8">
-                                                        <select id="filter-subjenis-data" class="form-select form-select-sm border-gray-200 fs-12 text-muted">
-                                                            <option value="">Pilih Subjenis Data</option>
-                                                            {% for sd in filter_options.subjenis_data %}
-                                                            <option value="{{ sd.id }}">{{ sd.deskripsi }}</option>
-                                                            {% endfor %}
+                                                        <select id="filter-subjenis-data" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
+                                                            <option value="">Semua Subjenis Data</option>
                                                         </select>
                                                     </div>
                                                 </div>
                                                 <div class="row mb-3 align-items-center">
                                                     <label class="col-sm-4 col-form-label fs-12 text-muted">Kategori ILAP</label>
                                                     <div class="col-sm-8">
-                                                        <select id="filter-kategori-ilap" class="form-select form-select-sm border-gray-200 fs-12 text-muted">
-                                                            <option value="">Pilih Kategori ILAP</option>
-                                                            {% for ki in filter_options.kategori_ilap %}
-                                                            <option value="{{ ki.id }}">{{ ki.deskripsi }}</option>
-                                                            {% endfor %}
+                                                        <select id="filter-kategori-ilap" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
+                                                            <option value="">Semua Kategori ILAP</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -143,44 +134,32 @@
                                                 <div class="row mb-3 align-items-center">
                                                     <label class="col-sm-4 col-form-label fs-12 text-muted">Periode Data</label>
                                                     <div class="col-sm-8">
-                                                        <select id="filter-periode-data" class="form-select form-select-sm border-gray-200 fs-12 text-muted">
-                                                            <option value="">Pilih Periode Data</option>
-                                                            {% for pd in filter_options.periode_data %}
-                                                            <option value="{{ pd.id }}">{{ pd.deskripsi }}</option>
-                                                            {% endfor %}
+                                                        <select id="filter-periode-data" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
+                                                            <option value="">Semua Periode Data</option>
                                                         </select>
                                                     </div>
                                                 </div>
                                                 <div class="row mb-3 align-items-center">
                                                     <label class="col-sm-4 col-form-label fs-12 text-muted">Periode Pengiriman</label>
                                                     <div class="col-sm-8">
-                                                        <select id="filter-periode-pengiriman" class="form-select form-select-sm border-gray-200 fs-12 text-muted">
-                                                            <option value="">Pilih Periode Pengiriman</option>
-                                                            {% for pp in filter_options.periode_pengiriman %}
-                                                            <option value="{{ pp.id }}">{{ pp.deskripsi }}</option>
-                                                            {% endfor %}
+                                                        <select id="filter-periode-pengiriman" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
+                                                            <option value="">Semua Periode Pengiriman</option>
                                                         </select>
                                                     </div>
                                                 </div>
                                                 <div class="row mb-3 align-items-center">
                                                     <label class="col-sm-4 col-form-label fs-12 text-muted">Media Backup</label>
                                                     <div class="col-sm-8">
-                                                        <select id="filter-media-backup" class="form-select form-select-sm border-gray-200 fs-12 text-muted">
-                                                            <option value="">Pilih Media Backup</option>
-                                                            {% for mb in media_backup_list %}
-                                                            <option value="{{ mb.id }}">{{ mb.deskripsi }}</option>
-                                                            {% endfor %}
+                                                        <select id="filter-media-backup" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
+                                                            <option value="">Semua Media Backup</option>
                                                         </select>
                                                     </div>
                                                 </div>
                                                 <div class="row mb-3 align-items-center">
                                                     <label class="col-sm-4 col-form-label fs-12 text-muted">PIC P3DE</label>
                                                     <div class="col-sm-8">
-                                                        <select id="filter-pic-p3de" class="form-select form-select-sm border-gray-200 fs-12 text-muted">
-                                                            <option value="">Pilih PIC P3DE</option>
-                                                            {% for pic in filter_options.pic_p3de %}
-                                                            <option value="{{ pic.id }}">{{ pic.nama }}</option>
-                                                            {% endfor %}
+                                                        <select id="filter-pic-p3de" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
+                                                            <option value="">Semua PIC P3DE</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -191,10 +170,10 @@
                                         <div class="d-flex flex-wrap align-items-center justify-content-between mt-4 pt-3 border-top border-gray-100">
                                             <!-- Tombol Ekspor -->
                                             <div class="d-flex gap-2">
-                                                <button type="button" class="btn btn-sm btn-outline-success d-flex align-items-center gap-2 fs-11 fw-bold">
+                                                <button type="button" id="btn-export-excel" class="btn btn-sm btn-outline-success d-flex align-items-center gap-2 fs-11 fw-bold">
                                                     <i class="feather-file-text"></i> EKSPOR KE EXCEL
                                                 </button>
-                                                <button type="button" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-2 fs-11 fw-bold">
+                                                <button type="button" id="btn-export-pdf" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-2 fs-11 fw-bold">
                                                     <i class="feather-file-text"></i> EKSPOR KE PDF
                                                 </button>
                                             </div>
@@ -269,12 +248,125 @@
 <script>
     (function () {
         const ajaxUrl = "{% url 'backup_data_data' %}";
+        const filterOptionsUrl = "{% url 'backup_data_filter_options' %}";
+        const exportExcelUrl = "{% url 'backup_data_export_excel' %}";
+        const exportPdfUrl = "{% url 'backup_data_export_pdf' %}";
+        const defaultYear = "{{ default_tahun }}";
         let table = null;
         let isInitialized = false;
 
         $(document).ready(function () {
+            if (!$('#filter-tahun').val()) {
+                $('#filter-tahun').val(defaultYear);
+            }
 
-            // Initialize DataTable (NOT on page load - only when searching)
+            const dependentSelects = [
+                '#filter-jenis-data',
+                '#filter-subjenis-data',
+                '#filter-kategori-ilap',
+                '#filter-periode-data',
+                '#filter-periode-pengiriman',
+                '#filter-media-backup',
+                '#filter-pic-p3de'
+            ];
+
+            const optionLabels = {
+                '#filter-jenis-data': 'Semua Jenis Data',
+                '#filter-subjenis-data': 'Semua Subjenis Data',
+                '#filter-kategori-ilap': 'Semua Kategori ILAP',
+                '#filter-periode-data': 'Semua Periode Data',
+                '#filter-periode-pengiriman': 'Semua Periode Pengiriman',
+                '#filter-media-backup': 'Semua Media Backup',
+                '#filter-pic-p3de': 'Semua PIC P3DE'
+            };
+
+            const mapOptionsKey = {
+                '#filter-jenis-data': 'jenis_data',
+                '#filter-subjenis-data': 'subjenis_data',
+                '#filter-kategori-ilap': 'kategori_ilap',
+                '#filter-periode-data': 'periode_data',
+                '#filter-periode-pengiriman': 'periode_pengiriman',
+                '#filter-media-backup': 'media_backup',
+                '#filter-pic-p3de': 'pic_p3de'
+            };
+
+            function getFilterParams() {
+                return {
+                    tahun: $('#filter-tahun').val() || '',
+                    id_ilap: $('#filter-ilap').val() || '',
+                    id_jenis_data: $('#filter-jenis-data').val() || '',
+                    id_sub_jenis_data_ilap: $('#filter-subjenis-data').val() || '',
+                    id_kategori_ilap: $('#filter-kategori-ilap').val() || '',
+                    id_periode_data: $('#filter-periode-data').val() || '',
+                    id_periode_pengiriman: $('#filter-periode-pengiriman').val() || '',
+                    id_media_backup: $('#filter-media-backup').val() || '',
+                    id_pic_p3de: $('#filter-pic-p3de').val() || ''
+                };
+            }
+
+            function resetDependentSelects(disable = true) {
+                dependentSelects.forEach(selector => {
+                    const $s = $(selector);
+                    $s.html(`<option value="">${optionLabels[selector]}</option>`);
+                    $s.val('');
+                    $s.prop('disabled', disable);
+                });
+            }
+
+            function updateMediaCards(mediaList) {
+                const $container = $('#media-backup-cards');
+                if (!$container.length || !Array.isArray(mediaList)) return;
+
+                const countMap = {};
+                mediaList.forEach(item => {
+                    countMap[String(item.id)] = item.count;
+                });
+
+                $container.find('[data-media-id]').each(function () {
+                    const mediaId = String($(this).data('media-id'));
+                    const count = Object.prototype.hasOwnProperty.call(countMap, mediaId) ? countMap[mediaId] : 0;
+                    $(this).find('.media-count').text(count);
+                });
+            }
+
+            function populateSelect(selector, options) {
+                const $select = $(selector);
+                const prevValue = $select.val();
+                $select.html(`<option value="">${optionLabels[selector]}</option>`);
+                (options || []).forEach(opt => {
+                    $select.append(`<option value="${opt.id}">${opt.name}</option>`);
+                });
+                if (prevValue && $select.find(`option[value="${prevValue}"]`).length > 0) {
+                    $select.val(prevValue);
+                }
+                $select.prop('disabled', false);
+            }
+
+            function loadDependentOptions() {
+                const params = getFilterParams();
+                $.ajax({
+                    url: filterOptionsUrl,
+                    type: 'GET',
+                    data: params,
+                    success: function (response) {
+                        updateMediaCards(response.media_backup_list || []);
+
+                        if (!params.id_ilap) {
+                            resetDependentSelects(true);
+                            return;
+                        }
+
+                        const opts = response.filter_options || {};
+                        dependentSelects.forEach(selector => {
+                            populateSelect(selector, opts[mapOptionsKey[selector]] || []);
+                        });
+                    },
+                    error: function () {
+                        resetDependentSelects(true);
+                    }
+                });
+            }
+
             const initializeTable = function() {
                 if (isInitialized) return;
                 
@@ -288,15 +380,8 @@
                         url: ajaxUrl,
                         dataSrc: 'data',
                         data: function (d) {
-                            // Add filter values
-                            d.tahun = $('#filter-tahun').val();
-                            d.id_ilap = $('#filter-ilap').val();
-                            d.id_jenis_data = $('#filter-jenis-data').val();
-                            d.id_sub_jenis_data_ilap = $('#filter-subjenis-data').val();
-                            d.id_kategori_ilap = $('#filter-kategori-ilap').val();
-                            d.id_media_backup = $('#filter-media-backup').val();
+                            Object.assign(d, getFilterParams());
                             
-                            // Add column search values
                             d.columns_search = [];
                             $('#column-search-row input').each(function (i) {
                                 d.columns_search[i] = $(this).val();
@@ -306,22 +391,23 @@
                     },
                     pageLength: 10,
                     columns: [
-                        { data: 'id', visible: false, searchable: false },
-                        { data: 'no_tiket' },
-                        { data: 'lokasi_backup' },
-                        { data: 'nama_file' },
+                        { data: 'kategori_ilap' },
+                        { data: 'nama_ilap' },
+                        { data: 'jenis_data' },
+                        { data: 'subjenis_data' },
+                        { data: 'periode_data' },
+                        { data: 'nomor_tiket' },
                         { data: 'media_backup' },
-                        { data: 'actions', orderable: false, searchable: false }
+                        { data: 'lokasi_penyimpanan' },
+                        { data: 'pic_p3de' },
+                        { data: 'jumlah_data' }
                     ],
-                    columnDefs: [
-                        { targets: 3, render: function (data, type, row, meta) { return data; } }
-                    ],
-                    order: [[0, 'desc']]
+                    order: [[5, 'desc']],
+                    scrollX: true
                 });
                 isInitialized = true;
             };
 
-            // Search button click
             $('#btn-search').on('click', function () {
                 initializeTable();
                 if (table) {
@@ -329,21 +415,49 @@
                 }
             });
 
-            // Clear filter button
+            function buildExportUrl(baseUrl) {
+                const params = new URLSearchParams(getFilterParams());
+                return `${baseUrl}?${params.toString()}`;
+            }
+
+            $('#btn-export-excel').on('click', function () {
+                window.location.href = buildExportUrl(exportExcelUrl);
+            });
+
+            $('#btn-export-pdf').on('click', function () {
+                window.location.href = buildExportUrl(exportPdfUrl);
+            });
+
             $('#btn-clear-filter').on('click', function (e) {
                 e.preventDefault();
-                $('#filter-tahun').val('');
+                $('#filter-tahun').val(defaultYear);
                 $('#filter-ilap').val('');
-                $('#filter-jenis-data').val('');
-                $('#filter-subjenis-data').val('');
-                $('#filter-kategori-ilap').val('');
-                $('#filter-media-backup').val('');
                 $('#column-search-row input').val('');
-                
-                if (table) {
-                    table.ajax.reload();
-                }
+                resetDependentSelects(true);
+                loadDependentOptions();
             });
+
+            $('#filter-tahun').on('change', function () {
+                loadDependentOptions();
+            });
+
+            $('#filter-ilap').on('change', function () {
+                if (!$(this).val()) {
+                    resetDependentSelects(true);
+                }
+                loadDependentOptions();
+            });
+
+            dependentSelects.forEach(selector => {
+                $(selector).on('change', function () {
+                    if ($('#filter-ilap').val()) {
+                        loadDependentOptions();
+                    }
+                });
+            });
+
+            resetDependentSelects(true);
+            loadDependentOptions();
 
             // Handle modal hide to prevent aria-hidden conflicts
             const modalElement = document.getElementById('crudModal');

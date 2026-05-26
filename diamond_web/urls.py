@@ -54,6 +54,9 @@ urlpatterns = [
     path('ilap/create/', views.ILAPCreateView.as_view(), name='ilap_create'),
     path('ilap/<str:pk>/update/', views.ILAPUpdateView.as_view(), name='ilap_update'),
     path('ilap/<str:pk>/delete/', views.ILAPDeleteView.as_view(), name='ilap_delete'),
+    # Profil ILAP URLs
+    path('profil-ilap/', views.ProfilILAPListView.as_view(), name='profil_ilap_list'),
+    path('profil-ilap/<int:pk>/', views.ProfilILAPDetailView.as_view(), name='profil_ilap_detail'),
     # Jenis Tabel URLs
     path('jenis-tabel/', views.JenisTabelListView.as_view(), name='jenis_tabel_list'),
     path('jenis-tabel/data/', views.jenis_tabel_data, name='jenis_tabel_data'),
@@ -255,6 +258,9 @@ urlpatterns = [
     # Backup Data URLs
     path('backup-data/', views.BackupDataListView.as_view(), name='backup_data_list'),
     path('backup-data/data/', views.backup_data_data, name='backup_data_data'),
+    path('backup-data/filter-options/', views.backup_data_filter_options, name='backup_data_filter_options'),
+    path('backup-data/export/excel/', views.backup_data_export_excel, name='backup_data_export_excel'),
+    path('backup-data/export/pdf/', views.backup_data_export_pdf, name='backup_data_export_pdf'),
     path('backup-data/create/', views.BackupDataCreateView.as_view(), name='backup_data_create'),
     path('backup-data/from-tiket/<int:tiket_pk>/create/', views.BackupDataFromTiketCreateView.as_view(), name='backup_data_from_tiket_create'),
     path('backup-data/<int:pk>/update/', views.BackupDataUpdateView.as_view(), name='backup_data_update'),

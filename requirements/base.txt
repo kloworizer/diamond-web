@@ -1,5 +1,8 @@
 # Base requirements - shared between dev and production
 asgiref==3.11.0
+celery>=5.3,<6
+django-redis>=5.4,<6
+redis>=5.0,<6
 crispy-bootstrap5==2026.3
 oracledb>=2.0.0
 diff-match-patch==20241021

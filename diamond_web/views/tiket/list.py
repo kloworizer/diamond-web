@@ -28,6 +28,7 @@ from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ..mixins import can_access_tiket_list
 from ...constants.tiket_status import STATUS_LABELS
 from .documents import _is_p3de_user, _format_periode_tiket
+from ...models.durasi_jatuh_tempo import DurasiJatuhTempo
 
 
 class TiketListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
@@ -528,20 +529,21 @@ def tiket_data(request):
 
     if filter_terlambat in ('Ya', 'Tidak'):
         now = timezone.now()
-        late_ids = []
-        not_late_ids = []
-        qs_for_late = qs.select_related('id_durasi_jatuh_tempo_pide')
-        for obj in qs_for_late:
-            is_late = False
-            if obj.tgl_terima_dip and obj.id_durasi_jatuh_tempo_pide and obj.id_durasi_jatuh_tempo_pide.durasi is not None:
-                deadline = obj.tgl_terima_dip + timedelta(days=obj.id_durasi_jatuh_tempo_pide.durasi)
-                is_late = now > deadline
-            if is_late:
-                late_ids.append(obj.id)
-            else:
-                not_late_ids.append(obj.id)
-
-        qs = qs.filter(id__in=late_ids if filter_terlambat == 'Ya' else not_late_ids)
+        # Build DB-level late filter by grouping on distinct durasi integer values.
+        # This avoids materializing the entire queryset into Python.
+        late_conditions = Q()
+        for durasi_val in DurasiJatuhTempo.objects.values_list('durasi', flat=True).distinct():
+            if durasi_val is not None:
+                cutoff = now - timedelta(days=durasi_val)
+                late_conditions |= Q(
+                    id_durasi_jatuh_tempo_pide__durasi=durasi_val,
+                    tgl_terima_dip__isnull=False,
+                    tgl_terima_dip__lt=cutoff,
+                )
+        if filter_terlambat == 'Ya':
+            qs = qs.filter(late_conditions) if late_conditions else qs.none()
+        else:  # 'Tidak'
+            qs = qs.exclude(late_conditions)
 
     qs = qs.distinct()
 

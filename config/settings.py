@@ -125,7 +125,11 @@ else:
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
             "OPTIONS": {
-                # Give SQLite more time to wait for locks during heavy background sync.
+                # WAL mode: readers never block writers and writers never block readers.
+                # This prevents "database is locked" when a long sync task holds a
+                # write transaction while other requests try to read.
+                "init_command": "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;",
+                # Extra wait time as a fallback for writer-writer contention.
                 "timeout": 30,
             },
         }
@@ -263,6 +267,47 @@ if DEBUG and not RUNNING_TESTS:
             or (request.GET.get("djdt") == "1")
             or (os.getenv("DEBUG_TOOLBAR_ALWAYS", "False").lower() == "true")
         ),
+    }
+
+# ---------------------------------------------------------------------------
+# Celery configuration
+# ---------------------------------------------------------------------------
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_ACKS_LATE = True  # re-queue task if worker crashes mid-execution
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # one task per worker at a time (sync jobs are long)
+CELERY_WORKER_POOL = 'solo'           # Windows: prefork uses POSIX semaphores (unsupported); solo runs tasks in-process
+
+# ---------------------------------------------------------------------------
+# Cache — use Redis so the Celery worker and the web process share state.
+# Falls back to LocMemCache only if REDIS_CACHE_URL is explicitly set to 'locmem'.
+# ---------------------------------------------------------------------------
+_REDIS_CACHE_URL = os.getenv('REDIS_CACHE_URL', os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/1'))
+
+if _REDIS_CACHE_URL == 'locmem':
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': _REDIS_CACHE_URL,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'SOCKET_CONNECT_TIMEOUT': 5,
+                'SOCKET_TIMEOUT': 5,
+                'IGNORE_EXCEPTIONS': False,
+            },
+            'KEY_PREFIX': 'diamond',
+        }
     }
 
 # Logging configuration

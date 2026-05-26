@@ -297,6 +297,22 @@ def monitoring_penyampaian_data_data(request):
         name__in=['admin', 'admin_p3de', 'admin_pide', 'admin_pmde']
     ).exists()
 
+    # Read all filter params early so they can be applied at DB level
+    tahun_filter = request.GET.get('tahun', '')
+    pic_p3de_filter = request.GET.get('pic_p3de', '')
+    kanwil_id = request.GET.get('kanwil', '')
+    kpp_id = request.GET.get('kpp', '')
+    kategori_wilayah_id = request.GET.get('kategori_wilayah', '')
+    kategori_ilap_id = request.GET.get('kategori_ilap', '')
+    ilap_id = request.GET.get('ilap', '')
+    jenis_data_id = request.GET.get('jenis_data', '')
+    sub_jenis_data_id = request.GET.get('sub_jenis_data', '')
+    status_penyampaian_filter = request.GET.get('status_penyampaian', '')
+    terlambat_filter = request.GET.get('terlambat', '')
+    jenis_tabel_filter = request.GET.get('jenis_tabel', '')
+    dasar_hukum_filter = request.GET.get('dasar_hukum', '')
+    periode_pengiriman_filter = request.GET.get('periode_pengiriman', '')
+
     # Apply RBAC at query level to avoid building records that will be discarded
     allowed_jenis_data_ids = None
     if not is_admin:
@@ -322,6 +338,51 @@ def monitoring_penyampaian_data_data(request):
     )
     if allowed_jenis_data_ids is not None:
         periode_data_qs = periode_data_qs.filter(id_sub_jenis_data_ilap_id__in=allowed_jenis_data_ids)
+
+    # Push dimension filters to DB level to drastically reduce rows processed in Python
+    if kanwil_id:
+        periode_data_qs = periode_data_qs.filter(
+            id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil_id=kanwil_id
+        )
+    if kpp_id:
+        periode_data_qs = periode_data_qs.filter(
+            id_sub_jenis_data_ilap__id_ilap__id_kpp_id=kpp_id
+        )
+    if kategori_wilayah_id:
+        periode_data_qs = periode_data_qs.filter(
+            id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah_id=kategori_wilayah_id
+        )
+    if kategori_ilap_id:
+        periode_data_qs = periode_data_qs.filter(
+            id_sub_jenis_data_ilap__id_ilap__id_kategori_id=kategori_ilap_id
+        )
+    if ilap_id:
+        periode_data_qs = periode_data_qs.filter(
+            id_sub_jenis_data_ilap__id_ilap_id=ilap_id
+        )
+    if sub_jenis_data_id:
+        periode_data_qs = periode_data_qs.filter(
+            id_sub_jenis_data_ilap__id_sub_jenis_data=sub_jenis_data_id
+        )
+    if jenis_tabel_filter:
+        periode_data_qs = periode_data_qs.filter(
+            id_sub_jenis_data_ilap__id_jenis_tabel_id=jenis_tabel_filter
+        )
+    if periode_pengiriman_filter:
+        periode_data_qs = periode_data_qs.filter(
+            id_periode_pengiriman_id=periode_pengiriman_filter
+        )
+
+    # If tahun_filter is set, only load periode_data whose range overlaps the requested year
+    tahun_int = int(tahun_filter) if tahun_filter else None
+    if tahun_int:
+        year_start = datetime(tahun_int, 1, 1).date()
+        year_end = datetime(tahun_int, 12, 31).date()
+        periode_data_qs = periode_data_qs.filter(
+            start_date__lte=year_end
+        ).filter(
+            Q(end_date__isnull=True) | Q(end_date__gte=year_start)
+        )
 
     periode_data_list = list(periode_data_qs)
     if not periode_data_list:
@@ -393,14 +454,38 @@ def monitoring_penyampaian_data_data(request):
         # If periode_data has an end_date, use it; otherwise use today
         end_date_for_periods = periode_data.end_date if periode_data.end_date else today
 
+        # Restrict period generation range to tahun_filter to avoid generating all history
+        if tahun_int:
+            year_start = datetime(tahun_int, 1, 1).date()
+            year_end = datetime(tahun_int, 12, 31).date()
+            start_date = max(start_date, year_start)
+            end_date_for_periods = min(end_date_for_periods, year_end)
+            if start_date > end_date_for_periods:
+                continue
+
         # Generate all periods from start_date until end_date_for_periods using effective periode_penerimaan
         periods = get_periods_for_range(start_date, end_date_for_periods, periode_type_penerimaan)
+
+        # Compute per-jenis_data values once outside the inner period loop
+        pic_p3de_id = pic_p3de_map.get(jenis_data.id)
+        kategori_wilayah_desc = (
+            (jenis_data.id_ilap.id_kategori_wilayah.deskripsi or '').lower()
+            if jenis_data.id_ilap and jenis_data.id_ilap.id_kategori_wilayah
+            else ''
+        )
+        is_regional_ilap = 'regional' in kategori_wilayah_desc
+        jenis_data_kanwil_id = (jenis_data.id_ilap.id_kpp.id_kanwil_id if jenis_data.id_ilap.id_kpp else '')
+        jenis_data_kpp_id = (jenis_data.id_ilap.id_kpp.id if jenis_data.id_ilap.id_kpp else '')
+        jenis_data_kategori_wilayah_id = jenis_data.id_ilap.id_kategori_wilayah.id if jenis_data.id_ilap.id_kategori_wilayah else ''
+        jenis_data_kategori_ilap_id = jenis_data.id_ilap.id_kategori.id if jenis_data.id_ilap.id_kategori else ''
+        jenis_data_dasar_hukum_ids = dasar_hukum_map.get(jenis_data.id, set())
+        jenis_data_ilap_name = jenis_data.id_ilap.nama_ilap
+        jenis_data_ilap_id = jenis_data.id_ilap.id_ilap
+        jenis_data_ilap_pk = jenis_data.id_ilap.id
 
         for period in periods:
             deadline_date = period['end_date'] + timedelta(days=akhir_penyampaian)
             period_display_name = format_periode(periode_type_penerimaan, period['periode_num'], period['start_date'].year, include_year=False)
-
-            pic_p3de_id = pic_p3de_map.get(jenis_data.id)
 
             # Check if tiket exists for this period
             tiket = tiket_map.get((
@@ -410,16 +495,6 @@ def monitoring_penyampaian_data_data(request):
             ))
 
             tiket_exists = tiket is not None
-
-            # Determine ILAP scope for terlambat calculation
-            # Regional: compare batas waktu vs tanggal terima vertikal
-            # Nasional/Internasional: compare batas waktu vs tanggal terima DIP
-            kategori_wilayah_desc = (
-                (jenis_data.id_ilap.id_kategori_wilayah.deskripsi or '').lower()
-                if jenis_data.id_ilap and jenis_data.id_ilap.id_kategori_wilayah
-                else ''
-            )
-            is_regional_ilap = 'regional' in kategori_wilayah_desc
 
             # Determine status
             if tiket_exists:
@@ -452,9 +527,9 @@ def monitoring_penyampaian_data_data(request):
                 'id_jenis_data': jenis_data.id,
                 'id_sub_jenis_data': jenis_data.id_sub_jenis_data,
                 'periode_num': period['periode_num'],
-                'ilap_name': jenis_data.id_ilap.nama_ilap,
-                'ilap_id': jenis_data.id_ilap.id_ilap,
-                'ilap_jenis_data_id': jenis_data.id_ilap.id,
+                'ilap_name': jenis_data_ilap_name,
+                'ilap_id': jenis_data_ilap_id,
+                'ilap_jenis_data_id': jenis_data_ilap_pk,
                 'jenis_data': jenis_data.nama_jenis_data,
                 'jenis_data_id': jenis_data.id,
                 'sub_jenis_data': jenis_data.nama_sub_jenis_data,
@@ -474,65 +549,38 @@ def monitoring_penyampaian_data_data(request):
                 'is_late': is_late,
                 'days_diff': days_diff,
                 'pic_p3de_id': pic_p3de_id,
-                'kanwil_id': (jenis_data.id_ilap.id_kpp.id_kanwil_id if jenis_data.id_ilap.id_kpp else ''),
-                'kpp_id': (jenis_data.id_ilap.id_kpp.id if jenis_data.id_ilap.id_kpp else ''),
-                'kategori_wilayah_id': jenis_data.id_ilap.id_kategori_wilayah.id if jenis_data.id_ilap.id_kategori_wilayah else '',
-                'kategori_ilap_id': jenis_data.id_ilap.id_kategori.id if jenis_data.id_ilap.id_kategori else '',
+                'kanwil_id': jenis_data_kanwil_id,
+                'kpp_id': jenis_data_kpp_id,
+                'kategori_wilayah_id': jenis_data_kategori_wilayah_id,
+                'kategori_ilap_id': jenis_data_kategori_ilap_id,
                 'jenis_tabel_id': jenis_data.id_jenis_tabel_id,
                 'periode_pengiriman_id': periode_data.id_periode_pengiriman_id,
-                'dasar_hukum_ids': dasar_hukum_map.get(jenis_data.id, set()),
+                'dasar_hukum_ids': jenis_data_dasar_hukum_ids,
             })
 
     records_total = len(records)
 
-    # Apply filter form parameters
-    tahun_filter = request.GET.get('tahun', '')
-    pic_p3de_filter = request.GET.get('pic_p3de', '')
-    kanwil_id = request.GET.get('kanwil', '')
-    kpp_id = request.GET.get('kpp', '')
-    kategori_wilayah_id = request.GET.get('kategori_wilayah', '')
-    kategori_ilap_id = request.GET.get('kategori_ilap', '')
-    ilap_id = request.GET.get('ilap', '')
-    jenis_data_id = request.GET.get('jenis_data', '')
-    sub_jenis_data_id = request.GET.get('sub_jenis_data', '')
-    status_penyampaian_filter = request.GET.get('status_penyampaian', '')
-    terlambat_filter = request.GET.get('terlambat', '')
-    
-    filtered_records = records
-    
-    if tahun_filter:
-        filtered_records = [r for r in filtered_records if str(r.get('tahun', '')) == tahun_filter]
-    if pic_p3de_filter:
-        filtered_records = [r for r in filtered_records if r.get('pic_p3de_id') and str(r.get('pic_p3de_id')) == pic_p3de_filter]
-    if kanwil_id:
-        filtered_records = [r for r in filtered_records if str(r.get('kanwil_id', '')) == kanwil_id]
-    if kpp_id:
-        filtered_records = [r for r in filtered_records if str(r.get('kpp_id', '')) == kpp_id]
-    if kategori_wilayah_id:
-        filtered_records = [r for r in filtered_records if str(r.get('kategori_wilayah_id', '')) == kategori_wilayah_id]
-    if kategori_ilap_id:
-        filtered_records = [r for r in filtered_records if str(r.get('kategori_ilap_id', '')) == kategori_ilap_id]
-    if ilap_id:
-        filtered_records = [r for r in filtered_records if str(r.get('ilap_jenis_data_id', '')) == ilap_id]
-    if jenis_data_id:
-        filtered_records = [r for r in filtered_records if r.get('jenis_data', '') == jenis_data_id]
-    if sub_jenis_data_id:
-        filtered_records = [r for r in filtered_records if r.get('id_sub_jenis_data', '') == sub_jenis_data_id]
-    if status_penyampaian_filter:
-        filtered_records = [r for r in filtered_records if r.get('status_penyampaian', '') == status_penyampaian_filter]
-    if terlambat_filter:
-        filtered_records = [r for r in filtered_records if r.get('status_terlambat', '') == terlambat_filter]
+    # Apply remaining Python-side filters in a single pass
+    # (DB-level filters for kanwil/kpp/ilap/etc. already applied above)
+    def record_matches_filters(r):
+        if tahun_filter and str(r.get('tahun', '')) != tahun_filter:
+            return False
+        if pic_p3de_filter and (not r.get('pic_p3de_id') or str(r.get('pic_p3de_id')) != pic_p3de_filter):
+            return False
+        if status_penyampaian_filter and r.get('status_penyampaian', '') != status_penyampaian_filter:
+            return False
+        if terlambat_filter and r.get('status_terlambat', '') != terlambat_filter:
+            return False
+        if jenis_data_id and r.get('jenis_data', '') != jenis_data_id:
+            return False
+        if dasar_hukum_filter and int(dasar_hukum_filter) not in r.get('dasar_hukum_ids', set()):
+            return False
+        return True
 
-    jenis_tabel_filter = request.GET.get('jenis_tabel', '')
-    dasar_hukum_filter = request.GET.get('dasar_hukum', '')
-    periode_pengiriman_filter = request.GET.get('periode_pengiriman', '')
-
-    if jenis_tabel_filter:
-        filtered_records = [r for r in filtered_records if str(r.get('jenis_tabel_id', '')) == jenis_tabel_filter]
-    if dasar_hukum_filter:
-        filtered_records = [r for r in filtered_records if int(dasar_hukum_filter) in r.get('dasar_hukum_ids', set())]
-    if periode_pengiriman_filter:
-        filtered_records = [r for r in filtered_records if str(r.get('periode_pengiriman_id', '')) == periode_pengiriman_filter]
+    filtered_records = records if not any([
+        tahun_filter, pic_p3de_filter, status_penyampaian_filter,
+        terlambat_filter, jenis_data_id, dasar_hukum_filter,
+    ]) else [r for r in records if record_matches_filters(r)]
 
     records_filtered = len(filtered_records)
 
