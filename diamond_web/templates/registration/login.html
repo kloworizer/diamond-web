@@ -2,6 +2,20 @@
 <!DOCTYPE html>
 <html lang="en">
 
+/***** Color Palette Primer *****/
+<style>
+    .btn-custom-blue {
+        background-color: #00BDFB !important;
+        border-color: #00BDFB !important;
+        color: #ffffff !important;
+    }
+    .btn-custom-blue:hover {
+        background-color: #00a5dd !important;
+        border-color: #00a5dd !important;
+        color: #ffffff !important;
+    }
+</style>
+
 <head>
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="IE=edge">
@@ -27,16 +41,16 @@
                                 <img src="{% static 'assets/images/logo-abbr-1.png' %}" alt="Diamond Web" class="img-fluid">
                             </div>
                             <div class="creative-card-body card-body p-sm-5">
-                                <h2 class="fs-20 fw-bolder mb-4">Login</h2>
-                                <h4 class="fs-13 fw-bold mb-2">Login to your account</h4>
-                                <p class="fs-12 fw-medium text-muted">Welcome back to <strong>Diamond Web</strong> application. Let's access your account.</p>
+                                <h2 class="fs-20 fw-bolder mb-4">Masuk</h2>
+                                <h4 class="fs-13 fw-bold mb-2">Masuk ke akun Diamond Anda</h4>
+                                <p class="fs-12 fw-medium text-muted">Administrasikan pengelolaan data pada aplikasi <strong>Diamond</strong></p>
                                 <form method="post" class="w-100 mt-4 pt-2">
                                     {% csrf_token %}
                                     <div class="mb-4">
-                                        <input type="text" class="form-control" name="username" placeholder="Username" required>
+                                        <input type="text" class="form-control" name="username" placeholder="NIP9 SIKKA" required>
                                     </div>
                                     <div class="mb-3">
-                                        <input type="password" class="form-control" name="password" placeholder="Password" required>
+                                        <input type="password" class="form-control" name="password" placeholder="Kata Sandi" required>
                                     </div>
                                     {% if form.non_field_errors %}
                                         <div class="alert alert-danger" role="alert">
@@ -47,20 +61,22 @@
                                         <div>
                                             <div class="custom-control custom-checkbox">
                                                 <input type="checkbox" class="custom-control-input" id="rememberMe" name="remember_me">
-                                                <label class="custom-control-label c-pointer" for="rememberMe">Remember Me</label>
+                                                <label class="custom-control-label c-pointer" for="rememberMe">Ingat Saya</label>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="mt-5">
-                                        <button type="submit" class="btn btn-lg btn-primary w-100">Login</button>
+                                        <button type="submit" class="btn btn-lg btn-custom-blue w-100">Masuk</button>
                                     </div>
                                 </form>
                                 <!-- Social login removed -->
                             </div>
                         </div>
-                        <div class="col-lg-6 bg-primary order-0 order-lg-1">
+                        <!-- <div class="col-lg-6 bg-primary order-0 order-lg-1"> -->
+                        <!-- <div class="col-lg-6 order-0 order-lg-1" style="background-color: #F8FAFD;"> -->
+                            <div class="col-lg-6 order-0 order-lg-1" style="background-color: #00BDFB;">
                             <div class="h-100 d-flex align-items-center justify-content-center">
-                                <img src="{% static 'assets/images/auth/image 72.png' %}" alt="Diamond Web" class="img-fluid">
+                                <img src="{% static 'assets/images/auth/login_illustration.png' %}" alt="Diamond Web" class="img-fluid">
                             </div>
                         </div>
                     </div>

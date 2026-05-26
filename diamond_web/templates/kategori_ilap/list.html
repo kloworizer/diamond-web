@@ -1,4 +1,6 @@
+{load static %}
 {% extends "base.html" %}
+{% load static crispy_forms_tags %}
 {% load crispy_forms_tags %}
 
 
@@ -34,14 +36,48 @@
     </div>
 
     <div class="main-content">
-    <div class="card stretch stretch-full h-100">
+    <div class="card stretch stretch-full h-100 table-card">
+                <style>
+                    /* Constrain table card width and align it to the left */
+                    .table-card{max-width:980px;margin:20px 0 20px 20px;border-radius:10px}
+                    @media (max-width: 992px){ .table-card{max-width:95%;margin-left:8px;} }
+                </style>
         <div class="card-header">
             <h5 class="card-title mb-0"><i class="feather-folder me-2"></i>Daftar Kategori ILAP</h5>
             <button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>
         </div>
         <div class="card-body custom-card-action p-0">
             <div class="table-responsive">
+                <style>
+                    /* Column proportions: ID 15%, Name 70%, Actions 15% */
+                    #kategori-table { width:100%; table-layout: fixed; }
+                    #kategori-table col.id-col { width: 15%; }
+                    #kategori-table col.name-col { width: 70%; }
+                    #kategori-table col.actions-col { width: 15%; }
+
+                    /* Truncate overflowing text, allow wrap on small screens */
+                    #kategori-table th, #kategori-table td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                    @media (max-width: 768px) {
+                        #kategori-table th, #kategori-table td { white-space: normal; }
+                    }
+
+                    /* Actions column styling */
+                    #kategori-table td.actions-col, #kategori-table td:nth-child(3) { white-space: nowrap; text-align: center; }
+                    #kategori-table td.actions-col .btn, #kategori-table td:nth-child(3) .btn {
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                    }
+                    #kategori-table td.actions-col .btn + .btn, #kategori-table td:nth-child(3) .btn + .btn {
+                        margin-left: .25rem;
+                    }
+                </style>
             <table id="kategori-table" class="table table-hover mb-0" style="width:100%">
+                <colgroup>
+                    <col class="id-col" />
+                    <col class="name-col" />
+                    <col class="actions-col" />
+                </colgroup>
                 <thead>
                     <tr>
                         <th>ID Kategori</th>
@@ -65,6 +101,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
+                    <img src="{% static 'assets/images/icons/ic_add.png' %}" alt="ic_add" class="img-fluid me-2">
                     <h5 class="modal-title" id="crudModalLabel">Form</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
