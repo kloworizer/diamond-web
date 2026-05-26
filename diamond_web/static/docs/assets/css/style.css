@@ -19,7 +19,7 @@ a {
 }
 
 a:hover {
-	color: #3454d1 !important;
+	color: #00BDFB !important;
 	-webkit-transition: all 0.3s ease;
 	-o-transition: all 0.3s ease;
 	transition: all 0.3s ease;
@@ -101,8 +101,8 @@ pre code {
 
 .btn-primary {
 	color: #fff;
-	border-color: #3454d1;
-	background-color: #3454d1;
+	border-color: #00BDFB;
+	background-color: #00BDFB;
 }
 
 .dropdown-menu {
@@ -188,10 +188,10 @@ pre code {
 }
 .menu-aside li a:hover,
 .menu-aside li a.active {
-	color: #3454d1;
+	color: #00BDFB;
 	background: #e8e7ec;
 	background-color: #f3f3f5;
-	border-left: 3px solid #3454d1;
+	border-left: 3px solid #00BDFB;
 }
 
 .aside-wrap {
