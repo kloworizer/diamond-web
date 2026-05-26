@@ -481,10 +481,14 @@ def sync_tiket_truncate(request):
     try:
         from django.db import connection
         
-        # Delete dependent records first (TiketPIC and TiketAction) due to PROTECT constraint
+        # Delete all dependent records in correct order before Tiket (all have PROTECT FK)
         from ..models import TiketPIC, TiketAction
-        TiketPIC.objects.all().delete()
+        from ..models.backup_data import BackupData
+        from ..models.detil_tanda_terima import DetilTandaTerima
+        DetilTandaTerima.objects.all().delete()
+        BackupData.objects.all().delete()
         TiketAction.objects.all().delete()
+        TiketPIC.objects.all().delete()
         
         count = Tiket.objects.all().count()
         Tiket.objects.all().delete()
@@ -827,37 +831,95 @@ def _map_periode_data(periode_str, jenis_prioritas_obj=None, tahun_value=None, n
     
     from ..models.jenis_data_ilap import JenisDataILAP
 
-    # 1st priority: derive sub_jenis_data from nomor_tiket prefix (first 9 chars)
-    # e.g. 'KM001040126041601' -> 'KM0010401'
-    if nomor_tiket and len(nomor_tiket) >= 9:
-        sub_jenis_data_id = nomor_tiket[:9]
-        jenis_data_obj = JenisDataILAP.objects.filter(
-            id_sub_jenis_data=sub_jenis_data_id
+    def _find_periode_jenis_data_for_jenis_data(jd_obj, label):
+        """Try exact period match, then any period for this jenis_data_ilap."""
+        pjd = PeriodeJenisData.objects.filter(
+            id_sub_jenis_data_ilap=jd_obj,
+            id_periode_pengiriman__periode_penyampaian=django_period,
         ).first()
-        if jenis_data_obj:
-            periode_jenis_data = PeriodeJenisData.objects.filter(
-                id_sub_jenis_data_ilap=jenis_data_obj,
-                id_periode_pengiriman=periode_pengiriman,
+        if pjd:
+            return pjd
+        # Fallback: right sub_jenis_data, any period type
+        pjd = PeriodeJenisData.objects.filter(
+            id_sub_jenis_data_ilap=jd_obj,
+        ).first()
+        if pjd:
+            logger.warning(
+                f"_map_periode_data: no PeriodeJenisData with period '{django_period}' "
+                f"for {label}, using first available"
+            )
+        return pjd
+
+    # 1st priority: derive sub_jenis_data from nomor_tiket prefix
+    # id_sub_jenis_data = first 9 chars, id_jenis_data = first 7 chars, id_ilap = first 5 chars
+    # e.g. 'KM001040126041601' -> try KM0010401 (9), KM00104 (7), KM001 (5)
+    if nomor_tiket and len(nomor_tiket) >= 5:
+        # Try exact id_sub_jenis_data (9 chars)
+        if len(nomor_tiket) >= 9:
+            sub_jenis_data_id = nomor_tiket[:9]
+            jenis_data_obj = JenisDataILAP.objects.filter(
+                id_sub_jenis_data=sub_jenis_data_id
             ).first()
-            if periode_jenis_data:
-                return periode_jenis_data, periode_value
-            # Right sub_jenis_data but no matching period type — still better than a random fallback
-            periode_jenis_data = PeriodeJenisData.objects.filter(
-                id_sub_jenis_data_ilap=jenis_data_obj,
+            if jenis_data_obj:
+                pjd = _find_periode_jenis_data_for_jenis_data(jenis_data_obj, f"sub_jenis_data '{sub_jenis_data_id}'")
+                if pjd:
+                    return pjd, periode_value
+
+        # Try id_jenis_data prefix (7 chars) — pick the sub_jenis_data with a matching period first
+        if len(nomor_tiket) >= 7:
+            jenis_data_id = nomor_tiket[:7]
+            qs_by_jenis = JenisDataILAP.objects.filter(id_jenis_data=jenis_data_id)
+            # Prefer a sub_jenis_data that already has a matching PeriodeJenisData
+            pjd = PeriodeJenisData.objects.filter(
+                id_sub_jenis_data_ilap__in=qs_by_jenis,
+                id_periode_pengiriman__periode_penyampaian=django_period,
             ).first()
-            if periode_jenis_data:
+            if pjd:
+                return pjd, periode_value
+            # Any PeriodeJenisData under this id_jenis_data
+            pjd = PeriodeJenisData.objects.filter(
+                id_sub_jenis_data_ilap__in=qs_by_jenis,
+            ).first()
+            if pjd:
                 logger.warning(
                     f"_map_periode_data: no PeriodeJenisData with period '{django_period}' "
-                    f"for sub_jenis_data '{sub_jenis_data_id}', using first available"
+                    f"for id_jenis_data '{jenis_data_id}' (nomor_tiket='{nomor_tiket}'), "
+                    f"using first available"
                 )
-                return periode_jenis_data, periode_value
+                return pjd, periode_value
+
+        # Try id_ilap prefix (5 chars) — pick the PeriodeJenisData with matching period first
+        ilap_id = nomor_tiket[:5]
+        from ..models.ilap import ILAP as ILAPModel
+        ilap_obj = ILAPModel.objects.filter(id_ilap=ilap_id).first()
+        if ilap_obj:
+            qs_by_ilap = JenisDataILAP.objects.filter(id_ilap=ilap_obj)
+            pjd = PeriodeJenisData.objects.filter(
+                id_sub_jenis_data_ilap__in=qs_by_ilap,
+                id_periode_pengiriman__periode_penyampaian=django_period,
+            ).first()
+            if pjd:
+                logger.warning(
+                    f"_map_periode_data: matched by id_ilap '{ilap_id}' for "
+                    f"nomor_tiket='{nomor_tiket}', period='{django_period}'"
+                )
+                return pjd, periode_value
+            pjd = PeriodeJenisData.objects.filter(
+                id_sub_jenis_data_ilap__in=qs_by_ilap,
+            ).first()
+            if pjd:
+                logger.warning(
+                    f"_map_periode_data: matched by id_ilap '{ilap_id}' (any period) for "
+                    f"nomor_tiket='{nomor_tiket}'"
+                )
+                return pjd, periode_value
 
     # 2nd priority: use jenis_prioritas_obj sub_jenis_data_ilap
     if jenis_prioritas_obj and hasattr(jenis_prioritas_obj, 'id_sub_jenis_data_ilap'):
         # exact match — specific sub_jenis_data + matching period type
         periode_jenis_data = PeriodeJenisData.objects.filter(
             id_sub_jenis_data_ilap=jenis_prioritas_obj.id_sub_jenis_data_ilap,
-            id_periode_pengiriman=periode_pengiriman,
+            id_periode_pengiriman__periode_penyampaian=django_period,
         ).first()
 
         if periode_jenis_data:
@@ -874,7 +936,7 @@ def _map_periode_data(periode_str, jenis_prioritas_obj=None, tahun_value=None, n
     # 3rd fallback: any PeriodeJenisData with matching period type (any sub_jenis_data)
     # Logged as a warning because the resulting id_periode_data FK may be wrong.
     periode_jenis_data = PeriodeJenisData.objects.filter(
-        id_periode_pengiriman=periode_pengiriman
+        id_periode_pengiriman__periode_penyampaian=django_period
     ).first()
     if periode_jenis_data:
         logger.warning(
