@@ -160,13 +160,17 @@ def dasar_hukum_data(request):
                 qs = qs.filter(kategori__icontains=columns_search[1])
             if len(columns_search) > 2 and columns_search[2]:  # Deskripsi
                 qs = qs.filter(deskripsi__icontains=columns_search[2])
+            if len(columns_search) > 3 and columns_search[3]:  # Start Date
+                qs = qs.filter(start_date__icontains=columns_search[3])
+            if len(columns_search) > 4 and columns_search[4]:  # End Date
+                qs = qs.filter(end_date__icontains=columns_search[4])
 
         records_filtered = qs.count()
 
         # ordering
         order_col_index = request.GET.get('order[0][column]')
         order_dir = request.GET.get('order[0][dir]', 'asc')
-        columns = ['id', 'kategori', 'deskripsi']
+        columns = ['id', 'kategori', 'deskripsi', 'start_date', 'end_date']
         if order_col_index is not None:
             try:
                 idx = int(order_col_index)
@@ -187,6 +191,8 @@ def dasar_hukum_data(request):
                 'id': obj.id,
                 'kategori': obj.get_kategori_display(),
                 'deskripsi': obj.deskripsi,
+                'start_date': obj.start_date.strftime('%d-%m-%Y') if obj.start_date else '-',
+                'end_date': obj.end_date.strftime('%d-%m-%Y') if obj.end_date else '-',
                 'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('dasar_hukum_update', args=[obj.pk])}' title='Edit'><i class='feather-edit-2'></i></button>"
                            f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('dasar_hukum_delete', args=[obj.pk])}' title='Delete'><i class='feather-trash-2'></i></button>"
             })

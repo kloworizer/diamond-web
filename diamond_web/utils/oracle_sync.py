@@ -1011,11 +1011,20 @@ class OracleDataSyncService:
         else:
             dsn = f"{conn_cfg.host}:{conn_cfg.port}/{conn_cfg.sid}"
 
+        # TCP connect timeout (seconds) – prevents the caller from hanging
+        # indefinitely when the Oracle host is unreachable.  Override via the
+        # ORACLE_TCP_CONNECT_TIMEOUT env-var (float, default 15 s).
+        try:
+            tcp_timeout = float(os.getenv("ORACLE_TCP_CONNECT_TIMEOUT", "15"))
+        except (TypeError, ValueError):
+            tcp_timeout = 15.0
+
         try:
             return oracledb.connect(
                 user=conn_cfg.user,
                 password=conn_cfg.password,
                 dsn=dsn,
+                tcp_connect_timeout=tcp_timeout,
             )
         except Exception as e:
             error_msg = str(e)
@@ -1349,45 +1358,73 @@ class OracleDataSyncService:
             table_summaries=table_summaries,
         )
 
-    def _run_sequential(self, apply_changes: bool) -> OracleSyncBatchSummary:
-        table_summaries: list[OracleSyncSummary] = []
+    def _run_sequential(self, apply_changes: bool, progress_callback=None) -> OracleSyncBatchSummary:
+        """Run sync/check sequentially over all configured tables.
 
-        for cfg in HARD_CODED_SYNC_TABLES:
+        Args:
+            apply_changes: whether to persist inserts/updates to the DB.
+            progress_callback: optional callable(current, total, table_name, cumulative_inserts,
+                cumulative_updates, cumulative_errors) called after each table finishes.
+        """
+        table_summaries: list[OracleSyncSummary] = []
+        total_tables = len(HARD_CODED_SYNC_TABLES)
+        cumulative_inserts = 0
+        cumulative_updates = 0
+        cumulative_errors = 0
+
+        for idx, cfg in enumerate(HARD_CODED_SYNC_TABLES, start=1):
             try:
                 summary, target_model, inserts, updates = self._calculate_diff_for_config(cfg)
                 table_summaries.append(summary)
 
                 if apply_changes and not summary.errors:
                     self._apply_operations(target_model, inserts, updates)
+
+                cumulative_inserts += summary.inserts
+                cumulative_updates += summary.updates
+                cumulative_errors += len(summary.errors)
             except Exception as exc:
-                table_summaries.append(
-                    OracleSyncSummary(
-                        table_name=cfg.name,
-                        source_table=cfg.source_table or "<query>",
-                        target_model=cfg.target_model_label,
-                        source_rows=0,
-                        inserts=0,
-                        updates=0,
-                        unchanged=0,
-                        errors=[str(exc)],
-                        inserted_keys=[],
-                        updated_keys=[],
-                    )
+                err_summary = OracleSyncSummary(
+                    table_name=cfg.name,
+                    source_table=cfg.source_table or "<query>",
+                    target_model=cfg.target_model_label,
+                    source_rows=0,
+                    inserts=0,
+                    updates=0,
+                    unchanged=0,
+                    errors=[str(exc)],
+                    inserted_keys=[],
+                    updated_keys=[],
                 )
+                table_summaries.append(err_summary)
+                cumulative_errors += 1
+
+            if progress_callback is not None:
+                try:
+                    progress_callback(
+                        current=idx,
+                        total=total_tables,
+                        table_name=cfg.name,
+                        inserts=cumulative_inserts,
+                        updates=cumulative_updates,
+                        errors=cumulative_errors,
+                    )
+                except Exception:
+                    pass  # never let progress reporting crash the sync
 
         return self._build_batch_summary(table_summaries)
 
-    def check(self) -> OracleSyncBatchSummary:
+    def check(self, progress_callback=None) -> OracleSyncBatchSummary:
         # Simulasikan apply dalam 1 transaksi agar dependency antar tabel (parent-child)
         # bisa tervalidasi, lalu rollback supaya data tidak tersimpan.
         with transaction.atomic():
-            summary = self._run_sequential(apply_changes=True)
+            summary = self._run_sequential(apply_changes=True, progress_callback=progress_callback)
             transaction.set_rollback(True)
             return summary
 
-    def sync(self) -> OracleSyncBatchSummary:
+    def sync(self, progress_callback=None) -> OracleSyncBatchSummary:
         with transaction.atomic():
-            summary = self._run_sequential(apply_changes=True)
+            summary = self._run_sequential(apply_changes=True, progress_callback=progress_callback)
             if summary.errors:
                 transaction.set_rollback(True)
             return summary

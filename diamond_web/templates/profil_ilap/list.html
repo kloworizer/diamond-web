@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+            <h5 class="m-b-10">
+                <i class="feather-file-text me-2"></i>Profil ILAP
+            </h5>
+        </div>
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="javascript:void(0);">Admin P3DE</a></li>
+            <li class="breadcrumb-item active">Profil ILAP</li>
+        </ul>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="card stretch stretch-full h-100">
+        <div class="card-header">
+            <h5 class="card-title mb-0"><i class="feather-file-text me-2"></i>Daftar Profil ILAP</h5>
+        </div>
+        <div class="card-body custom-card-action p-0">
+            <div class="table-responsive">
+                <table id="profil-ilap-table" class="table table-hover mb-0" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>ID ILAP</th>
+                            <th>Kategori ILAP</th>
+                            <th>Nama ILAP</th>
+                            <th>Kategori Wilayah</th>
+                            <th>Action</th>
+                        </tr>
+                        <tr id="column-search-row">
+                            <th><input type="text" class="form-control form-control-sm" placeholder="Search ID" data-column="0" /></th>
+                            <th><input type="text" class="form-control form-control-sm" placeholder="Search Kategori" data-column="1" /></th>
+                            <th><input type="text" class="form-control form-control-sm" placeholder="Search Nama" data-column="2" /></th>
+                            <th><input type="text" class="form-control form-control-sm" placeholder="Search Wilayah" data-column="3" /></th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        let table;
+
+        $(document).ready(function () {
+            table = $('#profil-ilap-table').DataTable({
+                serverSide: false,
+                layout: {
+                    topStart: null,
+                    topEnd: null
+                },
+                pageLength: 10,
+                ajax: {
+                    url: "{% url 'profil_ilap_list' %}?format=json",
+                    type: 'GET',
+                    dataSrc: 'data'
+                },
+                columns: [
+                    { data: 'id_ilap' },
+                    { data: 'kategori' },
+                    { data: 'nama' },
+                    { data: 'wilayah' },
+                    { data: 'actions', orderable: false, searchable: false }
+                ],
+                columnDefs: [
+                    { targets: 4, render: function (data, type, row, meta) { return data; } }
+                ],
+                order: [[0, 'asc']]
+            });
+
+            // Add individual column search
+            $('#column-search-row input').on('keyup change', function () {
+                table.column($(this).data('column')).search($(this).val()).draw();
+            });
+        });
+    })();
+</script>
+{% endblock %}

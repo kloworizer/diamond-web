@@ -42,6 +42,10 @@
                         <span class="nxl-mtext">P3DE</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                     </a>
                     <ul class="nxl-submenu">
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'profil_ilap_list' %}">
+                            <span class="nxl-micon"><i class="feather-user"></i></span>
+                            <span class="nxl-mtext">Profil ILAP</span>
+                        </a></li>
                         <li class="nxl-item nxl-hasmenu">
                             <a class="nxl-link" href="javascript:void(0);">
                                 <!-- <span class="nxl-micon"><i class="feather-monitor"></i></span> -->
@@ -182,9 +186,6 @@
                             </a>
                             <!-- Ini adalah wadah untuk sub-submenu tingkat ke-3 -->
                             <ul class="nxl-submenu">
-                                {% if user|has_group:"admin" %}
-                                <li class="nxl-item"><a class="nxl-link" href="{% url 'oracle_sync_page' %}">Sync Data Oracle</a></li>
-                                {% endif %}
                                 <li class="nxl-item"><a class="nxl-link" href="{% url 'kategori_ilap_list' %}">Kategori ILAP</a></li>
                                 <li class="nxl-item"><a class="nxl-link" href="{% url 'kategori_wilayah_list' %}">Kategori Wilayah</a></li>
                                 <li class="nxl-item"><a class="nxl-link" href="{% url 'kanwil_list' %}">Kanwil</a></li>
