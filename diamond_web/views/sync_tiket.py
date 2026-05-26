@@ -729,7 +729,7 @@ def _parse_jenis_prioritas_data(jenis_prioritas_str, tahun_override=None):
         return None, None
 
 
-def _map_periode_data(periode_str, jenis_prioritas_obj=None, tahun_value=None):
+def _map_periode_data(periode_str, jenis_prioritas_obj=None, tahun_value=None, nomor_tiket=None):
     """
     Map Oracle periode_data values to PeriodeJenisData.
     Oracle values: 'tahun', 'april', 'triwulan I', 'semester I', etc.
@@ -738,8 +738,9 @@ def _map_periode_data(periode_str, jenis_prioritas_obj=None, tahun_value=None):
     1. Validate periode value (e.g., triwulan must be I/II/III/IV, not V or invalid)
     2. Map to periode_penyampaian category ('Bulanan', 'Triwulanan', etc.)
     3. Find PeriodePengiriman matching that category
-    4. If jenis_prioritas_obj provided, use it to find the correct id_sub_jenis_data_ilap
-    5. Find active PeriodeJenisData for that combination
+    4. If nomor_tiket provided, extract id_sub_jenis_data from its first 9 chars (primary lookup)
+    5. If jenis_prioritas_obj provided, use its id_sub_jenis_data_ilap as secondary lookup
+    6. Find active PeriodeJenisData for that combination
     
     Returns: tuple(PeriodeJenisData object or None, periode_value int)
     """
@@ -824,9 +825,36 @@ def _map_periode_data(periode_str, jenis_prioritas_obj=None, tahun_value=None):
         logger.warning(f"No PeriodePengiriman found for category: '{django_period}'")
         return None, periode_value
     
-    # If we have jenis_prioritas_obj, use its id_sub_jenis_data_ilap to find the correct PeriodeJenisData
+    from ..models.jenis_data_ilap import JenisDataILAP
+
+    # 1st priority: derive sub_jenis_data from nomor_tiket prefix (first 9 chars)
+    # e.g. 'KM001040126041601' -> 'KM0010401'
+    if nomor_tiket and len(nomor_tiket) >= 9:
+        sub_jenis_data_id = nomor_tiket[:9]
+        jenis_data_obj = JenisDataILAP.objects.filter(
+            id_sub_jenis_data=sub_jenis_data_id
+        ).first()
+        if jenis_data_obj:
+            periode_jenis_data = PeriodeJenisData.objects.filter(
+                id_sub_jenis_data_ilap=jenis_data_obj,
+                id_periode_pengiriman=periode_pengiriman,
+            ).first()
+            if periode_jenis_data:
+                return periode_jenis_data, periode_value
+            # Right sub_jenis_data but no matching period type — still better than a random fallback
+            periode_jenis_data = PeriodeJenisData.objects.filter(
+                id_sub_jenis_data_ilap=jenis_data_obj,
+            ).first()
+            if periode_jenis_data:
+                logger.warning(
+                    f"_map_periode_data: no PeriodeJenisData with period '{django_period}' "
+                    f"for sub_jenis_data '{sub_jenis_data_id}', using first available"
+                )
+                return periode_jenis_data, periode_value
+
+    # 2nd priority: use jenis_prioritas_obj sub_jenis_data_ilap
     if jenis_prioritas_obj and hasattr(jenis_prioritas_obj, 'id_sub_jenis_data_ilap'):
-        # 1st: exact match — specific sub_jenis_data + matching period type (no date filter)
+        # exact match — specific sub_jenis_data + matching period type
         periode_jenis_data = PeriodeJenisData.objects.filter(
             id_sub_jenis_data_ilap=jenis_prioritas_obj.id_sub_jenis_data_ilap,
             id_periode_pengiriman=periode_pengiriman,
@@ -835,7 +863,7 @@ def _map_periode_data(periode_str, jenis_prioritas_obj=None, tahun_value=None):
         if periode_jenis_data:
             return periode_jenis_data, periode_value
 
-        # 2nd: specific sub_jenis_data — any period type (right ILAP, wrong period is still useful)
+        # specific sub_jenis_data — any period type
         periode_jenis_data = PeriodeJenisData.objects.filter(
             id_sub_jenis_data_ilap=jenis_prioritas_obj.id_sub_jenis_data_ilap,
         ).first()
@@ -844,18 +872,25 @@ def _map_periode_data(periode_str, jenis_prioritas_obj=None, tahun_value=None):
             return periode_jenis_data, periode_value
 
     # 3rd fallback: any PeriodeJenisData with matching period type (any sub_jenis_data)
+    # Logged as a warning because the resulting id_periode_data FK may be wrong.
     periode_jenis_data = PeriodeJenisData.objects.filter(
         id_periode_pengiriman=periode_pengiriman
     ).first()
+    if periode_jenis_data:
+        logger.warning(
+            f"_map_periode_data: could not determine sub_jenis_data for "
+            f"nomor_tiket='{nomor_tiket}', using first PeriodeJenisData with "
+            f"period '{django_period}' (id={periode_jenis_data.pk})"
+        )
+        return periode_jenis_data, periode_value
 
     # 4th (last) fallback: absolutely any PeriodeJenisData in the DB
-    if not periode_jenis_data:
-        periode_jenis_data = PeriodeJenisData.objects.order_by('id').first()
-        if periode_jenis_data:
-            logger.warning(
-                f"_map_periode_data: using absolute fallback PeriodeJenisData "
-                f"(id={periode_jenis_data.pk}) for periode='{periode_str}'"
-            )
+    periode_jenis_data = PeriodeJenisData.objects.order_by('id').first()
+    if periode_jenis_data:
+        logger.warning(
+            f"_map_periode_data: using absolute fallback PeriodeJenisData "
+            f"(id={periode_jenis_data.pk}) for nomor_tiket='{nomor_tiket}' periode='{periode_str}'"
+        )
 
     return periode_jenis_data, periode_value
 
@@ -1088,7 +1123,7 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                 tahun_data = oracle_tahun if oracle_tahun is not None else (tahun_from_key if tahun_from_key is not None else timezone.now().year)
                 
                 periode_str = row_dict.get('periode_data')
-                periode_jenis_data_obj, periode_value = _map_periode_data(periode_str, jenis_prioritas_obj=jenis_prioritas_obj, tahun_value=tahun_data)
+                periode_jenis_data_obj, periode_value = _map_periode_data(periode_str, jenis_prioritas_obj=jenis_prioritas_obj, tahun_value=tahun_data, nomor_tiket=nomor_tiket)
                 
                 if not periode_jenis_data_obj:
                     error_msg = f"Periode '{periode_str}' not found in database"
