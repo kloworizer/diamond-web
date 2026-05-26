@@ -27,14 +27,17 @@ urlpatterns = [
     path('sync-data-referensi/progress/', views.oracle_sync_progress, name='oracle_sync_progress'),
     path('sync-data-referensi/truncate/', views.oracle_sync_truncate, name='oracle_sync_truncate'),
     path('sync-data-referensi/download-errors/<str:sync_id>/', views.oracle_sync_download_errors, name='oracle_sync_download_errors'),
+    path('sync-data-referensi/stop-check/', views.oracle_sync_stop_check, name='oracle_sync_stop_check'),
     
     path('sync-tiket/', views.sync_tiket_page, name='sync_tiket_page'),
     path('sync-tiket/test/', views.sync_tiket_test_connection, name='sync_tiket_test'),
     path('sync-tiket/check/', views.sync_tiket_check, name='sync_tiket_check'),
     path('sync-tiket/run/', views.sync_tiket_run, name='sync_tiket_run'),
     path('sync-tiket/stop/', views.sync_tiket_stop, name='sync_tiket_stop'),
+    path('sync-tiket/stop-check/', views.sync_tiket_stop_check, name='sync_tiket_stop_check'),
     path('sync-tiket/progress/', views.sync_tiket_progress, name='sync_tiket_progress'),
     path('sync-tiket/truncate/', views.sync_tiket_truncate, name='sync_tiket_truncate'),
+    path('sync-tiket/download-errors/<str:sync_id>/', views.sync_tiket_download_errors, name='sync_tiket_download_errors'),
 
     # === Dashboard Section ===
     path('dashboard/', views.DashboardMonitoringView.as_view(), name='dashboard_monitoring'),
