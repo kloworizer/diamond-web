@@ -33,6 +33,9 @@
                 <button id="btn-check" class="btn btn-primary" type="button">
                     <i class="feather-search me-1"></i>Cek Data
                 </button>
+                <button id="btn-stop-check" class="btn btn-warning" type="button" style="display:none;">
+                    <i class="feather-square me-1"></i>Stop Cek
+                </button>
                 <button id="btn-sync" class="btn btn-success" type="button" disabled>
                     <i class="feather-upload me-1"></i>Sync Data
                 </button>
@@ -88,6 +91,7 @@
         const btnSync = document.getElementById('btn-sync');
         const btnStop = document.getElementById('btn-stop');
         const btnForceStop = document.getElementById('btn-force-stop');
+        const btnStopCheck = document.getElementById('btn-stop-check');
         const progressBox = document.getElementById('sync-progress');
         const resultBox = document.getElementById('sync-result');
 
@@ -157,11 +161,14 @@
                     if (data.success && !data.done) {
                         progressBox.style.display = 'block';
                         btnSync.disabled = true;
+                        btnStopCheck.style.display = 'inline-block';
+                        btnStopCheck.disabled = false;
                         setLoading(btnCheck, true, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
                         if (data.progress) updateProgress(data.progress);
                         startCheckPolling(storedCheckId);
                     } else if (data.done) {
                         localStorage.removeItem(CHECK_ID_STORAGE_KEY);
+                        btnStopCheck.style.display = 'none';
                         if (data.success && data.result) {
                             renderSummary(data.result);
                             showToast('Check data selesai.', 'success');
@@ -216,6 +223,8 @@
 
         function startCheckPolling(checkId) {
             if (checkIntervalId) clearInterval(checkIntervalId);
+            btnStopCheck.style.display = 'inline-block';
+            btnStopCheck.disabled = false;
 
             checkIntervalId = setInterval(async function() {
                 try {
@@ -233,6 +242,7 @@
                         clearInterval(checkIntervalId);
                         localStorage.removeItem(CHECK_ID_STORAGE_KEY);
                         progressBox.style.display = 'none';
+                        btnStopCheck.style.display = 'none';
                         setLoading(btnCheck, false, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
 
                         if (!progressData.success) {
@@ -370,6 +380,19 @@
                 setLoading(btnCheck, false, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
                 btnSync.disabled = false;
                 progressBox.style.display = 'none';
+            }
+        });
+
+        btnStopCheck.addEventListener('click', async function () {
+            const checkId = localStorage.getItem(CHECK_ID_STORAGE_KEY);
+            if (!checkId) return;
+            btnStopCheck.disabled = true;
+            try {
+                await postJson("{% url 'oracle_sync_stop_check' %}", { check_id: checkId });
+                showToast('Permintaan stop cek data dikirim.', 'info');
+            } catch (error) {
+                showToast(error.message, 'danger');
+                btnStopCheck.disabled = false;
             }
         });
 

@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.urls import reverse
 from datetime import datetime, timedelta
 import uuid
+import json
 import logging
 import os
 import csv
@@ -155,7 +156,8 @@ def oracle_sync_check(request):
         cache.set(f'check_referensi_in_progress_{check_id}', True, timeout=3600)
         cache.set(f'check_referensi_started_at_{check_id}', datetime.now().isoformat(), timeout=3600)
 
-        check_referensi_data_task.delay(check_id)
+        task_result = check_referensi_data_task.delay(check_id)
+        cache.set(f'check_referensi_celery_task_id_{check_id}', task_result.id, timeout=3600)
 
         return JsonResponse({
             'success': True,
@@ -233,6 +235,39 @@ def oracle_sync_stop(request):
     except Exception as exc:
         error_msg = str(exc).strip()
         return JsonResponse({'success': False, 'message': error_msg or 'Gagal menghentikan sync'}, status=500)
+
+
+@require_POST
+@never_cache
+def oracle_sync_stop_check(request):
+    """Stop an in-progress check operation."""
+    try:
+        data = json.loads(request.body) if request.content_type == 'application/json' else request.POST
+        check_id = data.get('check_id', '')
+        if not check_id:
+            return JsonResponse({'success': False, 'message': 'check_id tidak ditemukan'}, status=400)
+        
+        # Revoke and terminate the Celery task if we have its task ID
+        celery_task_id = cache.get(f'check_referensi_celery_task_id_{check_id}')
+        if celery_task_id:
+            try:
+                from celery import current_app
+                current_app.control.revoke(celery_task_id, terminate=True, signal='SIGTERM')
+                logger.info(f'Revoked Celery task {celery_task_id} for check {check_id}')
+            except Exception as revoke_err:
+                logger.warning(f'Failed to revoke Celery task {celery_task_id}: {revoke_err}')
+        
+        cache.set(f'check_referensi_stop_requested_{check_id}', True, timeout=3600)
+        cache.set(f'check_referensi_error_{check_id}', 'Cek Data dihentikan oleh pengguna', timeout=3600)
+        cache.set(f'check_referensi_done_{check_id}', True, timeout=3600)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Permintaan stop cek data telah dikirim.',
+        })
+    except Exception as exc:
+        error_msg = str(exc).strip()
+        return JsonResponse({'success': False, 'message': error_msg or 'Gagal menghentikan cek data'}, status=500)
 
 
 @require_POST
@@ -595,30 +630,21 @@ def _sync_referensi_data(service, sync_id=None, request=None, progress_callback=
                     row_number=idx
                 )
         
-        # Log skipped rows from table summaries
+        # Log skipped rows from table summaries (per-row detail)
         if sync_id and hasattr(summary, 'table_summaries') and summary.table_summaries:
-            row_idx = 1
             for table_summary in summary.table_summaries:
-                # Calculate skipped rows: source_rows - (inserts + updates + unchanged)
-                if hasattr(table_summary, 'source_rows'):
-                    total_processed = (
-                        getattr(table_summary, 'inserts', 0) + 
-                        getattr(table_summary, 'updates', 0) + 
-                        getattr(table_summary, 'unchanged', 0)
-                    )
-                    skipped = table_summary.source_rows - total_processed
-                    
-                    if skipped > 0:
-                        has_data_to_log = True
-                        table_name = getattr(table_summary, 'table_name', 'unknown')
+                skipped_detail = getattr(table_summary, 'skipped_rows_detail', [])
+                if skipped_detail:
+                    has_data_to_log = True
+                    table_name = getattr(table_summary, 'table_name', 'unknown')
+                    for detail in skipped_detail:
                         _log_failed_row(
                             sync_id,
-                            row_identifier=f"{table_name}",
-                            category="Skipped Rows",
-                            error_msg=f"{skipped} row(s) skipped due to foreign key constraint or validation errors",
-                            row_number=row_idx
+                            row_identifier=f"{table_name}:{detail.get('key', '-')}",
+                            category="Skipped Row (FK missing)",
+                            error_msg=detail.get('reason', 'Unknown'),
+                            row_number=detail.get('row_number')
                         )
-                        row_idx += 1
         
         # Store flag indicating if error log exists
         if sync_id and has_data_to_log:
