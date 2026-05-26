@@ -42,9 +42,6 @@
                 <button id="btn-stop" class="btn btn-warning" type="button" disabled style="display:none;">
                     <i class="feather-square me-1"></i>Stop Sync
                 </button>
-                <button id="btn-force-stop" class="btn btn-danger" type="button" style="display:none;">
-                    <i class="feather-x me-1"></i>Force Clear
-                </button>
             </div>
 
             <div id="sync-progress" class="mt-4" style="display:none;">
@@ -90,7 +87,6 @@
         const btnCheck = document.getElementById('btn-check');
         const btnSync = document.getElementById('btn-sync');
         const btnStop = document.getElementById('btn-stop');
-        const btnForceStop = document.getElementById('btn-force-stop');
         const btnStopCheck = document.getElementById('btn-stop-check');
         const progressBox = document.getElementById('sync-progress');
         const resultBox = document.getElementById('sync-result');
@@ -117,68 +113,89 @@
         const CHECK_ID_STORAGE_KEY = 'referensi_check_id';
 
         // ── Resume any in-flight operation after page navigation ──────────────
+        function _resumeSync(syncId) {
+            currentSyncId = syncId;
+            localStorage.setItem(SYNC_ID_STORAGE_KEY, syncId);
+            fetch("{% url 'oracle_sync_progress' %}?sync_id=" + syncId, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            }).then(r => r.json()).then(data => {
+                if (data.success && !data.done) {
+                    progressBox.style.display = 'block';
+                    btnStop.style.display = 'inline-block';
+                    btnStop.disabled = false;
+                    btnForceStop.style.display = 'none';
+                    btnSync.disabled = true;
+                    btnCheck.disabled = true;
+                    setLoading(btnSync, true, '<i class="feather-upload me-1"></i>Sync Data', 'Syncing...');
+                    if (data.progress) updateProgress(data.progress);
+                    startProgressPolling();
+                } else if (data.done) {
+                    localStorage.removeItem(SYNC_ID_STORAGE_KEY);
+                    if (data.success && data.result) {
+                        renderSummary(data.result, data.error_log_url);
+                        showToast('Sync selesai.', 'success');
+                    }
+                    currentSyncId = null;
+                } else {
+                    localStorage.removeItem(SYNC_ID_STORAGE_KEY);
+                    currentSyncId = null;
+                }
+            }).catch(() => {
+                progressBox.style.display = 'block';
+                btnStop.style.display = 'inline-block';
+                showToast('Session sync mungkin stuck. Klik Stop Sync untuk menghentikan.', 'warning');
+            });
+        }
+
+        function _resumeCheck(checkId) {
+            localStorage.setItem(CHECK_ID_STORAGE_KEY, checkId);
+            fetch("{% url 'oracle_sync_progress' %}?mode=check&check_id=" + checkId, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            }).then(r => r.json()).then(data => {
+                if (data.success && !data.done) {
+                    progressBox.style.display = 'block';
+                    btnSync.disabled = true;
+                    btnStopCheck.style.display = 'inline-block';
+                    btnStopCheck.disabled = false;
+                    setLoading(btnCheck, true, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
+                    if (data.progress) updateProgress(data.progress);
+                    startCheckPolling(checkId);
+                } else if (data.done) {
+                    localStorage.removeItem(CHECK_ID_STORAGE_KEY);
+                    btnStopCheck.style.display = 'none';
+                    if (data.success && data.result) {
+                        renderSummary(data.result);
+                        showToast('Check data selesai.', 'success');
+                    }
+                } else {
+                    localStorage.removeItem(CHECK_ID_STORAGE_KEY);
+                }
+            }).catch(() => {
+                localStorage.removeItem(CHECK_ID_STORAGE_KEY);
+            });
+        }
+
         function resumeActiveSyncIfExists() {
             const storedSyncId  = localStorage.getItem(SYNC_ID_STORAGE_KEY);
             const storedCheckId = localStorage.getItem(CHECK_ID_STORAGE_KEY);
 
             if (storedSyncId) {
-                currentSyncId = storedSyncId;
-                fetch("{% url 'oracle_sync_progress' %}?sync_id=" + currentSyncId, {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                }).then(r => r.json()).then(data => {
-                    if (data.success && !data.done) {
-                        progressBox.style.display = 'block';
-                        btnStop.style.display = 'inline-block';
-                        btnStop.disabled = false;
-                        btnForceStop.style.display = 'none';
-                        btnSync.disabled = true;
-                        btnCheck.disabled = true;
-                        setLoading(btnSync, true, '<i class="feather-upload me-1"></i>Sync Data', 'Syncing...');
-                        if (data.progress) updateProgress(data.progress);
-                        startProgressPolling();
-                    } else if (data.done) {
-                        localStorage.removeItem(SYNC_ID_STORAGE_KEY);
-                        if (data.success && data.result) {
-                            renderSummary(data.result, data.error_log_url);
-                            showToast('Sync selesai.', 'success');
-                        }
-                        currentSyncId = null;
-                    } else {
-                        localStorage.removeItem(SYNC_ID_STORAGE_KEY);
-                        currentSyncId = null;
-                    }
-                }).catch(() => {
-                    btnForceStop.style.display = 'inline-block';
-                    progressBox.style.display = 'block';
-                    btnStop.style.display = 'inline-block';
-                    showToast('Session sync mungkin stuck. Klik Force Clear untuk membersihkan.', 'warning');
-                });
-
+                _resumeSync(storedSyncId);
             } else if (storedCheckId) {
-                fetch("{% url 'oracle_sync_progress' %}?mode=check&check_id=" + storedCheckId, {
+                _resumeCheck(storedCheckId);
+            } else {
+                // Nothing in localStorage — probe the server for any active operation
+                fetch("{% url 'oracle_sync_progress' %}?mode=active", {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 }).then(r => r.json()).then(data => {
-                    if (data.success && !data.done) {
-                        progressBox.style.display = 'block';
-                        btnSync.disabled = true;
-                        btnStopCheck.style.display = 'inline-block';
-                        btnStopCheck.disabled = false;
-                        setLoading(btnCheck, true, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
-                        if (data.progress) updateProgress(data.progress);
-                        startCheckPolling(storedCheckId);
-                    } else if (data.done) {
-                        localStorage.removeItem(CHECK_ID_STORAGE_KEY);
-                        btnStopCheck.style.display = 'none';
-                        if (data.success && data.result) {
-                            renderSummary(data.result);
-                            showToast('Check data selesai.', 'success');
+                    if (data.success && data.active) {
+                        if (data.type === 'sync' && data.sync_id) {
+                            _resumeSync(data.sync_id);
+                        } else if (data.type === 'check' && data.check_id) {
+                            _resumeCheck(data.check_id);
                         }
-                    } else {
-                        localStorage.removeItem(CHECK_ID_STORAGE_KEY);
                     }
-                }).catch(() => {
-                    localStorage.removeItem(CHECK_ID_STORAGE_KEY);
-                });
+                }).catch(() => {});
             }
         }
 
@@ -210,7 +227,6 @@
                         
                         progressBox.style.display = 'none';
                         btnStop.style.display = 'none';
-                        btnForceStop.style.display = 'none';
                         btnSync.disabled = false;
                         btnCheck.disabled = false;
                         setLoading(btnSync, false, '<i class="feather-upload me-1"></i>Sync Data', 'Syncing...');
@@ -432,55 +448,12 @@
         btnStop.addEventListener('click', async function () {
             if (!currentSyncId) return;
             btnStop.disabled = true;
-            
             try {
                 await postJson("{% url 'oracle_sync_stop' %}", { sync_id: currentSyncId });
                 showToast('Permintaan stop dikirim. Menunggu sync selesai...', 'info');
-                
-                // Set a timeout to force recovery if sync doesn't stop within 30 seconds
-                const forceStopTimeout = setTimeout(() => {
-                    console.warn('Sync stop timeout reached, forcing UI recovery');
-                    showToast('Timeout menunggu sync. Klik Force Clear untuk membersihkan.', 'warning');
-                    btnForceStop.style.display = 'inline-block';
-                }, 30000);
-                
             } catch (error) {
                 showToast(error.message, 'danger');
                 btnStop.disabled = false;
-            }
-        });
-
-        btnForceStop.addEventListener('click', async function () {
-            if (!currentSyncId) {
-                showToast('Tidak ada sync session yang aktif.', 'info');
-                return;
-            }
-            
-            btnForceStop.disabled = true;
-            
-            try {
-                // Clear session on backend
-                await postJson("{% url 'oracle_sync_clear_session' %}", { sync_id: currentSyncId });
-                
-                // Force UI recovery
-                clearInterval(syncIntervalId);
-                clearInterval(checkIntervalId);
-                localStorage.removeItem(SYNC_ID_STORAGE_KEY);
-                localStorage.removeItem(CHECK_ID_STORAGE_KEY);
-                currentSyncId = null;
-                
-                progressBox.style.display = 'none';
-                btnStop.style.display = 'none';
-                btnForceStop.style.display = 'none';
-                btnSync.disabled = false;
-                btnCheck.disabled = false;
-                setLoading(btnSync, false, '<i class="feather-upload me-1"></i>Sync Data', 'Syncing...');
-                setLoading(btnCheck, false, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
-                
-                showToast('Session dan cache dibersihkan.', 'success');
-            } catch (error) {
-                showToast(error.message, 'danger');
-                btnForceStop.disabled = false;
             }
         });
 

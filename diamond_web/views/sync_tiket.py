@@ -29,6 +29,115 @@ logger = logging.getLogger(__name__)
 SYNC_LOGS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'sync_logs')
 os.makedirs(SYNC_LOGS_DIR, exist_ok=True)
 
+# Single shared Oracle query used by both _check_tiket_data and _sync_tiket_data.
+_TIKET_ORACLE_SQL = """
+    SELECT
+    DISTINCT
+    id_tiket,
+    1 old_db,
+    CASE
+        WHEN status_tiket IN ('[SELESAI]-Sudah QC', '[SELESAI]-Tidak di QC', '[SELESAI]-Tiket 0 Row') THEN 8
+        WHEN status_tiket IN ('[P3DE]-Close Tiket', '[PIDE]-Close Tiket') THEN 7
+        WHEN status_tiket IN ('[PMDE]-Proses QC') THEN 6
+        WHEN status_tiket IN ('[PIDE]-Proses Identifikasi') THEN 5
+        WHEN status_tiket IN ('[P3DE]-Proses Nadine') THEN 2
+        WHEN status_tiket IN ('[P3DE]-Proses Penelitian') THEN 1
+        ELSE 1
+    END status_tiket,
+    PERIODE_PENGIRIMAN periode_penerimaan,
+    substr(id_tiket, 1, 9) || '_20' || substr(id_tiket, 10, 2) jenis_prioritas_data,
+    COALESCE(periode_data, 'tahun') periode_data,
+    COALESCE(tahun_data, EXTRACT(YEAR FROM SYSDATE)) tahun_data,
+    1 penyampaian,
+    '-' nomor_surat_pengantar,
+    COALESCE(TGL_TERIMA, SYSDATE) tanggal_surat_pengantar,
+    '-' nama_pengirim,
+    'Softcopy' bentuk_data,
+    'Online' cara_penyampaian,
+    CASE
+        WHEN status_tiket IN ('[SELESAI]-Tiket 0 Row') THEN 0
+        ELSE 1
+    END status_ketersediaan_data,
+    NULL alasan_ketidaktersediaan,
+    COALESCE(JML_ROW_P3DE, 0) baris_diterima,
+    1 satuan_data,
+    NULL tgl_terima_vertikal,
+    COALESCE(TGL_TERIMA, SYSDATE) tgl_terima_dip,
+    0 backup,
+    0 tanda_terima,
+    CASE
+        WHEN COALESCE(JML_ROW_P3DE, 0) - COALESCE(JML_DATA_TELITI, 0) = 0 THEN 'Lengkap'
+        ELSE 'Tidak Lengkap'
+    END status_penelitian,
+    TGL_TELITI,
+    COALESCE(JML_DATA_TELITI, 0) baris_lengkap,
+    COALESCE(JML_ROW_P3DE, 0) - COALESCE(JML_DATA_TELITI, 0) baris_tidak_lengkap,
+    TGL_NADINE,
+    NO_NADINE,
+    TGL_NADINE tgl_kirim_pide,
+    NULL tgl_rekam_pide,
+    NULL id_durasi_jatuh_tempo_pide,
+    COALESCE(b.JML_LOG, 0) baris_i,
+    COALESCE(b.JML_LOG_U, 0) baris_u,
+    COALESCE(b.JML_RES, 0) baris_res,
+    COALESCE(b.JML_CDE, 0) baris_cde,
+    b.tgl_transfer,
+    b.TGL_REMATCH tgl_rematch,
+    NULL id_durasi_jatuh_tempo_pmde,
+    COALESCE(b.SUDAH_QC, 0) SUDAH_QC,
+    COALESCE(b.belum_qc, 0) belum_qc,
+    COALESCE(b.lolos_qc, 0) lolos_qc,
+    COALESCE(b.TIDAK_LOLOS_QC, 0) tidak_lolos_qc,
+    COALESCE(b.QC_P, 0) QC_P,
+    COALESCE(b.QC_X, 0) QC_X,
+    COALESCE(b.QC_W, 0) QC_W,
+    COALESCE(b.QC_F, 0) QC_F,
+    COALESCE(b.QC_A, 0) QC_A,
+    COALESCE(b.QC_C, 0) QC_C,
+    COALESCE(b.QC_N, 0) QC_N,
+    COALESCE(b.QC_Y, 0) QC_Y,
+    COALESCE(b.QC_Z, 0) QC_Z,
+    COALESCE(b.QC_U, 0) QC_U,
+    COALESCE(b.QC_E, 0) QC_E,
+    COALESCE(b.QC_V, 0) QC_V,
+    COALESCE(b.QC_R, 0) QC_R,
+    COALESCE(b.QC_D, 0) QC_D
+FROM
+    PVPTD.ZA_DDE_TABEL_FACT a
+LEFT JOIN (
+    SELECT
+        no_tiket,
+        min(tgl_transfer) tgl_transfer,
+        max(tgl_rematch) tgl_rematch,
+        sum(JML_LOG) JML_LOG,
+        sum(JML_LOG_U) JML_LOG_U,
+        sum(JML_RES) JML_RES,
+        sum(JML_CDE) JML_CDE,
+        sum(SUDAH_QC) SUDAH_QC,
+        sum(belum_qc) belum_qc,
+        sum(lolos_qc) lolos_qc,
+        sum(TIDAK_LOLOS_QC) TIDAK_LOLOS_QC,
+        sum(QC_P) QC_P,
+        sum(QC_X) QC_X,
+        sum(QC_W) QC_W,
+        sum(QC_F) QC_F,
+        sum(QC_A) QC_A,
+        sum(QC_C) QC_C,
+        sum(QC_N) QC_N,
+        sum(QC_Y) QC_Y,
+        sum(QC_Z) QC_Z,
+        sum(QC_U) QC_U,
+        sum(QC_E) QC_E,
+        sum(QC_V) QC_V,
+        sum(QC_R) QC_R,
+        sum(QC_D) QC_D
+    FROM
+        PVPTD.ZA_REKAP_TARIKAN
+    GROUP BY
+        no_tiket
+) b ON a.ID_TIKET = b.NO_TIKET
+"""
+
 
 def retry_on_db_lock(max_retries=5, initial_delay=0.1, backoff_factor=2.0):
     """Decorator to retry database operations on lock with exponential backoff."""
@@ -186,7 +295,8 @@ def sync_tiket_run(request):
 
         logger.info(f'Starting tiket sync (sync_id={sync_id})...')
 
-        sync_tiket_data_task.delay(sync_id, request.user.pk)
+        task_result = sync_tiket_data_task.delay(sync_id, request.user.pk)
+        cache.set(f'sync_tiket_celery_task_id_{sync_id}', task_result.id, timeout=3600)
 
         logger.info(f'Celery sync task dispatched (sync_id={sync_id})')
 
@@ -217,22 +327,28 @@ def sync_tiket_stop(request):
     try:
         data = json.loads(request.body)
         sync_id = data.get('sync_id')
-        if sync_id:
-            # Validate sync_id format (UUID)
+        if not sync_id:
+            return JsonResponse({'success': False, 'message': 'sync_id tidak ditemukan'}, status=400)
+        try:
+            uuid.UUID(sync_id)
+        except (ValueError, TypeError):
+            return JsonResponse({'success': False, 'message': 'invalid sync_id'}, status=400)
+
+        # Revoke and terminate the Celery task if we have its task ID
+        celery_task_id = cache.get(f'sync_tiket_celery_task_id_{sync_id}')
+        if celery_task_id:
             try:
-                uuid.UUID(sync_id)
-                cache.set(f'sync_tiket_stop_{sync_id}', True, timeout=3600)
-                # Also mark the sync as done and set a user-facing message so the
-                # progress polling on the client side receives a single final
-                # response and doesn't repeatedly show duplicate toasts.
-                cache.set(f'sync_tiket_error_{sync_id}', 'Sync dihentikan oleh pengguna', timeout=3600)
-                cache.set(f'sync_tiket_done_{sync_id}', True, timeout=3600)
-            except (ValueError, TypeError):
-                return JsonResponse({'success': False, 'message': 'invalid sync_id'}, status=400)
-        
-        # Mark session as not modified to prevent session DB access
+                from celery import current_app
+                current_app.control.revoke(celery_task_id, terminate=True, signal='SIGTERM')
+                logger.info(f'Revoked Celery task {celery_task_id} for sync {sync_id}')
+            except Exception as revoke_err:
+                logger.warning(f'Failed to revoke Celery task {celery_task_id}: {revoke_err}')
+
+        cache.set(f'sync_tiket_stop_{sync_id}', True, timeout=3600)
+        cache.set(f'sync_tiket_error_{sync_id}', 'Sync dihentikan oleh pengguna', timeout=3600)
+        cache.set(f'sync_tiket_done_{sync_id}', True, timeout=3600)
+
         request.session.modified = False
-        
         return JsonResponse({'success': True, 'message': 'Sync dihentikan.'})
     except Exception as exc:
         error_msg = str(exc).strip()
@@ -710,38 +826,37 @@ def _map_periode_data(periode_str, jenis_prioritas_obj=None, tahun_value=None):
     
     # If we have jenis_prioritas_obj, use its id_sub_jenis_data_ilap to find the correct PeriodeJenisData
     if jenis_prioritas_obj and hasattr(jenis_prioritas_obj, 'id_sub_jenis_data_ilap'):
-        from django.utils import timezone as tz
-        today = tz.now().date()
-        
-        # Find active PeriodeJenisData for this specific sub_jenis_data_ilap + periode
+        # 1st: exact match — specific sub_jenis_data + matching period type (no date filter)
         periode_jenis_data = PeriodeJenisData.objects.filter(
             id_sub_jenis_data_ilap=jenis_prioritas_obj.id_sub_jenis_data_ilap,
             id_periode_pengiriman=periode_pengiriman,
-            start_date__lte=today
-        ).exclude(
-            end_date__lt=today
         ).first()
-        
+
         if periode_jenis_data:
             return periode_jenis_data, periode_value
-    
-    # Fallback: find any active PeriodeJenisData with this periode_pengiriman
-    from django.utils import timezone as tz
-    today = tz.now().date()
-    
-    periode_jenis_data = PeriodeJenisData.objects.filter(
-        id_periode_pengiriman=periode_pengiriman,
-        start_date__lte=today
-    ).exclude(
-        end_date__lt=today
-    ).first()
-    
-    # If no active one found, just get any PeriodeJenisData with this periode
-    if not periode_jenis_data:
+
+        # 2nd: specific sub_jenis_data — any period type (right ILAP, wrong period is still useful)
         periode_jenis_data = PeriodeJenisData.objects.filter(
-            id_periode_pengiriman=periode_pengiriman
+            id_sub_jenis_data_ilap=jenis_prioritas_obj.id_sub_jenis_data_ilap,
         ).first()
-    
+
+        if periode_jenis_data:
+            return periode_jenis_data, periode_value
+
+    # 3rd fallback: any PeriodeJenisData with matching period type (any sub_jenis_data)
+    periode_jenis_data = PeriodeJenisData.objects.filter(
+        id_periode_pengiriman=periode_pengiriman
+    ).first()
+
+    # 4th (last) fallback: absolutely any PeriodeJenisData in the DB
+    if not periode_jenis_data:
+        periode_jenis_data = PeriodeJenisData.objects.order_by('id').first()
+        if periode_jenis_data:
+            logger.warning(
+                f"_map_periode_data: using absolute fallback PeriodeJenisData "
+                f"(id={periode_jenis_data.pk}) for periode='{periode_str}'"
+            )
+
     return periode_jenis_data, periode_value
 
 
@@ -757,76 +872,8 @@ def _check_tiket_data(service, check_id=None, stop_checker=None):
         stop_checker: optional callable() that returns True if check should stop
     """
     try:
-        sql_query = """
-            SELECT DISTINCT 
-                id_tiket,
-                1 old_db,
-                CASE 
-                    WHEN status_tiket IN ('[SELESAI]-Sudah QC', '[SELESAI]-Tidak di QC', '[SELESAI]-Tiket 0 Row') THEN 8
-                    WHEN status_tiket IN ('[P3DE]-Close Tiket','[PIDE]-Close Tiket') THEN 7
-                    WHEN status_tiket IN ('[PMDE]-Proses QC') THEN 6
-                    WHEN status_tiket IN ('[PIDE]-Proses Identifikasi') THEN 5
-                    WHEN status_tiket IN ('[P3DE]-Proses Nadine') THEN 2
-                    WHEN status_tiket IN ('[P3DE]-Proses Penelitian') THEN 1
-                    ELSE 1
-                END status_tiket,
-                PERIODE_PENGIRIMAN periode_penerimaan,
-                substr(id_tiket,1,9) || '_20' || substr(id_tiket,10,2) jenis_prioritas_data,
-                COALESCE(periode_data, 'tahun') periode_data,
-                COALESCE(tahun_data, EXTRACT(YEAR FROM SYSDATE)) tahun_data,
-                1 penyampaian,
-                '-' nomor_surat_pengantar,
-                COALESCE(TGL_TERIMA, SYSDATE) tanggal_surat_pengantar,
-                '-' nama_pengirim,
-                'Softcopy' bentuk_data,
-                'Online' cara_penyampaian,
-                CASE WHEN status_tiket IN ('[SELESAI]-Tiket 0 Row') THEN 0 ELSE 1 END status_ketersediaan_data,
-                NULL alasan_ketidaktersediaan,
-                COALESCE(JML_ROW_P3DE, 0) baris_diterima,
-                1 satuan_data,
-                NULL tgl_terima_vertikal,
-                COALESCE(TGL_TERIMA, SYSDATE) tgl_terima_dip,
-                0 backup,
-                0 tanda_terima,
-                CASE WHEN COALESCE(JML_ROW_P3DE, 0)-COALESCE(JML_DATA_TELITI, 0)=0 THEN 'Lengkap' ELSE 'Tidak Lengkap' END status_penelitian,
-                TGL_TELITI,
-                COALESCE(JML_DATA_TELITI, 0) baris_lengkap,
-                COALESCE(JML_ROW_P3DE, 0)-COALESCE(JML_DATA_TELITI, 0) baris_tidak_lengkap,
-                TGL_NADINE,
-                NO_NADINE,
-                TGL_NADINE tgl_kirim_pide,
-                NULL tgl_rekam_pide,
-                NULL id_durasi_jatuh_tempo_pide,
-                COALESCE(b.JML_LOG, 0) baris_i,
-                COALESCE(b.JML_LOG_U, 0) baris_u,
-                COALESCE(b.JML_RES, 0) baris_res,
-                COALESCE(b.JML_CDE, 0) baris_cde,
-                b.tgl_transfer,
-                b.TGL_REMATCH tgl_rematch,
-                NULL id_durasi_jatuh_tempo_pmde,
-                COALESCE(b.SUDAH_QC, 0) SUDAH_QC,
-                COALESCE(b.belum_qc, 0) belum_qc,
-                COALESCE(b.lolos_qc, 0) lolos_qc,
-                COALESCE(b.TIDAK_LOLOS_QC, 0) tidak_lolos_qc,
-                COALESCE(b.QC_P, 0) QC_P,
-                COALESCE(b.QC_X, 0) QC_X,
-                COALESCE(b.QC_W, 0) QC_W,
-                COALESCE(b.QC_F, 0) QC_F,
-                COALESCE(b.QC_A, 0) QC_A,
-                COALESCE(b.QC_C, 0) QC_C,
-                COALESCE(b.QC_N, 0) QC_N,
-                COALESCE(b.QC_Y, 0) QC_Y,
-                COALESCE(b.QC_Z, 0) QC_Z,
-                COALESCE(b.QC_U, 0) QC_U,
-                COALESCE(b.QC_E, 0) QC_E,
-                COALESCE(b.QC_V, 0) QC_V,
-                COALESCE(b.QC_R, 0) QC_R,
-                COALESCE(b.QC_D, 0) QC_D
-            FROM
-                PVPTD.ZA_DDE_TABEL_FACT a
-            LEFT JOIN PVPTD.ZA_REKAP_TARIKAN b ON a.ID_TIKET = b.NO_TIKET
-        """
-        
+        sql_query = _TIKET_ORACLE_SQL
+
         if check_id:
             cache.set(f'check_tiket_progress_{check_id}', {
                 'current': 0, 'total': 0, 'percentage': 0,
@@ -854,19 +901,23 @@ def _check_tiket_data(service, check_id=None, stop_checker=None):
                 'table_name': f'Memeriksa {total:,} baris...',
             }, timeout=3600)
 
-        # --- Bulk exists check: one DB query instead of N queries ---
-        all_nomor_tikets = set()
+        # --- Bulk exists check: chunked to avoid SQLite variable limit ---
+        all_nomor_tikets = []
         for row in rows:
             row_dict = dict(zip(column_names, row))
             nt = row_dict.get('id_tiket')
             if nt:
-                all_nomor_tikets.add(nt)
+                all_nomor_tikets.append(nt)
+        all_nomor_tikets = list(dict.fromkeys(all_nomor_tikets))  # deduplicate preserving order
 
-        existing_set = set(
-            Tiket.objects.filter(nomor_tiket__in=all_nomor_tikets)
-            .values_list('nomor_tiket', flat=True)
-        )
-        logger.info(f'Bulk exists check: {len(existing_set)} existing / {total} oracle rows')
+        CHUNK = 500
+        existing_set: set[str] = set()
+        for i in range(0, len(all_nomor_tikets), CHUNK):
+            existing_set.update(
+                Tiket.objects.filter(nomor_tiket__in=all_nomor_tikets[i:i+CHUNK])
+                .values_list('nomor_tiket', flat=True)
+            )
+        logger.info(f'Bulk exists check: {len(existing_set)} existing / {len(all_nomor_tikets)} unique oracle rows')
 
         # --- Classify rows using the pre-fetched set ---
         for idx, row in enumerate(rows):
@@ -954,76 +1005,8 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
             LOOKUP_BATCH_SIZE = 250
         logger.info(f'Using batch sizes for {db_vendor}: BATCH_SIZE={BATCH_SIZE}, LOOKUP_BATCH_SIZE={LOOKUP_BATCH_SIZE}')
         
-        sql_query = """
-            SELECT
-                id_tiket,
-                1 old_db,
-                CASE 
-                    WHEN status_tiket IN ('[SELESAI]-Sudah QC', '[SELESAI]-Tidak di QC', '[SELESAI]-Tiket 0 Row') THEN 8
-                    WHEN status_tiket IN ('[P3DE]-Close Tiket','[PIDE]-Close Tiket') THEN 7
-                    WHEN status_tiket IN ('[PMDE]-Proses QC') THEN 6
-                    WHEN status_tiket IN ('[PIDE]-Proses Identifikasi') THEN 5
-                    WHEN status_tiket IN ('[P3DE]-Proses Nadine') THEN 2
-                    WHEN status_tiket IN ('[P3DE]-Proses Penelitian') THEN 1
-                    ELSE 1
-                END status_tiket,
-                PERIODE_PENGIRIMAN periode_penerimaan,
-                substr(id_tiket,1,9) || '_20' || substr(id_tiket,10,2) jenis_prioritas_data,
-                COALESCE(periode_data, 'tahun') periode_data,
-                COALESCE(tahun_data, EXTRACT(YEAR FROM SYSDATE)) tahun_data,
-                1 penyampaian,
-                '-' nomor_surat_pengantar,
-                COALESCE(TGL_TERIMA, SYSDATE) tanggal_surat_pengantar,
-                '-' nama_pengirim,
-                'Softcopy' bentuk_data,
-                'Online' cara_penyampaian,
-                CASE WHEN status_tiket IN ('[SELESAI]-Tiket 0 Row') THEN 0 ELSE 1 END status_ketersediaan_data,
-                NULL alasan_ketidaktersediaan,
-                COALESCE(JML_ROW_P3DE, 0) baris_diterima,
-                1 satuan_data,
-                NULL tgl_terima_vertikal,
-                COALESCE(TGL_TERIMA, SYSDATE) tgl_terima_dip,
-                0 backup,
-                0 tanda_terima,
-                CASE WHEN COALESCE(JML_ROW_P3DE, 0)-COALESCE(JML_DATA_TELITI, 0)=0 THEN 'Lengkap' ELSE 'Tidak Lengkap' END status_penelitian,
-                TGL_TELITI,
-                COALESCE(JML_DATA_TELITI, 0) baris_lengkap,
-                COALESCE(JML_ROW_P3DE, 0)-COALESCE(JML_DATA_TELITI, 0) baris_tidak_lengkap,
-                TGL_NADINE,
-                NO_NADINE,
-                TGL_NADINE tgl_kirim_pide,
-                NULL tgl_rekam_pide,
-                NULL id_durasi_jatuh_tempo_pide,
-                COALESCE(b.JML_LOG, 0) baris_i,
-                COALESCE(b.JML_LOG_U, 0) baris_u,
-                COALESCE(b.JML_RES, 0) baris_res,
-                COALESCE(b.JML_CDE, 0) baris_cde,
-                b.tgl_transfer,
-                b.TGL_REMATCH tgl_rematch,
-                NULL id_durasi_jatuh_tempo_pmde,
-                COALESCE(b.SUDAH_QC, 0) SUDAH_QC,
-                COALESCE(b.belum_qc, 0) belum_qc,
-                COALESCE(b.lolos_qc, 0) lolos_qc,
-                COALESCE(b.TIDAK_LOLOS_QC, 0) tidak_lolos_qc,
-                COALESCE(b.QC_P, 0) QC_P,
-                COALESCE(b.QC_X, 0) QC_X,
-                COALESCE(b.QC_W, 0) QC_W,
-                COALESCE(b.QC_F, 0) QC_F,
-                COALESCE(b.QC_A, 0) QC_A,
-                COALESCE(b.QC_C, 0) QC_C,
-                COALESCE(b.QC_N, 0) QC_N,
-                COALESCE(b.QC_Y, 0) QC_Y,
-                COALESCE(b.QC_Z, 0) QC_Z,
-                COALESCE(b.QC_U, 0) QC_U,
-                COALESCE(b.QC_E, 0) QC_E,
-                COALESCE(b.QC_V, 0) QC_V,
-                COALESCE(b.QC_R, 0) QC_R,
-                COALESCE(b.QC_D, 0) QC_D
-            FROM
-                PVPTD.ZA_DDE_TABEL_FACT a
-            LEFT JOIN PVPTD.ZA_REKAP_TARIKAN b ON a.ID_TIKET = b.NO_TIKET
-        """
-        
+        sql_query = _TIKET_ORACLE_SQL
+
         logger.info('Connecting to Oracle...')
         with service._connect_oracle("primary") as conn:
             logger.info('Oracle connected, executing bulk query...')
@@ -1032,7 +1015,22 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                 rows = cursor.fetchall()
                 column_names = [desc[0].lower() for desc in cursor.description]
         logger.info(f'Oracle query completed, fetched {len(rows)} rows for bulk processing')
-        
+
+        # --- Bulk exists pre-fetch (same pattern as _check_tiket_data) ---
+        all_nomor_tikets = list(dict.fromkeys(
+            dict(zip(column_names, r)).get('id_tiket')
+            for r in rows
+            if dict(zip(column_names, r)).get('id_tiket')
+        ))
+        CHUNK = 500
+        existing_set: set = set()
+        for i in range(0, len(all_nomor_tikets), CHUNK):
+            existing_set.update(
+                Tiket.objects.filter(nomor_tiket__in=all_nomor_tikets[i:i + CHUNK])
+                .values_list('nomor_tiket', flat=True)
+            )
+        logger.info(f'Bulk exists pre-fetch: {len(existing_set)} existing / {len(all_nomor_tikets)} unique oracle rows')
+
         inserts = 0
         updates = 0
         errors = []
@@ -1160,9 +1158,8 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                     'qc_d': row_dict.get('qc_d'),
                 }
                 
-                # Check if exists
-                exists = Tiket.objects.filter(nomor_tiket=nomor_tiket).exists()
-                if exists:
+                # Check if exists (using pre-fetched set — no per-row DB query)
+                if nomor_tiket in existing_set:
                     update_dict = {k: v for k, v in tiket_data.items() if k not in ('nomor_tiket', 'old_db')}
                     to_update.append((nomor_tiket, tiket_data, update_dict, periode_jenis_data_obj))
                 else:

@@ -48,17 +48,20 @@ def check_referensi_data_task(self, check_id):
         cache.set(f'check_referensi_result_{check_id}', summary_dict, timeout=3600)
         cache.set(f'check_referensi_done_{check_id}', True, timeout=3600)
         cache.set(f'check_referensi_in_progress_{check_id}', False, timeout=3600)
+        cache.delete('check_referensi_active_check_id')
         logger.info(f'[TASK] Referensi check completed (check_id={check_id})')
     except InterruptedError as e:
         logger.info(f'[TASK] Referensi check interrupted: {str(e)}')
         cache.set(f'check_referensi_error_{check_id}', str(e), timeout=3600)
         cache.set(f'check_referensi_done_{check_id}', True, timeout=3600)
         cache.set(f'check_referensi_in_progress_{check_id}', False, timeout=3600)
+        cache.delete('check_referensi_active_check_id')
     except Exception as e:
         logger.error(f'[TASK] Exception in referensi check: {str(e)}', exc_info=True)
         cache.set(f'check_referensi_error_{check_id}', str(e), timeout=3600)
         cache.set(f'check_referensi_done_{check_id}', True, timeout=3600)
         cache.set(f'check_referensi_in_progress_{check_id}', False, timeout=3600)
+        cache.delete('check_referensi_active_check_id')
 
 
 @shared_task(bind=True, name='diamond_web.tasks.sync_referensi_data_task')
@@ -73,6 +76,10 @@ def sync_referensi_data_task(self, sync_id, user_id=None):
         logger.info(f'[TASK] OracleDataSyncService initialized')
 
         def _on_progress(current, total, table_name, inserts, updates, errors):
+            # Check stop signal — raise to halt the sync
+            if cache.get(f'sync_referensi_stop_requested_{sync_id}'):
+                logger.info(f'[TASK] Stop requested for referensi sync {sync_id}, raising interrupt')
+                raise InterruptedError('Sync dihentikan oleh pengguna')
             pct = int(current / total * 100) if total else 0
             cache.set(f'sync_referensi_progress_{sync_id}', {
                 'current': current, 'total': total, 'percentage': pct,
@@ -93,11 +100,19 @@ def sync_referensi_data_task(self, sync_id, user_id=None):
         cache.set(f'sync_referensi_result_{sync_id}', sync_summary, timeout=3600)
         cache.set(f'sync_referensi_done_{sync_id}', True, timeout=3600)
         cache.set(f'sync_referensi_in_progress_{sync_id}', False, timeout=3600)
+        cache.delete('sync_referensi_active_sync_id')
+    except InterruptedError as e:
+        logger.info(f'[TASK] Referensi sync interrupted: {str(e)}')
+        cache.set(f'sync_referensi_error_{sync_id}', str(e), timeout=3600)
+        cache.set(f'sync_referensi_done_{sync_id}', True, timeout=3600)
+        cache.set(f'sync_referensi_in_progress_{sync_id}', False, timeout=3600)
+        cache.delete('sync_referensi_active_sync_id')
     except Exception as e:
         logger.error(f'[TASK] Exception in referensi sync: {str(e)}', exc_info=True)
         cache.set(f'sync_referensi_error_{sync_id}', str(e), timeout=3600)
         cache.set(f'sync_referensi_done_{sync_id}', True, timeout=3600)
         cache.set(f'sync_referensi_in_progress_{sync_id}', False, timeout=3600)
+        cache.delete('sync_referensi_active_sync_id')
 
 
 @shared_task(bind=True, name='diamond_web.tasks.check_tiket_data_task')
@@ -116,7 +131,7 @@ def check_tiket_data_task(self, check_id):
             cache.set(f'check_tiket_in_progress_{check_id}', False, timeout=3600)
             return
 
-        service = OracleDataSyncService()
+        service = OracleDataSyncService(connection_only=True)
         
         def _stop_checker():
             """Check if stop was requested; called frequently during row iteration."""
@@ -151,7 +166,7 @@ def sync_tiket_data_task(self, sync_id, user_id=None):
         from .utils.oracle_sync import OracleDataSyncService
         from .views.sync_tiket import _sync_tiket_data
 
-        service = OracleDataSyncService()
+        service = OracleDataSyncService(connection_only=True)
         logger.info(f'[TASK] OracleDataSyncService initialized')
 
         user = _get_user(user_id)

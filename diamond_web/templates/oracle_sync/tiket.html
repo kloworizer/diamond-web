@@ -42,9 +42,6 @@
                 <button id="btn-stop" class="btn btn-warning" type="button" disabled style="display:none;">
                     <i class="feather-square me-1"></i>Stop Sync
                 </button>
-                <button id="btn-force-stop" class="btn btn-danger" type="button" style="display:none;">
-                    <i class="feather-x me-1"></i>Force Clear
-                </button>
             </div>
 
             <div id="sync-progress" class="mt-4" style="display:none;">
@@ -87,7 +84,6 @@
         const btnCheck = document.getElementById('btn-check');
         const btnSync = document.getElementById('btn-sync');
         const btnStop = document.getElementById('btn-stop');
-        const btnForceStop = document.getElementById('btn-force-stop');
         const btnStopCheck = document.getElementById('btn-stop-check');
         const progressBox = document.getElementById('sync-progress');
         const resultBox = document.getElementById('sync-result');
@@ -137,7 +133,6 @@
                         progressBox.style.display = 'block';
                         btnStop.style.display = 'inline-block';
                         btnStop.disabled = false;
-                        btnForceStop.style.display = 'none';
                         setLoading(btnSync, true, '<i class="feather-upload me-1"></i>Sync Data', 'Syncing...');
                         btnCheck.disabled = true;
                         if (data.progress) updateProgress(data.progress);
@@ -268,7 +263,6 @@
                         progressBox.style.display = 'none';
                         progressPhase.textContent = '';
                         btnStop.style.display = 'none';
-                        btnForceStop.style.display = 'none';
                         setLoading(btnSync, false, '<i class="feather-upload me-1"></i>Sync Data', 'Syncing...');
                         btnCheck.disabled = false;
                     }
@@ -488,50 +482,13 @@
         btnStop.addEventListener('click', async function () {
             if (!currentSyncId) return;
             btnStop.disabled = true;
-            
             try {
                 await postJson("{% url 'sync_tiket_stop' %}", { sync_id: currentSyncId });
                 showToast('Permintaan stop dikirim. Menunggu sync selesai...', 'info');
-                
-                // Set a timeout to force recovery if sync doesn't stop within 30 seconds
-                const forceStopTimeout = setTimeout(() => {
-                    console.warn('Sync stop timeout reached, forcing UI recovery');
-                    showToast('Timeout menunggu sync. Klik Force Clear untuk membersihkan.', 'warning');
-                    btnForceStop.style.display = 'inline-block';
-                }, 30000);
-                
-                // Store the timeout so btnForceStop can clear it
-                btnForceStop.dataset.timeoutId = forceStopTimeout;
-                
             } catch (error) {
                 showToast(error.message, 'danger');
                 btnStop.disabled = false;
             }
-        });
-        
-        btnForceStop.addEventListener('click', function () {
-            // Clear the timeout if it exists
-            if (btnForceStop.dataset.timeoutId) {
-                clearTimeout(parseInt(btnForceStop.dataset.timeoutId));
-            }
-            
-            // Immediately clear everything
-            clearInterval(syncIntervalId);
-            clearInterval(checkIntervalId);
-            localStorage.removeItem(SYNC_ID_STORAGE_KEY);
-            localStorage.removeItem(CHECK_ID_STORAGE_KEY);
-            currentSyncId = null;
-            currentCheckId = null;
-            
-            // Reset UI
-            progressBox.style.display = 'none';
-            btnStop.style.display = 'none';
-            btnForceStop.style.display = 'none';
-            btnSync.disabled = false;
-            setLoading(btnCheck, false, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
-            btnCheck.disabled = false;
-            
-            showToast('Session cleared. Anda bisa mulai lagi.', 'success');
         });
         
         // Resume active sync on page load if it exists

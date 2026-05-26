@@ -783,7 +783,15 @@ class OracleDataSyncService:
 
     _IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_$.]*$")
 
-    def __init__(self):
+    def __init__(self, connection_only: bool = False):
+        """Initialize the service.
+
+        Args:
+            connection_only: When True, skip PMDE year discovery and sync config
+                             validation. Use this when only Oracle connections are
+                             needed (e.g. tiket sync/check tasks) to avoid the
+                             secondary-connection round-trip for PMDE column discovery.
+        """
         # Initialize thick mode before any connections
         try:
             _initialize_oracledb_thick_mode()
@@ -793,6 +801,11 @@ class OracleDataSyncService:
         
         self.oracle_connections = self._load_oracle_connections()
         self._target_model_cache: dict[str, Any] = {}
+
+        if connection_only:
+            # Skip PMDE discovery and config validation – not needed for tiket tasks
+            self._pmde_discovered_years = list(range(2022, date.today().year + 1))
+            return
         
         # Discover PMDE PRIORITAS years before validating sync configs
         try:

@@ -158,6 +158,8 @@ def oracle_sync_check(request):
 
         task_result = check_referensi_data_task.delay(check_id)
         cache.set(f'check_referensi_celery_task_id_{check_id}', task_result.id, timeout=3600)
+        # Fixed key so the page can recover the check_id after navigation
+        cache.set('check_referensi_active_check_id', check_id, timeout=3600)
 
         return JsonResponse({
             'success': True,
@@ -199,7 +201,10 @@ def oracle_sync_run(request):
         cache.set(f'sync_referensi_done_{sync_id}', False, timeout=3600)
         cache.set(f'sync_referensi_started_at_{sync_id}', datetime.now().isoformat(), timeout=3600)
 
-        sync_referensi_data_task.delay(sync_id, request.user.pk)
+        task_result = sync_referensi_data_task.delay(sync_id, request.user.pk)
+        cache.set(f'sync_referensi_celery_task_id_{sync_id}', task_result.id, timeout=3600)
+        # Fixed key so the page can recover the sync_id after navigation
+        cache.set('sync_referensi_active_sync_id', sync_id, timeout=3600)
 
         return JsonResponse({
             'success': True,
@@ -221,13 +226,25 @@ def oracle_sync_run(request):
 def oracle_sync_stop(request):
     """Stop an in-progress sync operation (no auth check to avoid session locks)."""
     try:
-        sync_id = request.POST.get('sync_id', '')
+        data = json.loads(request.body) if request.content_type == 'application/json' else request.POST
+        sync_id = data.get('sync_id', '')
         if not sync_id:
             return JsonResponse({'success': False, 'message': 'sync_id tidak ditemukan'}, status=400)
-        
-        # Set stop signal in cache
+
+        # Revoke and terminate the Celery task if we have its task ID
+        celery_task_id = cache.get(f'sync_referensi_celery_task_id_{sync_id}')
+        if celery_task_id:
+            try:
+                from celery import current_app
+                current_app.control.revoke(celery_task_id, terminate=True, signal='SIGTERM')
+                logger.info(f'Revoked Celery task {celery_task_id} for sync {sync_id}')
+            except Exception as revoke_err:
+                logger.warning(f'Failed to revoke Celery task {celery_task_id}: {revoke_err}')
+
         cache.set(f'sync_referensi_stop_requested_{sync_id}', True, timeout=3600)
-        
+        cache.set(f'sync_referensi_error_{sync_id}', 'Sync dihentikan oleh pengguna', timeout=3600)
+        cache.set(f'sync_referensi_done_{sync_id}', True, timeout=3600)
+
         return JsonResponse({
             'success': True,
             'message': 'Permintaan stop sync telah dikirim.',
@@ -287,10 +304,15 @@ def oracle_sync_clear_session(request):
             f'sync_referensi_result_{sync_id}',
             f'sync_referensi_error_{sync_id}',
             f'sync_referensi_stop_requested_{sync_id}',
+            f'sync_referensi_celery_task_id_{sync_id}',
         ]
         
         for key in cache_keys:
             cache.delete(key)
+        
+        # Also clear the fixed active-ID key if it still points to this sync
+        if cache.get('sync_referensi_active_sync_id') == sync_id:
+            cache.delete('sync_referensi_active_sync_id')
         
         return JsonResponse({
             'success': True,
@@ -307,6 +329,16 @@ def oracle_sync_progress(request):
     """Get current progress of in-progress sync/check (no auth check to avoid session locks during long operations)."""
     try:
         mode = request.GET.get('mode', 'sync')
+
+        # Probe: return active sync_id or check_id from the fixed cache key
+        if mode == 'active':
+            active_sync_id = cache.get('sync_referensi_active_sync_id')
+            if active_sync_id and not cache.get(f'sync_referensi_done_{active_sync_id}', False):
+                return JsonResponse({'success': True, 'active': True, 'type': 'sync', 'sync_id': active_sync_id})
+            active_check_id = cache.get('check_referensi_active_check_id')
+            if active_check_id and not cache.get(f'check_referensi_done_{active_check_id}', False):
+                return JsonResponse({'success': True, 'active': True, 'type': 'check', 'check_id': active_check_id})
+            return JsonResponse({'success': True, 'active': False})
 
         if mode == 'check':
             check_id = request.GET.get('check_id', '')
