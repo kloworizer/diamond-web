@@ -530,14 +530,12 @@ HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
             SELECT 
                 ID_SUB_JENIS_DATA,
                 PERIODE_PENGIRIMAN,
-                TGL_PENYAMPAIAN_PERTAMA,
-                JADWAL_PENYAMPAIAN
+                CASE WHEN TGL_PENYAMPAIAN_PERTAMA IS NULL THEN DATE '2015-01-01' ELSE TGL_PENYAMPAIAN_PERTAMA END TGL_PENYAMPAIAN_PERTAMA,
+                NVL(JADWAL_PENYAMPAIAN, 0) AS JADWAL_PENYAMPAIAN
             FROM RankedData
             WHERE rn = 1
                 AND ID_SUB_JENIS_DATA IS NOT NULL
-                AND PERIODE_PENGIRIMAN IS NOT NULL 
-                AND TGL_PENYAMPAIAN_PERTAMA IS NOT NULL
-                AND JADWAL_PENYAMPAIAN IS NOT NULL
+                AND PERIODE_PENGIRIMAN IS NOT NULL
         """,
         target_model_label="diamond_web.PeriodeJenisData",
         target_key_field="id_sub_jenis_data_ilap",

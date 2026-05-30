@@ -481,10 +481,14 @@ def sync_tiket_truncate(request):
     try:
         from django.db import connection
         
-        # Delete dependent records first (TiketPIC and TiketAction) due to PROTECT constraint
+        # Delete all dependent records in correct order before Tiket (all have PROTECT FK)
         from ..models import TiketPIC, TiketAction
-        TiketPIC.objects.all().delete()
+        from ..models.backup_data import BackupData
+        from ..models.detil_tanda_terima import DetilTandaTerima
+        DetilTandaTerima.objects.all().delete()
+        BackupData.objects.all().delete()
         TiketAction.objects.all().delete()
+        TiketPIC.objects.all().delete()
         
         count = Tiket.objects.all().count()
         Tiket.objects.all().delete()
@@ -729,70 +733,58 @@ def _parse_jenis_prioritas_data(jenis_prioritas_str, tahun_override=None):
         return None, None
 
 
-def _map_periode_data(periode_str, jenis_prioritas_obj=None, tahun_value=None):
+def _build_periode_lookup_cache():
+    """Build cache: id_sub_jenis_data -> first PeriodeJenisData row."""
+    cache_by_sub_jenis: dict[str, PeriodeJenisData] = {}
+
+    for pjd in PeriodeJenisData.objects.select_related('id_sub_jenis_data_ilap').all().order_by('id'):
+        sub_jenis = getattr(pjd.id_sub_jenis_data_ilap, 'id_sub_jenis_data', None)
+        if sub_jenis and sub_jenis not in cache_by_sub_jenis:
+            cache_by_sub_jenis[sub_jenis] = pjd
+
+    return cache_by_sub_jenis
+
+
+def _map_periode_data(
+    periode_str,
+    jenis_prioritas_obj=None,
+    tahun_value=None,
+    nomor_tiket=None,
+    periode_lookup_cache=None,
+):
     """
-    Map Oracle periode_data values to PeriodeJenisData.
-    Oracle values: 'tahun', 'april', 'triwulan I', 'semester I', etc.
-    
-    Strategy:
-    1. Validate periode value (e.g., triwulan must be I/II/III/IV, not V or invalid)
-    2. Map to periode_penyampaian category ('Bulanan', 'Triwulanan', etc.)
-    3. Find PeriodePengiriman matching that category
-    4. If jenis_prioritas_obj provided, use it to find the correct id_sub_jenis_data_ilap
-    5. Find active PeriodeJenisData for that combination
-    
-    Returns: tuple(PeriodeJenisData object or None, periode_value int)
+    Map Oracle periode_data values to (PeriodeJenisData, periode_value).
+
+    The PeriodeJenisData (id_periode_data FK on Tiket) is resolved purely from
+    the first 9 characters of nomor_tiket, which encode id_sub_jenis_data.
+    The numeric periode_value is derived from the Oracle periode_str string and
+    stored directly in tiket.periode; tahun comes from the Oracle tahun_data
+    column and is stored directly in tiket.tahun.
+
+        Lookup rule for PeriodeJenisData:
+            - nomor_tiket[:9] must match `JenisDataILAP.id_sub_jenis_data`
+            - use the first `PeriodeJenisData` for that `JenisDataILAP`
+            - no fallback to other keys or period types
+
+    Returns: tuple(PeriodeJenisData | None, periode_value int)
     """
     if not periode_str:
         return None, 1
-    
+
     periode_str = periode_str.strip()
     periode_lower = periode_str.lower()
-    
-    # Validate specific periode values
-    # Triwulan must be I, II, III, or IV (not V or higher)
+
+    # --- Validate triwulan / semester values ---
     if 'triwulan' in periode_lower:
-        valid_triwulan = ['i', 'ii', 'iii', 'iv']
-        if not any(f'triwulan {tw}' in periode_lower for tw in valid_triwulan):
-            # Invalid triwulan (e.g., 'triwulan v', 'triwulan 5')
+        if not any(f'triwulan {tw}' in periode_lower for tw in ['i', 'ii', 'iii', 'iv']):
             logger.warning(f"Invalid triwulan value: '{periode_str}', skipping")
             return None, 1
-    
-    # Semester must be I or II
     if 'semester' in periode_lower:
         if not any(f'semester {s}' in periode_lower for s in ['i', 'ii']):
             logger.warning(f"Invalid semester value: '{periode_str}', skipping")
             return None, 1
-    
-    # Month names that map to 'Bulanan' (Monthly)
-    month_names = {
-        'januari', 'february', 'februari', 'maret', 'april', 'mei', 'juni',
-        'juli', 'agustus', 'september', 'oktober', 'november', 'desember'
-    }
-    
-    # Determine the periode_penyampaian category
-    django_period = None
-    
-    if periode_lower in month_names:
-        django_period = 'Bulanan'
-    elif 'triwulan' in periode_lower:
-        django_period = 'Triwulanan'
-    elif 'semester' in periode_lower:
-        django_period = 'Semesteran'
-    elif periode_lower == 'tahun' or periode_lower == 'tahunan':
-        django_period = 'Tahunan'
-    elif '2' in periode_str and 'minggu' in periode_lower:
-        django_period = '2 Mingguan'
-    elif 'minggu' in periode_lower:
-        django_period = 'Mingguan'
-    elif 'hari' in periode_lower or 'harian' in periode_lower:
-        django_period = 'Harian'
-    
-    if not django_period:
-        logger.warning(f"Unknown periode value: '{periode_str}', unable to map")
-        return None, 1
 
-    # Derive numeric periode value from Oracle source string (not from master table ID)
+    # --- Derive numeric periode_value ---
     month_numbers = {
         'januari': 1, 'februari': 2, 'february': 2, 'maret': 3, 'april': 4,
         'mei': 5, 'juni': 6, 'juli': 7, 'agustus': 8, 'september': 9,
@@ -800,64 +792,52 @@ def _map_periode_data(periode_str, jenis_prioritas_obj=None, tahun_value=None):
     }
     periode_value = 1
 
-    if django_period == 'Bulanan':
-        periode_value = month_numbers.get(periode_lower, 1)
-    elif django_period == 'Triwulanan':
-        triwulan_map = {'i': 1, 'ii': 2, 'iii': 3, 'iv': 4, '1': 1, '2': 2, '3': 3, '4': 4}
+    if periode_lower in month_numbers:
+        periode_value = month_numbers[periode_lower]
+    elif 'triwulan' in periode_lower:
+        triwulan_map = {'i': 1, 'ii': 2, 'iii': 3, 'iv': 4}
         m = re.search(r'triwulan\s+([ivx]+|\d+)', periode_lower)
-        periode_value = triwulan_map.get(m.group(1), 1) if m else 1
-    elif django_period == 'Semesteran':
-        semester_map = {'i': 1, 'ii': 2, '1': 1, '2': 2}
+        if m:
+            periode_value = triwulan_map.get(m.group(1), int(m.group(1)) if m.group(1).isdigit() else 1)
+    elif 'semester' in periode_lower:
         m = re.search(r'semester\s+([ivx]+|\d+)', periode_lower)
-        periode_value = semester_map.get(m.group(1), 1) if m else 1
-    elif django_period in ('Mingguan', '2 Mingguan', 'Harian'):
+        if m:
+            periode_value = {'i': 1, 'ii': 2}.get(m.group(1), int(m.group(1)) if m.group(1).isdigit() else 1)
+    elif periode_lower in ('tahun', 'tahunan'):
+        periode_value = 1
+    elif 'minggu' in periode_lower or 'hari' in periode_lower or 'harian' in periode_lower:
         m = re.search(r'(\d+)', periode_lower)
         periode_value = int(m.group(1)) if m else 1
-    
-    # Find PeriodePengiriman matching the category
-    from ..models.periode_pengiriman import PeriodePengiriman
-    periode_pengiriman = PeriodePengiriman.objects.filter(
-        periode_penyampaian__exact=django_period
-    ).first()
-    
-    if not periode_pengiriman:
-        logger.warning(f"No PeriodePengiriman found for category: '{django_period}'")
+
+    # --- Resolve PeriodeJenisData strictly by sub_jenis_data from nomor_tiket prefix ---
+    if not nomor_tiket or len(nomor_tiket) < 9:
+        logger.warning(
+            f"_map_periode_data: invalid nomor_tiket '{nomor_tiket}' (must be >= 9 chars)"
+        )
         return None, periode_value
-    
-    # If we have jenis_prioritas_obj, use its id_sub_jenis_data_ilap to find the correct PeriodeJenisData
-    if jenis_prioritas_obj and hasattr(jenis_prioritas_obj, 'id_sub_jenis_data_ilap'):
-        # 1st: exact match — specific sub_jenis_data + matching period type (no date filter)
-        periode_jenis_data = PeriodeJenisData.objects.filter(
-            id_sub_jenis_data_ilap=jenis_prioritas_obj.id_sub_jenis_data_ilap,
-            id_periode_pengiriman=periode_pengiriman,
+
+    sub_jenis_data_id = nomor_tiket[:9]
+    pjd = None
+    if periode_lookup_cache is not None:
+        pjd = periode_lookup_cache.get(sub_jenis_data_id)
+    else:
+        from ..models.jenis_data_ilap import JenisDataILAP
+        jenis_data_obj = JenisDataILAP.objects.filter(
+            id_sub_jenis_data=sub_jenis_data_id
         ).first()
+        if jenis_data_obj:
+            pjd = PeriodeJenisData.objects.filter(
+                id_sub_jenis_data_ilap=jenis_data_obj
+            ).first()
 
-        if periode_jenis_data:
-            return periode_jenis_data, periode_value
+    if not pjd:
+        logger.warning(
+            f"_map_periode_data: no PeriodeJenisData/JenisDataILAP for sub_jenis_data '{sub_jenis_data_id}' "
+            f"(nomor_tiket='{nomor_tiket}')"
+        )
+        return None, periode_value
 
-        # 2nd: specific sub_jenis_data — any period type (right ILAP, wrong period is still useful)
-        periode_jenis_data = PeriodeJenisData.objects.filter(
-            id_sub_jenis_data_ilap=jenis_prioritas_obj.id_sub_jenis_data_ilap,
-        ).first()
-
-        if periode_jenis_data:
-            return periode_jenis_data, periode_value
-
-    # 3rd fallback: any PeriodeJenisData with matching period type (any sub_jenis_data)
-    periode_jenis_data = PeriodeJenisData.objects.filter(
-        id_periode_pengiriman=periode_pengiriman
-    ).first()
-
-    # 4th (last) fallback: absolutely any PeriodeJenisData in the DB
-    if not periode_jenis_data:
-        periode_jenis_data = PeriodeJenisData.objects.order_by('id').first()
-        if periode_jenis_data:
-            logger.warning(
-                f"_map_periode_data: using absolute fallback PeriodeJenisData "
-                f"(id={periode_jenis_data.pk}) for periode='{periode_str}'"
-            )
-
-    return periode_jenis_data, periode_value
+    return pjd, periode_value
 
 
 def _check_tiket_data(service, check_id=None, stop_checker=None):
@@ -893,6 +873,14 @@ def _check_tiket_data(service, check_id=None, stop_checker=None):
         errors = []
         inserted_keys = []
         updated_keys = []
+
+        # Validate against the same prerequisite used by sync:
+        # nomor_tiket[:9] must resolve to PeriodeJenisData.
+        periode_lookup_cache = _build_periode_lookup_cache()
+        valid_sub_jenis_ids = set(periode_lookup_cache.keys())
+        logger.info(
+            f'Periode lookup cache loaded: {len(valid_sub_jenis_ids)} sub_jenis_data with PeriodeJenisData'
+        )
 
         if check_id:
             cache.set(f'check_tiket_progress_{check_id}', {
@@ -931,6 +919,17 @@ def _check_tiket_data(service, check_id=None, stop_checker=None):
                 nomor_tiket = row_dict.get('id_tiket')
 
                 if not nomor_tiket:
+                    continue
+
+                if len(nomor_tiket) < 9:
+                    errors.append(f"Tiket {nomor_tiket}: nomor_tiket invalid (<9 chars)")
+                    continue
+
+                sub_jenis_data_id = nomor_tiket[:9]
+                if sub_jenis_data_id not in valid_sub_jenis_ids:
+                    errors.append(
+                        f"Tiket {nomor_tiket}: PeriodeJenisData/JenisDataILAP not found for sub_jenis_data '{sub_jenis_data_id}'"
+                    )
                     continue
 
                 if nomor_tiket in existing_set:
@@ -1016,6 +1015,12 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                 column_names = [desc[0].lower() for desc in cursor.description]
         logger.info(f'Oracle query completed, fetched {len(rows)} rows for bulk processing')
 
+        # Build lookup once to avoid per-row DB query in _map_periode_data.
+        periode_lookup_cache = _build_periode_lookup_cache()
+        logger.info(
+            f'Periode lookup cache loaded: {len(periode_lookup_cache)} sub_jenis_data with PeriodeJenisData'
+        )
+
         # --- Bulk exists pre-fetch (same pattern as _check_tiket_data) ---
         all_nomor_tikets = list(dict.fromkeys(
             dict(zip(column_names, r)).get('id_tiket')
@@ -1084,11 +1089,23 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                 # Parse and validate tiket data
                 oracle_tahun = _safe_int(row_dict.get('tahun_data'))
                 jenis_prioritas_str = row_dict.get('jenis_prioritas_data')
-                jenis_prioritas_obj, tahun_from_key = _parse_jenis_prioritas_data(jenis_prioritas_str, tahun_override=oracle_tahun)
-                tahun_data = oracle_tahun if oracle_tahun is not None else (tahun_from_key if tahun_from_key is not None else timezone.now().year)
+                jenis_prioritas_obj, _ = _parse_jenis_prioritas_data(jenis_prioritas_str, tahun_override=oracle_tahun)
+                tahun_data = oracle_tahun
+
+                if tahun_data is None:
+                    error_msg = "Tahun data kosong/tidak valid"
+                    errors.append(f"Tiket {nomor_tiket}: {error_msg}")
+                    _log_failed_row(sync_id, nomor_tiket, row_dict.get('periode_data'), jenis_prioritas_str, row_dict.get('tahun_data'), error_msg, row_number=idx+1)
+                    continue
                 
                 periode_str = row_dict.get('periode_data')
-                periode_jenis_data_obj, periode_value = _map_periode_data(periode_str, jenis_prioritas_obj=jenis_prioritas_obj, tahun_value=tahun_data)
+                periode_jenis_data_obj, periode_value = _map_periode_data(
+                    periode_str,
+                    jenis_prioritas_obj=jenis_prioritas_obj,
+                    tahun_value=tahun_data,
+                    nomor_tiket=nomor_tiket,
+                    periode_lookup_cache=periode_lookup_cache,
+                )
                 
                 if not periode_jenis_data_obj:
                     error_msg = f"Periode '{periode_str}' not found in database"
