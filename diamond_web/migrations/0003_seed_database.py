@@ -1324,29 +1324,65 @@ def unseed_users(apps, schema_editor):
 def seed_pic(apps, schema_editor):
     """Seeds the PIC model with fixed user assignments from PIC_DATA."""
     User = apps.get_model("auth", "User")
+    Group = apps.get_model("auth", "Group")
     JenisDataILAP = apps.get_model("diamond_web", "JenisDataILAP")
     PIC = apps.get_model("diamond_web", "PIC")
-    
+
     from datetime import datetime
     start_date = datetime.strptime("2024-01-01", "%Y-%m-%d").date()
-    
+
+    # Pre-build role → sorted list of active users for deterministic fallback
+    # Exclude superuser/staff from PIC assignments
+    TIPE_TO_GROUP = {"P3DE": "user_p3de", "PIDE": "user_pide", "PMDE": "user_pmde"}
+    role_users: dict = {}
+    for tipe, group_name in TIPE_TO_GROUP.items():
+        try:
+            group = Group.objects.get(name=group_name)
+            users = list(User.objects.filter(groups=group, is_active=True, is_superuser=False, is_staff=False).order_by("id"))
+            role_users[tipe] = users
+        except Group.DoesNotExist:
+            role_users[tipe] = []
+
+    # Round-robin index per tipe so load is spread across users
+    role_idx: dict = {tipe: 0 for tipe in TIPE_TO_GROUP}
+
+    def _pick_user(tipe: str, preferred_username: str):
+        """Return user by username; fall back to round-robin from the role group."""
+        try:
+            return User.objects.get(username=preferred_username)
+        except User.DoesNotExist:
+            users = role_users.get(tipe, [])
+            if not users:
+                return None
+            idx = role_idx[tipe] % len(users)
+            role_idx[tipe] += 1
+            return users[idx]
+
     # Create PIC for each entry in PIC_DATA
+    created = 0
     for item in PIC_DATA:
         try:
             jenis_data_ilap = JenisDataILAP.objects.get(id_sub_jenis_data=item["id_sub_jenis_data"])
-            user = User.objects.get(username=item["username"])
-            
-            PIC.objects.get_or_create(
+            user = _pick_user(item["tipe"], item["username"])
+            if user is None:
+                print(f"Warning: No user available for PIC {item['id_sub_jenis_data']} {item['tipe']}, skipping.")
+                continue
+
+            _, was_created = PIC.objects.get_or_create(
                 tipe=item["tipe"],
                 id_sub_jenis_data_ilap=jenis_data_ilap,
                 defaults=seed_audit_defaults({
-                    'id_user': user,
-                    'start_date': start_date,
-                    'end_date': None
+                    "id_user": user,
+                    "start_date": start_date,
+                    "end_date": None,
                 })
             )
+            if was_created:
+                created += 1
         except Exception as e:
             print(f"Warning: Could not create PIC for {item['id_sub_jenis_data']} {item['tipe']}: {e}")
+
+    print(f"Seeded {created} PIC records.")
 
 
 def unseed_pic(apps, schema_editor):

@@ -7,10 +7,8 @@ from django.core.exceptions import ValidationError
 def validate_not_future_datetime(value, field_label="Tanggal/waktu"):
     """Raise ``ValidationError`` if *value* is a future datetime.
 
-    Compares *value* against the current local server time using
-    ``datetime.now()``.  Because the project has ``USE_TZ = False``, all
-    datetime values in the database are stored as-is in GMT+7 (the server
-    timezone), so a plain ``datetime.now()`` comparison is correct.
+    Compares *value* against the current server time. Handles both naive and
+    timezone-aware datetimes to support Django's timezone handling.
 
     Args:
         value: A :class:`datetime` object to validate.  ``None`` is
@@ -22,12 +20,27 @@ def validate_not_future_datetime(value, field_label="Tanggal/waktu"):
         The original *value* when it does not exceed the current time.
 
     Raises:
-        ValidationError: When *value* is strictly greater than
-            ``datetime.now()``.
+        ValidationError: When *value* is strictly greater than the current time.
     """
     if value is None:
         return value
-    now = datetime.now()
+    
+    # Handle timezone-aware datetimes properly
+    # Get current time with matching timezone awareness as value
+    from django.utils import timezone
+    
+    if value.tzinfo is not None:
+        now = timezone.now()
+    else:
+        now = datetime.now()
+    
+    # Ensure both are in the same timezone domain for comparison
+    # Django with USE_TZ=True may pass aware datetimes from form fields
+    if value.tzinfo is None and timezone.is_aware(now):
+        value = timezone.make_aware(value)
+    elif value.tzinfo is not None and timezone.is_naive(now):
+        now = timezone.make_aware(now)
+    
     if value > now:
         raise ValidationError(
             f"{field_label} tidak boleh lebih dari waktu saat ini "
