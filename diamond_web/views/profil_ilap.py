@@ -9,12 +9,12 @@ from ..models.jenis_data_ilap import JenisDataILAP
 from ..models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ..models.periode_jenis_data import PeriodeJenisData
 from ..models.tiket import Tiket
-from .mixins import AdminP3DERequiredMixin
+from .mixins import UserP3DERequiredMixin
 
 __all__ = ['ProfilILAPListView', 'ProfilILAPDetailView']
 
 
-class ProfilILAPListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
+class ProfilILAPListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView):
     """List view for ILAP profiles with basic information."""
     template_name = 'profil_ilap/list.html'
 
@@ -49,7 +49,7 @@ class ProfilILAPListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateVie
         return JsonResponse({'data': data})
 
 
-class ProfilILAPDetailView(LoginRequiredMixin, AdminP3DERequiredMixin, DetailView):
+class ProfilILAPDetailView(LoginRequiredMixin, UserP3DERequiredMixin, DetailView):
     """Detail view for ILAP profile with jenis_data_ilap breakdown and tiket counts."""
     model = ILAP
     template_name = 'profil_ilap/detail.html'
