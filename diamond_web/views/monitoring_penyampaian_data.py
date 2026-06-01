@@ -637,7 +637,7 @@ def monitoring_penyampaian_data_data(request):
             f'class="btn btn-primary btn-sm" title="Lihat Tiket">'
             f'<i class="feather-eye"></i>'
             f'</a>'
-            f'<a href="/tiket/rekam/create/?{tiket_rekam_query}" '
+            f'<a href="/tiket/rekam/?{tiket_rekam_query}" '
             f'class="btn btn-success btn-sm" title="Rekam Penerimaan Data">'
             f'<i class="feather-file-plus"></i>'
             f'</a>'

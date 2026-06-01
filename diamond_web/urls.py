@@ -292,7 +292,7 @@ urlpatterns = [
     path('tiket/<int:pk>/', views.TiketDetailView.as_view(), name='tiket_detail'),
     
     # Rekam (Record) Workflow Step - Step 1
-    path('tiket/rekam/create/', views.TiketRekamCreateView.as_view(), name='tiket_rekam_create'),
+    path('tiket/rekam/', views.TiketRekamCreateView.as_view(), name='tiket_rekam_create'),
     
     # Kirim Tiket (Send Tiket) - Step 3
     path('tiket/kirim-tiket/', views.KirimTiketView.as_view(), name='kirim_tiket'),

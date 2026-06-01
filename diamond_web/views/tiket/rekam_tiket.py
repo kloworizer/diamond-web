@@ -304,8 +304,8 @@ class PreviewNomorTiketAPIView(View):
 
     Nomor Tiket Format:
     - YYMMDD: Current date formatted as year-month-day (2-digit year)
-    - sequence: 3-digit zero-padded counter (001, 002, ...)
-    - Example: 'KM0330101260211001' = KM0330101 + 260211 + 001
+    - sequence: 2-digit zero-padded counter (01, 02, ...)
+    - Example: 'KM033010126021101' = KM0330101 + 260211 + 01
 
     Returns JSON with success flag and nomor_tiket preview string.
 
@@ -336,7 +336,7 @@ class PreviewNomorTiketAPIView(View):
             yymmdd = today.strftime('%y%m%d')
             nomor_tiket_prefix = f"{id_sub_jenis_data}{yymmdd}"
             count = Tiket.objects.filter(nomor_tiket__startswith=nomor_tiket_prefix).count()
-            sequence = str(count + 1).zfill(3)
+            sequence = str(count + 1).zfill(2)
             nomor_tiket = f"{nomor_tiket_prefix}{sequence}"
 
             return JsonResponse({'success': True, 'nomor_tiket': nomor_tiket})
@@ -528,12 +528,12 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
         """Generate unique tiket number based on sub jenis data and current date.
 
         Format: <id_sub_jenis_data><YYMMDD><sequence>
-        Example: KM0330101 + 260211 + 001 = KM0330101260211001
+        Example: KM0330101 + 260211 + 01 = KM033010126021101 (17 chars)
 
         Algorithm:
         1. Create prefix from id_sub_jenis_data + YYMMDD
         2. Count existing tikets with same prefix
-        3. Calculate sequence as count + 1, zero-padded to 3 digits
+        3. Calculate sequence as count + 1, zero-padded to 2 digits
 
         Args:
         - id_sub_jenis_data: Sub jenis data ID (e.g., 'KM0330101')
@@ -548,7 +548,7 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
         yymmdd = today.strftime('%y%m%d')
         nomor_tiket_prefix = f"{id_sub_jenis_data}{yymmdd}"
         count = Tiket.objects.filter(nomor_tiket__startswith=nomor_tiket_prefix).count()
-        sequence = str(count + 1).zfill(3)
+        sequence = str(count + 1).zfill(2)
         return f"{nomor_tiket_prefix}{sequence}"
 
     def _set_durasi_fields(self, periode_jenis_data, today):

@@ -17,7 +17,7 @@ class Tiket(models.Model):
     ]
 
     id = models.AutoField(primary_key=True, verbose_name="ID")
-    nomor_tiket = models.CharField(max_length=17, verbose_name="Nomor Tiket")
+    nomor_tiket = models.CharField(max_length=17, unique=True, verbose_name="Nomor Tiket")
     old_db = models.BooleanField(default=False, verbose_name="Old DB")
     status_tiket = models.IntegerField(choices=STATUS_CHOICES, verbose_name="Status Tiket")
     id_periode_data = models.ForeignKey(
