@@ -4,11 +4,26 @@ from datetime import datetime
 from django.core.exceptions import ValidationError
 
 
+def normalize_server_datetime(value):
+    """Return a naive datetime in server local time.
+
+    The project uses server time (naive datetimes) for validation and
+    comparisons. If *value* is timezone-aware, convert it to server local
+    time and drop timezone information.
+    """
+    if value is None:
+        return value
+
+    if value.tzinfo is not None:
+        return value.astimezone().replace(tzinfo=None)
+
+    return value
+
+
 def validate_not_future_datetime(value, field_label="Tanggal/waktu"):
     """Raise ``ValidationError`` if *value* is a future datetime.
 
-    Compares *value* against the current server time. Handles both naive and
-    timezone-aware datetimes to support Django's timezone handling.
+    Compares *value* against the current server time using naive datetimes.
 
     Args:
         value: A :class:`datetime` object to validate.  ``None`` is
@@ -25,21 +40,8 @@ def validate_not_future_datetime(value, field_label="Tanggal/waktu"):
     if value is None:
         return value
     
-    # Handle timezone-aware datetimes properly
-    # Get current time with matching timezone awareness as value
-    from django.utils import timezone
-    
-    if value.tzinfo is not None:
-        now = timezone.now()
-    else:
-        now = datetime.now()
-    
-    # Ensure both are in the same timezone domain for comparison
-    # Django with USE_TZ=True may pass aware datetimes from form fields
-    if value.tzinfo is None and timezone.is_aware(now):
-        value = timezone.make_aware(value)
-    elif value.tzinfo is not None and timezone.is_naive(now):
-        now = timezone.make_aware(now)
+    value = normalize_server_datetime(value)
+    now = datetime.now()
     
     if value > now:
         raise ValidationError(

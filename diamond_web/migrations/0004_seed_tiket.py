@@ -77,16 +77,17 @@ ALL_SUB_JENIS_DATA = [
     "PD0060101", "PD0070101", "PD0080101", "PD0090101",
 ]
 
-# Map sub_jenis_data → typical periode values (matches PeriodePengiriman seeded)
+# Map sub_jenis_data → typical periode (month) values
+# All periode values represent month number (1-12) regardless of period type
 PERIODE_MAP = {
     "AS0010101": ("Bulanan",   list(range(1, 13))),
     "AS0010102": ("Triwulanan", [1, 2, 3, 4]),
-    "BI0010101": ("Harian",    list(range(1, 366))),
+    "BI0010101": ("Harian",    list(range(1, 13))),
     "BI0010102": ("Bulanan",   list(range(1, 13))),
     "BI0010201": ("Bulanan",   list(range(1, 13))),
-    "BU0010101": ("Mingguan",  list(range(1, 53))),
+    "BU0010101": ("Mingguan",  list(range(1, 13))),
     "BU0020101": ("Bulanan",   list(range(1, 13))),
-    "BU0030101": ("2 Mingguan", list(range(1, 27))),
+    "BU0030101": ("2 Mingguan", list(range(1, 13))),
     "EI0010101": ("Tahunan",   [1]),
     "EI0010102": ("Semester",  [1, 2]),
     "KM0330101": ("Bulanan",   list(range(1, 13))),
@@ -103,14 +104,14 @@ PERIODE_MAP = {
     "PD0010201": ("Triwulanan", [1, 2, 3, 4]),
     "PD0020101": ("Tahunan",   [1]),
     "PD0020201": ("Bulanan",   list(range(1, 13))),
-    "PD0030101": ("Mingguan",  list(range(1, 53))),
+    "PD0030101": ("Mingguan",  list(range(1, 13))),
     "PD0030201": ("Bulanan",   list(range(1, 13))),
     "PD0040101": ("Bulanan",   list(range(1, 13))),
     "PD0050101": ("Tahunan",   [1]),
     "PD0060101": ("Bulanan",   list(range(1, 13))),
     "PD0070101": ("Triwulanan", [1, 2, 3, 4]),
-    "PD0080101": ("Mingguan",  list(range(1, 53))),
-    "PD0090101": ("2 Mingguan", list(range(1, 27))),
+    "PD0080101": ("Mingguan",  list(range(1, 13))),
+    "PD0090101": ("2 Mingguan", list(range(1, 13))),
 }
 
 NAMA_PENGIRIM_POOL = [
@@ -300,13 +301,13 @@ def seed_tiket(apps, schema_editor):
 
             start_date, end_date = date_ranges[tahun]
 
-            # Generate nomor_tiket: {sub_id}{yymmdd}{seq:03d}
+            # Generate nomor_tiket: {sub_id}{yymmdd}{seq:02d} (17 chars)
             base_date = _random_date(start_date, end_date)
             yymmdd = base_date.strftime("%y%m%d")
             prefix = f"{sub_id}{yymmdd}"
             seq = nomor_counter.get(prefix, 0) + 1
             nomor_counter[prefix] = seq
-            nomor_tiket = f"{prefix}{str(seq).zfill(3)}"
+            nomor_tiket = f"{prefix}{str(seq).zfill(2)}"
 
             status = random.choice(statuses_pool)
 

@@ -1,7 +1,7 @@
 from django import forms
 from ..models.tiket import Tiket
 from .base import AutoRequiredFormMixin
-from ..utils import validate_not_future_datetime
+from ..utils import validate_not_future_datetime, normalize_server_datetime
 
 
 class RekamHasilPenelitianForm(AutoRequiredFormMixin, forms.ModelForm):
@@ -62,11 +62,8 @@ class RekamHasilPenelitianForm(AutoRequiredFormMixin, forms.ModelForm):
         value = self.cleaned_data.get('tgl_teliti')
         value = validate_not_future_datetime(value, "Tanggal Teliti")
         if value and self.instance and self.instance.tgl_terima_dip:
-            tgl_terima_dip = self.instance.tgl_terima_dip
-            # Strip timezone info for comparison if needed
-            if hasattr(tgl_terima_dip, 'tzinfo') and tgl_terima_dip.tzinfo is not None:
-                import django.utils.timezone as tz
-                tgl_terima_dip = tz.make_naive(tgl_terima_dip)
+            value = normalize_server_datetime(value)
+            tgl_terima_dip = normalize_server_datetime(self.instance.tgl_terima_dip)
             if value < tgl_terima_dip:
                 raise forms.ValidationError(
                     f'Tanggal Teliti tidak boleh sebelum Tanggal Terima DIP '

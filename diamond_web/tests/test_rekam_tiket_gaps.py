@@ -395,7 +395,7 @@ class TestTiketCreateMissingPIDEDurasi:
         from django.test import RequestFactory as RF
 
         rf = RF()
-        request = rf.post('/tiket/rekam/create/', {})
+        request = rf.post('/tiket/rekam/', {})
         request.user = admin
         request.session = {}
         request._messages = MagicMock()
@@ -457,7 +457,7 @@ class TestTiketCreateMissingPMDEDurasi:
         from django.test import RequestFactory as RF
 
         rf = RF()
-        request = rf.post('/tiket/rekam/create/', {})
+        request = rf.post('/tiket/rekam/', {})
         request.user = admin
         request.session = {}
         request._messages = MagicMock()
