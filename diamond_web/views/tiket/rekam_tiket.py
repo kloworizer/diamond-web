@@ -33,8 +33,6 @@ class ILAPPeriodeDataAPIView(View):
     """AJAX API endpoint to fetch available periode jenis data for an ILAP.
 
     Returns a JSON array of periode data entries that meet all active criteria:
-    - PIDE has active Durasi Jatuh Tempo (deadline duration)
-    - PMDE has active Durasi Jatuh Tempo
     - User has permission to access the ILAP (P3DE PICs only see their ILAPs)
 
     HTTP Method: GET
@@ -43,8 +41,6 @@ class ILAPPeriodeDataAPIView(View):
     Query Parameters:
     - Filters PeriodeJenisData by:
       * id_sub_jenis_data_ilap__id_ilap_id = ilap_id
-      * Active PIDE durasi (start_date <= today, end_date null or >= today)
-      * Active PMDE durasi (start_date <= today, end_date null or >= today)
     - Applies user access control via get_active_p3de_ilap_ids (non-admin users)
     - Uses select_related for optimization on ILAP, kategori, kategori_wilayah, jenis_tabel
 
@@ -66,12 +62,7 @@ class ILAPPeriodeDataAPIView(View):
             
             today = datetime.now().date()
             
-            # Get PIDE and PMDE groups
-            pide_group = Group.objects.get(name='user_pide')
-            pmde_group = Group.objects.get(name='user_pmde')
-            
-            # Get only valid PeriodeJenisData for the given ILAP with:
-            # 1. Active PIC P3DE
+            # Get only valid PeriodeJenisData for the given ILAP
             periode_data_list = PeriodeJenisData.objects.filter(
                 id_sub_jenis_data_ilap__id_ilap_id=ilap_id,
             )
@@ -367,7 +358,7 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
     - Tiket creation within transaction:
         - nomor_tiket auto-generated: <sub_jenis_data><YYMMDD><sequence>
         - status set to STATUS_DIREKAM
-        - id_durasi_jatuh_tempo_pide and _pmde assigned from PeriodeJenisData
+        - id_durasi_jatuh_tempo_pide and _pmde assigned from PeriodeJenisData (optional)
         - id_jenis_prioritas_data assigned if exists for year
         - tgl_diterima and tgl_mulai_data set from form
     - TiketAction created with DIREKAM action type (base timestamp)
@@ -378,8 +369,6 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
     - Signals triggered for tiket creation (may send notifications)
 
     Error Handling:
-    - Validates Durasi Jatuh Tempo exists for PIDE and PMDE (raises ValueError)
-    - Prevents creation if durasi not configured
     - Collects form errors and re-displays on failure
     """
     model = Tiket
@@ -425,7 +414,7 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
         Within transaction:
         1. Generate nomor_tiket based on sub_jenis_data and current date
         2. Set tiket.status to STATUS_DIREKAM
-        3. Assign durasi_jatuh_tempo from PeriodeJenisData (raises ValueError if missing)
+        3. Assign durasi_jatuh_tempo from PeriodeJenisData (optional, sets None if not found)
         4. Assign id_jenis_prioritas_data if exists for specified year
         5. Save tiket object
         6. Create TiketAction DIREKAM record (base timestamp)
@@ -434,7 +423,6 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
         9. Redirect to tiket detail page
 
         Raises:
-        - ValueError if Durasi Jatuh Tempo not configured for PIDE or PMDE
         - All exceptions caught and added to form errors for re-display
 
         Returns:
@@ -552,24 +540,20 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
         return f"{nomor_tiket_prefix}{sequence}"
 
     def _set_durasi_fields(self, periode_jenis_data, today):
-        """Assign durasi jatuh tempo (deadline) for PIDE and PMDE.
+        """Assign durasi jatuh tempo (deadline) for PIDE and PMDE if configured.
 
         Fetches active Durasi Jatuh Tempo records for both PIDE and PMDE groups
-        from the sub jenis data ilap, validating that both exist and are currently
-        active (start_date <= today and end_date null or >= today).
+        from the sub jenis data ilap. If no active durasi is found for a group,
+        the corresponding field is left as None (null) instead of blocking tiket
+        creation.
 
         Args:
         - periode_jenis_data: PeriodeJenisData object containing sub_jenis_data_ilap
         - today: date object for filtering active durations
 
         Side Effects:
-        - Sets self.object.id_durasi_jatuh_tempo_pide
-        - Sets self.object.id_durasi_jatuh_tempo_pmde
-
-        Raises:
-        - ValueError if PIDE durasi not found or not active
-        - ValueError if PMDE durasi not found or not active
-        - Error message includes data type name for debugging
+        - Sets self.object.id_durasi_jatuh_tempo_pide (or None if not configured)
+        - Sets self.object.id_durasi_jatuh_tempo_pmde (or None if not configured)
 
         Database Queries:
         - Filters DurasiJatuhTempo by seksi (PIDE/PMDE groups) and date range
@@ -584,12 +568,6 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
         ).filter(
             Q(end_date__isnull=True) | Q(start_date__lte=today, end_date__gte=today)
         ).first()
-        if not durasi_pide:
-            raise ValueError(
-                f"Durasi Jatuh Tempo PIDE (active) not found for data type: "
-                f"{periode_jenis_data.id_sub_jenis_data_ilap.nama_sub_jenis_data}. "
-                f"Please configure Durasi Jatuh Tempo for PIDE before creating tickets."
-            )
         self.object.id_durasi_jatuh_tempo_pide = durasi_pide
 
         durasi_pmde = periode_jenis_data.id_sub_jenis_data_ilap.durasijatuhtempo_set.filter(
@@ -597,12 +575,6 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
         ).filter(
             Q(end_date__isnull=True) | Q(start_date__lte=today, end_date__gte=today)
         ).first()
-        if not durasi_pmde:
-            raise ValueError(
-                f"Durasi Jatuh Tempo PMDE (active) not found for data type: "
-                f"{periode_jenis_data.id_sub_jenis_data_ilap.nama_sub_jenis_data}. "
-                f"Please configure Durasi Jatuh Tempo for PMDE before creating tickets."
-            )
         self.object.id_durasi_jatuh_tempo_pmde = durasi_pmde
 
     def _assign_tiket_pics(self, periode_jenis_data, today, base_time=None):
