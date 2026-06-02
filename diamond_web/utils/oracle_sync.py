@@ -643,17 +643,22 @@ HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
         where_clause="",
     ),
     # 7. PIC PIDE - Depends on jenis_data_ilap
+    # Oracle query returns (nm_tabel, nip_match, start_date).
+    # Rows are expanded by _expand_pic_pide_rows which looks up JenisDataILAP.nama_tabel_I
+    # matching nm_tabel to resolve id_sub_jenis_data values, adding ID_SUB_JENIS_DATA to each row.
     OracleSyncTableConfig(
         name="pic_pide",
         source_query="""
             SELECT
-                a.id_tabel id_sub_jenis_data,
+                distinct
+                a.nm_tabel,
                 b.nip_match,
                 DATE '2015-01-01' AS start_date
             FROM
                 PVPTD.ZA_REKAP_PEMBAGIAN_PIC_PIDE a
             JOIN PVPTD.ZA_REKAP_PIC_PIDE b
-            ON a.pic = b.nama_match
+                        ON
+                a.pic = b.nama_match
             WHERE
                 a.id_tabel IS NOT NULL
         """,
@@ -1280,12 +1285,9 @@ class OracleDataSyncService:
         self,
         source_rows: list[dict[str, Any]],
     ) -> tuple[list[dict[str, Any]], list[dict]]:
-        """Expand pic_pide source rows: one source row (id_jenis_data, nm_tabel_final, nip_match)
-        is expanded into one row per id_sub_jenis_data found in JenisDataILAP.
-
-        Lookup strategy:
-        1. Match JenisDataILAP by id_jenis_data.
-        2. If no match, fall back to matching by nama_tabel_I == nm_tabel_final.
+        """Expand pic_pide source rows: one source row (nm_tabel, nip_match, start_date)
+        is expanded into one row per id_sub_jenis_data found in JenisDataILAP where
+        nama_tabel_I matches nm_tabel.
 
         Rows where nip_match is NULL or no JenisDataILAP is found are recorded as skipped.
         """
@@ -1296,40 +1298,39 @@ class OracleDataSyncService:
         skipped: list[dict] = []
 
         for row_idx, row in enumerate(source_rows, 1):
-            id_jenis_data = row.get("ID_JENIS_DATA")
-            nm_tabel_final = row.get("NM_TABEL_FINAL")
+            nm_tabel = row.get("NM_TABEL")
             nip_match = row.get("NIP_MATCH")
 
             if not nip_match:
                 skipped.append({
                     "row_number": row_idx,
-                    "key": str(id_jenis_data or nm_tabel_final or "-"),
+                    "key": str(nm_tabel or "-"),
                     "reason": "NIP_MATCH bernilai NULL (tidak ada user PIC PIDE yang cocok)",
                 })
                 continue
 
-            # Primary lookup: match by id_jenis_data
+            if not nm_tabel:
+                skipped.append({
+                    "row_number": row_idx,
+                    "key": str(nip_match or "-"),
+                    "reason": "NM_TABEL bernilai NULL",
+                })
+                continue
+
+            # Lookup JenisDataILAP by nama_tabel_I matching nm_tabel
             jdi_ids = list(
                 JenisDataILAP.objects
-                .filter(id_jenis_data=id_jenis_data)
+                .filter(nama_tabel_I=nm_tabel)
                 .values_list("id_sub_jenis_data", flat=True)
             )
 
             if not jdi_ids:
-                # Fallback: match by nama_tabel_I
-                jdi_ids = list(
-                    JenisDataILAP.objects
-                    .filter(nama_tabel_I=nm_tabel_final)
-                    .values_list("id_sub_jenis_data", flat=True)
-                )
-
-            if not jdi_ids:
                 skipped.append({
                     "row_number": row_idx,
-                    "key": str(id_jenis_data or "-"),
+                    "key": str(nm_tabel or "-"),
                     "reason": (
-                        f"Tidak ditemukan JenisDataILAP untuk "
-                        f"id_jenis_data={id_jenis_data}, nm_tabel_final={nm_tabel_final}"
+                        f"Tidak ditemukan JenisDataILAP dengan "
+                        f"nama_tabel_I={nm_tabel}"
                     ),
                 })
                 continue
@@ -1531,6 +1532,12 @@ class OracleDataSyncService:
         # For pic_pmde: expand each source row (id_ilap, username) into one row per id_sub_jenis_data
         if cfg.name == "pic_pmde":
             source_rows, expansion_skipped = self._expand_pic_pmde_rows(source_rows)
+            skipped_rows_detail.extend(expansion_skipped)
+
+        # For pic_pide: expand each source row (nm_tabel, nip_match) into one row per id_sub_jenis_data
+        # matched by JenisDataILAP.nama_tabel_I == nm_tabel
+        if cfg.name == "pic_pide":
+            source_rows, expansion_skipped = self._expand_pic_pide_rows(source_rows)
             skipped_rows_detail.extend(expansion_skipped)
 
         # For durasi_jatuh_tempo_pmde: supplement oracle rows with default (durasi=90) rows
