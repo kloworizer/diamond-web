@@ -147,6 +147,16 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Active
             catatan=catatan
         )
 
+        # If tiket is set to SELESAI status (baris_lengkap == 0), also create a SELESAI action
+        if self.object.status_tiket == STATUS_SELESAI:
+            TiketAction.objects.create(
+                id_tiket=self.object,
+                id_user=self.request.user,
+                timestamp=now,
+                action=TiketActionType.SELESAI,
+                catatan='Tiket selesai diproses'
+            )
+
         # Check if AJAX request
         if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({'success': True})
