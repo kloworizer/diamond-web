@@ -680,9 +680,45 @@ HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
         match_fields=("id_sub_jenis_data_ilap", "id_user", "start_date"),
         where_clause="",
     ),
-    # 8. PIC PMDE - Depends on jenis_data_ilap (via id_ilap)
+    # 8. PIC PMDE - Depends on jenis_data_ilap
+    # Oracle query returns (nm_tabel, nip_match, start_date) from REF_TABEL_PMDE.
+    # Rows are expanded by _expand_pic_pide_rows which looks up JenisDataILAP.nama_tabel_I
+    # matching nm_tabel to resolve id_sub_jenis_data values, adding ID_SUB_JENIS_DATA to each row.
     OracleSyncTableConfig(
         name="pic_pmde",
+        source_query="""
+            SELECT
+                DISTINCT TABEL_I nm_tabel,
+                NIP_PIC nip_match,
+                DATE '2015-01-01' AS start_date
+            FROM
+                REF_TABEL_PMDE
+        """,
+        target_model_label="diamond_web.PIC",
+        target_key_field="id_sub_jenis_data_ilap",
+        source_key_column="ID_SUB_JENIS_DATA",
+        field_map={
+            "id_sub_jenis_data_ilap": "ID_SUB_JENIS_DATA",
+            "id_user": "NIP_MATCH",
+            "start_date": "START_DATE",
+        },
+        foreign_key_lookup_map={
+            "id_sub_jenis_data_ilap": "id_sub_jenis_data",
+            "id_user": "username",
+        },
+        derived_field_map={
+            "tipe": "pic_pmde_tipe",
+        },
+        match_fields=("id_sub_jenis_data_ilap", "id_user", "start_date"),
+        where_clause="",
+        source_connection="secondary",
+    ),
+    # 8b. PIC PMDE (ref table) - Depends on jenis_data_ilap (via id_ilap)
+    # Oracle query returns (id_ilap, username) from REF_PIC_ILAP_PMDE.
+    # Rows are expanded by _expand_pic_pmde_rows which resolves id_ilap → JenisDataILAP
+    # to find id_sub_jenis_data values, adding ID_SUB_JENIS_DATA to each row.
+    OracleSyncTableConfig(
+        name="pic_pmde_ref",
         source_query="""
             SELECT id_ilap, nip_pic username FROM REF_PIC_ILAP_PMDE
         """,
@@ -1529,15 +1565,22 @@ class OracleDataSyncService:
         errors: list[str] = []
         skipped_rows_detail: list[dict] = []
 
-        # For pic_pmde: expand each source row (id_ilap, username) into one row per id_sub_jenis_data
+        # For pic_pmde: expand each source row (nm_tabel, nip_match) into one row per id_sub_jenis_data
+        # matched by JenisDataILAP.nama_tabel_I == nm_tabel
         if cfg.name == "pic_pmde":
-            source_rows, expansion_skipped = self._expand_pic_pmde_rows(source_rows)
+            source_rows, expansion_skipped = self._expand_pic_pide_rows(source_rows)
             skipped_rows_detail.extend(expansion_skipped)
 
         # For pic_pide: expand each source row (nm_tabel, nip_match) into one row per id_sub_jenis_data
         # matched by JenisDataILAP.nama_tabel_I == nm_tabel
         if cfg.name == "pic_pide":
             source_rows, expansion_skipped = self._expand_pic_pide_rows(source_rows)
+            skipped_rows_detail.extend(expansion_skipped)
+
+        # For pic_pmde_ref: expand each source row (id_ilap, username) into one row per
+        # id_sub_jenis_data found in JenisDataILAP for that id_ilap
+        if cfg.name == "pic_pmde_ref":
+            source_rows, expansion_skipped = self._expand_pic_pmde_rows(source_rows)
             skipped_rows_detail.extend(expansion_skipped)
 
         # For durasi_jatuh_tempo_pmde: supplement oracle rows with default (durasi=90) rows
@@ -1560,7 +1603,7 @@ class OracleDataSyncService:
                 key_values.append(mapped["__sync_key__"])
             except ValueError as exc:
                 # For PMDE syncs and PIC syncs, skip rows with missing FK references instead of failing
-                if cfg.name in ("jenis_prioritas_data", "durasi_jatuh_tempo_pmde", "pic_p3de", "pic_pide", "pic_pmde") and "referensi" in str(exc):
+                if cfg.name in ("jenis_prioritas_data", "durasi_jatuh_tempo_pmde", "pic_p3de", "pic_pide", "pic_pmde", "pic_pmde_ref") and "referensi" in str(exc):
                     row_key = source_row.get(cfg.source_key_column.upper()) if isinstance(source_row, dict) else None
                     skipped_rows_detail.append({
                         'row_number': row_idx,
