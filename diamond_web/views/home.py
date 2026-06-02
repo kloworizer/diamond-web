@@ -13,6 +13,9 @@ from diamond_web.constants.tiket_status import (
     STATUS_DIREKAM,
     STATUS_DITELITI,
     STATUS_DIKEMBALIKAN,
+    STATUS_DIKIRIM_KE_PIDE,
+    STATUS_IDENTIFIKASI,
+    STATUS_PENGENDALIAN_MUTU,
 )
 
 @login_required
@@ -82,8 +85,30 @@ def home(request):
         }
     if is_pide:
         context['tiket_summary_pide'] = get_tiket_summary_for_user_pide(request.user)
+        pide_pic = TiketPIC.objects.filter(id_user=request.user, role=TiketPIC.Role.PIDE, active=True)
+        pide_tiket_ids = pide_pic.values_list('id_tiket', flat=True)
+
+        context['pide_tiket_categories'] = {
+            'belum_mulai_proses_identifikasi': Tiket.objects.filter(
+                id__in=pide_tiket_ids,
+                status_tiket=STATUS_DIKIRIM_KE_PIDE
+            ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian').order_by('-id'),
+            'dalam_proses_identifikasi': Tiket.objects.filter(
+                id__in=pide_tiket_ids,
+                status_tiket=STATUS_IDENTIFIKASI
+            ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian').order_by('-id'),
+        }
     if is_pmde:
         context['tiket_summary_pmde'] = get_tiket_summary_for_user_pmde(request.user)
+        pmde_pic = TiketPIC.objects.filter(id_user=request.user, role=TiketPIC.Role.PMDE, active=True)
+        pmde_tiket_ids = pmde_pic.values_list('id_tiket', flat=True)
+
+        context['pmde_tiket_categories'] = {
+            'dalam_proses_pengendalian_mutu': Tiket.objects.filter(
+                id__in=pmde_tiket_ids,
+                status_tiket=STATUS_PENGENDALIAN_MUTU
+            ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian').order_by('-id'),
+        }
     if settings.DEBUG:
         groups = Group.objects.filter(name__in=['user_p3de', 'user_pide', 'user_pmde']).prefetch_related('user_set')
         debug_groups = {}

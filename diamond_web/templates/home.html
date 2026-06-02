@@ -21,7 +21,7 @@
             </div>
             <div class="content-sidebar-body">
                 <!-- Tiket Status Categories for P3DE -->
-                <ul class="nav flex-column nxl-content-sidebar-item" id="tiketFilterMenu">
+                <ul class="nav flex-column nxl-content-sidebar-item">
                     <li class="nav-item">
                         <a class="nav-link tiket-filter-link active" href="javascript:void(0);" data-filter="belum_rekam_backup_data">
                             <i class="feather-database"></i>
@@ -69,7 +69,49 @@
                     </li>
                 </ul>
             </div>
-            {% else %}
+            {% endif %}
+            {% if is_pide %}
+            <div class="content-sidebar-body">
+                <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">PIDE - Identifikasi</h6> -->
+                <ul class="nav flex-column nxl-content-sidebar-item">
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link {% if not is_p3de %}active{% endif %}" href="javascript:void(0);" data-filter="belum_mulai_proses_identifikasi">
+                            <i class="feather-clock"></i>
+                            <span>Belum Mulai Proses Identifikasi</span>
+                            {% if pide_tiket_categories.belum_mulai_proses_identifikasi %}
+                            <span class="badge bg-warning ms-auto">{{ pide_tiket_categories.belum_mulai_proses_identifikasi|length }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="dalam_proses_identifikasi">
+                            <i class="feather-search"></i>
+                            <span>Dalam Proses Identifikasi</span>
+                            {% if pide_tiket_categories.dalam_proses_identifikasi %}
+                            <span class="badge bg-info ms-auto">{{ pide_tiket_categories.dalam_proses_identifikasi|length }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            {% endif %}
+            {% if is_pmde %}
+            <div class="content-sidebar-body">
+                <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">PMDE - Pengendalian Mutu</h6> -->
+                <ul class="nav flex-column nxl-content-sidebar-item">
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link {% if not is_p3de and not is_pide %}active{% endif %}" href="javascript:void(0);" data-filter="dalam_proses_pengendalian_mutu">
+                            <i class="feather-shield"></i>
+                            <span>Dalam Proses Pengendalian Mutu</span>
+                            {% if pmde_tiket_categories.dalam_proses_pengendalian_mutu %}
+                            <span class="badge bg-primary ms-auto">{{ pmde_tiket_categories.dalam_proses_pengendalian_mutu|length }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            {% endif %}
+            {% if not is_p3de and not is_pide and not is_pmde %}
             <div class="content-sidebar-header">
                 <a href="javascript:void(0);" class="btn btn-primary w-100">
                     <i class="feather-plus me-2"></i>
@@ -130,6 +172,7 @@
 
             {% if is_p3de %}
             <div class="content-area-body">
+                <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">P3DE - Tugas</h6> -->
                 <!-- Belum Rekam Backup Data -->
                 <div class="card stretch stretch-full" data-category="belum_rekam_backup_data">
                     <div class="card-body custom-card-action p-0">
@@ -300,7 +343,118 @@
                     </div>
                 </div>
             </div>
-            {% else %}
+            {% endif %}
+            {% if is_pide %}
+            <div class="content-area-body">
+                <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">PIDE - Identifikasi</h6> -->
+                <!-- Belum Mulai Proses Identifikasi -->
+                <div class="card stretch stretch-full" data-category="belum_mulai_proses_identifikasi">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Nomor Tiket</th>
+                                        <th>Periode</th>
+                                        <th>Tahun</th>
+                                        <th>Bentuk Data</th>
+                                        <th>Tgl Terima DIP</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for tiket in pide_tiket_categories.belum_mulai_proses_identifikasi %}
+                                    <tr>
+                                        <td>{{ tiket.nomor_tiket }}</td>
+                                        <td>{{ tiket.periode }}</td>
+                                        <td>{{ tiket.tahun }}</td>
+                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
+                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dalam Proses Identifikasi -->
+                <div class="card stretch stretch-full" data-category="dalam_proses_identifikasi" style="display:none;">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Nomor Tiket</th>
+                                        <th>Periode</th>
+                                        <th>Tahun</th>
+                                        <th>Bentuk Data</th>
+                                        <th>Tgl Terima DIP</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for tiket in pide_tiket_categories.dalam_proses_identifikasi %}
+                                    <tr>
+                                        <td>{{ tiket.nomor_tiket }}</td>
+                                        <td>{{ tiket.periode }}</td>
+                                        <td>{{ tiket.tahun }}</td>
+                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
+                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% if is_pmde %}
+            <div class="content-area-body">
+                <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">PMDE - Pengendalian Mutu</h6> -->
+                <!-- Dalam Proses Pengendalian Mutu -->
+                <div class="card stretch stretch-full" data-category="dalam_proses_pengendalian_mutu">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Nomor Tiket</th>
+                                        <th>Periode</th>
+                                        <th>Tahun</th>
+                                        <th>Bentuk Data</th>
+                                        <th>Tgl Terima DIP</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for tiket in pmde_tiket_categories.dalam_proses_pengendalian_mutu %}
+                                    <tr>
+                                        <td>{{ tiket.nomor_tiket }}</td>
+                                        <td>{{ tiket.periode }}</td>
+                                        <td>{{ tiket.tahun }}</td>
+                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
+                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% if not is_p3de and not is_pide and not is_pmde %}
             <div class="content-area-body">
                 <div class="card stretch stretch-full mb-3">
                     <div class="card-header d-flex align-items-center justify-content-between border-bottom">
