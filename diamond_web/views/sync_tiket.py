@@ -617,14 +617,42 @@ def sync_tiket_stop_check(request):
 
 
 def _make_aware_datetime(dt):
-    """Convert naive datetime to timezone-aware. Return None if dt is None."""
+    """Return a datetime safe for DB storage respecting USE_TZ setting.
+    
+    When USE_TZ=True: make naive datetimes timezone-aware.
+    When USE_TZ=False: ensure datetimes are naive (strip tz if present).
+    Returns None if dt is None.
+    """
     if dt is None:
         return None
     if isinstance(dt, datetime):
-        if timezone.is_naive(dt):
-            return timezone.make_aware(dt)
-        return dt
+        from django.conf import settings
+        if settings.USE_TZ:
+            if timezone.is_naive(dt):
+                return timezone.make_aware(dt)
+            return dt
+        else:
+            # USE_TZ=False: must be naive for SQLite compatibility
+            if timezone.is_aware(dt):
+                return dt.replace(tzinfo=None)
+            return dt
     return dt
+
+
+def _ensure_naive_datetimes(data: dict) -> dict:
+    """Return a copy of *data* with all datetime values coerced to timezone-naive.
+    
+    Safe no-op when USE_TZ=True or when no datetime values are aware.
+    Use as a last line of defence before model construction / DB writes.
+    """
+    from django.conf import settings
+    if settings.USE_TZ:
+        return data
+    out = dict(data)
+    for k, v in out.items():
+        if isinstance(v, datetime) and timezone.is_aware(v):
+            out[k] = v.replace(tzinfo=None)
+    return out
 
 
 def _assign_tiket_pics_sync(tiket, periode_jenis_data, today, base_time, request, batch_size=100):
@@ -1180,7 +1208,7 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                     update_dict = {k: v for k, v in tiket_data.items() if k not in ('nomor_tiket', 'old_db')}
                     to_update.append((nomor_tiket, tiket_data, update_dict, periode_jenis_data_obj))
                 else:
-                    to_create.append(Tiket(**tiket_data))
+                    to_create.append(Tiket(**_ensure_naive_datetimes(tiket_data)))
             
             except Exception as e:
                 error_msg = str(e)[:150]
@@ -1211,7 +1239,8 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                     logger.warning(f"Bulk insert failed: {str(bulk_error)}, trying one-by-one...")
                     for tiket_obj in batch:
                         try:
-                            created = Tiket.objects.create(**{k: v for k, v in tiket_obj.__dict__.items() if not k.startswith('_')})
+                            safe_data = {k: v for k, v in tiket_obj.__dict__.items() if not k.startswith('_')}
+                            created = Tiket.objects.create(**_ensure_naive_datetimes(safe_data))
                             inserts += 1
                             if len(inserted_keys) < 5:
                                 inserted_keys.append(created.nomor_tiket)
@@ -1245,10 +1274,11 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
             for nomor_tiket, tiket_data, update_dict, periode_jenis_data_obj in to_update:
                 if nomor_tiket in existing_tikets:
                     tiket = existing_tikets[nomor_tiket]
-                    # Update fields except old_db
-                    for key, val in update_dict.items():
+                    # Update fields except old_db — ensure datetimes are naive
+                    safe_updates = _ensure_naive_datetimes(update_dict)
+                    for key, val in safe_updates.items():
                         setattr(tiket, key, val)
-                    tikets_to_save.append((nomor_tiket, tiket, update_dict))
+                    tikets_to_save.append((nomor_tiket, tiket, safe_updates))
             
             if tikets_to_save:
                 for i in range(0, len(tikets_to_save), BATCH_SIZE):
@@ -1266,7 +1296,8 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                         logger.warning(f"Bulk update failed: {str(bulk_error)}, trying one-by-one...")
                         for nomor_tiket, tiket_obj, upd_dict in batch:
                             try:
-                                for key, val in upd_dict.items():
+                                safe_updates = _ensure_naive_datetimes(upd_dict)
+                                for key, val in safe_updates.items():
                                     setattr(tiket_obj, key, val)
                                 tiket_obj.save()
                                 updates += 1
