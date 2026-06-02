@@ -302,7 +302,7 @@
             }
             resultDetails.innerHTML = details;
 
-            btnSync.disabled = (summary.inserts + summary.updates) === 0 || (summary.errors || []).length > 0;
+            btnSync.disabled = (summary.inserts + summary.updates) === 0;
         }
 
         function updateProgress(progressData) {
