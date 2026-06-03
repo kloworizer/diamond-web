@@ -16,6 +16,8 @@
     <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/vendors.min.css' %}" />
     <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/feather.min.css' %}" />
     <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/daterangepicker.min.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/select2.min.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/select2-theme.min.css' %}" />
     <link rel="stylesheet" type="text/css" href="{% static 'assets/css/theme.min.css' %}" />
 
     <!-- DataTables Bootstrap 5 CSS (kept for existing tables) -->
@@ -394,6 +396,36 @@
         }
     </style>
 
+    {# Select2 multi-select: prevent close button from overlapping text #}
+    <style>
+        .select2-selection--multiple .select2-selection__choice {
+            padding-right: 22px !important;
+            position: relative !important;
+        }
+        .select2-selection--multiple .select2-selection__choice__remove {
+            position: absolute !important;
+            right: 2px !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            border: none !important;
+            padding: 0 2px !important;
+            margin: 0 !important;
+            font-size: 16px !important;
+            line-height: 1 !important;
+        }
+        .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+            padding: 2px 20px 2px 6px !important;
+        }
+        /* Fix Select2 multi-select dropdown covering the search/typing area.
+           When tags are selected, the search input sits at the end of the tags;
+           the dropdown was overlapping it due to insufficient margin. */
+        .select2-container--bootstrap-5 .select2-dropdown--below {
+            margin-top: 16px !important;
+        }
+        .select2-container--bootstrap-5.select2-container--open .select2-dropdown--below {
+            border-top: 1px solid #e9ecef;
+        }
+    </style>
     {% block extra_head %}{% endblock %}
 </head>
 
@@ -431,14 +463,15 @@
     </main>
 
     <script src="{% static 'assets/vendors/js/vendors.min.js' %}"></script>
+    <!-- Load jQuery CDN before vendor plugins so they register on the correct jQuery instance -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="{% static 'assets/vendors/js/daterangepicker.min.js' %}"></script>
     <script src="{% static 'assets/vendors/js/apexcharts.min.js' %}"></script>
     <script src="{% static 'assets/vendors/js/circle-progress.min.js' %}"></script>
+    <script src="{% static 'assets/vendors/js/select2.min.js' %}"></script>
+    <script src="{% static 'assets/vendors/js/select2-active.min.js' %}"></script>
     <script src="{% static 'assets/js/common-init.min.js' %}"></script>
     <script src="{% static 'assets/js/theme-customizer-init.min.js' %}"></script>
-
-    <!-- jQuery and DataTables JS (kept for existing tables) -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="//cdn.datatables.net/2.3.6/js/dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/2.3.6/js/dataTables.bootstrap5.js"></script>
     <script>
