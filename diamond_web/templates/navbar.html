@@ -282,14 +282,23 @@
                 <a href="javascript:void(0);" id="menu-mini-button"><i class="feather-align-left"></i></a>
                 <a href="javascript:void(0);" id="menu-expend-button" style="display: none"><i class="feather-arrow-right"></i></a>
             </div>
+
+            {% if user|has_group:"admin_p3de" or user|has_group:"user_p3de" %}
+            <a href="{% url 'tiket_rekam_create' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1 ms-2 px-3 py-2">
+                <i class="feather-plus" style="font-size: 14px;"></i>
+                <span class="d-none d-sm-inline">Rekam Tiket</span>
+            </a>
+            {% endif %}
         </div>
 
         <div class="header-right ms-auto">
             <div class="d-flex align-items-center">
+                {% comment %}
                 <div class="nxl-h-item dark-light-theme">
                     <a href="javascript:void(0);" class="nxl-head-link me-0 dark-button"><i class="feather-moon"></i></a>
                     <a href="javascript:void(0);" class="nxl-head-link me-0 light-button" style="display: none"><i class="feather-sun"></i></a>
                 </div>
+                {% endcomment %}
 
                 {% if user.is_authenticated %}
                 <div class="dropdown nxl-h-item">
