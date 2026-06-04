@@ -7,7 +7,7 @@ from diamond_web.constants.tiket_status import (
 )
 
 
-def get_tiket_summary_for_user(user):
+def get_tiket_summary_for_user_p3de(user):
     """Return a compact summary of pending tiket actions for a P3DE user.
 
     Parameters
