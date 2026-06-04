@@ -4,12 +4,8 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.decorators.http import require_GET
 from django.views.generic import TemplateView
-from django.db.models import Q
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
 from django.urls import reverse
-from django.utils import timezone
-from datetime import timedelta
 
 from ...models.tiket import Tiket
 from ...models.tiket_pic import TiketPIC
@@ -136,7 +132,6 @@ def tiket_data(request):
         raw_periode_pengiriman = request.GET.get('periode_pengiriman', '')
         raw_periode_penerimaan = request.GET.get('periode_penerimaan', '')
         raw_status = request.GET.get('status', '')
-        raw_terlambat = request.GET.get('terlambat', '')
         
         filter_nomor_tiket = _split_filter_options(raw_nomor_tiket)
         filter_tahun = _split_filter_options(raw_tahun)
@@ -156,7 +151,6 @@ def tiket_data(request):
         filter_periode_pengiriman = _split_filter_options(raw_periode_pengiriman)
         filter_periode_penerimaan = _split_filter_options(raw_periode_penerimaan)
         filter_status = _split_filter_options(raw_status)
-        filter_terlambat = raw_terlambat.strip()
         
         # Build a fully filtered queryset based on ALL current selections (except each dropdown's own filter)
         # This ensures changing any dropdown dynamically narrows down the options in all others.
@@ -1002,26 +996,6 @@ def tiket_data(request):
             if sid is not None
         ]
 
-        # Compute terlambat options from filtered_qs
-        now = timezone.now()
-        late_conditions = Q()
-        for durasi_val in DurasiJatuhTempo.objects.values_list('durasi', flat=True).distinct():
-            if durasi_val is not None:
-                cutoff = now - timedelta(days=durasi_val)
-                late_conditions |= Q(
-                    id_durasi_jatuh_tempo_pide__durasi=durasi_val,
-                    tgl_terima_dip__isnull=False,
-                    tgl_terima_dip__lt=cutoff,
-                )
-        terlambat_options = []
-        if late_conditions:
-            has_ya = filtered_qs.filter(late_conditions).exists()
-            has_tidak = filtered_qs.exclude(late_conditions).exists()
-            if has_ya:
-                terlambat_options.append({'id': 'Ya', 'name': 'Ya'})
-            if has_tidak:
-                terlambat_options.append({'id': 'Tidak', 'name': 'Tidak'})
-
         return JsonResponse({
             'filter_options': {
                 'nomor_tiket': nomor_options,
@@ -1042,7 +1016,6 @@ def tiket_data(request):
                 'dasar_hukum': dasar_hukum_options,
                 'periode_pengiriman': periode_pengiriman_options,
                 'status': status_options,
-                'terlambat': terlambat_options,
             }
         })
 
@@ -1076,7 +1049,6 @@ def tiket_data(request):
     filter_jenis_tabel = _split(request.GET.get('jenis_tabel', ''))
     filter_dasar_hukum = _split(request.GET.get('dasar_hukum', ''))
     filter_periode_pengiriman = _split(request.GET.get('periode_pengiriman', ''))
-    filter_terlambat = request.GET.get('terlambat', '').strip()
     filter_tahun = _split(request.GET.get('tahun', ''))
     filter_status = _split(request.GET.get('status', ''))
 
@@ -1169,24 +1141,6 @@ def tiket_data(request):
             qs = qs.filter(status_tiket__in=int_statuses)
         else:
             qs = qs.none()
-
-    if filter_terlambat in ('Ya', 'Tidak'):
-        now = timezone.now()
-        # Build DB-level late filter by grouping on distinct durasi integer values.
-        # This avoids materializing the entire queryset into Python.
-        late_conditions = Q()
-        for durasi_val in DurasiJatuhTempo.objects.values_list('durasi', flat=True).distinct():
-            if durasi_val is not None:
-                cutoff = now - timedelta(days=durasi_val)
-                late_conditions |= Q(
-                    id_durasi_jatuh_tempo_pide__durasi=durasi_val,
-                    tgl_terima_dip__isnull=False,
-                    tgl_terima_dip__lt=cutoff,
-                )
-        if filter_terlambat == 'Ya':
-            qs = qs.filter(late_conditions) if late_conditions else qs.none()
-        else:  # 'Tidak'
-            qs = qs.exclude(late_conditions)
 
     qs = qs.distinct()
 

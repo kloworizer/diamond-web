@@ -157,14 +157,6 @@
                                 <option value="">-- Semua --</option>
                             </select>
                         </div>
-                        <div class="mb-2">
-                            <label for="filter-terlambat" class="form-label">Terlambat</label>
-                            <select class="form-select form-select-sm" id="filter-terlambat" name="terlambat" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                                <option value="Ya">Ya</option>
-                                <option value="Tidak">Tidak</option>
-                            </select>
-                        </div>
                     </div>
                 </div>
             </form>
@@ -249,7 +241,6 @@
                 dasar_hukum: '#filter-dasar-hukum',
                 periode_pengiriman: '#filter-periode-pengiriman',
                 periode_penerimaan: '#filter-periode-penerimaan',
-                terlambat: '#filter-terlambat',
                 status: '#filter-status'
             };
 
@@ -307,7 +298,6 @@
                 dasar_hukum: getMultiSelectValue('#filter-dasar-hukum'),
                 periode_pengiriman: getMultiSelectValue('#filter-periode-pengiriman'),
                 periode_penerimaan: getMultiSelectValue('#filter-periode-penerimaan'),
-                terlambat: getMultiSelectValue('#filter-terlambat'),
                 status: getMultiSelectValue('#filter-status')
             };
         }
@@ -357,8 +347,7 @@
                         'dasar_hukum': '#filter-dasar-hukum',
                         'periode_pengiriman': '#filter-periode-pengiriman',
                         'periode_penerimaan': '#filter-periode-penerimaan',
-                        'status': '#filter-status',
-                        'terlambat': '#filter-terlambat'
+                        'status': '#filter-status'
                     };
 
                     Object.entries(dropdownMap).forEach(([key, selector]) => {
@@ -427,7 +416,6 @@
                     updateDropdown('periode_pengiriman', '#filter-periode-pengiriman');
                     updateDropdown('periode_penerimaan', '#filter-periode-penerimaan');
                     updateDropdown('status', '#filter-status');
-                    updateDropdown('terlambat', '#filter-terlambat');
                 },
                 error: function () {
                     // Ensure Select2 is initialized even if AJAX fails
@@ -469,7 +457,6 @@
                         d.dasar_hukum = getMultiSelectValue('#filter-dasar-hukum');
                         d.periode_pengiriman = getMultiSelectValue('#filter-periode-pengiriman');
                         d.periode_penerimaan = getMultiSelectValue('#filter-periode-penerimaan');
-                        d.terlambat = getMultiSelectValue('#filter-terlambat');
                         d.status = getMultiSelectValue('#filter-status');
                         return d;
                     }
@@ -498,8 +485,7 @@
                     { targets: 0, visible: false, searchable: false },
                     { targets: 6, render: function (data, type, row, meta) { return data; } }
                 ],
-                order: [[0, 'asc']],
-                scrollX: true
+                order: [[0, 'asc']]
             });
 
             // Filter dropdowns — dynamic, reload on change
@@ -569,7 +555,6 @@
                     if (opts.periode_pengiriman) opts.periode_pengiriman.forEach(item => $('#filter-periode-pengiriman').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.periode_penerimaan) opts.periode_penerimaan.forEach(item => $('#filter-periode-penerimaan').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.status) opts.status.forEach(item => $('#filter-status').append(`<option value="${item.id}">${item.name}</option>`));
-                    if (opts.terlambat) opts.terlambat.forEach(item => $('#filter-terlambat').append(`<option value="${item.id}">${item.name}</option>`));
 
                     // Re-initialize Select2 on all filter selects
                     if (typeof $.fn.select2 === 'function') {
