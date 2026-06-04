@@ -11,25 +11,36 @@ from ..models.pic import PIC
 from ..forms.pic import PICForm
 from ..constants.tiket_action_types import PICActionType
 from ..constants.tiket_status import STATUS_DIBATALKAN
-from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, AdminPIDERequiredMixin, AdminPMDERequiredMixin, AdminAnyRequiredMixin, SafeDeleteMixin
+from .mixins import (
+    AjaxFormMixin,
+    AdminP3DERequiredMixin,
+    AdminPIDERequiredMixin,
+    AdminPMDERequiredMixin,
+    AdminAnyRequiredMixin,
+    UserP3DERequiredMixin,
+    UserPIDERequiredMixin,
+    UserPMDERequiredMixin,
+    SafeDeleteMixin,
+)
 
 
-class PICListView(LoginRequiredMixin, AdminAnyRequiredMixin, TemplateView):
+class PICListView(LoginRequiredMixin, TemplateView):
     """List view for `PIC` entries of a specific `tipe`.
 
-    Requires membership in any admin group (admin, admin_p3de, admin_pide, admin_pmde).
     Subclasses must set the `tipe` attribute to one of `PIC.TipePIC` values
-    (e.g. `PIC.TipePIC.P3DE`) and can further restrict with specific role mixins
-    (e.g., AdminP3DERequiredMixin). Renders `pic/list.html` by default and
-    provides the following context variables for templates:
+    (e.g. `PIC.TipePIC.P3DE`) and apply the appropriate access mixin
+    (e.g., `UserP3DERequiredMixin` for views that allow both admins and
+    regular P3DE users). Renders `pic/list.html` by default and provides
+    the following context variables for templates:
 
     - ``tipe``: raw stored `tipe` value
     - ``tipe_display``: human-readable label for the `tipe`
+    - ``is_admin``: boolean indicating if the user has an admin role for
+      this PIC type (controls visibility of CUD buttons)
 
     Access Control:
     - Requires @login_required (LoginRequiredMixin)
-    - Requires admin role (AdminAnyRequiredMixin) - blocks regular users from accessing base view
-    - Subclasses further restrict with specific admin roles (e.g., AdminP3DERequiredMixin)
+    - Concrete subclasses add role-specific mixins (e.g., UserP3DERequiredMixin)
 
     Behavior:
     - When redirected after a delete operation the view reads `deleted` and
@@ -49,7 +60,26 @@ class PICListView(LoginRequiredMixin, AdminAnyRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         context['tipe'] = self.tipe
         context['tipe_display'] = self.get_tipe_display()
+        context['is_admin'] = self.is_admin_user()
         return context
+
+    def is_admin_user(self):
+        """Return True if the current user has an admin role for this PIC type."""
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser or user.groups.filter(name='admin').exists():
+            return True
+        # Check type-specific admin group
+        admin_group_map = {
+            PIC.TipePIC.P3DE: 'admin_p3de',
+            PIC.TipePIC.PIDE: 'admin_pide',
+            PIC.TipePIC.PMDE: 'admin_pmde',
+        }
+        admin_group = admin_group_map.get(self.tipe)
+        if admin_group and user.groups.filter(name=admin_group).exists():
+            return True
+        return False
 
     def get(self, request, *args, **kwargs):
         # If redirected after delete, show success message from query params
@@ -573,7 +603,7 @@ class PICDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminAnyRequiredMixin, 
 
 
 # Concrete views for each PIC type
-class PICP3DEListView(AdminP3DERequiredMixin, PICListView):
+class PICP3DEListView(UserP3DERequiredMixin, PICListView):
     tipe = PIC.TipePIC.P3DE
     template_name = 'pic_p3de/list.html'  # Keep old template for backward compatibility
 
@@ -593,7 +623,7 @@ class PICP3DEDeleteView(AdminP3DERequiredMixin, PICDeleteView):
     template_name = 'pic_p3de/confirm_delete.html'
 
 
-class PICPIDEListView(AdminPIDERequiredMixin, PICListView):
+class PICPIDEListView(UserPIDERequiredMixin, PICListView):
     tipe = PIC.TipePIC.PIDE
     template_name = 'pic_pide/list.html'
 
@@ -613,7 +643,7 @@ class PICPIDEDeleteView(AdminPIDERequiredMixin, PICDeleteView):
     template_name = 'pic_pide/confirm_delete.html'
 
 
-class PICPMDEListView(AdminPMDERequiredMixin, PICListView):
+class PICPMDEListView(UserPMDERequiredMixin, PICListView):
     tipe = PIC.TipePIC.PMDE
     template_name = 'pic_pmde/list.html'
 
@@ -634,6 +664,24 @@ class PICPMDEDeleteView(AdminPMDERequiredMixin, PICDeleteView):
 
 
 # DataTables server-side processing
+def _is_data_admin(request, tipe):
+    """Return True if the requesting user has admin access for this PIC type."""
+    user = request.user
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser or user.groups.filter(name='admin').exists():
+        return True
+    admin_group_map = {
+        PIC.TipePIC.P3DE: 'admin_p3de',
+        PIC.TipePIC.PIDE: 'admin_pide',
+        PIC.TipePIC.PMDE: 'admin_pmde',
+    }
+    admin_group = admin_group_map.get(tipe)
+    if admin_group and user.groups.filter(name=admin_group).exists():
+        return True
+    return False
+
+
 def _pic_data_common(request, tipe):
     """Common DataTables server-side endpoint for `PIC` objects.
 
@@ -646,13 +694,15 @@ def _pic_data_common(request, tipe):
     Returns JSON with the standard DataTables fields: `draw`,
     `recordsTotal`, `recordsFiltered`, and `data` (list of rows). Each row
     contains: `id`, `sub_jenis_data_ilap`, `user`, `start_date`, `end_date`,
-    and `actions` HTML for edit/delete buttons. Permission checks are not
-    enforced here; callers should wrap this function with appropriate
-    decorators to restrict access.
+    and `actions` HTML for edit/delete buttons (only for admin users).
+    Permission checks are not enforced here; callers should wrap this
+    function with appropriate decorators to restrict access.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
+
+    is_admin = _is_data_admin(request, tipe)
 
     qs = PIC.objects.filter(tipe=tipe).select_related('id_sub_jenis_data_ilap', 'id_user').all()
     records_total = qs.count()
@@ -715,17 +765,24 @@ def _pic_data_common(request, tipe):
         if not user_display:
             user_display = obj.id_user.username
         
-        data.append({
+        row = {
             'id': obj.id,
             'sub_jenis_data_ilap': obj.id_sub_jenis_data_ilap.nama_sub_jenis_data,
             'user': user_display,
             'start_date': obj.start_date.strftime('%Y-%m-%d') if obj.start_date else '',
             'end_date': obj.end_date.strftime('%Y-%m-%d') if obj.end_date else '',
-            'actions': (
+        }
+        
+        # Only include action buttons for admin users
+        if is_admin:
+            row['actions'] = (
                 f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse(update_url_name, args=[obj.pk])}' title='Edit'><i class='feather-edit'></i></button>"
                 f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse(delete_url_name, args=[obj.pk])}' title='Delete'><i class='feather-trash-2'></i></button>"
-            ),
-        })
+            )
+        else:
+            row['actions'] = ''
+        
+        data.append(row)
 
     return JsonResponse({
         'draw': draw,
@@ -736,36 +793,39 @@ def _pic_data_common(request, tipe):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de']).exists())
 @require_GET
 def pic_p3de_data(request):
     """DataTables endpoint for P3DE `PIC` rows.
 
-    Permissions: user must be logged in and a member of `admin` or
-    `admin_p3de`. Returns the same JSON shape as `_pic_data_common`.
+    Permissions: user must be logged in and a member of `admin`,
+    `admin_p3de`, or `user_p3de`. Returns the same JSON shape as
+    `_pic_data_common`. Action buttons are only included for admin users.
     """
     return _pic_data_common(request, PIC.TipePIC.P3DE)
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pide']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pide', 'user_pide']).exists())
 @require_GET
 def pic_pide_data(request):
     """DataTables endpoint for PIDE `PIC` rows.
 
-    Permissions: user must be logged in and a member of `admin` or
-    `admin_pide`. Returns the same JSON shape as `_pic_data_common`.
+    Permissions: user must be logged in and a member of `admin`,
+    `admin_pide`, or `user_pide`. Returns the same JSON shape as
+    `_pic_data_common`. Action buttons are only included for admin users.
     """
     return _pic_data_common(request, PIC.TipePIC.PIDE)
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde', 'user_pmde']).exists())
 @require_GET
 def pic_pmde_data(request):
     """DataTables endpoint for PMDE `PIC` rows.
 
-    Permissions: user must be logged in and a member of `admin` or
-    `admin_pmde`. Returns the same JSON shape as `_pic_data_common`.
+    Permissions: user must be logged in and a member of `admin`,
+    `admin_pmde`, or `user_pmde`. Returns the same JSON shape as
+    `_pic_data_common`. Action buttons are only included for admin users.
     """
     return _pic_data_common(request, PIC.TipePIC.PMDE)
