@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
 
-
 {% block content %}
 <div class="page-header">
         <div class="page-header-left d-flex align-items-center">
@@ -33,162 +32,158 @@
     </div>
 
     <div class="main-content">
-    <div class="row g-3">
-        <div class="col-12 col-xl-2">
-            <div class="card stretch stretch-full h-100">
-                <div class="card-header">
-                    <h5 class="mb-0">Filter Data</h5>
-                </div>
-                <div class="card-body">
-                    <form id="filter-form" class="row g-2">
-                {% csrf_token %}
-                <div class="col-12 mb-2">
-                    <button type="reset" class="btn btn-secondary btn-sm w-100" id="btn-reset-filter"><i class="feather-refresh-cw me-1"></i>Reset</button>
-                </div>
-                <div class="col-12">
-                    <label for="filter-status" class="form-label">Status Tiket</label>
-                    <select class="form-select form-select-sm" id="filter-status" name="status">
-                        <option value="">-- Semua --</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label for="filter-nomor-tiket" class="form-label">Nomor Tiket</label>
-                    <select class="form-select form-select-sm" id="filter-nomor-tiket" name="nomor_tiket">
-                        <option value="">-- Semua --</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label for="filter-tahun" class="form-label">Tahun</label>
-                    <select class="form-select form-select-sm" id="filter-tahun" name="tahun">
-                        <option value="">-- Semua --</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label for="filter-periode" class="form-label">Periode</label>
-                    <select class="form-select form-select-sm" id="filter-periode" name="periode">
-                        <option value="">-- Semua --</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label for="filter-pic-p3de" class="form-label">PIC P3DE</label>
-                    <select class="form-select form-select-sm" id="filter-pic-p3de" name="pic_p3de">
-                        <option value="">-- Semua --</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label for="filter-pic-pide" class="form-label">PIC PIDE</label>
-                    <select class="form-select form-select-sm" id="filter-pic-pide" name="pic_pide">
-                        <option value="">-- Semua --</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label for="filter-pic-pmde" class="form-label">PIC PMDE</label>
-                    <select class="form-select form-select-sm" id="filter-pic-pmde" name="pic_pmde">
-                        <option value="">-- Semua --</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label for="filter-kategori-ilap" class="form-label">Kategori ILAP</label>
-                    <select class="form-select form-select-sm" id="filter-kategori-ilap" name="kategori_ilap">
-                        <option value="">-- Semua --</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label for="filter-ilap" class="form-label">ILAP</label>
-                    <select class="form-select form-select-sm" id="filter-ilap" name="ilap">
-                        <option value="">-- Semua --</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label for="filter-jenis-data" class="form-label">Jenis Data</label>
-                    <select class="form-select form-select-sm" id="filter-jenis-data" name="jenis_data">
-                        <option value="">-- Semua --</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label for="filter-sub-jenis-data" class="form-label">Sub Jenis Data</label>
-                    <select class="form-select form-select-sm" id="filter-sub-jenis-data" name="sub_jenis_data">
-                        <option value="">-- Semua --</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label for="filter-kanwil" class="form-label">Kanwil</label>
-                    <select class="form-select form-select-sm" id="filter-kanwil" name="kanwil">
-                        <option value="">-- Semua --</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label for="filter-kpp" class="form-label">KPP</label>
-                    <select class="form-select form-select-sm" id="filter-kpp" name="kpp">
-                        <option value="">-- Semua --</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label for="filter-kategori-wilayah" class="form-label">Kategori Wilayah</label>
-                    <select class="form-select form-select-sm" id="filter-kategori-wilayah" name="kategori_wilayah">
-                        <option value="">-- Semua --</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label for="filter-jenis-tabel" class="form-label">Jenis Tabel</label>
-                    <select class="form-select form-select-sm" id="filter-jenis-tabel" name="jenis_tabel">
-                        <option value="">-- Semua --</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label for="filter-dasar-hukum" class="form-label">Dasar Hukum</label>
-                    <select class="form-select form-select-sm" id="filter-dasar-hukum" name="dasar_hukum">
-                        <option value="">-- Semua --</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label for="filter-periode-pengiriman" class="form-label">Periode Pengiriman</label>
-                    <select class="form-select form-select-sm" id="filter-periode-pengiriman" name="periode_pengiriman">
-                        <option value="">-- Semua --</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label for="filter-periode-penerimaan" class="form-label">Periode Penerimaan</label>
-                    <select class="form-select form-select-sm" id="filter-periode-penerimaan" name="periode_penerimaan">
-                        <option value="">-- Semua --</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label for="filter-terlambat" class="form-label">Terlambat</label>
-                    <select class="form-select form-select-sm" id="filter-terlambat" name="terlambat">
-                        <option value="">-- Semua --</option>
-                        <option value="Ya">Ya</option>
-                        <option value="Tidak">Tidak</option>
-                    </select>
-                </div>
-            </form>
-                </div>
-            </div>
+    <!-- Filter card above table with 3 internal columns -->
+    <div class="card mb-3">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <h5 class="mb-0"><i class="feather-filter me-2"></i>Filter Data</h5>
+            <button type="reset" class="btn btn-secondary btn-sm" id="btn-reset-filter"><i class="feather-refresh-cw me-1"></i>Reset</button>
         </div>
-
-        <div class="col-12 col-xl-10">
-            <div class="card stretch stretch-full h-100">
-                <div class="card-header d-flex align-items-center">
-                    <h5 class="card-title mb-0"><i class="feather-list me-2"></i>Daftar Tiket</h5>
-                </div>
-                <div class="card-body custom-card-action p-0">
-                    <div class="table-responsive">
-                    <table id="tiket-table" class="table table-hover mb-0" style="width:100%">
-                        <thead>
-                            <tr>
-                                <th class="d-none">ID</th>
-                                <th>Nomor Tiket</th>
-                                <th>ILAP</th>
-                                <th>Jenis Data</th>
-                                <th>Periode</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
+        <div class="card-body">
+            <form id="filter-form">
+                {% csrf_token %}
+                <div class="row g-2">
+                    <div class="col-12">
+                        <div class="mb-2">
+                            <label for="filter-nomor-tiket" class="form-label">Nomor Tiket</label>
+                            <select class="form-select form-select-sm" id="filter-nomor-tiket" name="nomor_tiket" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-2">
+                            <label for="filter-status" class="form-label">Status Tiket</label>
+                            <select class="form-select form-select-sm" id="filter-status" name="status" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-tahun" class="form-label">Tahun</label>
+                            <select class="form-select form-select-sm" id="filter-tahun" name="tahun" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-periode" class="form-label">Periode</label>
+                            <select class="form-select form-select-sm" id="filter-periode" name="periode" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-pic-p3de" class="form-label">PIC P3DE</label>
+                            <select class="form-select form-select-sm" id="filter-pic-p3de" name="pic_p3de" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-pic-pide" class="form-label">PIC PIDE</label>
+                            <select class="form-select form-select-sm" id="filter-pic-pide" name="pic_pide" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-pic-pmde" class="form-label">PIC PMDE</label>
+                            <select class="form-select form-select-sm" id="filter-pic-pmde" name="pic_pmde" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-2">
+                            <label for="filter-kategori-ilap" class="form-label">Kategori ILAP</label>
+                            <select class="form-select form-select-sm" id="filter-kategori-ilap" name="kategori_ilap" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-ilap" class="form-label">ILAP</label>
+                            <select class="form-select form-select-sm" id="filter-ilap" name="ilap" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-jenis-data" class="form-label">Jenis Data</label>
+                            <select class="form-select form-select-sm" id="filter-jenis-data" name="jenis_data" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-sub-jenis-data" class="form-label">Sub Jenis Data</label>
+                            <select class="form-select form-select-sm" id="filter-sub-jenis-data" name="sub_jenis_data" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-kanwil" class="form-label">Kanwil</label>
+                            <select class="form-select form-select-sm" id="filter-kanwil" name="kanwil" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-kpp" class="form-label">KPP</label>
+                            <select class="form-select form-select-sm" id="filter-kpp" name="kpp" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-2">
+                            <label for="filter-kategori-wilayah" class="form-label">Kategori Wilayah</label>
+                            <select class="form-select form-select-sm" id="filter-kategori-wilayah" name="kategori_wilayah" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-jenis-tabel" class="form-label">Jenis Tabel</label>
+                            <select class="form-select form-select-sm" id="filter-jenis-tabel" name="jenis_tabel" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-dasar-hukum" class="form-label">Dasar Hukum</label>
+                            <select class="form-select form-select-sm" id="filter-dasar-hukum" name="dasar_hukum" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-periode-pengiriman" class="form-label">Periode Pengiriman</label>
+                            <select class="form-select form-select-sm" id="filter-periode-pengiriman" name="periode_pengiriman" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-periode-penerimaan" class="form-label">Periode Penerimaan</label>
+                            <select class="form-select form-select-sm" id="filter-periode-penerimaan" name="periode_penerimaan" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Table card -->
+    <div class="card">
+        <div class="card-header d-flex align-items-center">
+            <h5 class="card-title mb-0"><i class="feather-list me-2"></i>Daftar Tiket</h5>
+        </div>
+        <div class="card-body custom-card-action p-0">
+            <div class="table-responsive">
+                <table id="tiket-table" class="table table-hover mb-0" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th class="d-none">ID</th>
+                            <th>Nomor Tiket</th>
+                            <th>ILAP</th>
+                            <th>Jenis Data</th>
+                            <th>Periode</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -202,6 +197,12 @@
         const urlParams = new URLSearchParams(window.location.search);
         let table;
         let initialFiltersApplied = false;
+
+        // Helper: get comma-separated string from multi-select (or empty string if none selected)
+        function getMultiSelectValue(selector) {
+            const val = $(selector).val();
+            return (val && val.length > 0) ? val.join(',') : '';
+        }
 
         function normalizePeriodeParam() {
             const periodeValue = (urlParams.get('periode') || '').trim();
@@ -240,32 +241,39 @@
                 dasar_hukum: '#filter-dasar-hukum',
                 periode_pengiriman: '#filter-periode-pengiriman',
                 periode_penerimaan: '#filter-periode-penerimaan',
-                terlambat: '#filter-terlambat',
                 status: '#filter-status'
             };
 
             let hasInitialFilter = false;
 
             Object.entries(paramToSelectMap).forEach(([param, selector]) => {
-                const value = (urlParams.get(param) || '').trim();
-                if (!value) return;
+                const raw = (urlParams.get(param) || '').trim();
+                if (!raw) return;
+                // Support comma-separated values in URL params
+                const values = raw.split(',').map(function(v) { return v.trim(); }).filter(function(v) { return v; });
+                if (values.length === 0) return;
                 hasInitialFilter = true;
 
                 const $select = $(selector);
-                if ($select.find(`option[value="${value}"]`).length === 0) {
-                    $select.append(`<option value="${value}">${value}</option>`);
-                }
-                $select.val(value);
+                values.forEach(function(v) {
+                    if ($select.find('option[value="' + v + '"]').length === 0) {
+                        $select.append('<option value="' + v + '">' + v + '</option>');
+                    }
+                });
+                $select.val(values).trigger('change');
             });
 
             const periodeValue = normalizePeriodeParam();
             if (periodeValue) {
                 hasInitialFilter = true;
                 const $periode = $('#filter-periode');
-                if ($periode.find(`option[value="${periodeValue}"]`).length === 0) {
-                    $periode.append(`<option value="${periodeValue}">${periodeValue}</option>`);
-                }
-                $periode.val(periodeValue);
+                const pValues = periodeValue.split(',').map(function(v) { return v.trim(); }).filter(function(v) { return v; });
+                pValues.forEach(function(v) {
+                    if ($periode.find('option[value="' + v + '"]').length === 0) {
+                        $periode.append('<option value="' + v + '">' + v + '</option>');
+                    }
+                });
+                $periode.val(pValues).trigger('change');
             }
 
             return hasInitialFilter;
@@ -273,11 +281,39 @@
 
         function getCurrentFilterValues() {
             return {
-                tahun: $('#filter-tahun').val() || '',
-                kategori_ilap: $('#filter-kategori-ilap').val() || '',
-                ilap: $('#filter-ilap').val() || '',
-                jenis_data: $('#filter-jenis-data').val() || ''
+                nomor_tiket: getMultiSelectValue('#filter-nomor-tiket'),
+                tahun: getMultiSelectValue('#filter-tahun'),
+                periode: getMultiSelectValue('#filter-periode'),
+                pic_p3de: getMultiSelectValue('#filter-pic-p3de'),
+                pic_pide: getMultiSelectValue('#filter-pic-pide'),
+                pic_pmde: getMultiSelectValue('#filter-pic-pmde'),
+                kategori_ilap: getMultiSelectValue('#filter-kategori-ilap'),
+                ilap: getMultiSelectValue('#filter-ilap'),
+                jenis_data: getMultiSelectValue('#filter-jenis-data'),
+                sub_jenis_data: getMultiSelectValue('#filter-sub-jenis-data'),
+                kanwil: getMultiSelectValue('#filter-kanwil'),
+                kpp: getMultiSelectValue('#filter-kpp'),
+                kategori_wilayah: getMultiSelectValue('#filter-kategori-wilayah'),
+                jenis_tabel: getMultiSelectValue('#filter-jenis-tabel'),
+                dasar_hukum: getMultiSelectValue('#filter-dasar-hukum'),
+                periode_pengiriman: getMultiSelectValue('#filter-periode-pengiriman'),
+                periode_penerimaan: getMultiSelectValue('#filter-periode-penerimaan'),
+                status: getMultiSelectValue('#filter-status')
             };
+        }
+
+        function initSelect2() {
+            if (typeof $.fn.select2 !== 'function') return;
+            $('#filter-form select').each(function () {
+                if (!$(this).hasClass('select2-hidden-accessible')) {
+                    $(this).select2({
+                        theme: 'bootstrap-5',
+                        closeOnSelect: false,
+                        placeholder: '-- Pilih --',
+                        allowClear: true
+                    });
+                }
+            });
         }
 
         function updateDynamicDropdowns() {
@@ -318,12 +354,18 @@
                         selectedValues[selector] = $(selector).val();
                     });
 
-                    // Update dropdowns (keep selected value if still valid, preserve periode separately)
+                    // Update dropdowns (keep selected values if still valid, preserve periode separately)
                     const updateDropdown = function(optKey, selector, keepSelected = true) {
                         if (!opts[optKey]) return;
                         
                         const $select = $(selector);
-                        const oldValue = selectedValues[selector];
+                        const oldValues = selectedValues[selector] || [];
+                        const oldArray = Array.isArray(oldValues) ? oldValues : (oldValues ? [oldValues] : []);
+                        
+                        // Destroy Select2 instance before modifying options
+                        if (typeof $.fn.select2 === 'function' && $select.hasClass('select2-hidden-accessible')) {
+                            $select.select2('destroy');
+                        }
                         
                         // Remove all options except first one
                         $select.find('option:not(:first)').remove();
@@ -333,13 +375,25 @@
                             $select.append(`<option value="${item.id}">${item.name}</option>`);
                         });
                         
-                        // Restore value if it still exists, otherwise clear
-                        if (keepSelected && oldValue && $select.find(`option[value="${oldValue}"]`).length > 0) {
-                            $select.val(oldValue);
-                        } else if (selector !== '#filter-tahun' && selector !== '#filter-kategori-ilap' && 
-                                   selector !== '#filter-ilap' && selector !== '#filter-jenis-data') {
-                            // Only clear dependent dropdowns, not main filter
-                            $select.val('');
+                        // Restore values if they still exist, otherwise clear
+                        if (keepSelected && oldArray.length > 0) {
+                            const validValues = oldArray.filter(function(v) {
+                                return $select.find('option[value="' + v + '"]').length > 0;
+                            });
+                            if (validValues.length > 0) {
+                                $select.val(validValues);
+                            } else if (selector !== '#filter-tahun' && selector !== '#filter-kategori-ilap' && 
+                                       selector !== '#filter-ilap' && selector !== '#filter-jenis-data') {
+                                // Only clear dependent dropdowns, not main filter
+                                $select.val([]);
+                            }
+                        } else {
+                            $select.val([]);
+                        }
+                        
+                        // Re-initialize Select2
+                        if (typeof $.fn.select2 === 'function') {
+                            $select.select2({ theme: 'bootstrap-5' });
                         }
                     };
 
@@ -362,13 +416,22 @@
                     updateDropdown('periode_pengiriman', '#filter-periode-pengiriman');
                     updateDropdown('periode_penerimaan', '#filter-periode-penerimaan');
                     updateDropdown('status', '#filter-status');
+                },
+                error: function () {
+                    // Ensure Select2 is initialized even if AJAX fails
+                    initSelect2();
                 }
             });
         }
 
         $(document).ready(function () {
+            // Ensure Select2 is initialized on all filter selects (select2-active.min.js
+            // may not have run if jQuery wasn't ready yet)
+            initSelect2();
+
             table = $('#tiket-table').DataTable({
                 serverSide: true,
+                searching: false,
                 layout: {
                     topStart: null,
                     topEnd: null
@@ -377,25 +440,24 @@
                     url: ajaxUrl,
                     dataSrc: 'data',
                     data: function (d) {
-                        d.nomor_tiket = $('#filter-nomor-tiket').val();
-                        d.tahun = $('#filter-tahun').val();
-                        d.periode = $('#filter-periode').val();
-                        d.pic_p3de = $('#filter-pic-p3de').val();
-                        d.pic_pide = $('#filter-pic-pide').val();
-                        d.pic_pmde = $('#filter-pic-pmde').val();
-                        d.kategori_ilap = $('#filter-kategori-ilap').val();
-                        d.ilap = $('#filter-ilap').val();
-                        d.jenis_data = $('#filter-jenis-data').val();
-                        d.sub_jenis_data = $('#filter-sub-jenis-data').val();
-                        d.kanwil = $('#filter-kanwil').val();
-                        d.kpp = $('#filter-kpp').val();
-                        d.kategori_wilayah = $('#filter-kategori-wilayah').val();
-                        d.jenis_tabel = $('#filter-jenis-tabel').val();
-                        d.dasar_hukum = $('#filter-dasar-hukum').val();
-                        d.periode_pengiriman = $('#filter-periode-pengiriman').val();
-                        d.periode_penerimaan = $('#filter-periode-penerimaan').val();
-                        d.terlambat = $('#filter-terlambat').val();
-                        d.status = $('#filter-status').val();
+                        d.nomor_tiket = getMultiSelectValue('#filter-nomor-tiket');
+                        d.tahun = getMultiSelectValue('#filter-tahun');
+                        d.periode = getMultiSelectValue('#filter-periode');
+                        d.pic_p3de = getMultiSelectValue('#filter-pic-p3de');
+                        d.pic_pide = getMultiSelectValue('#filter-pic-pide');
+                        d.pic_pmde = getMultiSelectValue('#filter-pic-pmde');
+                        d.kategori_ilap = getMultiSelectValue('#filter-kategori-ilap');
+                        d.ilap = getMultiSelectValue('#filter-ilap');
+                        d.jenis_data = getMultiSelectValue('#filter-jenis-data');
+                        d.sub_jenis_data = getMultiSelectValue('#filter-sub-jenis-data');
+                        d.kanwil = getMultiSelectValue('#filter-kanwil');
+                        d.kpp = getMultiSelectValue('#filter-kpp');
+                        d.kategori_wilayah = getMultiSelectValue('#filter-kategori-wilayah');
+                        d.jenis_tabel = getMultiSelectValue('#filter-jenis-tabel');
+                        d.dasar_hukum = getMultiSelectValue('#filter-dasar-hukum');
+                        d.periode_pengiriman = getMultiSelectValue('#filter-periode-pengiriman');
+                        d.periode_penerimaan = getMultiSelectValue('#filter-periode-penerimaan');
+                        d.status = getMultiSelectValue('#filter-status');
                         return d;
                     }
                 },
@@ -423,8 +485,7 @@
                     { targets: 0, visible: false, searchable: false },
                     { targets: 6, render: function (data, type, row, meta) { return data; } }
                 ],
-                order: [[0, 'asc']],
-                scrollX: true
+                order: [[0, 'asc']]
             });
 
             // Filter dropdowns — dynamic, reload on change
@@ -437,10 +498,21 @@
 
             // Reset button — clear form then reload
             $('#btn-reset-filter').on('click', function () {
-                setTimeout(function () {
-                    updateDynamicDropdowns();
-                    table.ajax.reload();
-                }, 50);
+                // Destroy Select2 on all filter selects before reset
+                if (typeof $.fn.select2 === 'function') {
+                    $('#filter-form select').each(function () {
+                        if ($(this).hasClass('select2-hidden-accessible')) {
+                            $(this).select2('destroy');
+                        }
+                    });
+                }
+                $('#filter-form')[0].reset();
+                // For multi-select, explicitly set empty array on each select
+                $('#filter-form select').val([]);
+                // Re-initialize Select2 after reset and reload table
+                initSelect2();
+                updateDynamicDropdowns();
+                table.ajax.reload();
             });
 
             // Load filter dropdown options on page load
@@ -455,6 +527,15 @@
                 success: function (response) {
                     if (!response.filter_options) return;
                     const opts = response.filter_options;
+
+                    // Destroy Select2 on all filter selects before modifying options
+                    if (typeof $.fn.select2 === 'function') {
+                        $('#filter-form select').each(function () {
+                            if ($(this).hasClass('select2-hidden-accessible')) {
+                                $(this).select2('destroy');
+                            }
+                        });
+                    }
 
                     if (opts.nomor_tiket) opts.nomor_tiket.forEach(item => $('#filter-nomor-tiket').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.tahun) opts.tahun.forEach(item => $('#filter-tahun').append(`<option value="${item.id}">${item.name}</option>`));
@@ -475,10 +556,32 @@
                     if (opts.periode_penerimaan) opts.periode_penerimaan.forEach(item => $('#filter-periode-penerimaan').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.status) opts.status.forEach(item => $('#filter-status').append(`<option value="${item.id}">${item.name}</option>`));
 
+                    // Re-initialize Select2 on all filter selects
+                    if (typeof $.fn.select2 === 'function') {
+                        $('#filter-form select').each(function () {
+                            $(this).select2({
+                                theme: 'bootstrap-5',
+                                closeOnSelect: false,
+                                placeholder: '-- Pilih --',
+                                allowClear: true
+                            });
+                        });
+                    }
+
                     if (!initialFiltersApplied) {
                         initialFiltersApplied = true;
                         if (applyInitialFiltersFromUrl()) {
                             updateDynamicDropdowns();
+                            table.ajax.reload();
+                        }
+                    }
+                },
+                error: function () {
+                    // Ensure Select2 is initialized even if AJAX fails
+                    initSelect2();
+                    if (!initialFiltersApplied) {
+                        initialFiltersApplied = true;
+                        if (applyInitialFiltersFromUrl()) {
                             table.ajax.reload();
                         }
                     }

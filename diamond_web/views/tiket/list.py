@@ -5,10 +5,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.decorators.http import require_GET
 from django.views.generic import TemplateView
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
 from django.urls import reverse
-from django.utils import timezone
-from datetime import timedelta
 
 from ...models.tiket import Tiket
 from ...models.tiket_pic import TiketPIC
@@ -108,30 +105,168 @@ def tiket_data(request):
             tiketpic__id_user=request.user
         ).distinct()
 
+    # Helper to split comma-separated multi-select values
+    def _split_filter_options(v):
+        if not v:
+            return []
+        return [x.strip() for x in v.split(',') if x.strip()]
+
     # Return dynamic filter options for dropdowns
     if request.GET.get('get_filter_options'):
-        # Get current filter values to apply for dynamic filtering
-        filter_tahun = request.GET.get('tahun', '').strip()
-        filter_kategori_ilap = request.GET.get('kategori_ilap', '').strip()
-        filter_ilap = request.GET.get('ilap', '').strip()
-        filter_jenis_data = request.GET.get('jenis_data', '').strip()
+        # Get ALL current filter values (comma-separated for multi-select)
+        raw_nomor_tiket = request.GET.get('nomor_tiket', '')
+        raw_tahun = request.GET.get('tahun', '')
+        raw_periode = request.GET.get('periode', '')
+        raw_pic_p3de = request.GET.get('pic_p3de', '')
+        raw_pic_pide = request.GET.get('pic_pide', '')
+        raw_pic_pmde = request.GET.get('pic_pmde', '')
+        raw_kategori_ilap = request.GET.get('kategori_ilap', '')
+        raw_ilap = request.GET.get('ilap', '')
+        raw_jenis_data = request.GET.get('jenis_data', '')
+        raw_sub_jenis_data = request.GET.get('sub_jenis_data', '')
+        raw_kanwil = request.GET.get('kanwil', '')
+        raw_kpp = request.GET.get('kpp', '')
+        raw_kategori_wilayah = request.GET.get('kategori_wilayah', '')
+        raw_jenis_tabel = request.GET.get('jenis_tabel', '')
+        raw_dasar_hukum = request.GET.get('dasar_hukum', '')
+        raw_periode_pengiriman = request.GET.get('periode_pengiriman', '')
+        raw_periode_penerimaan = request.GET.get('periode_penerimaan', '')
+        raw_status = request.GET.get('status', '')
         
-        # Build a filtered queryset based on current selections
-        # For getting dropdown options, we need different filtering strategies:
-        # - Only apply tahun and kategori_ilap to narrow down
-        # - Don't apply ilap and jenis_data filters to prevent hiding other valid options
+        filter_nomor_tiket = _split_filter_options(raw_nomor_tiket)
+        filter_tahun = _split_filter_options(raw_tahun)
+        filter_periode = _split_filter_options(raw_periode)
+        filter_pic_p3de = _split_filter_options(raw_pic_p3de)
+        filter_pic_pide = _split_filter_options(raw_pic_pide)
+        filter_pic_pmde = _split_filter_options(raw_pic_pmde)
+        filter_kategori_ilap = _split_filter_options(raw_kategori_ilap)
+        filter_ilap = _split_filter_options(raw_ilap)
+        filter_jenis_data = _split_filter_options(raw_jenis_data)
+        filter_sub_jenis_data = _split_filter_options(raw_sub_jenis_data)
+        filter_kanwil = _split_filter_options(raw_kanwil)
+        filter_kpp = _split_filter_options(raw_kpp)
+        filter_kategori_wilayah = _split_filter_options(raw_kategori_wilayah)
+        filter_jenis_tabel = _split_filter_options(raw_jenis_tabel)
+        filter_dasar_hukum = _split_filter_options(raw_dasar_hukum)
+        filter_periode_pengiriman = _split_filter_options(raw_periode_pengiriman)
+        filter_periode_penerimaan = _split_filter_options(raw_periode_penerimaan)
+        filter_status = _split_filter_options(raw_status)
+        
+        # Build a fully filtered queryset based on ALL current selections (except each dropdown's own filter)
+        # This ensures changing any dropdown dynamically narrows down the options in all others.
         filtered_qs = base_qs
         
+        if filter_nomor_tiket:
+            filtered_qs = filtered_qs.filter(nomor_tiket__in=filter_nomor_tiket)
+        
         if filter_tahun:
-            try:
-                filtered_qs = filtered_qs.filter(tahun=int(filter_tahun))
-            except ValueError:
-                pass
+            int_years = []
+            for y in filter_tahun:
+                try:
+                    int_years.append(int(y))
+                except ValueError:
+                    pass
+            if int_years:
+                filtered_qs = filtered_qs.filter(tahun__in=int_years)
+        
+        if filter_periode:
+            for pv in filter_periode:
+                if ':' in pv:
+                    ptype, pval = pv.split(':', 1)
+                    try:
+                        filtered_qs = filtered_qs.filter(periode=int(pval))
+                        type_to_penerimaan = {
+                            'bulanan': 'Bulanan',
+                            'triwulanan': 'Triwulanan',
+                            'semester': 'Semester',
+                            'tahunan': 'Tahunan',
+                        }
+                        if ptype in type_to_penerimaan:
+                            filtered_qs = filtered_qs.filter(
+                                id_periode_data__id_periode_pengiriman__periode_penerimaan=type_to_penerimaan[ptype]
+                            )
+                    except ValueError:
+                        pass
+        
+        if filter_periode_penerimaan:
+            filtered_qs = filtered_qs.filter(
+                id_periode_data__id_periode_pengiriman__periode_penerimaan__in=filter_periode_penerimaan
+            )
+        
+        if filter_pic_p3de:
+            filtered_qs = filtered_qs.filter(
+                tiketpic__role=TiketPIC.Role.P3DE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_p3de
+            )
+        
+        if filter_pic_pide:
+            filtered_qs = filtered_qs.filter(
+                tiketpic__role=TiketPIC.Role.PIDE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_pide
+            )
+        
+        if filter_pic_pmde:
+            filtered_qs = filtered_qs.filter(
+                tiketpic__role=TiketPIC.Role.PMDE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_pmde
+            )
         
         if filter_kategori_ilap:
             filtered_qs = filtered_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id=filter_kategori_ilap
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id__in=filter_kategori_ilap
             )
+        
+        if filter_sub_jenis_data:
+            filtered_qs = filtered_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_sub_jenis_data__in=filter_sub_jenis_data
+            )
+        
+        if filter_ilap:
+            filtered_qs = filtered_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id__in=filter_ilap
+            )
+        
+        if filter_jenis_data:
+            filtered_qs = filtered_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_jenis_data__in=filter_jenis_data
+            )
+        
+        if filter_kanwil:
+            filtered_qs = filtered_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__id__in=filter_kanwil
+            )
+        
+        if filter_kpp:
+            filtered_qs = filtered_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id__in=filter_kpp
+            )
+        
+        if filter_kategori_wilayah:
+            filtered_qs = filtered_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah__id__in=filter_kategori_wilayah
+            )
+        
+        if filter_jenis_tabel:
+            filtered_qs = filtered_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel__id__in=filter_jenis_tabel
+            )
+        
+        if filter_dasar_hukum:
+            filtered_qs = filtered_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata__id_klasifikasi_tabel__id__in=filter_dasar_hukum
+            )
+        
+        if filter_periode_pengiriman:
+            filtered_qs = filtered_qs.filter(
+                id_periode_data__id_periode_pengiriman__periode_penyampaian__in=filter_periode_pengiriman
+            )
+        
+        if filter_status:
+            int_statuses = []
+            for s in filter_status:
+                try:
+                    int_statuses.append(int(s))
+                except ValueError:
+                    pass
+            if int_statuses:
+                filtered_qs = filtered_qs.filter(status_tiket__in=int_statuses)
         
         nomor_options = []
         nomor_seen = set()
@@ -141,9 +276,87 @@ def tiket_data(request):
             nomor_seen.add(n)
             nomor_options.append({'id': n, 'name': n})
 
+        # Tahun options - filter by ALL selections EXCEPT tahun itself
+        tahun_filter_qs = base_qs
+        if filter_nomor_tiket:
+            tahun_filter_qs = tahun_filter_qs.filter(nomor_tiket__in=filter_nomor_tiket)
+        if filter_periode:
+            for pv in filter_periode:
+                if ':' in pv:
+                    ptype, pval = pv.split(':', 1)
+                    try:
+                        tahun_filter_qs = tahun_filter_qs.filter(periode=int(pval))
+                    except ValueError:
+                        pass
+        if filter_periode_penerimaan:
+            tahun_filter_qs = tahun_filter_qs.filter(
+                id_periode_data__id_periode_pengiriman__periode_penerimaan__in=filter_periode_penerimaan
+            )
+        if filter_pic_p3de:
+            tahun_filter_qs = tahun_filter_qs.filter(
+                tiketpic__role=TiketPIC.Role.P3DE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_p3de
+            )
+        if filter_pic_pide:
+            tahun_filter_qs = tahun_filter_qs.filter(
+                tiketpic__role=TiketPIC.Role.PIDE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_pide
+            )
+        if filter_pic_pmde:
+            tahun_filter_qs = tahun_filter_qs.filter(
+                tiketpic__role=TiketPIC.Role.PMDE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_pmde
+            )
+        if filter_kategori_ilap:
+            tahun_filter_qs = tahun_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id__in=filter_kategori_ilap
+            )
+        if filter_ilap:
+            tahun_filter_qs = tahun_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id__in=filter_ilap
+            )
+        if filter_jenis_data:
+            tahun_filter_qs = tahun_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_jenis_data__in=filter_jenis_data
+            )
+        if filter_sub_jenis_data:
+            tahun_filter_qs = tahun_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_sub_jenis_data__in=filter_sub_jenis_data
+            )
+        if filter_kanwil:
+            tahun_filter_qs = tahun_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__id__in=filter_kanwil
+            )
+        if filter_kpp:
+            tahun_filter_qs = tahun_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id__in=filter_kpp
+            )
+        if filter_kategori_wilayah:
+            tahun_filter_qs = tahun_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah__id__in=filter_kategori_wilayah
+            )
+        if filter_jenis_tabel:
+            tahun_filter_qs = tahun_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel__id__in=filter_jenis_tabel
+            )
+        if filter_dasar_hukum:
+            tahun_filter_qs = tahun_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata__id_klasifikasi_tabel__id__in=filter_dasar_hukum
+            )
+        if filter_periode_pengiriman:
+            tahun_filter_qs = tahun_filter_qs.filter(
+                id_periode_data__id_periode_pengiriman__periode_penyampaian__in=filter_periode_pengiriman
+            )
+        if filter_status:
+            int_statuses = []
+            for s in filter_status:
+                try:
+                    int_statuses.append(int(s))
+                except ValueError:
+                    pass
+            if int_statuses:
+                tahun_filter_qs = tahun_filter_qs.filter(status_tiket__in=int_statuses)
+        
         tahun_options = []
         tahun_seen = set()
-        for y in base_qs.values_list('tahun', flat=True).distinct().order_by('tahun'):
+        for y in tahun_filter_qs.values_list('tahun', flat=True).distinct().order_by('tahun'):
             if y is None:
                 continue
             y_str = str(y)
@@ -152,31 +365,116 @@ def tiket_data(request):
             tahun_seen.add(y_str)
             tahun_options.append({'id': y_str, 'name': y_str})
 
-        # Get available periode values from filtered data
-        periode_values = filtered_qs.values_list('periode', flat=True).distinct().order_by('periode')
-        periode_options = []
+        # Get available periode values from filtered data — exclude periode self-filter
+        periode_filter_qs = base_qs
+        if filter_nomor_tiket:
+            periode_filter_qs = periode_filter_qs.filter(nomor_tiket__in=filter_nomor_tiket)
+        if filter_tahun:
+            int_years = []
+            for y in filter_tahun:
+                try:
+                    int_years.append(int(y))
+                except ValueError:
+                    pass
+            if int_years:
+                periode_filter_qs = periode_filter_qs.filter(tahun__in=int_years)
+        if filter_pic_p3de:
+            periode_filter_qs = periode_filter_qs.filter(
+                tiketpic__role=TiketPIC.Role.P3DE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_p3de
+            )
+        if filter_pic_pide:
+            periode_filter_qs = periode_filter_qs.filter(
+                tiketpic__role=TiketPIC.Role.PIDE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_pide
+            )
+        if filter_pic_pmde:
+            periode_filter_qs = periode_filter_qs.filter(
+                tiketpic__role=TiketPIC.Role.PMDE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_pmde
+            )
+        if filter_kategori_ilap:
+            periode_filter_qs = periode_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id__in=filter_kategori_ilap
+            )
+        if filter_ilap:
+            periode_filter_qs = periode_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id__in=filter_ilap
+            )
+        if filter_jenis_data:
+            periode_filter_qs = periode_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_jenis_data__in=filter_jenis_data
+            )
+        if filter_sub_jenis_data:
+            periode_filter_qs = periode_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_sub_jenis_data__in=filter_sub_jenis_data
+            )
+        if filter_kanwil:
+            periode_filter_qs = periode_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__id__in=filter_kanwil
+            )
+        if filter_kpp:
+            periode_filter_qs = periode_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id__in=filter_kpp
+            )
+        if filter_kategori_wilayah:
+            periode_filter_qs = periode_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah__id__in=filter_kategori_wilayah
+            )
+        if filter_jenis_tabel:
+            periode_filter_qs = periode_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel__id__in=filter_jenis_tabel
+            )
+        if filter_dasar_hukum:
+            periode_filter_qs = periode_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata__id_klasifikasi_tabel__id__in=filter_dasar_hukum
+            )
+        if filter_periode_pengiriman:
+            periode_filter_qs = periode_filter_qs.filter(
+                id_periode_data__id_periode_pengiriman__periode_penyampaian__in=filter_periode_pengiriman
+            )
+        if filter_status:
+            int_statuses = []
+            for s in filter_status:
+                try:
+                    int_statuses.append(int(s))
+                except ValueError:
+                    pass
+            if int_statuses:
+                periode_filter_qs = periode_filter_qs.filter(status_tiket__in=int_statuses)
+        
+        periode_raw_qs = periode_filter_qs.values_list(
+            'periode',
+            'id_periode_data__id_periode_pengiriman__periode_penerimaan'
+        ).distinct()
         bulan_names = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+        bulanan_opts = {}
+        triwulan_opts = {}
+        semester_opts = {}
+        tahunan_opts = {}
         
-        # Show available periode values from the actual data
-        for period_val in periode_values:
-            if period_val and 1 <= period_val <= 12:
-                # Assume bulanan for 1-12 range
-                idx = int(period_val)
-                periode_options.append({'id': f'bulanan:{idx}', 'name': bulan_names[idx - 1]})
-        
-        # Also show common periode options even if not in data
-        for idx in range(1, 5):
-            periode_options.append({'id': f'triwulanan:{idx}', 'name': f'Triwulan {idx}'})
-        for idx in range(1, 3):
-            periode_options.append({'id': f'semester:{idx}', 'name': f'Semester {idx}'})
-        periode_options.append({'id': 'tahunan:1', 'name': 'Tahunan'})
-        
-        # Remove duplicates while preserving order
-        periode_dict = {}
-        for opt in periode_options:
-            if opt['id'] not in periode_dict:
-                periode_dict[opt['id']] = opt
-        periode_options = list(periode_dict.values())
+        for period_val, penerimaan in periode_raw_qs:
+            if period_val is None:
+                continue
+            penerimaan = (penerimaan or '').strip().lower()
+            idx = int(period_val)
+            
+            if 'triwulan' in penerimaan and 1 <= idx <= 4:
+                triwulan_opts[idx] = {'id': f'triwulanan:{idx}', 'name': f'Triwulan {idx}'}
+            elif 'semester' in penerimaan and 1 <= idx <= 2:
+                semester_opts[idx] = {'id': f'semester:{idx}', 'name': f'Semester {idx}'}
+            elif 'tahunan' in penerimaan:
+                tahunan_opts[1] = {'id': 'tahunan:1', 'name': 'Tahunan'}
+            elif 1 <= idx <= 12:
+                bulanan_opts[idx] = {'id': f'bulanan:{idx}', 'name': bulan_names[idx - 1]}
+
+        # Combine: bulanan (sorted), then triwulan, then semester, then tahunan
+        periode_options = []
+        for idx in sorted(bulanan_opts):
+            periode_options.append(bulanan_opts[idx])
+        for idx in sorted(triwulan_opts):
+            periode_options.append(triwulan_opts[idx])
+        for idx in sorted(semester_opts):
+            periode_options.append(semester_opts[idx])
+        for idx in sorted(tahunan_opts):
+            periode_options.append(tahunan_opts[idx])
 
         # Get related items from filtered queryset for dynamic dropdowns
         periode_pengiriman_qs = filtered_qs.values_list(
@@ -232,8 +530,91 @@ def tiket_data(request):
         pic_pide_options = _pic_options_filtered(PIC.TipePIC.PIDE, filtered_qs)
         pic_pmde_options = _pic_options_filtered(PIC.TipePIC.PMDE, filtered_qs)
 
-        # Get ILAP categories filtered by year if selected
-        kategori_ilap_qs = filtered_qs.values_list(
+        # Get ILAP categories - filter by ALL selections EXCEPT kategori_ilap itself
+        # Build from base_qs excluding the kategori_ilap self-filter
+        kategori_ilap_filter_qs = base_qs
+        if filter_nomor_tiket:
+            kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(nomor_tiket__in=filter_nomor_tiket)
+        if filter_tahun:
+            int_years = []
+            for y in filter_tahun:
+                try:
+                    int_years.append(int(y))
+                except ValueError:
+                    pass
+            if int_years:
+                kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(tahun__in=int_years)
+        if filter_periode:
+            for pv in filter_periode:
+                if ':' in pv:
+                    ptype, pval = pv.split(':', 1)
+                    try:
+                        kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(periode=int(pval))
+                    except ValueError:
+                        pass
+        if filter_periode_penerimaan:
+            kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(
+                id_periode_data__id_periode_pengiriman__periode_penerimaan__in=filter_periode_penerimaan
+            )
+        if filter_pic_p3de:
+            kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(
+                tiketpic__role=TiketPIC.Role.P3DE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_p3de
+            )
+        if filter_pic_pide:
+            kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(
+                tiketpic__role=TiketPIC.Role.PIDE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_pide
+            )
+        if filter_pic_pmde:
+            kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(
+                tiketpic__role=TiketPIC.Role.PMDE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_pmde
+            )
+        if filter_sub_jenis_data:
+            kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_sub_jenis_data__in=filter_sub_jenis_data
+            )
+        if filter_ilap:
+            kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id__in=filter_ilap
+            )
+        if filter_jenis_data:
+            kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_jenis_data__in=filter_jenis_data
+            )
+        if filter_kanwil:
+            kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__id__in=filter_kanwil
+            )
+        if filter_kpp:
+            kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id__in=filter_kpp
+            )
+        if filter_kategori_wilayah:
+            kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah__id__in=filter_kategori_wilayah
+            )
+        if filter_jenis_tabel:
+            kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel__id__in=filter_jenis_tabel
+            )
+        if filter_dasar_hukum:
+            kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata__id_klasifikasi_tabel__id__in=filter_dasar_hukum
+            )
+        if filter_periode_pengiriman:
+            kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(
+                id_periode_data__id_periode_pengiriman__periode_penyampaian__in=filter_periode_pengiriman
+            )
+        if filter_status:
+            int_statuses = []
+            for s in filter_status:
+                try:
+                    int_statuses.append(int(s))
+                except ValueError:
+                    pass
+            if int_statuses:
+                kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(status_tiket__in=int_statuses)
+        
+        kategori_ilap_qs = kategori_ilap_filter_qs.values_list(
             'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id',
             'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id_kategori',
             'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__nama_kategori'
@@ -248,17 +629,88 @@ def tiket_data(request):
                     'name': f"{cat_code} - {cat_name}"
                 })
         
-        # Get ILAPs - filter by tahun and kategori_ilap only (not by selected ilap)
+        # Get ILAPs - filter by ALL selections EXCEPT ilap (to keep dropdown options while other filters narrow down)
         ilap_filter_qs = base_qs
+        if filter_nomor_tiket:
+            ilap_filter_qs = ilap_filter_qs.filter(nomor_tiket__in=filter_nomor_tiket)
         if filter_tahun:
-            try:
-                ilap_filter_qs = ilap_filter_qs.filter(tahun=int(filter_tahun))
-            except ValueError:
-                pass
+            int_years = []
+            for y in filter_tahun:
+                try:
+                    int_years.append(int(y))
+                except ValueError:
+                    pass
+            if int_years:
+                ilap_filter_qs = ilap_filter_qs.filter(tahun__in=int_years)
+        if filter_periode:
+            for pv in filter_periode:
+                if ':' in pv:
+                    ptype, pval = pv.split(':', 1)
+                    try:
+                        ilap_filter_qs = ilap_filter_qs.filter(periode=int(pval))
+                    except ValueError:
+                        pass
+        if filter_periode_penerimaan:
+            ilap_filter_qs = ilap_filter_qs.filter(
+                id_periode_data__id_periode_pengiriman__periode_penerimaan__in=filter_periode_penerimaan
+            )
+        if filter_pic_p3de:
+            ilap_filter_qs = ilap_filter_qs.filter(
+                tiketpic__role=TiketPIC.Role.P3DE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_p3de
+            )
+        if filter_pic_pide:
+            ilap_filter_qs = ilap_filter_qs.filter(
+                tiketpic__role=TiketPIC.Role.PIDE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_pide
+            )
+        if filter_pic_pmde:
+            ilap_filter_qs = ilap_filter_qs.filter(
+                tiketpic__role=TiketPIC.Role.PMDE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_pmde
+            )
         if filter_kategori_ilap:
             ilap_filter_qs = ilap_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id=filter_kategori_ilap
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id__in=filter_kategori_ilap
             )
+        if filter_sub_jenis_data:
+            ilap_filter_qs = ilap_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_sub_jenis_data__in=filter_sub_jenis_data
+            )
+        if filter_jenis_data:
+            ilap_filter_qs = ilap_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_jenis_data__in=filter_jenis_data
+            )
+        if filter_kanwil:
+            ilap_filter_qs = ilap_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__id__in=filter_kanwil
+            )
+        if filter_kpp:
+            ilap_filter_qs = ilap_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id__in=filter_kpp
+            )
+        if filter_kategori_wilayah:
+            ilap_filter_qs = ilap_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah__id__in=filter_kategori_wilayah
+            )
+        if filter_jenis_tabel:
+            ilap_filter_qs = ilap_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel__id__in=filter_jenis_tabel
+            )
+        if filter_dasar_hukum:
+            ilap_filter_qs = ilap_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata__id_klasifikasi_tabel__id__in=filter_dasar_hukum
+            )
+        if filter_periode_pengiriman:
+            ilap_filter_qs = ilap_filter_qs.filter(
+                id_periode_data__id_periode_pengiriman__periode_penyampaian__in=filter_periode_pengiriman
+            )
+        if filter_status:
+            int_statuses = []
+            for s in filter_status:
+                try:
+                    int_statuses.append(int(s))
+                except ValueError:
+                    pass
+            if int_statuses:
+                ilap_filter_qs = ilap_filter_qs.filter(status_tiket__in=int_statuses)
         
         ilap_qs = ilap_filter_qs.values_list(
             'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id',
@@ -275,21 +727,84 @@ def tiket_data(request):
                     'name': f"{ilap_code} - {ilap_name}"
                 })
 
-        # Get Jenis Data and Sub Jenis Data - filter by tahun, kategori_ilap, and ilap only (not by jenis_data)
+        # Get Jenis Data and Sub Jenis Data - filter by ALL selections EXCEPT jenis_data and sub_jenis_data
         jenis_filter_qs = base_qs
+        if filter_nomor_tiket:
+            jenis_filter_qs = jenis_filter_qs.filter(nomor_tiket__in=filter_nomor_tiket)
         if filter_tahun:
-            try:
-                jenis_filter_qs = jenis_filter_qs.filter(tahun=int(filter_tahun))
-            except ValueError:
-                pass
+            int_years = []
+            for y in filter_tahun:
+                try:
+                    int_years.append(int(y))
+                except ValueError:
+                    pass
+            if int_years:
+                jenis_filter_qs = jenis_filter_qs.filter(tahun__in=int_years)
+        if filter_periode:
+            for pv in filter_periode:
+                if ':' in pv:
+                    ptype, pval = pv.split(':', 1)
+                    try:
+                        jenis_filter_qs = jenis_filter_qs.filter(periode=int(pval))
+                    except ValueError:
+                        pass
+        if filter_periode_penerimaan:
+            jenis_filter_qs = jenis_filter_qs.filter(
+                id_periode_data__id_periode_pengiriman__periode_penerimaan__in=filter_periode_penerimaan
+            )
+        if filter_pic_p3de:
+            jenis_filter_qs = jenis_filter_qs.filter(
+                tiketpic__role=TiketPIC.Role.P3DE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_p3de
+            )
+        if filter_pic_pide:
+            jenis_filter_qs = jenis_filter_qs.filter(
+                tiketpic__role=TiketPIC.Role.PIDE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_pide
+            )
+        if filter_pic_pmde:
+            jenis_filter_qs = jenis_filter_qs.filter(
+                tiketpic__role=TiketPIC.Role.PMDE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_pmde
+            )
         if filter_kategori_ilap:
             jenis_filter_qs = jenis_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id=filter_kategori_ilap
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id__in=filter_kategori_ilap
             )
         if filter_ilap:
             jenis_filter_qs = jenis_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id=filter_ilap
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id__in=filter_ilap
             )
+        if filter_kanwil:
+            jenis_filter_qs = jenis_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__id__in=filter_kanwil
+            )
+        if filter_kpp:
+            jenis_filter_qs = jenis_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id__in=filter_kpp
+            )
+        if filter_kategori_wilayah:
+            jenis_filter_qs = jenis_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah__id__in=filter_kategori_wilayah
+            )
+        if filter_jenis_tabel:
+            jenis_filter_qs = jenis_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel__id__in=filter_jenis_tabel
+            )
+        if filter_dasar_hukum:
+            jenis_filter_qs = jenis_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata__id_klasifikasi_tabel__id__in=filter_dasar_hukum
+            )
+        if filter_periode_pengiriman:
+            jenis_filter_qs = jenis_filter_qs.filter(
+                id_periode_data__id_periode_pengiriman__periode_penyampaian__in=filter_periode_pengiriman
+            )
+        if filter_status:
+            int_statuses = []
+            for s in filter_status:
+                try:
+                    int_statuses.append(int(s))
+                except ValueError:
+                    pass
+            if int_statuses:
+                jenis_filter_qs = jenis_filter_qs.filter(status_tiket__in=int_statuses)
         
         jenis_options = []
         jenis_seen = set()
@@ -393,9 +908,92 @@ def tiket_data(request):
                     'name': hukum_desc
                 })
 
+        # Status options - filter by ALL selections EXCEPT status itself
+        status_filter_qs = base_qs
+        if filter_nomor_tiket:
+            status_filter_qs = status_filter_qs.filter(nomor_tiket__in=filter_nomor_tiket)
+        if filter_tahun:
+            int_years = []
+            for y in filter_tahun:
+                try:
+                    int_years.append(int(y))
+                except ValueError:
+                    pass
+            if int_years:
+                status_filter_qs = status_filter_qs.filter(tahun__in=int_years)
+        if filter_periode:
+            for pv in filter_periode:
+                if ':' in pv:
+                    ptype, pval = pv.split(':', 1)
+                    try:
+                        status_filter_qs = status_filter_qs.filter(periode=int(pval))
+                    except ValueError:
+                        pass
+        if filter_periode_penerimaan:
+            status_filter_qs = status_filter_qs.filter(
+                id_periode_data__id_periode_pengiriman__periode_penerimaan__in=filter_periode_penerimaan
+            )
+        if filter_pic_p3de:
+            status_filter_qs = status_filter_qs.filter(
+                tiketpic__role=TiketPIC.Role.P3DE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_p3de
+            )
+        if filter_pic_pide:
+            status_filter_qs = status_filter_qs.filter(
+                tiketpic__role=TiketPIC.Role.PIDE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_pide
+            )
+        if filter_pic_pmde:
+            status_filter_qs = status_filter_qs.filter(
+                tiketpic__role=TiketPIC.Role.PMDE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_pmde
+            )
+        if filter_kategori_ilap:
+            status_filter_qs = status_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id__in=filter_kategori_ilap
+            )
+        if filter_ilap:
+            status_filter_qs = status_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id__in=filter_ilap
+            )
+        if filter_jenis_data:
+            status_filter_qs = status_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_jenis_data__in=filter_jenis_data
+            )
+        if filter_sub_jenis_data:
+            status_filter_qs = status_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_sub_jenis_data__in=filter_sub_jenis_data
+            )
+        if filter_kanwil:
+            status_filter_qs = status_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__id__in=filter_kanwil
+            )
+        if filter_kpp:
+            status_filter_qs = status_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id__in=filter_kpp
+            )
+        if filter_kategori_wilayah:
+            status_filter_qs = status_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah__id__in=filter_kategori_wilayah
+            )
+        if filter_jenis_tabel:
+            status_filter_qs = status_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel__id__in=filter_jenis_tabel
+            )
+        if filter_dasar_hukum:
+            status_filter_qs = status_filter_qs.filter(
+                id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata__id_klasifikasi_tabel__id__in=filter_dasar_hukum
+            )
+        if filter_periode_pengiriman:
+            status_filter_qs = status_filter_qs.filter(
+                id_periode_data__id_periode_pengiriman__periode_penyampaian__in=filter_periode_pengiriman
+            )
+        
+        # Get distinct status_tiket values from filtered data
+        available_status_ids = set(
+            status_filter_qs.values_list('status_tiket', flat=True).distinct()
+        )
         status_options = [
-            {'id': str(sid), 'name': label}
-            for sid, label in sorted(STATUS_LABELS.items(), key=lambda x: x[0])
+            {'id': str(sid), 'name': STATUS_LABELS.get(sid, f'Status {sid}')}
+            for sid in sorted(available_status_ids)
+            if sid is not None
         ]
 
         return JsonResponse({
@@ -421,6 +1019,12 @@ def tiket_data(request):
             }
         })
 
+    # Helper to split comma-separated multi-select values
+    def _split(v):
+        if not v:
+            return []
+        return [x.strip() for x in v.split(',') if x.strip()]
+
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
@@ -428,29 +1032,28 @@ def tiket_data(request):
     qs = base_qs
     records_total = qs.count()
 
-    # Dropdown filters (monitoring-style)
-    filter_nomor_tiket = request.GET.get('nomor_tiket', '').strip()
+    # Dropdown filters (monitoring-style) — support comma-separated multi-select
+    filter_nomor_tiket = _split(request.GET.get('nomor_tiket', ''))
     filter_periode = request.GET.get('periode', '').strip()
-    filter_periode_penerimaan = request.GET.get('periode_penerimaan', '').strip()
-    filter_pic_p3de = request.GET.get('pic_p3de', '').strip()
-    filter_pic_pide = request.GET.get('pic_pide', '').strip()
-    filter_pic_pmde = request.GET.get('pic_pmde', '').strip()
-    filter_kategori_ilap = request.GET.get('kategori_ilap', '').strip()
-    filter_ilap = request.GET.get('ilap', '').strip()
-    filter_jenis_data = request.GET.get('jenis_data', '').strip()
-    filter_sub_jenis_data = request.GET.get('sub_jenis_data', '').strip()
-    filter_kanwil = request.GET.get('kanwil', '').strip()
-    filter_kpp = request.GET.get('kpp', '').strip()
-    filter_kategori_wilayah = request.GET.get('kategori_wilayah', '').strip()
-    filter_jenis_tabel = request.GET.get('jenis_tabel', '').strip()
-    filter_dasar_hukum = request.GET.get('dasar_hukum', '').strip()
-    filter_periode_pengiriman = request.GET.get('periode_pengiriman', '').strip()
-    filter_terlambat = request.GET.get('terlambat', '').strip()
-    filter_tahun = request.GET.get('tahun', '').strip()
-    filter_status = request.GET.get('status', '').strip()
+    filter_periode_penerimaan = _split(request.GET.get('periode_penerimaan', ''))
+    filter_pic_p3de = _split(request.GET.get('pic_p3de', ''))
+    filter_pic_pide = _split(request.GET.get('pic_pide', ''))
+    filter_pic_pmde = _split(request.GET.get('pic_pmde', ''))
+    filter_kategori_ilap = _split(request.GET.get('kategori_ilap', ''))
+    filter_ilap = _split(request.GET.get('ilap', ''))
+    filter_jenis_data = _split(request.GET.get('jenis_data', ''))
+    filter_sub_jenis_data = _split(request.GET.get('sub_jenis_data', ''))
+    filter_kanwil = _split(request.GET.get('kanwil', ''))
+    filter_kpp = _split(request.GET.get('kpp', ''))
+    filter_kategori_wilayah = _split(request.GET.get('kategori_wilayah', ''))
+    filter_jenis_tabel = _split(request.GET.get('jenis_tabel', ''))
+    filter_dasar_hukum = _split(request.GET.get('dasar_hukum', ''))
+    filter_periode_pengiriman = _split(request.GET.get('periode_pengiriman', ''))
+    filter_tahun = _split(request.GET.get('tahun', ''))
+    filter_status = _split(request.GET.get('status', ''))
 
     if filter_nomor_tiket:
-        qs = qs.filter(nomor_tiket=filter_nomor_tiket)
+        qs = qs.filter(nomor_tiket__in=filter_nomor_tiket)
 
     if filter_periode:
         try:
@@ -472,78 +1075,72 @@ def tiket_data(request):
             qs = qs.none()
 
     if filter_periode_penerimaan:
-        qs = qs.filter(id_periode_data__id_periode_pengiriman__periode_penerimaan__iexact=filter_periode_penerimaan)
+        qs = qs.filter(id_periode_data__id_periode_pengiriman__periode_penerimaan__in=filter_periode_penerimaan)
 
     if filter_pic_p3de:
-        qs = qs.filter(tiketpic__role=TiketPIC.Role.P3DE, tiketpic__active=True, tiketpic__id_user_id=filter_pic_p3de)
+        qs = qs.filter(tiketpic__role=TiketPIC.Role.P3DE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_p3de)
 
     if filter_pic_pide:
-        qs = qs.filter(tiketpic__role=TiketPIC.Role.PIDE, tiketpic__active=True, tiketpic__id_user_id=filter_pic_pide)
+        qs = qs.filter(tiketpic__role=TiketPIC.Role.PIDE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_pide)
 
     if filter_pic_pmde:
-        qs = qs.filter(tiketpic__role=TiketPIC.Role.PMDE, tiketpic__active=True, tiketpic__id_user_id=filter_pic_pmde)
+        qs = qs.filter(tiketpic__role=TiketPIC.Role.PMDE, tiketpic__active=True, tiketpic__id_user_id__in=filter_pic_pmde)
 
     if filter_kategori_ilap:
-        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id=filter_kategori_ilap)
+        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id__in=filter_kategori_ilap)
 
     if filter_ilap:
-        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__id=filter_ilap)
+        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__id__in=filter_ilap)
 
     if filter_jenis_data:
-        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_jenis_data=filter_jenis_data)
+        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_jenis_data__in=filter_jenis_data)
 
     if filter_sub_jenis_data:
-        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_sub_jenis_data=filter_sub_jenis_data)
+        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_sub_jenis_data__in=filter_sub_jenis_data)
 
     if filter_kanwil:
-        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__id=filter_kanwil)
+        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__id__in=filter_kanwil)
 
     if filter_kpp:
-        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id=filter_kpp)
+        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id__in=filter_kpp)
 
     if filter_kategori_wilayah:
-        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah__id=filter_kategori_wilayah)
+        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah__id__in=filter_kategori_wilayah)
 
     if filter_jenis_tabel:
-        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel__id=filter_jenis_tabel)
+        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel__id__in=filter_jenis_tabel)
 
     if filter_dasar_hukum:
         qs = qs.filter(
-            id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata__id_klasifikasi_tabel__id=filter_dasar_hukum
+            id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata__id_klasifikasi_tabel__id__in=filter_dasar_hukum
         )
 
     if filter_periode_pengiriman:
-        qs = qs.filter(id_periode_data__id_periode_pengiriman__periode_penyampaian=filter_periode_pengiriman)
+        qs = qs.filter(id_periode_data__id_periode_pengiriman__periode_penyampaian__in=filter_periode_pengiriman)
 
     if filter_tahun:
-        try:
-            qs = qs.filter(tahun=int(filter_tahun))
-        except ValueError:
+        int_years = []
+        for y in filter_tahun:
+            try:
+                int_years.append(int(y))
+            except ValueError:
+                pass
+        if int_years:
+            qs = qs.filter(tahun__in=int_years)
+        else:
             qs = qs.none()
 
     if filter_status:
-        try:
-            qs = qs.filter(status_tiket=int(filter_status))
-        except ValueError:
+        int_statuses = []
+        for s in filter_status:
+            try:
+                int_statuses.append(int(s))
+            except ValueError:
+                pass
+        if int_statuses:
+            qs = qs.filter(status_tiket__in=int_statuses)
+        else:
             qs = qs.none()
-
-    if filter_terlambat in ('Ya', 'Tidak'):
-        now = timezone.now()
-        # Build DB-level late filter by grouping on distinct durasi integer values.
-        # This avoids materializing the entire queryset into Python.
-        late_conditions = Q()
-        for durasi_val in DurasiJatuhTempo.objects.values_list('durasi', flat=True).distinct():
-            if durasi_val is not None:
-                cutoff = now - timedelta(days=durasi_val)
-                late_conditions |= Q(
-                    id_durasi_jatuh_tempo_pide__durasi=durasi_val,
-                    tgl_terima_dip__isnull=False,
-                    tgl_terima_dip__lt=cutoff,
-                )
-        if filter_terlambat == 'Ya':
-            qs = qs.filter(late_conditions) if late_conditions else qs.none()
-        else:  # 'Tidak'
-            qs = qs.exclude(late_conditions)
 
     qs = qs.distinct()
 
