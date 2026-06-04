@@ -36,7 +36,7 @@
     <div class="card stretch stretch-full h-100">
         <div class="card-header">
             <h5 class="card-title mb-0"><i class="feather-user-check me-2"></i>Daftar PIC P3DE</h5>
-            <button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>
+            {% if is_admin %}<button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>{% endif %}
         </div>
         <div class="card-body custom-card-action p-0">
             <div class="table-responsive">
@@ -47,14 +47,14 @@
                         <th>User</th>
                         <th>Start Date</th>
                         <th>End Date</th>
-                        <th>Actions</th>
+                        {% if is_admin %}<th>Actions</th>{% endif %}
                     </tr>
                     <tr id="column-search-row">
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search Sub Jenis Data" data-column="0" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search User" data-column="1" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search Start Date" data-column="2" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search End Date" data-column="3" /></th>
-                        <th></th>
+                        {% if is_admin %}<th></th>{% endif %}
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -84,9 +84,23 @@
 <script>
     (function () {
         const ajaxUrl = "{% url 'pic_p3de_data' %}";
+        const isAdmin = {{ is_admin|yesno:"true,false" }};
         let table;
 
         $(document).ready(function () {
+            var columns = [
+                { data: 'sub_jenis_data_ilap' },
+                { data: 'user' },
+                { data: 'start_date' },
+                { data: 'end_date' }
+            ];
+            var columnDefs = [];
+            
+            if (isAdmin) {
+                columns.push({ data: 'actions', orderable: false, searchable: false });
+                columnDefs.push({ targets: 4, render: function (data, type, row, meta) { return data; } });
+            }
+
             table = $('#pic-p3de-table').DataTable({
                 serverSide: true,
                 layout: {
@@ -106,16 +120,8 @@
                     }
                 },
                 pageLength: 10,
-                columns: [
-                    { data: 'sub_jenis_data_ilap' },
-                    { data: 'user' },
-                    { data: 'start_date' },
-                    { data: 'end_date' },
-                    { data: 'actions', orderable: false, searchable: false }
-                ],
-                columnDefs: [
-                    { targets: 4, render: function (data, type, row, meta) { return data; } }
-                ],
+                columns: columns,
+                columnDefs: columnDefs,
                 order: [[0, 'asc']]
             });
 
