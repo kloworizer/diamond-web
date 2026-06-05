@@ -72,7 +72,7 @@ def _base_queryset(ilap_id, tanggal_terima):
         tgl_terima_dip__date=tanggal_terima,
         tanda_terima=True,
     ).select_related(
-        'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+        'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
         'id_periode_data__id_periode_pengiriman',
         'id_periode_data__id_sub_jenis_data_ilap__id_status_data',
         'id_status_penelitian',
@@ -284,8 +284,8 @@ def _generate_docx_for_tickets(selected_tickets, doc_type, title_prefix):
             )
             response['Content-Disposition'] = f'attachment; filename="{title_prefix}_{now_ts}.docx"'
             return response
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Error saat mengisi template DOCX: {str(e)}")
 
     # Fallback document if template unavailable/error.
     headers = ['No', 'Nomor Tiket', 'Nama ILAP', 'Sub Jenis Data', 'Periode Data', 'Baris Diterima', 'Status Penelitian']
@@ -315,7 +315,7 @@ def _generate_docx_for_tickets(selected_tickets, doc_type, title_prefix):
 
 @login_required
 @user_passes_test(_is_p3de_user)
-@require_http_methods(['GET', 'POST'])
+@require_http_methods(['GET', 'POST', 'HEAD'])
 def bulk_pkdi_klarifikasi(request):
     # Restrict ILAP list to user's active P3DE assignments unless admin
     if request.user.is_superuser or request.user.groups.filter(name__in=['admin', 'admin_p3de']).exists():
@@ -338,13 +338,17 @@ def bulk_pkdi_klarifikasi(request):
                     tgl_terima_dip__date=tanggal_obj,
                     tanda_terima=True,
                 ).select_related(
-                    'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                    'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
                     'id_periode_data__id_periode_pengiriman',
                     'id_periode_data__id_sub_jenis_data_ilap__id_status_data',
                     'id_status_penelitian',
                 ).prefetch_related(
                     'id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata_set__id_klasifikasi_tabel',
-                ).order_by('id')
+                ).order_by(
+                    'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
+                    'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                    'id'
+                )
                 tickets = list(_apply_doc_type_filter(qs, doc_type))
             else:
                 qs = _base_queryset(ilap_id, tanggal_obj)
@@ -367,13 +371,15 @@ def bulk_pkdi_klarifikasi(request):
                 tgl_terima_dip__date=tanggal_obj,
                 tanda_terima=True,
             ).select_related(
-                'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
                 'id_periode_data__id_periode_pengiriman',
                 'id_periode_data__id_sub_jenis_data_ilap__id_status_data',
                 'id_status_penelitian',
             ).prefetch_related(
                 'id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata_set__id_klasifikasi_tabel',
-            ).order_by('id')
+            ).order_by(
+                'id'
+            )
             base_qs = _apply_doc_type_filter(base_qs, doc_type)
         else:
             base_qs = _apply_doc_type_filter(_base_queryset(ilap_id, tanggal_obj), doc_type)
@@ -399,7 +405,7 @@ def bulk_pkdi_klarifikasi(request):
 
 @login_required
 @user_passes_test(_is_p3de_user)
-@require_http_methods(['GET', 'POST'])
+@require_http_methods(['GET', 'POST', 'HEAD'])
 def bulk_nd_pengantar_pide(request):
     # Restrict ILAP list to user's active P3DE assignments unless admin
     if request.user.is_superuser or request.user.groups.filter(name__in=['admin', 'admin_p3de']).exists():
@@ -422,14 +428,17 @@ def bulk_nd_pengantar_pide(request):
                         tgl_kirim_pide__date=tanggal_obj,
                         tanda_terima=True,
                     ).select_related(
-                        'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                        'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
                         'id_periode_data__id_periode_pengiriman',
                         'id_periode_data__id_sub_jenis_data_ilap__id_status_data',
                         'id_status_penelitian',
                     ).prefetch_related(
                         'id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata_set__id_klasifikasi_tabel',
                     )
-                    .order_by('id')
+                    .order_by(
+                        'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
+                        'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                        'id')
                 )
             else:
                 tickets = list(
@@ -438,7 +447,7 @@ def bulk_nd_pengantar_pide(request):
                         tgl_kirim_pide__date=tanggal_obj,
                         tanda_terima=True,
                     ).select_related(
-                        'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                        'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
                         'id_periode_data__id_periode_pengiriman',
                         'id_periode_data__id_sub_jenis_data_ilap__id_status_data',
                         'id_status_penelitian',
@@ -464,20 +473,22 @@ def bulk_nd_pengantar_pide(request):
                 tgl_kirim_pide__date=tanggal_obj,
                 tanda_terima=True,
             ).select_related(
-                'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
                 'id_periode_data__id_periode_pengiriman',
                 'id_periode_data__id_sub_jenis_data_ilap__id_status_data',
                 'id_status_penelitian',
             ).prefetch_related(
                 'id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata_set__id_klasifikasi_tabel',
-            ).order_by('id')
+            ).order_by(
+                'id'
+            )
         else:
             base_qs = Tiket.objects.filter(
                 id_periode_data__id_sub_jenis_data_ilap__id_ilap_id=ilap_id,
                 tgl_kirim_pide__date=tanggal_obj,
                 tanda_terima=True,
             ).select_related(
-                'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
                 'id_periode_data__id_periode_pengiriman',
                 'id_periode_data__id_sub_jenis_data_ilap__id_status_data',
                 'id_status_penelitian',
