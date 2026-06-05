@@ -47,14 +47,4 @@ htmlcov/
 # **/migrations/__pycache__/
 
 packages/
-
-#test files
-e2e_test.py
-
-#env with creds
-.env.example.dev
-.env.example.dev
-.gitignore
-.env.example.dev
-.gitignore
-.env.example.dev
+ 
