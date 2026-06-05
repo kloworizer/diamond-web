@@ -79,7 +79,7 @@ def home(request):
             'belum_dikirim_ke_pide': Tiket.objects.filter(
                 id__in=tiket_ids, 
                 status_tiket=STATUS_DITELITI,
-                id_status_penelitian__deskripsi__in=['Lengkap', 'Lengkap Sebagian']
+                baris_lengkap__gt=0
             ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian').order_by('-id'),
             'dikembalikan_dari_pide': Tiket.objects.filter(
                 id__in=tiket_ids, 
@@ -89,7 +89,7 @@ def home(request):
                 id__in=tiket_ids,
                 status_tiket__lte=STATUS_KLARIFIKASI_MAX
             ).filter(
-                Q(id_status_penelitian__deskripsi__in=['Lengkap Sebagian', 'Tidak Lengkap']) |
+                Q(baris_tidak_lengkap__gt=0) |
                 Q(baris_cde__gt=0)
             ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian', 'id_status_penelitian').order_by('-id'),
         }

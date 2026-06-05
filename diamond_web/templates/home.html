@@ -358,10 +358,10 @@
                             <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
                                 <thead>
                                     <tr>
-                                        <th>Nomor Tiket Klarifikasi</th>
+                                        <th>Nomor Tiket</th>
                                         <th>Periode</th>
-                                        <th>Tahun</th>
-                                        <th>Bentuk Data</th>
+                                        <th>Lengkap</th>
+                                        <th>Klarifikasi/CDE</th>
                                         <th>Tgl Terima DIP</th>
                                         <th>Actions</th>
                                     </tr>
@@ -370,12 +370,15 @@
                                     {% for tiket in p3de_tiket_categories.diklarifikasi %}
                                     <tr>
                                         <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.periode }}</td>
-                                        <td>{{ tiket.tahun }}</td>
-                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
+                                        <td>{{ tiket.periode }} / {{ tiket.tahun }}</td>
+                                        <td class="text-success fw-bold">{{ tiket.baris_lengkap|default:0 }}</td>
+                                        <td class="text-danger fw-bold">
+                                            {% if tiket.baris_tidak_lengkap > 0 %}{{ tiket.baris_tidak_lengkap }} (P3DE){% endif %}
+                                            {% if tiket.baris_cde > 0 %}{% if tiket.baris_tidak_lengkap > 0 %}<br>{% endif %}{{ tiket.baris_cde }} (PIDE){% endif %}
+                                        </td>
                                         <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
-                                            <a href="{% url 'tiket_detail_klarifikasi' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
                                         </td>
                                     </tr>
                                     {% endfor %}
