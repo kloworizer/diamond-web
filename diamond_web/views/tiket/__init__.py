@@ -11,7 +11,7 @@ from .rekam_tiket import (
 from .detail import TiketDetailView
 from .rekam_hasil_penelitian import RekamHasilPenelitianView
 from .batalkan_tiket import BatalkanTiketView
-from .kirim_tiket import KirimTiketView, DownloadNDPengantarView
+from .kirim_tiket import KirimTiketView, DownloadNDPengantarView, KirimPideTempUpdateView, KirimPideTempDeleteView
 from .dikembalikan_tiket import DikembalikanTiketView
 from .identifikasi_tiket import IdentifikasiTiketView
 from .transfer_ke_pmde import TransferKePMDEView
@@ -31,6 +31,8 @@ __all__ = [
     'BatalkanTiketView',
     'KirimTiketView',
     'DownloadNDPengantarView',
+    'KirimPideTempUpdateView',
+    'KirimPideTempDeleteView',
     'DikembalikanTiketView',
     'IdentifikasiTiketView',
     'TransferKePMDEView',

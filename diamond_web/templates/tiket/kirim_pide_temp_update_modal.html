@@ -1,0 +1,51 @@
+<form method="post" action="{% url 'kirim_tiket_temp_update' id_temp %}" id="kirim-pide-temp-update-form">
+    {% csrf_token %}
+    <div class="modal-body">
+        {% if existing_tikets %}
+        <div class="mb-3">
+            <label class="form-label"><strong>Tiket Saat Ini ({{ existing_count }})</strong></label>
+            <table class="table table-sm table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nomor Tiket</th>
+                        <th>Nama ILAP</th>
+                        <th>Sub Jenis Data</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tiket in existing_tikets %}
+                    <tr>
+                        <td>{{ tiket.nomor_tiket }}</td>
+                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap|default:'-' }}</td>
+                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data|default:'-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <div class="mb-3">
+            <label class="form-label"><strong>Tambah Tiket</strong></label>
+            <div style="max-height: 300px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 4px; padding: 8px;">
+                {% for tiket in available_tikets %}
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="tiket_ids"
+                           value="{{ tiket.id }}" id="avail_tiket_{{ tiket.id }}">
+                    <label class="form-check-label" for="avail_tiket_{{ tiket.id }}">
+                        {{ tiket.nomor_tiket }} — {{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap|default:'-' }} — {{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data|default:'-' }}
+                    </label>
+                </div>
+                {% empty %}
+                <p class="text-muted mb-0">Tidak ada tiket tersedia untuk ditambahkan.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="submit" class="btn btn-primary">
+            <i class="feather-plus me-1"></i>Tambah Tiket
+        </button>
+    </div>
+</form>
