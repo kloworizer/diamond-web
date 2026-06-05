@@ -61,6 +61,15 @@
                             {% endif %}
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="diklarifikasi">
+                            <i class="feather-alert-circle"></i>
+                            <span>Monitor Klarifikasi</span>
+                            {% if p3de_tiket_categories.diklarifikasi %}
+                            <span class="badge bg-danger ms-auto">{{ p3de_tiket_categories.diklarifikasi|length }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
                 </ul>
             </div>
             {% endif %}
@@ -325,6 +334,42 @@
                                         <td>{{ tiket.periode }}</td>
                                         <td>{{ tiket.tahun }}</td>
                                         <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
+                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                    <!-- Diklarifikasi -->  
+                <div class="card stretch stretch-full" data-category="diklarifikasi" style="display:none;">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Nomor Tiket</th>
+                                        <th>Periode</th>
+                                        <th>Lengkap</th>
+                                        <th>Klarifikasi/CDE</th>
+                                        <th>Tgl Terima DIP</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for tiket in p3de_tiket_categories.diklarifikasi %}
+                                    <tr>
+                                        <td>{{ tiket.nomor_tiket }}</td>
+                                        <td>{{ tiket.periode }} / {{ tiket.tahun }}</td>
+                                        <td class="text-success fw-bold">{{ tiket.baris_lengkap|default:0 }}</td>
+                                        <td class="text-danger fw-bold">
+                                            {% if tiket.baris_tidak_lengkap > 0 %}{{ tiket.baris_tidak_lengkap }} (P3DE){% endif %}
+                                            {% if tiket.baris_cde > 0 %}{% if tiket.baris_tidak_lengkap > 0 %}<br>{% endif %}{{ tiket.baris_cde }} (PIDE){% endif %}
+                                        </td>
                                         <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
                                             <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
