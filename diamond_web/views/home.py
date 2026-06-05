@@ -4,7 +4,7 @@ from django.db.models import Q
 from django.contrib.auth.models import Group
 from django.contrib.auth.decorators import login_required
 from diamond_web.views.task_to_do import (
-    get_tiket_summary_for_user,
+    get_tiket_summary_for_user_p3de,
     get_tiket_summary_for_user_pide,
     get_tiket_summary_for_user_pmde,
 )
@@ -53,7 +53,7 @@ def home(request):
     context['is_pmde'] = is_pmde
     # compute task summary based on user role
     if is_p3de:
-        context['tiket_summary'] = get_tiket_summary_for_user(request.user)
+        context['tiket_summary'] = get_tiket_summary_for_user_p3de(request.user)
         # Get tikets for P3DE user with specific categories
         p3de_pic = TiketPIC.objects.filter(id_user=request.user, role=TiketPIC.Role.P3DE, active=True)
         tiket_ids = p3de_pic.values_list('id_tiket', flat=True)
