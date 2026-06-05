@@ -32,4 +32,4 @@ STATUS_SELESAI = 8
 
 # Optional helpers for common comparisons
 # Tickets with status < STATUS_DIBATALKAN are considered non-final (not cancelled or finished)
-STATUS_NON_FINAL_MAX = STATUS_PENGENDALIAN_MUTU
+STATUS_KLARIFIKASI_MAX = STATUS_PENGENDALIAN_MUTU
