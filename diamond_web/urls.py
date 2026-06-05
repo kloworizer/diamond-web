@@ -297,6 +297,7 @@ urlpatterns = [
     # Kirim Tiket (Send Tiket) - Step 3
     path('tiket/kirim-tiket/', views.KirimTiketView.as_view(), name='kirim_tiket'),
     path('tiket/<int:tiket_pk>/kirim-pide/', views.KirimTiketView.as_view(), name='kirim_tiket_from_tiket'),
+    path('tiket/kirim-tiket/download/<int:id_temp>/', views.DownloadNDPengantarView.as_view(), name='kirim_tiket_download'),
     
     # PIDE and PMDE Workflow Actions (Modal-only forms in tiket detail page)
     # - Batalkan Tiket (Cancel Tiket): batalkan_tiket endpoint for AJAX modal

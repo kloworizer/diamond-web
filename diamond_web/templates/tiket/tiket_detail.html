@@ -645,7 +645,7 @@
 
                                     {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti and tiket.id_status_penelitian.deskripsi != 'Tidak Lengkap' %}
                                         <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#kirimTiketModal">
-                                            <i class="feather-send me-1"></i>Kirim Tiket ke PIDE
+                                            <i class="feather-file-text me-1"></i>Generate ND Pengantar PIDE
                                         </button>
                                     {% endif %}
                                 </div>
@@ -828,7 +828,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
-                <h5 class="modal-title" id="kirimTiketModalLabel">Kirim Tiket ke PIDE {{ tiket.nomor_tiket }}</h5>
+                <h5 class="modal-title" id="kirimTiketModalLabel">Generate ND Pengantar PIDE {{ tiket.nomor_tiket }}</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div id="kirim-tiket-form-container">
@@ -1229,16 +1229,23 @@
                                         .then(data => {
                                             if (data.success) {
                                                 bootstrap.Modal.getInstance(kirimTiketModal).hide();
-                                                showToast(data.message || 'Tiket berhasil dikirim.', 'success');
-                                                setTimeout(() => location.reload(), 800);
+                                                showToast(data.message || 'Template berhasil digenerate.', 'success');
+                                                // Navigate to download URL if provided (triggers file download)
+                                                if (data.redirect) {
+                                                    setTimeout(() => {
+                                                        window.location.href = data.redirect;
+                                                    }, 500);
+                                                } else {
+                                                    setTimeout(() => location.reload(), 800);
+                                                }
                                             } else if (data.errors) {
-                                                showToast(data.message || 'Gagal mengirim tiket.', 'danger');
+                                                showToast(data.message || 'Gagal generate template.', 'danger');
                                                 formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
                                             }
                                         })
                                         .catch(error => {
                                             console.error('Error:', error);
-                                            showToast('Terjadi kesalahan saat mengirim tiket.', 'danger');
+                                            showToast('Terjadi kesalahan saat generate template.', 'danger');
                                         });
                                 });
                             }

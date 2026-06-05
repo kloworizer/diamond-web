@@ -517,45 +517,49 @@ class TestKirimTiketView:
         )
         assert resp.status_code == 200
 
-    def test_post_form_valid_sends_tikets(self, client, authenticated_user):
-        """form_valid sends tiket to PIDE (status → 4) when user is active P3DE PIC."""
-        tiket = TiketFactory(status_tiket=1)
+    def test_post_form_valid_generates_docx(self, client, authenticated_user):
+        """form_valid saves to KirimPideTemp and returns DOCX when user is active P3DE PIC."""
+        from ...models.kirim_pide_temp import KirimPideTemp
+
+        tiket = TiketFactory(status_tiket=2, tanda_terima=True)
         TiketPICFactory(id_tiket=tiket, id_user=authenticated_user,
                         role=TiketPIC.Role.P3DE, active=True)
         client.force_login(authenticated_user)
         resp = client.post(
             reverse('kirim_tiket'),
-            {
-                'nomor_nd_nadine': 'ND-001/2024',
-                'tgl_nadine': '2024-01-01T10:00',
-                'tgl_kirim_pide': '2024-01-02T10:00',
-                'tiket_ids': str(tiket.pk),
-            },
-            follow=True,
+            {'tiket_ids': str(tiket.pk)},
         )
         assert resp.status_code == 200
-        tiket.refresh_from_db()
-        assert tiket.status_tiket == 4  # STATUS_DIKIRIM_KE_PIDE
+        # Response should be a DOCX file (not JSON)
+        content_type = resp.get('Content-Type', '')
+        assert 'openxmlformats' in content_type
+        # KirimPideTemp record created
+        assert KirimPideTemp.objects.filter(
+            id_tiket=tiket, id_user=authenticated_user
+        ).exists()
 
     def test_post_ajax_form_valid(self, client, authenticated_user):
-        """AJAX POST sends tiket to PIDE and returns JSON success."""
-        tiket = TiketFactory(status_tiket=1)
+        """AJAX POST saves to KirimPideTemp and returns JSON success with redirect."""
+        from ...models.kirim_pide_temp import KirimPideTemp
+
+        tiket = TiketFactory(status_tiket=2, tanda_terima=True)
         TiketPICFactory(id_tiket=tiket, id_user=authenticated_user,
                         role=TiketPIC.Role.P3DE, active=True)
         client.force_login(authenticated_user)
         resp = client.post(
             reverse('kirim_tiket'),
-            {
-                'nomor_nd_nadine': 'ND-002/2024',
-                'tgl_nadine': '2024-01-01T10:00',
-                'tgl_kirim_pide': '2024-01-02T10:00',
-                'tiket_ids': str(tiket.pk),
-            },
+            {'tiket_ids': str(tiket.pk)},
             HTTP_X_REQUESTED_WITH='XMLHttpRequest',
         )
         assert resp.status_code == 200
         data = json.loads(resp.content)
         assert data['success'] is True
+        assert 'redirect' in data
+        assert '/kirim-tiket/download/' in data['redirect']
+        # KirimPideTemp record created
+        assert KirimPideTemp.objects.filter(
+            id_tiket=tiket, id_user=authenticated_user
+        ).exists()
 
     def test_post_ajax_unauthorized_pic(self, client, authenticated_user):
         """form_valid rejects tikets where user is not active P3DE PIC."""

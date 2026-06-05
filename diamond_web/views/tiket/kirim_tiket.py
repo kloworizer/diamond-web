@@ -1,111 +1,130 @@
-"""Kirim Tiket Workflow Step - Send/Submit Tiket"""
+"""Kirim Tiket Workflow Step - Generate ND Pengantar PIDE"""
 
-from datetime import datetime
-from django.views.generic import FormView
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.views.generic import FormView, View
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseForbidden
 from django.urls import reverse_lazy, reverse
 from django.db import transaction
+from django.db import models as db_models
+from django.shortcuts import redirect
+from django.core.paginator import Paginator
 
 from ...models.tiket import Tiket
-from ...models.tiket_action import TiketAction
 from ...models.tiket_pic import TiketPIC
-from ...models.notification import Notification
+from ...models.kirim_pide_temp import KirimPideTemp
 from ...forms.kirim_tiket import KirimTiketForm
-from django.utils.html import format_html
-from ...constants.tiket_action_types import TiketActionType
-from ..mixins import UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin
-from ...constants.tiket_status import STATUS_DITELITI, STATUS_DIKEMBALIKAN, STATUS_DIKIRIM_KE_PIDE
+from ..mixins import UserP3DERequiredMixin
+from ...constants.tiket_status import STATUS_DITELITI, STATUS_DIKEMBALIKAN
+from ..bulk_document_generation import _generate_docx_for_tickets
 
 
-class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, FormView):
-    """P3DE workflow step to submit completed tikets to PIDE.
+class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
+    """P3DE workflow step to generate ND Pengantar PIDE template.
 
-    This view allows P3DE users to send prepared tikets (with backup and
-    tanda terima completed) to PIDE for the identification/analysis phase.
-    Supports both single-tiket and batch submission modes.
+    Shows tikets with status Diteliti/Dikembalikan where the current user is
+    an active P3DE PIC. The user selects tikets via checkboxes and clicks
+    'Generate Template' to:
 
-    Form: KirimTiketForm (validates and processes tiket selections)
+    1. Save the selected tiket IDs and user ID to the KirimPideTemp table
+       with a shared, auto-incremented id_temp value.
+    2. Generate and download an ND Pengantar PIDE document using the bulk
+       document generation engine (_generate_docx_for_tickets).
+
+    Supports both single-tiket (from the tiket detail AJAX modal) and batch
+    modes (standalone page with checkbox list).
+
+    Form: KirimTiketForm (validates tiket_ids only)
     Template: tiket/kirim_tiket_form.html or modal variant for AJAX
-    
-    Workflow Sequence:
-    1. User selects tikets with status=DITELITI or DIKEMBALIKAN
-    2. User verifies backup data and tanda terima are complete
-    3. Form submission updates tikets to STATUS_DIKIRIM_KE_PIDE
-    4. TiketAction audit records created for each tiket
-    5. PIDE PICs notified via Notification objects
 
     Access Control:
     - Requires @login_required
-    - Requires UserP3DERequiredMixin (user in user_p3de group)
-    - Requires ActiveTiketP3DERequiredForEditMixin for single-tiket mode
+    - Requires UserP3DERequiredMixin (user in user_p3de / admin group)
 
     Side Effects on Submission:
-    - Updates tiket.status to STATUS_DIKIRIM_KE_PIDE
-    - Sets tiket.tgl_kirim_pide to current datetime
-    - Creates TiketAction records with TiketActionType.DIKIRIM_KE_PIDE
-    - Creates Notification objects for all active PIDE PICs assigned to tiket
-    - Assigns PIDE PICs to TiketPIC if they exist in PIC table
+    - Creates KirimPideTemp records for each selected tiket (shared id_temp)
+    - Returns a DOCX file download (ND Pengantar PIDE) for non-AJAX requests
+    - Returns JSON redirect to download URL for AJAX requests
     """
     form_class = KirimTiketForm
-    
-    # Authorization handled by ActiveTiketP3DERequiredForEditMixin
     template_name = 'tiket/kirim_tiket_form.html'
     success_url = reverse_lazy('tiket_list')
 
+    # ------------------------------------------------------------------
+    # Context
+    # ------------------------------------------------------------------
     def get_context_data(self, **kwargs):
-        """Build context with tikets available for submission.
+        """Build context with tikets available for template generation.
 
-        When single_tiket mode (tiket_pk in URL):
-        - context['single_tiket']: The specific tiket to submit
-        - context['tikets']: None (not showing list)
+        Single-tiket mode (tiket_pk in URL):
+        - context['single_tiket']: The specific tiket
+        - context['tikets']: None
 
-        When batch mode (no tiket_pk):
-        - context['tikets']: QuerySet of tikets ready for submission:
-            * status in (DITELITI, DIKEMBALIKAN)
-            * backup=True (backup data recorded)
+        Batch mode (no tiket_pk):
+        - context['tikets']: Tikets where:
+            * status_tiket in (DITELITI, DIKEMBALIKAN)
             * tanda_terima=True (receipt data recorded)
             * User is active P3DE PIC for each tiket
-        - context['single_tiket']: None (not single mode)
+          Display columns: nomor tiket, nama ilap, sub jenis data, status tiket
+        - context['single_tiket']: None
 
-        Both modes populate:
+        Both modes:
         - context['form_action']: Form submission URL
-        - context['page_title']: "Kirim Tiket"
-        - context['workflow_step']: "kirim_tiket"
+        - context['page_title']: 'Generate ND Pengantar PIDE'
+        - context['workflow_step']: 'kirim_tiket'
         """
         context = super().get_context_data(**kwargs)
         tiket_pk = self.kwargs.get('tiket_pk')
-        context['page_title'] = 'Kirim Tiket'
+        context['page_title'] = 'Generate ND Pengantar PIDE'
         context['workflow_step'] = 'kirim_tiket'
+
         if tiket_pk:
             tiket = Tiket.objects.get(pk=tiket_pk)
             context['single_tiket'] = tiket
-            context['form_action'] = reverse('kirim_tiket_from_tiket', kwargs={'tiket_pk': tiket_pk})
+            context['form_action'] = reverse(
+                'kirim_tiket_from_tiket', kwargs={'tiket_pk': tiket_pk}
+            )
             context['tikets'] = None
         else:
-            # Filter tikets for checkbox: status in (Diteliti, Dikembalikan), backup True, tanda_terima True,
-            # and logged user is active PIC P3DE
             tikets = Tiket.objects.filter(
                 status_tiket__in=[STATUS_DITELITI, STATUS_DIKEMBALIKAN],
-                backup=True,
                 tanda_terima=True,
                 tiketpic__active=True,
                 tiketpic__role=TiketPIC.Role.P3DE,
-                tiketpic__id_user=self.request.user
-            ).distinct()
-            context['tikets'] = tikets
+                tiketpic__id_user=self.request.user,
+            ).exclude(
+                id__in=KirimPideTemp.objects.values('id_tiket_id'),
+            ).exclude(
+                id_status_penelitian__deskripsi='Tidak Lengkap',
+            ).select_related(
+                'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                'id_status_penelitian',
+            ).distinct().order_by('id')
+
+            paginator = Paginator(tikets, 25)
+            page_number = self.request.GET.get('page', 1)
+            page_obj = paginator.get_page(page_number)
+            context['tikets'] = page_obj.object_list
+            context['page_obj'] = page_obj
+            context['paginator'] = paginator
+            context['total_count'] = paginator.count
             context['form_action'] = reverse('kirim_tiket')
         return context
 
+    # ------------------------------------------------------------------
+    # Template selection
+    # ------------------------------------------------------------------
     def get_template_names(self):
-        """Return modal template for AJAX requests, full page template otherwise."""
+        """Return modal template for AJAX requests, full page otherwise."""
         if self.is_ajax_request():
             return ['tiket/kirim_tiket_modal_form.html']
         return [self.template_name]
 
+    # ------------------------------------------------------------------
+    # Initial / form kwargs
+    # ------------------------------------------------------------------
     def get_initial(self):
-        """Set initial form data for single-tiket mode."""
+        """Pre-populate tiket_ids for single-tiket mode."""
         initial = super().get_initial()
         tiket_pk = self.kwargs.get('tiket_pk')
         if tiket_pk:
@@ -113,136 +132,233 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DER
         return initial
 
     def get_form_kwargs(self):
-        """Ensure tiket_ids form field is populated from selected checkboxes on POST.
+        """Ensure tiket_ids is populated from checkboxes on POST.
 
-        Handles both explicit tiket_ids field value and tiket-select checkbox array.
+        Handles both the explicit tiket_ids hidden field and the
+        tiket-select checkbox array used in the batch template.
         """
         kwargs = super().get_form_kwargs()
         if self.request.method == 'POST':
             data = self.request.POST.copy()
             selected_ids = data.get('tiket_ids')
             if not selected_ids:
-                selected_ids = ','.join(self.request.POST.getlist('tiket-select'))
+                selected_ids = ','.join(
+                    self.request.POST.getlist('tiket-select')
+                )
             if selected_ids:
                 data['tiket_ids'] = selected_ids
             kwargs['data'] = data
         return kwargs
-    
+
+    # ------------------------------------------------------------------
+    # AJAX helpers
+    # ------------------------------------------------------------------
     def is_ajax_request(self):
-        """Check if the request is an AJAX request."""
+        """Check whether the request is an AJAX (XMLHttpRequest) call."""
         return self.request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-    
-    def get_json_response(self, success=True, message="", errors=None, redirect=None):
-        """Generate standardized JSON response for AJAX requests."""
-        response = {
-            'success': success,
-            'message': message,
-        }
+
+    def get_json_response(self, success=True, message='', errors=None,
+                          redirect=None):
+        """Return a standardised JSON payload for AJAX clients."""
+        response = {'success': success, 'message': message}
         if errors:
             response['errors'] = errors
         if redirect:
             response['redirect'] = redirect
         return JsonResponse(response)
-    
+
+    # ------------------------------------------------------------------
+    # Form submission
+    # ------------------------------------------------------------------
     def form_valid(self, form):
-        """Handle form submission."""
+        """Handle form submission: save temp records + generate DOCX.
+
+        For non-AJAX (batch page): returns the DOCX file directly.
+        For AJAX (modal): returns JSON with redirect to download URL,
+        since file downloads cannot be triggered from fetch().
+        """
         try:
-            with transaction.atomic():
-                nomor_nd_nadine = form.cleaned_data['nomor_nd_nadine']
-                tgl_nadine = form.cleaned_data['tgl_nadine']
-                tgl_kirim_pide = form.cleaned_data['tgl_kirim_pide']
-                tiket_ids = [int(id.strip()) for id in form.cleaned_data['tiket_ids'].split(',') if id.strip()]
-                
-                # Get tikets
-                tikets = Tiket.objects.filter(id__in=tiket_ids)
+            tiket_ids = [
+                int(pid.strip())
+                for pid in form.cleaned_data['tiket_ids'].split(',')
+                if pid.strip()
+            ]
 
-                # Verify user is active P3DE PIC for each tiket
-                unauthorized = []
-                for tiket in tikets:
-                    if not TiketPIC.objects.filter(id_tiket=tiket, id_user=self.request.user, active=True, role=TiketPIC.Role.P3DE).exists():
-                        unauthorized.append(tiket.nomor_tiket)
-                if unauthorized:
-                    msg = f"Anda bukan PIC P3DE aktif untuk tiket: {', '.join(unauthorized)}"
-                    if self.is_ajax_request():
-                        return self.get_json_response(success=False, message=msg)
-                    messages.error(self.request, msg)
-                    return self.form_invalid(form)
-                
-                # Update each tiket
-                for tiket in tikets:
-                    tiket.nomor_nd_nadine = nomor_nd_nadine
-                    tiket.tgl_nadine = tgl_nadine
-                    tiket.tgl_kirim_pide = tgl_kirim_pide
-                    tiket.status_tiket = STATUS_DIKIRIM_KE_PIDE  # Change status_tiket to STATUS_DIKIRIM_KE_PIDE (Dikirim ke PIDE)
-                    tiket.save()
-                    
-                    # Record tiket_action for audit trail
-                    TiketAction.objects.create(
-                        id_tiket=tiket,
-                        id_user=self.request.user,
-                        timestamp=datetime.now(),
-                        action=TiketActionType.DIKIRIM_KE_PIDE,
-                        catatan="tiket dikirim ke PIDE"
-                    )
-
-                    # Send notification to all active PIDE PICs for this tiket
-                    pide_pics = TiketPIC.objects.filter(
-                        id_tiket=tiket,
-                        role=TiketPIC.Role.PIDE,
-                        active=True
-                    ).select_related('id_user')
-                    # Build URLs: full URL (unused) and path-only for anchor href
-                    try:
-                        _ = self.request.build_absolute_uri(reverse('tiket_detail', kwargs={'pk': tiket.pk}))
-                    except Exception:
-                        _ = reverse('tiket_detail', kwargs={'pk': tiket.pk})
-                    detail_path = reverse('tiket_detail', kwargs={'pk': tiket.pk})
-                    sender_name = (self.request.user.get_full_name() or self.request.user.username).strip()
-                    link_text = tiket.nomor_tiket or str(tiket.pk)
-                    # Use format_html to safely escape values and produce a SafeString
-                    notif_message = format_html(
-                        'ada tiket baru nomor <a href="{}">{}</a> yang dikirim dari P3DE oleh {}',
-                        detail_path,
-                        link_text,
-                        sender_name
-                    )
-                    for pic in pide_pics:
-                        recipient = pic.id_user
-                        # Avoid duplicate notifications per recipient for the same tiket
-                        Notification.objects.create(
-                            recipient=recipient,
-                            title='Tiket baru',
-                            message=notif_message
-                        )
-                
-                message = f'Berhasil memperbarui {len(tikets)} tiket dan mengirim ke PIDE.'
-                
-                if self.is_ajax_request():
-                    return self.get_json_response(
-                        success=True,
-                        message=message,
-                        redirect=self.success_url
-                    )
-                else:
-                    messages.success(self.request, message)
-                    return super().form_valid(form)
-        
-        except Exception as e:
-            error_message = f'Gagal memperbarui tiket: {str(e)}'
-            if self.is_ajax_request():
-                return self.get_json_response(
-                    success=False,
-                    errors={'__all__': [error_message]}
+            # --- Handle "select all pages" mode ---
+            select_all_pages = self.request.POST.get('select_all_pages') == 'true'
+            if select_all_pages:
+                all_ids = list(
+                    Tiket.objects.filter(
+                        status_tiket__in=[STATUS_DITELITI, STATUS_DIKEMBALIKAN],
+                        tanda_terima=True,
+                        tiketpic__active=True,
+                        tiketpic__role=TiketPIC.Role.P3DE,
+                        tiketpic__id_user=self.request.user,
+                    ).exclude(
+                        id__in=KirimPideTemp.objects.values('id_tiket_id'),
+                    ).exclude(
+                        id_status_penelitian__deskripsi='Tidak Lengkap',
+                    ).distinct().values_list('pk', flat=True)
                 )
             else:
-                messages.error(self.request, error_message)
-                return self.form_invalid(form)
-    
-    def form_invalid(self, form):
-        """Handle form validation errors."""
-        if self.is_ajax_request():
-            return self.get_json_response(
-                success=False,
-                errors=form.errors
+                all_ids = tiket_ids
+
+            tikets = Tiket.objects.filter(id__in=all_ids)
+
+            # --- Permission check ---
+            unauthorized = []
+            already_generated = []
+            already_temp_ids = set(
+                KirimPideTemp.objects.values_list('id_tiket_id', flat=True)
             )
+            for tiket in tikets:
+                if tiket.pk in already_temp_ids:
+                    already_generated.append(tiket.nomor_tiket)
+                elif not TiketPIC.objects.filter(
+                    id_tiket=tiket,
+                    id_user=self.request.user,
+                    active=True,
+                    role=TiketPIC.Role.P3DE,
+                ).exists():
+                    unauthorized.append(tiket.nomor_tiket)
+
+            if already_generated:
+                msg = (
+                    'Tiket berikut sudah pernah digenerate template-nya: '
+                    f"{', '.join(already_generated)}. "
+                    'Silakan hapus dari KirimPideTemp terlebih dahulu.'
+                )
+                if self.is_ajax_request():
+                    return self.get_json_response(success=False, message=msg)
+                messages.error(self.request, msg)
+                return self.form_invalid(form)
+
+            if unauthorized:
+                msg = (
+                    'Anda bukan PIC P3DE aktif untuk tiket: '
+                    f'{", ".join(unauthorized)}'
+                )
+                if self.is_ajax_request():
+                    return self.get_json_response(success=False, message=msg)
+                messages.error(self.request, msg)
+                return self.form_invalid(form)
+
+            with transaction.atomic():
+                # --- Generate an incremental id_temp ---
+                max_temp = (
+                    KirimPideTemp.objects.aggregate(
+                        max_id=db_models.Max('id_temp')
+                    )['max_id']
+                    or 0
+                )
+                new_id_temp = max_temp + 1
+
+                # --- Persist to KirimPideTemp ---
+                for tiket in tikets:
+                    KirimPideTemp.objects.create(
+                        id_temp=new_id_temp,
+                        id_tiket=tiket,
+                        id_user=self.request.user,
+                    )
+
+            # --- Non-AJAX: generate and return DOCX directly ---
+            if not self.is_ajax_request():
+                selected_tickets = list(
+                    Tiket.objects.filter(id__in=all_ids)
+                    .select_related(
+                        'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                        'id_periode_data__id_periode_pengiriman',
+                        'id_periode_data__id_sub_jenis_data_ilap__id_status_data',
+                        'id_status_penelitian',
+                    )
+                    .prefetch_related(
+                        'id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata_set__id_klasifikasi_tabel',
+                    )
+                    .order_by('id')
+                )
+
+                response = _generate_docx_for_tickets(
+                    selected_tickets,
+                    'nd_pengantar',
+                    f'nd_pengantar_pide_{new_id_temp}',
+                )
+                if response:
+                    return response
+
+                # Fallback
+                messages.success(self.request, 'Template berhasil digenerate.')
+                return super().form_valid(form)
+
+            # --- AJAX: return JSON with download redirect ---
+            download_url = reverse(
+                'kirim_tiket_download',
+                kwargs={'id_temp': new_id_temp},
+            )
+            return self.get_json_response(
+                success=True,
+                message='Template berhasil digenerate.',
+                redirect=download_url,
+            )
+
+        except Exception as e:
+            error_message = f'Gagal generate template: {str(e)}'
+            if self.is_ajax_request():
+                return self.get_json_response(
+                    success=False, errors={'__all__': [error_message]}
+                )
+            messages.error(self.request, error_message)
+            return self.form_invalid(form)
+
+    def form_invalid(self, form):
+        """Return validation errors in the appropriate format."""
+        if self.is_ajax_request():
+            return self.get_json_response(success=False, errors=form.errors)
         return super().form_invalid(form)
+
+
+class DownloadNDPengantarView(LoginRequiredMixin, UserP3DERequiredMixin, View):
+    """Serve the ND Pengantar PIDE document for a given id_temp.
+
+    Looks up the KirimPideTemp records, loads the associated tikets, and
+    generates the DOCX on-the-fly using _generate_docx_for_tickets.
+    Used for AJAX-triggered downloads (from the tiket detail modal).
+    """
+    def get(self, request, id_temp):
+        temp_records = list(
+            KirimPideTemp.objects.filter(id_temp=id_temp)
+            .select_related('id_tiket')
+        )
+        if not temp_records:
+            messages.error(request, 'Data template tidak ditemukan.')
+            return redirect('tiket_list')
+
+        # Verify the requesting user owns this temp batch
+        if any(r.id_user != request.user for r in temp_records):
+            return HttpResponseForbidden('Anda tidak berhak mengakses data ini.')
+
+        tiket_ids = [r.id_tiket_id for r in temp_records]
+
+        selected_tickets = list(
+            Tiket.objects.filter(id__in=tiket_ids)
+            .select_related(
+                'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                'id_periode_data__id_periode_pengiriman',
+                'id_periode_data__id_sub_jenis_data_ilap__id_status_data',
+                'id_status_penelitian',
+            )
+            .prefetch_related(
+                'id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata_set__id_klasifikasi_tabel',
+            )
+            .order_by('id')
+        )
+
+        response = _generate_docx_for_tickets(
+            selected_tickets,
+            'nd_pengantar',
+            f'nd_pengantar_pide_{id_temp}',
+        )
+        if response:
+            return response
+
+        messages.error(request, 'Gagal menghasilkan dokumen.')
+        return redirect('tiket_list')
