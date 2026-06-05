@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.conf import settings
+from django.db.models import Q
 from django.contrib.auth.models import Group
 from django.contrib.auth.decorators import login_required
 from diamond_web.views.task_to_do import (
@@ -16,6 +17,7 @@ from diamond_web.constants.tiket_status import (
     STATUS_DIKIRIM_KE_PIDE,
     STATUS_IDENTIFIKASI,
     STATUS_PENGENDALIAN_MUTU,
+    STATUS_KLARIFIKASI_MAX,
 )
 
 @login_required
@@ -76,12 +78,20 @@ def home(request):
             ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian').order_by('-id'),
             'belum_dikirim_ke_pide': Tiket.objects.filter(
                 id__in=tiket_ids, 
-                status_tiket=STATUS_DITELITI
+                status_tiket=STATUS_DITELITI,
+                baris_lengkap__gt=0
             ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian').order_by('-id'),
             'dikembalikan_dari_pide': Tiket.objects.filter(
                 id__in=tiket_ids, 
                 status_tiket=STATUS_DIKEMBALIKAN
             ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian').order_by('-id'),
+            'diklarifikasi': Tiket.objects.filter(
+                id__in=tiket_ids,
+                status_tiket__lte=STATUS_KLARIFIKASI_MAX
+            ).filter(
+                Q(baris_tidak_lengkap__gt=0) |
+                Q(baris_cde__gt=0)
+            ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian', 'id_status_penelitian').order_by('-id'),
         }
     if is_pide:
         context['tiket_summary_pide'] = get_tiket_summary_for_user_pide(request.user)
