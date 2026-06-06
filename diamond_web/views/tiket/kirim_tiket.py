@@ -1,5 +1,7 @@
 """Kirim Tiket Workflow Step - Generate ND Pengantar PIDE"""
 
+from datetime import datetime
+
 from django.views.generic import FormView, View, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
@@ -9,14 +11,20 @@ from django.db import transaction
 from django.db import models as db_models
 from django.shortcuts import redirect, get_object_or_404
 from django.core.paginator import Paginator
+from django.utils.html import format_html
 from django.template.loader import render_to_string
 
 from ...models.tiket import Tiket
+from ...models.tiket_action import TiketAction
 from ...models.tiket_pic import TiketPIC
 from ...models.kirim_pide_temp import KirimPideTemp
+from ...models.ilap import ILAP
+from ...models.notification import Notification
 from ...forms.kirim_tiket import KirimTiketForm
-from ..mixins import UserP3DERequiredMixin
-from ...constants.tiket_status import STATUS_DITELITI, STATUS_DIKEMBALIKAN
+from ...forms.kirim_ke_pide import KirimKePideForm
+from ..mixins import UserP3DERequiredMixin, get_active_p3de_ilap_ids
+from ...constants.tiket_status import STATUS_DITELITI, STATUS_DIKEMBALIKAN, STATUS_DIKIRIM_KE_PIDE
+from ...constants.tiket_action_types import TiketActionType
 from ..bulk_document_generation import _generate_docx_for_tickets
 
 
@@ -79,6 +87,9 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
         context['page_title'] = 'Generate ND Pengantar PIDE'
         context['workflow_step'] = 'kirim_tiket'
 
+        selected_ilap_id = self.request.GET.get('ilap_id', '')
+        context['selected_ilap_id'] = selected_ilap_id
+
         if tiket_pk:
             tiket = Tiket.objects.get(pk=tiket_pk)
             context['single_tiket'] = tiket
@@ -86,7 +97,16 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
                 'kirim_tiket_from_tiket', kwargs={'tiket_pk': tiket_pk}
             )
             context['tikets'] = None
+            # ILAP options based on user access for single-tiket mode
+            if self.request.user.is_superuser or self.request.user.groups.filter(
+                name__in=['admin', 'admin_p3de']
+            ).exists():
+                ilap_options = ILAP.objects.order_by('nama_ilap')
+            else:
+                ilap_ids = get_active_p3de_ilap_ids(self.request.user)
+                ilap_options = ILAP.objects.filter(id__in=ilap_ids).order_by('nama_ilap')
         else:
+            # Build the base tiket queryset first (without ILAP filter)
             tikets = Tiket.objects.filter(
                 status_tiket__in=[STATUS_DITELITI, STATUS_DIKEMBALIKAN],
                 tanda_terima=True,
@@ -97,7 +117,26 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
                 id__in=KirimPideTemp.objects.values('id_tiket_id'),
             ).exclude(
                 id_status_penelitian__deskripsi='Tidak Lengkap',
-            ).select_related(
+            )
+
+            # Derive ILAP options from the actual tiket list (before filter)
+            ilap_ids_in_list = set(
+                tikets.values_list(
+                    'id_periode_data__id_sub_jenis_data_ilap__id_ilap_id',
+                    flat=True,
+                ).distinct()
+            )
+            ilap_options = ILAP.objects.filter(
+                id__in=ilap_ids_in_list
+            ).order_by('nama_ilap')
+
+            # --- Apply ILAP filter if selected ---
+            if selected_ilap_id:
+                tikets = tikets.filter(
+                    id_periode_data__id_sub_jenis_data_ilap__id_ilap_id=selected_ilap_id
+                )
+
+            tikets = tikets.select_related(
                 'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
                 'id_status_penelitian',
             ).distinct().order_by('id')
@@ -111,13 +150,31 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
             context['total_count'] = paginator.count
             context['form_action'] = reverse('kirim_tiket')
 
-        # --- KirimPideTemp groups for Tab 2 ---
-        temp_groups = (
-            KirimPideTemp.objects.filter(id_user=self.request.user)
+        context['ilap_options'] = ilap_options
+        context['selected_ilap_id'] = selected_ilap_id
+
+        # --- KirimPideTemp groups for Tab 2 (always show all, no ILAP filter) ---
+        temp_groups_qs = KirimPideTemp.objects.filter(id_user=self.request.user)
+
+        temp_groups = list(
+            temp_groups_qs
             .values('id_temp')
             .annotate(jumlah_tiket=db_models.Count('id_tiket'))
             .order_by('-id_temp')
         )
+
+        # Attach list of nomor_tiket to each group
+        for group in temp_groups:
+            tiket_nomor_list = (
+                KirimPideTemp.objects.filter(
+                    id_temp=group['id_temp'],
+                    id_user=self.request.user,
+                )
+                .select_related('id_tiket')
+                .values_list('id_tiket__nomor_tiket', flat=True)
+            )
+            group['daftar_nomor_tiket'] = list(tiket_nomor_list)
+
         context['temp_groups'] = temp_groups
         return context
 
@@ -197,19 +254,26 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
             # --- Handle "select all pages" mode ---
             select_all_pages = self.request.POST.get('select_all_pages') == 'true'
             if select_all_pages:
-                all_ids = list(
-                    Tiket.objects.filter(
-                        status_tiket__in=[STATUS_DITELITI, STATUS_DIKEMBALIKAN],
-                        tanda_terima=True,
-                        tiketpic__active=True,
-                        tiketpic__role=TiketPIC.Role.P3DE,
-                        tiketpic__id_user=self.request.user,
-                    ).exclude(
-                        id__in=KirimPideTemp.objects.values('id_tiket_id'),
-                    ).exclude(
-                        id_status_penelitian__deskripsi='Tidak Lengkap',
-                    ).distinct().values_list('pk', flat=True)
+                all_ids_qs = Tiket.objects.filter(
+                    status_tiket__in=[STATUS_DITELITI, STATUS_DIKEMBALIKAN],
+                    tanda_terima=True,
+                    tiketpic__active=True,
+                    tiketpic__role=TiketPIC.Role.P3DE,
+                    tiketpic__id_user=self.request.user,
+                ).exclude(
+                    id__in=KirimPideTemp.objects.values('id_tiket_id'),
+                ).exclude(
+                    id_status_penelitian__deskripsi='Tidak Lengkap',
                 )
+
+                # Apply ILAP filter to "select all pages" if provided
+                ilap_id = self.request.POST.get('ilap_id', '')
+                if ilap_id:
+                    all_ids_qs = all_ids_qs.filter(
+                        id_periode_data__id_sub_jenis_data_ilap__id_ilap_id=ilap_id
+                    )
+
+                all_ids = list(all_ids_qs.distinct().values_list('pk', flat=True))
             else:
                 all_ids = tiket_ids
 
@@ -375,16 +439,28 @@ class DownloadNDPengantarView(LoginRequiredMixin, UserP3DERequiredMixin, View):
 
 
 class KirimPideTempUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, View):
-    """Add tikets to an existing KirimPideTemp id_temp.
+    """Update KirimPideTemp tickets for a given id_temp.
 
-    GET: Returns rendered modal HTML with available tikets.
-    POST: Adds selected tikets to the given id_temp.
+    GET: Returns modal HTML with all eligible tickets shown as checkboxes.
+         Existing tickets in this id_temp are pre-checked.
+    POST: Adds newly checked tickets and removes unchecked ones.
     """
 
-    def get_available_tikets(self, request):
-        """Return queryset of tikets available to add to any temp batch."""
-        already_temp_ids = set(
-            KirimPideTemp.objects.values_list('id_tiket_id', flat=True)
+    def get_eligible_tikets(self, request, id_temp):
+        """Return queryset of all tikets eligible for this id_temp.
+
+        Includes tikets already in this id_temp plus tikets not in any temp batch.
+        Excludes tikets that belong to OTHER temp batches.
+        """
+        # Tickets already in THIS id_temp
+        existing_ids = set(
+            KirimPideTemp.objects.filter(id_temp=id_temp)
+            .values_list('id_tiket_id', flat=True)
+        )
+        # All tiket IDs in ANY temp batch (except current one)
+        other_temp_ids = set(
+            KirimPideTemp.objects.exclude(id_temp=id_temp)
+            .values_list('id_tiket_id', flat=True)
         )
         return Tiket.objects.filter(
             status_tiket__in=[STATUS_DITELITI, STATUS_DIKEMBALIKAN],
@@ -393,7 +469,7 @@ class KirimPideTempUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, View):
             tiketpic__role=TiketPIC.Role.P3DE,
             tiketpic__id_user=request.user,
         ).exclude(
-            id__in=already_temp_ids,
+            id__in=other_temp_ids,
         ).exclude(
             id_status_penelitian__deskripsi='Tidak Lengkap',
         ).select_related(
@@ -402,7 +478,7 @@ class KirimPideTempUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, View):
         ).distinct().order_by('id')
 
     def get(self, request, id_temp):
-        """Return modal HTML with available tikets."""
+        """Return modal HTML with all eligible tikets as checkboxes."""
         temp_records = list(
             KirimPideTemp.objects.filter(id_temp=id_temp)
             .select_related('id_tiket')
@@ -418,24 +494,41 @@ class KirimPideTempUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, View):
                 status=403,
             )
 
-        existing_tiket_ids = [r.id_tiket_id for r in temp_records]
-        existing_tikets = Tiket.objects.filter(id__in=existing_tiket_ids)
-        available_tikets = self.get_available_tikets(request)
+        existing_tiket_ids = set(r.id_tiket_id for r in temp_records)
+        eligible_tikets = self.get_eligible_tikets(request, id_temp)
+
+        # Attach is_in_temp flag to each tiket
+        all_tikets = []
+        for tiket in eligible_tikets:
+            tiket.is_in_temp = tiket.pk in existing_tiket_ids
+            # Flatten related fields for easier template access
+            tiket.nama_ilap = (
+                tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap
+                if tiket.id_periode_data and
+                tiket.id_periode_data.id_sub_jenis_data_ilap and
+                tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap
+                else '-'
+            )
+            tiket.nama_sub_jenis_data = (
+                tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data
+                if tiket.id_periode_data and
+                tiket.id_periode_data.id_sub_jenis_data_ilap
+                else '-'
+            )
+            all_tikets.append(tiket)
 
         html = render_to_string(
             'tiket/kirim_pide_temp_update_modal.html',
             {
                 'id_temp': id_temp,
-                'existing_tikets': existing_tikets,
-                'available_tikets': available_tikets,
-                'existing_count': len(existing_tiket_ids),
+                'all_tikets': all_tikets,
             },
             request=request,
         )
         return JsonResponse({'success': True, 'html': html})
 
     def post(self, request, id_temp):
-        """Add selected tikets to the given id_temp."""
+        """Update selected tikets: add newly checked, remove unchecked."""
         temp_records = list(
             KirimPideTemp.objects.filter(id_temp=id_temp)
         )
@@ -450,23 +543,45 @@ class KirimPideTempUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, View):
                 status=403,
             )
 
-        tiket_ids = request.POST.getlist('tiket_ids')
-        if not tiket_ids:
+        checked_ids = set()
+        raw_ids = request.POST.getlist('tiket_ids')
+        for tid in raw_ids:
+            try:
+                checked_ids.add(int(tid))
+            except (ValueError, TypeError):
+                pass
+
+        if not checked_ids:
             return JsonResponse(
                 {'success': False, 'message': 'Pilih minimal satu tiket.'},
             )
 
-        available = self.get_available_tikets(request)
-        available_ids = set(available.values_list('pk', flat=True))
-        already_temp_ids = set(
-            KirimPideTemp.objects.values_list('id_tiket_id', flat=True)
+        existing_ids = set(
+            KirimPideTemp.objects.filter(id_temp=id_temp)
+            .values_list('id_tiket_id', flat=True)
         )
 
+        # Tickets to remove: in existing but NOT in checked list
+        to_remove_ids = existing_ids - checked_ids
+        # Tickets to add: in checked list but NOT in existing
+        to_add_ids = checked_ids - existing_ids
+
+        eligible = self.get_eligible_tikets(request, id_temp)
+        eligible_ids = set(eligible.values_list('pk', flat=True))
+
+        removed = 0
         added = 0
         with transaction.atomic():
-            for tid in tiket_ids:
-                tid_int = int(tid)
-                if tid_int in available_ids and tid_int not in already_temp_ids:
+            if to_remove_ids:
+                # Only remove tickets that belong to this id_temp
+                removed_count, _ = KirimPideTemp.objects.filter(
+                    id_temp=id_temp,
+                    id_tiket_id__in=to_remove_ids,
+                ).delete()
+                removed = removed_count
+
+            for tid_int in to_add_ids:
+                if tid_int in eligible_ids:
                     KirimPideTemp.objects.create(
                         id_temp=id_temp,
                         id_tiket_id=tid_int,
@@ -474,9 +589,16 @@ class KirimPideTempUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, View):
                     )
                     added += 1
 
+        messages_parts = []
+        if added:
+            messages_parts.append(f'{added} tiket ditambahkan.')
+        if removed:
+            messages_parts.append(f'{removed} tiket dihapus.')
+        message = ' '.join(messages_parts) if messages_parts else 'Tidak ada perubahan.'
+
         return JsonResponse({
             'success': True,
-            'message': f'{added} tiket berhasil ditambahkan.',
+            'message': message,
         })
 
 
@@ -501,3 +623,138 @@ class KirimPideTempDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, View):
             'success': True,
             'message': f'{count} record berhasil dihapus.',
         })
+
+
+class KirimKePIDEView(LoginRequiredMixin, UserP3DERequiredMixin, View):
+    """Send tickets in a KirimPideTemp group to PIDE.
+
+    GET: Returns modal HTML with form for ND Nadine reference details.
+    POST: Updates all tickets in the group to 'Dikirim ke PIDE' status,
+          sets ND Nadine reference fields, logs TiketAction, and cleans up
+          the temp records.
+    """
+
+    def get(self, request, id_temp):
+        """Return modal HTML with form for Kirim ke PIDE."""
+        temp_records = list(
+            KirimPideTemp.objects.filter(id_temp=id_temp)
+            .select_related('id_tiket')
+        )
+        if not temp_records:
+            return JsonResponse(
+                {'success': False, 'message': 'Data tidak ditemukan.'},
+                status=404,
+            )
+        if any(r.id_user != request.user for r in temp_records):
+            return JsonResponse(
+                {'success': False, 'message': 'Anda tidak berhak.'},
+                status=403,
+            )
+
+        tikets = Tiket.objects.filter(
+            id__in=[r.id_tiket_id for r in temp_records]
+        ).select_related(
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+        )
+
+        form = KirimKePideForm()
+
+        html = render_to_string(
+            'tiket/kirim_ke_pide_modal.html',
+            {
+                'form': form,
+                'id_temp': id_temp,
+                'tikets': tikets,
+                'jumlah_tiket': len(temp_records),
+                'form_action': reverse('kirim_ke_pide', kwargs={'id_temp': id_temp}),
+            },
+            request=request,
+        )
+        return JsonResponse({'success': True, 'html': html})
+
+    def post(self, request, id_temp):
+        """Update all tickets in the group to status 'Dikirim ke PIDE'."""
+        temp_records = list(
+            KirimPideTemp.objects.filter(id_temp=id_temp)
+            .select_related('id_tiket')
+        )
+        if not temp_records:
+            return JsonResponse(
+                {'success': False, 'message': 'Data tidak ditemukan.'},
+                status=404,
+            )
+        if any(r.id_user != request.user for r in temp_records):
+            return JsonResponse(
+                {'success': False, 'message': 'Anda tidak berhak.'},
+                status=403,
+            )
+
+        form = KirimKePideForm(request.POST)
+        if not form.is_valid():
+            return JsonResponse({
+                'success': False,
+                'message': 'Form tidak valid.',
+                'errors': form.errors,
+            }, status=400)
+
+        tiket_ids = [r.id_tiket_id for r in temp_records]
+        tikets = Tiket.objects.filter(id__in=tiket_ids)
+        now = datetime.now()
+
+        try:
+            with transaction.atomic():
+                tgl_nadine = form.cleaned_data.get('tgl_nadine')
+                nomor_nd_nadine = form.cleaned_data.get('nomor_nd_nadine')
+                tgl_kirim_pide = form.cleaned_data.get('tgl_kirim_pide')
+
+                sender_name = (request.user.get_full_name() or request.user.username).strip()
+
+                for tiket in tikets:
+                    tiket.status_tiket = STATUS_DIKIRIM_KE_PIDE
+                    if tgl_nadine:
+                        tiket.tgl_nadine = tgl_nadine
+                    if nomor_nd_nadine:
+                        tiket.nomor_nd_nadine = nomor_nd_nadine
+                    if tgl_kirim_pide:
+                        tiket.tgl_kirim_pide = tgl_kirim_pide
+                    tiket.save()
+
+                    TiketAction.objects.create(
+                        id_tiket=tiket,
+                        id_user=request.user,
+                        timestamp=now,
+                        action=TiketActionType.DIKIRIM_KE_PIDE,
+                        catatan=f'tiket dikirim ke PIDE',
+                    )
+
+                    # Send notification to active PIDE PICs
+                    tiket_detail_path = reverse('tiket_detail', kwargs={'pk': tiket.pk})
+                    notif_message = format_html(
+                        'Tiket <a href="{}">{}</a> telah dikirim ke PIDE oleh {}.',
+                        tiket_detail_path,
+                        tiket.nomor_tiket or str(tiket.pk),
+                        sender_name,
+                    )
+                    active_pide_pics = TiketPIC.objects.filter(
+                        id_tiket=tiket,
+                        active=True,
+                        role=TiketPIC.Role.PIDE,
+                    ).select_related('id_user')
+                    for pic in active_pide_pics:
+                        Notification.objects.create(
+                            recipient=pic.id_user,
+                            title='Tiket Dikirim ke PIDE',
+                            message=notif_message,
+                        )
+
+                # Clean up temp records
+                KirimPideTemp.objects.filter(id_temp=id_temp).delete()
+
+            message = f'{len(tikets)} tiket berhasil dikirim ke PIDE.'
+            return JsonResponse({'success': True, 'message': message})
+
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Gagal mengirim tiket: {str(e)}',
+            }, status=500)

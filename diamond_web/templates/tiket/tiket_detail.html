@@ -644,9 +644,15 @@
                                     {% endif %}
 
                                     {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti and tiket.id_status_penelitian.deskripsi != 'Tidak Lengkap' %}
+                                        {% if has_kirim_pide_temp %}
+                                        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#kirimTiketKePideModal" data-id-temp="{{ kirim_pide_id_temp }}">
+                                            <i class="feather-send me-1"></i>Kirim Tiket ke PIDE
+                                        </button>
+                                        {% else %}
                                         <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#kirimTiketModal">
                                             <i class="feather-file-text me-1"></i>Generate ND Pengantar PIDE
                                         </button>
+                                        {% endif %}
                                     {% endif %}
                                 </div>
                             {% else %}
@@ -833,6 +839,23 @@
             </div>
             <div id="kirim-tiket-form-container">
                 <!-- Form will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Kirim Tiket ke PIDE Modal (single tiket) -->
+<div class="modal fade" id="kirimTiketKePideModal" tabindex="-1" aria-labelledby="kirimTiketKePideModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="kirimTiketKePideModalLabel">
+                    <i class="feather-send me-1"></i>Kirim Tiket ke PIDE {{ tiket.nomor_tiket }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div id="kirim-tiket-ke-pide-form-container">
+                <!-- Loaded via AJAX -->
             </div>
         </div>
     </div>
@@ -1230,14 +1253,14 @@
                                             if (data.success) {
                                                 bootstrap.Modal.getInstance(kirimTiketModal).hide();
                                                 showToast(data.message || 'Template berhasil digenerate.', 'success');
-                                                // Navigate to download URL if provided (triggers file download)
+                                                // Trigger download via hidden iframe, then reload page
                                                 if (data.redirect) {
-                                                    setTimeout(() => {
-                                                        window.location.href = data.redirect;
-                                                    }, 500);
-                                                } else {
-                                                    setTimeout(() => location.reload(), 800);
+                                                    const iframe = document.createElement('iframe');
+                                                    iframe.style.display = 'none';
+                                                    iframe.src = data.redirect;
+                                                    document.body.appendChild(iframe);
                                                 }
+                                                setTimeout(() => location.reload(), 1000);
                                             } else if (data.errors) {
                                                 showToast(data.message || 'Gagal generate template.', 'danger');
                                                 formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
@@ -1256,6 +1279,70 @@
                         });
                 });
             }
+
+        // Kirim Tiket ke PIDE Modal (single tiket)
+        const kirimTiketKePideModal = document.getElementById('kirimTiketKePideModal');
+        if (kirimTiketKePideModal) {
+            setupModalAria(kirimTiketKePideModal);
+            kirimTiketKePideModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const idTemp = button?.dataset?.idTemp;
+                if (!idTemp) return;
+                const formContainer = document.getElementById('kirim-tiket-ke-pide-form-container');
+                formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-success" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                fetch('{% url "kirim_ke_pide" 0 %}'.replace('/0/', '/' + idTemp + '/'), {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.html) {
+                            formContainer.innerHTML = data.html;
+                            const modalForm = formContainer.querySelector('form');
+                            if (modalForm) {
+                                modalForm.addEventListener('submit', function (e) {
+                                    e.preventDefault();
+                                    const formData = new FormData(modalForm);
+                                    const submitBtn = modalForm.querySelector('button[type="submit"]');
+                                    submitBtn.disabled = true;
+                                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Mengirim...';
+                                    fetch(modalForm.action, {
+                                        method: 'POST',
+                                        body: formData,
+                                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                                    })
+                                        .then(resp => resp.json())
+                                        .then(result => {
+                                            if (result.success) {
+                                                bootstrap.Modal.getInstance(kirimTiketKePideModal).hide();
+                                                showToast(result.message, 'success');
+                                                setTimeout(function() { location.reload(); }, 800);
+                                            } else {
+                                                showToast(result.message || 'Gagal mengirim.', 'danger');
+                                                submitBtn.disabled = false;
+                                                submitBtn.innerHTML = '<i class="feather-send me-1"></i>Kirim ke PIDE';
+                                            }
+                                        })
+                                        .catch(err => {
+                                            console.error('Error:', err);
+                                            showToast('Terjadi kesalahan.', 'danger');
+                                            submitBtn.disabled = false;
+                                            submitBtn.innerHTML = '<i class="feather-send me-1"></i>Kirim ke PIDE';
+                                        });
+                                });
+                            }
+                        } else {
+                            showToast(data.message || 'Gagal memuat data.', 'danger');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        formContainer.innerHTML = '<div class="alert alert-danger m-3">Gagal memuat form</div>';
+                    });
+            });
+        }
 
         // PIDE Modal Handlers
         const dikembalikanTiketModal = document.getElementById('dikembalikanTiketModal');

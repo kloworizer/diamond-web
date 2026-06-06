@@ -58,6 +58,21 @@
             <div class="tab-content" id="kirimTiketTabsContent">
                 <!-- ==================== TAB 1: Generate ND Pengantar PIDE ==================== -->
                 <div class="tab-pane fade show active" id="generate" role="tabpanel" aria-labelledby="generate-tab">
+                    <!-- ILAP Filter -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label"><strong>Filter ILAP</strong></label>
+                            <select class="form-select form-select-sm" id="ilap-filter-tab1">
+                                <option value="">-- Semua ILAP --</option>
+                                {% for ilap in ilap_options %}
+                                <option value="{{ ilap.id }}" {% if selected_ilap_id|stringformat:"s" == ilap.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ ilap.nama_ilap }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
                     <form method="post" action="{{ form_action }}" id="kirim-tiket-form">
                         {% csrf_token %}
 
@@ -127,10 +142,10 @@
                                 <ul class="pagination pagination-sm justify-content-center mb-0">
                                     {% if page_obj.has_previous %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page=1" title="Halaman pertama">&laquo;</a>
+                                        <a class="page-link" href="?page=1{% if selected_ilap_id %}&amp;ilap_id={{ selected_ilap_id }}{% endif %}" title="Halaman pertama">&laquo;</a>
                                     </li>
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">&lsaquo;</a>
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_ilap_id %}&amp;ilap_id={{ selected_ilap_id }}{% endif %}">&lsaquo;</a>
                                     </li>
                                     {% endif %}
 
@@ -141,17 +156,17 @@
                                         </li>
                                         {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
                                         <li class="page-item">
-                                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                            <a class="page-link" href="?page={{ num }}{% if selected_ilap_id %}&amp;ilap_id={{ selected_ilap_id }}{% endif %}">{{ num }}</a>
                                         </li>
                                         {% endif %}
                                     {% endfor %}
 
                                     {% if page_obj.has_next %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">&rsaquo;</a>
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_ilap_id %}&amp;ilap_id={{ selected_ilap_id }}{% endif %}">&rsaquo;</a>
                                     </li>
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ paginator.num_pages }}" title="Halaman terakhir">&raquo;</a>
+                                        <a class="page-link" href="?page={{ paginator.num_pages }}{% if selected_ilap_id %}&amp;ilap_id={{ selected_ilap_id }}{% endif %}" title="Halaman terakhir">&raquo;</a>
                                     </li>
                                     {% endif %}
                                 </ul>
@@ -176,6 +191,9 @@
                         <input type="hidden" id="tiket-ids-input" name="tiket_ids"
                                value="{{ form.tiket_ids.value|default:'' }}">
                         <input type="hidden" id="select-all-pages-input" name="select_all_pages" value="false">
+                        {% if selected_ilap_id %}
+                        <input type="hidden" name="ilap_id" value="{{ selected_ilap_id }}">
+                        {% endif %}
 
                         <div class="mt-3 d-flex justify-content-end gap-2">
                             <a href="{% url 'tiket_list' %}" class="btn btn-secondary">Batal</a>
@@ -205,19 +223,29 @@
                                     {% for group in temp_groups %}
                                     <tr>
                                         <td><strong>#{{ group.id_temp }}</strong></td>
-                                        <td>{{ group.jumlah_tiket }}</td>
                                         <td>
-                                            <button type="button" class="btn btn-sm btn-outline-primary btn-update-temp"
-                                                    data-id-temp="{{ group.id_temp }}" title="Update">
-                                                <i class="feather-edit me-1"></i>Update
+                                            {{ group.jumlah_tiket }}
+                                            {% if group.daftar_nomor_tiket %}
+                                            <small class="text-muted d-block" style="font-size: 85%;">
+                                                ({{ group.daftar_nomor_tiket|join:", " }})
+                                            </small>
+                                            {% endif %}
+                                        </td>
+                                        <td class="d-flex gap-1">
+                                            <button type="button" class="btn btn-sm btn-primary btn-update-temp"
+                                                    data-id-temp="{{ group.id_temp }}" data-bs-toggle="tooltip"
+                                                    data-bs-title="Update Template">
+                                                <i class="feather-edit"></i>
                                             </button>
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete-temp"
-                                                    data-id-temp="{{ group.id_temp }}" title="Hapus">
-                                                <i class="feather-trash-2 me-1"></i>Hapus
+                                            <button type="button" class="btn btn-sm btn-danger btn-delete-temp"
+                                                    data-id-temp="{{ group.id_temp }}" data-bs-toggle="tooltip"
+                                                    data-bs-title="Hapus Template">
+                                                <i class="feather-trash-2"></i>
                                             </button>
-                                            <button type="button" class="btn btn-sm btn-outline-success"
-                                                    title="Kirim ke PIDE (dummy)" disabled>
-                                                <i class="feather-send me-1"></i>Kirim ke PIDE
+                                            <button type="button" class="btn btn-sm btn-success btn-kirim-pide"
+                                                    data-id-temp="{{ group.id_temp }}" data-bs-toggle="tooltip"
+                                                    data-bs-title="Kirim ke PIDE">
+                                                <i class="feather-send"></i>
                                             </button>
                                         </td>
                                     </tr>
@@ -247,6 +275,23 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div id="update-temp-form-container">
+                <!-- Loaded via AJAX -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Kirim ke PIDE -->
+<div class="modal fade" id="kirimPideModal" tabindex="-1" aria-labelledby="kirimPideModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="kirimPideModalLabel">
+                    <i class="feather-send me-1"></i>Kirim ke PIDE
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div id="kirim-pide-form-container">
                 <!-- Loaded via AJAX -->
             </div>
         </div>
@@ -420,6 +465,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(data => {
                     if (data.success && data.html) {
                         formContainer.innerHTML = data.html;
+
+                        // ===== Setup select-all for update modal checkboxes =====
+                        const updateCheckboxes = formContainer.querySelectorAll('.tiket-update-checkbox');
+                        const updateSelectAll = formContainer.querySelector('#select-all-update');
+                        const updateCountBadge = formContainer.querySelector('#update-selected-count');
+
+                        function updateSelectedCount() {
+                            const checked = Array.from(updateCheckboxes).filter(cb => cb.checked).length;
+                            if (updateCountBadge) updateCountBadge.textContent = '(' + checked + ' dipilih)';
+                        }
+
+                        if (updateSelectAll) {
+                            updateSelectAll.addEventListener('change', function() {
+                                updateCheckboxes.forEach(cb => cb.checked = updateSelectAll.checked);
+                                updateSelectedCount();
+                            });
+                        }
+
+                        updateCheckboxes.forEach(cb => {
+                            cb.addEventListener('change', function() {
+                                if (updateSelectAll) {
+                                    const allChecked = Array.from(updateCheckboxes).every(c => c.checked);
+                                    updateSelectAll.checked = allChecked;
+                                }
+                                updateSelectedCount();
+                            });
+                        });
+
+                        updateSelectedCount();
+                        // ===== End select-all setup =====
+
                         const modalForm = formContainer.querySelector('form');
                         if (modalForm) {
                             modalForm.addEventListener('submit', function(e) {
@@ -442,14 +518,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                         } else {
                                             showToast(result.message || 'Gagal menyimpan.', 'danger');
                                             submitBtn.disabled = false;
-                                            submitBtn.innerHTML = '<i class="feather-plus me-1"></i>Tambah Tiket';
+                                            submitBtn.innerHTML = '<i class="feather-save me-1"></i>Simpan Perubahan';
                                         }
                                     })
                                     .catch(err => {
                                         console.error('Error:', err);
                                         showToast('Terjadi kesalahan.', 'danger');
                                         submitBtn.disabled = false;
-                                        submitBtn.innerHTML = '<i class="feather-plus me-1"></i>Tambah Tiket';
+                                        submitBtn.innerHTML = '<i class="feather-save me-1"></i>Simpan Perubahan';
                                     });
                             });
                         }
@@ -494,6 +570,91 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
         });
     });
+
+    // ========== Kirim ke PIDE button ==========
+    const kirimPideModal = document.getElementById('kirimPideModal');
+
+    document.querySelectorAll('.btn-kirim-pide').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const idTemp = this.dataset.idTemp;
+            const formContainer = document.getElementById('kirim-pide-form-container');
+            formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-success" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+            fetch('{% url "kirim_ke_pide" 0 %}'.replace('/0/', '/' + idTemp + '/'), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.html) {
+                        formContainer.innerHTML = data.html;
+                        const modalForm = formContainer.querySelector('form');
+                        if (modalForm) {
+                            modalForm.addEventListener('submit', function(e) {
+                                e.preventDefault();
+                                const formData = new FormData(modalForm);
+                                const submitBtn = modalForm.querySelector('button[type="submit"]');
+                                submitBtn.disabled = true;
+                                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Mengirim...';
+                                fetch(modalForm.action, {
+                                    method: 'POST',
+                                    body: formData,
+                                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                                })
+                                    .then(resp => resp.json())
+                                    .then(result => {
+                                        if (result.success) {
+                                            bootstrap.Modal.getInstance(kirimPideModal).hide();
+                                            showToast(result.message, 'success');
+                                            setTimeout(function() { location.reload(); }, 800);
+                                        } else {
+                                            showToast(result.message || 'Gagal mengirim.', 'danger');
+                                            submitBtn.disabled = false;
+                                            submitBtn.innerHTML = '<i class="feather-send me-1"></i>Kirim ke PIDE';
+                                        }
+                                    })
+                                    .catch(err => {
+                                        console.error('Error:', err);
+                                        showToast('Terjadi kesalahan.', 'danger');
+                                        submitBtn.disabled = false;
+                                        submitBtn.innerHTML = '<i class="feather-send me-1"></i>Kirim ke PIDE';
+                                    });
+                            });
+                        }
+                        const modal = new bootstrap.Modal(kirimPideModal);
+                        modal.show();
+                    } else {
+                        showToast(data.message || 'Gagal memuat data.', 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    formContainer.innerHTML = '<div class="alert alert-danger m-3">Gagal memuat form</div>';
+                });
+        });
+    });
+
+    // ========== ILAP Filter for both tabs ==========
+    function filterByILAP(ilapId) {
+        const url = new URL(window.location.href);
+        if (ilapId) {
+            url.searchParams.set('ilap_id', ilapId);
+        } else {
+            url.searchParams.delete('ilap_id');
+        }
+        url.searchParams.delete('page');
+        window.location.href = url.toString();
+    }
+
+    // ILAP filter for Tab 1
+    document.getElementById('ilap-filter-tab1')?.addEventListener('change', function() {
+        filterByILAP(this.value);
+    });
+
+    // Initialize Bootstrap tooltips
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    if (tooltipTriggerList.length) {
+        tooltipTriggerList.forEach(el => new bootstrap.Tooltip(el));
+    }
 });
 </script>
 {% endblock %}
