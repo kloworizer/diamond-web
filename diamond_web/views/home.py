@@ -64,34 +64,65 @@ def home(request):
                 id__in=tiket_ids, 
                 status_tiket=STATUS_DIREKAM, 
                 backup=False
-            ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian').order_by('-id'),
+            ).select_related(
+                'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                'id_periode_data__id_sub_jenis_data_ilap',
+                'id_bentuk_data',
+                'id_cara_penyampaian'
+            ).order_by('-id'),
             'belum_dibuat_tanda_terima': Tiket.objects.filter(
                 id__in=tiket_ids, 
                 status_tiket=STATUS_DIREKAM, 
                 tanda_terima=False
-            ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian').order_by('-id'),
+            ).select_related(
+                'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                'id_periode_data__id_sub_jenis_data_ilap',
+                'id_bentuk_data',
+                'id_cara_penyampaian'
+            ).order_by('-id'),
             'belum_diteliti': Tiket.objects.filter(
                 id__in=tiket_ids, 
                 status_tiket=STATUS_DIREKAM, 
                 backup=True, 
                 tanda_terima=True
-            ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian').order_by('-id'),
+            ).select_related(
+                'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                'id_periode_data__id_sub_jenis_data_ilap',
+                'id_bentuk_data',
+                'id_cara_penyampaian'
+            ).order_by('-id'),
             'belum_dikirim_ke_pide': Tiket.objects.filter(
                 id__in=tiket_ids, 
                 status_tiket=STATUS_DITELITI,
                 baris_lengkap__gt=0
-            ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian').order_by('-id'),
+            ).select_related(
+                'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                'id_periode_data__id_sub_jenis_data_ilap',
+                'id_bentuk_data',
+                'id_cara_penyampaian'
+            ).order_by('-id'),
             'dikembalikan_dari_pide': Tiket.objects.filter(
                 id__in=tiket_ids, 
                 status_tiket=STATUS_DIKEMBALIKAN
-            ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian').order_by('-id'),
+            ).select_related(
+                'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                'id_periode_data__id_sub_jenis_data_ilap',
+                'id_bentuk_data',
+                'id_cara_penyampaian'
+            ).order_by('-id'),
             'diklarifikasi': Tiket.objects.filter(
                 id__in=tiket_ids,
                 status_tiket__lte=STATUS_KLARIFIKASI_MAX
             ).filter(
                 Q(baris_tidak_lengkap__gt=0) |
                 Q(baris_cde__gt=0)
-            ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian', 'id_status_penelitian').order_by('-id'),
+            ).select_related(
+                'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                'id_periode_data__id_sub_jenis_data_ilap',
+                'id_bentuk_data',
+                'id_cara_penyampaian',
+                'id_status_penelitian'
+            ).order_by('-id'),
         }
     if is_pide:
         context['tiket_summary_pide'] = get_tiket_summary_for_user_pide(request.user)
@@ -102,11 +133,21 @@ def home(request):
             'belum_mulai_proses_identifikasi': Tiket.objects.filter(
                 id__in=pide_tiket_ids,
                 status_tiket=STATUS_DIKIRIM_KE_PIDE
-            ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian').order_by('-id'),
+            ).select_related(
+                'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                'id_periode_data__id_sub_jenis_data_ilap',
+                'id_bentuk_data',
+                'id_cara_penyampaian'
+            ).order_by('-id'),
             'dalam_proses_identifikasi': Tiket.objects.filter(
                 id__in=pide_tiket_ids,
                 status_tiket=STATUS_IDENTIFIKASI
-            ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian').order_by('-id'),
+            ).select_related(
+                'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                'id_periode_data__id_sub_jenis_data_ilap',
+                'id_bentuk_data',
+                'id_cara_penyampaian'
+            ).order_by('-id'),
         }
     if is_pmde:
         context['tiket_summary_pmde'] = get_tiket_summary_for_user_pmde(request.user)
@@ -117,7 +158,12 @@ def home(request):
             'dalam_proses_pengendalian_mutu': Tiket.objects.filter(
                 id__in=pmde_tiket_ids,
                 status_tiket=STATUS_PENGENDALIAN_MUTU
-            ).select_related('id_periode_data', 'id_bentuk_data', 'id_cara_penyampaian').order_by('-id'),
+            ).select_related(
+                'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                'id_periode_data__id_sub_jenis_data_ilap',
+                'id_bentuk_data',
+                'id_cara_penyampaian'
+            ).order_by('-id'),
         }
     if settings.DEBUG:
         groups = Group.objects.filter(name__in=['user_p3de', 'user_pide', 'user_pmde']).prefetch_related('user_set')
