@@ -704,29 +704,32 @@ def _pic_data_common(request, tipe):
 
     is_admin = _is_data_admin(request, tipe)
 
-    qs = PIC.objects.filter(tipe=tipe).select_related('id_sub_jenis_data_ilap', 'id_user').all()
+    qs = PIC.objects.filter(tipe=tipe).select_related('id_sub_jenis_data_ilap__id_ilap', 'id_user').all()
     records_total = qs.count()
 
     # Column-specific filtering
     columns_search = request.GET.getlist('columns_search[]')
     if columns_search:
-        if columns_search[0]:  # Sub Jenis Data ILAP
-            qs = qs.filter(id_sub_jenis_data_ilap__nama_sub_jenis_data__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:  # User
+        if columns_search[0]:  # ILAP
+            qs = qs.filter(id_sub_jenis_data_ilap__id_ilap__nama_ilap__icontains=columns_search[0])
+        if len(columns_search) > 1 and columns_search[1]:  # Sub Jenis Data
+            qs = qs.filter(id_sub_jenis_data_ilap__nama_sub_jenis_data__icontains=columns_search[1])
+        if len(columns_search) > 2 and columns_search[2]:  # Username-Fullname
             from django.db.models import Q
-            qs = qs.filter(Q(id_user__username__icontains=columns_search[1]) | 
-                          Q(id_user__first_name__icontains=columns_search[1]) |
-                          Q(id_user__last_name__icontains=columns_search[1]))
-        if len(columns_search) > 2 and columns_search[2]:  # Start Date
-            qs = qs.filter(start_date__icontains=columns_search[2])
-        if len(columns_search) > 3 and columns_search[3]:  # End Date
-            qs = qs.filter(end_date__icontains=columns_search[3])
+            qs = qs.filter(Q(id_user__username__icontains=columns_search[2]) | 
+                          Q(id_user__first_name__icontains=columns_search[2]) |
+                          Q(id_user__last_name__icontains=columns_search[2]))
+        if len(columns_search) > 3 and columns_search[3]:  # Start Date
+            qs = qs.filter(start_date__icontains=columns_search[3])
+        if len(columns_search) > 4 and columns_search[4]:  # End Date
+            qs = qs.filter(end_date__icontains=columns_search[4])
 
     # Global search
     search_value = request.GET.get('search[value]')
     if search_value:
         from django.db.models import Q
         qs = qs.filter(
+            Q(id_sub_jenis_data_ilap__id_ilap__nama_ilap__icontains=search_value) |
             Q(id_sub_jenis_data_ilap__nama_sub_jenis_data__icontains=search_value) |
             Q(id_user__username__icontains=search_value) |
             Q(id_user__first_name__icontains=search_value) |
@@ -740,7 +743,7 @@ def _pic_data_common(request, tipe):
     # Ordering
     order_column_idx = int(request.GET.get('order[0][column]', '0'))
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    order_columns = ['id_sub_jenis_data_ilap__nama_sub_jenis_data', 'id_user__username', 'start_date', 'end_date']
+    order_columns = ['id_sub_jenis_data_ilap__id_ilap__nama_ilap', 'id_sub_jenis_data_ilap__nama_sub_jenis_data', 'id_user__username', 'start_date', 'end_date']
     if 0 <= order_column_idx < len(order_columns):
         order_field = order_columns[order_column_idx]
         if order_dir == 'desc':
@@ -767,8 +770,9 @@ def _pic_data_common(request, tipe):
         
         row = {
             'id': obj.id,
-            'sub_jenis_data_ilap': obj.id_sub_jenis_data_ilap.nama_sub_jenis_data,
-            'user': user_display,
+            'ilap': obj.id_sub_jenis_data_ilap.id_ilap.nama_ilap,
+            'sub_jenis_data': obj.id_sub_jenis_data_ilap.nama_sub_jenis_data,
+            'username_fullname': f"{obj.id_user.username} - {user_display}",
             'start_date': obj.start_date.strftime('%Y-%m-%d') if obj.start_date else '',
             'end_date': obj.end_date.strftime('%Y-%m-%d') if obj.end_date else '',
         }

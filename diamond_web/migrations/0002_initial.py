@@ -745,4 +745,19 @@ class Migration(migrations.Migration):
                 'ordering': ['-updated_at'],
             },
         ),
+        migrations.CreateModel(
+            name='KirimPideTemp',
+            fields=[
+                ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID')),
+                ('id_temp', models.IntegerField(verbose_name='ID Temp')),
+                ('id_tiket', models.ForeignKey(db_column='id_tiket', on_delete=django.db.models.deletion.PROTECT, to='diamond_web.tiket', verbose_name='Tiket')),
+                ('id_user', models.ForeignKey(db_column='id_user', on_delete=django.db.models.deletion.PROTECT, to=settings.AUTH_USER_MODEL, verbose_name='User')),
+            ],
+            options={
+                'verbose_name': 'Kirim PIDE Temp',
+                'verbose_name_plural': 'Kirim PIDE Temp',
+                'db_table': 'kirim_pide_temp',
+                'ordering': ['id'],
+            },
+        ),
     ]

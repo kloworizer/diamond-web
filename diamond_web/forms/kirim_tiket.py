@@ -1,36 +1,19 @@
 from django import forms
 from ..models.tiket import Tiket
-from ..utils import validate_not_future_datetime
 
 
 class KirimTiketForm(forms.Form):
-    """Form for Kirim Tiket workflow step."""
-    nomor_nd_nadine = forms.CharField(
-        max_length=255,
-        required=True,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nomor ND Nadine'})
-    )
-    tgl_nadine = forms.DateTimeField(
-        required=True,
-        widget=forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'})
-    )
-    tgl_kirim_pide = forms.DateTimeField(
-        required=True,
-        widget=forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'})
-    )
+    """Form for generating ND Pengantar PIDE template.
+
+    Only requires tiket_ids (comma-separated list of tiket primary keys).
+    The nomor_nd_nadine, tgl_nadine, and tgl_kirim_pide fields have been
+    removed since the form no longer updates tiket status directly.
+    """
     tiket_ids = forms.CharField(
         widget=forms.HiddenInput(),
         required=False,
         help_text="Comma-separated list of tiket IDs"
     )
-
-    def clean_tgl_nadine(self):
-        value = self.cleaned_data.get('tgl_nadine')
-        return validate_not_future_datetime(value, "Tanggal Nadine")
-
-    def clean_tgl_kirim_pide(self):
-        value = self.cleaned_data.get('tgl_kirim_pide')
-        return validate_not_future_datetime(value, "Tanggal Kirim PIDE")
 
     def clean_tiket_ids(self):
         """Validate that tiket_ids is not empty and contains valid IDs."""
