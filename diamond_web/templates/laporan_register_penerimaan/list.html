@@ -127,6 +127,11 @@
 
             table = $('#register-penerimaan-table').DataTable({
                 serverSide: true,
+                searching: false,
+                layout: {
+                    topStart: null,
+                    topEnd: null
+                },
                 ajax: {
                     url: ajaxUrl,
                     type: 'POST',
@@ -150,7 +155,7 @@
                     { data: 'nomor_tanda_terima' },
                     { data: 'tanggal_tanda_terima', className: 'text-center' },
                 ],
-                pageLength: 25,
+                pageLength: 10,
                 order: [[0, 'asc']],
                 processing: true,
                 deferLoading: 0,
