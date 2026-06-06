@@ -24,3 +24,4 @@ from .detil_tanda_terima import DetilTandaTerima
 from .tiket import Tiket
 from .tiket_action import TiketAction
 from .tiket_pic import TiketPIC
+from .kirim_pide_temp import KirimPideTemp

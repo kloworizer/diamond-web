@@ -1,0 +1,36 @@
+<form method="post" action="{% url 'kirim_tiket_temp_update' id_temp %}" id="kirim-pide-temp-update-form">
+    {% csrf_token %}
+    <div class="modal-body">
+        <div class="mb-3">
+            <label class="form-label">
+                <strong>Daftar Tiket</strong>
+                <span class="text-muted ms-2" id="update-selected-count"></span>
+            </label>
+            <div style="max-height: 400px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 4px; padding: 8px;">
+                <div class="mb-2 pb-2 border-bottom">
+                    <input class="form-check-input" type="checkbox" id="select-all-update">
+                    <label class="form-check-label" for="select-all-update"><strong>Pilih Semua</strong></label>
+                </div>
+                {% for tiket in all_tikets %}
+                <div class="form-check">
+                    <input class="form-check-input tiket-update-checkbox" type="checkbox" name="tiket_ids"
+                           value="{{ tiket.id }}" id="update_tiket_{{ tiket.id }}"
+                           {% if tiket.is_in_temp %}checked{% endif %}>
+                    <label class="form-check-label" for="update_tiket_{{ tiket.id }}">
+                        {{ tiket.nomor_tiket }} — {{ tiket.nama_ilap|default:'-' }} — {{ tiket.nama_sub_jenis_data|default:'-' }}
+                    </label>
+                </div>
+                {% empty %}
+                <p class="text-muted mb-0">Tidak ada tiket tersedia.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="submit" class="btn btn-primary">
+            <i class="feather-save me-1"></i>Simpan Perubahan
+        </button>
+    </div>
+</form>
+

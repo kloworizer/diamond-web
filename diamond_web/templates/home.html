@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load auth_extras %}
 
 {% block content %}
 {% if user.is_authenticated %}
@@ -184,9 +185,8 @@
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
-                                        <th>Periode</th>
-                                        <th>Tahun</th>
-                                        <th>Bentuk Data</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
                                         <th>Tgl Terima DIP</th>
                                         <th>Actions</th>
                                     </tr>
@@ -195,10 +195,9 @@
                                     {% for tiket in p3de_tiket_categories.belum_rekam_backup_data %}
                                     <tr>
                                         <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.periode }}</td>
-                                        <td>{{ tiket.tahun }}</td>
-                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
-                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
+                                        <td data-order="{{ tiket.tgl_terima_dip|date:'Y-m-d' }}">{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
                                             <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
                                         </td>
@@ -218,9 +217,8 @@
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
-                                        <th>Periode</th>
-                                        <th>Tahun</th>
-                                        <th>Bentuk Data</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
                                         <th>Tgl Terima DIP</th>
                                         <th>Actions</th>
                                     </tr>
@@ -229,10 +227,9 @@
                                     {% for tiket in p3de_tiket_categories.belum_dibuat_tanda_terima %}
                                     <tr>
                                         <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.periode }}</td>
-                                        <td>{{ tiket.tahun }}</td>
-                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
-                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
+                                        <td data-order="{{ tiket.tgl_terima_dip|date:'Y-m-d' }}">{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
                                             <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
                                         </td>
@@ -252,9 +249,8 @@
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
-                                        <th>Periode</th>
-                                        <th>Tahun</th>
-                                        <th>Bentuk Data</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
                                         <th>Tgl Terima DIP</th>
                                         <th>Actions</th>
                                     </tr>
@@ -263,10 +259,9 @@
                                     {% for tiket in p3de_tiket_categories.belum_diteliti %}
                                     <tr>
                                         <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.periode }}</td>
-                                        <td>{{ tiket.tahun }}</td>
-                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
-                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
+                                        <td data-order="{{ tiket.tgl_terima_dip|date:'Y-m-d' }}">{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
                                             <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
                                         </td>
@@ -286,9 +281,8 @@
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
-                                        <th>Periode</th>
-                                        <th>Tahun</th>
-                                        <th>Bentuk Data</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
                                         <th>Tgl Terima DIP</th>
                                         <th>Actions</th>
                                     </tr>
@@ -297,10 +291,9 @@
                                     {% for tiket in p3de_tiket_categories.belum_dikirim_ke_pide %}
                                     <tr>
                                         <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.periode }}</td>
-                                        <td>{{ tiket.tahun }}</td>
-                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
-                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
+                                        <td data-order="{{ tiket.tgl_terima_dip|date:'Y-m-d' }}">{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
                                             <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
                                         </td>
@@ -320,9 +313,8 @@
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
-                                        <th>Periode</th>
-                                        <th>Tahun</th>
-                                        <th>Bentuk Data</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
                                         <th>Tgl Terima DIP</th>
                                         <th>Actions</th>
                                     </tr>
@@ -331,10 +323,9 @@
                                     {% for tiket in p3de_tiket_categories.dikembalikan_dari_pide %}
                                     <tr>
                                         <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.periode }}</td>
-                                        <td>{{ tiket.tahun }}</td>
-                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
-                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
+                                        <td data-order="{{ tiket.tgl_terima_dip|date:'Y-m-d' }}">{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
                                             <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
                                         </td>
@@ -353,9 +344,8 @@
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
-                                        <th>Periode</th>
-                                        <th>Lengkap</th>
-                                        <th>Klarifikasi/CDE</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
                                         <th>Tgl Terima DIP</th>
                                         <th>Actions</th>
                                     </tr>
@@ -364,13 +354,9 @@
                                     {% for tiket in p3de_tiket_categories.diklarifikasi %}
                                     <tr>
                                         <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.periode }} / {{ tiket.tahun }}</td>
-                                        <td class="text-success fw-bold">{{ tiket.baris_lengkap|default:0 }}</td>
-                                        <td class="text-danger fw-bold">
-                                            {% if tiket.baris_tidak_lengkap > 0 %}{{ tiket.baris_tidak_lengkap }} (P3DE){% endif %}
-                                            {% if tiket.baris_cde > 0 %}{% if tiket.baris_tidak_lengkap > 0 %}<br>{% endif %}{{ tiket.baris_cde }} (PIDE){% endif %}
-                                        </td>
-                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
+                                        <td data-order="{{ tiket.tgl_terima_dip|date:'Y-m-d' }}">{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
                                             <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
                                         </td>
@@ -394,10 +380,9 @@
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
-                                        <th>Periode</th>
-                                        <th>Tahun</th>
-                                        <th>Bentuk Data</th>
-                                        <th>Tgl Terima DIP</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
+                                        <th>Tgl Kirim PIDE</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -405,10 +390,9 @@
                                     {% for tiket in pide_tiket_categories.belum_mulai_proses_identifikasi %}
                                     <tr>
                                         <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.periode }}</td>
-                                        <td>{{ tiket.tahun }}</td>
-                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
-                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
+                                        <td data-order="{{ tiket.tgl_kirim_pide|date:'Y-m-d' }}">{{ tiket.tgl_kirim_pide|date:"d-m-Y" }}</td>
                                         <td>
                                             <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
                                         </td>
@@ -428,10 +412,9 @@
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
-                                        <th>Periode</th>
-                                        <th>Tahun</th>
-                                        <th>Bentuk Data</th>
-                                        <th>Tgl Terima DIP</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
+                                        <th>Tgl Kirim PIDE</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -439,10 +422,9 @@
                                     {% for tiket in pide_tiket_categories.dalam_proses_identifikasi %}
                                     <tr>
                                         <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.periode }}</td>
-                                        <td>{{ tiket.tahun }}</td>
-                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
-                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
+                                        <td data-order="{{ tiket.tgl_kirim_pide|date:'Y-m-d' }}">{{ tiket.tgl_kirim_pide|date:"d-m-Y" }}</td>
                                         <td>
                                             <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
                                         </td>
@@ -466,10 +448,9 @@
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
-                                        <th>Periode</th>
-                                        <th>Tahun</th>
-                                        <th>Bentuk Data</th>
-                                        <th>Tgl Terima DIP</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
+                                        <th>Tgl Transfer</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -477,10 +458,9 @@
                                     {% for tiket in pmde_tiket_categories.dalam_proses_pengendalian_mutu %}
                                     <tr>
                                         <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.periode }}</td>
-                                        <td>{{ tiket.tahun }}</td>
-                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
-                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
+                                        <td data-order="{{ tiket.tgl_transfer|date:'Y-m-d' }}">{{ tiket.tgl_transfer|date:"d-m-Y" }}</td>
                                         <td>
                                             <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
                                         </td>
@@ -721,7 +701,7 @@
                 info: true,
                 lengthChange: true,
                 columnDefs: [
-                    { orderable: false, targets: 5 }
+                    { orderable: false, targets: -1 }
                 ]
             });
         });
