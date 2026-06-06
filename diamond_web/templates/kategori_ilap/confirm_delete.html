@@ -1,12 +1,12 @@
 <div class="alert alert-danger">
-    <h5>Delete Confirmation</h5>
-    <p>Are you sure you want to delete "<strong>{{ object }}</strong>"?</p>
-    <p class="text-muted small">This action cannot be undone.</p>
+    <h5>Konfirmasi Penghapusan</h5>
+    <p>Apakah Anda yakin ingin menghapus "<strong>{{ object }}</strong>"?</p>
+    <p class="text-muted small">Aksi ini tidak dapat dibatalkan.</p>
     <form method="post" action="{{ form_action }}" class="mt-3">
         {% csrf_token %}
         <div class="modal-footer mt-3 border-top pt-3">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-            <button type="submit" class="btn btn-danger">Confirm Delete</button>
+            <button type="submit" class="btn btn-danger">Hapus</button>
         </div>
     </form>
 </div>
