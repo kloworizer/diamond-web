@@ -323,7 +323,10 @@
                             </div>
                         </div>
                         {% empty %}
-                        <span class="dropdown-item text-muted">No new notifications</span>
+                        <div class="dropdown-item no-notification-empty text-muted text-center">
+                            <span class="d-block fw-normal">Tidak ada notifikasi baru</span>
+                            <img src="{% static 'assets/images/no-notification.png' %}" alt="Tidak ada notifikasi" class="img-fluid no-notification-img mx-auto" />
+                        </div>
                         {% endfor %}
                     </div>
                 </div>

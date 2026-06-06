@@ -9,16 +9,21 @@
         <!-- [ Sidebar ] start -->
         <div class="content-sidebar content-sidebar-md" data-scrollbar-target="#psScrollbarInit">
             <div class="content-sidebar-header bg-white sticky-top hstack justify-content-between">
-                <h4 class="fw-bolder mb-0">Task To Do</h4>
-                
+                <div>
+                    <h4 class="fw-bolder mb-0">Tugas Saya</h4>
+                    <small class="text-muted">{{ user.get_full_name|default:user.username }}</small>
+                </div>
             </div>
             {% if is_p3de %}
-            <div class="content-sidebar-body">
+            <div class="content-sidebar-body" style="margin-top:0;">
+                <div style="margin:15px 0 0; padding-left:1rem;">
+                    <small class="text-uppercase fw-bold">Pelaksana P3DE</small>
+                </div>
                 <!-- Tiket Status Categories for P3DE -->
                 <ul class="nav flex-column nxl-content-sidebar-item">
                     <li class="nav-item">
                         <a class="nav-link tiket-filter-link active" href="javascript:void(0);" data-filter="belum_rekam_backup_data">
-                            <i class="feather-database"></i>
+                            <span class="icon-bg-soft icon-bg-soft-blue"><i class="feather-save" style="color:#9BB0F8"></i></span>
                             <span>Belum Rekam Backup Data</span>
                             {% if p3de_tiket_categories.belum_rekam_backup_data %}
                             <span class="badge bg-warning ms-auto">{{ p3de_tiket_categories.belum_rekam_backup_data|length }}</span>
@@ -27,7 +32,7 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="belum_dibuat_tanda_terima">
-                            <i class="feather-file-text"></i>
+                            <span class="icon-bg-soft icon-bg-soft-blue"><i class="feather-file-text" style="color:#9BB0F8"></i></span>
                             <span>Belum Dibuat Tanda Terima</span>
                             {% if p3de_tiket_categories.belum_dibuat_tanda_terima %}
                             <span class="badge bg-info ms-auto">{{ p3de_tiket_categories.belum_dibuat_tanda_terima|length }}</span>
@@ -36,7 +41,7 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="belum_diteliti">
-                            <i class="feather-check-circle"></i>
+                            <span class="icon-bg-soft icon-bg-soft-yellow"><i class="feather-search" style="color:#EFBA22"></i></span>
                             <span>Belum Diteliti</span>
                             {% if p3de_tiket_categories.belum_diteliti %}
                             <span class="badge bg-success ms-auto">{{ p3de_tiket_categories.belum_diteliti|length }}</span>
@@ -45,7 +50,7 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="belum_dikirim_ke_pide">
-                            <i class="feather-send"></i>
+                            <span class="icon-bg-soft icon-bg-soft-yellow"><i class="feather-send" style="color:#EFBA22"></i></span>
                             <span>Belum Dikirim ke PIDE</span>
                             {% if p3de_tiket_categories.belum_dikirim_ke_pide %}
                             <span class="badge bg-primary ms-auto">{{ p3de_tiket_categories.belum_dikirim_ke_pide|length }}</span>
@@ -54,7 +59,7 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="dikembalikan_dari_pide">
-                            <i class="feather-alert-circle"></i>
+                            <span class="icon-bg-soft icon-bg-soft-red"><i class="feather-rotate-ccw" style="color:#EA4D4D"></i></span>
                             <span>Dikembalikan dari PIDE</span>
                             {% if p3de_tiket_categories.dikembalikan_dari_pide %}
                             <span class="badge bg-danger ms-auto">{{ p3de_tiket_categories.dikembalikan_dari_pide|length }}</span>
@@ -63,7 +68,7 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="diklarifikasi">
-                            <i class="feather-alert-circle"></i>
+                            <span class="icon-bg-soft icon-bg-soft-orange"><i class="feather-alert-triangle" style="color:#FF8D28"></i></span>
                             <span>Monitor Klarifikasi</span>
                             {% if p3de_tiket_categories.diklarifikasi %}
                             <span class="badge bg-danger ms-auto">{{ p3de_tiket_categories.diklarifikasi|length }}</span>
@@ -74,12 +79,14 @@
             </div>
             {% endif %}
             {% if is_pide %}
-            <div class="content-sidebar-body">
-                <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">PIDE - Identifikasi</h6> -->
+            <div class="content-sidebar-body" style="margin-top:0;">
+                <div style="margin:0; padding-left:1rem;">
+                    <small class="text-uppercase fw-bold">Pelaksana PIDE</small>
+                </div>
                 <ul class="nav flex-column nxl-content-sidebar-item">
                     <li class="nav-item">
                         <a class="nav-link tiket-filter-link {% if not is_p3de %}active{% endif %}" href="javascript:void(0);" data-filter="belum_mulai_proses_identifikasi">
-                            <i class="feather-clock"></i>
+                            <span class="icon-bg-soft icon-bg-soft-cyan"><i class="feather-clock" style="color:#06C4D2"></i></span>
                             <span>Belum Mulai Proses Identifikasi</span>
                             {% if pide_tiket_categories.belum_mulai_proses_identifikasi %}
                             <span class="badge bg-warning ms-auto">{{ pide_tiket_categories.belum_mulai_proses_identifikasi|length }}</span>
@@ -88,7 +95,7 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="dalam_proses_identifikasi">
-                            <i class="feather-search"></i>
+                            <span class="icon-bg-soft icon-bg-soft-cyan"><i class="feather-activity" style="color:#06C4D2"></i></span>
                             <span>Dalam Proses Identifikasi</span>
                             {% if pide_tiket_categories.dalam_proses_identifikasi %}
                             <span class="badge bg-info ms-auto">{{ pide_tiket_categories.dalam_proses_identifikasi|length }}</span>
@@ -99,12 +106,14 @@
             </div>
             {% endif %}
             {% if is_pmde %}
-            <div class="content-sidebar-body">
-                <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">PMDE - Pengendalian Mutu</h6> -->
+            <div class="content-sidebar-body" style="margin-top:0;">
+                <div style="margin:0; padding-left:1rem;">
+                    <small class="text-uppercase fw-bold">Pelaksana PMDE</small>
+                </div>
                 <ul class="nav flex-column nxl-content-sidebar-item">
                     <li class="nav-item">
                         <a class="nav-link tiket-filter-link {% if not is_p3de and not is_pide %}active{% endif %}" href="javascript:void(0);" data-filter="dalam_proses_pengendalian_mutu">
-                            <i class="feather-shield"></i>
+                            <span class="icon-bg-soft icon-bg-soft-blue-dark"><i class="feather-shield" style="color:#0C92FF"></i></span>
                             <span>Dalam Proses Pengendalian Mutu</span>
                             {% if pmde_tiket_categories.dalam_proses_pengendalian_mutu %}
                             <span class="badge bg-primary ms-auto">{{ pmde_tiket_categories.dalam_proses_pengendalian_mutu|length }}</span>
@@ -161,11 +170,8 @@
                     <a href="javascript:void(0);" class="app-sidebar-open-trigger me-2">
                         <i class="feather-align-left fs-20"></i>
                     </a>
-                    <h5 class="mb-0">
-                        <i class="feather-check-circle me-2"></i>Task To Do
-                    </h5>
                     <ul class="breadcrumb mb-0">
-                        <li class="breadcrumb-item active">Task To Do</li>
+                        <li class="breadcrumb-item active">Tugas Saya</li>
                     </ul>
                 </div>
                 <div class="page-header-right ms-auto d-flex align-items-center gap-2">
@@ -173,8 +179,8 @@
                 </div>
             </div>
 
-            {% if is_p3de %}
             <div class="content-area-body">
+                {% if is_p3de %}
                 <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">P3DE - Tugas</h6> -->
                 <!-- Belum Rekam Backup Data -->
                 <div class="card stretch stretch-full" data-category="belum_rekam_backup_data">
@@ -188,7 +194,7 @@
                                         <th>Tahun</th>
                                         <th>Bentuk Data</th>
                                         <th>Tgl Terima DIP</th>
-                                        <th>Actions</th>
+                                        <th>Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -200,7 +206,7 @@
                                         <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
                                         <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
-                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -222,7 +228,7 @@
                                         <th>Tahun</th>
                                         <th>Bentuk Data</th>
                                         <th>Tgl Terima DIP</th>
-                                        <th>Actions</th>
+                                        <th>Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -234,7 +240,7 @@
                                         <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
                                         <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
-                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -256,7 +262,7 @@
                                         <th>Tahun</th>
                                         <th>Bentuk Data</th>
                                         <th>Tgl Terima DIP</th>
-                                        <th>Actions</th>
+                                        <th>Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -268,7 +274,7 @@
                                         <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
                                         <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
-                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -290,7 +296,7 @@
                                         <th>Tahun</th>
                                         <th>Bentuk Data</th>
                                         <th>Tgl Terima DIP</th>
-                                        <th>Actions</th>
+                                        <th>Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -302,7 +308,7 @@
                                         <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
                                         <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
-                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -324,7 +330,7 @@
                                         <th>Tahun</th>
                                         <th>Bentuk Data</th>
                                         <th>Tgl Terima DIP</th>
-                                        <th>Actions</th>
+                                        <th>Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -336,7 +342,7 @@
                                         <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
                                         <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
-                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -357,7 +363,7 @@
                                         <th>Lengkap</th>
                                         <th>Klarifikasi/CDE</th>
                                         <th>Tgl Terima DIP</th>
-                                        <th>Actions</th>
+                                        <th>Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -372,7 +378,7 @@
                                         </td>
                                         <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
-                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -381,10 +387,8 @@
                         </div>
                     </div>
                 </div>
-            </div>
-            {% endif %}
-            {% if is_pide %}
-            <div class="content-area-body">
+                {% endif %}
+                {% if is_pide %}
                 <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">PIDE - Identifikasi</h6> -->
                 <!-- Belum Mulai Proses Identifikasi -->
                 <div class="card stretch stretch-full" data-category="belum_mulai_proses_identifikasi">
@@ -398,7 +402,7 @@
                                         <th>Tahun</th>
                                         <th>Bentuk Data</th>
                                         <th>Tgl Terima DIP</th>
-                                        <th>Actions</th>
+                                        <th>Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -410,7 +414,7 @@
                                         <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
                                         <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
-                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -432,7 +436,7 @@
                                         <th>Tahun</th>
                                         <th>Bentuk Data</th>
                                         <th>Tgl Terima DIP</th>
-                                        <th>Actions</th>
+                                        <th>Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -444,7 +448,7 @@
                                         <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
                                         <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
-                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -453,10 +457,8 @@
                         </div>
                     </div>
                 </div>
-            </div>
-            {% endif %}
-            {% if is_pmde %}
-            <div class="content-area-body">
+                {% endif %}
+                {% if is_pmde %}
                 <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">PMDE - Pengendalian Mutu</h6> -->
                 <!-- Dalam Proses Pengendalian Mutu -->
                 <div class="card stretch stretch-full" data-category="dalam_proses_pengendalian_mutu">
@@ -470,7 +472,7 @@
                                         <th>Tahun</th>
                                         <th>Bentuk Data</th>
                                         <th>Tgl Terima DIP</th>
-                                        <th>Actions</th>
+                                        <th>Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -482,7 +484,7 @@
                                         <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
                                         <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
-                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="View"><i class="feather-eye"></i></a>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -491,10 +493,8 @@
                         </div>
                     </div>
                 </div>
-            </div>
-            {% endif %}
-            {% if not is_p3de and not is_pide and not is_pmde %}
-            <div class="content-area-body">
+                {% endif %}
+                {% if not is_p3de and not is_pide and not is_pmde %}
                 <div class="card stretch stretch-full mb-3">
                     <div class="card-header d-flex align-items-center justify-content-between border-bottom">
                         <h5 class="card-title mb-0">
@@ -695,8 +695,8 @@
                         </div>
                     </div>
                 </div>
+                {% endif %}
             </div>
-            {% endif %}
         </div>
         <!-- [ Content Area ] end -->
 
@@ -709,6 +709,15 @@
         const filterLinks = document.querySelectorAll('.tiket-filter-link');
         const cards = document.querySelectorAll('[data-category]');
         const datatableTables = {};
+
+        // update breadcrumb when clicking a filter link
+        const updateBreadcrumb = (label) => {
+            const bc = document.querySelector('.breadcrumb');
+            if (bc) {
+                bc.innerHTML = '<li class="breadcrumb-item">Tugas Saya</li>' +
+                               `<li class="breadcrumb-item active">${label}</li>`;
+            }
+        };
         
         // Initialize datatables for each category
         document.querySelectorAll('.tiket-datatable').forEach(table => {
@@ -733,6 +742,9 @@
             if (firstCategory) {
                 const firstCard = document.querySelector(`[data-category="${firstCategory}"]`);
                 if (firstCard) firstCard.style.display = 'block';
+                // update breadcrumb/title for first active filter
+                const firstLabel = filterLinks[0]?.querySelector('span')?.innerText?.trim() || filterLinks[0]?.textContent?.trim();
+                if (firstLabel) updateBreadcrumb(firstLabel);
             }
         }
         
@@ -743,6 +755,10 @@
                 // Update active link
                 filterLinks.forEach(l => l.classList.remove('active'));
                 this.classList.add('active');
+
+                // update breadcrumb + page title
+                const label = this.querySelector('span')?.innerText?.trim() || this.textContent.trim();
+                if (label) updateBreadcrumb(label);
                 
                 // Show/hide cards based on filter
                 const filter = this.getAttribute('data-filter');

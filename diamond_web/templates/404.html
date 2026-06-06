@@ -1,14 +1,19 @@
+{% load static %}
 {% extends 'base.html' %}
 
 {% block title %}Page Not Found - 404{% endblock %}
 
 {% block content %}
-<div class="container" style="text-align: center; padding: 50px;">
-    <h1 class="display-1">404</h1>
-    <h2>Page Not Found</h2>
-    <p class="lead">
-        Sorry, the page you are looking for does not exist or has been moved.
+<div class="container" style="text-align: center; padding: 60px 20px;">
+    <img src="{% static 'assets/images/404-notfound.png' %}" alt="Halaman Tidak Ditemukan" class="img-fluid" style="max-width: 300px; margin-bottom: 30px;" />
+    <h1 class="display-1 fw-bold" style="color: #06c4d2;">404</h1>
+    <h2 class="mb-3">Halaman Hilang!</h2>
+    <p class="lead text-muted">
+        Sepertinya halaman yang Anda cari telah menghilang atau berpindah tempat. Mungkin URL-nya salah, atau halaman ini sudah tidak ada lagi.
     </p>
-    <a href="{% url 'home' %}" class="btn btn-primary">Go Back Home</a>
+    <p class="text-muted" style="font-size: 0.95rem;">
+        Jangan khawatir, Anda bisa kembali ke awal dan mencoba lagi. 🌍
+    </p>
+    <a href="{% url 'home' %}" class="btn btn-primary mt-3">← Kembali ke Home</a>
 </div>
 {% endblock %}
