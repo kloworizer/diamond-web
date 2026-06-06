@@ -13,6 +13,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 from ..models.tiket import Tiket
 from ..models.detil_tanda_terima import DetilTandaTerima
+from ..utils import format_periode
 
 
 def _is_p3de_user(user):
@@ -99,6 +100,7 @@ def register_penerimaan_data(request):
         tgl_terima_dip__date__lte=end_date,
     ).select_related(
         'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+        'id_periode_data__id_periode_pengiriman',
         'id_bentuk_data',
     ).prefetch_related(
         'detiltandaterima_set__id_tanda_terima',
@@ -142,13 +144,16 @@ def register_penerimaan_data(request):
             nomor_tt = '-'
             tanggal_tt = '-'
 
+        periode_pengiriman = tiket.id_periode_data.id_periode_pengiriman
+        deskripsi_periode = periode_pengiriman.periode_penerimaan if periode_pengiriman else ''
+
         data.append({
             'no': idx,
             'nama_ilap': ilap.nama_ilap,
             'dasar_hukum': dasar_hukum,
             'jenis_data_ilap': sub_jenis.nama_jenis_data,
             'bentuk_data': tiket.id_bentuk_data.deskripsi if tiket.id_bentuk_data else '-',
-            'periode_tahun_data': f'{tiket.periode} / {tiket.tahun}',
+            'periode_tahun_data': format_periode(deskripsi_periode, tiket.periode, tiket.tahun),
             'jumlah_data_diterima': tiket.baris_diterima or 0,
             'nomor_surat_pengantar': tiket.nomor_surat_pengantar or '-',
             'tanggal_surat_pengantar': tiket.tanggal_surat_pengantar.strftime('%d/%m/%Y') if tiket.tanggal_surat_pengantar else '-',
@@ -203,6 +208,7 @@ def register_penerimaan_export(request):
         tgl_terima_dip__date__lte=end_date,
     ).select_related(
         'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+        'id_periode_data__id_periode_pengiriman',
         'id_bentuk_data',
     ).prefetch_related(
         'id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata_set__id_klasifikasi_tabel',
@@ -266,13 +272,16 @@ def register_penerimaan_export(request):
             nomor_tt = '-'
             tanggal_tt = '-'
 
+        periode_pengiriman = tiket.id_periode_data.id_periode_pengiriman
+        deskripsi_periode = periode_pengiriman.periode_penerimaan if periode_pengiriman else ''
+
         row_data = [
             idx,
             ilap.nama_ilap,
             dasar_hukum,
             sub_jenis.nama_jenis_data,
             tiket.id_bentuk_data.deskripsi if tiket.id_bentuk_data else '-',
-            f'{tiket.periode} / {tiket.tahun}',
+            format_periode(deskripsi_periode, tiket.periode, tiket.tahun),
             tiket.baris_diterima or 0,
             tiket.nomor_surat_pengantar or '-',
             tiket.tanggal_surat_pengantar.strftime('%d/%m/%Y') if tiket.tanggal_surat_pengantar else '-',
