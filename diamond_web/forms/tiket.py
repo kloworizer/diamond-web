@@ -109,6 +109,11 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
         if not self.instance.pk:
             self.fields['tahun'].initial = current_year
         
+        # Make nomor_surat_pengantar, tanggal_surat_pengantar, and nama_pengirim optional
+        self.fields['nomor_surat_pengantar'].required = False
+        self.fields['tanggal_surat_pengantar'].required = False
+        self.fields['nama_pengirim'].required = False
+
         # Populate id_periode_data queryset based on selected ILAP (POST or instance)
         ilap_id = None
         if self.data and self.data.get('id_ilap'):

@@ -14,7 +14,7 @@ class RekamHasilPenelitianForm(AutoRequiredFormMixin, forms.ModelForm):
             'placeholder': 'Masukkan catatan tambahan',
             'rows': 3
         }),
-        required=True
+        required=False
     )
 
     class Meta:
