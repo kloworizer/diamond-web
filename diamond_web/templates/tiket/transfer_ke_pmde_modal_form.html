@@ -18,7 +18,7 @@
             <div class="col-md-4">
                 <div class="info-group">
                     <label class="text-muted small mb-1">Baris Lengkap</label>
-                    <p class="fw-semibold mb-0">{{ tiket.baris_lengkap|default:"-" }}</p>
+                    <p class="fw-semibold mb-0" id="baris-lengkap-value">{{ tiket.baris_lengkap|default:"0" }}</p>
                 </div>
             </div>
             <div class="col-md-4">
@@ -63,6 +63,15 @@
             </div>
         </div>
 
+        <!-- Validation hint: sum of baris fields vs baris_lengkap -->
+        <div class="mb-3">
+            <div id="baris-sum-hint" class="alert alert-info py-2 mb-0">
+                <i class="ri-calculator-line me-1"></i>
+                <strong>Total:</strong> <span id="baris-sum-value">0</span> / <span id="baris-lengkap-display">{{ tiket.baris_lengkap|default:"0" }}</span>
+                <span id="baris-sum-status" class="ms-2"></span>
+            </div>
+        </div>
+
         <div class="mb-3">
             {{ form.tgl_transfer.label_tag }}
             {{ form.tgl_transfer }}
@@ -77,7 +86,7 @@
         </button>
         <div class="gap-2 d-flex">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-            <button type="submit" class="btn btn-success">
+            <button type="submit" class="btn btn-success" id="transfer-submit-btn">
                 <i class="ri-send-plane-line me-1"></i>Transfer ke PMDE
             </button>
         </div>

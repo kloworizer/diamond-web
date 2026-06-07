@@ -187,9 +187,7 @@
                     <div class="col-md-3">
                         <div class="mb-3">
                             <label for="{{ form.penyampaian.id_for_label }}" class="form-label">{{ form.penyampaian.label }}{% if form.penyampaian.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                            <div class="info-group d-flex align-items-center justify-content-center" style="height: 38px;">
-                                <input type="text" class="form-control" id="id_penyampaian" name="penyampaian" readonly style="background-color: #e9ecef;" value="0">
-                            </div>
+                            <input type="text" class="form-control" id="id_penyampaian" name="penyampaian" readonly style="background-color: #e9ecef;" value="0">
                             {% if form.penyampaian.errors %}
                                 <div class="invalid-feedback d-block">{{ form.penyampaian.errors }}</div>
                             {% endif %}
@@ -214,7 +212,7 @@
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="{{ form.nomor_surat_pengantar.id_for_label }}" class="form-label">{{ form.nomor_surat_pengantar.label }}{% if form.nomor_surat_pengantar.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                            <label for="{{ form.nomor_surat_pengantar.id_for_label }}" class="form-label">{{ form.nomor_surat_pengantar.label }}</label>
                             {{ form.nomor_surat_pengantar }}
                             {% if form.nomor_surat_pengantar.errors %}
                                 <div class="invalid-feedback d-block">{{ form.nomor_surat_pengantar.errors }}</div>
@@ -223,7 +221,7 @@
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="{{ form.tanggal_surat_pengantar.id_for_label }}" class="form-label">{{ form.tanggal_surat_pengantar.label }}{% if form.tanggal_surat_pengantar.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                            <label for="{{ form.tanggal_surat_pengantar.id_for_label }}" class="form-label">{{ form.tanggal_surat_pengantar.label }}</label>
                             {{ form.tanggal_surat_pengantar }}
                             {% if form.tanggal_surat_pengantar.errors %}
                                 <div class="invalid-feedback d-block">{{ form.tanggal_surat_pengantar.errors }}</div>
@@ -232,7 +230,7 @@
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="{{ form.nama_pengirim.id_for_label }}" class="form-label">{{ form.nama_pengirim.label }}{% if form.nama_pengirim.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                            <label for="{{ form.nama_pengirim.id_for_label }}" class="form-label">{{ form.nama_pengirim.label }}</label>
                             {{ form.nama_pengirim }}
                             {% if form.nama_pengirim.errors %}
                                 <div class="invalid-feedback d-block">{{ form.nama_pengirim.errors }}</div>
@@ -820,6 +818,23 @@
             const btnConfirm = document.getElementById('btn-confirm-save');
             const btnSubmit = document.getElementById('btn-submit-form');
             const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
+            
+            // Ensure the confirmation modal's table is visible when shown,
+            // since the global DataTable UI enhancer may have hidden it
+            // (it treats tables inside hidden modals as empty).
+            document.getElementById('confirmModal').addEventListener('show.bs.modal', function () {
+                const modalTable = this.querySelector('table.table');
+                if (modalTable) {
+                    const wrapper = modalTable.closest('.table-responsive');
+                    if (wrapper) {
+                        wrapper.style.display = '';
+                    }
+                    const placeholder = wrapper ? wrapper.nextElementSibling : null;
+                    if (placeholder && placeholder.classList.contains('dt-empty-placeholder')) {
+                        placeholder.style.display = 'none';
+                    }
+                }
+            });
             
             // Handle Status Ketersediaan Data logic
             const statusTersedia = document.getElementById('status_tersedia');

@@ -37,9 +37,9 @@ class Tiket(models.Model):
     periode = models.IntegerField(verbose_name="Periode")
     tahun = models.IntegerField(verbose_name="Tahun")
     penyampaian = models.IntegerField(default=0, verbose_name="Penyampaian")
-    nomor_surat_pengantar = models.CharField(max_length=50, verbose_name="Nomor Surat Pengantar")
-    tanggal_surat_pengantar = models.DateTimeField(verbose_name="Tanggal Surat Pengantar")
-    nama_pengirim = models.CharField(max_length=50, verbose_name="Nama Pengirim")
+    nomor_surat_pengantar = models.CharField(max_length=50, blank=True, verbose_name="Nomor Surat Pengantar")
+    tanggal_surat_pengantar = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Surat Pengantar")
+    nama_pengirim = models.CharField(max_length=50, blank=True, verbose_name="Nama Pengirim")
     id_bentuk_data = models.ForeignKey(
         BentukData,
         on_delete=models.PROTECT,
