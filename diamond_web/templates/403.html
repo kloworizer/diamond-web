@@ -1,13 +1,19 @@
+{% load static %}
 {% extends 'base.html' %}
 
 {% block title %}Forbidden - 403{% endblock %}
 
 {% block content %}
-<div class="container" style="text-align: center; padding: 50px;">
-    <h1 class="display-1">403</h1>
-    <h2>Permission Denied</h2>
-    <p class="lead">
-        You do not have permission to view this page.
+<div class="container" style="text-align: center; padding: 60px 20px;">
+    <img src="{% static 'assets/images/403-forbidden.png' %}" alt="Akses Terlarang" class="img-fluid" style="max-width: 300px; margin-bottom: 30px;" />
+    <h1 class="display-1 fw-bold" style="color: #ea4d4d;">403</h1>
+    <h2 class="mb-3">Oops! Akses Terlarang</h2>
+    <p class="lead text-muted">
+        Sepertinya Anda mencoba membuka pintu yang tidak seharusnya dibuka. Kami telah mengamankan area ini, dan Anda tidak memiliki izin untuk mengaksesnya.
     </p>
+    <p class="text-muted" style="font-size: 0.95rem;">
+        Jika menurut Anda ini adalah kesalahan, silakan hubungi administrator sistem.
+    </p>
+    <a href="{% url 'home' %}" class="btn btn-primary mt-3">← Kembali ke Home</a>
 </div>
 {% endblock %}

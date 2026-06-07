@@ -32,8 +32,11 @@
         }
 
         .notifications-dropdown {
-            min-width: 420px;
-            max-width: 880px;
+            width: 320px;
+            min-width: 320px;
+            max-width: 320px;
+            max-height: 420px;
+            overflow-y: auto;
             white-space: normal;
             padding: 0.15rem;
         }
@@ -47,6 +50,24 @@
             background: #fff;
             text-decoration: none;
             color: inherit;
+        }
+
+        .notifications-dropdown .no-notification-empty {
+            font-weight: 400;
+            padding: 1rem 0.6rem 1.25rem;
+            border: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            background: transparent;
+        }
+
+        .notifications-dropdown .no-notification-img {
+            width: 120px;
+            max-width: 120px;
+            height: auto;
         }
 
         .notification-item:last-child {
@@ -392,6 +413,51 @@
             color: #6b7280;
             border-bottom: 1px solid #e9ecef !important;
         }
+
+        /* Empty state placeholder styling */
+        .dt-empty-placeholder {
+            padding: 32px 16px 64px 16px !important;
+            margin: 0 !important;
+        }
+
+        .dt-empty-placeholder img {
+            margin-bottom: 8px !important;
+        }
+
+        /* Sidebar icon background styling — soft rounded backgrounds for icons */
+        .icon-bg-soft {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+
+        .icon-bg-soft-blue {
+            background-color: rgba(155, 176, 248, 0.15);
+        }
+
+        .icon-bg-soft-yellow {
+            background-color: rgba(239, 186, 34, 0.15);
+        }
+
+        .icon-bg-soft-red {
+            background-color: rgba(234, 77, 77, 0.15);
+        }
+
+        .icon-bg-soft-orange {
+            background-color: rgba(255, 141, 40, 0.15);
+        }
+
+        .icon-bg-soft-cyan {
+            background-color: rgba(6, 196, 210, 0.15);
+        }
+
+        .icon-bg-soft-blue-dark {
+            background-color: rgba(12, 146, 255, 0.15);
+        }
     </style>
 
     {# Select2 multi-select: prevent close button from overlapping text #}
@@ -502,57 +568,137 @@
             function enhanceDataTableUI(table) {
                 const $table = $(table);
                 const $container = $table.closest('.dt-container, .dataTables_wrapper');
-                if (!$container.length) return;
+                const $tableWrapper = $table.closest('.table-responsive');
+                if (!$container.length && !$tableWrapper.length) return;
 
-                // Add margin to dt-container for spacing
-                $container.addClass('m-3');
+                if ($container.length) {
+                    // Add margin to dt-container for spacing
+                    $container.addClass('m-3');
 
-                $container.find('.dt-search input, .dataTables_filter input')
-                    .attr('placeholder', 'Search...')
-                    .addClass('form-control form-control-sm');
+                    $container.find('.dt-search input, .dataTables_filter input')
+                        .attr('placeholder', 'Cari...')
+                        .addClass('form-control form-control-sm');
 
-                $container.find('.dt-length select, .dataTables_length select')
-                    .addClass('form-select form-select-sm');
+                    $container.find('.dt-length select, .dataTables_length select')
+                        .addClass('form-select form-select-sm');
 
-                // DataTables 2.x pagination structure
-                const $paginationContainer = $container.find('.dt-paging');
-                if ($paginationContainer.length) {
-                    const $ul = $paginationContainer.find('ul.dt-paging__list');
-                    $ul.addClass('list-unstyled d-flex align-items-center gap-2 mb-0 pagination-common-style');
-                    
-                    // Add page-item classes to all list items
-                    $ul.find('li').each(function() {
-                        $(this).addClass('page-item');
-                        const $button = $(this).find('button');
-                        if ($button.length) {
-                            $button.addClass('page-link');
-                            // Add icon classes for prev/next buttons
-                            if ($button.hasClass('dt-paging__button--previous')) {
-                                $button.html('<i class="bi bi-arrow-left"></i>');
-                            } else if ($button.hasClass('dt-paging__button--next')) {
-                                $button.html('<i class="bi bi-arrow-right"></i>');
+                    // DataTables 2.x pagination structure
+                    const $paginationContainer = $container.find('.dt-paging');
+                    if ($paginationContainer.length) {
+                        const $ul = $paginationContainer.find('ul.dt-paging__list');
+                        $ul.addClass('list-unstyled d-flex align-items-center gap-2 mb-0 pagination-common-style');
+                        
+                        // Add page-item classes to all list items
+                        $ul.find('li').each(function() {
+                            $(this).addClass('page-item');
+                            const $button = $(this).find('button');
+                            if ($button.length) {
+                                $button.addClass('page-link');
+                                // Add icon classes for prev/next buttons
+                                if ($button.hasClass('dt-paging__button--previous')) {
+                                    $button.html('<i class="bi bi-arrow-left"></i>');
+                                } else if ($button.hasClass('dt-paging__button--next')) {
+                                    $button.html('<i class="bi bi-arrow-right"></i>');
+                                }
                             }
+                        });
+                    }
+
+                    // Legacy DataTables pagination structure (for compatibility)
+                    $container.find('.dataTables_paginate .pagination').addClass('pagination-common-style list-unstyled d-flex align-items-center gap-2 mb-0');
+                    $container.find('.dataTables_paginate .pagination .page-item').addClass('page-item');
+                    $container.find('.dataTables_paginate .pagination .page-link').addClass('page-link');
+
+                    $container.find('.dt-paging, .dataTables_paginate').addClass('pagination-common-style');
+
+                    const $paginationList = $container.find('.dt-paging nav ul.pagination, .dataTables_paginate ul.pagination');
+                    $paginationList.addClass('pagination-common-style list-unstyled d-flex align-items-center gap-2 mb-0');
+
+                    $container.find('.dt-paging-button, .dataTables_paginate .page-item').addClass('page-item');
+                    $container.find('.dt-paging-button .page-link, .dataTables_paginate .page-item .page-link').addClass('page-link');
+
+                    const $lengthLabel = $container.find('.dataTables_length label');
+                    if ($lengthLabel.length) {
+                        const $select = $lengthLabel.find('select');
+                        if ($select.length) {
+                            $lengthLabel.html('Tampilkan ').append($select).append(' entri');
+                        }
+                    }
+
+                    const $searchLabel = $container.find('.dataTables_filter label');
+                    if ($searchLabel.length) {
+                        const $input = $searchLabel.find('input');
+                        if ($input.length) {
+                            $searchLabel.html('Cari: ').append($input);
+                        }
+                    }
+
+                    $container.find('.dataTables_paginate .paginate_button, .dt-paging .dt-paging__button, .dataTables_paginate .page-item button, .dataTables_paginate .page-item a').each(function () {
+                        const $button = $(this);
+                        const text = $button.text().trim();
+                        if (text === 'Previous' || text === 'Prev') {
+                            $button.html('<i class="bi bi-arrow-left"></i>');
+                        } else if (text === 'Next') {
+                            $button.html('<i class="bi bi-arrow-right"></i>');
+                        } else if (text === 'First') {
+                            $button.html('<i class="bi bi-chevron-bar-left"></i>');
+                        } else if (text === 'Last') {
+                            $button.html('<i class="bi bi-chevron-bar-right"></i>');
                         }
                     });
+
+                    const $infoText = $container.find('.dataTables_info');
+                    if ($infoText.length) {
+                        let info = $infoText.text().trim();
+                        info = info.replace(/^Showing\s+0\s+to\s+0\s+of\s+0\s+entries$/i, 'Menampilkan 0 hingga 0 dari 0 entri');
+                        info = info.replace(/^Showing\s+(\d+)\s+to\s+(\d+)\s+of\s+(\d+)\s+entries$/i, 'Menampilkan $1 hingga $2 dari $3 entri');
+                        info = info.replace(/\(filtered from\s+(\d+)\s+total entries\)$/i, '(disaring dari $1 entri total)');
+                        if (info !== $infoText.text().trim()) {
+                            $infoText.text(info);
+                        }
+                    }
                 }
 
-                // Legacy DataTables pagination structure (for compatibility)
-                $container.find('.dataTables_paginate .pagination').addClass('pagination-common-style list-unstyled d-flex align-items-center gap-2 mb-0');
-                $container.find('.dataTables_paginate .pagination .page-item').addClass('page-item');
-                $container.find('.dataTables_paginate .pagination .page-link').addClass('page-link');
+                if (!$tableWrapper.length) return;
 
-                $container.find('.dt-paging, .dataTables_paginate').addClass('pagination-common-style');
+                const $placeholder = $tableWrapper.next('.dt-empty-placeholder');
+                const placeholderHtml = `
+                    <div class="dt-empty-placeholder text-center text-muted">
+                        <img src="{% static 'assets/images/empty-state.png' %}" alt="Tidak Ada Data" class="img-fluid" style="max-width: 200px; margin-bottom:8px;" />
+                        <p class="mb-1 fw-semibold">Tidak Ada Data yang Tersedia</p>
+                        <p class="mb-0 small">Data akan ditampilkan di sini setelah tersedia.</p>
+                    </div>
+                `;
 
-                const $paginationList = $container.find('.dt-paging nav ul.pagination, .dataTables_paginate ul.pagination');
-                $paginationList.addClass('pagination-common-style list-unstyled d-flex align-items-center gap-2 mb-0');
+                let rowCount = 0;
+                if ($.fn.DataTable && $.fn.DataTable.isDataTable(table)) {
+                    const dataTable = $table.DataTable();
+                    rowCount = dataTable.rows({ filter: 'applied' }).data().length;
+                } else {
+                    rowCount = $table.find('tbody tr').filter(function () {
+                        return $(this).find('td').length && $(this).is(':visible');
+                    }).length;
+                }
 
-                $container.find('.dt-paging-button, .dataTables_paginate .page-item').addClass('page-item');
-                $container.find('.dt-paging-button .page-link, .dataTables_paginate .page-item .page-link').addClass('page-link');
+                if (rowCount === 0) {
+                    $tableWrapper.hide();
+                    if (!$placeholder.length) {
+                        $tableWrapper.after(placeholderHtml);
+                    } else {
+                        $placeholder.html(placeholderHtml).show();
+                    }
+                } else {
+                    $tableWrapper.show();
+                    if ($placeholder.length) {
+                        $placeholder.hide();
+                    }
+                }
             }
 
             $(document).ready(function () {
                 $('table').each(function () {
                     enhanceTableStructure(this);
+                    enhanceDataTableUI(this);
                 });
 
                 if (!$.fn.DataTable) return;
@@ -560,12 +706,23 @@
                 $.extend(true, $.fn.dataTable.defaults, {
                     pageLength: 10,
                     language: {
-                        search: '',
-                        searchPlaceholder: 'Search...',
-                        lengthMenu: '_MENU_',
+                        search: 'Cari:',
+                        searchPlaceholder: 'Cari...',
+                        lengthMenu: 'Tampilkan _MENU_ entri',
+                        info: 'Menampilkan _START_ hingga _END_ dari _TOTAL_ entri',
+                        infoEmpty: 'Menampilkan 0 hingga 0 dari 0 entri',
+                        infoFiltered: '(disaring dari _MAX_ entri total)',
+                        emptyTable: 'Tidak Ada Data yang Tersedia',
+                        zeroRecords: 'Tidak ada data yang cocok',
+                        loadingRecords: 'Memuat...',
+                        processing: 'Memproses...',
+                        aria: {
+                            sortAscending: ': aktifkan untuk mengurutkan kolom naik',
+                            sortDescending: ': aktifkan untuk mengurutkan kolom turun'
+                        },
                         paginate: {
-                            first: '<i class="bi bi-arrow-left"></i>',
-                            last: '<i class="bi bi-arrow-right"></i>',
+                            first: '<i class="bi bi-chevron-bar-left"></i>',
+                            last: '<i class="bi bi-chevron-bar-right"></i>',
                             next: '<i class="bi bi-arrow-right"></i>',
                             previous: '<i class="bi bi-arrow-left"></i>'
                         }
@@ -751,7 +908,7 @@
                         <p>Session will be automatically kept alive while you are active.</p>
                       </div>
                       <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
                       </div>
                     </div>
                   </div>
