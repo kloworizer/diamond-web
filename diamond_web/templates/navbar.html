@@ -340,7 +340,6 @@
                             <h6 class="mb-0">{{ user.username }}</h6>
                             {% if user.get_full_name %}<span class="fs-12 text-muted">{{ user.get_full_name }}</span>{% endif %}
                         </div>
-                        <div class="dropdown-divider"></div>
                         <a class="dropdown-item" href="{% url 'user_password_change' %}">
                             <i class="feather-lock me-2"></i>
                             <span>Ubah Password</span>
