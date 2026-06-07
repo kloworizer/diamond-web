@@ -7,6 +7,7 @@ from django.core.exceptions import PermissionDenied
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
 from ...models.tiket_pic import TiketPIC
+from ...models.kirim_pide_temp import KirimPideTemp
 from ...models.pic import PIC
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ...models.detil_tanda_terima import DetilTandaTerima
@@ -254,7 +255,15 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         }
         
         # NOTE: workflow_step mapping removed — templates do not use it.
-        
+
+        # Check if this tiket already has a KirimPideTemp record (ND Pengantar sudah digenerate)
+        kirim_pide_temp = KirimPideTemp.objects.filter(
+            id_tiket=self.object,
+            id_user=self.request.user,
+        ).first()
+        context['has_kirim_pide_temp'] = kirim_pide_temp is not None
+        context['kirim_pide_id_temp'] = kirim_pide_temp.id_temp if kirim_pide_temp else None
+
         # Check if current user has any active PIC record for this tiket (per role)
         user_is_active_pic_p3de = TiketPIC.objects.filter(
             id_tiket=self.object,
