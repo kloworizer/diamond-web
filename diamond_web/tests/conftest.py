@@ -3,16 +3,16 @@ import os
 import sys
 import django
 from pathlib import Path
+
+# MUST set settings before any Django imports
+os.environ['DJANGO_SETTINGS_MODULE'] = 'config.test_settings'
+django.setup()
+
 import pytest
 from django.contrib.auth.models import User, Group
 from faker import Faker
 import factory
 from factory.django import DjangoModelFactory
-
-# Setup Django settings — always use test settings for the test suite,
-# overriding any OS-level DJANGO_SETTINGS_MODULE that may point to config.settings.
-os.environ['DJANGO_SETTINGS_MODULE'] = 'config.test_settings'
-django.setup()
 
 from diamond_web.models import (
     KategoriILAP, ILAP, JenisDataILAP, JenisTabel, KategoriWilayah, Kanwil, KPP,
