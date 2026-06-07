@@ -151,7 +151,7 @@ def format_periode(deskripsi_periode, periode, tahun, include_year=True):
     elif deskripsi_periode == 'Kuartal':
         roman = _to_roman_numeral(periode)
         return f'Kuartal {roman}{year_suffix}'
-    elif deskripsi_periode == 'Semester':
+    elif deskripsi_periode == 'Semester' or deskripsi_periode == 'Semesteran':
         roman = _to_roman_numeral(periode)
         return f'Semester {roman}{year_suffix}'
     elif deskripsi_periode == 'Tahunan':

@@ -1,0 +1,42 @@
+{% load crispy_forms_tags %}
+<form method="post" action="{{ form_action }}" id="kirim-ke-pide-form">
+    {% csrf_token %}
+    <div class="modal-body">
+        <div class="alert alert-info">
+            <i class="feather-info me-2"></i>
+            <strong>Konfirmasi:</strong> Anda akan mengirim <strong>{{ jumlah_tiket }} tiket</strong> ke PIDE.
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label"><strong>Daftar Tiket</strong></label>
+            <div style="max-height: 150px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 4px; padding: 8px;">
+                {% for tiket in tikets %}
+                <div class="small">
+                    <i class="feather-file-text me-1"></i>{{ tiket.nomor_tiket }} — {{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap|default:'-' }}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                {{ form.nomor_nd_nadine|as_crispy_field }}
+            </div>
+            <div class="col-md-6 mb-3">
+                {{ form.tgl_nadine|as_crispy_field }}
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                {{ form.tgl_kirim_pide|as_crispy_field }}
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="submit" class="btn btn-success">
+            <i class="feather-send me-1"></i>Kirim ke PIDE
+        </button>
+    </div>
+</form>

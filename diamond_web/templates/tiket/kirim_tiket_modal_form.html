@@ -9,26 +9,32 @@
             </div>
         {% endif %}
 
+        {% if single_tiket %}
         <div class="mb-3">
-            {{ form.nomor_nd_nadine.label_tag }}
-            {{ form.nomor_nd_nadine }}
-            {% if form.nomor_nd_nadine.errors %}
-                <small class="text-danger d-block mt-1">{{ form.nomor_nd_nadine.errors.0 }}</small>
-            {% endif %}
+            <table class="table table-bordered table-sm mb-0">
+                <tr>
+                    <th class="text-nowrap" style="width: 140px;">Nomor Tiket</th>
+                    <td>{{ single_tiket.nomor_tiket }}</td>
+                </tr>
+                <tr>
+                    <th>Nama ILAP</th>
+                    <td>{{ single_tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap|default:'-' }}</td>
+                </tr>
+                <tr>
+                    <th>Sub Jenis Data</th>
+                    <td>{{ single_tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data|default:'-' }}</td>
+                </tr>
+                <tr>
+                    <th>Status Tiket</th>
+                    <td>{{ single_tiket.get_status_tiket_display }}</td>
+                </tr>
+            </table>
         </div>
-        <div class="mb-3">
-            {{ form.tgl_nadine.label_tag }}
-            {{ form.tgl_nadine }}
-            {% if form.tgl_nadine.errors %}
-                <small class="text-danger d-block mt-1">{{ form.tgl_nadine.errors.0 }}</small>
-            {% endif %}
-        </div>
-        <div class="mb-3">
-            {{ form.tgl_kirim_pide.label_tag }}
-            {{ form.tgl_kirim_pide }}
-            {% if form.tgl_kirim_pide.errors %}
-                <small class="text-danger d-block mt-1">{{ form.tgl_kirim_pide.errors.0 }}</small>
-            {% endif %}
+        {% endif %}
+
+        <div class="alert alert-info mb-0">
+            <i class="feather-info me-1"></i>
+            Template ND Pengantar PIDE akan digenerate untuk tiket yang dipilih.
         </div>
 
         {{ form.tiket_ids }}
@@ -37,7 +43,7 @@
     <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
         <button type="submit" class="btn btn-success">
-            <i class="ri-send-plane-line me-1"></i>Kirim
+            <i class="feather-file-text me-1"></i>Generate Template
         </button>
     </div>
 </form>

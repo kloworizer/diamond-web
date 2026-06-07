@@ -132,6 +132,8 @@ def tiket_data(request):
         raw_periode_pengiriman = request.GET.get('periode_pengiriman', '')
         raw_periode_penerimaan = request.GET.get('periode_penerimaan', '')
         raw_status = request.GET.get('status', '')
+        raw_status_penelitian = request.GET.get('status_penelitian', '')
+        raw_status_ketersediaan_data = request.GET.get('status_ketersediaan_data', '')
         
         filter_nomor_tiket = _split_filter_options(raw_nomor_tiket)
         filter_tahun = _split_filter_options(raw_tahun)
@@ -151,6 +153,8 @@ def tiket_data(request):
         filter_periode_pengiriman = _split_filter_options(raw_periode_pengiriman)
         filter_periode_penerimaan = _split_filter_options(raw_periode_penerimaan)
         filter_status = _split_filter_options(raw_status)
+        filter_status_penelitian = _split_filter_options(raw_status_penelitian)
+        filter_status_ketersediaan_data = _split_filter_options(raw_status_ketersediaan_data)
         
         # Build a fully filtered queryset based on ALL current selections (except each dropdown's own filter)
         # This ensures changing any dropdown dynamically narrows down the options in all others.
@@ -268,6 +272,14 @@ def tiket_data(request):
             if int_statuses:
                 filtered_qs = filtered_qs.filter(status_tiket__in=int_statuses)
         
+        if filter_status_penelitian:
+            filtered_qs = filtered_qs.filter(id_status_penelitian_id__in=filter_status_penelitian)
+        
+        if filter_status_ketersediaan_data:
+            bool_vals = [v == '1' for v in filter_status_ketersediaan_data]
+            if bool_vals:
+                filtered_qs = filtered_qs.filter(status_ketersediaan_data__in=bool_vals)
+        
         nomor_options = []
         nomor_seen = set()
         for n in filtered_qs.order_by('id').values_list('nomor_tiket', flat=True):
@@ -354,6 +366,14 @@ def tiket_data(request):
             if int_statuses:
                 tahun_filter_qs = tahun_filter_qs.filter(status_tiket__in=int_statuses)
         
+        if filter_status_penelitian:
+            tahun_filter_qs = tahun_filter_qs.filter(id_status_penelitian_id__in=filter_status_penelitian)
+        
+        if filter_status_ketersediaan_data:
+            bool_vals = [v == '1' for v in filter_status_ketersediaan_data]
+            if bool_vals:
+                tahun_filter_qs = tahun_filter_qs.filter(status_ketersediaan_data__in=bool_vals)
+        
         tahun_options = []
         tahun_seen = set()
         for y in tahun_filter_qs.values_list('tahun', flat=True).distinct().order_by('tahun'):
@@ -439,6 +459,14 @@ def tiket_data(request):
                     pass
             if int_statuses:
                 periode_filter_qs = periode_filter_qs.filter(status_tiket__in=int_statuses)
+        
+        if filter_status_penelitian:
+            periode_filter_qs = periode_filter_qs.filter(id_status_penelitian_id__in=filter_status_penelitian)
+        
+        if filter_status_ketersediaan_data:
+            bool_vals = [v == '1' for v in filter_status_ketersediaan_data]
+            if bool_vals:
+                periode_filter_qs = periode_filter_qs.filter(status_ketersediaan_data__in=bool_vals)
         
         periode_raw_qs = periode_filter_qs.values_list(
             'periode',
@@ -614,6 +642,14 @@ def tiket_data(request):
             if int_statuses:
                 kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(status_tiket__in=int_statuses)
         
+        if filter_status_penelitian:
+            kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(id_status_penelitian_id__in=filter_status_penelitian)
+        
+        if filter_status_ketersediaan_data:
+            bool_vals = [v == '1' for v in filter_status_ketersediaan_data]
+            if bool_vals:
+                kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(status_ketersediaan_data__in=bool_vals)
+        
         kategori_ilap_qs = kategori_ilap_filter_qs.values_list(
             'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id',
             'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori__id_kategori',
@@ -712,6 +748,14 @@ def tiket_data(request):
             if int_statuses:
                 ilap_filter_qs = ilap_filter_qs.filter(status_tiket__in=int_statuses)
         
+        if filter_status_penelitian:
+            ilap_filter_qs = ilap_filter_qs.filter(id_status_penelitian_id__in=filter_status_penelitian)
+        
+        if filter_status_ketersediaan_data:
+            bool_vals = [v == '1' for v in filter_status_ketersediaan_data]
+            if bool_vals:
+                ilap_filter_qs = ilap_filter_qs.filter(status_ketersediaan_data__in=bool_vals)
+        
         ilap_qs = ilap_filter_qs.values_list(
             'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id',
             'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_ilap',
@@ -805,6 +849,14 @@ def tiket_data(request):
                     pass
             if int_statuses:
                 jenis_filter_qs = jenis_filter_qs.filter(status_tiket__in=int_statuses)
+        
+        if filter_status_penelitian:
+            jenis_filter_qs = jenis_filter_qs.filter(id_status_penelitian_id__in=filter_status_penelitian)
+        
+        if filter_status_ketersediaan_data:
+            bool_vals = [v == '1' for v in filter_status_ketersediaan_data]
+            if bool_vals:
+                jenis_filter_qs = jenis_filter_qs.filter(status_ketersediaan_data__in=bool_vals)
         
         jenis_options = []
         jenis_seen = set()
@@ -985,6 +1037,13 @@ def tiket_data(request):
             status_filter_qs = status_filter_qs.filter(
                 id_periode_data__id_periode_pengiriman__periode_penyampaian__in=filter_periode_pengiriman
             )
+        if filter_status_penelitian:
+            status_filter_qs = status_filter_qs.filter(id_status_penelitian_id__in=filter_status_penelitian)
+        
+        if filter_status_ketersediaan_data:
+            bool_vals = [v == '1' for v in filter_status_ketersediaan_data]
+            if bool_vals:
+                status_filter_qs = status_filter_qs.filter(status_ketersediaan_data__in=bool_vals)
         
         # Get distinct status_tiket values from filtered data
         available_status_ids = set(
@@ -995,6 +1054,28 @@ def tiket_data(request):
             for sid in sorted(available_status_ids)
             if sid is not None
         ]
+
+        # Get distinct StatusPenelitian values from filtered data
+        from ...models.status_penelitian import StatusPenelitian
+        status_penelitian_ids = filtered_qs.values_list(
+            'id_status_penelitian_id', flat=True
+        ).distinct()
+        status_penelitian_ids = {sid for sid in status_penelitian_ids if sid is not None}
+        status_penelitian_qs = StatusPenelitian.objects.filter(id__in=status_penelitian_ids).order_by('id')
+        status_penelitian_options = [
+            {'id': str(sp.id), 'name': sp.deskripsi}
+            for sp in status_penelitian_qs
+        ]
+
+        # Get distinct status_ketersediaan_data values from filtered data
+        ketersediaan_ids = set(
+            filtered_qs.values_list('status_ketersediaan_data', flat=True).distinct()
+        )
+        status_ketersediaan_data_options = []
+        if True in ketersediaan_ids:
+            status_ketersediaan_data_options.append({'id': '1', 'name': 'Ya'})
+        if False in ketersediaan_ids:
+            status_ketersediaan_data_options.append({'id': '0', 'name': 'Tidak'})
 
         return JsonResponse({
             'filter_options': {
@@ -1016,6 +1097,8 @@ def tiket_data(request):
                 'dasar_hukum': dasar_hukum_options,
                 'periode_pengiriman': periode_pengiriman_options,
                 'status': status_options,
+                'status_penelitian': status_penelitian_options,
+                'status_ketersediaan_data': status_ketersediaan_data_options,
             }
         })
 
@@ -1051,6 +1134,8 @@ def tiket_data(request):
     filter_periode_pengiriman = _split(request.GET.get('periode_pengiriman', ''))
     filter_tahun = _split(request.GET.get('tahun', ''))
     filter_status = _split(request.GET.get('status', ''))
+    filter_status_penelitian = _split(request.GET.get('status_penelitian', ''))
+    filter_status_ketersediaan_data = _split(request.GET.get('status_ketersediaan_data', ''))
 
     if filter_nomor_tiket:
         qs = qs.filter(nomor_tiket__in=filter_nomor_tiket)
@@ -1141,6 +1226,14 @@ def tiket_data(request):
             qs = qs.filter(status_tiket__in=int_statuses)
         else:
             qs = qs.none()
+
+    if filter_status_penelitian:
+        qs = qs.filter(id_status_penelitian_id__in=filter_status_penelitian)
+
+    if filter_status_ketersediaan_data:
+        bool_vals = [v == '1' for v in filter_status_ketersediaan_data]
+        if bool_vals:
+            qs = qs.filter(status_ketersediaan_data__in=bool_vals)
 
     qs = qs.distinct()
 

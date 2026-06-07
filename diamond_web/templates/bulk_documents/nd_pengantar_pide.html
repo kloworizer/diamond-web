@@ -61,7 +61,7 @@
     <div class="card stretch stretch-full h-100 mt-3">
         <div class="card-header"><strong>Daftar Tiket Dikirim ke PIDE</strong></div>
         <div class="card-body">
-            <form method="post">
+            <form method="post" action="?tanggal_kirim_pide={{ selected_tanggal_kirim_pide }}&ilap_id={{ selected_ilap_id }}&doc_type={{ selected_doc_type }}">
                 {% csrf_token %}
                 <input type="hidden" name="ilap_id" value="{{ selected_ilap_id }}">
                 <input type="hidden" name="tanggal_kirim_pide" value="{{ selected_tanggal_kirim_pide }}">
@@ -73,6 +73,8 @@
                             <tr>
                                 <th style="width:40px;"><input type="checkbox" id="check-all"></th>
                                 <th>Nomor Tiket</th>
+                                <th>Kategori Wilayah</th>
+                                <th>ILAP</th>
                                 <th>Jenis Data</th>
                                 <th>Periode Data</th>
                                 <th>Baris Diterima</th>
@@ -85,6 +87,8 @@
                             <tr>
                                 <td class="text-center"><input type="checkbox" name="ticket_ids" value="{{ t.id }}" class="ticket-check"></td>
                                 <td>{{ t.nomor_tiket }}</td>
+                                <td>{% if t.id_periode_data and t.id_periode_data.id_sub_jenis_data_ilap and t.id_periode_data.id_sub_jenis_data_ilap.id_ilap and t.id_periode_data.id_sub_jenis_data_ilap.id_ilap.id_kategori_wilayah %}{{ t.id_periode_data.id_sub_jenis_data_ilap.id_ilap.id_kategori_wilayah.deskripsi }}{% else %}-{% endif %}</td>
+                                <td>{% if t.id_periode_data and t.id_periode_data.id_sub_jenis_data_ilap and t.id_periode_data.id_sub_jenis_data_ilap.id_ilap %}{{ t.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}{% else %}-{% endif %}</td>
                                 <td>{% if t.id_periode_data and t.id_periode_data.id_sub_jenis_data_ilap %}{{ t.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}{% else %}-{% endif %}</td>
                                 <td>{{ t.periode }} / {{ t.tahun }}</td>
                                 <td class="text-end">{{ t.baris_diterima|default:0 }}</td>

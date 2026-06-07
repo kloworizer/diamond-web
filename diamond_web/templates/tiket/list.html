@@ -157,6 +157,18 @@
                                 <option value="">-- Semua --</option>
                             </select>
                         </div>
+                        <div class="mb-2">
+                            <label for="filter-status-penelitian" class="form-label">Status Penelitian</label>
+                            <select class="form-select form-select-sm" id="filter-status-penelitian" name="status_penelitian" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-status-ketersediaan-data" class="form-label">Status Ketersediaan Data</label>
+                            <select class="form-select form-select-sm" id="filter-status-ketersediaan-data" name="status_ketersediaan_data" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </form>
@@ -241,7 +253,9 @@
                 dasar_hukum: '#filter-dasar-hukum',
                 periode_pengiriman: '#filter-periode-pengiriman',
                 periode_penerimaan: '#filter-periode-penerimaan',
-                status: '#filter-status'
+                status: '#filter-status',
+                status_penelitian: '#filter-status-penelitian',
+                status_ketersediaan_data: '#filter-status-ketersediaan-data'
             };
 
             let hasInitialFilter = false;
@@ -298,7 +312,9 @@
                 dasar_hukum: getMultiSelectValue('#filter-dasar-hukum'),
                 periode_pengiriman: getMultiSelectValue('#filter-periode-pengiriman'),
                 periode_penerimaan: getMultiSelectValue('#filter-periode-penerimaan'),
-                status: getMultiSelectValue('#filter-status')
+                status: getMultiSelectValue('#filter-status'),
+                status_penelitian: getMultiSelectValue('#filter-status-penelitian'),
+                status_ketersediaan_data: getMultiSelectValue('#filter-status-ketersediaan-data')
             };
         }
 
@@ -347,7 +363,9 @@
                         'dasar_hukum': '#filter-dasar-hukum',
                         'periode_pengiriman': '#filter-periode-pengiriman',
                         'periode_penerimaan': '#filter-periode-penerimaan',
-                        'status': '#filter-status'
+                        'status': '#filter-status',
+                        'status_penelitian': '#filter-status-penelitian',
+                        'status_ketersediaan_data': '#filter-status-ketersediaan-data'
                     };
 
                     Object.entries(dropdownMap).forEach(([key, selector]) => {
@@ -416,6 +434,8 @@
                     updateDropdown('periode_pengiriman', '#filter-periode-pengiriman');
                     updateDropdown('periode_penerimaan', '#filter-periode-penerimaan');
                     updateDropdown('status', '#filter-status');
+                    updateDropdown('status_penelitian', '#filter-status-penelitian');
+                    updateDropdown('status_ketersediaan_data', '#filter-status-ketersediaan-data');
                 },
                 error: function () {
                     // Ensure Select2 is initialized even if AJAX fails
@@ -458,6 +478,8 @@
                         d.periode_pengiriman = getMultiSelectValue('#filter-periode-pengiriman');
                         d.periode_penerimaan = getMultiSelectValue('#filter-periode-penerimaan');
                         d.status = getMultiSelectValue('#filter-status');
+                        d.status_penelitian = getMultiSelectValue('#filter-status-penelitian');
+                        d.status_ketersediaan_data = getMultiSelectValue('#filter-status-ketersediaan-data');
                         return d;
                     }
                 },
@@ -555,6 +577,8 @@
                     if (opts.periode_pengiriman) opts.periode_pengiriman.forEach(item => $('#filter-periode-pengiriman').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.periode_penerimaan) opts.periode_penerimaan.forEach(item => $('#filter-periode-penerimaan').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.status) opts.status.forEach(item => $('#filter-status').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.status_penelitian) opts.status_penelitian.forEach(item => $('#filter-status-penelitian').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.status_ketersediaan_data) opts.status_ketersediaan_data.forEach(item => $('#filter-status-ketersediaan-data').append(`<option value="${item.id}">${item.name}</option>`));
 
                     // Re-initialize Select2 on all filter selects
                     if (typeof $.fn.select2 === 'function') {

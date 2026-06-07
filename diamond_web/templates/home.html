@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load auth_extras %}
 
 {% block content %}
 {% if user.is_authenticated %}
@@ -190,9 +191,8 @@
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
-                                        <th>Periode</th>
-                                        <th>Tahun</th>
-                                        <th>Bentuk Data</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
                                         <th>Tgl Terima DIP</th>
                                         <th>Aksi</th>
                                     </tr>
@@ -201,10 +201,9 @@
                                     {% for tiket in p3de_tiket_categories.belum_rekam_backup_data %}
                                     <tr>
                                         <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.periode }}</td>
-                                        <td>{{ tiket.tahun }}</td>
-                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
-                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
+                                        <td data-order="{{ tiket.tgl_terima_dip|date:'Y-m-d' }}">{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
                                             <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
                                         </td>
@@ -224,9 +223,8 @@
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
-                                        <th>Periode</th>
-                                        <th>Tahun</th>
-                                        <th>Bentuk Data</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
                                         <th>Tgl Terima DIP</th>
                                         <th>Aksi</th>
                                     </tr>
@@ -235,10 +233,9 @@
                                     {% for tiket in p3de_tiket_categories.belum_dibuat_tanda_terima %}
                                     <tr>
                                         <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.periode }}</td>
-                                        <td>{{ tiket.tahun }}</td>
-                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
-                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
+                                        <td data-order="{{ tiket.tgl_terima_dip|date:'Y-m-d' }}">{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
                                             <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
                                         </td>
@@ -258,9 +255,8 @@
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
-                                        <th>Periode</th>
-                                        <th>Tahun</th>
-                                        <th>Bentuk Data</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
                                         <th>Tgl Terima DIP</th>
                                         <th>Aksi</th>
                                     </tr>
@@ -269,10 +265,9 @@
                                     {% for tiket in p3de_tiket_categories.belum_diteliti %}
                                     <tr>
                                         <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.periode }}</td>
-                                        <td>{{ tiket.tahun }}</td>
-                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
-                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
+                                        <td data-order="{{ tiket.tgl_terima_dip|date:'Y-m-d' }}">{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
                                             <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
                                         </td>
@@ -292,9 +287,8 @@
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
-                                        <th>Periode</th>
-                                        <th>Tahun</th>
-                                        <th>Bentuk Data</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
                                         <th>Tgl Terima DIP</th>
                                         <th>Aksi</th>
                                     </tr>
@@ -303,10 +297,9 @@
                                     {% for tiket in p3de_tiket_categories.belum_dikirim_ke_pide %}
                                     <tr>
                                         <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.periode }}</td>
-                                        <td>{{ tiket.tahun }}</td>
-                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
-                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
+                                        <td data-order="{{ tiket.tgl_terima_dip|date:'Y-m-d' }}">{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
                                             <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
                                         </td>
@@ -326,9 +319,8 @@
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
-                                        <th>Periode</th>
-                                        <th>Tahun</th>
-                                        <th>Bentuk Data</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
                                         <th>Tgl Terima DIP</th>
                                         <th>Aksi</th>
                                     </tr>
@@ -337,10 +329,9 @@
                                     {% for tiket in p3de_tiket_categories.dikembalikan_dari_pide %}
                                     <tr>
                                         <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.periode }}</td>
-                                        <td>{{ tiket.tahun }}</td>
-                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
-                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
+                                        <td data-order="{{ tiket.tgl_terima_dip|date:'Y-m-d' }}">{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
                                             <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
                                         </td>
@@ -359,9 +350,8 @@
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
-                                        <th>Periode</th>
-                                        <th>Lengkap</th>
-                                        <th>Klarifikasi/CDE</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
                                         <th>Tgl Terima DIP</th>
                                         <th>Aksi</th>
                                     </tr>
@@ -370,13 +360,9 @@
                                     {% for tiket in p3de_tiket_categories.diklarifikasi %}
                                     <tr>
                                         <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.periode }} / {{ tiket.tahun }}</td>
-                                        <td class="text-success fw-bold">{{ tiket.baris_lengkap|default:0 }}</td>
-                                        <td class="text-danger fw-bold">
-                                            {% if tiket.baris_tidak_lengkap > 0 %}{{ tiket.baris_tidak_lengkap }} (P3DE){% endif %}
-                                            {% if tiket.baris_cde > 0 %}{% if tiket.baris_tidak_lengkap > 0 %}<br>{% endif %}{{ tiket.baris_cde }} (PIDE){% endif %}
-                                        </td>
-                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
+                                        <td data-order="{{ tiket.tgl_terima_dip|date:'Y-m-d' }}">{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
                                         <td>
                                             <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
                                         </td>
@@ -398,21 +384,19 @@
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
-                                        <th>Periode</th>
-                                        <th>Tahun</th>
-                                        <th>Bentuk Data</th>
-                                        <th>Tgl Terima DIP</th>
-                                        <th>Aksi</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
+                                        <th>Tgl Kirim PIDE</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for tiket in pide_tiket_categories.belum_mulai_proses_identifikasi %}
                                     <tr>
                                         <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.periode }}</td>
-                                        <td>{{ tiket.tahun }}</td>
-                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
-                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
+                                        <td data-order="{{ tiket.tgl_kirim_pide|date:'Y-m-d' }}">{{ tiket.tgl_kirim_pide|date:"d-m-Y" }}</td>
                                         <td>
                                             <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
                                         </td>
@@ -432,21 +416,19 @@
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
-                                        <th>Periode</th>
-                                        <th>Tahun</th>
-                                        <th>Bentuk Data</th>
-                                        <th>Tgl Terima DIP</th>
-                                        <th>Aksi</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
+                                        <th>Tgl Kirim PIDE</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for tiket in pide_tiket_categories.dalam_proses_identifikasi %}
                                     <tr>
                                         <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.periode }}</td>
-                                        <td>{{ tiket.tahun }}</td>
-                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
-                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
+                                        <td data-order="{{ tiket.tgl_kirim_pide|date:'Y-m-d' }}">{{ tiket.tgl_kirim_pide|date:"d-m-Y" }}</td>
                                         <td>
                                             <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
                                         </td>
@@ -468,21 +450,19 @@
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
-                                        <th>Periode</th>
-                                        <th>Tahun</th>
-                                        <th>Bentuk Data</th>
-                                        <th>Tgl Terima DIP</th>
-                                        <th>Aksi</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
+                                        <th>Tgl Transfer</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for tiket in pmde_tiket_categories.dalam_proses_pengendalian_mutu %}
                                     <tr>
                                         <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.periode }}</td>
-                                        <td>{{ tiket.tahun }}</td>
-                                        <td>{{ tiket.id_bentuk_data.bentuk_data }}</td>
-                                        <td>{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
+                                        <td data-order="{{ tiket.tgl_transfer|date:'Y-m-d' }}">{{ tiket.tgl_transfer|date:"d-m-Y" }}</td>
                                         <td>
                                             <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
                                         </td>
@@ -493,210 +473,8 @@
                         </div>
                     </div>
                 </div>
-                {% endif %}
-                {% if not is_p3de and not is_pide and not is_pmde %}
-                <div class="card stretch stretch-full mb-3">
-                    <div class="card-header d-flex align-items-center justify-content-between border-bottom">
-                        <h5 class="card-title mb-0">
-                            <i class="feather-list me-2 text-primary"></i>Lorem Ipsum
-                            <span class="badge bg-primary ms-2">5</span>
-                        </h5>
-                        <a href="javascript:void(0);" class="btn btn-sm btn-light-brand">Lihat Semua</a>
-                    </div>
-                    <div class="card-body custom-card-action p-0">
-                        <div class="list-group list-group-flush">
-                            <a href="javascript:void(0);"
-                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
-                                <span
-                                    class="avatar-text avatar-md bg-soft-primary text-primary rounded-circle flex-shrink-0">
-                                    <i class="feather-file-text"></i>
-                                </span>
-                                <div class="flex-grow-1 overflow-hidden">
-                                    <h6 class="mb-1 fw-semibold text-truncate">Lorem Ipsum Dolor</h6>
-                                    <small class="text-muted">Sit Amet &bull; Consectetur: 20 Mei 2026</small>
-                                </div>
-                                <span class="badge bg-soft-danger text-danger flex-shrink-0">Mendesak</span>
-                            </a>
-                            <a href="javascript:void(0);"
-                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
-                                <span
-                                    class="avatar-text avatar-md bg-soft-warning text-warning rounded-circle flex-shrink-0">
-                                    <i class="feather-bar-chart-2"></i>
-                                </span>
-                                <div class="flex-grow-1 overflow-hidden">
-                                    <h6 class="mb-1 fw-semibold text-truncate">Adipiscing Elit Sed</h6>
-                                    <small class="text-muted">Do Eiusmod &bull; Tempor: 25 Mei 2026</small>
-                                </div>
-                                <span class="badge bg-soft-warning text-warning flex-shrink-0">Tinggi</span>
-                            </a>
-                            <a href="javascript:void(0);"
-                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
-                                <span class="avatar-text avatar-md bg-soft-info text-info rounded-circle flex-shrink-0">
-                                    <i class="feather-users"></i>
-                                </span>
-                                <div class="flex-grow-1 overflow-hidden">
-                                    <h6 class="mb-1 fw-semibold text-truncate">Incididunt Ut Labore</h6>
-                                    <small class="text-muted">Et Dolore &bull; Magna: 30 Mei 2026</small>
-                                </div>
-                                <span class="badge bg-soft-primary text-primary flex-shrink-0">Sedang</span>
-                            </a>
-                            <a href="javascript:void(0);"
-                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
-                                <span
-                                    class="avatar-text avatar-md bg-soft-success text-success rounded-circle flex-shrink-0">
-                                    <i class="feather-send"></i>
-                                </span>
-                                <div class="flex-grow-1 overflow-hidden">
-                                    <h6 class="mb-1 fw-semibold text-truncate">Aliqua Ut Enim Ad</h6>
-                                    <small class="text-muted">Minim Veniam &bull; Quis: 1 Juni 2026</small>
-                                </div>
-                                <span class="badge bg-soft-success text-success flex-shrink-0">Normal</span>
-                            </a>
-                            <a href="javascript:void(0);"
-                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
-                                <span
-                                    class="avatar-text avatar-md bg-soft-secondary text-secondary rounded-circle flex-shrink-0">
-                                    <i class="feather-clipboard"></i>
-                                </span>
-                                <div class="flex-grow-1 overflow-hidden">
-                                    <h6 class="mb-1 fw-semibold text-truncate">Nostrud Exercitation</h6>
-                                    <small class="text-muted">Ullamco &bull; Laboris: 5 Juni 2026</small>
-                                </div>
-                                <span class="badge bg-soft-secondary text-secondary flex-shrink-0">Rendah</span>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Card: Sedang Berlangsung -->
-                <div class="card stretch stretch-full mb-3">
-                    <div class="card-header d-flex align-items-center justify-content-between border-bottom">
-                        <h5 class="card-title mb-0">
-                            <i class="feather-activity me-2 text-info"></i>Lorem Ipsum
-                            <span class="badge bg-info ms-2">3</span>
-                        </h5>
-                        <a href="javascript:void(0);" class="btn btn-sm btn-light-brand">Lihat Semua</a>
-                    </div>
-                    <div class="card-body custom-card-action p-0">
-                        <div class="list-group list-group-flush">
-                            <a href="javascript:void(0);"
-                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
-                                <span class="avatar-text avatar-md bg-soft-info text-info rounded-circle flex-shrink-0">
-                                    <i class="feather-code"></i>
-                                </span>
-                                <div class="flex-grow-1 overflow-hidden">
-                                    <h6 class="mb-1 fw-semibold text-truncate">Nisi Ut Aliquid Ex Ea</h6>
-                                    <div class="progress mt-2" style="height: 5px;">
-                                        <div class="progress-bar bg-info" role="progressbar" style="width: 65%"></div>
-                                    </div>
-                                    <small class="text-muted mt-1 d-block">65% selesai</small>
-                                </div>
-                                <span class="badge bg-soft-warning text-warning flex-shrink-0">Tinggi</span>
-                            </a>
-                            <a href="javascript:void(0);"
-                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
-                                <span
-                                    class="avatar-text avatar-md bg-soft-primary text-primary rounded-circle flex-shrink-0">
-                                    <i class="feather-database"></i>
-                                </span>
-                                <div class="flex-grow-1 overflow-hidden">
-                                    <h6 class="mb-1 fw-semibold text-truncate">Migrasi dan Validasi Data</h6>
-                                    <div class="progress mt-2" style="height: 5px;">
-                                        <div class="progress-bar bg-primary" role="progressbar" style="width: 45%">
-                                        </div>
-                                    </div>
-                                    <small class="text-muted mt-1 d-block">45% selesai</small>
-                                </div>
-                                <span class="badge bg-soft-primary text-primary flex-shrink-0">Sedang</span>
-                            </a>
-                            <a href="javascript:void(0);"
-                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
-                                <span
-                                    class="avatar-text avatar-md bg-soft-success text-success rounded-circle flex-shrink-0">
-                                    <i class="feather-edit-3"></i>
-                                </span>
-                                <div class="flex-grow-1 overflow-hidden">
-                                    <h6 class="mb-1 fw-semibold text-truncate">Pembaruan Dokumen SOP</h6>
-                                    <div class="progress mt-2" style="height: 5px;">
-                                        <div class="progress-bar bg-success" role="progressbar" style="width: 80%">
-                                        </div>
-                                    </div>
-                                    <small class="text-muted mt-1 d-block">80% selesai</small>
-                                </div>
-                                <span class="badge bg-soft-success text-success flex-shrink-0">Normal</span>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Card: Selesai -->
-                <div class="card mb-0">
-                    <div class="card-header d-flex align-items-center justify-content-between border-bottom">
-                        <h5 class="card-title mb-0">
-                            <i class="feather-check-circle me-2 text-success"></i>Lorem Ipsum
-                            <span class="badge bg-success ms-2">4</span>
-                        </h5>
-                        <a href="javascript:void(0);" class="btn btn-sm btn-light-brand">Lihat Semua</a>
-                    </div>
-                    <div class="card-body custom-card-action p-0">
-                        <div class="list-group list-group-flush">
-                            <a href="javascript:void(0);"
-                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
-                                <span
-                                    class="avatar-text avatar-md bg-soft-success text-success rounded-circle flex-shrink-0">
-                                    <i class="feather-check"></i>
-                                </span>
-                                <div class="flex-grow-1 overflow-hidden">
-                                    <h6 class="mb-1 fw-semibold text-truncate text-decoration-line-through text-muted">
-                                        In Reprehenderit Voluptate</h6>
-                                    <small class="text-muted">Selesai pada: 15 Mei 2026</small>
-                                </div>
-                                <span class="badge bg-soft-success text-success flex-shrink-0">Selesai</span>
-                            </a>
-                            <a href="javascript:void(0);"
-                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
-                                <span
-                                    class="avatar-text avatar-md bg-soft-success text-success rounded-circle flex-shrink-0">
-                                    <i class="feather-check"></i>
-                                </span>
-                                <div class="flex-grow-1 overflow-hidden">
-                                    <h6 class="mb-1 fw-semibold text-truncate text-decoration-line-through text-muted">
-                                        Velit Esse Cillum</h6>
-                                    <small class="text-muted">Selesai pada: 14 Mei 2026</small>
-                                </div>
-                                <span class="badge bg-soft-success text-success flex-shrink-0">Selesai</span>
-                            </a>
-                            <a href="javascript:void(0);"
-                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
-                                <span
-                                    class="avatar-text avatar-md bg-soft-success text-success rounded-circle flex-shrink-0">
-                                    <i class="feather-check"></i>
-                                </span>
-                                <div class="flex-grow-1 overflow-hidden">
-                                    <h6 class="mb-1 fw-semibold text-truncate text-decoration-line-through text-muted">
-                                        Fugiat Nulla Pariatur</h6>
-                                    <small class="text-muted">Selesai pada: 10 Mei 2026</small>
-                                </div>
-                                <span class="badge bg-soft-success text-success flex-shrink-0">Selesai</span>
-                            </a>
-                            <a href="javascript:void(0);"
-                                class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
-                                <span
-                                    class="avatar-text avatar-md bg-soft-success text-success rounded-circle flex-shrink-0">
-                                    <i class="feather-check"></i>
-                                </span>
-                                <div class="flex-grow-1 overflow-hidden">
-                                    <h6 class="mb-1 fw-semibold text-truncate text-decoration-line-through text-muted">
-                                        Excepteur Sint Occaecat</h6>
-                                    <small class="text-muted">Selesai pada: 08 Mei 2026</small>
-                                </div>
-                                <span class="badge bg-soft-success text-success flex-shrink-0">Selesai</span>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
             </div>
+            {% endif %}
         </div>
         <!-- [ Content Area ] end -->
 
@@ -730,8 +508,14 @@
                 info: true,
                 lengthChange: true,
                 columnDefs: [
-                    { orderable: false, targets: 5 }
-                ]
+                    { orderable: false, targets: -1 }
+                ],
+                layout: {
+                    topStart: 'pageLength',
+                    topEnd: 'search',
+                    bottomStart: 'info',
+                    bottomEnd: 'paging'
+                }
             });
         });
         
