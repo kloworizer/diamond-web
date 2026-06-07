@@ -623,7 +623,7 @@
                     {% else %}
                         <!-- P3DE actions (existing) -->
                         {% if user_is_active_pic_p3de %}
-                            {% if tiket.status_tiket < STATUS_DIKIRIM_KE_PIDE and tiket.status_tiket != STATUS_DIBATALKAN and tiket.status_tiket != STATUS_SELESAI %}
+                            {% if tiket.status_tiket < STATUS_DIKIRIM_KE_PIDE and tiket.status_tiket != STATUS_DIBATALKAN and tiket.status_tiket != STATUS_SELESAI and tiket.status_tiket != STATUS_DIKEMBALIKAN %}
                                 <div class="d-grid gap-2">
                                     {% if not tiket.backup %}
                                         <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#rekamBackupDataModal">
@@ -655,7 +655,7 @@
                                         {% endif %}
                                     {% endif %}
                                 </div>
-                            {% else %}
+                            {% elif tiket.status_tiket >= STATUS_DIKIRIM_KE_PIDE or tiket.status_tiket == STATUS_DIBATALKAN or tiket.status_tiket == STATUS_SELESAI %}
                                 <div class="text-center text-muted py-2">
                                     <i class="feather-info me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
                                 </div>
@@ -717,7 +717,7 @@
                     {% endif %}
 
                     <!-- Document Download Section -->
-                    {% if user_is_active_pic_p3de or user.admin_p3de %}
+                    {% if user_is_active_pic_p3de or user_is_active_pic_pide or user_is_active_pic_pmde %}
                         {% if tiket.tanda_terima or tiket.id_status_penelitian.deskripsi == 'Lengkap' or tiket.id_status_penelitian.deskripsi == 'Lengkap Sebagian' or tiket.id_status_penelitian.deskripsi == 'Tidak Lengkap' or tiket.backup and tiket.tanda_terima and tiket.tgl_teliti %}
                     <div class="mt-4 pt-3 border-top">
                         <h6 class="text-muted mb-3"><i class="feather-download me-2"></i>Download Dokumen</h6>
@@ -751,9 +751,11 @@
                             </button>
                             {% endif %}
                             {% if tiket.status_tiket == 3 or tiket.status_tiket == 4 or tiket.status_tiket == 5 or tiket.status_tiket == 6 or tiket.status_tiket == 8 %}
+                                {% if tiket.id_status_penelitian.deskripsi != 'Tidak Lengkap' %}
                             <button type="button" class="btn btn-sm btn-info" onclick="downloadTiketDoc({{ tiket.pk }}, 'nd_pengantar')">
                                 <i class="feather-file-text me-1"></i>ND Pengantar ke PIDE
                             </button>
+                                {% endif %}
                             {% endif %}
                         </div>
                     </div>
@@ -1476,6 +1478,7 @@
                     .then(response => response.text())
                     .then(html => {
                         formContainer.innerHTML = html;
+                        attachTransferKePMDEHandlers(formContainer);
 
                         const form = formContainer.querySelector('form');
                         if (form) {
@@ -1490,15 +1493,26 @@
                                         'X-Requested-With': 'XMLHttpRequest'
                                     }
                                 })
-                                    .then(response => response.json())
+                                    .then(response => {
+                                        if (!response.ok && response.status === 400) {
+                                            // Validation error - return JSON errors
+                                            return response.json().then(data => {
+                                                showToast(data.message || 'Form tidak valid.', 'danger');
+                                                // Reload the form to display backend errors
+                                                return fetch('{% url "transfer_ke_pmde" tiket.pk %}', {
+                                                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                                                }).then(resp => resp.text()).then(html => {
+                                                    formContainer.innerHTML = html;
+                                                });
+                                            });
+                                        }
+                                        return response.json();
+                                    })
                                     .then(data => {
-                                        if (data.success) {
+                                        if (data && data.success) {
                                             bootstrap.Modal.getInstance(transferKePMDEModal).hide();
                                             showToast(data.message || 'Tiket berhasil ditransfer ke PMDE.', 'success');
                                             setTimeout(() => location.reload(), 800);
-                                        } else {
-                                            showToast(data.message || 'Gagal mentransfer tiket ke PMDE.', 'danger');
-                                            formContainer.innerHTML = data.html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
                                         }
                                     })
                                     .catch(error => {
@@ -1680,6 +1694,82 @@
                         });
                 });
             }
+        }
+
+        function attachTransferKePMDEHandlers(container) {
+            const barisI = container.querySelector('input[name="baris_i"]');
+            const barisU = container.querySelector('input[name="baris_u"]');
+            const barisRes = container.querySelector('input[name="baris_res"]');
+            const barisCde = container.querySelector('input[name="baris_cde"]');
+            const submitBtn = container.querySelector('#transfer-submit-btn');
+            const sumValueEl = container.querySelector('#baris-sum-value');
+            const sumStatusEl = container.querySelector('#baris-sum-status');
+            const hintEl = container.querySelector('#baris-sum-hint');
+            const barisLengkapEl = container.querySelector('#baris-lengkap-display');
+            const barisLengkap = parseInt(barisLengkapEl?.textContent || '0', 10);
+
+            if (!barisI || !barisU || !barisRes || !barisCde) {
+                console.error('Baris input fields not found in transfer form');
+                return;
+            }
+
+            function calculateSum() {
+                const iVal = parseInt(barisI.value || '0', 10) || 0;
+                const uVal = parseInt(barisU.value || '0', 10) || 0;
+                const resVal = parseInt(barisRes.value || '0', 10) || 0;
+                const cdeVal = parseInt(barisCde.value || '0', 10) || 0;
+                return iVal + uVal + resVal + cdeVal;
+            }
+
+            function validateSum() {
+                const total = calculateSum();
+
+                if (sumValueEl) {
+                    sumValueEl.textContent = total;
+                }
+
+                if (total === barisLengkap) {
+                    if (sumStatusEl) {
+                        sumStatusEl.innerHTML = '<span class="text-success"><i class="feather-check"></i> Sesuai dengan Baris Lengkap</span>';
+                    }
+                    if (hintEl) {
+                        hintEl.className = 'alert alert-success py-2 mb-0';
+                    }
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                    }
+                } else if (total < barisLengkap) {
+                    const kurang = barisLengkap - total;
+                    if (sumStatusEl) {
+                        sumStatusEl.innerHTML = `<span class="text-warning"><i class="feather-alert-triangle"></i> Kurang ${kurang} dari Baris Lengkap (${barisLengkap})</span>`;
+                    }
+                    if (hintEl) {
+                        hintEl.className = 'alert alert-warning py-2 mb-0';
+                    }
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                    }
+                } else {
+                    const lebih = total - barisLengkap;
+                    if (sumStatusEl) {
+                        sumStatusEl.innerHTML = `<span class="text-danger"><i class="feather-x-circle"></i> Melebihi ${lebih} dari Baris Lengkap (${barisLengkap})</span>`;
+                    }
+                    if (hintEl) {
+                        hintEl.className = 'alert alert-danger py-2 mb-0';
+                    }
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                    }
+                }
+            }
+
+            barisI.addEventListener('input', validateSum);
+            barisU.addEventListener('input', validateSum);
+            barisRes.addEventListener('input', validateSum);
+            barisCde.addEventListener('input', validateSum);
+
+            // Run initial validation
+            validateSum();
         }
 
         function initRekamHasilPenelitianForm(container) {

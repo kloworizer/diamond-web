@@ -351,6 +351,7 @@ class PICUpdateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Up
         from ..models.tiket_action import TiketAction
         from django.utils import timezone
         from django.db.models import Q
+        from django.contrib.auth.models import User
         
         # Get the original object before save
         original_pic = PIC.objects.get(pk=self.object.pk)
@@ -364,6 +365,9 @@ class PICUpdateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Up
         role = tipe_to_role.get(self.object.tipe)
         current_time = timezone.now()
         tipe_label = dict(PIC.TipePIC.choices).get(self.object.tipe, self.object.tipe)
+        
+        # Get admin user for PIC action logging
+        admin_user = User.objects.get(username='admin')
         
         # Check if end_date is being set (was None, now has value) - DEACTIVATION
         if original_pic.end_date is None and form.cleaned_data.get('end_date') is not None:

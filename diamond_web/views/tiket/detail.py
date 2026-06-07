@@ -264,27 +264,58 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         context['has_kirim_pide_temp'] = kirim_pide_temp is not None
         context['kirim_pide_id_temp'] = kirim_pide_temp.id_temp if kirim_pide_temp else None
 
+        # Determine the sub_jenis_data_ilap for PIC validity check
+        sub_jenis_data_ilap = self.object.id_periode_data.id_sub_jenis_data_ilap
+
         # Check if current user has any active PIC record for this tiket (per role)
-        user_is_active_pic_p3de = TiketPIC.objects.filter(
-            id_tiket=self.object,
-            id_user=self.request.user,
-            active=True,
-            role=TiketPIC.Role.P3DE
-        ).exists()
+        # Must have both: active TiketPIC assignment AND valid PIC record (no end_date)
+        user_is_active_pic_p3de = (
+            TiketPIC.objects.filter(
+                id_tiket=self.object,
+                id_user=self.request.user,
+                active=True,
+                role=TiketPIC.Role.P3DE
+            ).exists()
+            and
+            PIC.objects.filter(
+                tipe=PIC.TipePIC.P3DE,
+                id_user=self.request.user,
+                id_sub_jenis_data_ilap=sub_jenis_data_ilap,
+                end_date__isnull=True
+            ).exists()
+        )
 
-        user_is_active_pic_pide = TiketPIC.objects.filter(
-            id_tiket=self.object,
-            id_user=self.request.user,
-            active=True,
-            role=TiketPIC.Role.PIDE
-        ).exists()
+        user_is_active_pic_pide = (
+            TiketPIC.objects.filter(
+                id_tiket=self.object,
+                id_user=self.request.user,
+                active=True,
+                role=TiketPIC.Role.PIDE
+            ).exists()
+            and
+            PIC.objects.filter(
+                tipe=PIC.TipePIC.PIDE,
+                id_user=self.request.user,
+                id_sub_jenis_data_ilap=sub_jenis_data_ilap,
+                end_date__isnull=True
+            ).exists()
+        )
 
-        user_is_active_pic_pmde = TiketPIC.objects.filter(
-            id_tiket=self.object,
-            id_user=self.request.user,
-            active=True,
-            role=TiketPIC.Role.PMDE
-        ).exists()
+        user_is_active_pic_pmde = (
+            TiketPIC.objects.filter(
+                id_tiket=self.object,
+                id_user=self.request.user,
+                active=True,
+                role=TiketPIC.Role.PMDE
+            ).exists()
+            and
+            PIC.objects.filter(
+                tipe=PIC.TipePIC.PMDE,
+                id_user=self.request.user,
+                id_sub_jenis_data_ilap=sub_jenis_data_ilap,
+                end_date__isnull=True
+            ).exists()
+        )
 
         # overall active flag (any role)
         user_is_active_pic = user_is_active_pic_p3de or user_is_active_pic_pide or user_is_active_pic_pmde
