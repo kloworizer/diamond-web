@@ -694,26 +694,37 @@
                     return;
                 }
 
-                // Get or create the placeholder element
-                let $placeholder = $tableWrapper.next('.dt-empty-placeholder');
+                // Keep table visible (header + footer stay), only customise the body empty row
+                $tableWrapper.show();
+
+                // Remove any external placeholder that may exist from previous logic
+                const $placeholder = $tableWrapper.next('.dt-empty-placeholder');
+                if ($placeholder.length) {
+                    $placeholder.remove();
+                }
+
                 const template = document.getElementById('dt-empty-placeholder-template');
 
                 if (rowCount === 0) {
-                    // No rows — show custom empty placeholder, hide the table
-                    $tableWrapper.hide();
-                    if (!$placeholder.length && template) {
-                        const clone = template.content.cloneNode(true);
-                        $tableWrapper.after(clone);
-                        $placeholder = $tableWrapper.next('.dt-empty-placeholder');
-                    }
-                    if ($placeholder.length) {
-                        $placeholder.show();
-                    }
-                } else {
-                    // Has rows — show the table, remove placeholder
-                    $tableWrapper.show();
-                    if ($placeholder.length) {
-                        $placeholder.remove();
+                    // DataTables puts an empty row in <tbody> — replace its content
+                    // with the rich placeholder (image + text) so header/footer remain.
+                    const $tbody = $table.find('tbody');
+                    const $emptyRow = $tbody.find('tr').first();
+                    if ($emptyRow.length) {
+                        const colCount = $table.find('thead th, thead td').length || 1;
+                        let placeholderHtml = '';
+                        if (template) {
+                            const tempDiv = document.createElement('div');
+                            tempDiv.appendChild(template.content.cloneNode(true));
+                            placeholderHtml = tempDiv.innerHTML;
+                        }
+                        if (placeholderHtml) {
+                            $emptyRow.html(
+                                '<td colspan="' + colCount + '" style="padding:0; border:none;">' +
+                                placeholderHtml +
+                                '</td>'
+                            );
+                        }
                     }
                 }
             }

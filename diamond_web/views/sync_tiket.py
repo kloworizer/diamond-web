@@ -33,7 +33,7 @@ os.makedirs(SYNC_LOGS_DIR, exist_ok=True)
 _TIKET_ORACLE_SQL = """
     SELECT
     DISTINCT
-    id_tiket,
+    CASE WHEN length(id_tiket) = 16 THEN REGEXP_REPLACE(id_tiket, '^(.)(.*)', '\1I\2') ELSE id_tiket END id_tiket,
     1 old_db,
     CASE
         WHEN status_tiket IN ('[SELESAI]-Sudah QC', '[SELESAI]-Tidak di QC', '[SELESAI]-Tiket 0 Row') THEN 8
@@ -102,40 +102,40 @@ _TIKET_ORACLE_SQL = """
     COALESCE(b.QC_V, 0) QC_V,
     COALESCE(b.QC_R, 0) QC_R,
     COALESCE(b.QC_D, 0) QC_D
-FROM
-    PVPTD.ZA_DDE_TABEL_FACT a
-LEFT JOIN (
-    SELECT
-        no_tiket,
-        min(tgl_transfer) tgl_transfer,
-        max(tgl_rematch) tgl_rematch,
-        sum(JML_LOG) JML_LOG,
-        sum(JML_LOG_U) JML_LOG_U,
-        sum(JML_RES) JML_RES,
-        sum(JML_CDE) JML_CDE,
-        sum(SUDAH_QC) SUDAH_QC,
-        sum(belum_qc) belum_qc,
-        sum(lolos_qc) lolos_qc,
-        sum(TIDAK_LOLOS_QC) TIDAK_LOLOS_QC,
-        sum(QC_P) QC_P,
-        sum(QC_X) QC_X,
-        sum(QC_W) QC_W,
-        sum(QC_F) QC_F,
-        sum(QC_A) QC_A,
-        sum(QC_C) QC_C,
-        sum(QC_N) QC_N,
-        sum(QC_Y) QC_Y,
-        sum(QC_Z) QC_Z,
-        sum(QC_U) QC_U,
-        sum(QC_E) QC_E,
-        sum(QC_V) QC_V,
-        sum(QC_R) QC_R,
-        sum(QC_D) QC_D
     FROM
-        PVPTD.ZA_REKAP_TARIKAN
-    GROUP BY
-        no_tiket
-) b ON a.ID_TIKET = b.NO_TIKET
+        PVPTD.ZA_DDE_TABEL_FACT a
+    LEFT JOIN (
+        SELECT
+            no_tiket,
+            min(tgl_transfer) tgl_transfer,
+            max(tgl_rematch) tgl_rematch,
+            sum(JML_LOG) JML_LOG,
+            sum(JML_LOG_U) JML_LOG_U,
+            sum(JML_RES) JML_RES,
+            sum(JML_CDE) JML_CDE,
+            sum(SUDAH_QC) SUDAH_QC,
+            sum(belum_qc) belum_qc,
+            sum(lolos_qc) lolos_qc,
+            sum(TIDAK_LOLOS_QC) TIDAK_LOLOS_QC,
+            sum(QC_P) QC_P,
+            sum(QC_X) QC_X,
+            sum(QC_W) QC_W,
+            sum(QC_F) QC_F,
+            sum(QC_A) QC_A,
+            sum(QC_C) QC_C,
+            sum(QC_N) QC_N,
+            sum(QC_Y) QC_Y,
+            sum(QC_Z) QC_Z,
+            sum(QC_U) QC_U,
+            sum(QC_E) QC_E,
+            sum(QC_V) QC_V,
+            sum(QC_R) QC_R,
+            sum(QC_D) QC_D
+        FROM
+            PVPTD.ZA_REKAP_TARIKAN
+        GROUP BY
+            no_tiket
+    ) b ON a.ID_TIKET = b.NO_TIKET
 """
 
 
@@ -1211,10 +1211,20 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                     to_create.append(Tiket(**_ensure_naive_datetimes(tiket_data)))
             
             except Exception as e:
-                error_msg = str(e)[:150]
-                errors.append(f"Tiket {row_dict.get('id_tiket', '?')}: {error_msg}")
-                _log_failed_row(sync_id, row_dict.get('id_tiket'), row_dict.get('periode_data'), 
-                              row_dict.get('jenis_prioritas_data'), row_dict.get('tahun_data'), 
+                error_msg = str(e)[:200]
+                # Safely get row context - row_dict may not be defined if error occurred early
+                try:
+                    row_id = row_dict.get('id_tiket', f'row_{idx+1}')
+                    row_periode = row_dict.get('periode_data', '')
+                    row_jenis = row_dict.get('jenis_prioritas_data', '')
+                    row_tahun = row_dict.get('tahun_data', '')
+                except (NameError, AttributeError):
+                    row_id = f'row_{idx+1}'
+                    row_periode = ''
+                    row_jenis = ''
+                    row_tahun = ''
+                errors.append(f"Tiket {row_id}: {error_msg}")
+                _log_failed_row(sync_id, row_id, row_periode, row_jenis, row_tahun, 
                               error_msg, row_number=idx+1)
         
         # Bulk insert new records
@@ -1235,8 +1245,10 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                         except Exception as pic_error:
                             logger.warning(f"Failed to assign PICs for tiket {tiket.nomor_tiket}: {str(pic_error)}")
                 except Exception as bulk_error:
-                    # Bulk insert failed, try one-by-one to identify bad records
-                    logger.warning(f"Bulk insert failed: {str(bulk_error)}, trying one-by-one...")
+                    bulk_error_msg = str(bulk_error)
+                    logger.warning(f"Bulk insert failed: {bulk_error_msg}, trying one-by-one...")
+                    # Log the bulk error so it shows in progress summary
+                    errors.append(f"Bulk insert batch error: {bulk_error_msg[:200]}")
                     for tiket_obj in batch:
                         try:
                             safe_data = {k: v for k, v in tiket_obj.__dict__.items() if not k.startswith('_')}
@@ -1251,14 +1263,17 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                             except Exception as pic_error:
                                 logger.warning(f"Failed to assign PICs for tiket {created.nomor_tiket}: {str(pic_error)}")
                         except Exception as single_error:
-                            error_msg = str(single_error)[:150]
+                            error_msg = str(single_error)[:200]
                             errors.append(f"Tiket {tiket_obj.nomor_tiket}: {error_msg}")
                             logger.error(f"Failed to insert tiket {tiket_obj.nomor_tiket}: {error_msg}")
-                            _log_failed_row(sync_id, tiket_obj.nomor_tiket, 
-                                          getattr(tiket_obj, 'periode', '?'), 
-                                          getattr(tiket_obj, 'id_jenis_prioritas_data', '?'), 
-                                          getattr(tiket_obj, 'tahun', '?'),
-                                          error_msg)
+                            _log_failed_row(
+                                sync_id, tiket_obj.nomor_tiket,
+                                str(getattr(tiket_obj, 'periode', '?')),
+                                str(getattr(tiket_obj, 'id_jenis_prioritas_data', '') 
+                                    if getattr(tiket_obj, 'id_jenis_prioritas_data', None) else ''),
+                                str(getattr(tiket_obj, 'tahun', '')),
+                                error_msg
+                            )
         
         # Bulk update existing records
         logger.info(f'Bulk updating {len(to_update)} existing tiket records...')
@@ -1292,8 +1307,10 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                         if len(updated_keys) < 5:
                             updated_keys.extend([t[0] for t in batch[:5-len(updated_keys)]])
                     except Exception as bulk_error:
-                        # Bulk update failed, try one-by-one
-                        logger.warning(f"Bulk update failed: {str(bulk_error)}, trying one-by-one...")
+                        bulk_error_msg = str(bulk_error)
+                        logger.warning(f"Bulk update failed: {bulk_error_msg}, trying one-by-one...")
+                        # Log the bulk error so it shows in progress summary
+                        errors.append(f"Bulk update batch error: {bulk_error_msg[:200]}")
                         for nomor_tiket, tiket_obj, upd_dict in batch:
                             try:
                                 safe_updates = _ensure_naive_datetimes(upd_dict)
@@ -1304,14 +1321,17 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                                 if len(updated_keys) < 5:
                                     updated_keys.append(nomor_tiket)
                             except Exception as single_error:
-                                error_msg = str(single_error)[:150]
+                                error_msg = str(single_error)[:200]
                                 errors.append(f"Tiket {nomor_tiket}: {error_msg}")
                                 logger.error(f"Failed to update tiket {nomor_tiket}: {error_msg}")
-                                _log_failed_row(sync_id, nomor_tiket, 
-                                              getattr(tiket_obj, 'periode', '?'),
-                                              getattr(tiket_obj, 'id_jenis_prioritas_data', '?'),
-                                              getattr(tiket_obj, 'tahun', '?'),
-                                              error_msg)
+                                _log_failed_row(
+                                    sync_id, nomor_tiket,
+                                    str(getattr(tiket_obj, 'periode', '?')),
+                                    str(getattr(tiket_obj, 'id_jenis_prioritas_data', '') 
+                                        if getattr(tiket_obj, 'id_jenis_prioritas_data', None) else ''),
+                                    str(getattr(tiket_obj, 'tahun', '')),
+                                    error_msg
+                                )
         return {
             'source_rows': len(rows),
             'inserts': inserts,

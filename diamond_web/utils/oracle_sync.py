@@ -399,29 +399,29 @@ HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
                 'Data Utama' AS STATUS_DATA,
                 2 AS PRIORITY -- Lower priority (Second Table)
             FROM P3DE.REF_DATA_ILAP
-        ),
-        RankedData AS (
+            ),
+            RankedData AS (
+                SELECT 
+                    c.*,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY c.ID_SUB_JENIS_DATA 
+                        ORDER BY c.PRIORITY ASC
+                    ) AS rn
+                FROM CombinedData c
+            )
             SELECT 
-                c.*,
-                ROW_NUMBER() OVER (
-                    PARTITION BY c.ID_SUB_JENIS_DATA 
-                    ORDER BY c.PRIORITY ASC
-                ) AS rn
-            FROM CombinedData c
-        )
-        SELECT 
-            ID_ILAP,
-            ID_JENIS_DATA,
-            ID_SUB_JENIS_DATA,
-            NAMA_JENIS_DATA,
-            NAMA_SUB_JENIS_DATA,
-            NAMA_TABEL_I,
-            NAMA_TABEL_U,
-            JENIS_TABEL,
-            STATUS_DATA
-        FROM RankedData
-        WHERE rn = 1
-            AND ID_SUB_JENIS_DATA IS NOT NULL
+                ID_ILAP,
+                ID_JENIS_DATA,
+                ID_SUB_JENIS_DATA,
+                NAMA_JENIS_DATA,
+                NAMA_SUB_JENIS_DATA,
+                NAMA_TABEL_I,
+                NAMA_TABEL_U,
+                JENIS_TABEL,
+                STATUS_DATA
+            FROM RankedData
+            WHERE rn = 1
+                AND ID_SUB_JENIS_DATA IS NOT NULL
         """,
         target_model_label="diamond_web.JenisDataILAP",
         target_key_field="id_sub_jenis_data",
@@ -1552,6 +1552,93 @@ class OracleDataSyncService:
         # No skipped rows for this expansion (all generated rows have valid IDs from Django)
         return oracle_rows + default_rows, []
 
+    def _post_process_jenis_data_ilap_aeoi_domestic(self, apply_changes: bool) -> OracleSyncSummary:
+        """After syncing jenis_data_ilap, insert AEOI Domestic financial information data.
+
+        Queries JenisDataILAP where id_jenis_data='EI95001' to get reference FK values,
+        then inserts a new row for the domestic AEOI account data type (EI9500102).
+
+        Args:
+            apply_changes: whether to persist the insert to DB.
+
+        Returns:
+            OracleSyncSummary describing what was done.
+        """
+        from diamond_web.models import JenisDataILAP
+
+        # Query existing data to get reference FK values
+        existing = JenisDataILAP.objects.filter(id_jenis_data='EI95001').first()
+        if not existing:
+            logger.warning(
+                "[post_jenis_data_ilap] No existing JenisDataILAP found with "
+                "id_jenis_data='EI95001' \u2013 skipping AEOI domestic insert"
+            )
+            return OracleSyncSummary(
+                table_name="post_jenis_data_ilap_aeoi_domestic",
+                source_table="<post-process>",
+                target_model="diamond_web.JenisDataILAP",
+                source_rows=0,
+                inserts=0,
+                updates=0,
+                unchanged=0,
+                errors=["Reference row id_jenis_data='EI95001' not found in JenisDataILAP"],
+            )
+
+        # Check if target row already exists
+        if JenisDataILAP.objects.filter(id_sub_jenis_data='EI9500102').exists():
+            logger.info("[post_jenis_data_ilap] Target row EI9500102 already exists, skipping")
+            return OracleSyncSummary(
+                table_name="post_jenis_data_ilap_aeoi_domestic",
+                source_table="<post-process>",
+                target_model="diamond_web.JenisDataILAP",
+                source_rows=1,
+                inserts=0,
+                updates=0,
+                unchanged=1,
+                errors=[],
+            )
+
+        new_row_data = {
+            "id_jenis_data": 'EI95001',
+            "id_sub_jenis_data": 'EI9500102',
+            "nama_jenis_data": 'DATA INFORMASI KEUANGAN DOMESTIK',
+            "nama_sub_jenis_data": 'DATA INFORMASI KEUANGAN DOMESTIK',
+            "nama_tabel_I": 'KPDE_AEOI_DOMESTIC_ACC_DATA',
+            "nama_tabel_U": 'KPDE_AEOI_DOMESTIC_ACC_DATA_U',
+            "id_ilap": existing.id_ilap,
+            "id_jenis_tabel": existing.id_jenis_tabel,
+            "id_status_data": existing.id_status_data,
+        }
+
+        if apply_changes:
+            try:
+                JenisDataILAP.objects.create(**new_row_data)
+                logger.info("[post_jenis_data_ilap] Inserted new row: EI9500102")
+            except Exception as exc:
+                logger.error(f"[post_jenis_data_ilap] Failed to insert row: {exc}")
+                return OracleSyncSummary(
+                    table_name="post_jenis_data_ilap_aeoi_domestic",
+                    source_table="<post-process>",
+                    target_model="diamond_web.JenisDataILAP",
+                    source_rows=1,
+                    inserts=0,
+                    updates=0,
+                    unchanged=0,
+                    errors=[str(exc)],
+                )
+
+        return OracleSyncSummary(
+            table_name="post_jenis_data_ilap_aeoi_domestic",
+            source_table="<post-process>",
+            target_model="diamond_web.JenisDataILAP",
+            source_rows=1,
+            inserts=1 if apply_changes else 0,
+            updates=0,
+            unchanged=0,
+            errors=[],
+            inserted_keys=['EI9500102'] if apply_changes else [],
+        )
+
     def _calculate_diff_for_config(
         self,
         cfg: OracleSyncTableConfig,
@@ -1780,6 +1867,18 @@ class OracleDataSyncService:
                 cumulative_inserts += summary.inserts
                 cumulative_updates += summary.updates
                 cumulative_errors += len(summary.errors)
+
+                # Post-process: after jenis_data_ilap sync, insert AEOI domestic row
+                if cfg.name == "jenis_data_ilap":
+                    post_summary = self._post_process_jenis_data_ilap_aeoi_domestic(
+                        apply_changes=apply_changes
+                    )
+                    if post_summary:
+                        table_summaries.append(post_summary)
+                        cumulative_inserts += post_summary.inserts
+                        cumulative_updates += post_summary.updates
+                        cumulative_errors += len(post_summary.errors)
+
             except Exception as exc:
                 err_summary = OracleSyncSummary(
                     table_name=cfg.name,

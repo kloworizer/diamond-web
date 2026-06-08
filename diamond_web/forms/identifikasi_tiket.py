@@ -1,6 +1,6 @@
 from django import forms
 from ..models.tiket import Tiket
-from ..utils import validate_not_future_datetime
+from ..utils import validate_not_future_datetime, normalize_server_datetime
 
 
 class IdentifikasiTiketForm(forms.ModelForm):
@@ -33,3 +33,16 @@ class IdentifikasiTiketForm(forms.ModelForm):
     def clean_tgl_rekam_pide(self):
         value = self.cleaned_data.get('tgl_rekam_pide')
         return validate_not_future_datetime(value, "Tanggal Rekam PIDE")
+
+    def clean(self):
+        cleaned_data = super().clean()
+        tgl_rekam_pide = cleaned_data.get('tgl_rekam_pide')
+        if tgl_rekam_pide and self.instance and self.instance.tgl_kirim_pide:
+            rekam = normalize_server_datetime(tgl_rekam_pide)
+            kirim = normalize_server_datetime(self.instance.tgl_kirim_pide)
+            if rekam < kirim:
+                raise forms.ValidationError(
+                    'Tanggal Rekam PIDE tidak boleh sebelum Tanggal Kirim PIDE '
+                    f'({kirim.strftime("%d/%m/%Y %H:%M")}).'
+                )
+        return cleaned_data
