@@ -7,7 +7,7 @@ from ..models.ilap import ILAP
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from datetime import datetime
 from .base import AutoRequiredFormMixin
-from ..utils import validate_not_future_datetime
+from ..utils import validate_not_future_datetime, normalize_server_datetime
 
 class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
     satuan_data = forms.ChoiceField(
@@ -149,6 +149,20 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
     def clean_tgl_terima_dip(self):
         value = self.cleaned_data.get('tgl_terima_dip')
         return validate_not_future_datetime(value, "Tanggal Terima DIP")
+
+    def clean(self):
+        cleaned_data = super().clean()
+        tgl_vertikal = cleaned_data.get('tgl_terima_vertikal')
+        tgl_dip = cleaned_data.get('tgl_terima_dip')
+        if tgl_vertikal and tgl_dip:
+            tgl_vertikal = normalize_server_datetime(tgl_vertikal)
+            tgl_dip = normalize_server_datetime(tgl_dip)
+            if tgl_dip < tgl_vertikal:
+                raise forms.ValidationError(
+                    'Tanggal Terima DIP tidak boleh sebelum Tanggal Terima Vertikal '
+                    f'({tgl_vertikal.strftime("%d/%m/%Y %H:%M")}).'
+                )
+        return cleaned_data
 
     def clean_tanggal_surat_pengantar(self):
         value = self.cleaned_data.get('tanggal_surat_pengantar')

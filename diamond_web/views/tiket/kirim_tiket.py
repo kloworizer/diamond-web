@@ -689,7 +689,10 @@ class KirimKePIDEView(LoginRequiredMixin, UserP3DERequiredMixin, View):
                 status=403,
             )
 
-        form = KirimKePideForm(request.POST)
+        tiket_ids = [r.id_tiket_id for r in temp_records]
+        tikets = Tiket.objects.filter(id__in=tiket_ids)
+
+        form = KirimKePideForm(request.POST, tiket_list=list(tikets))
         if not form.is_valid():
             return JsonResponse({
                 'success': False,
@@ -697,8 +700,6 @@ class KirimKePIDEView(LoginRequiredMixin, UserP3DERequiredMixin, View):
                 'errors': form.errors,
             }, status=400)
 
-        tiket_ids = [r.id_tiket_id for r in temp_records]
-        tikets = Tiket.objects.filter(id__in=tiket_ids)
         now = datetime.now()
 
         try:
