@@ -59,11 +59,20 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="dikembalikan_dari_pide">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="pengembalian_seluruhnya_dari_pide">
                             <span class="icon-bg-soft icon-bg-soft-red"><i class="feather-rotate-ccw" style="color:#EA4D4D"></i></span>
-                            <span>Dikembalikan dari PIDE</span>
-                            {% if p3de_tiket_categories.dikembalikan_dari_pide %}
-                            <span class="badge bg-danger ms-auto">{{ p3de_tiket_categories.dikembalikan_dari_pide|length }}</span>
+                            <span>Pengembalian Seluruhnya dari PIDE</span>
+                            {% if p3de_tiket_categories.pengembalian_seluruhnya_dari_pide %}
+                            <span class="badge bg-danger ms-auto">{{ p3de_tiket_categories.pengembalian_seluruhnya_dari_pide|length }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="pengembalian_sebagian_dari_pide">
+                            <span class="icon-bg-soft icon-bg-soft-red"><i class="feather-rotate-ccw" style="color:#EA4D4D"></i></span>
+                            <span>Pengembalian Sebagian dari PIDE</span>
+                            {% if p3de_tiket_categories.pengembalian_sebagian_dari_pide %}
+                            <span class="badge bg-danger ms-auto">{{ p3de_tiket_categories.pengembalian_sebagian_dari_pide|length }}</span>
                             {% endif %}
                         </a>
                     </li>
@@ -311,8 +320,8 @@
                     </div>
                 </div>
 
-                <!-- Dikembalikan dari PIDE -->
-                <div class="card stretch stretch-full" data-category="dikembalikan_dari_pide" style="display:none;">
+                <!-- Pengembalian Seluruhnya dari PIDE -->
+                <div class="card stretch stretch-full" data-category="pengembalian_seluruhnya_dari_pide" style="display:none;">
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
@@ -326,7 +335,38 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for tiket in p3de_tiket_categories.dikembalikan_dari_pide %}
+                                    {% for tiket in p3de_tiket_categories.pengembalian_seluruhnya_dari_pide %}
+                                    <tr>
+                                        <td>{{ tiket.nomor_tiket }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
+                                        <td data-order="{{ tiket.tgl_terima_dip|date:'Y-m-d' }}">{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
+                                        <td>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <!-- Pengembalian Sebagian dari PIDE -->
+                <div class="card stretch stretch-full" data-category="pengembalian_sebagian_dari_pide" style="display:none;">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Nomor Tiket</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
+                                        <th>Tgl Terima DIP</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for tiket in p3de_tiket_categories.pengembalian_sebagian_dari_pide %}
                                     <tr>
                                         <td>{{ tiket.nomor_tiket }}</td>
                                         <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
