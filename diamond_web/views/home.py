@@ -103,13 +103,22 @@ def home(request):
                 'id_bentuk_data',
                 'id_cara_penyampaian'
             ).order_by('-id'),
-            'dikembalikan_dari_pide': Tiket.objects.filter(
+            'pengembalian_seluruhnya_dari_pide': Tiket.objects.filter(
                 id__in=tiket_ids
             ).filter(
                 Exists(TiketAction.objects.filter(
                     id_tiket=OuterRef('pk'),
                     action=TiketActionType.DIKEMBALIKAN
                 ))
+            ).select_related(
+                'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                'id_periode_data__id_sub_jenis_data_ilap',
+                'id_bentuk_data',
+                'id_cara_penyampaian'
+            ).order_by('-id'),
+            'pengembalian_sebagian_dari_pide': Tiket.objects.filter(
+                id__in=tiket_ids,
+                baris_cde__gt=0
             ).select_related(
                 'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
                 'id_periode_data__id_sub_jenis_data_ilap',

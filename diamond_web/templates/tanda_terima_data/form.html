@@ -38,6 +38,9 @@
         {% endif %}
     </div>
     <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary me-auto" id="tidak-terbit-tt-btn"{% if tiket %} data-tiket-pk="{{ tiket.pk }}"{% endif %}>
+            <i class="feather-x-circle me-1"></i>Tidak Diterbitkan Tanda Terima
+        </button>
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
         <button type="submit" class="btn btn-info">
             <i class="ri-save-line me-1"></i>Simpan

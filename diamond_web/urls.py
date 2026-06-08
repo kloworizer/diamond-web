@@ -181,6 +181,7 @@ urlpatterns = [
     path('tanda-terima-data/tikets-by-ilap/', views.tanda_terima_tikets_by_ilap, name='tanda_terima_tikets_by_ilap'),
     path('tanda-terima-data/create/', views.TandaTerimaDataCreateView.as_view(), name='tanda_terima_data_create'),
     path('tanda-terima-data/from-tiket/<int:tiket_pk>/create/', views.TandaTerimaDataFromTiketCreateView.as_view(), name='tanda_terima_data_from_tiket_create'),
+    path('tanda-terima-data/from-tiket/<int:pk>/tidak-terbit/', views.tidak_terbit_tanda_terima, name='tidak_terbit_tanda_terima'),
     path('tanda-terima-data/<int:pk>/update/', views.TandaTerimaDataUpdateView.as_view(), name='tanda_terima_data_update'),
     path('tanda-terima-data/<int:pk>/delete/', views.TandaTerimaDataDeleteView.as_view(), name='tanda_terima_data_delete'),
     # Monitoring Penyampaian Data URLs

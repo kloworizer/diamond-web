@@ -24,6 +24,7 @@ class TandaTerimaActionType:
     """Action types for tanda terima operations"""
     DIREKAM = 201
     DIBATALKAN = 202
+    TIDAK_DITERBITKAN = 203
 
 # Action types for PIC workflow
 class PICActionType:
@@ -50,6 +51,7 @@ ACTION_TYPE_LABELS = {
     # TandaTerima actions
     201: 'Tanda Terima Direkam',
     202: 'Tanda Terima Dibatalkan',
+    203: 'Tidak Diterbitkan Tanda Terima',
     # PIC actions
     301: 'PIC Ditambahkan',
     302: 'PIC Tidak Aktif',
@@ -74,6 +76,7 @@ ACTION_TYPE_BADGE_CLASSES = {
     # TandaTerima actions
     201: 'bg-primary',
     202: 'bg-danger',
+    203: 'bg-secondary',
     # PIC actions
     301: 'bg-success',
     302: 'bg-warning',
@@ -132,6 +135,7 @@ def get_tanda_terima_action_type(action_name):
     action_map = {
         'direkam': TandaTerimaActionType.DIREKAM,
         'dibatalkan': TandaTerimaActionType.DIBATALKAN,
+        'tidak_diterbitkan': TandaTerimaActionType.TIDAK_DITERBITKAN,
     }
     return action_map.get(action_name.lower())
 

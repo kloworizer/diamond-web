@@ -548,6 +548,70 @@
                     {% endif %}
                 </div>
             </div>
+
+        <!-- Riwayat Tiket Card -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="feather-clock me-2"></i>Riwayat Tiket</h5>
+            </div>
+            <div class="card-body">
+                {% if riwayat_tikets %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th><i class="feather-hash me-1"></i>Nomor Tiket</th>
+                                <th><i class="feather-calendar me-1"></i>Tanggal Terima DIP</th>
+                                <th><i class="feather-check-circle me-1"></i>Status Tiket</th>
+                                <th><i class="feather-search me-1"></i>Status Penelitian</th>
+                                <th class="text-end"><i class="feather-bar-chart me-1"></i>Jumlah Baris CDE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rt in riwayat_tikets %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'tiket_detail' rt.pk %}" class="fw-semibold text-decoration-none">
+                                        {{ rt.nomor_tiket }}
+                                    </a>
+                                </td>
+                                <td class="text-nowrap">
+                                    {% if rt.tgl_terima_dip %}
+                                        {{ rt.tgl_terima_dip|date:"d/m/Y H:i" }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge {{ rt.status_badge_class }}">{{ rt.status_label }}</span>
+                                </td>
+                                <td>
+                                    {% if rt.id_status_penelitian %}
+                                        <span class="badge bg-info">{{ rt.status_penelitian_label }}</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end fw-semibold">
+                                    {% if rt.baris_cde %}
+                                        {{ rt.baris_cde }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-3 text-muted">
+                    <i class="feather-info fs-4"></i>
+                    <p class="mb-0">Tidak ada riwayat tiket untuk sub jenis data, periode, dan tahun yang sama.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
         </div>
 
         <!-- Sidebar -->
@@ -1934,6 +1998,52 @@
                 };
 
                 ilapInput.addEventListener('change', loadTiketsByIlap);
+            }
+
+            // Handle "Tidak Diterbitkan Tanda Terima" button
+            const tidakTerbitBtn = container.querySelector('#tidak-terbit-tt-btn');
+            if (tidakTerbitBtn) {
+                const tiketPk = tidakTerbitBtn.dataset.tiketPk;
+                if (tiketPk) {
+                    const tidakTerbitUrl = `{% url "tanda_terima_data_from_tiket_create" 0 %}`.replace('/0/', '/' + tiketPk + '/').replace('create/', 'tidak-terbit/');
+
+                    tidakTerbitBtn.addEventListener('click', function () {
+                        if (!confirm('Apakah Anda yakin ingin menandai tiket ini sebagai "Tidak Diterbitkan Tanda Terima"? Tanda Terima tidak akan dibuat untuk tiket ini.')) {
+                            return;
+                        }
+
+                        const csrfToken = container.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+                        if (!csrfToken) {
+                            showToast('CSRF token tidak ditemukan.', 'danger');
+                            return;
+                        }
+
+                        fetch(tidakTerbitUrl, {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRFToken': csrfToken
+                            }
+                        })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    const modal = document.getElementById('createTandaTerimaModal');
+                                    if (modal) {
+                                        bootstrap.Modal.getInstance(modal)?.hide();
+                                    }
+                                    showToast(data.message, 'success');
+                                    setTimeout(() => location.reload(), 800);
+                                } else {
+                                    showToast(data.message || 'Gagal memproses.', 'danger');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                showToast('Terjadi kesalahan saat memproses.', 'danger');
+                            });
+                    });
+                }
             }
         }
     });
