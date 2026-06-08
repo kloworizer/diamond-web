@@ -662,3 +662,67 @@ class TandaTerimaDataViewOnly(LoginRequiredMixin, ActiveTiketP3DERequiredForEdit
         context = super().get_context_data(**kwargs)
         context['detil_items'] = DetilTandaTerima.objects.filter(id_tanda_terima=self.object).select_related('id_tiket')
         return context
+
+
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de']).exists())
+def tidak_terbit_tanda_terima(request, pk):
+    """Set tanda_terima=True on tiket without creating TandaTerimaData record.
+
+    This is used when a P3DE PIC decides not to issue a formal Tanda Terima
+    for a tiket but still needs to mark it as processed. The action is logged
+    as 'Tidak diterbitkan Tanda Terima' in the tiket's action history.
+
+    Access:
+    - User must be logged in
+    - User must be in admin, admin_p3de, or user_p3de group
+    - User must be an ACTIVE P3DE PIC for this tiket
+
+    POST params: None required (action is instantaneous)
+
+    Returns: JsonResponse with success/error message
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Method not allowed.'}, status=405)
+
+    try:
+        tiket = Tiket.objects.get(pk=pk)
+    except Tiket.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Tiket tidak ditemukan.'}, status=404)
+
+    # Verify user is an active P3DE PIC for this tiket
+    is_active_pic = TiketPIC.objects.filter(
+        id_tiket=tiket,
+        id_user=request.user,
+        active=True,
+        role=TiketPIC.Role.P3DE
+    ).exists()
+
+    if not (request.user.is_superuser or request.user.groups.filter(name='admin').exists() or is_active_pic):
+        return JsonResponse({'success': False, 'message': 'Anda bukan PIC aktif P3DE untuk tiket ini.'}, status=403)
+
+    if tiket.old_db:
+        return JsonResponse({'success': False, 'message': 'Tiket berasal dari database lama, tidak dapat diubah.'}, status=400)
+
+    if tiket.tanda_terima:
+        return JsonResponse({'success': False, 'message': 'Tiket ini sudah memiliki Tanda Terima.'}, status=400)
+
+    # Set tanda_terima flag to True
+    tiket.tanda_terima = True
+    if tiket.tgl_teliti:
+        tiket.status_tiket = STATUS_DITELITI
+    tiket.save(update_fields=["tanda_terima"] + (["status_tiket"] if tiket.tgl_teliti else []))
+
+    # Create action record
+    TiketAction.objects.create(
+        id_tiket=tiket,
+        id_user=request.user,
+        timestamp=timezone.now(),
+        action=TandaTerimaActionType.TIDAK_DITERBITKAN,
+        catatan='Tidak diterbitkan Tanda Terima'
+    )
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Tiket {tiket.nomor_tiket} ditandai sebagai Tidak Diterbitkan Tanda Terima.'
+    })

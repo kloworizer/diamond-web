@@ -337,5 +337,19 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         
         # Add old_db flag to indicate if this tiket is from migrated data
         context['is_old_db'] = self.object.old_db
-        
+
+        # Riwayat Tiket - same sub_jenis_data, periode, tahun ordered by tgl_terima_dip ascending
+        riwayat_tikets = Tiket.objects.filter(
+            id_periode_data__id_sub_jenis_data_ilap=sub_jenis_data_ilap,
+            periode=self.object.periode,
+            tahun=self.object.tahun,
+        ).exclude(pk=self.object.pk).order_by('tgl_terima_dip')
+
+        for rt in riwayat_tikets:
+            rt.status_label = STATUS_LABELS.get(rt.status_tiket, '-')
+            rt.status_badge_class = STATUS_BADGE_CLASSES.get(rt.status_tiket, 'bg-secondary')
+            rt.status_penelitian_label = rt.id_status_penelitian.deskripsi if rt.id_status_penelitian else '-'
+
+        context['riwayat_tikets'] = riwayat_tikets
+
         return context
