@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Q, Exists, OuterRef
 from django.contrib.auth.models import Group
 from django.contrib.auth.decorators import login_required
 from diamond_web.views.task_to_do import (
@@ -10,6 +10,7 @@ from diamond_web.views.task_to_do import (
 )
 from diamond_web.models.tiket import Tiket
 from diamond_web.models.tiket_pic import TiketPIC
+from diamond_web.models.tiket_action import TiketAction
 from diamond_web.constants.tiket_status import (
     STATUS_DIREKAM,
     STATUS_DITELITI,
@@ -19,6 +20,7 @@ from diamond_web.constants.tiket_status import (
     STATUS_PENGENDALIAN_MUTU,
     STATUS_KLARIFIKASI_MAX,
 )
+from diamond_web.constants.tiket_action_types import TiketActionType
 
 @login_required
 def home(request):
@@ -102,8 +104,12 @@ def home(request):
                 'id_cara_penyampaian'
             ).order_by('-id'),
             'dikembalikan_dari_pide': Tiket.objects.filter(
-                id__in=tiket_ids, 
-                status_tiket=STATUS_DIKEMBALIKAN
+                id__in=tiket_ids
+            ).filter(
+                Exists(TiketAction.objects.filter(
+                    id_tiket=OuterRef('pk'),
+                    action=TiketActionType.DIKEMBALIKAN
+                ))
             ).select_related(
                 'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
                 'id_periode_data__id_sub_jenis_data_ilap',
