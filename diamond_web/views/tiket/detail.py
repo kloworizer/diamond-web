@@ -339,11 +339,12 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         context['is_old_db'] = self.object.old_db
 
         # Riwayat Tiket - same sub_jenis_data, periode, tahun ordered by tgl_terima_dip ascending
+        # Include the current tiket in the list
         riwayat_tikets = Tiket.objects.filter(
             id_periode_data__id_sub_jenis_data_ilap=sub_jenis_data_ilap,
             periode=self.object.periode,
             tahun=self.object.tahun,
-        ).exclude(pk=self.object.pk).order_by('tgl_terima_dip')
+        ).order_by('tgl_terima_dip')
 
         for rt in riwayat_tikets:
             rt.status_label = STATUS_LABELS.get(rt.status_tiket, '-')
