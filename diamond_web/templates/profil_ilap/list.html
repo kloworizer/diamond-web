@@ -55,7 +55,9 @@
 
         $(document).ready(function () {
             table = $('#profil-ilap-table').DataTable({
-                serverSide: false,
+                serverSide: true,
+                processing: true,
+                searching: false,
                 layout: {
                     topStart: null,
                     topEnd: null
@@ -64,7 +66,15 @@
                 ajax: {
                     url: "{% url 'profil_ilap_list' %}?format=json",
                     type: 'GET',
-                    dataSrc: 'data'
+                    data: function (d) {
+                        // Send individual column search values to the server
+                        $('#column-search-row input').each(function () {
+                            var colIdx = $(this).data('column');
+                            if (d.columns && d.columns[colIdx]) {
+                                d.columns[colIdx].search = { value: $(this).val(), regex: false };
+                            }
+                        });
+                    }
                 },
                 columns: [
                     { data: 'id_ilap' },
@@ -79,7 +89,7 @@
                 order: [[0, 'asc']]
             });
 
-            // Add individual column search
+            // Add individual column search with server-side support
             $('#column-search-row input').on('keyup change', function () {
                 table.column($(this).data('column')).search($(this).val()).draw();
             });

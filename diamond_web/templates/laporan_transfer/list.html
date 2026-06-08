@@ -101,7 +101,7 @@
         </div>
         <div class="card-body custom-card-action p-0">
             <div class="table-responsive">
-            <table id="laporan-transfer-table" class="table table-hover mb-0" style="width:100%">
+            <table id="laporan-transfer-table" data-skip-empty-state class="table table-hover mb-0" style="width:100%">
                 <thead>
                     <tr>
                         <th>NAMA ILAP</th>
@@ -183,6 +183,7 @@
 
             table = $('#laporan-transfer-table').DataTable({
                 serverSide: true,
+                processing: true,
                 ajax: {
                     url: ajaxUrl,
                     type: 'POST',
