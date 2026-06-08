@@ -335,7 +335,7 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         context['STATUS_DIBATALKAN'] = STATUS_DIBATALKAN
         context['STATUS_SELESAI'] = STATUS_SELESAI
         
-        # Add old_db flag to indicate if this tiket is from migrated data
+        # Flag untuk menandai tiket dari data migrasi (old_db)
         context['is_old_db'] = self.object.old_db
 
         # Riwayat Tiket - same sub_jenis_data, periode, tahun ordered by tgl_terima_dip ascending

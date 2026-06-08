@@ -1,7 +1,7 @@
 from django import forms
 from ..models.tiket import Tiket
 from .base import AutoRequiredFormMixin
-from ..utils import validate_not_future_datetime
+from ..utils import validate_not_future_datetime, normalize_server_datetime
 
 
 class TransferKePMDEForm(AutoRequiredFormMixin, forms.ModelForm):
@@ -61,6 +61,19 @@ class TransferKePMDEForm(AutoRequiredFormMixin, forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+
+        # Validate tgl_transfer >= tgl_rekam_pide
+        tgl_transfer = cleaned_data.get('tgl_transfer')
+        if tgl_transfer and self.instance and self.instance.tgl_rekam_pide:
+            transfer = normalize_server_datetime(tgl_transfer)
+            rekam = normalize_server_datetime(self.instance.tgl_rekam_pide)
+            if transfer < rekam:
+                raise forms.ValidationError(
+                    'Tanggal Transfer tidak boleh sebelum Tanggal Rekam PIDE '
+                    f'({rekam.strftime("%d/%m/%Y %H:%M")}).'
+                )
+
+        # Validate baris sum
         baris_i = cleaned_data.get('baris_i') or 0
         baris_u = cleaned_data.get('baris_u') or 0
         baris_res = cleaned_data.get('baris_res') or 0
