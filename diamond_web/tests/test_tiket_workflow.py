@@ -132,7 +132,7 @@ class TestDikembalikanTiketView:
         )
         assert resp.status_code == 200
         tiket.refresh_from_db()
-        assert tiket.status_tiket == 3  # STATUS_DIKEMBALIKAN
+        assert tiket.status_tiket == 7  # STATUS_DIBATALKAN
 
     def test_ajax_form_valid(self, client, pide_user):
         tiket = self._setup(pide_user)

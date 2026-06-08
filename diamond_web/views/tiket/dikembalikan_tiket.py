@@ -14,8 +14,10 @@ from ...models.tiket_action import TiketAction
 from ...models.tiket_pic import TiketPIC
 from ...models.notification import Notification
 from ...forms.dikembalikan_tiket import DikembalikanTiketForm
+from django.contrib.auth.models import User
+
 from ...constants.tiket_action_types import TiketActionType
-from ...constants.tiket_status import STATUS_DIKEMBALIKAN
+from ...constants.tiket_status import STATUS_DIBATALKAN
 from ..mixins import UserPIDERequiredMixin
 
 
@@ -38,12 +40,11 @@ class DikembalikanTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
     - Requires test_func() - user must be ACTIVE PIDE PIC for this tiket
 
     Side Effects on Form Submission:
-    - Tiket.status set to STATUS_DIKEMBALIKAN (returned)
+    - Tiket.status set to STATUS_DIBATALKAN (canceled, instead of DIKEMBALIKAN)
     - Tiket.tgl_dikembalikan set to current datetime
-    - TiketAction created with:
-        - action: TiketActionType.DIKEMBALIKAN
-        - catatan: User-provided return reason
-        - timestamp: Current datetime
+    - Two TiketAction records created:
+        1. DIKEMBALIKAN (by the PIDE user who performed the return)
+        2. DIBATALKAN (attributed to the active P3DE PIC)
     - Notification objects created for all active P3DE PICs for this tiket
     """
     model = Tiket
@@ -87,12 +88,13 @@ class DikembalikanTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
         """Handle form submission: update tiket status and notify P3DE.
 
         Within transaction:
-        1. Set tiket.status to STATUS_DIKEMBALIKAN
+        1. Set tiket.status to STATUS_DIBATALKAN (instead of DIKEMBALIKAN)
         2. Set tiket.tgl_dikembalikan to current datetime
-        3. Create TiketAction record with return reason (catatan)
-        4. Query all active P3DE PICs assigned to tiket
-        5. Create Notification for each P3DE PIC with formatted message
-        6. Return JsonResponse (AJAX) or redirect with success message
+        3. Create TiketAction record with DIKEMBALIKAN action (by PIDE user)
+        4. Create TiketAction record with DIBATALKAN action (attributed to active P3DE PIC)
+        5. Query all active P3DE PICs assigned to tiket
+        6. Create Notification for each P3DE PIC with formatted message
+        7. Return JsonResponse (AJAX) or redirect with success message
 
         Raises:
         - Exception handlers catch any errors and return error responses
@@ -106,20 +108,43 @@ class DikembalikanTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
                 now = datetime.now()
 
                 self.object = form.save(commit=False)
-                self.object.status_tiket = STATUS_DIKEMBALIKAN
+                self.object.status_tiket = STATUS_DIBATALKAN  # Changed from DIKEMBALIKAN to DIBATALKAN
                 self.object.tgl_dikembalikan = now
                 self.object.tgl_rekam_pide = None  # Clear recording date when returning to P3DE
                 self.object.save()
 
                 catatan = form.cleaned_data.get('catatan', 'Tiket dikembalikan oleh PIDE')
 
-                # Create tiket action
+                # Create tiket action: DIKEMBALIKAN by PIDE user
                 TiketAction.objects.create(
                     id_tiket=self.object,
                     id_user=self.request.user,
                     timestamp=now,
                     action=TiketActionType.DIKEMBALIKAN,
                     catatan=catatan
+                )
+
+                # Create tiket action: DIBATALKAN attributed to active P3DE PIC
+                active_p3de_pic = TiketPIC.objects.filter(
+                    id_tiket=self.object,
+                    active=True,
+                    role=TiketPIC.Role.P3DE
+                ).select_related('id_user').first()
+
+                if active_p3de_pic and active_p3de_pic.id_user:
+                    p3de_user = active_p3de_pic.id_user
+                else:
+                    # Fallback: find any user in P3DE group as system attributor
+                    p3de_user = User.objects.filter(
+                        groups__name__in=['user_p3de', 'admin_p3de']
+                    ).first() or self.request.user
+
+                TiketAction.objects.create(
+                    id_tiket=self.object,
+                    id_user=p3de_user,
+                    timestamp=now,
+                    action=TiketActionType.DIBATALKAN,
+                    catatan=f'Tiket dibatalkan (dikembalikan oleh PIDE: {catatan})'
                 )
 
                 # Send notification to active P3DE PIC
