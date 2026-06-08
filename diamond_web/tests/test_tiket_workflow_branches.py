@@ -78,7 +78,7 @@ class TestDikembalikanTiketViewBranches:
         )
         assert resp.status_code == 200
         tiket.refresh_from_db()
-        assert tiket.status_tiket == 3  # STATUS_DIKEMBALIKAN
+        assert tiket.status_tiket == 7  # STATUS_DIBATALKAN
 
     def test_ajax_form_invalid_missing_catatan(self, client, pide_user):
         """AJAX POST with empty catatan returns form_invalid JSON (lines 170-179)."""
