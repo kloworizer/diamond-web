@@ -39,6 +39,7 @@
         </div>
         <div class="card-body">
             <form id="filter-form" class="row g-3 align-items-end">
+                {% csrf_token %}
                 <div class="col-md-4">
                     <label for="filter-bulan" class="form-label fw-semibold">Bulan</label>
                     <select id="filter-bulan" class="form-select">
@@ -88,7 +89,7 @@
         </div>
         <div class="card-body custom-card-action p-0">
             <div class="table-responsive">
-            <table id="register-penerimaan-table" class="table table-hover mb-0" style="width:100%">
+            <table id="register-penerimaan-table" data-skip-empty-state class="table table-hover mb-0" style="width:100%">
                 <thead>
                     <tr>
                         <th>No</th>
@@ -120,13 +121,11 @@
         const bulanNames = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
             'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
         let table;
-        let hasLoaded = false;
 
         $(document).ready(function () {
-            const csrfToken = $('[name=csrfmiddlewaretoken]').val() || '{{ csrf_token }}';
-
             table = $('#register-penerimaan-table').DataTable({
                 serverSide: true,
+                processing: true,
                 searching: false,
                 layout: {
                     topStart: null,
@@ -134,8 +133,7 @@
                 },
                 ajax: {
                     url: ajaxUrl,
-                    type: 'POST',
-                    headers: { 'X-CSRFToken': csrfToken },
+                    type: 'GET',
                     data: function (d) {
                         d.bulan = $('#filter-bulan').val();
                         d.tahun = $('#filter-tahun').val();
@@ -158,7 +156,6 @@
                 pageLength: 10,
                 order: [[0, 'asc']],
                 processing: true,
-                deferLoading: 0,
                 language: {
                     emptyTable: 'Pilih bulan dan tahun lalu klik Tampilkan.',
                     zeroRecords: 'Tidak ada data untuk periode yang dipilih.',

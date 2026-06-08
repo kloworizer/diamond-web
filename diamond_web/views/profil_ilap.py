@@ -1,8 +1,8 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView, DetailView
 from django.http import JsonResponse
+from django.db.models import Q
 from datetime import datetime
-import json
 
 from ..models.ilap import ILAP
 from ..models.jenis_data_ilap import JenisDataILAP
@@ -29,13 +29,69 @@ class ProfilILAPListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView
         return super().render_to_response(context, **response_kwargs)
     
     def get_data_json(self):
-        """Return data in JSON format for DataTables"""
-        ilaps = ILAP.objects.all().select_related(
+        """Return data in JSON format for DataTables (server-side processing)."""
+        draw = int(self.request.GET.get('draw', 1))
+        start = int(self.request.GET.get('start', 0))
+        length = int(self.request.GET.get('length', 10))
+        search_value = self.request.GET.get('search[value]', '').strip()
+        
+        # Column order mapping
+        order_columns = {
+            0: 'id_ilap',
+            1: 'id_kategori__nama_kategori',
+            2: 'nama_ilap',
+            3: 'id_kategori_wilayah__deskripsi',
+        }
+        
+        # Base queryset
+        base_qs = ILAP.objects.all().select_related(
             'id_kategori',
             'id_kategori_wilayah',
             'id_kpp'
-        ).order_by('id_ilap')
+        )
         
+        # Total records (without filtering)
+        records_total = base_qs.count()
+        
+        # Apply global search
+        if search_value:
+            global_filter = Q(id_ilap__icontains=search_value) | \
+                            Q(nama_ilap__icontains=search_value) | \
+                            Q(id_kategori__nama_kategori__icontains=search_value) | \
+                            Q(id_kategori_wilayah__deskripsi__icontains=search_value)
+            base_qs = base_qs.filter(global_filter)
+        
+        # Apply individual column searches (sent via custom parameters)
+        for i in range(4):  # columns 0-3
+            col_search = self.request.GET.get(f'columns[{i}][search][value]', '').strip()
+            if col_search:
+                col_map = {
+                    0: Q(id_ilap__icontains=col_search),
+                    1: Q(id_kategori__nama_kategori__icontains=col_search),
+                    2: Q(nama_ilap__icontains=col_search),
+                    3: Q(id_kategori_wilayah__deskripsi__icontains=col_search),
+                }
+                base_qs = base_qs.filter(col_map.get(i, Q()))
+        
+        # Records after filtering
+        records_filtered = base_qs.count()
+        
+        # Apply ordering
+        order_column_idx = self.request.GET.get('order[0][column]')
+        order_dir = self.request.GET.get('order[0][dir]', 'asc')
+        if order_column_idx is not None:
+            order_col = order_columns.get(int(order_column_idx))
+            if order_col:
+                if order_dir == 'desc':
+                    order_col = f'-{order_col}'
+                base_qs = base_qs.order_by(order_col)
+        else:
+            base_qs = base_qs.order_by('id_ilap')
+        
+        # Apply pagination
+        ilaps = base_qs[start:start + length]
+        
+        # Build data rows
         data = []
         for ilap in ilaps:
             data.append({
@@ -46,7 +102,12 @@ class ProfilILAPListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView
                 'actions': f'<a href="/profil-ilap/{ilap.pk}/" class="btn btn-sm btn-info"><i class="feather-eye me-1"></i>View</a>'
             })
         
-        return JsonResponse({'data': data})
+        return JsonResponse({
+            'draw': draw,
+            'recordsTotal': records_total,
+            'recordsFiltered': records_filtered,
+            'data': data,
+        })
 
 
 class ProfilILAPDetailView(LoginRequiredMixin, UserP3DERequiredMixin, DetailView):

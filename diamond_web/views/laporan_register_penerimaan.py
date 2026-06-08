@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from io import BytesIO
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 
 from ..models.tiket import Tiket
 from ..models.detil_tanda_terima import DetilTandaTerima
@@ -300,7 +301,7 @@ def register_penerimaan_export(request):
     # Auto-fit column widths
     col_widths = [5, 30, 25, 30, 15, 18, 20, 25, 22, 30, 22]
     for col_idx, width in enumerate(col_widths, 1):
-        ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = width
+        ws.column_dimensions[get_column_letter(col_idx)].width = width
 
     ws.row_dimensions[2].height = 30
 

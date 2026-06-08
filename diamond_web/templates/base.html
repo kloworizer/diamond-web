@@ -661,36 +661,59 @@
 
                 if (!$tableWrapper.length) return;
 
-                const $placeholder = $tableWrapper.next('.dt-empty-placeholder');
-                const placeholderHtml = `
-                    <div class="dt-empty-placeholder text-center text-muted">
-                        <img src="{% static 'assets/images/empty-state.png' %}" alt="Tidak Ada Data" class="img-fluid" style="max-width: 200px; margin-bottom:8px;" />
-                        <p class="mb-1 fw-semibold">Tidak Ada Data yang Tersedia</p>
-                        <p class="mb-0 small">Data akan ditampilkan di sini setelah tersedia.</p>
-                    </div>
-                `;
+                // Check if this table should skip the custom empty state
+                // Add data-skip-empty-state attribute to a <table> to opt out
+                const skipEmptyState = $table.is('[data-skip-empty-state]');
 
-                let rowCount = 0;
-                if ($.fn.DataTable && $.fn.DataTable.isDataTable(table)) {
-                    const dataTable = $table.DataTable();
-                    rowCount = dataTable.rows({ filter: 'applied' }).data().length;
-                } else {
-                    rowCount = $table.find('tbody tr').filter(function () {
-                        return $(this).find('td').length && $(this).is(':visible');
-                    }).length;
+                if (skipEmptyState) {
+                    $tableWrapper.show();
+                    const $placeholder = $tableWrapper.next('.dt-empty-placeholder');
+                    if ($placeholder.length) {
+                        $placeholder.remove();
+                    }
+                    return;
                 }
 
-                if (rowCount === 0) {
-                    $tableWrapper.hide();
-                    if (!$placeholder.length) {
-                        $tableWrapper.after(placeholderHtml);
+                // Check if DataTable has 0 records to show custom empty placeholder
+                let rowCount = 0;
+                try {
+                    if ($.fn.DataTable && $.fn.DataTable.isDataTable(table)) {
+                        const dt = $(table).DataTable();
+                        rowCount = dt.rows({ filter: 'applied' }).count();
                     } else {
-                        $placeholder.html(placeholderHtml).show();
+                        // Not a DataTable — just show the wrapper
+                        $tableWrapper.show();
+                        const $placeholder = $tableWrapper.next('.dt-empty-placeholder');
+                        if ($placeholder.length) {
+                            $placeholder.remove();
+                        }
+                        return;
+                    }
+                } catch (e) {
+                    $tableWrapper.show();
+                    return;
+                }
+
+                // Get or create the placeholder element
+                let $placeholder = $tableWrapper.next('.dt-empty-placeholder');
+                const template = document.getElementById('dt-empty-placeholder-template');
+
+                if (rowCount === 0) {
+                    // No rows — show custom empty placeholder, hide the table
+                    $tableWrapper.hide();
+                    if (!$placeholder.length && template) {
+                        const clone = template.content.cloneNode(true);
+                        $tableWrapper.after(clone);
+                        $placeholder = $tableWrapper.next('.dt-empty-placeholder');
+                    }
+                    if ($placeholder.length) {
+                        $placeholder.show();
                     }
                 } else {
+                    // Has rows — show the table, remove placeholder
                     $tableWrapper.show();
                     if ($placeholder.length) {
-                        $placeholder.hide();
+                        $placeholder.remove();
                     }
                 }
             }
@@ -1032,6 +1055,15 @@
     </script>
 
     {% block scripts %}{% endblock %}
+
+    <!-- Hidden template for DataTable empty state -->
+    <template id="dt-empty-placeholder-template">
+        <div class="dt-empty-placeholder text-center text-muted" style="padding: 40px 20px;">
+            <img src="{% static 'assets/images/empty-state.png' %}" alt="Tidak Ada Data" class="img-fluid" style="max-width: 200px; margin-bottom:8px;" />
+            <p class="mb-1 fw-semibold">Tidak Ada Data yang Tersedia</p>
+            <p class="mb-0 small">Data akan ditampilkan di sini setelah tersedia.</p>
+        </div>
+    </template>
 </body>
 
 </html>
