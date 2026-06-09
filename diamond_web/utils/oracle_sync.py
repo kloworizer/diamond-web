@@ -1552,6 +1552,171 @@ class OracleDataSyncService:
         # No skipped rows for this expansion (all generated rows have valid IDs from Django)
         return oracle_rows + default_rows, []
 
+    def _pre_process_kategori_ilap_kw(self, apply_changes: bool) -> OracleSyncSummary:
+        """Before syncing kategori_ilap, ensure KW record exists in KategoriILAP.
+
+        Inserts id_kategori='KW' / nama_kategori='KW' if it doesn't already exist.
+
+        Args:
+            apply_changes: whether to persist the insert to DB.
+
+        Returns:
+            OracleSyncSummary describing what was done.
+        """
+        from diamond_web.models import KategoriILAP
+
+        # Check if KW already exists
+        if KategoriILAP.objects.filter(id_kategori='KW').exists():
+            logger.info("[pre_kategori_ilap] KW record already exists, skipping")
+            return OracleSyncSummary(
+                table_name="pre_kategori_ilap_kw",
+                source_table="<pre-process>",
+                target_model="diamond_web.KategoriILAP",
+                source_rows=1,
+                inserts=0,
+                updates=0,
+                unchanged=1,
+                errors=[],
+            )
+
+        if apply_changes:
+            try:
+                KategoriILAP.objects.create(id_kategori='KW', nama_kategori='KW')
+                logger.info("[pre_kategori_ilap] Inserted KW record into KategoriILAP")
+            except Exception as exc:
+                logger.error(f"[pre_kategori_ilap] Failed to insert KW record: {exc}")
+                return OracleSyncSummary(
+                    table_name="pre_kategori_ilap_kw",
+                    source_table="<pre-process>",
+                    target_model="diamond_web.KategoriILAP",
+                    source_rows=1,
+                    inserts=0,
+                    updates=0,
+                    unchanged=0,
+                    errors=[str(exc)],
+                )
+
+        return OracleSyncSummary(
+            table_name="pre_kategori_ilap_kw",
+            source_table="<pre-process>",
+            target_model="diamond_web.KategoriILAP",
+            source_rows=1,
+            inserts=1 if apply_changes else 0,
+            updates=0,
+            unchanged=0,
+            errors=[],
+            inserted_keys=['KW'] if apply_changes else [],
+        )
+
+    def _post_process_ilap_insert_defaults(self, apply_changes: bool) -> OracleSyncSummary:
+        """After syncing ilap, insert additional ILAP records that don't exist in Oracle.
+
+        These are hardcoded ILAP entries (mostly KW, PL, PV, PD, EI codes) that need to
+        exist in the database but may not be present in the Oracle source tables.
+
+        For each record:
+        - id_ilap and nama_ilap are set to the code (e.g. 'KW020')
+        - id_kategori is resolved from the 2-letter prefix via KategoriILAP
+        - id_kategori_wilayah is determined by prefix:
+            'EI' -> 'Internasional'
+            'PV' or 'PD' -> 'Regional'
+            else -> 'Nasional'
+        - All other columns are left as NULL
+
+        Args:
+            apply_changes: whether to persist inserts to DB.
+
+        Returns:
+            OracleSyncSummary describing what was done.
+        """
+        from diamond_web.models import KategoriILAP, KategoriWilayah, ILAP
+
+        ILAP_CODES = [
+            'EI952',
+            'KW020', 'KW070', 'KW080', 'KW140', 'KW150',
+            'KW170', 'KW180', 'KW190', 'KW230', 'KW240',
+            'KW250', 'KW260', 'KW270', 'KW290', 'KW330',
+            'PD908',
+            'PL801', 'PL807', 'PL808', 'PL845',
+            'PL900', 'PL901', 'PL902',
+            'PV908',
+        ]
+
+        inserts = 0
+        unchanged = 0
+        errors: list[str] = []
+        inserted_keys: list[str] = []
+
+        for code in ILAP_CODES:
+            prefix = code[:2].upper()
+
+            # Check if already exists
+            if ILAP.objects.filter(id_ilap=code).exists():
+                logger.info(f"[post_ilap_defaults] ILAP {code} already exists, skipping")
+                unchanged += 1
+                continue
+
+            # Resolve id_kategori from prefix
+            try:
+                kategori = KategoriILAP.objects.get(id_kategori=prefix)
+            except KategoriILAP.DoesNotExist:
+                err = f"KategoriILAP with id_kategori='{prefix}' not found for ILAP {code}"
+                logger.error(f"[post_ilap_defaults] {err}")
+                errors.append(err)
+                continue
+
+            # Resolve id_kategori_wilayah from prefix
+            if prefix == 'EI':
+                wilayah_name = 'Internasional'
+            elif prefix in ('PV', 'PD'):
+                wilayah_name = 'Regional'
+            else:
+                wilayah_name = 'Nasional'
+
+            try:
+                kategori_wilayah = KategoriWilayah.objects.get(deskripsi=wilayah_name)
+            except KategoriWilayah.DoesNotExist:
+                err = f"KategoriWilayah with deskripsi='{wilayah_name}' not found for ILAP {code}"
+                logger.error(f"[post_ilap_defaults] {err}")
+                errors.append(err)
+                continue
+
+            if apply_changes:
+                try:
+                    ILAP.objects.create(
+                        id_ilap=code,
+                        nama_ilap=code,
+                        id_kategori=kategori,
+                        id_kategori_wilayah=kategori_wilayah,
+                    )
+                    logger.info(f"[post_ilap_defaults] Inserted ILAP {code}")
+                    inserts += 1
+                    inserted_keys.append(code)
+                except Exception as exc:
+                    err = f"Failed to insert ILAP {code}: {exc}"
+                    logger.error(f"[post_ilap_defaults] {err}")
+                    errors.append(err)
+            else:
+                inserts += 1
+                inserted_keys.append(code)
+
+        logger.info(
+            f"[post_ilap_defaults] Completed: {inserts} inserts, {unchanged} unchanged, "
+            f"{len(errors)} errors"
+        )
+
+        return OracleSyncSummary(
+            table_name="post_ilap_insert_defaults",
+            source_table="<post-process>",
+            target_model="diamond_web.ILAP",
+            source_rows=len(ILAP_CODES),
+            inserts=inserts,
+            updates=0,
+            unchanged=unchanged,
+            errors=errors,
+            inserted_keys=inserted_keys,
+        )
+
     def _post_process_jenis_data_ilap_aeoi_domestic(self, apply_changes: bool) -> OracleSyncSummary:
         """After syncing jenis_data_ilap, insert AEOI Domestic financial information data.
 
@@ -1637,6 +1802,1227 @@ class OracleDataSyncService:
             unchanged=0,
             errors=[],
             inserted_keys=['EI9500102'] if apply_changes else [],
+        )
+
+    def _post_process_jenis_data_ilap_additional(self, apply_changes: bool) -> OracleSyncSummary:
+        """After syncing jenis_data_ilap, insert additional records from hardcoded data.
+
+        These additional JenisDataILAP records (sourced from additional_jenis_data_ilap.csv)
+        need to exist in the database but are not covered by the Oracle sync queries.
+
+        For each record, FK references are resolved:
+        - id_ilap → ILAP via id_ilap field
+        - id_jenis_tabel → JenisTabel via deskripsi field
+        - id_status_data → StatusData via deskripsi field (nullable)
+
+        Args:
+            apply_changes: whether to persist the insert to DB.
+
+        Returns:
+            OracleSyncSummary describing what was done.
+        """
+        from diamond_web.models import JenisDataILAP, ILAP, JenisTabel, StatusData
+
+        # (id_ilap, id_jenis_data, id_sub_jenis_data, nama_jenis_data,
+        #  nama_sub_jenis_data, nama_tabel_I, nama_tabel_U,
+        #  id_jenis_tabel, status_data)
+        # '-' means empty string; '-_U' means empty string (no base table name)
+        ADDITIONAL_RECORDS = [
+            ('AS001', 'AS00104', 'AS0010401', '', '', 'KPDE_GAIKINDO_IMPOR', 'KPDE_GAIKINDO_IMPOR_U', 'Diidentifikasi', ''),
+            ('EI950', 'EI95001', 'EI9500102', 'DATA INFORMASI KEUANGAN DOMESTIK', 'DATA INFORMASI KEUANGAN DOMESTIK', 'KPDE_AEOI_DOMESTIC_ACC_DATA', 'KPDE_AEOI_DOMESTIC_ACC_DATA_U', 'Diidentifikasi', ''),
+            ('EI951', 'EI95101', 'EI9510102', '', '', 'KPDE_AEOI_INBOUND_RESTRUCT', 'KPDE_AEOI_INBOUND_RESTRUCT_U', 'Diidentifikasi', ''),
+            ('EI952', 'EI95201', 'EI9520102', '', '', 'KPDE_AEOI_INBOUND_CBCR', 'KPDE_AEOI_INBOUND_CBCR_U', 'Diidentifikasi', ''),
+            ('KM002', 'KM00206', 'KM0020601', 'DANA BANTUAN OPERASIONAL SEKOLAH (BOS)', 'DANA BANTUAN OPERASIONAL SEKOLAH (BOS)', 'KPDE_KEMDIKBUD_BANTUAN_BOS', 'KPDE_KEMDIKBUD_BANTUAN_BOS_U', 'Tidak Diidentifikasi', ''),
+            ('KM005', 'KM00513', 'KM0051301', 'DAFTAR KLINIK', 'DAFTAR KLINIK', 'KPDE_ADHOC_KEMENKES_KLINIK', 'KPDE_ADHOC_KEMENKES_KLINIK_U', 'Diidentifikasi', ''),
+            ('KM005', 'KM00514', 'KM0051401', 'DATA LABORATORIUM/BANK JARINGAN', 'DATA LABORATORIUM/BANK JARINGAN', 'KPDE_ADHOC_KEMENKES_LABJRNGN', 'KPDE_ADHOC_KEMENKES_LABJRNGN_U', 'Diidentifikasi', ''),
+            ('KM009', 'KM00902', 'KM0090201', 'DATA PELAPORAN HASIL MONITORING DAN EVALUASI KSWP', 'DATA PELAPORAN HASIL MONITORING DAN EVALUASI KSWP', '', '', 'Diidentifikasi', ''),
+            ('KM014', 'KM01407', 'KM0140701', 'DATA PNBP UNTUK DSAB', 'DATA PNBP UNTUK DSAB', 'KPDE_ADHOC_DJA_PNBP_DSAB', 'KPDE_ADHOC_DJA_PNBP_DSAB_U', 'Diidentifikasi', ''),
+            ('KM014', 'KM01415', 'KM0141501', 'BUKU SAKU APBN DAN INDIKATOR EKONOMI', 'BUKU SAKU APBN DAN INDIKATOR EKONOMI', 'KPDE_DATA_UNSTRUCTURED', 'KPDE_DATA_UNSTRUCTURED_U', 'Tidak Terstruktur', ''),
+            ('KM015', 'KM01507', 'KM0150702', 'ADHOC - DATA PEMADANAN NPWP SUPPLIER SPAN', 'ADHOC - DATA PEMADANAN NPWP SUPPLIER SPAN', 'KPDE_ADHOC_UMKM_AKAD', 'KPDE_ADHOC_UMKM_AKAD_U', 'Diidentifikasi', ''),
+            ('KM015', 'KM01508', 'KM0150801', 'DATA KUR', 'DATA KUR', 'KPDE_DJPBN_KUR_AKAD', 'KPDE_DJPBN_KUR_AKAD_U', 'Tidak Diidentifikasi', ''),
+            ('KM015', 'KM01508', 'KM0150801', 'DATA KUR', 'DATA KUR', 'KPDE_ADHOC_ASN_TNI_POLRI', 'KPDE_ADHOC_ASN_TNI_POLRI_U', 'Tidak Diidentifikasi', ''),
+            ('KM015', 'KM01508', 'KM0150802', 'DATA KUR', 'DATA KUR', 'KPDE_DJPBN_KUR_DEBITUR', 'KPDE_DJPBN_KUR_DEBITUR_U', 'Diidentifikasi', ''),
+            ('KM015', 'KM01509', 'KM0150901', 'DATA REKENING PENAMPUNGAN AKHIR TAHUN ANGGARAN (RPATA)', 'DATA REKENING PENAMPUNGAN AKHIR TAHUN ANGGARAN (RPATA)', 'KPDE_ADHOC_DJPBN_RPATA', 'KPDE_ADHOC_DJPBN_RPATA_U', 'Diidentifikasi', ''),
+            ('KM018', 'KM01819', 'KM0181901', 'DATA ENDORSEMENT', 'DATA ENDORSEMENT', 'KPDE_ADHOC_BC_PPFTZ03ENDORSE', 'KPDE_ADHOC_BC_PPFTZ03ENDORSE_U', 'Diidentifikasi', ''),
+            ('KM018', 'KM01852', 'KM0185216', 'DATA ADHOC', 'DATA ADHOC', 'KPDE_ADHOC_BC_CK1_HSLTMBKAU', 'KPDE_ADHOC_BC_CK1_HSLTMBKAU_U', 'Diidentifikasi', ''),
+            ('KM019', 'KM01902', 'KM0190201', '', '', 'KPDE_DJP_MFWPOP_PADAN', 'KPDE_DJP_MFWPOP_PADAN_U', 'Diidentifikasi', ''),
+            ('KM019', 'KM01902', 'KM0190201', '', '', 'KPDE_DJP_MFWPOP_PADAN_TAHAP2', 'KPDE_DJP_MFWPOP_PADAN_TAHAP2_U', 'Diidentifikasi', ''),
+            ('KM019', 'KM01902', 'KM0190201', '', '', 'KPDE_DJP_MFWPOP_PADAN_TAHAP3', 'KPDE_DJP_MFWPOP_PADAN_TAHAP3_U', 'Diidentifikasi', ''),
+            ('KM019', 'KM01902', 'KM0190202', '', '', 'KPDE_DJP_MFWPOP_PADAN_TAHAP3', 'KPDE_DJP_MFWPOP_PADAN_TAHAP3_U', 'Diidentifikasi', ''),
+            ('KM021', 'KM02106', 'KM0210602', 'DATA LALU LINTAS IKAN DI DALAM DAN LUAR NEGERI', 'DATA LALU LINTAS IKAN DI DALAM DAN LUAR NEGERI', 'KPDE_KKP_DATA_LALIKAN', 'KPDE_KKP_DATA_LALIKAN_U', 'Diidentifikasi', ''),
+            ('KM029', 'KM02931', 'KM0293101', 'DATA PEMEGANG IZIN SIUPAL ATAU SIOPSUS DIBEKUKAN', 'DATA PEMEGANG IZIN SIUPAL ATAU SIOPSUS DIBEKUKAN', 'KPDE_ADHOC_HUBLA_PBEKUANIZIN', 'KPDE_ADHOC_HUBLA_PBEKUANIZIN_U', 'Diidentifikasi', ''),
+            ('KW020', 'KW02001', 'KW0200101', 'ADHOC - DATA PBB P2', 'ADHOC - DATA PBB P2', 'KPDE_PBB_P2', 'KPDE_PBB_P2_U', 'Diidentifikasi', ''),
+            ('KW070', 'KW07001', 'KW0700101', 'ADHOC - DATA PBB P2', 'ADHOC - DATA PBB P2', 'KPDE_PBB_P2', 'KPDE_PBB_P2_U', 'Diidentifikasi', ''),
+            ('KW080', 'KW08001', 'KW0800101', 'ADHOC - DATA PBB P2', 'ADHOC - DATA PBB P2', 'KPDE_PBB_P2', 'KPDE_PBB_P2_U', 'Diidentifikasi', ''),
+            ('KW140', 'KW14001', 'KW1400101', 'ADHOC - DATA PBB P2', 'ADHOC - DATA PBB P2', 'KPDE_PBB_P2', 'KPDE_PBB_P2_U', 'Diidentifikasi', ''),
+            ('KW150', 'KW15001', 'KW1500101', 'ADHOC - DATA PBB P2', 'ADHOC - DATA PBB P2', 'KPDE_PBB_P2', 'KPDE_PBB_P2_U', 'Diidentifikasi', ''),
+            ('KW170', 'KW17001', 'KW1700101', 'ADHOC - DATA PBB P2', 'ADHOC - DATA PBB P2', 'KPDE_PBB_P2', 'KPDE_PBB_P2_U', 'Diidentifikasi', ''),
+            ('KW180', 'KW18001', 'KW1800101', 'ADHOC - DATA PBB P2', 'ADHOC - DATA PBB P2', 'KPDE_PBB_P2', 'KPDE_PBB_P2_U', 'Diidentifikasi', ''),
+            ('KW190', 'KW19001', 'KW1900101', 'ADHOC - DATA PBB P2', 'ADHOC - DATA PBB P2', 'KPDE_PBB_P2', 'KPDE_PBB_P2_U', 'Diidentifikasi', ''),
+            ('KW230', 'KW23001', 'KW2300101', 'ADHOC - DATA PBB P2', 'ADHOC - DATA PBB P2', 'KPDE_PBB_P2', 'KPDE_PBB_P2_U', 'Diidentifikasi', ''),
+            ('KW240', 'KW24001', 'KW2400101', 'ADHOC - DATA PBB P2', 'ADHOC - DATA PBB P2', 'KPDE_PBB_P2', 'KPDE_PBB_P2_U', 'Diidentifikasi', ''),
+            ('KW250', 'KW25001', 'KW2500101', 'ADHOC - DATA PBB P2', 'ADHOC - DATA PBB P2', 'KPDE_PBB_P2', 'KPDE_PBB_P2_U', 'Diidentifikasi', ''),
+            ('KW260', 'KW26001', 'KW2600101', 'ADHOC - DATA PBB P2', 'ADHOC - DATA PBB P2', 'KPDE_PBB_P2', 'KPDE_PBB_P2_U', 'Diidentifikasi', ''),
+            ('KW270', 'KW27001', 'KW2700101', 'ADHOC - DATA PBB P2', 'ADHOC - DATA PBB P2', 'KPDE_PBB_P2', 'KPDE_PBB_P2_U', 'Diidentifikasi', ''),
+            ('KW290', 'KW29001', 'KW2900101', 'ADHOC - DATA PBB P2', 'ADHOC - DATA PBB P2', 'KPDE_PBB_P2', 'KPDE_PBB_P2_U', 'Diidentifikasi', ''),
+            ('KW330', 'KW33001', 'KW3300101', 'ADHOC - DATA PBB P2', 'ADHOC - DATA PBB P2', 'KPDE_PBB_P2', 'KPDE_PBB_P2_U', 'Diidentifikasi', ''),
+            ('LK101', 'LK10190', 'LK1019000', '', '', 'KPDE_LJK_PASAR_MODAL', 'KPDE_LJK_PASAR_MODAL_U', 'Diidentifikasi', ''),
+            ('LK102', 'LK10290', 'LK1029000', '', '', 'KPDE_LJK_FINTECH', 'KPDE_LJK_FINTECH_U', 'Diidentifikasi', ''),
+            ('LK103', 'LK10390', 'LK1039000', '', '', 'KPDE_LJK_KUKM', 'KPDE_LJK_KUKM_U', 'Diidentifikasi', ''),
+            ('LK103', 'LK10390', 'LK1039000', '', '', 'TBL_ADHOC_ND32_KSP', 'TBL_ADHOC_ND32_KSP_U', 'Diidentifikasi', ''),
+            ('LK103', 'LK10390', 'LK1039000', '', '', 'TBL_ADHOC_ND32_LKM', 'TBL_ADHOC_ND32_LKM_U', 'Diidentifikasi', ''),
+            ('LK104', 'LK10490', 'LK1049000', '', '', 'TBL_ADHOC_ND32_PLG_BRJGKA', 'TBL_ADHOC_ND32_PLG_BRJGKA_U', 'Diidentifikasi', ''),
+            ('LK105', 'LK10590', 'LK1059000', '', '', '', '', 'Diidentifikasi', ''),
+            ('LK105', 'LK10590', 'LK1059000', '', '', 'KPDE_LJK_BPR', 'KPDE_LJK_BPR_U', 'Diidentifikasi', ''),
+            ('LK106', 'LK10690', 'LK1069000', '', '', 'TBL_ADHOC_ND32_MAN_INVES', 'TBL_ADHOC_ND32_MAN_INVES_U', 'Diidentifikasi', ''),
+            ('LK107', 'LK10790', 'LK1079000', '', '', 'KPDE_LJK_BANK_UMUM', 'KPDE_LJK_BANK_UMUM_U', 'Diidentifikasi', ''),
+            ('LK108', 'LK10890', 'LK1089000', '', '', 'KPDE_LJK_ASURANSI_JIWA', 'KPDE_LJK_ASURANSI_JIWA_U', 'Diidentifikasi', ''),
+            ('LK109', 'LK10990', 'LK1099000', '', '', 'KPDE_LJK_REKSADANA', 'KPDE_LJK_REKSADANA_U', 'Diidentifikasi', ''),
+            ('LK109', 'LK10990', 'LK1099000', '', '', 'TBL_ADHOC_ND32_KIK', 'TBL_ADHOC_ND32_KIK_U', 'Diidentifikasi', ''),
+            ('LM008', 'LM00802', 'LM0080203', 'DATA KONTRAK MIGAS AKTIF', 'DATA KONTRAK MIGAS AKTIF', 'KPDE_SKKM_01_PRBHN_OPERATOR', 'KPDE_SKKM_01_PRBHN_OPERATOR_U', 'Diidentifikasi', ''),
+            ('LM008', 'LM00802', 'LM0080204', 'DATA KONTRAK MIGAS AKTIF', 'DATA KONTRAK MIGAS AKTIF', '', '', 'Diidentifikasi', ''),
+            ('LM008', 'LM00805', 'LM0080502', 'DATA FINANCIAL QUARTERLY REPORT (FQR)', 'DATA FINANCIAL QUARTERLY REPORT (FQR)', 'KPDE_SKKM_06_FQR_REPORT_1_1', 'KPDE_SKKM_06_FQR_REPORT_1_1_U', 'Diidentifikasi', ''),
+            ('LM008', 'LM00805', 'LM0080504', 'DATA FINANCIAL QUARTERLY REPORT (FQR)', 'DATA FINANCIAL QUARTERLY REPORT (FQR)', 'KPDE_SKKM_06_FQR_REPORT_3', 'KPDE_SKKM_06_FQR_REPORT_3_U', 'Diidentifikasi', ''),
+            ('LM008', 'LM00805', 'LM0080506', 'DATA FINANCIAL QUARTERLY REPORT (FQR)', 'DATA FINANCIAL QUARTERLY REPORT (FQR)', '', '', 'Diidentifikasi', ''),
+            ('LM008', 'LM00852', 'LM0085201', '(PKS) - DATA UNSTRUCTURED, DATA KONTRAK DARI WILAYAH KERJA (WK)', '(PKS) - DATA UNSTRUCTURED, DATA KONTRAK DARI WILAYAH KERJA (WK)', '', '', 'Tidak Terstruktur', ''),
+            ('LM016', 'LM01602', 'LM0160201', 'DATA PROFIL WAJIB LAPOR ATAS LAPORAN HARTA KEKAYAAN PENYELENGGARA NEGARA (LHKPN)', 'DATA PROFIL WAJIB LAPOR ATAS LAPORAN HARTA KEKAYAAN PENYELENGGARA NEGARA (LHKPN)', 'KPDE_ADHOC_KPK_PROFIL_WL_LHK', 'KPDE_ADHOC_KPK_PROFIL_WL_LHK_U', 'Diidentifikasi', ''),
+            ('LM020', 'LM02003', 'LM0200301', 'DATA PEGAWAI BIG UNTUK PENGECEKAN KEPATUHAN PELAPORAN SPT TAHUNAN', 'DATA PEGAWAI BIG UNTUK PENGECEKAN KEPATUHAN PELAPORAN SPT TAHUNAN', 'KPDE_BIG_NPWP_PEGAWAI', 'KPDE_BIG_NPWP_PEGAWAI_U', 'Diidentifikasi', ''),
+            ('PB001', 'PB00101', 'PB0010101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB002', 'PB00201', 'PB0020101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB003', 'PB00301', 'PB0030101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB004', 'PB00401', 'PB0040101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB005', 'PB00501', 'PB0050101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB006', 'PB00601', 'PB0060101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB007', 'PB00701', 'PB0070101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB008', 'PB00801', 'PB0080101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB009', 'PB00901', 'PB0090101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB010', 'PB01001', 'PB0100101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB011', 'PB01101', 'PB0110101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB012', 'PB01201', 'PB0120101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB013', 'PB01301', 'PB0130101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB015', 'PB01501', 'PB0150101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB017', 'PB01701', 'PB0170101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB019', 'PB01901', 'PB0190101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB020', 'PB02001', 'PB0200101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB022', 'PB02201', 'PB0220101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB023', 'PB02301', 'PB0230101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB024', 'PB02401', 'PB0240101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB025', 'PB02501', 'PB0250101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PB026', 'PB02601', 'PB0260101', 'DATA PEMADANAN BULK', 'DATA PEMADANAN BULK', 'KPDE_ADHOC_PADAN_BULK', 'KPDE_ADHOC_PADAN_BULK_U', 'Diidentifikasi', ''),
+            ('PD031', 'PD03179', 'PD0317901', 'DATA USAHA PERIKANAN', 'DATA USAHA PERIKANAN', 'KPDE_PEMDA_PERUSH_LAUT_IKAN', 'KPDE_PEMDA_PERUSH_LAUT_IKAN_U', 'Diidentifikasi', ''),
+            ('PD389', 'PD38905', 'PD3890502', 'DATA USAHA HIBURAN', 'DATA USAHA HIBURAN', 'KPDE_PEMDA_HIBURAN', 'KPDE_PEMDA_HIBURAN_U', 'Diidentifikasi', ''),
+            ('PD464', 'PD46408', 'PD4640801', '', '', '', '', 'Tidak Diidentifikasi', ''),
+            ('PD469', 'PD46908', 'PD4690801', '', '', '', '', 'Tidak Diidentifikasi', ''),
+            ('PD483', 'PD48308', 'PD4830801', '', '', '', '', 'Tidak Diidentifikasi', ''),
+            ('PD487', 'PD48708', 'PD4870801', '', '', '', '', 'Tidak Diidentifikasi', ''),
+            ('PD488', 'PD48808', 'PD4880801', '', '', '', '', 'Tidak Diidentifikasi', ''),
+            ('PD493', 'PD49308', 'PD4930801', '', '', '', '', 'Tidak Diidentifikasi', ''),
+            ('PD498', 'PD49808', 'PD4980801', '', '', '', '', 'Tidak Diidentifikasi', ''),
+            ('PD511', 'PD51149', 'PD5114901', 'DATA INFORMASI KEUANGAN DAERAH', 'DATA INFORMASI KEUANGAN DAERAH', '', '', 'Tidak Terstruktur', ''),
+            ('PD908', 'PD90801', 'PD9080101', '', '', 'KPDE_PEMDA_SETORAN_MASA', 'KPDE_PEMDA_SETORAN_MASA_U', 'Tidak Diidentifikasi', ''),
+            ('PD908', 'PD90802', 'PD9080201', '', '', 'KPDE_PEMDA_SETORAN_MASA', 'KPDE_PEMDA_SETORAN_MASA_U', 'Tidak Diidentifikasi', ''),
+            ('PD908', 'PD90804', 'PD9080401', '', '', 'KPDE_PEMDA_SETORAN_MASA', 'KPDE_PEMDA_SETORAN_MASA_U', 'Tidak Diidentifikasi', ''),
+            ('PK013', 'PK01302', 'PK0130201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK023', 'PK02302', 'PK0230201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK037', 'PK03701', 'PK0370101', 'DATA MARKET PLACE - PEGI PEGI', 'DATA MARKET PLACE - PEGI PEGI', 'KPDE_ADHOC_OMP_PEGI', 'KPDE_ADHOC_OMP_PEGI_U', 'Tidak Diidentifikasi', ''),
+            ('PK040', 'PK04002', 'PK0400201', 'DATA PEMADANAN NPWP', 'DATA PEMADANAN NPWP', 'KPDE_ADHOC_REQ_CEKCARI_NPWP', 'KPDE_ADHOC_REQ_CEKCARI_NPWP_U', 'Diidentifikasi', ''),
+            ('PK042', 'PK04202', 'PK0420201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK055', 'PK05502', 'PK0550201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK087', 'PK08701', 'PK0870101', 'DATA MARKET PLACE - HOTEL', 'DATA MARKET PLACE - HOTEL', 'KPDE_ADHOC_MP_HOTEL', 'KPDE_ADHOC_MP_HOTEL_U', 'Diidentifikasi', ''),
+            ('PK092', 'PK09202', 'PK0920201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK111', 'PK11102', 'PK1110201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK119', 'PK11902', 'PK1190201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK125', 'PK12502', 'PK1250201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK127', 'PK12702', 'PK1270201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK212', 'PK21202', 'PK2120201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK214', 'PK21402', 'PK2140201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK328', 'PK32802', 'PK3280201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK406', 'PK40602', 'PK4060201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK441', 'PK44102', 'PK4410201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK443', 'PK44302', 'PK4430201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK505', 'PK50502', 'PK5050201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK509', 'PK50902', 'PK5090201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK518', 'PK51802', 'PK5180201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK521', 'PK52102', 'PK5210201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK541', 'PK54102', 'PK5410201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK606', 'PK60602', 'PK6060201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK614', 'PK61402', 'PK6140201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK625', 'PK62502', 'PK6250201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK631', 'PK63102', 'PK6310201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK645', 'PK64502', 'PK6450201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK648', 'PK64802', 'PK6480201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK652', 'PK65202', 'PK6520201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK653', 'PK65302', 'PK6530201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK702', 'PK70202', 'PK7020201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK712', 'PK71202', 'PK7120201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK713', 'PK71302', 'PK7130201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK904', 'PK90402', 'PK9040201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK905', 'PK90502', 'PK9050201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK907', 'PK90702', 'PK9070201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK908', 'PK90802', 'PK9080201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK908', 'PK90807', 'PK9080701', '', '', 'KPDE_ADHOC_PKP_AIRBNB', 'KPDE_ADHOC_PKP_AIRBNB_U', 'Diidentifikasi', ''),
+            ('PK911', 'PK91102', 'PK9110201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PK942', 'PK94202', 'PK9420201', '', '', 'KPDE_ADHOC_DRKB', 'KPDE_ADHOC_DRKB_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04710', 'PL0471011', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04710', 'PL0471017', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04710', 'PL0471039', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04710', 'PL0471041', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04710', 'PL0471044', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04710', 'PL0471087', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04711', 'PL0471121', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04711', 'PL0471182', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04711', 'PL0471183', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04711', 'PL0471184', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04711', 'PL0471185', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04711', 'PL0471186', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04711', 'PL0471187', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04711', 'PL0471188', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04711', 'PL0471189', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04711', 'PL0471190', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04711', 'PL0471191', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04711', 'PL0471192', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04711', 'PL0471193', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04711', 'PL0471194', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04711', 'PL0471195', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04711', 'PL0471196', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04711', 'PL0471197', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04711', 'PL0471199', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04712', 'PL0471200', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472002', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472003', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472004', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472005', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472006', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472007', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472008', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472009', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472010', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472011', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472012', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472013', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472014', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472015', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472016', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472018', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472019', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472020', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472021', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472022', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472023', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472024', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472025', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472026', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472028', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472029', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472030', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472031', '', '', '', '', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472032', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472033', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472034', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472035', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472036', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472037', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472038', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472039', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472040', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472041', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472042', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472043', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472044', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472046', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472047', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472048', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472049', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472050', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472051', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472052', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472053', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472054', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472055', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472056', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472057', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472058', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472059', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472060', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472061', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472062', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472063', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472064', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472065', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472066', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472067', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472068', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472069', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472070', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472071', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472072', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472073', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472074', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472075', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472076', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472077', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472078', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472080', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472081', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472082', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472083', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472084', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472085', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472086', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472087', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472088', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472089', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472090', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472091', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472092', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472093', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472094', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472095', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472096', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472097', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472098', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04720', 'PL0472099', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472100', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472101', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472102', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472103', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472104', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472105', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472106', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472107', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472108', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472109', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472110', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472111', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472112', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472113', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472114', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472115', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472116', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472117', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472118', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472119', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472120', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472121', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472122', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472124', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472125', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472126', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472127', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472128', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472129', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472130', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472131', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472132', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472133', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472134', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472135', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472137', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472138', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472139', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472140', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472141', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472142', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472143', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472145', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472146', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472147', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472148', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472149', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472150', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472151', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472152', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472153', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472154', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472155', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472156', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472157', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472159', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472160', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472161', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472162', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472163', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472164', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472165', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472166', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472167', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472168', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472169', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472170', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472171', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472172', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472173', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472174', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472175', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472176', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472177', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472178', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472179', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472180', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL047', 'PL04721', 'PL0472181', '', '', 'KPDE_DAPEN_DPLK_DPPK', 'KPDE_DAPEN_DPLK_DPPK_U', 'Diidentifikasi', ''),
+            ('PL050', 'PL05001', 'PL0500101', 'DATA MITRA GOJEK', 'DATA MITRA GOJEK', 'KPDE_ADHOC_GOJEK_MITRA', 'KPDE_ADHOC_GOJEK_MITRA_U', 'Diidentifikasi', ''),
+            ('PL801', 'PL80101', 'PL8010101', '', '', 'KPDE_ADHOC_NASABAH_MANDIRI', 'KPDE_ADHOC_NASABAH_MANDIRI_U', 'Diidentifikasi', ''),
+            ('PL807', 'PL80700', 'PL8070003', '', '', 'KPDE_KENDARAAN', 'KPDE_KENDARAAN_U', 'Diidentifikasi', ''),
+            ('PL808', 'PL80870', 'PL8087001', '', '', 'KPDE_ADHOC_OMP', 'KPDE_ADHOC_OMP_U', 'Diidentifikasi', ''),
+            ('PL845', 'PL84560', 'PL8456001', '', '', 'KPDE_ADHOC_OMP', 'KPDE_ADHOC_OMP_U', 'Diidentifikasi', ''),
+            ('PL845', 'PL84560', 'PL8456002', '', '', 'KPDE_ADHOC_OMP', 'KPDE_ADHOC_OMP_U', 'Diidentifikasi', ''),
+            ('PL845', 'PL84560', 'PL8456003', '', '', 'KPDE_ADHOC_OMP', 'KPDE_ADHOC_OMP_U', 'Diidentifikasi', ''),
+            ('PL845', 'PL84560', 'PL8456004', '', '', 'KPDE_ADHOC_OMP', 'KPDE_ADHOC_OMP_U', 'Diidentifikasi', ''),
+            ('PL845', 'PL84560', 'PL8456005', '', '', 'KPDE_ADHOC_OMP', 'KPDE_ADHOC_OMP_U', 'Diidentifikasi', ''),
+            ('PL845', 'PL84560', 'PL8456006', '', '', 'KPDE_ADHOC_OMP', 'KPDE_ADHOC_OMP_U', 'Diidentifikasi', ''),
+            ('PL845', 'PL84560', 'PL8456007', '', '', 'KPDE_ADHOC_OMP', 'KPDE_ADHOC_OMP_U', 'Diidentifikasi', ''),
+            ('PL845', 'PL84560', 'PL8456008', '', '', 'KPDE_ADHOC_OMP', 'KPDE_ADHOC_OMP_U', 'Diidentifikasi', ''),
+            ('PL845', 'PL84560', 'PL8456009', '', '', 'KPDE_ADHOC_OMP', 'KPDE_ADHOC_OMP_U', 'Diidentifikasi', ''),
+            ('PL845', 'PL84560', 'PL8456010', '', '', 'KPDE_ADHOC_OMP', 'KPDE_ADHOC_OMP_U', 'Diidentifikasi', ''),
+            ('PL845', 'PL84560', 'PL8456011', '', '', 'KPDE_ADHOC_OMP', 'KPDE_ADHOC_OMP_U', 'Diidentifikasi', ''),
+            ('PL845', 'PL84560', 'PL8456012', '', '', 'KPDE_ADHOC_OMP', 'KPDE_ADHOC_OMP_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90000', 'PL9000010', '', '', 'KPDE_GATEWAY_LAP_A', 'KPDE_GATEWAY_LAP_A_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90000', 'PL9000020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90000', 'PL9000030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90010', 'PL9001010', '', '', 'KPDE_GATEWAY_LAP_A', 'KPDE_GATEWAY_LAP_A_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90010', 'PL9001020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90010', 'PL9001030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90020', 'PL9002020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90020', 'PL9002030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90030', 'PL9003020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90030', 'PL9003030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90040', 'PL9004010', '', '', 'KPDE_GATEWAY_LAP_A', 'KPDE_GATEWAY_LAP_A_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90040', 'PL9004020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90040', 'PL9004030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90050', 'PL9005020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90050', 'PL9005030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90060', 'PL9006020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90060', 'PL9006030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90070', 'PL9007010', '', '', 'KPDE_GATEWAY_LAP_A', 'KPDE_GATEWAY_LAP_A_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90070', 'PL9007020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90070', 'PL9007030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90080', 'PL9008020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90080', 'PL9008030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90090', 'PL9009020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL900', 'PL90090', 'PL9009030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90100', 'PL9010020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90100', 'PL9010030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90110', 'PL9011010', '', '', 'KPDE_GATEWAY_LAP_A', 'KPDE_GATEWAY_LAP_A_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90110', 'PL9011020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90110', 'PL9011030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90120', 'PL9012010', '', '', 'KPDE_GATEWAY_LAP_A', 'KPDE_GATEWAY_LAP_A_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90120', 'PL9012020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90120', 'PL9012030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90130', 'PL9013010', '', '', 'KPDE_GATEWAY_LAP_A', 'KPDE_GATEWAY_LAP_A_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90130', 'PL9013020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90130', 'PL9013030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90140', 'PL9014010', '', '', 'KPDE_GATEWAY_LAP_A', 'KPDE_GATEWAY_LAP_A_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90140', 'PL9014020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90140', 'PL9014030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90150', 'PL9015010', '', '', 'KPDE_GATEWAY_LAP_A', 'KPDE_GATEWAY_LAP_A_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90150', 'PL9015020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90150', 'PL9015030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90160', 'PL9016010', '', '', 'KPDE_GATEWAY_LAP_A', 'KPDE_GATEWAY_LAP_A_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90160', 'PL9016020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90160', 'PL9016030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90170', 'PL9017010', '', '', 'KPDE_GATEWAY_LAP_A', 'KPDE_GATEWAY_LAP_A_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90180', 'PL9018010', '', '', 'KPDE_GATEWAY_LAP_A', 'KPDE_GATEWAY_LAP_A_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90180', 'PL9018020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90180', 'PL9018030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90190', 'PL9019020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL901', 'PL90190', 'PL9019030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL902', 'PL90200', 'PL9020010', '', '', 'KPDE_GATEWAY_LAP_A', 'KPDE_GATEWAY_LAP_A_U', 'Diidentifikasi', ''),
+            ('PL902', 'PL90200', 'PL9020020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL902', 'PL90200', 'PL9020030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL902', 'PL90210', 'PL9021020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL902', 'PL90210', 'PL9021030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL902', 'PL90220', 'PL9022020', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL902', 'PL90230', 'PL9023010', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL902', 'PL90230', 'PL9023030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL902', 'PL90240', 'PL9024030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL902', 'PL90250', 'PL9025020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL902', 'PL90250', 'PL9025030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL902', 'PL90260', 'PL9026020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL902', 'PL90260', 'PL9026030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL902', 'PL90270', 'PL9027020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL902', 'PL90270', 'PL9027030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL902', 'PL90280', 'PL9028020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL902', 'PL90280', 'PL9028030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL902', 'PL90290', 'PL9029020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL902', 'PL90290', 'PL9029030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90300', 'PL9030020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90300', 'PL9030030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90310', 'PL9031030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90320', 'PL9032010', '', '', 'KPDE_GATEWAY_LAP_A', 'KPDE_GATEWAY_LAP_A_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90320', 'PL9032020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90320', 'PL9032030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90330', 'PL9033010', '', '', 'KPDE_GATEWAY_LAP_A', 'KPDE_GATEWAY_LAP_A_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90330', 'PL9033020', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90340', 'PL9034020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90340', 'PL9034030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90350', 'PL9035020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90350', 'PL9035030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90360', 'PL9036010', '', '', 'KPDE_GATEWAY_LAP_A', 'KPDE_GATEWAY_LAP_A_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90360', 'PL9036020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90360', 'PL9036030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90370', 'PL9037020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90370', 'PL9037030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90380', 'PL9038010', '', '', 'KPDE_GATEWAY_LAP_A', 'KPDE_GATEWAY_LAP_A_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90380', 'PL9038020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90380', 'PL9038030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90390', 'PL9039020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL903', 'PL90390', 'PL9039030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL904', 'PL90400', 'PL9040020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL904', 'PL90400', 'PL9040030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL904', 'PL90410', 'PL9041020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL904', 'PL90410', 'PL9041030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL904', 'PL90420', 'PL9042010', '', '', 'KPDE_GATEWAY_LAP_A', 'KPDE_GATEWAY_LAP_A_U', 'Diidentifikasi', ''),
+            ('PL904', 'PL90430', 'PL9043020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL904', 'PL90430', 'PL9043030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL904', 'PL90440', 'PL9044010', '', '', 'KPDE_GATEWAY_LAP_A', 'KPDE_GATEWAY_LAP_A_U', 'Diidentifikasi', ''),
+            ('PL904', 'PL90440', 'PL9044020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL904', 'PL90470', 'PL9047010', '', '', 'KPDE_GATEWAY_LAP_A', 'KPDE_GATEWAY_LAP_A_U', 'Diidentifikasi', ''),
+            ('PL904', 'PL90470', 'PL9047020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL904', 'PL90470', 'PL9047030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL904', 'PL90480', 'PL9048020', '', '', 'KPDE_GATEWAY_LAP_B', 'KPDE_GATEWAY_LAP_B_U', 'Diidentifikasi', ''),
+            ('PL904', 'PL90480', 'PL9048030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL905', 'PL90550', 'PL9055030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL905', 'PL90560', 'PL9056030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL905', 'PL90570', 'PL9057030', '', '', 'KPDE_GATEWAY_LAP_C', 'KPDE_GATEWAY_LAP_C_U', 'Diidentifikasi', ''),
+            ('PL906', 'PL90608', 'PL9060801', 'DATA NPWP PEMILIK NOP PERKEBUNAN', 'DATA NPWP PEMILIK NOP PERKEBUNAN', 'KPDE_ADHOC_EKSTEN_PMLKNOPKBN', 'KPDE_ADHOC_EKSTEN_PMLKNOPKBN_U', 'Diidentifikasi', ''),
+            ('PL908', 'PL90801', 'PL9080101', 'DATA ONLINE MARKETPLACE', 'DATA ONLINE MARKETPLACE', 'KPDE_ADHOC_OMP', 'KPDE_ADHOC_OMP_U', 'Tidak Diidentifikasi', ''),
+            ('PL908', 'PL90801', 'PL9080101', 'DATA ONLINE MARKETPLACE', 'DATA ONLINE MARKETPLACE', 'KPDE_ADHOC_OMP_GOJEK', 'KPDE_ADHOC_OMP_GOJEK_U', 'Tidak Diidentifikasi', ''),
+            ('PL908', 'PL90801', 'PL9080101', 'DATA ONLINE MARKETPLACE', 'DATA ONLINE MARKETPLACE', 'KPDE_ADHOC_PKP_MP_MERCHANT', 'KPDE_ADHOC_PKP_MP_MERCHANT_U', 'Tidak Diidentifikasi', ''),
+            ('PL908', 'PL90801', 'PL9080102', 'DATA ONLINE MARKETPLACE', 'DATA ONLINE MARKETPLACE', 'KPDE_ADHOC_OMP_TOPED', 'KPDE_ADHOC_OMP_TOPED_U', 'Tidak Diidentifikasi', ''),
+            ('PL908', 'PL90801', 'PL9080105', 'DATA ONLINE MARKETPLACE', 'DATA ONLINE MARKETPLACE', 'KPDE_ADHOC_OMP_BKLPK', 'KPDE_ADHOC_OMP_BKLPK_U', 'Tidak Diidentifikasi', ''),
+            ('PL908', 'PL90801', 'PL9080105', 'DATA ONLINE MARKETPLACE', 'DATA ONLINE MARKETPLACE', 'KPDE_ADHOC_OMP_BKLPK_CAIR', 'KPDE_ADHOC_OMP_BKLPK_CAIR_U', 'Tidak Diidentifikasi', ''),
+            ('PL908', 'PL90801', 'PL9080106', 'DATA ONLINE MARKETPLACE', 'DATA ONLINE MARKETPLACE', 'KPDE_ADHOC_OMP_JDID', 'KPDE_ADHOC_OMP_JDID_U', 'Tidak Diidentifikasi', ''),
+            ('PL908', 'PL90801', 'PL9080107', 'DATA ONLINE MARKETPLACE', 'DATA ONLINE MARKETPLACE', 'KPDE_ADHOC_OMP_ELEV_CAIR', 'KPDE_ADHOC_OMP_ELEV_CAIR_U', 'Tidak Diidentifikasi', ''),
+            ('PL908', 'PL90801', 'PL9080108', 'DATA ONLINE MARKETPLACE', 'DATA ONLINE MARKETPLACE', 'KPDE_ADHOC_OMP_BLI', 'KPDE_ADHOC_OMP_BLI_U', 'Tidak Diidentifikasi', ''),
+            ('PL908', 'PL90801', 'PL9080112', 'DATA ONLINE MARKETPLACE', 'DATA ONLINE MARKETPLACE', 'KPDE_ADHOC_OMP_GOJEK', 'KPDE_ADHOC_OMP_GOJEK_U', 'Tidak Diidentifikasi', ''),
+            ('PL908', 'PL90801', 'PL9080114', 'DATA ONLINE MARKETPLACE', 'DATA ONLINE MARKETPLACE', 'KPDE_ADHOC_OMP_TIKET', 'KPDE_ADHOC_OMP_TIKET_U', 'Tidak Diidentifikasi', ''),
+            ('PL908', 'PL90840', 'PL9084001', '', '', 'KPDE_FAKTUR_PAJAK', 'KPDE_FAKTUR_PAJAK_U', 'Tidak Diidentifikasi', ''),
+            ('PL910', 'PL91002', 'PL9100201', 'ADHOC - DATA LAPORAN KEUANGAN KLIEN', 'ADHOC - DATA LAPORAN KEUANGAN KLIEN', 'KPDE_ADHOC_P2PK_KLIEN_LAPKEU', 'KPDE_ADHOC_P2PK_KLIEN_LAPKEU_U', 'Diidentifikasi', ''),
+            ('PL910', 'PL91002', 'PL9100201', 'ADHOC - DATA LAPORAN KEUANGAN KLIEN', 'ADHOC - DATA LAPORAN KEUANGAN KLIEN', 'KPDE_ADHOC_OMP', 'KPDE_ADHOC_OMP_U', 'Diidentifikasi', ''),
+            ('PL910', 'PL91002', 'PL9100201', 'ADHOC - DATA LAPORAN KEUANGAN KLIEN', 'ADHOC - DATA LAPORAN KEUANGAN KLIEN', 'KPDE_ADHOC_DSE_TRAIN_2022', 'KPDE_ADHOC_DSE_TRAIN_2022_U', 'Diidentifikasi', ''),
+            ('PL910', 'PL91002', 'PL9100205', 'ADHOC - DATA LAPORAN KEUANGAN KLIEN', 'ADHOC - DATA LAPORAN KEUANGAN KLIEN', 'KPDE_ADHOC_FAKTUR000', 'KPDE_ADHOC_FAKTUR000_U', 'Tidak Diidentifikasi', ''),
+            ('PL910', 'PL91006', 'PL9100601', 'DATA NPWP BENDAHARA SATKER (APBN, APBD, APBDES)', 'DATA NPWP BENDAHARA SATKER (APBN, APBD, APBDES)', 'KPDE_ADHOC_NPWP_BENDAHARA', 'KPDE_ADHOC_NPWP_BENDAHARA_U', 'Diidentifikasi', ''),
+            ('PL910', 'PL91007', 'PL9100701', '', '', 'KPDE_ADHOC_AIRBNB', 'KPDE_ADHOC_AIRBNB_U', 'Tidak Diidentifikasi', ''),
+            ('PL914', 'PL91402', 'PL9140201', 'DATA CRYPTO', 'DATA CRYPTO', 'KPDE_ADHOC_PI_CRYPTO_USER_ID', 'KPDE_ADHOC_PI_CRYPTO_USER_ID_U', 'Diidentifikasi', ''),
+            ('PL914', 'PL91402', 'PL9140202', 'DATA CRYPTO', 'DATA CRYPTO', 'KPDE_ADHOC_PI_CRYPTO_ADDRESS', 'KPDE_ADHOC_PI_CRYPTO_ADDRESS_U', 'Tidak Diidentifikasi', ''),
+            ('PL914', 'PL91402', 'PL9140203', 'DATA CRYPTO', 'DATA CRYPTO', 'KPDE_ADHOC_PI_CRYPTO_TRNSACT', 'KPDE_ADHOC_PI_CRYPTO_TRNSACT_U', 'Tidak Diidentifikasi', ''),
+            ('PL914', 'PL91403', 'PL9140301', 'DATA CONTENT CREATOR', 'DATA CONTENT CREATOR', 'KPDE_ADHOC_PI_CNTCREATOR_MST', 'KPDE_ADHOC_PI_CNTCREATOR_MST_U', 'Diidentifikasi', ''),
+            ('PL914', 'PL91403', 'PL9140302', 'DATA CONTENT CREATOR', 'DATA CONTENT CREATOR', 'KPDE_ADHOC_PI_CNTCREATOR_TRX', 'KPDE_ADHOC_PI_CNTCREATOR_TRX_U', 'Tidak Diidentifikasi', ''),
+            ('PL915', 'PL91503', 'PL9150301', 'DATA UANG KELUAR DARI MARKETPLACE (DETAIL)', 'DATA UANG KELUAR DARI MARKETPLACE (DETAIL)', 'KPDE_ADHOC_IP_MP_DETIL_OUT', 'KPDE_ADHOC_IP_MP_DETIL_OUT_U', 'Diidentifikasi', ''),
+            ('PL915', 'PL91503', 'PL9150302', 'DATA UANG KELUAR DARI MARKETPLACE (DETAIL)', 'DATA UANG KELUAR DARI MARKETPLACE (DETAIL)', 'KPDE_ADHOC_IP_MP_DETIL_OUT', 'KPDE_ADHOC_IP_MP_DETIL_OUT_U', 'Tidak Diidentifikasi', ''),
+            ('PL915', 'PL91503', 'PL9150303', 'DATA UANG KELUAR DARI MARKETPLACE (DETAIL)', 'DATA UANG KELUAR DARI MARKETPLACE (DETAIL)', 'KPDE_ADHOC_IP_MP_DETIL_OUT', 'KPDE_ADHOC_IP_MP_DETIL_OUT_U', 'Tidak Diidentifikasi', ''),
+            ('PL915', 'PL91503', 'PL9150304', 'DATA UANG KELUAR DARI MARKETPLACE (DETAIL)', 'DATA UANG KELUAR DARI MARKETPLACE (DETAIL)', 'KPDE_ADHOC_IP_MP_DETIL_OUT', 'KPDE_ADHOC_IP_MP_DETIL_OUT_U', 'Tidak Diidentifikasi', ''),
+            ('PL915', 'PL91503', 'PL9150305', 'DATA UANG KELUAR DARI MARKETPLACE (DETAIL)', 'DATA UANG KELUAR DARI MARKETPLACE (DETAIL)', 'KPDE_ADHOC_IP_MP_DETIL_OUT', 'KPDE_ADHOC_IP_MP_DETIL_OUT_U', 'Tidak Diidentifikasi', ''),
+            ('PL915', 'PL91503', 'PL9150306', 'DATA UANG KELUAR DARI MARKETPLACE (DETAIL)', 'DATA UANG KELUAR DARI MARKETPLACE (DETAIL)', 'KPDE_ADHOC_IP_MP_DETIL_OUT', 'KPDE_ADHOC_IP_MP_DETIL_OUT_U', 'Tidak Diidentifikasi', ''),
+            ('PL915', 'PL91503', 'PL9150307', 'DATA UANG KELUAR DARI MARKETPLACE (DETAIL)', 'DATA UANG KELUAR DARI MARKETPLACE (DETAIL)', 'KPDE_ADHOC_IP_MP_DETIL_OUT', 'KPDE_ADHOC_IP_MP_DETIL_OUT_U', 'Tidak Diidentifikasi', ''),
+            ('PL915', 'PL91503', 'PL9150308', 'DATA UANG KELUAR DARI MARKETPLACE (DETAIL)', 'DATA UANG KELUAR DARI MARKETPLACE (DETAIL)', 'KPDE_ADHOC_IP_MP_DETIL_OUT', 'KPDE_ADHOC_IP_MP_DETIL_OUT_U', 'Tidak Diidentifikasi', ''),
+            ('PL915', 'PL91503', 'PL9150309', 'DATA UANG KELUAR DARI MARKETPLACE (DETAIL)', 'DATA UANG KELUAR DARI MARKETPLACE (DETAIL)', 'KPDE_ADHOC_IP_MP_DETIL_OUT', 'KPDE_ADHOC_IP_MP_DETIL_OUT_U', 'Tidak Diidentifikasi', ''),
+            ('PL915', 'PL91503', 'PL9150310', 'DATA UANG KELUAR DARI MARKETPLACE (DETAIL)', 'DATA UANG KELUAR DARI MARKETPLACE (DETAIL)', 'KPDE_ADHOC_IP_MP_DETIL_OUT', 'KPDE_ADHOC_IP_MP_DETIL_OUT_U', 'Tidak Diidentifikasi', ''),
+            ('PL915', 'PL91505', 'PL9150501', 'INFORMASI TRANSAKSI KEUANGAN DALAM RANGKA PROGRAM PENGUNGKAPAN SUKARELA', 'INFORMASI TRANSAKSI KEUANGAN DALAM RANGKA PROGRAM PENGUNGKAPAN SUKARELA', 'KPDE_ADHOC_PPS', 'KPDE_ADHOC_PPS_U', 'Diidentifikasi', ''),
+            ('PL915', 'PL91506', 'PL9150601', 'DATA PEMADANAN UNTUK PENCARIAN/IDENTIFIKASI NPWP', 'DATA PEMADANAN UNTUK PENCARIAN/IDENTIFIKASI NPWP', 'KPDE_ADHOC_IP_CEKCARI_NPWP', 'KPDE_ADHOC_IP_CEKCARI_NPWP_U', 'Diidentifikasi', ''),
+            ('PL915', 'PL91507', 'PL9150701', 'DATA TIKTOK SHOP DAN TIKTOK AFFILIATOR', 'DATA TIKTOK SHOP DAN TIKTOK AFFILIATOR', 'KPDE_ADHOC_IP_TIKTOK_SHOP', 'KPDE_ADHOC_IP_TIKTOK_SHOP_U', 'Diidentifikasi', ''),
+            ('PL915', 'PL91507', 'PL9150702', 'DATA TIKTOK SHOP DAN TIKTOK AFFILIATOR', 'DATA TIKTOK SHOP DAN TIKTOK AFFILIATOR', 'KPDE_ADHOC_IP_TIKTOK_AFFIL', 'KPDE_ADHOC_IP_TIKTOK_AFFIL_U', 'Diidentifikasi', ''),
+            ('PL915', 'PL91508', 'PL9150801', 'DATA PERGURUAN TINGGI INDONESIA', 'DATA PERGURUAN TINGGI INDONESIA', 'KPDE_ADHOC_IP_PGURUANTINGGI', 'KPDE_ADHOC_IP_PGURUANTINGGI_U', 'Diidentifikasi', ''),
+            ('PV001', 'PV00180', 'PV0018001', 'DATA SETORAN MASA', 'DATA SETORAN MASA', 'KPDE_PEMDA_SETORAN_MASA', 'KPDE_PEMDA_SETORAN_MASA_U', 'Diidentifikasi', ''),
+            ('PV002', 'PV00251', 'PV0025101', '', '', '', '', 'Diidentifikasi', ''),
+            ('PV003', 'PV00391', 'PV0039101', '', '', '', '', 'Diidentifikasi', ''),
+            ('PV020', 'PV02047', 'PV0204701', 'DATA USAHA DAN PERIZINAN DI SEKTOR PETERNAKAN', 'DATA USAHA DAN PERIZINAN DI SEKTOR PETERNAKAN', '', '', 'Diidentifikasi', ''),
+            ('PV020', 'PV02081', 'PV0208101', 'DATA USAHA DAN PERIZINAN DI SEKTOR PUPR', 'DATA USAHA DAN PERIZINAN DI SEKTOR PUPR', '', '', 'Diidentifikasi', ''),
+            ('PV908', 'PV90809', 'PV9080901', '', '', 'KPDE_PEMDA_SETORAN_MASA', 'KPDE_PEMDA_SETORAN_MASA_U', 'Diidentifikasi', ''),
+            ('PV908', 'PV90811', 'PV9081101', '', '', 'KPDE_SPPT_2014', 'KPDE_SPPT_2014_U', 'Diidentifikasi', ''),
+            ('PV908', 'PV90870', 'PV9087001', '', '', 'KPDE_PEMDA_REKLAME', 'KPDE_PEMDA_REKLAME_U', 'Diidentifikasi', ''),
+        ]
+
+        inserts = 0
+        unchanged = 0
+        errors: list[str] = []
+        inserted_keys: list[str] = []
+
+        for (id_ilap_val, id_jenis_data, id_sub_jenis_data, nama_jenis_data,
+             nama_sub_jenis_data, nama_tabel_I, nama_tabel_U,
+             id_jenis_tabel_val, status_data_val) in ADDITIONAL_RECORDS:
+
+            # Resolve FK references
+            try:
+                ilap = ILAP.objects.get(id_ilap=id_ilap_val)
+            except ILAP.DoesNotExist:
+                err = f"ILAP with id_ilap='{id_ilap_val}' not found for sub_jenis {id_sub_jenis_data}"
+                logger.error(f"[post_jenis_data_ilap_additional] {err}")
+                errors.append(err)
+                continue
+
+            try:
+                jenis_tabel = JenisTabel.objects.get(deskripsi=id_jenis_tabel_val)
+            except JenisTabel.DoesNotExist:
+                err = f"JenisTabel with deskripsi='{id_jenis_tabel_val}' not found for sub_jenis {id_sub_jenis_data}"
+                logger.error(f"[post_jenis_data_ilap_additional] {err}")
+                errors.append(err)
+                continue
+
+            status_data = None
+            if status_data_val:
+                try:
+                    status_data = StatusData.objects.get(deskripsi=status_data_val)
+                except StatusData.DoesNotExist:
+                    err = f"StatusData with deskripsi='{status_data_val}' not found for sub_jenis {id_sub_jenis_data}"
+                    logger.error(f"[post_jenis_data_ilap_additional] {err}")
+                    errors.append(err)
+                    continue
+
+            # Convert '-' sentinel values to empty string for CharField compatibility
+            nama_jns = '' if nama_jenis_data == '-' else nama_jenis_data
+            nama_sub = '' if nama_sub_jenis_data == '-' else nama_sub_jenis_data
+            tbl_I = '' if nama_tabel_I == '-' else nama_tabel_I
+            tbl_U = '' if nama_tabel_U == '-' or nama_tabel_U == '-_U' else nama_tabel_U
+
+            # Check if record already exists by id_sub_jenis_data and nama_tabel_I
+            existing_filter = {'id_sub_jenis_data': id_sub_jenis_data}
+            if tbl_I:
+                existing_filter['nama_tabel_I'] = tbl_I
+            if JenisDataILAP.objects.filter(**existing_filter).exists():
+                logger.info(
+                    f"[post_jenis_data_ilap_additional] Record {id_sub_jenis_data} "
+                    f"(tabel_I={tbl_I or '<empty>'}) already exists, skipping"
+                )
+                unchanged += 1
+                continue
+
+            if apply_changes:
+                try:
+                    JenisDataILAP.objects.create(
+                        id_ilap=ilap,
+                        id_jenis_data=id_jenis_data,
+                        id_sub_jenis_data=id_sub_jenis_data,
+                        nama_jenis_data=nama_jns,
+                        nama_sub_jenis_data=nama_sub,
+                        nama_tabel_I=tbl_I,
+                        nama_tabel_U=tbl_U,
+                        id_jenis_tabel=jenis_tabel,
+                        id_status_data=status_data,
+                    )
+                    logger.info(
+                        f"[post_jenis_data_ilap_additional] Inserted {id_sub_jenis_data} "
+                        f"(tabel_I={tbl_I or '<empty>'})"
+                    )
+                    inserts += 1
+                    inserted_keys.append(id_sub_jenis_data)
+                except Exception as exc:
+                    err = f"Failed to insert {id_sub_jenis_data} (tabel_I={tbl_I}): {exc}"
+                    logger.error(f"[post_jenis_data_ilap_additional] {err}")
+                    errors.append(err)
+            else:
+                inserts += 1
+                inserted_keys.append(id_sub_jenis_data)
+
+        logger.info(
+            f"[post_jenis_data_ilap_additional] Completed: {inserts} inserts, "
+            f"{unchanged} unchanged, {len(errors)} errors"
+        )
+
+        return OracleSyncSummary(
+            table_name="post_jenis_data_ilap_additional",
+            source_table="<post-process>",
+            target_model="diamond_web.JenisDataILAP",
+            source_rows=len(ADDITIONAL_RECORDS),
+            inserts=inserts,
+            updates=0,
+            unchanged=unchanged,
+            errors=errors,
+            inserted_keys=inserted_keys,
+        )
+
+    def _post_process_periode_jenis_data_additional(self, apply_changes: bool) -> OracleSyncSummary:
+        """After syncing periode_jenis_data, insert additional records from hardcoded data.
+
+        These additional PeriodeJenisData records (sourced from additional_periode_jenis_data.csv)
+        need to exist in the database but are not covered by the Oracle sync queries.
+
+        For each record, FK references are resolved:
+        - id_sub_jenis_data_ilap → JenisDataILAP via id_sub_jenis_data field
+        - id_periode_pengiriman → PeriodePengiriman via periode_penyampaian field
+
+        Default values:
+        - start_date = 2015-01-01
+        - akhir_penyampaian = 0
+
+        Args:
+            apply_changes: whether to persist the insert to DB.
+
+        Returns:
+            OracleSyncSummary describing what was done.
+        """
+        from datetime import date as _date
+        from diamond_web.models import JenisDataILAP, PeriodePengiriman, PeriodeJenisData
+
+        # (id_sub_jenis_data, periode_penyampaian)
+        ADDITIONAL_RECORDS = [
+            ('AS0010401', 'Tahunan'),
+            ('EI9510102', 'Tahunan'),
+            ('EI9500102', 'Tahunan'),
+            ('EI9520102', 'Tahunan'),
+            ('KM0020601', 'Bulanan'),
+            ('KM0051301', 'Bulanan'),
+            ('KM0051401', 'Bulanan'),
+            ('KM0051501', 'Bulanan'),
+            ('KM0090201', 'Triwulanan'),
+            ('KM0140701', 'Tahunan'),
+            ('KM0140701', 'Bulanan'),
+            ('KM0141501', 'Bulanan'),
+            ('KM0141501', 'Tahunan'),
+            ('KM0150702', 'Tahunan'),
+            ('KM0150801', 'Tahunan'),
+            ('KM0150802', 'Tahunan'),
+            ('KM0150901', 'Bulanan'),
+            ('KM0181901', 'Tahunan'),
+            ('KM0185216', 'Bulanan'),
+            ('KM0190201', 'Tahunan'),
+            ('KM0190202', 'Tahunan'),
+            ('KM0210602', 'Tahunan'),
+            ('KM0293101', 'Bulanan'),
+            ('KW0200101', 'Tahunan'),
+            ('KW0700101', 'Tahunan'),
+            ('KW0800101', 'Tahunan'),
+            ('KW1400101', 'Tahunan'),
+            ('KW1500101', 'Tahunan'),
+            ('KW1700101', 'Tahunan'),
+            ('KW1800101', 'Tahunan'),
+            ('KW1900101', 'Tahunan'),
+            ('KW2300101', 'Tahunan'),
+            ('KW2400101', 'Tahunan'),
+            ('KW2500101', 'Tahunan'),
+            ('KW2600101', 'Tahunan'),
+            ('KW2700101', 'Tahunan'),
+            ('KW2900101', 'Tahunan'),
+            ('KW3300101', 'Tahunan'),
+            ('LK1019000', 'Tahunan'),
+            ('LK1029000', 'Tahunan'),
+            ('LK1039000', 'Bulanan'),
+            ('LK1049000', 'Bulanan'),
+            ('LK1059000', 'Bulanan'),
+            ('LK1069000', 'Bulanan'),
+            ('LK1079000', 'Tahunan'),
+            ('LK1089000', 'Tahunan'),
+            ('LK1099000', 'Bulanan'),
+            ('LM0080203', 'Tahunan'),
+            ('LM0080204', 'Tahunan'),
+            ('LM0080502', 'Tahunan'),
+            ('LM0080504', 'Tahunan'),
+            ('LM0080506', 'Tahunan'),
+            ('LM0085201', 'Bulanan'),
+            ('LM0160201', 'Tahunan'),
+            ('LM0200301', 'Bulanan'),
+            ('PB0010101', 'Tahunan'),
+            ('PB0020101', 'Tahunan'),
+            ('PB0030101', 'Tahunan'),
+            ('PB0040101', 'Tahunan'),
+            ('PB0050101', 'Tahunan'),
+            ('PB0060101', 'Tahunan'),
+            ('PB0070101', 'Tahunan'),
+            ('PB0080101', 'Tahunan'),
+            ('PB0090101', 'Tahunan'),
+            ('PB0100101', 'Tahunan'),
+            ('PB0110101', 'Tahunan'),
+            ('PB0120101', 'Tahunan'),
+            ('PB0130101', 'Tahunan'),
+            ('PB0150101', 'Tahunan'),
+            ('PB0170101', 'Tahunan'),
+            ('PB0190101', 'Tahunan'),
+            ('PB0200101', 'Tahunan'),
+            ('PB0220101', 'Tahunan'),
+            ('PB0230101', 'Tahunan'),
+            ('PB0240101', 'Tahunan'),
+            ('PB0250101', 'Tahunan'),
+            ('PB0260101', 'Tahunan'),
+            ('PD0317901', 'Bulanan'),
+            ('PD3890502', 'Tahunan'),
+            ('PD4640801', 'Tahunan'),
+            ('PD4690801', 'Tahunan'),
+            ('PD4830801', 'Tahunan'),
+            ('PD4870801', 'Tahunan'),
+            ('PD4880801', 'Tahunan'),
+            ('PD4930801', 'Tahunan'),
+            ('PD4980801', 'Tahunan'),
+            ('PD5114901', 'Bulanan'),
+            ('PD9080101', 'Tahunan'),
+            ('PD9080201', 'Tahunan'),
+            ('PD9080401', 'Tahunan'),
+            ('PK0130201', 'Tahunan'),
+            ('PK0230201', 'Tahunan'),
+            ('PK0370101', 'Tahunan'),
+            ('PK0400201', 'Tahunan'),
+            ('PK0420201', 'Tahunan'),
+            ('PK0550201', 'Tahunan'),
+            ('PK0870101', 'Tahunan'),
+            ('PK0920201', 'Tahunan'),
+            ('PK1110201', 'Tahunan'),
+            ('PK1190201', 'Tahunan'),
+            ('PK1250201', 'Tahunan'),
+            ('PK1270201', 'Tahunan'),
+            ('PK2120201', 'Tahunan'),
+            ('PK2140201', 'Tahunan'),
+            ('PK3280201', 'Tahunan'),
+            ('PK4060201', 'Tahunan'),
+            ('PK4410201', 'Tahunan'),
+            ('PK4430201', 'Tahunan'),
+            ('PK5050201', 'Tahunan'),
+            ('PK5090201', 'Tahunan'),
+            ('PK5180201', 'Tahunan'),
+            ('PK5210201', 'Tahunan'),
+            ('PK5410201', 'Tahunan'),
+            ('PK6060201', 'Tahunan'),
+            ('PK6140201', 'Tahunan'),
+            ('PK6250201', 'Tahunan'),
+            ('PK6310201', 'Tahunan'),
+            ('PK6450201', 'Tahunan'),
+            ('PK6480201', 'Tahunan'),
+            ('PK6520201', 'Tahunan'),
+            ('PK6530201', 'Tahunan'),
+            ('PK7020201', 'Tahunan'),
+            ('PK7120201', 'Tahunan'),
+            ('PK7130201', 'Tahunan'),
+            ('PK9040201', 'Tahunan'),
+            ('PK9050201', 'Tahunan'),
+            ('PK9070201', 'Tahunan'),
+            ('PK9080201', 'Tahunan'),
+            ('PK9080701', 'Tahunan'),
+            ('PK9110201', 'Tahunan'),
+            ('PK9420201', 'Tahunan'),
+            ('PL0471011', 'Bulanan'),
+            ('PL0471017', 'Bulanan'),
+            ('PL0471039', 'Bulanan'),
+            ('PL0471041', 'Bulanan'),
+            ('PL0471044', 'Bulanan'),
+            ('PL0471087', 'Bulanan'),
+            ('PL0471121', 'Bulanan'),
+            ('PL0471182', 'Bulanan'),
+            ('PL0471183', 'Bulanan'),
+            ('PL0471184', 'Bulanan'),
+            ('PL0471185', 'Bulanan'),
+            ('PL0471186', 'Bulanan'),
+            ('PL0471187', 'Bulanan'),
+            ('PL0471188', 'Bulanan'),
+            ('PL0471189', 'Bulanan'),
+            ('PL0471190', 'Bulanan'),
+            ('PL0471191', 'Bulanan'),
+            ('PL0471192', 'Bulanan'),
+            ('PL0471193', 'Bulanan'),
+            ('PL0471194', 'Bulanan'),
+            ('PL0471195', 'Bulanan'),
+            ('PL0471196', 'Bulanan'),
+            ('PL0471197', 'Bulanan'),
+            ('PL0471199', 'Bulanan'),
+            ('PL0471200', 'Bulanan'),
+            ('PL0472002', 'Bulanan'),
+            ('PL0472003', 'Bulanan'),
+            ('PL0472004', 'Bulanan'),
+            ('PL0472005', 'Bulanan'),
+            ('PL0472006', 'Bulanan'),
+            ('PL0472007', 'Bulanan'),
+            ('PL0472008', 'Bulanan'),
+            ('PL0472009', 'Bulanan'),
+            ('PL0472010', 'Bulanan'),
+            ('PL0472011', 'Tahunan'),
+            ('PL0472012', 'Bulanan'),
+            ('PL0472013', 'Bulanan'),
+            ('PL0472014', 'Bulanan'),
+            ('PL0472015', 'Tahunan'),
+            ('PL0472016', 'Bulanan'),
+            ('PL0472018', 'Bulanan'),
+            ('PL0472019', 'Bulanan'),
+            ('PL0472020', 'Tahunan'),
+            ('PL0472021', 'Bulanan'),
+            ('PL0472022', 'Bulanan'),
+            ('PL0472023', 'Bulanan'),
+            ('PL0472024', 'Bulanan'),
+            ('PL0472025', 'Bulanan'),
+            ('PL0472026', 'Bulanan'),
+            ('PL0472028', 'Bulanan'),
+            ('PL0472029', 'Bulanan'),
+            ('PL0472030', 'Bulanan'),
+            ('PL0472031', 'Bulanan'),
+            ('PL0472032', 'Bulanan'),
+            ('PL0472033', 'Tahunan'),
+            ('PL0472034', 'Bulanan'),
+            ('PL0472035', 'Bulanan'),
+            ('PL0472036', 'Bulanan'),
+            ('PL0472037', 'Bulanan'),
+            ('PL0472038', 'Bulanan'),
+            ('PL0472039', 'Bulanan'),
+            ('PL0472040', 'Tahunan'),
+            ('PL0472041', 'Bulanan'),
+            ('PL0472042', 'Bulanan'),
+            ('PL0472043', 'Bulanan'),
+            ('PL0472044', 'Bulanan'),
+            ('PL0472046', 'Bulanan'),
+            ('PL0472047', 'Bulanan'),
+            ('PL0472048', 'Tahunan'),
+            ('PL0472049', 'Bulanan'),
+            ('PL0472050', 'Bulanan'),
+            ('PL0472051', 'Bulanan'),
+            ('PL0472052', 'Bulanan'),
+            ('PL0472053', 'Bulanan'),
+            ('PL0472054', 'Bulanan'),
+            ('PL0472055', 'Bulanan'),
+            ('PL0472056', 'Bulanan'),
+            ('PL0472057', 'Bulanan'),
+            ('PL0472058', 'Bulanan'),
+            ('PL0472059', 'Bulanan'),
+            ('PL0472060', 'Bulanan'),
+            ('PL0472061', 'Bulanan'),
+            ('PL0472062', 'Bulanan'),
+            ('PL0472063', 'Bulanan'),
+            ('PL0472064', 'Bulanan'),
+            ('PL0472065', 'Bulanan'),
+            ('PL0472066', 'Bulanan'),
+            ('PL0472067', 'Bulanan'),
+            ('PL0472068', 'Bulanan'),
+            ('PL0472069', 'Tahunan'),
+            ('PL0472070', 'Bulanan'),
+            ('PL0472071', 'Tahunan'),
+            ('PL0472072', 'Bulanan'),
+            ('PL0472073', 'Bulanan'),
+            ('PL0472074', 'Bulanan'),
+            ('PL0472075', 'Bulanan'),
+            ('PL0472076', 'Bulanan'),
+            ('PL0472077', 'Bulanan'),
+            ('PL0472078', 'Bulanan'),
+            ('PL0472080', 'Bulanan'),
+            ('PL0472081', 'Bulanan'),
+            ('PL0472082', 'Bulanan'),
+            ('PL0472083', 'Bulanan'),
+            ('PL0472084', 'Bulanan'),
+            ('PL0472085', 'Bulanan'),
+            ('PL0472086', 'Bulanan'),
+            ('PL0472087', 'Tahunan'),
+            ('PL0472088', 'Bulanan'),
+            ('PL0472089', 'Bulanan'),
+            ('PL0472090', 'Bulanan'),
+            ('PL0472091', 'Bulanan'),
+            ('PL0472092', 'Bulanan'),
+            ('PL0472093', 'Bulanan'),
+            ('PL0472094', 'Bulanan'),
+            ('PL0472095', 'Bulanan'),
+            ('PL0472096', 'Bulanan'),
+            ('PL0472097', 'Bulanan'),
+            ('PL0472098', 'Bulanan'),
+            ('PL0472099', 'Bulanan'),
+            ('PL0472100', 'Bulanan'),
+            ('PL0472101', 'Bulanan'),
+            ('PL0472102', 'Bulanan'),
+            ('PL0472103', 'Bulanan'),
+            ('PL0472104', 'Bulanan'),
+            ('PL0472105', 'Bulanan'),
+            ('PL0472106', 'Bulanan'),
+            ('PL0472107', 'Tahunan'),
+            ('PL0472108', 'Tahunan'),
+            ('PL0472109', 'Bulanan'),
+            ('PL0472110', 'Bulanan'),
+            ('PL0472111', 'Bulanan'),
+            ('PL0472112', 'Bulanan'),
+            ('PL0472113', 'Bulanan'),
+            ('PL0472114', 'Bulanan'),
+            ('PL0472115', 'Bulanan'),
+            ('PL0472116', 'Bulanan'),
+            ('PL0472117', 'Bulanan'),
+            ('PL0472118', 'Bulanan'),
+            ('PL0472119', 'Tahunan'),
+            ('PL0472120', 'Bulanan'),
+            ('PL0472121', 'Bulanan'),
+            ('PL0472122', 'Bulanan'),
+            ('PL0472124', 'Bulanan'),
+            ('PL0472125', 'Bulanan'),
+            ('PL0472126', 'Bulanan'),
+            ('PL0472127', 'Bulanan'),
+            ('PL0472128', 'Bulanan'),
+            ('PL0472129', 'Bulanan'),
+            ('PL0472130', 'Bulanan'),
+            ('PL0472131', 'Bulanan'),
+            ('PL0472132', 'Bulanan'),
+            ('PL0472133', 'Bulanan'),
+            ('PL0472134', 'Bulanan'),
+            ('PL0472135', 'Bulanan'),
+            ('PL0472137', 'Bulanan'),
+            ('PL0472138', 'Bulanan'),
+            ('PL0472139', 'Bulanan'),
+            ('PL0472140', 'Bulanan'),
+            ('PL0472141', 'Bulanan'),
+            ('PL0472142', 'Bulanan'),
+            ('PL0472143', 'Bulanan'),
+            ('PL0472145', 'Bulanan'),
+            ('PL0472146', 'Bulanan'),
+            ('PL0472147', 'Bulanan'),
+            ('PL0472148', 'Bulanan'),
+            ('PL0472149', 'Bulanan'),
+            ('PL0472150', 'Bulanan'),
+            ('PL0472151', 'Bulanan'),
+            ('PL0472152', 'Tahunan'),
+            ('PL0472153', 'Bulanan'),
+            ('PL0472154', 'Bulanan'),
+            ('PL0472155', 'Tahunan'),
+            ('PL0472156', 'Bulanan'),
+            ('PL0472157', 'Bulanan'),
+            ('PL0472159', 'Bulanan'),
+            ('PL0472160', 'Bulanan'),
+            ('PL0472161', 'Bulanan'),
+            ('PL0472162', 'Bulanan'),
+            ('PL0472163', 'Bulanan'),
+            ('PL0472164', 'Bulanan'),
+            ('PL0472165', 'Bulanan'),
+            ('PL0472166', 'Tahunan'),
+            ('PL0472167', 'Bulanan'),
+            ('PL0472168', 'Bulanan'),
+            ('PL0472169', 'Bulanan'),
+            ('PL0472170', 'Bulanan'),
+            ('PL0472171', 'Bulanan'),
+            ('PL0472172', 'Tahunan'),
+            ('PL0472173', 'Bulanan'),
+            ('PL0472174', 'Bulanan'),
+            ('PL0472175', 'Bulanan'),
+            ('PL0472176', 'Bulanan'),
+            ('PL0472177', 'Bulanan'),
+            ('PL0472178', 'Bulanan'),
+            ('PL0472179', 'Bulanan'),
+            ('PL0472180', 'Bulanan'),
+            ('PL0472181', 'Bulanan'),
+            ('PL0500101', 'Tahunan'),
+            ('PL8010101', 'Tahunan'),
+            ('PL8070003', 'Tahunan'),
+            ('PL8087001', 'Bulanan'),
+            ('PL8456001', 'Tahunan'),
+            ('PL8456002', 'Tahunan'),
+            ('PL8456003', 'Tahunan'),
+            ('PL8456004', 'Tahunan'),
+            ('PL8456005', 'Tahunan'),
+            ('PL8456006', 'Tahunan'),
+            ('PL8456007', 'Tahunan'),
+            ('PL8456008', 'Tahunan'),
+            ('PL8456009', 'Tahunan'),
+            ('PL8456010', 'Tahunan'),
+            ('PL8456011', 'Tahunan'),
+            ('PL8456012', 'Tahunan'),
+            ('PL9000010', 'Tahunan'),
+            ('PL9000020', 'Tahunan'),
+            ('PL9000030', 'Tahunan'),
+            ('PL9001010', 'Tahunan'),
+            ('PL9001020', 'Tahunan'),
+            ('PL9001030', 'Tahunan'),
+            ('PL9002020', 'Tahunan'),
+            ('PL9002030', 'Tahunan'),
+            ('PL9003020', 'Tahunan'),
+            ('PL9003030', 'Tahunan'),
+            ('PL9004010', 'Tahunan'),
+            ('PL9004020', 'Tahunan'),
+            ('PL9004030', 'Tahunan'),
+            ('PL9005020', 'Tahunan'),
+            ('PL9005030', 'Tahunan'),
+            ('PL9006020', 'Tahunan'),
+            ('PL9006030', 'Tahunan'),
+            ('PL9007010', 'Tahunan'),
+            ('PL9007020', 'Tahunan'),
+            ('PL9007030', 'Tahunan'),
+            ('PL9008020', 'Tahunan'),
+            ('PL9008030', 'Tahunan'),
+            ('PL9009020', 'Tahunan'),
+            ('PL9009030', 'Tahunan'),
+            ('PL9010020', 'Tahunan'),
+            ('PL9010030', 'Tahunan'),
+            ('PL9011010', 'Tahunan'),
+            ('PL9011020', 'Tahunan'),
+            ('PL9011030', 'Tahunan'),
+            ('PL9012010', 'Tahunan'),
+            ('PL9012020', 'Tahunan'),
+            ('PL9012030', 'Tahunan'),
+            ('PL9013010', 'Tahunan'),
+            ('PL9013020', 'Tahunan'),
+            ('PL9013030', 'Tahunan'),
+            ('PL9014010', 'Tahunan'),
+            ('PL9014020', 'Tahunan'),
+            ('PL9014030', 'Tahunan'),
+            ('PL9015010', 'Tahunan'),
+            ('PL9015020', 'Tahunan'),
+            ('PL9015030', 'Tahunan'),
+            ('PL9016010', 'Tahunan'),
+            ('PL9016020', 'Tahunan'),
+            ('PL9016030', 'Tahunan'),
+            ('PL9017010', 'Tahunan'),
+            ('PL9018010', 'Tahunan'),
+            ('PL9018020', 'Tahunan'),
+            ('PL9018030', 'Tahunan'),
+            ('PL9019020', 'Tahunan'),
+            ('PL9019030', 'Tahunan'),
+            ('PL9020010', 'Tahunan'),
+            ('PL9020020', 'Tahunan'),
+            ('PL9020030', 'Tahunan'),
+            ('PL9021020', 'Tahunan'),
+            ('PL9021030', 'Tahunan'),
+            ('PL9022020', 'Tahunan'),
+            ('PL9023010', 'Tahunan'),
+            ('PL9023030', 'Tahunan'),
+            ('PL9024030', 'Tahunan'),
+            ('PL9025020', 'Tahunan'),
+            ('PL9025030', 'Tahunan'),
+            ('PL9026020', 'Tahunan'),
+            ('PL9026030', 'Tahunan'),
+            ('PL9027020', 'Tahunan'),
+            ('PL9027030', 'Tahunan'),
+            ('PL9028020', 'Tahunan'),
+            ('PL9028030', 'Tahunan'),
+            ('PL9029020', 'Tahunan'),
+            ('PL9029030', 'Tahunan'),
+            ('PL9030020', 'Tahunan'),
+            ('PL9030030', 'Tahunan'),
+            ('PL9031030', 'Tahunan'),
+            ('PL9032010', 'Tahunan'),
+            ('PL9032020', 'Tahunan'),
+            ('PL9032030', 'Tahunan'),
+            ('PL9033010', 'Tahunan'),
+            ('PL9033020', 'Tahunan'),
+            ('PL9034020', 'Tahunan'),
+            ('PL9034030', 'Tahunan'),
+            ('PL9035020', 'Tahunan'),
+            ('PL9035030', 'Tahunan'),
+            ('PL9036010', 'Tahunan'),
+            ('PL9036020', 'Tahunan'),
+            ('PL9036030', 'Tahunan'),
+            ('PL9037020', 'Tahunan'),
+            ('PL9037030', 'Tahunan'),
+            ('PL9038010', 'Tahunan'),
+            ('PL9038020', 'Tahunan'),
+            ('PL9038030', 'Tahunan'),
+            ('PL9039020', 'Tahunan'),
+            ('PL9039030', 'Tahunan'),
+            ('PL9040020', 'Tahunan'),
+            ('PL9040030', 'Tahunan'),
+            ('PL9041020', 'Tahunan'),
+            ('PL9041030', 'Tahunan'),
+            ('PL9042010', 'Tahunan'),
+            ('PL9043020', 'Tahunan'),
+            ('PL9043030', 'Tahunan'),
+            ('PL9044010', 'Tahunan'),
+            ('PL9044020', 'Tahunan'),
+            ('PL9047010', 'Tahunan'),
+            ('PL9047020', 'Tahunan'),
+            ('PL9047030', 'Tahunan'),
+            ('PL9048020', 'Tahunan'),
+            ('PL9048030', 'Tahunan'),
+            ('PL9055030', 'Tahunan'),
+            ('PL9056030', 'Tahunan'),
+            ('PL9057030', 'Tahunan'),
+            ('PL9060801', 'Tahunan'),
+            ('PL9080101', 'Tahunan'),
+            ('PL9080102', 'Tahunan'),
+            ('PL9080105', 'Tahunan'),
+            ('PL9080106', 'Tahunan'),
+            ('PL9080107', 'Tahunan'),
+            ('PL9080108', 'Tahunan'),
+            ('PL9080112', 'Tahunan'),
+            ('PL9080114', 'Tahunan'),
+            ('PL9084001', 'Tahunan'),
+            ('PL9100201', 'Tahunan'),
+            ('PL9100205', 'Tahunan'),
+            ('PL9100601', 'Tahunan'),
+            ('PL9100701', 'Tahunan'),
+            ('PL9140201', 'Bulanan'),
+            ('PL9140202', 'Bulanan'),
+            ('PL9140203', 'Bulanan'),
+            ('PL9140301', 'Bulanan'),
+            ('PL9140302', 'Bulanan'),
+            ('PL9150301', 'Tahunan'),
+            ('PL9150302', 'Tahunan'),
+            ('PL9150303', 'Tahunan'),
+            ('PL9150304', 'Tahunan'),
+            ('PL9150305', 'Tahunan'),
+            ('PL9150306', 'Tahunan'),
+            ('PL9150307', 'Tahunan'),
+            ('PL9150308', 'Tahunan'),
+            ('PL9150309', 'Tahunan'),
+            ('PL9150310', 'Tahunan'),
+            ('PL9150501', 'Tahunan'),
+            ('PL9150601', 'Tahunan'),
+            ('PL9150701', 'Tahunan'),
+            ('PL9150702', 'Tahunan'),
+            ('PL9150801', 'Bulanan'),
+            ('PV0018001', 'Tahunan'),
+            ('PV0025101', 'Bulanan'),
+            ('PV0039101', 'Bulanan'),
+            ('PV0204701', 'Bulanan'),
+            ('PV0208101', 'Bulanan'),
+            ('PV9080901', 'Tahunan'),
+            ('PV9081101', 'Tahunan'),
+            ('PV9087001', 'Tahunan'),
+        ]
+
+        inserts = 0
+        unchanged = 0
+        errors: list[str] = []
+        inserted_keys: list[str] = []
+
+        for id_sub_jenis_data, periode_penyampaian in ADDITIONAL_RECORDS:
+            # Resolve FK references
+            jenis_data_ilap = JenisDataILAP.objects.filter(id_sub_jenis_data=id_sub_jenis_data).first()
+            if not jenis_data_ilap:
+                err = f"JenisDataILAP with id_sub_jenis_data='{id_sub_jenis_data}' not found"
+                logger.error(f"[post_periode_jenis_data_additional] {err}")
+                errors.append(err)
+                continue
+
+            try:
+                periode = PeriodePengiriman.objects.get(periode_penyampaian=periode_penyampaian)
+            except PeriodePengiriman.DoesNotExist:
+                err = f"PeriodePengiriman with periode_penyampaian='{periode_penyampaian}' not found"
+                logger.error(f"[post_periode_jenis_data_additional] {err}")
+                errors.append(err)
+                continue
+
+            # Check if record already exists by FK fields
+            if PeriodeJenisData.objects.filter(
+                id_sub_jenis_data_ilap=jenis_data_ilap,
+                id_periode_pengiriman=periode,
+            ).exists():
+                logger.info(
+                    f"[post_periode_jenis_data_additional] Record {id_sub_jenis_data} / "
+                    f"{periode_penyampaian} already exists, skipping"
+                )
+                unchanged += 1
+                continue
+
+            if apply_changes:
+                try:
+                    PeriodeJenisData.objects.create(
+                        id_sub_jenis_data_ilap=jenis_data_ilap,
+                        id_periode_pengiriman=periode,
+                        start_date=_date(2015, 1, 1),
+                        akhir_penyampaian=0,
+                    )
+                    logger.info(
+                        f"[post_periode_jenis_data_additional] Inserted {id_sub_jenis_data} / "
+                        f"{periode_penyampaian}"
+                    )
+                    inserts += 1
+                    inserted_keys.append(id_sub_jenis_data)
+                except Exception as exc:
+                    err = f"Failed to insert {id_sub_jenis_data} / {periode_penyampaian}: {exc}"
+                    logger.error(f"[post_periode_jenis_data_additional] {err}")
+                    errors.append(err)
+            else:
+                inserts += 1
+                inserted_keys.append(id_sub_jenis_data)
+
+        logger.info(
+            f"[post_periode_jenis_data_additional] Completed: {inserts} inserts, "
+            f"{unchanged} unchanged, {len(errors)} errors"
+        )
+
+        return OracleSyncSummary(
+            table_name="post_periode_jenis_data_additional",
+            source_table="<post-process>",
+            target_model="diamond_web.PeriodeJenisData",
+            source_rows=len(ADDITIONAL_RECORDS),
+            inserts=inserts,
+            updates=0,
+            unchanged=unchanged,
+            errors=errors,
+            inserted_keys=inserted_keys,
         )
 
     def _calculate_diff_for_config(
@@ -1868,9 +3254,52 @@ class OracleDataSyncService:
                 cumulative_updates += summary.updates
                 cumulative_errors += len(summary.errors)
 
+                # Pre-process: before kategori_ilap sync, ensure KW record exists
+                if cfg.name == "kategori_ilap":
+                    pre_summary = self._pre_process_kategori_ilap_kw(
+                        apply_changes=apply_changes
+                    )
+                    if pre_summary:
+                        table_summaries.append(pre_summary)
+                        cumulative_inserts += pre_summary.inserts
+                        cumulative_updates += pre_summary.updates
+                        cumulative_errors += len(pre_summary.errors)
+
+                # Post-process: after ilap sync, insert additional default ILAP records
+                if cfg.name == "ilap":
+                    post_summary = self._post_process_ilap_insert_defaults(
+                        apply_changes=apply_changes
+                    )
+                    if post_summary:
+                        table_summaries.append(post_summary)
+                        cumulative_inserts += post_summary.inserts
+                        cumulative_updates += post_summary.updates
+                        cumulative_errors += len(post_summary.errors)
+
                 # Post-process: after jenis_data_ilap sync, insert AEOI domestic row
+                # and additional hardcoded records from additional_jenis_data_ilap.csv
                 if cfg.name == "jenis_data_ilap":
                     post_summary = self._post_process_jenis_data_ilap_aeoi_domestic(
+                        apply_changes=apply_changes
+                    )
+                    if post_summary:
+                        table_summaries.append(post_summary)
+                        cumulative_inserts += post_summary.inserts
+                        cumulative_updates += post_summary.updates
+                        cumulative_errors += len(post_summary.errors)
+
+                    post_summary = self._post_process_jenis_data_ilap_additional(
+                        apply_changes=apply_changes
+                    )
+                    if post_summary:
+                        table_summaries.append(post_summary)
+                        cumulative_inserts += post_summary.inserts
+                        cumulative_updates += post_summary.updates
+                        cumulative_errors += len(post_summary.errors)
+
+                # Post-process: after periode_jenis_data sync, insert additional records
+                if cfg.name == "periode_jenis_data":
+                    post_summary = self._post_process_periode_jenis_data_additional(
                         apply_changes=apply_changes
                     )
                     if post_summary:

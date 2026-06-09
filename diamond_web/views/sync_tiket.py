@@ -33,7 +33,9 @@ os.makedirs(SYNC_LOGS_DIR, exist_ok=True)
 _TIKET_ORACLE_SQL = """
     SELECT
     DISTINCT
-    CASE WHEN length(id_tiket) = 16 THEN REGEXP_REPLACE(id_tiket, '^(.)(.*)', '\1I\2') ELSE id_tiket END id_tiket,
+    CASE 
+        WHEN LENGTH(id_tiket) = 16 and substr(id_tiket,1,1) = 'E' THEN SUBSTR(id_tiket, 1, 1) || 'I' || SUBSTR(id_tiket, 2)
+        ELSE id_tiket END id_tiket,
     1 old_db,
     CASE
         WHEN status_tiket IN ('[SELESAI]-Sudah QC', '[SELESAI]-Tidak di QC', '[SELESAI]-Tiket 0 Row') THEN 8
@@ -44,7 +46,11 @@ _TIKET_ORACLE_SQL = """
         WHEN status_tiket IN ('[P3DE]-Proses Penelitian') THEN 1
         ELSE 1
     END status_tiket,
-    PERIODE_PENGIRIMAN periode_penerimaan,
+    CASE 
+    	WHEN PERIODE_PENGIRIMAN IS NULL AND periode_data LIKE '%ahun' THEN 'Tahunan' 
+    	WHEN PERIODE_PENGIRIMAN IS NULL AND periode_data NOT LIKE '%ahun' THEN 'Bulanan'
+    	ELSE PERIODE_PENGIRIMAN
+    	END periode_penerimaan,
     substr(id_tiket, 1, 9) || '_20' || substr(id_tiket, 10, 2) jenis_prioritas_data,
     COALESCE(periode_data, 'tahun') periode_data,
     COALESCE(tahun_data, EXTRACT(YEAR FROM SYSDATE)) tahun_data,
