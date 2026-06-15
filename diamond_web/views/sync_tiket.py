@@ -34,11 +34,18 @@ _TIKET_ORACLE_SQL = """
     SELECT
     DISTINCT
     CASE 
-        WHEN LENGTH(id_tiket) = 16 and substr(id_tiket,1,1) = 'E' THEN SUBSTR(id_tiket, 1, 1) || 'I' || SUBSTR(id_tiket, 2)
-        ELSE id_tiket END id_tiket,
+        WHEN LENGTH(id_tiket) = 16 AND SUBSTR(id_tiket,1,1) = 'E' THEN SUBSTR(id_tiket, 1, 1) || 'I' || SUBSTR(id_tiket, 2)
+        ELSE id_tiket 
+    END id_tiket,
     1 old_db,
     CASE
+        -- 1. Check if the ticket is already 'Selesai' (Status 8)
         WHEN status_tiket IN ('[SELESAI]-Sudah QC', '[SELESAI]-Tidak di QC', '[SELESAI]-Tiket 0 Row') THEN 8
+        -- 2. Override to 7 ONLY if it falls into the 'Tidak Lengkap' criteria
+        WHEN NOT (COALESCE(JML_ROW_P3DE, 0) = COALESCE(JML_DATA_TELITI, 0) AND COALESCE(JML_DATA_TELITI, 0) <> 0) -- Not Lengkap
+         AND NOT (COALESCE(JML_ROW_P3DE, 0) > COALESCE(JML_DATA_TELITI, 0) AND COALESCE(JML_DATA_TELITI, 0) <> 0) -- Not Lengkap Sebagian
+        THEN 7
+        -- 3. Otherwise, fall back to standard status mappings (Lengkap & Lengkap Sebagian end up here)
         WHEN status_tiket IN ('[P3DE]-Close Tiket', '[PIDE]-Close Tiket') THEN 7
         WHEN status_tiket IN ('[PMDE]-Proses QC') THEN 6
         WHEN status_tiket IN ('[PIDE]-Proses Identifikasi') THEN 5
@@ -47,11 +54,11 @@ _TIKET_ORACLE_SQL = """
         ELSE 1
     END status_tiket,
     CASE 
-    	WHEN PERIODE_PENGIRIMAN IS NULL AND periode_data LIKE '%ahun' THEN 'Tahunan' 
-    	WHEN PERIODE_PENGIRIMAN IS NULL AND periode_data NOT LIKE '%ahun' THEN 'Bulanan'
-    	ELSE PERIODE_PENGIRIMAN
-    	END periode_penerimaan,
-    substr(id_tiket, 1, 9) || '_20' || substr(id_tiket, 10, 2) jenis_prioritas_data,
+        WHEN PERIODE_PENGIRIMAN IS NULL AND periode_data LIKE '%ahun' THEN 'Tahunan' 
+        WHEN PERIODE_PENGIRIMAN IS NULL AND periode_data NOT LIKE '%ahun' THEN 'Bulanan'
+        ELSE PERIODE_PENGIRIMAN
+    END periode_penerimaan,
+    SUBSTR(id_tiket, 1, 9) || '_20' || SUBSTR(id_tiket, 10, 2) jenis_prioritas_data,
     COALESCE(periode_data, 'tahun') periode_data,
     COALESCE(tahun_data, EXTRACT(YEAR FROM SYSDATE)) tahun_data,
     1 penyampaian,
@@ -72,7 +79,8 @@ _TIKET_ORACLE_SQL = """
     0 backup,
     0 tanda_terima,
     CASE
-        WHEN COALESCE(JML_ROW_P3DE, 0) - COALESCE(JML_DATA_TELITI, 0) = 0 THEN 'Lengkap'
+        WHEN COALESCE(JML_ROW_P3DE, 0) = COALESCE(JML_DATA_TELITI, 0) AND COALESCE(JML_DATA_TELITI, 0) <> 0 THEN 'Lengkap'
+        WHEN COALESCE(JML_ROW_P3DE, 0) > COALESCE(JML_DATA_TELITI, 0) AND COALESCE(JML_DATA_TELITI, 0) <> 0 THEN 'Lengkap Sebagian'
         ELSE 'Tidak Lengkap'
     END status_penelitian,
     TGL_TELITI,
@@ -113,30 +121,30 @@ _TIKET_ORACLE_SQL = """
     LEFT JOIN (
         SELECT
             no_tiket,
-            min(tgl_transfer) tgl_transfer,
-            max(tgl_rematch) tgl_rematch,
-            sum(JML_LOG) JML_LOG,
-            sum(JML_LOG_U) JML_LOG_U,
-            sum(JML_RES) JML_RES,
-            sum(JML_CDE) JML_CDE,
-            sum(SUDAH_QC) SUDAH_QC,
-            sum(belum_qc) belum_qc,
-            sum(lolos_qc) lolos_qc,
-            sum(TIDAK_LOLOS_QC) TIDAK_LOLOS_QC,
-            sum(QC_P) QC_P,
-            sum(QC_X) QC_X,
-            sum(QC_W) QC_W,
-            sum(QC_F) QC_F,
-            sum(QC_A) QC_A,
-            sum(QC_C) QC_C,
-            sum(QC_N) QC_N,
-            sum(QC_Y) QC_Y,
-            sum(QC_Z) QC_Z,
-            sum(QC_U) QC_U,
-            sum(QC_E) QC_E,
-            sum(QC_V) QC_V,
-            sum(QC_R) QC_R,
-            sum(QC_D) QC_D
+            MIN(tgl_transfer) tgl_transfer,
+            MAX(tgl_rematch) tgl_rematch,
+            SUM(JML_LOG) JML_LOG,
+            SUM(JML_LOG_U) JML_LOG_U,
+            SUM(JML_RES) JML_RES,
+            SUM(JML_CDE) JML_CDE,
+            SUM(SUDAH_QC) SUDAH_QC,
+            SUM(belum_qc) belum_qc,
+            SUM(lolos_qc) lolos_qc,
+            SUM(TIDAK_LOLOS_QC) TIDAK_LOLOS_QC,
+            SUM(QC_P) QC_P,
+            SUM(QC_X) QC_X,
+            SUM(QC_W) QC_W,
+            SUM(QC_F) QC_F,
+            SUM(QC_A) QC_A,
+            SUM(QC_C) QC_C,
+            SUM(QC_N) QC_N,
+            SUM(QC_Y) QC_Y,
+            SUM(QC_Z) QC_Z,
+            SUM(QC_U) QC_U,
+            SUM(QC_E) QC_E,
+            SUM(QC_V) QC_V,
+            SUM(QC_R) QC_R,
+            SUM(QC_D) QC_D
         FROM
             PVPTD.ZA_REKAP_TARIKAN
         GROUP BY
