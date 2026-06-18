@@ -39,6 +39,8 @@ from .blank import blank_index
 from .laporan_sla_perekaman import *
 from .laporan_sla_identifikasi import *
 from .laporan_metrik_data_eksternal import *
+from .laporan_rekap_himpun_olah_data import *
+from .laporan_detail_himpun_olah_data import *
 from .bulk_document_generation import *
 from .sync_data_referensi import *
 from .sync_tiket import *
