@@ -15,7 +15,27 @@ def _is_pide_user(user):
 @require_GET
 @csrf_protect
 def laporan_pide_filter_options(request):
-    """AJAX endpoint to return filtered options for cascading dropdowns."""
+    """AJAX endpoint to return filtered options for cascading dropdowns.
+
+    Accepts optional filter parameters and returns JSON with distinct values
+    for each filter level (ILAP, Jenis Data, Sub Jenis Data, Tabel I) based
+    on the narrowed queryset. Used by cascading dropdown selectors in the UI.
+
+    Args:
+        request: The HTTP GET request object.
+            - id_ilap (str, optional): Filter by ILAP ID. Use 'all' or empty to skip.
+            - id_jenis_data (str, optional): Filter by Jenis Data ID.
+            - nama_sub_jenis_data (str, optional): Filter by sub-jenis data name.
+            - nama_tabel_I (str, optional): Filter by Tabel I name.
+
+    Returns:
+        JsonResponse: A JSON object with four lists:
+            - ilaps: List of ILAP dicts with 'id' and 'nama_ilap'.
+            - jenis_data: List of sub-jenis data dicts with 'id', 'nama_sub_jenis_data',
+              and 'id_sub_jenis_data'.
+            - sub_jenis: List of distinct sub-jenis data name strings.
+            - tabel_i: List of distinct Tabel I name strings.
+    """
     id_ilap = request.GET.get('id_ilap')
     id_jenis_data = request.GET.get('id_jenis_data')
     nama_sub_jenis_data = request.GET.get('nama_sub_jenis_data')

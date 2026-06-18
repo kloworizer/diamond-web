@@ -95,7 +95,20 @@ class BatalkanTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3
         return context
 
     def form_valid(self, form):
-        """Handle form submission to update tiket status and create action record."""
+        """Handle form submission to update tiket status and create action record.
+
+        Updates tiket status to STATUS_DIBATALKAN, sets tgl_dibatalkan to current
+        datetime, and creates a TiketAction audit trail entry with the cancellation
+        reason provided by the user.
+
+        Side Effects:
+        - Tiket.status set to STATUS_DIBATALKAN
+        - Tiket.tgl_dibatalkan set to current datetime
+        - TiketAction created with DIBATALKAN action and user-provided catatan
+
+        Returns:
+        - Redirect to tiket detail page via get_success_url()
+        """
         now = datetime.now()
 
         self.object = form.save(commit=False)

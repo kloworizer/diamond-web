@@ -19,7 +19,14 @@ from ...utils import format_number_with_separator, format_periode
 
 
 def _is_p3de_user(user):
-    """Check if user is P3DE (can generate/download documents)."""
+    """Check if user is P3DE (can generate/download documents).
+
+    Args:
+        user: Django User object to check permissions for.
+
+    Returns:
+        bool: True if user is superuser, admin, or in user_p3de group.
+    """
     if not user or not user.is_authenticated:
         return False
     if user.is_superuser or user.groups.filter(name='admin').exists():
@@ -48,12 +55,29 @@ def _format_periode_tiket(tiket_obj):
 
 
 def _safe_filename_part(raw):
-    """Convert a string into a filename-safe format."""
+    """Convert a string into a filename-safe format.
+
+    Replaces all non-alphanumeric characters (except dots, hyphens, underscores)
+    with underscores and strips leading/trailing underscores.
+
+    Args:
+        raw: Input string to sanitize for use in filenames.
+
+    Returns:
+        str: Filename-safe string, or 'file' if result would be empty.
+    """
     return re.sub(r'[^A-Za-z0-9._-]+', '_', str(raw or '')).strip('_') or 'file'
 
 
 def _format_date_indonesian(date_obj):
-    """Format a date object as D Bulan YYYY in Indonesian with capitalized month names."""
+    """Format a date object as D Bulan YYYY in Indonesian with capitalized month names.
+
+    Args:
+        date_obj: datetime.date or datetime.datetime object to format.
+
+    Returns:
+        str: Formatted date string (e.g., '15 Januari 2026'), or '-' if date_obj is None.
+    """
     if not date_obj:
         return '-'
     
@@ -66,7 +90,20 @@ def _format_date_indonesian(date_obj):
 
 
 def _build_table_doc(title, headers, rows_data):
-    """Build a DOCX document with a single table."""
+    """Build a DOCX document with a single table.
+
+    Creates a new python-docx Document, adds a heading with the given title,
+    and populates a styled table with the provided headers and row data.
+
+    Args:
+        title (str): Heading text for the document.
+        headers (list of str): Column header labels for the table.
+        rows_data (list of list): Row data, where each inner list contains
+            string values for each column.
+
+    Returns:
+        Document: A python-docx Document object ready for saving or streaming.
+    """
     from docx import Document
     doc = Document()
     doc.add_heading(title, level=1)

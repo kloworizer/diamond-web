@@ -169,7 +169,19 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Active
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        """Return JSON with rendered form HTML for AJAX requests."""
+        """Return JSON with rendered form HTML for AJAX requests.
+
+        For AJAX requests, re-renders the form with validation errors and
+        returns it as HTML within a JSON response for inline form display.
+        Falls back to default form_invalid behavior for non-AJAX requests.
+
+        Args:
+            form: The invalid form instance containing validation errors.
+
+        Returns:
+            JsonResponse: With success=False, rendered HTML, and error message.
+            HttpResponse: For non-AJAX requests via parent form_invalid().
+        """
         if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             from django.template.loader import render_to_string
             html = render_to_string(

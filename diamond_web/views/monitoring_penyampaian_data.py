@@ -37,16 +37,46 @@ class MonitoringPenyampaianDataListView(LoginRequiredMixin, UserP3DERequiredMixi
     template_name = 'monitoring_penyampaian_data/list.html'
 
     def get_context_data(self, **kwargs):
+        """Prepare template context for the monitoring penyampaian data list view.
+
+        Returns:
+            dict: Template context dictionary.
+        """
         context = super().get_context_data(**kwargs)
         return context
 
 
 def get_periods_for_range(start_date, end_date, periode_type):
-    """Generate period dates based on periode type from start_date to end_date.
-    
-    Periode count resets to 1 at the beginning of each calendar year.
+    """Generate a list of period date ranges based on the given periode type.
+
+    Periods are generated sequentially from *start_date* to *end_date*. The
+    periode count resets to 1 at the beginning of each calendar year.
+
+    Args:
+        start_date (datetime.date): The start date for period generation.
+        end_date (datetime.date): The end date for period generation.
+        periode_type (str): The type of period duration. Supported values:
+            ``'harian'``, ``'mingguan'``, ``'2 mingguan'``, ``'bulanan'``,
+            ``'triwulanan'``, ``'kuartal'``, ``'semester'``, ``'tahunan'``.
+
+    Returns:
+        list[dict]: A list of dictionaries, each containing:
+
+            - **periode_num** (*int*): Sequential period number (resets yearly).
+            - **start_date** (*datetime.date*): Start date of the period.
+            - **end_date** (*datetime.date*): End date of the period.
     """
     def _add_months_safe(dt, months):
+        """Add a given number of months to a date, handling month-end overflow safely.
+
+        Args:
+            dt (datetime.date): The base date.
+            months (int): Number of months to add (can be negative).
+
+        Returns:
+            datetime.date: The resulting date with the month adjusted, and the
+                day clamped to the last day of the target month if necessary.
+        """
         month = dt.month - 1 + months
         year = dt.year + month // 12
         month = month % 12 + 1
@@ -105,17 +135,33 @@ def get_periods_for_range(start_date, end_date, periode_type):
 @require_GET
 def monitoring_penyampaian_data_data(request):
     """DataTables server-side endpoint for Monitoring Penyampaian Data.
-    
-    Generates monitoring rows for each sub jenis data from start_date to current date,
-    checking if tiket exists for each period and calculating if late.
-    
-    Permissions: wrapped by decorators to allow only users in `admin` or
-    `user_p3de` groups. Non-admin users are further restricted to
-    monitoring records for sub jenis data where they are an active P3DE PIC.
-    
-    Query parameters for filter options: get_filter_options=1 to get available filter values
-    Query parameters for filtering: kanwil, kpp, kategori_wilayah, kategori_ilap, ilap, 
-                                     jenis_data, sub_jenis_data, status_penyampaian, terlambat
+
+    Generates monitoring rows for each sub jenis data from *start_date* to the
+    current date, checking if a tiket exists for each period and calculating
+    whether the submission is late.
+
+    **Permissions:** wrapped by decorators to allow only users in ``admin`` or
+    ``user_p3de`` groups. Non-admin users are further restricted to monitoring
+    records for sub jenis data where they are an active P3DE PIC.
+
+    **Query parameters for filter options:**
+        ``get_filter_options=1`` — returns available filter values instead of data.
+
+    **Query parameters for filtering:**
+        ``kanwil``, ``kpp``, ``kategori_wilayah``, ``kategori_ilap``, ``ilap``,
+        ``jenis_data``, ``sub_jenis_data``, ``jenis_tabel``, ``dasar_hukum``,
+        ``periode_pengiriman``, ``status_penyampaian``, ``terlambat``, ``tahun``,
+        ``pic_p3de``.
+
+    Args:
+        request (HttpRequest): The incoming HTTP request with GET parameters
+            for DataTables pagination, sorting, and filtering.
+
+    Returns:
+        JsonResponse: A JSON response compatible with DataTables server-side
+            processing, containing the ``draw``, ``recordsTotal``,
+            ``recordsFiltered``, and ``data`` keys. If ``get_filter_options=1``
+            is present, returns a dictionary with available filter option lists.
     """
     # Check if requesting filter options
     if request.GET.get('get_filter_options'):
