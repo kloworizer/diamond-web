@@ -51,7 +51,18 @@ def create_tiket_action(tiket, user, catatan, action_type):
 
 
 def _get_backup_data_base_queryset(request):
-    """Return base queryset with role-based access restriction."""
+    """Return base queryset with role-based access restriction.
+
+    Non-admin/non-superuser users see only BackupData records where they
+    are an active P3DE PIC for the related tiket.
+
+    Args:
+        request: The HTTP request instance used to determine user permissions.
+
+    Returns:
+        QuerySet of BackupData with select_related optimizations, filtered
+        by user's P3DE PIC role if the user is not an admin or superuser.
+    """
     qs = BackupData.objects.select_related(
         'id_user',
         'id_media_backup',
@@ -69,7 +80,21 @@ def _get_backup_data_base_queryset(request):
 
 
 def _apply_backup_data_filters(qs, params):
-    """Apply filter params to BackupData queryset."""
+    """Apply filter parameters to a BackupData queryset.
+
+    Iterates over known filter keys (tahun, id_ilap, id_jenis_data, etc.)
+    and narrows the queryset accordingly. Unknown or empty parameters are
+    silently ignored.
+
+    Args:
+        qs: Base QuerySet of BackupData to filter.
+        params: dict-like object (e.g., request.GET) containing potential
+            filter keys with string values.
+
+    Returns:
+        QuerySet of BackupData filtered by the provided parameters, with
+        distinct() applied.
+    """
     tahun = (params.get('tahun') or '').strip()
     if tahun:
         try:
@@ -117,7 +142,20 @@ def _apply_backup_data_filters(qs, params):
 
 
 def _format_backup_periode_data(tiket_obj):
-    """Return formatted periode data label for table/export."""
+    """Return a human-readable formatted periode data label.
+
+    Builds a label from the tiket's related periode_pengiriman descriptor,
+    periode number, and year. Falls back to a simple "periode/tahun" string
+    when the related objects cannot be resolved.
+
+    Args:
+        tiket_obj: A Tiket model instance (or any object with ``.periode``,
+            ``.tahun``, and ``.id_periode_data`` relation chain).
+
+    Returns:
+        str: Formatted periode label, e.g. "Januari 2026", or "-" if the
+        input is ``None``.
+    """
     try:
         periode_desc = tiket_obj.id_periode_data.id_periode_pengiriman.periode_penerimaan
         return format_periode(periode_desc, tiket_obj.periode, tiket_obj.tahun)
@@ -126,7 +164,25 @@ def _format_backup_periode_data(tiket_obj):
 
 
 def _build_backup_data_row(obj, request=None, include_actions=False):
-    """Serialize BackupData row for DataTables/export payloads."""
+    """Serialize a BackupData instance into a dict for DataTables or export.
+
+    Resolves related models (kategori, ilap, sub-jenis, PIC names) and
+    optionally builds action button HTML if the user has edit permission.
+
+    Args:
+        obj: BackupData model instance to serialize.
+        request: Optional HttpRequest; required when ``include_actions`` is
+            ``True`` to check user permissions.
+        include_actions: bool. If ``True``, generates edit/delete button HTML
+            for users with active PIC access on tikets with status below
+            ``STATUS_DIKIRIM_KE_PIDE``.
+
+    Returns:
+        dict: A dictionary with keys suitable for DataTables or export
+        (``kategori_ilap``, ``nama_ilap``, ``jenis_data``, ``subjenis_data``,
+        ``periode_data``, ``nomor_tiket``, ``media_backup``,
+        ``lokasi_penyimpanan``, ``pic_p3de``, ``jumlah_data``, ``actions``).
+    """
     tiket = obj.id_tiket
     subjenis = tiket.id_periode_data.id_sub_jenis_data_ilap if tiket and tiket.id_periode_data else None
     ilap = subjenis.id_ilap if subjenis else None
@@ -175,7 +231,19 @@ def _build_backup_data_row(obj, request=None, include_actions=False):
 
 
 def _get_backup_media_counts(qs):
-    """Return media backup counts from filtered queryset."""
+    """Return media backup counts from a filtered BackupData queryset.
+
+    Aggregates the number of BackupData records per MediaBackup and returns
+    a complete list of all MediaBackup objects with their counts (zero for
+    media with no matching backups).
+
+    Args:
+        qs: QuerySet of BackupData to aggregate counts from.
+
+    Returns:
+        list[dict]: Each entry contains ``{'id': int, 'deskripsi': str,
+        'count': int}`` for every MediaBackup, ordered by description.
+    """
     agg = (
         qs.values('id_media_backup_id', 'id_media_backup__deskripsi')
         .annotate(count=Count('id'))
@@ -197,13 +265,39 @@ def _get_backup_media_counts(qs):
 
 
 def _pdf_escape(value):
+    """Escape special characters for PDF string content.
+
+    Escapes backslashes and parentheses so the value can be safely embedded
+    in PDF text operators. Also ensures the result is Latin-1 encodable by
+    replacing unsupported characters.
+
+    Args:
+        value: Any value to escape (will be converted to string).
+
+    Returns:
+        str: Latin-1-safe string with escaped PDF special characters.
+    """
     text = str(value or '')
     text = text.replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
     return text.encode('latin-1', errors='replace').decode('latin-1')
 
 
 def _build_simple_table_pdf(title, headers, rows):
-    """Generate a lightweight PDF bytes without external dependencies."""
+    """Generate a lightweight PDF as bytes without external PDF libraries.
+
+    Builds a minimal PDF document manually by constructing PDF objects,
+    streams, and the cross-reference table. Each row is prefixed with its
+    number. Pagination is handled automatically.
+
+    Args:
+        title: str. The document title displayed at the top of each page.
+        headers: list of str. Column header labels.
+        rows: list of list of str. Table data rows (each inner list is a row
+            of cell values).
+
+    Returns:
+        bytes: The raw PDF content, ready to be served as an HTTP response.
+    """
     page_width = 595
     page_height = 842
     margin = 36
@@ -962,6 +1056,17 @@ def backup_data_filter_options(request):
 
 
 def _get_export_rows(request):
+    """Build a sorted list of serialized BackupData rows for export.
+
+    Applies current GET filters, orders by year/tiket number/id, and returns
+    serialized dicts without action buttons.
+
+    Args:
+        request: The HTTP request (used for both base queryset and filters).
+
+    Returns:
+        list[dict]: Serialized BackupData rows suitable for Excel/PDF export.
+    """
     qs = _apply_backup_data_filters(_get_backup_data_base_queryset(request), request.GET)
     qs = qs.order_by('id_tiket__tahun', 'id_tiket__nomor_tiket', 'id')
     return [_build_backup_data_row(obj, request=request, include_actions=False) for obj in qs]

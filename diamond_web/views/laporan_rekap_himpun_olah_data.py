@@ -29,7 +29,28 @@ def is_pmde_user(user):
 
 
 def _get_filtered_data(params):
-    """Utility function to get filtered data based on request parameters."""
+    """Utility function to get filtered ILAP data based on request parameters.
+
+    Applies filters for kategori ILAP, nama ILAP, dasar hukum, jenis data,
+    periode pengiriman, and nama tabel. Each filter is applied via the
+    related model fields (e.g., jenis_data_ilap, periode_jenis_data).
+
+    Args:
+        params: QueryDict or dict-like object containing filter parameters.
+            - kategori_ilap (str, optional): Kategori ILAP ID to filter by.
+            - nama_ilap (str, optional): ILAP ID to filter by.
+            - dasar_hukum (str, optional): Dasar hukum ID; filters ILAPs that
+              have JenisDataILAP with the given dasar hukum.
+            - jenis_data (str, optional): Jenis Data ID; filters ILAPs that
+              have JenisDataILAP with the given ID.
+            - periode (str, optional): Periode pengiriman ID; filters ILAPs that
+              have PeriodeJenisData with the given periode.
+            - nama_tabel (str, optional): Jenis Tabel ID; filters ILAPs that
+              have JenisDataILAP with the given tabel.
+
+    Returns:
+        QuerySet: Filtered ILAP QuerySet with distinct results.
+    """
     kategori_ilap = params.get('kategori_ilap')
     nama_ilap = params.get('nama_ilap')
     dasar_hukum = params.get('dasar_hukum')
@@ -72,11 +93,22 @@ class LaporanRekapHimpunOlahDataView(LoginRequiredMixin, UserPassesTestMixin, Te
     template_name = 'laporan_rekap_himpun_olah_data/list.html'
 
     def test_func(self):
-        """Allow access only to PMDE users."""
+        """Check if the current user is a PMDE user or admin.
+
+        Returns:
+            bool: True if the user has PMDE or admin privileges.
+        """
         return is_pmde_user(self.request.user)
 
     def get_context_data(self, **kwargs):
-        """Add context data."""
+        """Add context data to the template.
+
+        Args:
+            **kwargs: Additional context arguments passed to the parent.
+
+        Returns:
+            dict: The template context dictionary.
+        """
         context = super().get_context_data(**kwargs)
         return context
 
@@ -86,7 +118,32 @@ class LaporanRekapHimpunOlahDataView(LoginRequiredMixin, UserPassesTestMixin, Te
 @require_http_methods(["GET", "POST"])
 @csrf_protect
 def laporan_rekap_himpun_olah_data_data(request):
-    """DataTables server-side endpoint for Laporan Rekap Penghimpunan dan Pengolahan Data."""
+    """DataTables server-side endpoint for Laporan Rekap Penghimpunan dan Pengolahan Data.
+
+    Retrieves filtered ILAP data with counts of Jenis Data by klasifikasi
+    (WAJIB, PENTING, LENGKAP, LANGKA) for each ILAP, with DataTables
+    pagination support.
+
+    Args:
+        request: The HTTP request object. Parameters can be passed via GET or POST.
+            - kategori_ilap (str, optional): Filter by kategori ILAP ID.
+            - nama_ilap (str, optional): Filter by ILAP ID.
+            - dasar_hukum (str, optional): Filter by dasar hukum ID.
+            - jenis_data (str, optional): Filter by jenis data ID.
+            - periode (str, optional): Filter by periode pengiriman ID.
+            - nama_tabel (str, optional): Filter by nama tabel ID.
+            - draw (str): DataTables draw counter.
+            - start (str): Record offset for pagination.
+            - length (str): Number of records per page.
+
+    Returns:
+        JsonResponse: A JSON object containing:
+            - draw: The draw counter.
+            - recordsTotal: Total number of ILAP records.
+            - recordsFiltered: Number of records after applying filters.
+            - data: List of ILAP dicts with kategori_ilap, nama_ilap, and
+              counts for each jenis data classification.
+    """
     params = request.POST if request.method == 'POST' else request.GET
 
     try:
@@ -156,7 +213,21 @@ def laporan_rekap_himpun_olah_data_data(request):
 @require_http_methods(["GET", "POST"])
 @csrf_protect
 def laporan_rekap_himpun_olah_data_export(request):
-    """Export Laporan Rekap Penghimpunan dan Pengolahan Data to XLSX or PDF."""
+    """Export Laporan Rekap Penghimpunan dan Pengolahan Data to XLSX or PDF.
+
+    Exports filtered ILAP data in either Excel (.xlsx) or PDF format based
+    on the 'format' parameter. Falls back to Excel if PDF generation fails
+    due to missing reportlab library.
+
+    Args:
+        request: The HTTP request object.
+            - format (str): Export format - 'excel' (default) or 'pdf'.
+            - Additional filter params passed to _get_filtered_data().
+
+    Returns:
+        HttpResponse: A file download response (XLSX or PDF) or a 400 error
+            if the format is not supported.
+    """
     params = request.GET if request.method == 'GET' else request.POST
     export_format = params.get('format', 'excel')
 
@@ -172,7 +243,17 @@ def laporan_rekap_himpun_olah_data_export(request):
 
 
 def _export_to_excel(ilaps):
-    """Export data to Excel format."""
+    """Export filtered ILAP data to an Excel (.xlsx) file.
+
+    Generates a formatted Excel workbook with a title, subtitle, and a table
+    containing ILAP info and classification counts for each ILAP.
+
+    Args:
+        ilaps (QuerySet): Filtered QuerySet of ILAP objects to export.
+
+    Returns:
+        HttpResponse: An XLSX file download response.
+    """
     # Create Excel workbook
     wb = Workbook()
     ws = wb.active
@@ -275,7 +356,19 @@ def _export_to_excel(ilaps):
 
 
 def _export_to_pdf(ilaps):
-    """Export data to PDF format."""
+    """Export filtered ILAP data to a PDF file.
+
+    Generates a PDF document using reportlab with a title, subtitle, and
+    a formatted table containing ILAP info and classification counts.
+    Falls back to Excel export if reportlab is not installed.
+
+    Args:
+        ilaps (QuerySet): Filtered QuerySet of ILAP objects to export.
+
+    Returns:
+        HttpResponse: A PDF file download response, or falls back to Excel
+            export if reportlab is not available.
+    """
     # For now, we'll return a placeholder
     # In production, use reportlab or similar
     try:

@@ -32,9 +32,25 @@ class LaporanRegisterPenerimaanView(LoginRequiredMixin, UserPassesTestMixin, Tem
     template_name = 'laporan_register_penerimaan/list.html'
 
     def test_func(self):
+        """Check if the current user is a P3DE user or admin.
+
+        Returns:
+            bool: True if the user has P3DE or admin privileges.
+        """
         return _is_p3de_user(self.request.user)
 
     def get_context_data(self, **kwargs):
+        """Add year range, current year, and current month to template context.
+
+        Provides a list of the last 10 years for the filter dropdown, along with
+        the current year and month for default selections.
+
+        Args:
+            **kwargs: Additional context arguments passed to the parent.
+
+        Returns:
+            dict: Context dict with 'years', 'current_year', and 'current_month'.
+        """
         context = super().get_context_data(**kwargs)
         current_year = datetime.now().year
         years = list(range(current_year, current_year - 10, -1))

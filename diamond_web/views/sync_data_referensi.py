@@ -26,7 +26,20 @@ os.makedirs(SYNC_LOGS_DIR, exist_ok=True)
 @require_GET
 @never_cache
 def oracle_sync_download_errors(request, sync_id):
-    """Download error log CSV file for a completed sync."""
+    """Download error log CSV file for a completed sync.
+
+    Args:
+        request: The HTTP request object.
+        sync_id (str): The UUID string identifying the sync run.
+
+    Returns:
+        FileResponse: CSV file download if error log exists.
+        JsonResponse: JSON error response with appropriate status code
+            if the file is not found or the sync_id is invalid.
+
+    Side Effects:
+        Opens and streams a CSV file from the filesystem to the client.
+    """
     try:
         # Validate sync_id format (UUID)
         try:
@@ -51,7 +64,21 @@ def oracle_sync_download_errors(request, sync_id):
 
 
 def _log_failed_row(sync_id, row_identifier, category, error_msg, row_number=None):
-    """Log a failed row to CSV file for review and debugging."""
+    """Log a failed row to CSV file for review and debugging.
+
+    Args:
+        sync_id (str): The UUID string identifying the sync run.
+        row_identifier (str): Identifier for the failed row (e.g., a key or 'table:key').
+        category (str): Category of the failure (e.g., 'Sync Error', 'Skipped Row').
+        error_msg (str): Description of the error that occurred.
+        row_number (int, optional): The row number in the data source. Defaults to None.
+
+    Returns:
+        None
+
+    Side Effects:
+        Appends a row to a CSV log file on the filesystem under SYNC_LOGS_DIR.
+    """
     try:
         # Create CSV log file for this sync run
         log_filename = os.path.join(SYNC_LOGS_DIR, f'sync_referensi_failed_rows_{sync_id}.csv')
@@ -87,6 +114,15 @@ def _log_failed_row(sync_id, row_identifier, category, error_msg, row_number=Non
 
 
 def _is_admin_user(user):
+    """Check if a user is an admin (superuser or belongs to the 'admin' group).
+
+    Args:
+        user: The Django user object to check.
+
+    Returns:
+        bool: True if the user is a superuser or belongs to the 'admin' group,
+            False otherwise.
+    """
     if not user or not user.is_authenticated:
         return False
     if user.is_superuser:
@@ -98,6 +134,14 @@ def _is_admin_user(user):
 @user_passes_test(_is_admin_user)
 @require_GET
 def oracle_sync_page(request):
+    """Render the Oracle sync reference data page.
+
+    Args:
+        request: The HTTP request object.
+
+    Returns:
+        HttpResponse: The rendered 'oracle_sync/referensi.html' template.
+    """
     return render(request, 'oracle_sync/referensi.html')
 
 
@@ -105,6 +149,18 @@ def oracle_sync_page(request):
 @user_passes_test(_is_admin_user)
 @require_POST
 def oracle_sync_test_connection(request):
+    """Test the connection to Oracle primary (and secondary, if configured) databases.
+
+    Args:
+        request: The HTTP POST request object.
+
+    Returns:
+        JsonResponse: A JSON response with 'success', 'message', and 'connections'
+            keys indicating the status of each database connection.
+
+    Side Effects:
+        Establishes and tears down Oracle database connections.
+    """
     try:
         service = OracleDataSyncService()
         with service._connect_oracle("primary") as conn:
@@ -150,6 +206,19 @@ def oracle_sync_test_connection(request):
 @require_POST
 @never_cache
 def oracle_sync_check(request):
+    """Start a background check of reference data integrity against Oracle.
+
+    Args:
+        request: The HTTP POST request object.
+
+    Returns:
+        JsonResponse: A JSON response containing 'success', 'mode', 'message',
+            and 'check_id' if the check was started successfully.
+
+    Side Effects:
+        Dispatches a Celery task (check_referensi_data_task) for background
+        execution and sets several cache keys for progress tracking.
+    """
     try:
         check_id = str(uuid.uuid4())
 
@@ -178,12 +247,34 @@ def oracle_sync_check(request):
 
 
 def _check_referensi_data_background(check_id):
-    """Deprecated: kept as a thin shim; use check_referensi_data_task instead."""
+    """Deprecated: kept as a thin shim; use check_referensi_data_task instead.
+
+    Args:
+        check_id (str): The UUID string identifying the check run.
+
+    Returns:
+        None
+
+    Side Effects:
+        Dispatches a Celery task to check reference data in the background.
+    """
     check_referensi_data_task.delay(check_id)
 
 
 def _sync_referensi_data_background(sync_id, request_user=None):
-    """Deprecated: kept as a thin shim; use sync_referensi_data_task instead."""
+    """Deprecated: kept as a thin shim; use sync_referensi_data_task instead.
+
+    Args:
+        sync_id (str): The UUID string identifying the sync run.
+        request_user (User, optional): The Django user who initiated the sync.
+            Defaults to None.
+
+    Returns:
+        None
+
+    Side Effects:
+        Dispatches a Celery task to sync reference data in the background.
+    """
     user_id = getattr(request_user, 'pk', None)
     sync_referensi_data_task.delay(sync_id, user_id)
 
@@ -193,6 +284,19 @@ def _sync_referensi_data_background(sync_id, request_user=None):
 @require_POST
 @never_cache
 def oracle_sync_run(request):
+    """Start a background sync of reference data from Oracle to Django models.
+
+    Args:
+        request: The HTTP POST request object.
+
+    Returns:
+        JsonResponse: A JSON response containing 'success', 'message', and 'sync_id'
+            if the sync was started successfully.
+
+    Side Effects:
+        Dispatches a Celery task (sync_referensi_data_task) for background
+        execution and sets several cache keys for progress tracking.
+    """
     try:
         sync_id = str(uuid.uuid4())
 
@@ -224,7 +328,18 @@ def oracle_sync_run(request):
 @require_POST
 @never_cache
 def oracle_sync_stop(request):
-    """Stop an in-progress sync operation (no auth check to avoid session locks)."""
+    """Stop an in-progress sync operation (no auth check to avoid session locks).
+
+    Args:
+        request: The HTTP POST request object containing 'sync_id' in the body.
+
+    Returns:
+        JsonResponse: A JSON response confirming the stop request was received.
+
+    Side Effects:
+        Revokes the associated Celery task and updates cache keys to mark the
+        sync as stopped with an error message.
+    """
     try:
         data = json.loads(request.body) if request.content_type == 'application/json' else request.POST
         sync_id = data.get('sync_id', '')
@@ -257,7 +372,18 @@ def oracle_sync_stop(request):
 @require_POST
 @never_cache
 def oracle_sync_stop_check(request):
-    """Stop an in-progress check operation."""
+    """Stop an in-progress check operation.
+
+    Args:
+        request: The HTTP POST request object containing 'check_id' in the body.
+
+    Returns:
+        JsonResponse: A JSON response confirming the stop request was received.
+
+    Side Effects:
+        Revokes the associated Celery task and updates cache keys to mark the
+        check as stopped with an error message.
+    """
     try:
         data = json.loads(request.body) if request.content_type == 'application/json' else request.POST
         check_id = data.get('check_id', '')
@@ -290,7 +416,17 @@ def oracle_sync_stop_check(request):
 @require_POST
 @never_cache
 def oracle_sync_clear_session(request):
-    """Clear a sync session by deleting all related cache keys."""
+    """Clear a sync session by deleting all related cache keys.
+
+    Args:
+        request: The HTTP POST request object containing 'sync_id' in the body.
+
+    Returns:
+        JsonResponse: A JSON response indicating whether the session was cleared.
+
+    Side Effects:
+        Deletes all cache keys associated with the given sync_id from the cache.
+    """
     try:
         sync_id = request.POST.get('sync_id', '')
         if not sync_id:
@@ -326,7 +462,23 @@ def oracle_sync_clear_session(request):
 @require_GET
 @never_cache
 def oracle_sync_progress(request):
-    """Get current progress of in-progress sync/check (no auth check to avoid session locks during long operations)."""
+    """Get current progress of an in-progress sync or check operation.
+
+    No auth check to avoid session locks during long operations.
+
+    Args:
+        request: The HTTP GET request object with query parameters:
+            - mode (str): Either 'sync', 'check', or 'active'.
+            - sync_id (str, optional): Required when mode is 'sync'.
+            - check_id (str, optional): Required when mode is 'check'.
+
+    Returns:
+        JsonResponse: A JSON response with the current progress, result,
+            or error status depending on the state of the operation.
+
+    Side Effects:
+        Reads cache keys for progress tracking (no write operations).
+    """
     try:
         mode = request.GET.get('mode', 'sync')
 
@@ -425,7 +577,20 @@ def oracle_sync_progress(request):
 @require_POST
 @never_cache
 def oracle_sync_truncate(request):
-    """Truncate all reference data tables that are synced and reset auto-increment."""
+    """Truncate all reference data tables that are synced and reset auto-increment.
+
+    Args:
+        request: The HTTP POST request object.
+
+    Returns:
+        JsonResponse: A JSON response with details of which tables were truncated,
+            how many succeeded, and any errors encountered.
+
+    Side Effects:
+        Deletes all rows from reference data tables, resets auto-increment
+        sequences, and temporarily disables/re-enables foreign key constraints
+        and triggers depending on the database vendor.
+    """
     try:
         from django.db import connection
         from django.apps import apps
@@ -637,12 +802,21 @@ def oracle_sync_truncate(request):
 
 def _sync_referensi_data(service, sync_id=None, request=None, progress_callback=None):
     """Sync reference data from Oracle to Django models.
-    
+
     Args:
-    - service: OracleDataSyncService instance
-    - sync_id: Unique identifier for this sync run (for progress tracking)
-    - request: Django request object (for logging current user)
-    - progress_callback: optional callable for per-table progress updates
+        service (OracleDataSyncService): The Oracle data sync service instance.
+        sync_id (str, optional): Unique identifier for this sync run for
+            progress tracking. Defaults to None.
+        request: Django request object (for logging current user). Defaults to None.
+        progress_callback (callable, optional): Callable for per-table progress
+            updates. Defaults to None.
+
+    Returns:
+        dict: A summary dictionary of the sync results.
+
+    Raises:
+        Exception: If an error occurs during the sync process; the exception
+            is logged before being re-raised.
     """
     try:
         summary = service.sync(progress_callback=progress_callback)
