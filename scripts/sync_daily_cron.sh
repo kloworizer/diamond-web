@@ -3,12 +3,12 @@
 # Daily Oracle Sync Cron Script
 # Runs: referensi sync → tiket sync (sequential)
 # Schedule: every day at 09:00 WIB (GMT+7)
-# Logs: /opt/diamond-web/sync_logs/
+# Logs: /home/pajak/diamond-web/sync_logs/
 # =============================================================================
 set -euo pipefail
 
 # ---------- Configuration ----------
-DJANGO_DIR="/opt/diamond-web"
+DJANGO_DIR="/home/pajak/diamond-web"
 VENV_DIR="$DJANGO_DIR/venv"
 LOG_DIR="$DJANGO_DIR/sync_logs"
 ENV_FILE="$DJANGO_DIR/.env"
