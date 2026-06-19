@@ -154,7 +154,23 @@ _TIKET_ORACLE_SQL = """
 
 
 def retry_on_db_lock(max_retries=5, initial_delay=0.1, backoff_factor=2.0):
-    """Decorator to retry database operations on lock with exponential backoff."""
+    """Decorator to retry database operations on lock with exponential backoff.
+
+    Args:
+        max_retries: Maximum number of retry attempts before giving up.
+            Defaults to 5.
+        initial_delay: Initial delay in seconds before the first retry.
+            Defaults to 0.1.
+        backoff_factor: Multiplier applied to the delay after each retry.
+            Defaults to 2.0.
+
+    Returns:
+        A decorator that wraps the target function with retry logic.
+
+    Side Effects:
+        Logs debug messages on each retry attempt and a warning when
+        all retries are exhausted.
+    """
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -191,6 +207,15 @@ logger = logging.getLogger(__name__)
 
 
 def _is_admin_user(user):
+    """Check if the given user is an admin user.
+
+    Args:
+        user: The Django User instance to check.
+
+    Returns:
+        True if the user is authenticated and is either a superuser
+        or belongs to the 'admin' group. False otherwise.
+    """
     if not user or not user.is_authenticated:
         return False
     if user.is_superuser:
@@ -199,10 +224,21 @@ def _is_admin_user(user):
 
 
 class SyncTimeoutError(Exception):
+    """Custom exception raised when a sync operation exceeds the timeout limit."""
     pass
 
 
 def timeout_handler(signum, frame):
+    """Signal handler for sync timeout.
+
+    Args:
+        signum: The signal number received.
+        frame: The current stack frame at the time of the signal.
+
+    Raises:
+        SyncTimeoutError: Always raised to indicate the sync has timed out
+            (more than 5 minutes).
+    """
     raise SyncTimeoutError('Sinkronisasi timeout (> 5 menit)')
 
 
@@ -210,6 +246,14 @@ def timeout_handler(signum, frame):
 @user_passes_test(_is_admin_user)
 @require_GET
 def sync_tiket_page(request):
+    """Render the Oracle tiket sync page.
+
+    Args:
+        request: The incoming HTTP request.
+
+    Returns:
+        HttpResponse with the rendered 'oracle_sync/tiket.html' template.
+    """
     return render(request, 'oracle_sync/tiket.html')
 
 
@@ -217,6 +261,19 @@ def sync_tiket_page(request):
 @user_passes_test(_is_admin_user)
 @require_POST
 def sync_tiket_test_connection(request):
+    """Test Oracle database connections (primary and optional secondary).
+
+    Args:
+        request: The incoming HTTP request (must be POST).
+
+    Returns:
+        JsonResponse with success status and connection status messages
+        for both primary and secondary Oracle connections.
+
+    Raises:
+        400: If Oracle configuration is invalid (OracleSyncConfigError).
+        500: If connection to Oracle server fails unexpectedly.
+    """
     try:
         service = OracleDataSyncService()
         with service._connect_oracle("primary") as conn:
@@ -262,6 +319,23 @@ def sync_tiket_test_connection(request):
 @require_POST
 @never_cache
 def sync_tiket_check(request):
+    """Start a tiket data check operation (dry-run comparing Oracle vs local DB).
+
+    Dispatches a Celery task to compare Oracle tiket data with the local
+    database without making any changes. Progress can be polled via
+    sync_tiket_progress with mode='check'.
+
+    Args:
+        request: The incoming HTTP request (must be POST).
+
+    Returns:
+        JsonResponse with a unique check_id for progress tracking and
+        a message indicating the check has started.
+
+    Raises:
+        400: If Oracle configuration is invalid.
+        500: If an unexpected error occurs during dispatch.
+    """
     try:
         check_id = str(uuid.uuid4())
         cache.set(f'check_tiket_done_{check_id}', False, timeout=3600)
@@ -300,6 +374,24 @@ def _sync_tiket_data_background(sync_id, request_user=None):
 @require_POST
 @never_cache
 def sync_tiket_run(request):
+    """Start a full tiket sync operation from Oracle to local database.
+
+    Dispatches a Celery task to synchronise all tiket data from Oracle
+    into the local database, performing inserts for new records and
+    updates for existing ones. Progress can be polled via
+    sync_tiket_progress with mode='sync'.
+
+    Args:
+        request: The incoming HTTP request (must be POST).
+
+    Returns:
+        JsonResponse with a unique sync_id for progress tracking and
+        a message indicating the sync has started.
+
+    Raises:
+        400: If Oracle configuration is invalid.
+        500: If an unexpected error occurs during dispatch.
+    """
     try:
         # Generate unique sync ID for tracking progress and stop signals
         sync_id = str(uuid.uuid4())
@@ -337,7 +429,22 @@ def sync_tiket_run(request):
 @require_POST
 @never_cache
 def sync_tiket_stop(request):
-    """Stop an in-progress sync operation (no auth check to avoid session locks)."""
+    """Stop an in-progress sync operation (no auth check to avoid session locks).
+
+    Revokes the associated Celery task and sets cache flags to signal
+    the sync runner to stop. No authentication check is performed to
+    avoid session lock contention.
+
+    Args:
+        request: The incoming HTTP request with JSON body containing
+            'sync_id'.
+
+    Returns:
+        JsonResponse indicating success or failure of the stop request.
+
+    Side Effects:
+        Revokes the Celery task (SIGTERM) and sets cache stop signals.
+    """
     try:
         data = json.loads(request.body)
         sync_id = data.get('sync_id')
@@ -372,7 +479,26 @@ def sync_tiket_stop(request):
 @require_GET
 @never_cache
 def sync_tiket_progress(request):
-    """Get current progress of in-progress check or sync (no auth check to avoid session locks)."""
+    """Get current progress of an in-progress check or sync operation.
+
+    No authentication check is performed to avoid session lock contention.
+    Supports two modes: 'check' (dry-run comparison) and 'sync' (data sync).
+    Returns progress data including current/total rows, percentage, inserts,
+    updates, and errors.
+
+    Args:
+        request: The incoming HTTP request. Expects 'mode' (default 'sync')
+            and either 'check_id' or 'sync_id' query parameters.
+
+    Returns:
+        JsonResponse with success status, done flag, progress data,
+        and optionally a summary result when the operation is complete.
+        Includes an error_log_url if a CSV error log file exists.
+
+    Side Effects:
+        Sets request.session.modified = False to avoid unnecessary
+        session saves during polling.
+    """
     try:
         mode = request.GET.get('mode', 'sync')
         request.session.modified = False
@@ -492,6 +618,23 @@ def sync_tiket_progress(request):
 @require_POST
 @never_cache
 def sync_tiket_truncate(request):
+    """Delete all tiket records and reset the primary key sequence.
+
+    Removes all dependent records (DetilTandaTerima, BackupData,
+    TiketAction, TiketPIC) before deleting all Tiket rows. Resets
+    the auto-increment sequence in a database-agnostic way.
+
+    Args:
+        request: The incoming HTTP request (must be POST).
+
+    Returns:
+        JsonResponse with the number of deleted rows and a success
+        message, or an error message on failure.
+
+    Side Effects:
+        Deletes all rows from DetilTandaTerima, BackupData, TiketAction,
+        TiketPIC, and Tiket tables. Resets the primary key sequence.
+    """
     try:
         from django.db import connection
         
@@ -532,7 +675,24 @@ def sync_tiket_truncate(request):
 
 
 def _log_failed_row(sync_id, nomor_tiket, periode_str, jenis_prioritas_str, tahun_data, error_msg, row_number=None):
-    """Log a failed row to CSV file for review and debugging."""
+    """Log a failed row to a CSV file for review and debugging.
+
+    Creates or appends to a CSV file named 'sync_failed_rows_{sync_id}.csv'
+    in the sync_logs directory. Each row contains timestamp, row number,
+    ticket identifier, metadata, and the error reason.
+
+    Args:
+        sync_id: Unique identifier for the sync run.
+        nomor_tiket: The ticket number that failed.
+        periode_str: The period string from Oracle data.
+        jenis_prioritas_str: The jenis prioritas string from Oracle data.
+        tahun_data: The year data from Oracle.
+        error_msg: Description of the error that occurred.
+        row_number: Optional 1-based row number in the source data.
+
+    Side Effects:
+        Writes a row to a CSV log file on disk.
+    """
     try:
         # Create CSV log file for this sync run
         log_filename = os.path.join(SYNC_LOGS_DIR, f'sync_failed_rows_{sync_id}.csv')
@@ -574,7 +734,16 @@ def _log_failed_row(sync_id, nomor_tiket, periode_str, jenis_prioritas_str, tahu
 @require_GET
 @never_cache
 def sync_tiket_download_errors(request, sync_id):
-    """Download error log CSV file for a completed tiket sync."""
+    """Download the error log CSV file for a completed tiket sync.
+
+    Args:
+        request: The incoming HTTP request.
+        sync_id: The UUID of the sync run to download errors for.
+
+    Returns:
+        FileResponse with the CSV file content, or JsonResponse with
+        404 if the file does not exist, or 400 if sync_id is invalid.
+    """
     try:
         try:
             uuid.UUID(sync_id)
@@ -598,7 +767,22 @@ def sync_tiket_download_errors(request, sync_id):
 @require_POST
 @never_cache
 def sync_tiket_stop_check(request):
-    """Stop an in-progress tiket check operation."""
+    """Stop an in-progress tiket check (dry-run) operation.
+
+    Revokes the associated Celery task and sets cache flags to signal
+    the check runner to stop. No authentication check is performed to
+    avoid session lock contention.
+
+    Args:
+        request: The incoming HTTP request with JSON body containing
+            'check_id'.
+
+    Returns:
+        JsonResponse indicating success or failure of the stop request.
+
+    Side Effects:
+        Revokes the Celery task (SIGTERM) and sets cache stop signals.
+    """
     try:
         data = json.loads(request.body)
         check_id = data.get('check_id', '')
@@ -732,6 +916,15 @@ def _assign_tiket_pics_sync(tiket, periode_jenis_data, today, base_time, request
 
 
 def _safe_int(value, default=None):
+    """Safely convert a value to int, returning a default on failure.
+
+    Args:
+        value: The value to convert (can be None, string, or numeric).
+        default: Value to return if conversion fails. Defaults to None.
+
+    Returns:
+        The integer value if conversion succeeds, otherwise the default.
+    """
     try:
         if value is None or value == '':
             return default
@@ -776,7 +969,16 @@ def _parse_jenis_prioritas_data(jenis_prioritas_str, tahun_override=None):
 
 
 def _build_periode_lookup_cache():
-    """Build cache: id_sub_jenis_data -> first PeriodeJenisData row."""
+    """Build a lookup cache mapping id_sub_jenis_data to PeriodeJenisData.
+
+    Iterates over all PeriodeJenisData rows ordered by id and keeps
+    only the first row for each unique id_sub_jenis_data. This cache
+    is used by _map_periode_data to avoid per-row database queries.
+
+    Returns:
+        dict[str, PeriodeJenisData]: A mapping from id_sub_jenis_data
+        string to the first matching PeriodeJenisData instance.
+    """
     cache_by_sub_jenis: dict[str, PeriodeJenisData] = {}
 
     for pjd in PeriodeJenisData.objects.select_related('id_sub_jenis_data_ilap').all().order_by('id'):

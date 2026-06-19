@@ -138,7 +138,18 @@ class IdentifikasiTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        """Return validation errors as JSON for AJAX requests."""
+        """Return validation errors as JSON for AJAX requests.
+
+        Handles both AJAX (returns JsonResponse with form error messages) and
+        non-AJAX requests (returns parent form_invalid response).
+
+        Args:
+            form: The invalid form instance containing validation errors.
+
+        Returns:
+            JsonResponse: For AJAX requests with success=False and error messages.
+            HttpResponse: For non-AJAX requests via parent form_invalid().
+        """
         if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             error_message = ' '.join(
                 str(err)

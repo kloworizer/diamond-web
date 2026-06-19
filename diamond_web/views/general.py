@@ -6,12 +6,16 @@ from django.contrib.auth import logout
 @login_required
 @require_POST
 def keep_alive(request):
-    """AJAX endpoint to extend the current user's session.
+    """Extend the current user's session expiry via AJAX.
 
-    Usage: called by client-side heartbeat (POST with CSRF) to mark the
-    session as modified so the session backend will refresh expiry. Returns
-    JSON: `{'ok': True, 'expiry': <seconds>}` where `expiry` is the
-    remaining session age in seconds or `None` if not available.
+    Called by the client-side heartbeat (POST with CSRF token) to mark the
+    session as modified so the session backend refreshes the expiry timeout.
+
+    Returns:
+        JsonResponse: A JSON object with:
+            - ``ok`` (bool): Always ``True``.
+            - ``expiry`` (int | None): Remaining session age in seconds, or
+              ``None`` if the expiry age could not be determined.
     """
     # Mark session modified so SESSION_SAVE_EVERY_REQUEST (or session backend) will update expiry
     request.session.modified = True
@@ -24,10 +28,17 @@ def keep_alive(request):
 
 @require_POST
 def session_expired(request):
-    """AJAX endpoint to log the user out when the client detects session expiry.
+    """Log the user out when the client detects session expiry.
 
-    Side effects: calls `logout(request)` and returns a JSON confirmation.
-    Intended to be invoked by client-side session-expiry handlers.
+    Intended to be invoked by client-side session-expiry handlers after the
+    session has timed out.  Calls ``logout(request)`` and returns a JSON
+    confirmation.
+
+    Returns:
+        JsonResponse: A JSON object with:
+            - ``ok`` (bool): Always ``True``.
+            - ``message`` (str): Confirmation text, e.g.
+              ``"Session expired. Logged out."``.
     """
     logout(request)
     return JsonResponse({"ok": True, "message": "Session expired. Logged out."})

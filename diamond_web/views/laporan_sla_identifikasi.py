@@ -20,7 +20,26 @@ def _is_pide_user(user):
 
 
 def _get_filtered_tikets(params):
-    """Utility function to filter tikets based on request parameters."""
+    """Utility function to filter tikets based on request parameters.
+
+    Applies filters for date range (tgl_mulai, tgl_akhir filtered on
+    tgl_rekam_pide), ILAP, Jenis Data, Sub Jenis Data, and Tabel I.
+    Results are ordered by tgl_kirim_pide ascending.
+
+    Args:
+        params: QueryDict or dict-like object containing filter parameters.
+            - tgl_mulai (str, optional): Start datetime in YYYY-MM-DDTHH:MM format.
+            - tgl_akhir (str, optional): End datetime in YYYY-MM-DDTHH:MM format.
+            - id_ilap (str, optional): ILAP ID to filter by.
+            - id_jenis_data (str, optional): Jenis Data ID to filter by.
+            - nama_sub_jenis_data (str, optional): Sub-jenis data name to filter by.
+            - nama_tabel_I (str, optional): Tabel I name to filter by.
+
+    Returns:
+        QuerySet: Filtered and ordered Tiket QuerySet with select_related
+            on id_periode_data__id_sub_jenis_data_ilap__id_ilap and
+            id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel.
+    """
     tgl_mulai_str = params.get('tgl_mulai')
     tgl_akhir_str = params.get('tgl_akhir')
     id_ilap = params.get('id_ilap')
@@ -77,11 +96,22 @@ class LaporanSLAIdentifikasiView(LoginRequiredMixin, UserPassesTestMixin, Templa
     template_name = 'laporan_sla_identifikasi/list.html'
     
     def test_func(self):
-        """Verify user is PIDE user or admin."""
+        """Check if the current user is a PIDE user or admin.
+
+        Returns:
+            bool: True if the user has PIDE or admin privileges.
+        """
         return _is_pide_user(self.request.user)
     
     def get_context_data(self, **kwargs):
-        """Add form to context."""
+        """Add the SLA identifikasi filter form to the template context.
+
+        Args:
+            **kwargs: Additional context arguments passed to the parent.
+
+        Returns:
+            dict: Context dict with an initialized 'form' instance.
+        """
         context = super().get_context_data(**kwargs)
         context['form'] = LaporanSLAIdentifikasiFilterForm()
         return context
@@ -167,7 +197,25 @@ def laporan_sla_identifikasi_data(request):
 @require_GET
 @csrf_protect
 def laporan_sla_identifikasi_export(request):
-    """Export Laporan SLA Identifikasi to XLSX file."""
+    """Export Laporan SLA Identifikasi to XLSX file.
+
+    Uses the LaporanSLAIdentifikasiExportResource to generate an XLSX file from
+    tikets filtered by the provided GET parameters (date range, ILAP,
+    Jenis Data, Sub Jenis Data, Tabel I).
+
+    Args:
+        request: The HTTP GET request object. Parameters are passed to
+            _get_filtered_tikets() for filtering.
+            - tgl_mulai (str, optional): Start date in YYYY-MM-DDTHH:MM format.
+            - tgl_akhir (str, optional): End date in YYYY-MM-DDTHH:MM format.
+            - id_ilap (str, optional): ILAP ID filter.
+            - id_jenis_data (str, optional): Jenis Data ID filter.
+            - nama_sub_jenis_data (str, optional): Sub-jenis data name filter.
+            - nama_tabel_I (str, optional): Tabel I name filter.
+
+    Returns:
+        HttpResponse: An XLSX file download response with the exported data.
+    """
     # Get filtered tikets using helper
     tikets = _get_filtered_tikets(request.GET)
     
