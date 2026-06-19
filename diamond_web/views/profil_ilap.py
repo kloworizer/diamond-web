@@ -19,17 +19,52 @@ class ProfilILAPListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView
     template_name = 'profil_ilap/list.html'
 
     def get_context_data(self, **kwargs):
+        """Add additional context data for the ILAP list view.
+
+        Args:
+            **kwargs: Additional keyword arguments passed to the parent class
+                context data.
+
+        Returns:
+            dict: Template context data including any additional variables
+                for rendering the page.
+        """
         context = super().get_context_data(**kwargs)
         return context
     
     def render_to_response(self, context, **response_kwargs):
+        """Render the response, returning JSON for AJAX requests or HTML otherwise.
+
+        If the request is an AJAX request (``XMLHttpRequest``) or the
+        ``format`` parameter is ``json``, returns a JSON response for
+        DataTables integration. Otherwise delegates to the parent class.
+
+        Args:
+            context (dict): The template context data.
+            **response_kwargs: Additional keyword arguments for the response.
+
+        Returns:
+            JsonResponse: If the request expects JSON data.
+            django.http.HttpResponse: The rendered HTML template otherwise.
+        """
         # Check if request wants JSON data (for DataTables)
         if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest' or self.request.GET.get('format') == 'json':
             return self.get_data_json()
         return super().render_to_response(context, **response_kwargs)
     
     def get_data_json(self):
-        """Return data in JSON format for DataTables (server-side processing)."""
+        """Build and return a JSON response for DataTables server-side processing.
+
+        Handles pagination, global search, per-column filtering, ordering,
+        and record counts required by the DataTables jQuery plugin.
+
+        Returns:
+            JsonResponse: A JSON object containing:
+                - draw (int): Echoes the draw parameter from the request.
+                - recordsTotal (int): Total records before filtering.
+                - recordsFiltered (int): Total records after filtering.
+                - data (list): Paginated list of ILAP row dictionaries.
+        """
         draw = int(self.request.GET.get('draw', 1))
         start = int(self.request.GET.get('start', 0))
         length = int(self.request.GET.get('length', 10))
@@ -117,6 +152,23 @@ class ProfilILAPDetailView(LoginRequiredMixin, UserP3DERequiredMixin, DetailView
     context_object_name = 'ilap'
 
     def get_context_data(self, **kwargs):
+        """Add context data for the ILAP detail view including jenis_data breakdown.
+
+        Gathers all ``JenisDataILAP`` records associated with the current ILAP,
+        their associated legal bases (klasifikasi), and calculates tiket
+        submission counts per year and period.
+
+        Args:
+            **kwargs: Additional keyword arguments passed to the parent class
+                context data.
+
+        Returns:
+            dict: Template context containing:
+                - ilap (ILAP): The current ILAP object.
+                - jenis_data_details (list): Processed details for each
+                  jenis_data_ilap.
+                - years (list): Range of years displayed in the template.
+        """
         context = super().get_context_data(**kwargs)
         ilap = self.get_object()
         

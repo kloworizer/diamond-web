@@ -41,6 +41,16 @@ class CaraPenyampaianCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, Ajax
         return context
 
     def get(self, request, *args, **kwargs):
+        """Handle GET request to display the empty creation form.
+
+        Sets ``self.object`` to ``None`` (no existing object) and
+        instantiates the form so the user can fill in a new
+        ``CaraPenyampaian`` record.
+
+        Returns:
+            HttpResponse: The rendered form response (either HTML or
+            AJAX-fragment depending on the request).
+        """
         self.object = None
         form = self.get_form()
         return self.render_form_response(form)
@@ -59,6 +69,16 @@ class CaraPenyampaianUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, Ajax
         return context
 
     def get(self, request, *args, **kwargs):
+        """Handle GET request to display the update form for an existing record.
+
+        Loads the existing ``CaraPenyampaian`` instance identified by the
+        URL keyword arguments and binds it to the form so the user can
+        modify its fields.
+
+        Returns:
+            HttpResponse: The rendered form response (either HTML or
+            AJAX-fragment depending on the request).
+        """
         self.object = self.get_object()
         form = self.get_form()
         return self.render_form_response(form)
@@ -70,11 +90,32 @@ class CaraPenyampaianDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERe
     success_url = reverse_lazy('cara_penyampaian_list')
 
     def get_context_data(self, **kwargs):
+        """Extend template context with the delete confirmation form action URL.
+
+        Adds an extra ``form_action`` entry pointing to the delete
+        endpoint for the current object so the confirmation template
+        knows where to submit the ``POST`` request.
+
+        Returns:
+            dict: The augmented template context dictionary.
+        """
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('cara_penyampaian_delete', args=[self.object.pk])
         return context
 
     def get(self, request, *args, **kwargs):
+        """Handle GET request to display the delete confirmation page.
+
+        Loads the existing ``CaraPenyampaian`` instance and renders the
+        confirmation template. If the request includes an ``?ajax=1``
+        parameter, the response is returned as a JSON fragment suitable
+        for in-page a modal.
+
+        Returns:
+            JsonResponse: An AJAX response with the rendered HTML when
+            ``?ajax=1`` is present.
+            HttpResponse: The standard confirmation page otherwise.
+        """
         self.object = self.get_object()
         if request.GET.get('ajax'):
             from django.template.loader import render_to_string
@@ -83,6 +124,17 @@ class CaraPenyampaianDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERe
         return self.render_to_response(self.get_context_data())
 
     def delete(self, request, *args, **kwargs):
+        """Delete the ``CaraPenyampaian`` instance and return a JSON response.
+
+        Removes the object from the database. For AJAX requests
+        (``X-Requested-With: XMLHttpRequest``) a success message is
+        embedded in the JSON payload; otherwise a Django ``messages``
+        success notification is stored before redirecting.
+
+        Returns:
+            JsonResponse: A JSON object with ``success``, an optional
+            ``message``, and the ``redirect`` URL.
+        """
         self.object = self.get_object()
         name = str(self.object)
         self.object.delete()
@@ -96,6 +148,16 @@ class CaraPenyampaianDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERe
         return JsonResponse({'success': True, 'redirect': str(self.success_url)})
 
     def post(self, request, *args, **kwargs):
+        """Handle POST request by delegating to the delete logic.
+
+        A standard HTML form submission uses ``POST`` rather than
+        ``DELETE``; this method forwards the request to ``delete()``
+        so the same code path handles both verbs.
+
+        Returns:
+            JsonResponse: The same JSON response produced by
+            ``delete()``.
+        """
         return self.delete(request, *args, **kwargs)
 
 
@@ -103,7 +165,26 @@ class CaraPenyampaianDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERe
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def cara_penyampaian_data(request):
-    """Server-side DataTables endpoint for `CaraPenyampaian`."""
+    """Return paginated, searchable, orderable JSON data for DataTables.
+
+    This view powers the server-side processing of the
+    ``CaraPenyampaian`` DataTable.  It accepts standard DataTables
+    parameters (``draw``, ``start``, ``length``, ``order[0][column]``,
+    ``order[0][dir]``) together with custom column-level search filters
+    (``columns_search[]``) and returns a ``JsonResponse`` that conforms
+    to the DataTables protocol.
+
+    The response includes:
+        - ``draw`` — the draw counter sent by DataTables.
+        - ``recordsTotal`` — total number of records in the database.
+        - ``recordsFiltered`` — number of records after applying filters.
+        - ``data`` — the array of row data for the current page.
+
+    Returns:
+        JsonResponse: A DataTables-compatible JSON payload on success.
+        JsonResponse: A 500 response with ``error`` and ``traceback``
+        keys when an unexpected exception occurs.
+    """
     try:
         draw = int(request.GET.get('draw', '1'))
         start = int(request.GET.get('start', '0'))

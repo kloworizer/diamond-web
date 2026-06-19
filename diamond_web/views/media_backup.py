@@ -41,6 +41,16 @@ class MediaBackupCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxForm
         return context
 
     def get(self, request, *args, **kwargs):
+        """Handle GET request: present an empty form for creating a new MediaBackup.
+
+        Args:
+            request: The incoming HTTP request.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            HttpResponse: Rendered form response via the AjaxFormMixin.
+        """
         self.object = None
         form = self.get_form()
         return self.render_form_response(form)
@@ -59,6 +69,16 @@ class MediaBackupUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxForm
         return context
 
     def get(self, request, *args, **kwargs):
+        """Handle GET request: present a pre-populated form for an existing MediaBackup.
+
+        Args:
+            request: The incoming HTTP request.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            HttpResponse: Rendered form response via the AjaxFormMixin.
+        """
         self.object = self.get_object()
         form = self.get_form()
         return self.render_form_response(form)
@@ -70,11 +90,33 @@ class MediaBackupDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequir
     success_url = reverse_lazy('media_backup_list')
 
     def get_context_data(self, **kwargs):
+        """Add the delete form action URL to the template context.
+
+        Args:
+            **kwargs: Additional keyword arguments passed to the parent.
+
+        Returns:
+            dict: Template context with 'form_action' key added.
+        """
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('media_backup_delete', args=[self.object.pk])
         return context
 
     def get(self, request, *args, **kwargs):
+        """Handle GET request: show the delete confirmation page.
+
+        Supports AJAX requests by returning rendered HTML inside a JSON
+        response, allowing modal-based deletion flows.
+
+        Args:
+            request: The incoming HTTP request.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            JsonResponse or HttpResponse: JSON with rendered HTML for AJAX
+            requests, or a standard template response otherwise.
+        """
         self.object = self.get_object()
         if request.GET.get('ajax'):
             from django.template.loader import render_to_string
@@ -83,6 +125,21 @@ class MediaBackupDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequir
         return self.render_to_response(self.get_context_data())
 
     def delete(self, request, *args, **kwargs):
+        """Perform the actual deletion of a MediaBackup instance.
+
+        Returns a JSON response indicating success. For AJAX requests the
+        success message is included inline; otherwise it is stored via
+        Django's messages framework and a redirect URL is returned.
+
+        Args:
+            request: The incoming HTTP request.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            JsonResponse: Contains 'success' boolean, 'message' (AJAX only),
+            and optionally 'redirect' URL for non-AJAX requests.
+        """
         self.object = self.get_object()
         name = str(self.object)
         self.object.delete()
@@ -95,6 +152,16 @@ class MediaBackupDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequir
         return JsonResponse({'success': True, 'redirect': self.success_url})
 
     def post(self, request, *args, **kwargs):
+        """Handle POST request by delegating to the delete handler.
+
+        Args:
+            request: The incoming HTTP request.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            JsonResponse: The response from the delete method.
+        """
         return self.delete(request, *args, **kwargs)
 
 
@@ -102,7 +169,21 @@ class MediaBackupDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequir
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def media_backup_data(request):
-    """Server-side DataTables endpoint for `MediaBackup`."""
+    """Server-side DataTables endpoint for `MediaBackup`.
+
+    Processes DataTables parameters including pagination (`start`, `length`),
+    column-specific search filters, and sorting configuration. Returns a
+    JSON response compatible with the DataTables plugin format.
+
+    Args:
+        request: The incoming HTTP GET request containing DataTables
+            parameters (draw, start, length, columns_search[], order).
+
+    Returns:
+        JsonResponse: A dictionary with 'draw', 'recordsTotal',
+        'recordsFiltered', and 'data' keys on success, or 'error' and
+        'traceback' keys on failure (HTTP 500).
+    """
     try:
         draw = int(request.GET.get('draw', '1'))
         start = int(request.GET.get('start', '0'))

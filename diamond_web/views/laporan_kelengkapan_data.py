@@ -51,7 +51,32 @@ class LaporanKelengkapanDataView(LoginRequiredMixin, UserPassesTestMixin, Templa
 @require_http_methods(["GET", "POST"])
 @csrf_protect
 def laporan_kelengkapan_data_data(request): 
-    """DataTables server-side endpoint for Laporan Kelengkapan Data."""
+    """DataTables server-side endpoint for Laporan Kelengkapan Data.
+
+    Filters tikets by tgl_transfer within the specified period (monthly,
+    quarterly, semesterly, or yearly) and supports DataTables pagination,
+    search, and ordering.
+
+    Args:
+        request: The HTTP request object. Parameters can be passed via GET or POST.
+            - periode_type (str): Period type (bulanan, triwulanan, semester, tahunan).
+            - periode (str): Period value (month 1-12, quarter 1-4, semester 1-2, or year).
+            - tahun (str): Year for filtering.
+            - draw (str): DataTables draw counter for redraw handling.
+            - start (str): Record offset for pagination.
+            - length (str): Number of records per page.
+            - search[value] (str, optional): Search string for filtering results.
+            - order[0][column] (str, optional): Column index for ordering.
+            - order[0][dir] (str, optional): Order direction (asc/desc).
+
+    Returns:
+        JsonResponse: A JSON object containing:
+            - draw: The draw counter.
+            - recordsTotal: Total number of Tiket records in the system.
+            - recordsFiltered: Number of records after applying filters.
+            - data: List of tiket dicts with nama_ilap, nama_sub_jenis_data,
+              nama_tabel, nomor_tiket, data_diterima, status_tiket, and qc_c.
+    """
     params = request.POST if request.method == 'POST' else request.GET
     periode_type = params.get('periode_type')
     periode = params.get('periode')
@@ -264,7 +289,21 @@ def laporan_kelengkapan_data_data(request):
 @require_GET
 @csrf_protect
 def laporan_kelengkapan_data_export(request):
-    """Export Laporan Kelengkapan Data to Excel based on current filters."""
+    """Export Laporan Kelengkapan Data to Excel based on current filters.
+
+    Accepts GET parameters for period filtering, then generates and returns
+    an XLSX file containing the filtered tiket data.
+
+    Args:
+        request: The HTTP GET request object.
+            - periode_type (str): Period type (bulanan, triwulanan, semester, tahunan).
+            - periode (str): Period value (month 1-12, quarter 1-4, semester 1-2, or year).
+            - tahun (str): Year for filtering.
+
+    Returns:
+        HttpResponse: An XLSX file download response with the exported data,
+            or a 400 error response if parameters are invalid.
+    """
     periode_type = request.GET.get('periode_type')
     periode = request.GET.get('periode')
     tahun = request.GET.get('tahun')

@@ -182,7 +182,12 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
     # Template selection
     # ------------------------------------------------------------------
     def get_template_names(self):
-        """Return modal template for AJAX requests, full page otherwise."""
+        """Return modal template for AJAX requests, full page otherwise.
+
+        Returns:
+            list: ['tiket/kirim_tiket_modal_form.html'] for AJAX requests,
+                  [self.template_name] for standard page requests.
+        """
         if self.is_ajax_request():
             return ['tiket/kirim_tiket_modal_form.html']
         return [self.template_name]
@@ -191,7 +196,14 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
     # Initial / form kwargs
     # ------------------------------------------------------------------
     def get_initial(self):
-        """Pre-populate tiket_ids for single-tiket mode."""
+        """Pre-populate tiket_ids for single-tiket mode.
+
+        When a tiket_pk URL parameter is present, sets the initial tiket_ids
+        value to that single tiket's primary key for pre-selection in the form.
+
+        Returns:
+            dict: Initial form data with optional pre-populated tiket_ids.
+        """
         initial = super().get_initial()
         tiket_pk = self.kwargs.get('tiket_pk')
         if tiket_pk:
@@ -221,12 +233,27 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
     # AJAX helpers
     # ------------------------------------------------------------------
     def is_ajax_request(self):
-        """Check whether the request is an AJAX (XMLHttpRequest) call."""
+        """Check whether the request is an AJAX (XMLHttpRequest) call.
+
+        Returns:
+            bool: True if the request was made via XMLHttpRequest, False otherwise.
+        """
         return self.request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     def get_json_response(self, success=True, message='', errors=None,
                           redirect=None):
-        """Return a standardised JSON payload for AJAX clients."""
+        """Return a standardised JSON payload for AJAX clients.
+
+        Args:
+            success (bool): Whether the operation was successful.
+            message (str): Human-readable status message.
+            errors (dict, optional): Validation or error details.
+            redirect (str, optional): URL to redirect the client to.
+
+        Returns:
+            JsonResponse: JSON payload with success, message, and optional
+                          errors/redirect fields.
+        """
         response = {'success': success, 'message': message}
         if errors:
             response['errors'] = errors
@@ -384,7 +411,15 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
             return self.form_invalid(form)
 
     def form_invalid(self, form):
-        """Return validation errors in the appropriate format."""
+        """Return validation errors in the appropriate format.
+
+        Args:
+            form: The invalid form instance containing validation errors.
+
+        Returns:
+            JsonResponse: For AJAX requests with success=False and errors.
+            HttpResponse: For non-AJAX requests via parent form_invalid().
+        """
         if self.is_ajax_request():
             return self.get_json_response(success=False, errors=form.errors)
         return super().form_invalid(form)
@@ -398,6 +433,19 @@ class DownloadNDPengantarView(LoginRequiredMixin, UserP3DERequiredMixin, View):
     Used for AJAX-triggered downloads (from the tiket detail modal).
     """
     def get(self, request, id_temp):
+        """Handle GET request: generate and return ND Pengantar DOCX download.
+
+        Args:
+            request: The HTTP request object.
+            id_temp: KirimPideTemp group ID to generate ND Pengantar for.
+
+        Returns:
+            HttpResponse: DOCX file download on success.
+            HttpResponseRedirect: Redirect to tiket_list on failure.
+
+        Raises:
+            HttpResponseForbidden: If requesting user does not own this temp batch.
+        """
         temp_records = list(
             KirimPideTemp.objects.filter(id_temp=id_temp)
             .select_related('id_tiket')
@@ -478,7 +526,22 @@ class KirimPideTempUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, View):
         ).distinct().order_by('id')
 
     def get(self, request, id_temp):
-        """Return modal HTML with all eligible tikets as checkboxes."""
+        """Return modal HTML with all eligible tikets as checkboxes.
+
+        Existing tickets in this id_temp are pre-checked. Returns JSON with
+        rendered modal HTML for AJAX display.
+
+        Args:
+            request: The HTTP request object.
+            id_temp: KirimPideTemp group ID to edit.
+
+        Returns:
+            JsonResponse: With success flag and rendered modal HTML.
+
+        Raises:
+            JsonResponse 404: If id_temp not found.
+            JsonResponse 403: If user does not own this id_temp.
+        """
         temp_records = list(
             KirimPideTemp.objects.filter(id_temp=id_temp)
             .select_related('id_tiket')
@@ -528,7 +591,23 @@ class KirimPideTempUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, View):
         return JsonResponse({'success': True, 'html': html})
 
     def post(self, request, id_temp):
-        """Update selected tikets: add newly checked, remove unchecked."""
+        """Update selected tikets: add newly checked, remove unchecked.
+
+        Processes the tiket_ids POST parameter: adds newly checked tickets
+        to the temp batch and removes unchecked ones. Only tickets that the
+        user is an active P3DE PIC for are eligible.
+
+        Args:
+            request: The HTTP request object with tiket_ids POST data.
+            id_temp: KirimPideTemp group ID to update.
+
+        Returns:
+            JsonResponse: With success flag and summary of changes.
+
+        Raises:
+            JsonResponse 404: If id_temp not found.
+            JsonResponse 403: If user does not own this id_temp.
+        """
         temp_records = list(
             KirimPideTemp.objects.filter(id_temp=id_temp)
         )
@@ -603,9 +682,26 @@ class KirimPideTempUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, View):
 
 
 class KirimPideTempDeleteView(LoginRequiredMixin, UserP3DERequiredMixin, View):
-    """Delete all KirimPideTemp records for a given id_temp."""
+    """Delete all KirimPideTemp records for a given id_temp.
+
+    Used by P3DE users to remove a previously generated ND Pengantar batch
+    from the temporary storage before sending to PIDE.
+    """
 
     def post(self, request, id_temp):
+        """Handle POST request: delete all records in the id_temp group.
+
+        Args:
+            request: The HTTP request object.
+            id_temp: KirimPideTemp group ID to delete.
+
+        Returns:
+            JsonResponse: With success flag and deletion count.
+
+        Raises:
+            JsonResponse 404: If id_temp not found.
+            JsonResponse 403: If user does not own this id_temp.
+        """
         records = list(KirimPideTemp.objects.filter(id_temp=id_temp))
         if not records:
             return JsonResponse(
@@ -635,7 +731,23 @@ class KirimKePIDEView(LoginRequiredMixin, UserP3DERequiredMixin, View):
     """
 
     def get(self, request, id_temp):
-        """Return modal HTML with form for Kirim ke PIDE."""
+        """Return modal HTML with form for Kirim ke PIDE.
+
+        Loads the temp batch records and associated tikets, then renders
+        a modal form with ND Nadine reference fields (tgl_nadine,
+        nomor_nd_nadine, tgl_kirim_pide).
+
+        Args:
+            request: The HTTP request object.
+            id_temp: KirimPideTemp group ID to send to PIDE.
+
+        Returns:
+            JsonResponse: With success flag and rendered modal HTML.
+
+        Raises:
+            JsonResponse 404: If id_temp not found.
+            JsonResponse 403: If user does not own this id_temp.
+        """
         temp_records = list(
             KirimPideTemp.objects.filter(id_temp=id_temp)
             .select_related('id_tiket')
@@ -673,7 +785,29 @@ class KirimKePIDEView(LoginRequiredMixin, UserP3DERequiredMixin, View):
         return JsonResponse({'success': True, 'html': html})
 
     def post(self, request, id_temp):
-        """Update all tickets in the group to status 'Dikirim ke PIDE'."""
+        """Update all tickets in the group to status 'Dikirim ke PIDE'.
+
+        Within a transaction:
+        1. Validates KirimKePideForm (tgl_nadine, nomor_nd_nadine, tgl_kirim_pide)
+        2. Updates each tiket's status to STATUS_DIKIRIM_KE_PIDE
+        3. Sets ND Nadine reference fields on each tiket
+        4. Creates DIKIRIM_KE_PIDE TiketAction for audit trail
+        5. Sends Notification to all active PIDE PICs
+        6. Cleans up KirimPideTemp records
+
+        Args:
+            request: The HTTP request object with form data.
+            id_temp: KirimPideTemp group ID to send.
+
+        Returns:
+            JsonResponse: With success flag and completion message.
+
+        Raises:
+            JsonResponse 404: If id_temp not found.
+            JsonResponse 403: If user does not own this id_temp.
+            JsonResponse 400: If form validation fails.
+            JsonResponse 500: On other processing errors.
+        """
         temp_records = list(
             KirimPideTemp.objects.filter(id_temp=id_temp)
             .select_related('id_tiket')

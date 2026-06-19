@@ -27,6 +27,12 @@ class AdminAnyRequiredMixin(UserPassesTestMixin):
     mixins (e.g., AdminP3DERequiredMixin for P3DE-only views).
     """
     def test_func(self):
+        """Check whether the current user belongs to any admin group.
+
+        Returns:
+            bool: True if the user is a member of the ``admin``,
+            ``admin_p3de``, ``admin_pide``, or ``admin_pmde`` group.
+        """
         return self.request.user.groups.filter(
             name__in=['admin', 'admin_p3de', 'admin_pide', 'admin_pmde']
         ).exists()
@@ -40,6 +46,11 @@ class AdminP3DERequiredMixin(UserPassesTestMixin):
     member of either group.
     """
     def test_func(self):
+        """Check whether the current user belongs to the ``admin`` or ``admin_p3de`` group.
+
+        Returns:
+            bool: True if the user is a member of either group.
+        """
         return self.request.user.groups.filter(name__in=['admin', 'admin_p3de']).exists()
 
 
@@ -50,12 +61,26 @@ class AdminPIDERequiredMixin(UserPassesTestMixin):
     administrators.
     """
     def test_func(self):
+        """Check whether the current user belongs to the ``admin`` or ``admin_pide`` group.
+
+        Returns:
+            bool: True if the user is a member of either group.
+        """
         return self.request.user.groups.filter(name__in=['admin', 'admin_pide']).exists()
 
 
 class AdminPMDERequiredMixin(UserPassesTestMixin):
-    """Require membership in `admin` or `admin_pmde` groups."""
+    """Require membership in the ``admin`` or ``admin_pmde`` groups.
+
+    Use this mixin for views that should be accessible by global admins and
+    PMDE administrators.
+    """
     def test_func(self):
+        """Check whether the current user belongs to the ``admin`` or ``admin_pmde`` group.
+
+        Returns:
+            bool: True if the user is a member of either group.
+        """
         return self.request.user.groups.filter(name__in=['admin', 'admin_pmde']).exists()
 
 
@@ -69,9 +94,25 @@ class UserP3DERequiredMixin(UserPassesTestMixin):
     taken.
     """
     def test_func(self):
+        """Check whether the current user belongs to an allowed group.
+
+        Allowed groups are ``admin``, ``admin_p3de``, and ``user_p3de``.
+
+        Returns:
+            bool: True if the user is a member of one of the allowed groups.
+        """
         return self.request.user.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de']).exists()
 
     def handle_no_permission(self):
+        """Handle unauthorized access for P3DE users.
+
+        Returns a JSON 403 response for AJAX requests; otherwise falls back
+        to the standard ``handle_no_permission`` behavior.
+
+        Returns:
+            JsonResponse or HttpResponse: A JSON 403 response for AJAX
+            requests, or the result of the parent ``handle_no_permission``.
+        """
         request = getattr(self, "request", None)
         if request is not None and request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return JsonResponse({"success": False, "message": "Forbidden"}, status=403)
@@ -86,9 +127,25 @@ class UserPIDERequiredMixin(UserPassesTestMixin):
     to the standard `handle_no_permission` behavior.
     """
     def test_func(self):
+        """Check whether the current user belongs to an allowed group.
+
+        Allowed groups are ``admin``, ``admin_pide``, and ``user_pide``.
+
+        Returns:
+            bool: True if the user is a member of one of the allowed groups.
+        """
         return self.request.user.groups.filter(name__in=['admin', 'admin_pide', 'user_pide']).exists()
 
     def handle_no_permission(self):
+        """Handle unauthorized access for PIDE users.
+
+        Returns a JSON 403 response for AJAX requests; otherwise falls back
+        to the standard ``handle_no_permission`` behavior.
+
+        Returns:
+            JsonResponse or HttpResponse: A JSON 403 response for AJAX
+            requests, or the result of the parent ``handle_no_permission``.
+        """
         request = getattr(self, "request", None)
         if request is not None and request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return JsonResponse({"success": False, "message": "Forbidden"}, status=403)
@@ -103,9 +160,25 @@ class UserPMDERequiredMixin(UserPassesTestMixin):
     to the standard `handle_no_permission` behavior.
     """
     def test_func(self):
+        """Check whether the current user belongs to an allowed group.
+
+        Allowed groups are ``admin``, ``admin_pmde``, and ``user_pmde``.
+
+        Returns:
+            bool: True if the user is a member of one of the allowed groups.
+        """
         return self.request.user.groups.filter(name__in=['admin', 'admin_pmde', 'user_pmde']).exists()
 
     def handle_no_permission(self):
+        """Handle unauthorized access for PMDE users.
+
+        Returns a JSON 403 response for AJAX requests; otherwise falls back
+        to the standard ``handle_no_permission`` behavior.
+
+        Returns:
+            JsonResponse or HttpResponse: A JSON 403 response for AJAX
+            requests, or the result of the parent ``handle_no_permission``.
+        """
         request = getattr(self, "request", None)
         if request is not None and request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return JsonResponse({"success": False, "message": "Forbidden"}, status=403)
@@ -122,6 +195,15 @@ class ActiveTiketPICRequiredMixin(UserPassesTestMixin):
     roles (P3DE, PIDE, PMDE).
     """
     def test_func(self):
+        """Check whether the current user can access a tiket.
+
+        Superusers and ``admin`` group members are always allowed. Other
+        authenticated users must have an active ``TiketPIC`` assignment
+        for the tiket with one of the allowed roles (P3DE, PIDE, PMDE).
+
+        Returns:
+            bool: True if the user is permitted to access the tiket.
+        """
         user = self.request.user
         if user.is_authenticated and (user.is_superuser or user.groups.filter(name='admin').exists()):
             return True
@@ -150,6 +232,16 @@ class ActiveTiketPICRequiredForEditMixin(UserPassesTestMixin):
     raised.
     """
     def test_func(self):
+        """Check whether the current user is an active PIC for edit operations.
+
+        Superusers and ``admin`` group members are always permitted. For
+        other authenticated users, the method resolves the tiket primary
+        key from ``kwargs``, a class attribute, or the view's object, and
+        verifies an active ``TiketPIC`` assignment exists.
+
+        Returns:
+            bool: True if the user has edit permission on the tiket.
+        """
         user = self.request.user
         if user.is_authenticated and (user.is_superuser or user.groups.filter(name='admin').exists()):
             return True
@@ -182,6 +274,15 @@ class ActiveTiketPICRequiredForEditMixin(UserPassesTestMixin):
             return False
     
     def handle_no_permission(self):
+        """Handle unauthorized access for tiket edit operations.
+
+        Returns a JSON 403 response with an Indonesian-language message
+        for AJAX requests; otherwise returns an HTTP 403 Forbidden response.
+
+        Returns:
+            JsonResponse or HttpResponseForbidden: A JSON 403 for AJAX
+            requests, or an HTTP 403 Forbidden response.
+        """
         from django.http import HttpResponseForbidden
         request = getattr(self, "request", None)
         if request is not None and request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -199,6 +300,15 @@ class ActiveTiketP3DERequiredForEditMixin(UserPassesTestMixin):
     whose `role` is specifically `P3DE`.
     """
     def test_func(self):
+        """Check whether the current user is an active P3DE PIC for edit operations.
+
+        Superusers and ``admin`` group members are always permitted. For
+        other authenticated users, the method resolves the tiket and
+        verifies an active ``TiketPIC`` assignment with role ``P3DE``.
+
+        Returns:
+            bool: True if the user is an active P3DE PIC for the tiket.
+        """
         user = self.request.user
         # Allow superuser or admin group
         if user.is_authenticated and (user.is_superuser or user.groups.filter(name='admin').exists()):
@@ -235,6 +345,15 @@ class ActiveTiketP3DERequiredForEditMixin(UserPassesTestMixin):
             return False
 
     def handle_no_permission(self):
+        """Handle unauthorized access for P3DE PIC edit operations.
+
+        Returns a JSON 403 response with an Indonesian-language message
+        for AJAX requests; otherwise returns an HTTP 403 Forbidden response.
+
+        Returns:
+            JsonResponse or HttpResponseForbidden: A JSON 403 for AJAX
+            requests, or an HTTP 403 Forbidden response.
+        """
         request = getattr(self, "request", None)
         if request is not None and request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return JsonResponse(
@@ -376,6 +495,14 @@ class AjaxFormMixin:
     success_message = ""
 
     def is_ajax(self):
+        """Determine whether the current request is an AJAX request.
+
+        Checks for the ``X-Requested-With`` header set to
+        ``XMLHttpRequest``.
+
+        Returns:
+            bool: True if the request is an AJAX request.
+        """
         request = getattr(self, "request", None)
         return request is not None and request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
@@ -439,7 +566,16 @@ class AjaxFormMixin:
             return self.success_message
 
     def _apply_audit_fields(self, form):
-        """Stamp audit fields when the bound model supports them."""
+        """Stamp audit fields on the model instance when supported.
+
+        Sets ``create_date`` and ``create_by`` only when the instance is
+        newly created (i.e., these fields are not yet populated). Always
+        updates ``update_date`` and ``update_by`` if the model has those
+        fields. Truncates the username to a maximum of 9 characters.
+
+        Args:
+            form: The bound form whose ``instance`` will be stamped.
+        """
         instance = form.instance
         today = timezone.now().date()
         username = (getattr(self.request.user, 'username', '') or '')[:9]
@@ -462,7 +598,24 @@ class SafeDeleteMixin:
     """
     
     def delete(self, request, *args, **kwargs):
-        """Override delete to catch ProtectedError and other exceptions."""
+        """Override delete to catch ``ProtectedError`` and other deletion exceptions.
+
+        Attempts to delete the view's object and handles three outcomes:
+
+        1. Success: returns a JSON response with ``success: True`` and a
+           success message (or sets a Django messages success notification).
+        2. ``ProtectedError``: returns a JSON error response describing the
+           related objects that prevent deletion.
+        3. Any other exception: returns a generic error response.
+
+        Args:
+            request: The current HTTP request.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            JsonResponse: A JSON payload indicating success or failure.
+        """
         from django.db.models.deletion import ProtectedError
         
         self.object = self.get_object()
@@ -510,12 +663,31 @@ class SafeDeleteMixin:
             return JsonResponse({'success': False, 'message': error_message}, status=400)
     
     def get_delete_success_message(self, object_name):
-        """Get the success message for deletion."""
+        """Generate a success message after a successful deletion.
+
+        Args:
+            object_name (str): The string representation of the deleted object.
+
+        Returns:
+            str: A formatted success message in Indonesian indicating the
+            object was successfully deleted.
+        """
         model_name = self.model._meta.verbose_name
         return f'{model_name} "{object_name}" berhasil dihapus.'
     
     def get_protected_error_message(self, object_name, related_models):
-        """Get the error message for ProtectedError."""
+        """Generate an error message when deletion is blocked by a ``ProtectedError``.
+
+        Args:
+            object_name (str): The string representation of the object
+                being deleted.
+            related_models (list): A list of verbose plural names of
+                related models that prevent deletion.
+
+        Returns:
+            str: A formatted error message in Indonesian indicating the
+            object cannot be deleted because it is still referenced.
+        """
         model_name = self.model._meta.verbose_name
         if related_models:
             related_text = ', '.join(related_models)
@@ -523,5 +695,13 @@ class SafeDeleteMixin:
         return f'Tidak dapat menghapus {model_name} "{object_name}" karena masih digunakan di tempat lain. Silakan hapus referensi tersebut terlebih dahulu.'
     
     def get_general_error_message(self, error_detail):
-        """Get the error message for other exceptions."""
+        """Generate a generic error message for unexpected deletion failures.
+
+        Args:
+            error_detail (str): The string representation of the caught
+                exception, used for logging or debugging.
+
+        Returns:
+            str: A generic error message in Indonesian.
+        """
         return 'Gagal menghapus data. Silakan periksa apakah data masih digunakan di tempat lain.'
