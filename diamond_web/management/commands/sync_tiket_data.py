@@ -50,13 +50,12 @@ class Command(BaseCommand):
 
             errors = summary.get('errors', [])
             if errors:
-                self.stdout.write(self.style.ERROR(f'Error ({len(errors)}):'))
+                self.stdout.write(self.style.WARNING(f'Error ({len(errors)}):'))
                 for err in errors[:20]:
                     self.stdout.write(f"  - {err}")
                 if len(errors) > 20:
                     self.stdout.write(f"  ... dan {len(errors) - 20} error lainnya")
-                if not check_only:
-                    raise CommandError(f'Sync tiket selesai dengan {len(errors)} error.')
+                self.stdout.write(self.style.WARNING('Sync tetap dilanjutkan. Error sudah dicatat di log.'))
 
             if check_only:
                 self.stdout.write(self.style.WARNING('Mode check-only: tidak ada perubahan DB.'))
