@@ -33,7 +33,7 @@ trap 'rm -f "$LOCK_FILE"' EXIT
 
 # ---------- Environment setup ----------
 export DJANGO_SETTINGS_MODULE=config.settings
-export PYTHONPATH="$DJANGO_DIR:$PYTHONPATH"
+export PYTHONPATH="${DJANGO_DIR}:${PYTHONPATH:-}"
 
 # Source .env file (safely, ignoring comments and blank lines)
 set -a
