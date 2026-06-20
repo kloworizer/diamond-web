@@ -1,4 +1,4 @@
-from django.urls import path, reverse_lazy
+from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
 from .views.general import keep_alive, session_expired
@@ -15,9 +15,10 @@ urlpatterns = [
     path('', views.home, name='home'),
     path('keep-alive/', keep_alive, name='keep_alive'),
     path('session-expired/', session_expired, name='session_expired'),
+    path('notifications/', views.notification_list, name='notification_list'),
     path('notifications/read/<int:pk>/', views.mark_notification_read, name='mark_notification_read'),
-    path('password_change/', auth_views.PasswordChangeView.as_view(template_name='registration/change_password_form.html', success_url=reverse_lazy('user_password_change_done')), name='user_password_change'),
-    path('password_change/done/', auth_views.PasswordChangeDoneView.as_view(template_name='registration/change_password_done.html'), name='user_password_change_done'),
+    path('notifications/read-all/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
+    path('profil/', views.ProfilView.as_view(), name='user_profil'),
     path('sync-data-referensi/', views.oracle_sync_page, name='oracle_sync_page'),
     path('sync-data-referensi/test/', views.oracle_sync_test_connection, name='oracle_sync_test'),
     path('sync-data-referensi/check/', views.oracle_sync_check, name='oracle_sync_check'),

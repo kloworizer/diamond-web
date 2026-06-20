@@ -328,6 +328,10 @@
                             <img src="{% static 'assets/images/no-notification.png' %}" alt="Tidak ada notifikasi" class="img-fluid no-notification-img mx-auto" />
                         </div>
                         {% endfor %}
+                        <div class="dropdown-divider mb-0 mt-0"></div>
+                        <a class="dropdown-item text-center py-2 fw-semibold small" href="{% url 'notification_list' %}">
+                            <i class="feather-bell me-1"></i>Lihat Semua Notifikasi
+                        </a>
                     </div>
                 </div>
 
@@ -340,9 +344,9 @@
                             <h6 class="mb-0">{{ user.username }}</h6>
                             {% if user.get_full_name %}<span class="fs-12 text-muted">{{ user.get_full_name }}</span>{% endif %}
                         </div>
-                        <a class="dropdown-item" href="{% url 'user_password_change' %}">
-                            <i class="feather-lock me-2"></i>
-                            <span>Ubah Password</span>
+                        <a class="dropdown-item" href="{% url 'user_profil' %}">
+                            <i class="feather-user me-2"></i>
+                            <span>Profil</span>
                         </a>
                         <div class="dropdown-divider"></div>
                         <form action="{% url 'logout' %}" method="post" class="m-0">
