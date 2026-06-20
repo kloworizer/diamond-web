@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Notifikasi - Diamond Web{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+            <h5 class="m-b-10">
+                <i class="feather-bell me-2"></i>Notifikasi
+            </h5>
+        </div>
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item active">Notifikasi</li>
+        </ul>
+    </div>
+    <div class="page-header-right ms-auto">
+        <div class="page-header-right-items">
+            <div class="d-flex align-items-center gap-2">
+                {% if unread_count > 0 %}
+                <button type="button" class="btn btn-primary" id="markAllReadBtn">
+                    <i class="feather-check me-1"></i>Tandai Semua Dibaca
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        <div class="d-md-none d-flex align-items-center">
+            <a href="javascript:void(0)" class="page-header-right-open-toggle">
+                <i class="feather-align-right fs-20"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="card stretch stretch-full h-100">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="feather-bell me-2"></i>Daftar Notifikasi
+            </h5>
+            <div class="d-flex align-items-center gap-2">
+                <small class="text-muted">Total: {{ page_obj.paginator.count }}</small>
+            </div>
+        </div>
+        <div class="card-body custom-card-action p-0">
+            {% if page_obj|length > 0 %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">Status</th>
+                            <th style="width: 200px;">Judul</th>
+                            <th>Pesan</th>
+                            <th style="width: 160px;">Tanggal</th>
+                            <th style="width: 80px;" class="text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for notification in page_obj %}
+                        <tr class="{% if not notification.is_read %}table-active fw-semibold{% endif %}">
+                            <td class="text-center">
+                                {% if not notification.is_read %}
+                                <span class="wd-10 ht-10 rounded-circle bg-primary d-inline-block" title="Belum dibaca"></span>
+                                {% else %}
+                                <span class="wd-10 ht-10 rounded-circle bg-gray-300 d-inline-block" title="Sudah dibaca"></span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="text-truncate d-inline-block" style="max-width: 200px;">
+                                    {{ notification.title }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="text-truncate-2-line d-inline-block" style="max-width: 400px;">
+                                    {{ notification.message|safe }}
+                                </span>
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    <i class="feather-clock me-1"></i>{{ notification.created_at|date:"d/m/Y H:i" }}
+                                </small>
+                            </td>
+                            <td class="text-center">
+                                {% if not notification.is_read %}
+                                <a href="{% url 'mark_notification_read' notification.pk %}"
+                                   class="avatar-text avatar-sm bg-soft-primary text-primary"
+                                   data-bs-toggle="tooltip" title="Tandai dibaca">
+                                    <i class="feather-check"></i>
+                                </a>
+                                {% else %}
+                                <span class="avatar-text avatar-sm bg-gray-200 text-muted">
+                                    <i class="feather-check"></i>
+                                </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <img src="{% static 'assets/images/no-notification.png' %}"
+                     alt="Tidak ada notifikasi"
+                     class="img-fluid mb-3"
+                     style="max-width: 160px;" />
+                <h6 class="text-muted fw-normal">Belum ada notifikasi</h6>
+                <p class="text-muted small">Notifikasi akan muncul di sini ketika ada aktivitas baru.</p>
+            </div>
+            {% endif %}
+
+            {% if is_paginated %}
+            <div class="d-flex justify-content-between align-items-center px-4 py-3 border-top">
+                <small class="text-muted">
+                    Menampilkan {{ page_obj.start_index }} hingga {{ page_obj.end_index }} dari {{ page_obj.paginator.count }} notifikasi
+                </small>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1" aria-label="First">
+                                <i class="bi bi-chevron-bar-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                                <i class="bi bi-arrow-left"></i>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="bi bi-chevron-bar-left"></i></span>
+                        </li>
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="bi bi-arrow-left"></i></span>
+                        </li>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                                <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last">
+                                <i class="bi bi-chevron-bar-right"></i>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="bi bi-arrow-right"></i></span>
+                        </li>
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="bi bi-chevron-bar-right"></i></span>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    // Mark all notifications as read
+    const markAllBtn = document.getElementById('markAllReadBtn');
+    if (markAllBtn) {
+        markAllBtn.addEventListener('click', function () {
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Memproses...';
+
+            fetch('{% url "mark_all_notifications_read" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin',
+            })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    showToast(data.count + ' notifikasi ditandai sudah dibaca.', 'success', 'Berhasil');
+                    // Reload page to update UI
+                    setTimeout(function () { window.location.reload(); }, 800);
+                }
+            })
+            .catch(function () {
+                showToast('Gagal memproses. Silakan coba lagi.', 'danger', 'Kesalahan');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="feather-check me-1"></i>Tandai Semua Dibaca';
+            });
+        });
+    }
+
+    // Initialize tooltips
+    if (typeof bootstrap !== 'undefined') {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (el) {
+            return new bootstrap.Tooltip(el);
+        });
+    }
+})();
+</script>
+{% endblock %}

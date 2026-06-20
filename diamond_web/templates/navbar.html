@@ -328,6 +328,10 @@
                             <img src="{% static 'assets/images/no-notification.png' %}" alt="Tidak ada notifikasi" class="img-fluid no-notification-img mx-auto" />
                         </div>
                         {% endfor %}
+                        <div class="dropdown-divider mb-0 mt-0"></div>
+                        <a class="dropdown-item text-center py-2 fw-semibold small" href="{% url 'notification_list' %}">
+                            <i class="feather-bell me-1"></i>Lihat Semua Notifikasi
+                        </a>
                     </div>
                 </div>
 
