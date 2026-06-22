@@ -48,7 +48,8 @@ _TIKET_ORACLE_SQL = """
         -- 3. Otherwise, fall back to standard status mappings (Lengkap & Lengkap Sebagian end up here)
         WHEN status_tiket IN ('[P3DE]-Close Tiket', '[PIDE]-Close Tiket') THEN 7
         WHEN status_tiket IN ('[PMDE]-Proses QC') THEN 6
-        WHEN status_tiket IN ('[PIDE]-Proses Identifikasi') THEN 5
+        WHEN status_tiket IN ('[PIDE]-Proses Identifikasi') AND c.tgl_tiket IS NOT NULL THEN 5
+        WHEN status_tiket IN ('[PIDE]-Proses Identifikasi') AND c.tgl_tiket IS NULL THEN 4
         WHEN status_tiket IN ('[P3DE]-Proses Nadine') THEN 2
         WHEN status_tiket IN ('[P3DE]-Proses Penelitian') THEN 1
         ELSE 1
@@ -62,11 +63,11 @@ _TIKET_ORACLE_SQL = """
     COALESCE(periode_data, 'tahun') periode_data,
     COALESCE(tahun_data, EXTRACT(YEAR FROM SYSDATE)) tahun_data,
     1 penyampaian,
-    '-' nomor_surat_pengantar,
-    COALESCE(TGL_TERIMA, SYSDATE) tanggal_surat_pengantar,
-    '-' nama_pengirim,
-    'Softcopy' bentuk_data,
-    'Online' cara_penyampaian,
+    COALESCE(NO_SURATPENGANTAR, '-') nomor_surat_pengantar,
+    COALESCE(TGL_SURATPENGANTAR, TGL_TERIMA, SYSDATE) tanggal_surat_pengantar,
+    COALESCE(nama_pengirim, '-') nama_pengirim,
+    BENTUK_DATA,
+    CARA_PENYAMPAIAN,
     CASE
         WHEN status_tiket IN ('[SELESAI]-Tiket 0 Row') THEN 0
         ELSE 1
@@ -89,7 +90,7 @@ _TIKET_ORACLE_SQL = """
     TGL_NADINE,
     NO_NADINE,
     TGL_NADINE tgl_kirim_pide,
-    NULL tgl_rekam_pide,
+    c.tgl_tiket tgl_rekam_pide,
     NULL id_durasi_jatuh_tempo_pide,
     COALESCE(b.JML_LOG, 0) baris_i,
     COALESCE(b.JML_LOG_U, 0) baris_u,
@@ -115,7 +116,8 @@ _TIKET_ORACLE_SQL = """
     COALESCE(b.QC_E, 0) QC_E,
     COALESCE(b.QC_V, 0) QC_V,
     COALESCE(b.QC_R, 0) QC_R,
-    COALESCE(b.QC_D, 0) QC_D
+    COALESCE(b.QC_D, 0) QC_D,
+    c.tgl_tiket
     FROM
         PVPTD.ZA_DDE_TABEL_FACT a
     LEFT JOIN (
@@ -150,6 +152,11 @@ _TIKET_ORACLE_SQL = """
         GROUP BY
             no_tiket
     ) b ON a.ID_TIKET = b.NO_TIKET
+    LEFT JOIN 
+    (select no_tiket, tgl_tiket from pvptd.za_rekap_tiket) c ON a.ID_TIKET = c.NO_TIKET
+    LEFT JOIN 
+    (SELECT ID_TIKET ID_TIKET_D, NO_SURATPENGANTAR, TGL_SURATPENGANTAR, NAMA_PENGIRIM, BENTUK_DATA, CARA_PENYAMPAIAN FROM PROD.APP_PENERIMAANBACKUP) d
+    ON a.ID_TIKET = d.ID_TIKET_D
 """
 
 
@@ -1084,6 +1091,26 @@ def _map_periode_data(
     return pjd, periode_value
 
 
+def _build_bentuk_data_lookup_cache():
+    """Build a lookup cache mapping deskripsi to BentukData instances.
+
+    Returns:
+        dict[str, BentukData]: A mapping from deskripsi string to the
+        corresponding BentukData instance.
+    """
+    return {bd.deskripsi: bd for bd in BentukData.objects.all()}
+
+
+def _build_cara_penyampaian_lookup_cache():
+    """Build a lookup cache mapping deskripsi to CaraPenyampaian instances.
+
+    Returns:
+        dict[str, CaraPenyampaian]: A mapping from deskripsi string to the
+        corresponding CaraPenyampaian instance.
+    """
+    return {cp.deskripsi: cp for cp in CaraPenyampaian.objects.all()}
+
+
 def _check_tiket_data(service, check_id=None, stop_checker=None):
     """Check tiket data from Oracle without inserting.
     
@@ -1265,6 +1292,14 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
             f'Periode lookup cache loaded: {len(periode_lookup_cache)} sub_jenis_data with PeriodeJenisData'
         )
 
+        # Build BentukData and CaraPenyampaian caches for Oracle value lookups
+        bentuk_data_cache = _build_bentuk_data_lookup_cache()
+        cara_penyampaian_cache = _build_cara_penyampaian_lookup_cache()
+        logger.info(
+            f'BentukData cache: {len(bentuk_data_cache)} entries, '
+            f'CaraPenyampaian cache: {len(cara_penyampaian_cache)} entries'
+        )
+
         # --- Bulk exists pre-fetch (same pattern as _check_tiket_data) ---
         all_nomor_tikets = list(dict.fromkeys(
             dict(zip(column_names, r)).get('id_tiket')
@@ -1287,8 +1322,8 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
         updated_keys = []
         
         logger.info('Setting up default lookups...')
-        default_bentuk_data = BentukData.objects.filter(deskripsi='Softcopy').first() or BentukData.objects.first()
-        default_cara_penyampaian = CaraPenyampaian.objects.filter(deskripsi='Online').first() or CaraPenyampaian.objects.first()
+        default_bentuk_data = bentuk_data_cache.get('Softcopy') or BentukData.objects.first()
+        default_cara_penyampaian = cara_penyampaian_cache.get('Online') or CaraPenyampaian.objects.first()
         
         logger.info(f'Parsing {len(rows)} rows for bulk insert/update...')
         today = timezone.now().date()
@@ -1362,6 +1397,19 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                 if status_penelitian_str:
                     status_penelitian_obj = StatusPenelitian.objects.filter(deskripsi__icontains=status_penelitian_str).first()
                 
+                # Look up BentukData and CaraPenyampaian from Oracle row values
+                bentuk_data_str = row_dict.get('bentuk_data')
+                if bentuk_data_str and bentuk_data_str in bentuk_data_cache:
+                    bentuk_data_obj = bentuk_data_cache[bentuk_data_str]
+                else:
+                    bentuk_data_obj = default_bentuk_data
+
+                cara_penyampaian_str = row_dict.get('cara_penyampaian')
+                if cara_penyampaian_str and cara_penyampaian_str in cara_penyampaian_cache:
+                    cara_penyampaian_obj = cara_penyampaian_cache[cara_penyampaian_str]
+                else:
+                    cara_penyampaian_obj = default_cara_penyampaian
+
                 # Prepare tiket data dict
                 tiket_data = {
                     'nomor_tiket': nomor_tiket,
@@ -1372,11 +1420,11 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                     'periode': periode_value,
                     'tahun': tahun_data,
                     'penyampaian': row_dict.get('penyampaian', 1),
-                    'nomor_surat_pengantar': row_dict.get('nomor_surat_pengantar', '-'),
-                    'tanggal_surat_pengantar': _make_aware_datetime(row_dict.get('tanggal_surat_pengantar')),
+                    'nomor_surat_pengantar': row_dict.get('nomor_surat_pengantar') or '-',
+                    'tanggal_surat_pengantar': _make_aware_datetime(row_dict.get('tanggal_surat_pengantar')) or timezone.now(),
                     'nama_pengirim': row_dict.get('nama_pengirim', '-'),
-                    'id_bentuk_data': default_bentuk_data,
-                    'id_cara_penyampaian': default_cara_penyampaian,
+                    'id_bentuk_data': bentuk_data_obj,
+                    'id_cara_penyampaian': cara_penyampaian_obj,
                     'status_ketersediaan_data': bool(row_dict.get('status_ketersediaan_data', 1)),
                     'alasan_ketidaktersediaan': row_dict.get('alasan_ketidaktersediaan'),
                     'baris_diterima': row_dict.get('baris_diterima') if row_dict.get('baris_diterima') is not None else 0,
