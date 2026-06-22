@@ -13,6 +13,7 @@ from diamond_web.models.tiket_pic import TiketPIC
 from diamond_web.models.tiket_action import TiketAction
 from diamond_web.models.pic import PIC
 from diamond_web.models.jenis_data_ilap import JenisDataILAP
+from diamond_web.models.durasi_jatuh_tempo import DurasiJatuhTempo
 from diamond_web.constants.tiket_status import (
     STATUS_DIREKAM,
     STATUS_DITELITI,
@@ -182,6 +183,14 @@ def home(request):
                 end_date__isnull=True
             ))
         ).select_related('id_ilap').order_by('id_sub_jenis_data')
+        # Admin: Jenis Data ILAP without active Durasi Jatuh Tempo for PIDE
+        context['pide_jenis_data_tanpa_durasi_jatuh_tempo'] = JenisDataILAP.objects.filter(
+            ~Exists(DurasiJatuhTempo.objects.filter(
+                id_sub_jenis_data=OuterRef('pk'),
+                seksi__name='user_pide',
+                end_date__isnull=True
+            ))
+        ).select_related('id_ilap').order_by('id_sub_jenis_data')
     if is_pmde:
         context['tiket_summary_pmde'] = get_tiket_summary_for_user_pmde(request.user)
         pmde_pic = TiketPIC.objects.filter(id_user=request.user, role=TiketPIC.Role.PMDE, active=True)
@@ -203,6 +212,14 @@ def home(request):
             ~Exists(PIC.objects.filter(
                 id_sub_jenis_data_ilap=OuterRef('pk'),
                 tipe=PIC.TipePIC.PMDE,
+                end_date__isnull=True
+            ))
+        ).select_related('id_ilap').order_by('id_sub_jenis_data')
+        # Admin: Jenis Data ILAP without active Durasi Jatuh Tempo for PMDE
+        context['pmde_jenis_data_tanpa_durasi_jatuh_tempo'] = JenisDataILAP.objects.filter(
+            ~Exists(DurasiJatuhTempo.objects.filter(
+                id_sub_jenis_data=OuterRef('pk'),
+                seksi__name='user_pmde',
                 end_date__isnull=True
             ))
         ).select_related('id_ilap').order_by('id_sub_jenis_data')
