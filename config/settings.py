@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "crispy_forms",
     "crispy_bootstrap5",
     "import_export",
+    "dbbackup",  # django-dbbackup: database backup/restore management commands
 ]
 
 # Development-only apps (skip during test runs)
@@ -136,6 +137,15 @@ else:
         }
     }
 
+# ---------------------------------------------------------------------------
+# django-dbbackup — database backup and restore
+# https://django-dbbackup.readthedocs.io/
+# ---------------------------------------------------------------------------
+DBBACKUP_DATE_FORMAT = "%Y%m%d-%H%M%S"
+DBBACKUP_FILENAME_TEMPLATE = "{datetime}.{extension}"
+DBBACKUP_SEND_EMAIL = False  # set to True and configure EMAIL_* for email reports
+# Backup storage is configured via STORAGES["dbbackup"] below.
+
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 AUTH_PASSWORD_VALIDATORS = [
@@ -164,8 +174,28 @@ USE_TZ = False
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-if not DEBUG:
-    STATICFILES_STORAGE = "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
+# Use STORAGES (Django 4.2+ unified storage setting) for static files and dbbackup
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": (
+            "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
+            if not DEBUG
+            else "django.contrib.staticfiles.storage.StaticFilesStorage"
+        ),
+    },
+    "dbbackup": {
+        "BACKEND": os.getenv(
+            "BACKUP_STORAGE",
+            "django.core.files.storage.FileSystemStorage",
+        ),
+        "OPTIONS": {
+            "location": os.getenv(
+                "BACKUP_DIR",
+                str(BASE_DIR / "backups"),
+            ),
+        },
+    },
+}
 
 # Media files
 MEDIA_URL = "/media/"
