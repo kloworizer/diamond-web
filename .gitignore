@@ -47,4 +47,8 @@ htmlcov/
 # **/migrations/__pycache__/
 
 packages/
+
+# Backup dumps created by django-dbbackup
+backups/
+!backups/.gitkeep
  

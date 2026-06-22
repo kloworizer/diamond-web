@@ -8,6 +8,7 @@ oracledb>=2.0.0
 diff-match-patch==20241021
 Django==5.2.14
 django-crispy-forms==2.6
+django-dbbackup==5.3.0
 django-filter==25.2
 django-import-export==4.4.1
 django-tables2==2.8.0

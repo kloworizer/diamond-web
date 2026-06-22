@@ -39,7 +39,8 @@ Aplikasi ini mengelola siklus hidup **Tiket Data** — dari penerimaan, peneliti
 - [🛠️ Development Tools](#️-development-tools)
 - [📦 Library yang Digunakan](#-library-yang-digunakan)
 - [🤝 Panduan Kolaborasi](#-panduan-kolaborasi)
-- [📋 Misc Commands](#-misc-commands)
+- [� Database Backup & Restore](#-database-backup--restore)
+- [�📋 Misc Commands](#-misc-commands)
 
 ---
 
@@ -674,7 +675,52 @@ Buka repositori fork Anda di GitHub, klik **Contribute > Open Pull Request** ke 
 
 ---
 
-## 📋 Misc Commands
+## � Database Backup & Restore
+
+Django-dbbackup is integrated for database backup and restore. It works with both SQLite (dev) and PostgreSQL (prod).
+
+### Backup
+
+```powershell
+# Backup the database (auto-detects engine: SQLite or PostgreSQL)
+python manage.py dbbackup
+
+# Backup with a custom filename
+python manage.py dbbackup -o diamond-20260622.dump
+
+# Backup media files
+python manage.py mediabackup
+
+# Compress the backup (gzip)
+python manage.py dbbackup -c
+```
+
+### Restore
+
+```powershell
+# List available backups
+python manage.py listbackups
+
+# Restore the latest backup
+python manage.py dbrestore
+
+# Restore a specific backup file
+python manage.py dbrestore -i 20260622-120000.dump
+
+# Restore to a different database engine (e.g., restore SQLite backup to PostgreSQL)
+# django-dbbackup auto-detects the format; for cross-engine restore, use -r:
+python manage.py dbrestore -r sqlite  # force restore as SQLite
+python manage.py dbrestore -r postgresql  # force restore as PostgreSQL
+
+# Restore media files
+python manage.py mediarestore
+```
+
+> Backups are stored in the directory configured via `BACKUP_DIR` (default: `backups/` in the project root, or `/var/backups/diamond` in production).
+
+---
+
+## �📋 Misc Commands
 
 ```powershell
 # ─── VENV ───
