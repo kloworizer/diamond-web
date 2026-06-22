@@ -254,6 +254,9 @@ urlpatterns = [
     path('laporan-detail-himpun-olah-data/', views.LaporanDetailHimpunOlahDataView.as_view(), name='laporan_detail_himpun_olah_data'),
     path('laporan-detail-himpun-olah-data/data/', views.laporan_detail_himpun_olah_data_data, name='laporan_detail_himpun_olah_data_data'),
     path('laporan-detail-himpun-olah-data/export/', views.laporan_detail_himpun_olah_data_export, name='laporan_detail_himpun_olah_data_export'),
+    # Quality Control URLs
+    path('quality-control/', views.QualityControlView.as_view(), name='quality_control'),
+    path('quality-control/data/', views.quality_control_data, name='quality_control_data'),
     # PIC PMDE URLs
     path('pic-pmde/', views.PICPMDEListView.as_view(), name='pic_pmde_list'),
     path('pic-pmde/data/', views.pic_pmde_data, name='pic_pmde_data'),
