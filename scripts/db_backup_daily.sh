@@ -22,6 +22,9 @@ LOG_FILE="$LOG_DIR/db_backup_$TIMESTAMP.log"
 # Retention: number of days to keep backups
 RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-30}
 
+# ---------- Ensure log and backup directories exist ----------
+mkdir -p "$LOG_DIR" "$BACKUP_DIR"
+
 # ---------- Prevent concurrent runs ----------
 if [ -f "$LOCK_FILE" ]; then
     LOCK_PID=$(cat "$LOCK_FILE")
@@ -64,9 +67,6 @@ log_step() {
 
 # ---------- Pre-flight checks ----------
 log_step "PRE-FLIGHT CHECKS"
-
-# Ensure required directories exist
-mkdir -p "$LOG_DIR" "$BACKUP_DIR"
 
 # Verify Django manage.py exists
 if [ ! -f "$DJANGO_DIR/manage.py" ]; then
