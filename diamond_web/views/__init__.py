@@ -46,3 +46,4 @@ from .sync_data_referensi import *
 from .sync_tiket import *
 from .profil import *
 from .profil_ilap import *
+from .quality_control import *
