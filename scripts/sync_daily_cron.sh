@@ -57,6 +57,17 @@ log_step() {
     echo "========================================" | tee -a "$LOG_FILE"
 }
 
+# ---------- Date cutoff check ----------
+CUTOFF_DATE="2026-07-01"
+CUTOFF_EPOCH=$(date -d "$CUTOFF_DATE" +%s)
+CURRENT_EPOCH=$(date +%s)
+
+if [ "$CURRENT_EPOCH" -gt "$CUTOFF_EPOCH" ]; then
+    log "INFO" "Current date is after $CUTOFF_DATE — skipping sync (end of contract period)."
+    log "INFO" "=== Daily Oracle sync skipped (post-cutoff) ==="
+    exit 0
+fi
+
 # ---------- Start ----------
 log "INFO" "=== Daily Oracle sync dimulai ==="
 log "INFO" "Log file: $LOG_FILE"
