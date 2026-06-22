@@ -11,6 +11,8 @@ from diamond_web.views.task_to_do import (
 from diamond_web.models.tiket import Tiket
 from diamond_web.models.tiket_pic import TiketPIC
 from diamond_web.models.tiket_action import TiketAction
+from diamond_web.models.pic import PIC
+from diamond_web.models.jenis_data_ilap import JenisDataILAP
 from diamond_web.constants.tiket_status import (
     STATUS_DIREKAM,
     STATUS_DITELITI,
@@ -139,6 +141,14 @@ def home(request):
                 'id_status_penelitian'
             ).order_by('-id'),
         }
+        # Admin: Jenis Data ILAP without active P3DE PIC
+        context['p3de_jenis_data_tanpa_pic'] = JenisDataILAP.objects.filter(
+            ~Exists(PIC.objects.filter(
+                id_sub_jenis_data_ilap=OuterRef('pk'),
+                tipe=PIC.TipePIC.P3DE,
+                end_date__isnull=True
+            ))
+        ).select_related('id_ilap').order_by('id_sub_jenis_data')
     if is_pide:
         context['tiket_summary_pide'] = get_tiket_summary_for_user_pide(request.user)
         pide_pic = TiketPIC.objects.filter(id_user=request.user, role=TiketPIC.Role.PIDE, active=True)
@@ -164,6 +174,14 @@ def home(request):
                 'id_cara_penyampaian'
             ).order_by('-id'),
         }
+        # Admin: Jenis Data ILAP without active PIDE PIC
+        context['pide_jenis_data_tanpa_pic'] = JenisDataILAP.objects.filter(
+            ~Exists(PIC.objects.filter(
+                id_sub_jenis_data_ilap=OuterRef('pk'),
+                tipe=PIC.TipePIC.PIDE,
+                end_date__isnull=True
+            ))
+        ).select_related('id_ilap').order_by('id_sub_jenis_data')
     if is_pmde:
         context['tiket_summary_pmde'] = get_tiket_summary_for_user_pmde(request.user)
         pmde_pic = TiketPIC.objects.filter(id_user=request.user, role=TiketPIC.Role.PMDE, active=True)
@@ -180,6 +198,14 @@ def home(request):
                 'id_cara_penyampaian'
             ).order_by('-id'),
         }
+        # Admin: Jenis Data ILAP without active PMDE PIC
+        context['pmde_jenis_data_tanpa_pic'] = JenisDataILAP.objects.filter(
+            ~Exists(PIC.objects.filter(
+                id_sub_jenis_data_ilap=OuterRef('pk'),
+                tipe=PIC.TipePIC.PMDE,
+                end_date__isnull=True
+            ))
+        ).select_related('id_ilap').order_by('id_sub_jenis_data')
     if settings.DEBUG:
         groups = Group.objects.filter(name__in=['user_p3de', 'user_pide', 'user_pmde']).prefetch_related('user_set')
         debug_groups = {}
