@@ -13,7 +13,6 @@ from diamond_web.models.tiket_pic import TiketPIC
 from diamond_web.models.tiket_action import TiketAction
 from diamond_web.models.pic import PIC
 from diamond_web.models.jenis_data_ilap import JenisDataILAP
-from diamond_web.models.durasi_jatuh_tempo import DurasiJatuhTempo
 from diamond_web.constants.tiket_status import (
     STATUS_DIREKAM,
     STATUS_DITELITI,
@@ -56,6 +55,13 @@ def home(request):
     context['is_p3de'] = is_p3de
     context['is_pide'] = is_pide
     context['is_pmde'] = is_pmde
+    # check admin group membership
+    is_admin_p3de = request.user.groups.filter(name='admin_p3de').exists()
+    is_admin_pide = request.user.groups.filter(name='admin_pide').exists()
+    is_admin_pmde = request.user.groups.filter(name='admin_pmde').exists()
+    context['is_admin_p3de'] = is_admin_p3de
+    context['is_admin_pide'] = is_admin_pide
+    context['is_admin_pmde'] = is_admin_pmde
     # compute task summary based on user role
     if is_p3de:
         context['tiket_summary'] = get_tiket_summary_for_user_p3de(request.user)
@@ -143,13 +149,14 @@ def home(request):
             ).order_by('-id'),
         }
         # Admin: Jenis Data ILAP without active P3DE PIC
-        context['p3de_jenis_data_tanpa_pic'] = JenisDataILAP.objects.filter(
-            ~Exists(PIC.objects.filter(
-                id_sub_jenis_data_ilap=OuterRef('pk'),
-                tipe=PIC.TipePIC.P3DE,
-                end_date__isnull=True
-            ))
-        ).select_related('id_ilap').order_by('id_sub_jenis_data')
+        if is_admin_p3de:
+            context['p3de_jenis_data_tanpa_pic'] = JenisDataILAP.objects.filter(
+                ~Exists(PIC.objects.filter(
+                    id_sub_jenis_data_ilap=OuterRef('pk'),
+                    tipe=PIC.TipePIC.P3DE,
+                    end_date__isnull=True
+                ))
+            ).select_related('id_ilap').order_by('id_sub_jenis_data')
     if is_pide:
         context['tiket_summary_pide'] = get_tiket_summary_for_user_pide(request.user)
         pide_pic = TiketPIC.objects.filter(id_user=request.user, role=TiketPIC.Role.PIDE, active=True)
@@ -176,18 +183,11 @@ def home(request):
             ).order_by('-id'),
         }
         # Admin: Jenis Data ILAP without active PIDE PIC
-        context['pide_jenis_data_tanpa_pic'] = JenisDataILAP.objects.filter(
+        if is_admin_pide:
+            context['pide_jenis_data_tanpa_pic'] = JenisDataILAP.objects.filter(
             ~Exists(PIC.objects.filter(
                 id_sub_jenis_data_ilap=OuterRef('pk'),
                 tipe=PIC.TipePIC.PIDE,
-                end_date__isnull=True
-            ))
-        ).select_related('id_ilap').order_by('id_sub_jenis_data')
-        # Admin: Jenis Data ILAP without active Durasi Jatuh Tempo for PIDE
-        context['pide_jenis_data_tanpa_durasi_jatuh_tempo'] = JenisDataILAP.objects.filter(
-            ~Exists(DurasiJatuhTempo.objects.filter(
-                id_sub_jenis_data=OuterRef('pk'),
-                seksi__name='user_pide',
                 end_date__isnull=True
             ))
         ).select_related('id_ilap').order_by('id_sub_jenis_data')
@@ -208,18 +208,11 @@ def home(request):
             ).order_by('-id'),
         }
         # Admin: Jenis Data ILAP without active PMDE PIC
-        context['pmde_jenis_data_tanpa_pic'] = JenisDataILAP.objects.filter(
+        if is_admin_pmde:
+            context['pmde_jenis_data_tanpa_pic'] = JenisDataILAP.objects.filter(
             ~Exists(PIC.objects.filter(
                 id_sub_jenis_data_ilap=OuterRef('pk'),
                 tipe=PIC.TipePIC.PMDE,
-                end_date__isnull=True
-            ))
-        ).select_related('id_ilap').order_by('id_sub_jenis_data')
-        # Admin: Jenis Data ILAP without active Durasi Jatuh Tempo for PMDE
-        context['pmde_jenis_data_tanpa_durasi_jatuh_tempo'] = JenisDataILAP.objects.filter(
-            ~Exists(DurasiJatuhTempo.objects.filter(
-                id_sub_jenis_data=OuterRef('pk'),
-                seksi__name='user_pmde',
                 end_date__isnull=True
             ))
         ).select_related('id_ilap').order_by('id_sub_jenis_data')
