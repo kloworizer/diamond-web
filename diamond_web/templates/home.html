@@ -86,6 +86,7 @@
                         </a>
                     </li>
                 </ul>
+                {% if is_admin_p3de %}
                 <div style="margin:5px 0 0; padding-left:1rem; border-top:1px solid #eee; padding-top:5px;">
                     <small class="text-uppercase fw-bold">Admin P3DE</small>
                 </div>
@@ -100,6 +101,7 @@
                         </a>
                     </li>
                 </ul>
+                {% endif %}
             </div>
             {% endif %}
             {% if is_pide %}
@@ -127,19 +129,11 @@
                         </a>
                     </li>
                 </ul>
+                {% if is_admin_pide %}
                 <div style="margin:5px 0 0; padding-left:1rem; border-top:1px solid #eee; padding-top:5px;">
                     <small class="text-uppercase fw-bold">Admin PIDE</small>
                 </div>
                 <ul class="nav flex-column nxl-content-sidebar-item">
-                    <li class="nav-item">
-                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="jenis_data_tanpa_durasi_jatuh_tempo_pide">
-                            <span class="icon-bg-soft icon-bg-soft-orange"><i class="feather-clock" style="color:#F59E0B"></i></span>
-                            <span>Jenis Data Tidak Punya Durasi Jatuh Tempo Aktif</span>
-                            {% if pide_jenis_data_tanpa_durasi_jatuh_tempo %}
-                            <span class="badge bg-secondary ms-auto">{{ pide_jenis_data_tanpa_durasi_jatuh_tempo|length }}</span>
-                            {% endif %}
-                        </a>
-                    </li>
                     <li class="nav-item">
                         <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="jenis_data_tanpa_pic_pide">
                             <span class="icon-bg-soft icon-bg-soft-purple"><i class="feather-users" style="color:#8B5CF6"></i></span>
@@ -150,6 +144,7 @@
                         </a>
                     </li>
                 </ul>
+                {% endif %}
             </div>
             {% endif %}
             {% if is_pmde %}
@@ -168,19 +163,11 @@
                         </a>
                     </li>
                 </ul>
+                {% if is_admin_pmde %}
                 <div style="margin:5px 0 0; padding-left:1rem; border-top:1px solid #eee; padding-top:5px;">
                     <small class="text-uppercase fw-bold">Admin PMDE</small>
                 </div>
                 <ul class="nav flex-column nxl-content-sidebar-item">
-                    <li class="nav-item">
-                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="jenis_data_tanpa_durasi_jatuh_tempo_pmde">
-                            <span class="icon-bg-soft icon-bg-soft-orange"><i class="feather-clock" style="color:#F59E0B"></i></span>
-                            <span>Jenis Data Tidak Punya Durasi Jatuh Tempo Aktif</span>
-                            {% if pmde_jenis_data_tanpa_durasi_jatuh_tempo %}
-                            <span class="badge bg-secondary ms-auto">{{ pmde_jenis_data_tanpa_durasi_jatuh_tempo|length }}</span>
-                            {% endif %}
-                        </a>
-                    </li>
                     <li class="nav-item">
                         <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="jenis_data_tanpa_pic_pmde">
                             <span class="icon-bg-soft icon-bg-soft-purple"><i class="feather-users" style="color:#8B5CF6"></i></span>
@@ -191,6 +178,7 @@
                         </a>
                     </li>
                 </ul>
+                {% endif %}
             </div>
             {% endif %}
             {% if not is_p3de and not is_pide and not is_pmde %}
@@ -473,6 +461,7 @@
                         </div>
                     </div>
                 </div>
+                {% if is_admin_p3de %}
                 <!-- Admin: Jenis Data Tidak Punya PIC Aktif - P3DE -->
                 <div class="card stretch stretch-full" data-category="jenis_data_tanpa_pic_p3de" style="display:none;">
                     <div class="card-header">
@@ -503,6 +492,7 @@
                         </div>
                     </div>
                 </div>
+                {% endif %}
                 {% endif %}
                 {% if is_pide %}
                 <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">PIDE - Identifikasi</h6> -->
@@ -569,36 +559,7 @@
                         </div>
                     </div>
                 </div>
-                <!-- Admin: Jenis Data Tidak Punya Durasi Jatuh Tempo Aktif - PIDE -->
-                <div class="card stretch stretch-full" data-category="jenis_data_tanpa_durasi_jatuh_tempo_pide" style="display:none;">
-                    <div class="card-header">
-                        <h5 class="mb-0">Jenis Data Tidak Punya Durasi Jatuh Tempo Aktif (PIDE)</h5>
-                    </div>
-                    <div class="card-body custom-card-action p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
-                                <thead>
-                                    <tr>
-                                        <th>ID Sub Jenis Data</th>
-                                        <th>Nama ILAP</th>
-                                        <th>Jenis Data</th>
-                                        <th>Sub Jenis Data</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for jd in pide_jenis_data_tanpa_durasi_jatuh_tempo %}
-                                    <tr>
-                                        <td>{{ jd.id_sub_jenis_data }}</td>
-                                        <td>{{ jd.id_ilap.nama_ilap }}</td>
-                                        <td>{{ jd.nama_jenis_data }}</td>
-                                        <td>{{ jd.nama_sub_jenis_data }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+                {% if is_admin_pide %}
                 <!-- Admin: Jenis Data Tidak Punya PIC Aktif - PIDE -->
                 <div class="card stretch stretch-full" data-category="jenis_data_tanpa_pic_pide" style="display:none;">
                     <div class="card-header">
@@ -629,6 +590,7 @@
                         </div>
                     </div>
                 </div>
+                {% endif %}
                 {% endif %}
                 {% if is_pmde %}
                 <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">PMDE - Pengendalian Mutu</h6> -->
@@ -663,36 +625,7 @@
                         </div>
                     </div>
                 </div>
-                <!-- Admin: Jenis Data Tidak Punya Durasi Jatuh Tempo Aktif - PMDE -->
-                <div class="card stretch stretch-full" data-category="jenis_data_tanpa_durasi_jatuh_tempo_pmde" style="display:none;">
-                    <div class="card-header">
-                        <h5 class="mb-0">Jenis Data Tidak Punya Durasi Jatuh Tempo Aktif (PMDE)</h5>
-                    </div>
-                    <div class="card-body custom-card-action p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
-                                <thead>
-                                    <tr>
-                                        <th>ID Sub Jenis Data</th>
-                                        <th>Nama ILAP</th>
-                                        <th>Jenis Data</th>
-                                        <th>Sub Jenis Data</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for jd in pmde_jenis_data_tanpa_durasi_jatuh_tempo %}
-                                    <tr>
-                                        <td>{{ jd.id_sub_jenis_data }}</td>
-                                        <td>{{ jd.id_ilap.nama_ilap }}</td>
-                                        <td>{{ jd.nama_jenis_data }}</td>
-                                        <td>{{ jd.nama_sub_jenis_data }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+                {% if is_admin_pmde %}
                 <!-- Admin: Jenis Data Tidak Punya PIC Aktif - PMDE -->
                 <div class="card stretch stretch-full" data-category="jenis_data_tanpa_pic_pmde" style="display:none;">
                     <div class="card-header">
@@ -723,6 +656,7 @@
                         </div>
                     </div>
                 </div>
+                {% endif %}
             </div>
             {% endif %}
         </div>
