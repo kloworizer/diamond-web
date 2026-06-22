@@ -176,6 +176,9 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 # Use STORAGES (Django 4.2+ unified storage setting) for static files and dbbackup
 STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
     "staticfiles": {
         "BACKEND": (
             "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
