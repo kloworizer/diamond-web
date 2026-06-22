@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="page-header">
+        <div class="page-header-left d-flex align-items-center">
+            <div class="page-header-title">
+                <h5 class="m-b-10">
+                    <i class="feather-user-check me-2"></i>Quality Control
+                </h5>
+            </div>
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item"><a href="javascript:void(0);">PMDE</a></li>
+                <li class="breadcrumb-item active">Quality Control</li>
+            </ul>
+        </div>
+        <div class="page-header-right ms-auto">
+            <div class="page-header-right-items">
+                <div class="d-flex d-md-none">
+                    <a href="javascript:void(0)" class="page-header-right-close-toggle">
+                        <i class="feather-arrow-left me-2"></i>
+                        <span>Kembali</span>
+                    </a>
+                </div>
+            </div>
+            <div class="d-md-none d-flex align-items-center">
+                <a href="javascript:void(0)" class="page-header-right-open-toggle">
+                    <i class="feather-align-right fs-20"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+
+    <!-- Data Table Card -->
+    <div class="card stretch stretch-full h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">
+                <i class="feather-grid me-2"></i>Daftar Tiket Pengendalian Mutu
+            </h5>
+        </div>
+        <div class="card-body custom-card-action p-0">
+            <div class="table-responsive">
+            <table id="quality-control-table" data-skip-empty-state class="table table-hover mb-0" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>Nama Tabel</th>
+                        <th>PIC PMDE</th>
+                        <th>Nomor Tiket</th>
+                        <th>Nama ILAP</th>
+                        <th>Sub Jenis Data</th>
+                        <th>Jenis Tabel</th>
+                        <th>Klasifikasi</th>
+                        <th>Deadline</th>
+                        <th>Tgl Transfer</th>
+                        <th>Tgl Rematch</th>
+                        <th>Jatuh Tempo</th>
+                        <th>Prioritas</th>
+                        <th>Jml Baris I</th>
+                        <th>Jml Selesai</th>
+                        <th>Jml Progress</th>
+                        <th class="no-sort">Aksi</th>
+                    </tr>
+                    <tr id="column-search-row">
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Nama Tabel" data-column="0" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari PIC PMDE" data-column="1" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Nomor Tiket" data-column="2" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Nama ILAP" data-column="3" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Sub Jenis Data" data-column="4" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Jenis Tabel" data-column="5" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Klasifikasi" data-column="6" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Deadline" data-column="7" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Tgl Transfer" data-column="8" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Tgl Rematch" data-column="9" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Jatuh Tempo" data-column="10" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Prioritas" data-column="11" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Jml Baris I" data-column="12" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Jml Selesai" data-column="13" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Jml Progress" data-column="14" /></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+    </div>
+
+{% endblock %}
+{% block extra_head %}
+<style>
+    /* Subtle row coloring for jatuh tempo indicators */
+    table.dataTable tr.row-green td {
+        background-color: rgba(40, 167, 69, 0.12) !important;
+    }
+    table.dataTable tr.row-yellow td {
+        background-color: rgba(255, 193, 7, 0.12) !important;
+    }
+    table.dataTable tr.row-red td {
+        background-color: rgba(220, 53, 69, 0.12) !important;
+    }
+    table.dataTable tr.row-green:hover td {
+        background-color: rgba(40, 167, 69, 0.20) !important;
+    }
+    table.dataTable tr.row-yellow:hover td {
+        background-color: rgba(255, 193, 7, 0.20) !important;
+    }
+    table.dataTable tr.row-red:hover td {
+        background-color: rgba(220, 53, 69, 0.20) !important;
+    }
+</style>
+{% endblock %}
+{% block scripts %}
+<script>
+    (function () {
+        const ajaxUrl = "{% url 'quality_control_data' %}";
+
+        $(document).ready(function () {
+            const csrfToken = $('[name=csrfmiddlewaretoken]').val();
+
+            const table = $('#quality-control-table').DataTable({
+                serverSide: true,
+                processing: true,
+                ajax: {
+                    url: ajaxUrl,
+                    type: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken },
+                    data: function (d) {
+                        d.csrfmiddlewaretoken = csrfToken;
+                        d.columns_search = [];
+                        $('#column-search-row input').each(function () {
+                            d.columns_search.push($(this).val());
+                        });
+                    }
+                },
+                columns: [
+                    { data: 'nama_tabel' },
+                    { data: 'pic_pmde' },
+                    { data: 'nomor_tiket' },
+                    { data: 'nama_ilap' },
+                    { data: 'sub_jenis_data' },
+                    { data: 'jenis_tabel' },
+                    { data: 'klasifikasi' },
+                    {
+                        data: 'deadline',
+                        render: { _: 'display', sort: 'sort' }
+                    },
+                    {
+                        data: 'tgl_transfer',
+                        render: { _: 'display', sort: 'sort' }
+                    },
+                    {
+                        data: 'tgl_rematch',
+                        render: { _: 'display', sort: 'sort' }
+                    },
+                    {
+                        data: 'jatuh_tempo',
+                        render: { _: 'display', sort: 'sort' }
+                    },
+                    { data: 'prioritas' },
+                    { data: 'jml_baris_i' },
+                    { data: 'jml_selesai' },
+                    { data: 'jml_progress' },
+                    { data: 'action', orderable: false, searchable: false },
+                ],
+                columnDefs: [
+                    { orderable: false, targets: [1, 6, 15] }
+                ],
+                pageLength: 10,
+                order: [[10, 'asc']],
+                dom: 'lrtip',
+                language: {
+                    search: 'Cari:',
+                    searchPlaceholder: 'Cari...',
+                    lengthMenu: 'Tampilkan _MENU_ entri',
+                    info: 'Menampilkan _START_ hingga _END_ dari _TOTAL_ entri',
+                    infoEmpty: 'Menampilkan 0 hingga 0 dari 0 entri',
+                    infoFiltered: '(disaring dari _MAX_ entri total)',
+                    emptyTable: 'Tidak Ada Data yang Tersedia',
+                    zeroRecords: 'Tidak ada data yang cocok',
+                    loadingRecords: 'Memuat...',
+                    processing: 'Memproses...',
+                    aria: {
+                        sortAscending: ': aktifkan untuk mengurutkan kolom naik',
+                        sortDescending: ': aktifkan untuk mengurutkan kolom turun'
+                    },
+                },
+                initComplete: function () {
+                    // Column search on keyup → reloads server-side
+                    $('#column-search-row input').on('keyup change', function () {
+                        table.ajax.reload();
+                    });
+                },
+                createdRow: function (row, data) {
+                    const days = data.sisa_hari;
+                    if (days === null || days === undefined || days === '') return;
+                    if (days < 7) {
+                        $(row).addClass('row-red');
+                    } else if (days < 30) {
+                        $(row).addClass('row-yellow');
+                    } else {
+                        $(row).addClass('row-green');
+                    }
+                }
+            });
+        });
+    })();
+</script>
+{% endblock %}

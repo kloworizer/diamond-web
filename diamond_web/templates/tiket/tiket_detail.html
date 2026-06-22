@@ -747,7 +747,7 @@
 
                                     <!-- Transfer ke PMDE button: show if status 5 (Diidentifikasi) -->
                                     {% if tiket.status_tiket == STATUS_IDENTIFIKASI %}
-                                        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#transferKePMDEModal">
+                                        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#transferKePMDEModal" disabled>
                                             <i class="feather-send me-1"></i>Transfer ke PMDE
                                         </button>
                                     {% endif %}
@@ -763,7 +763,7 @@
                         {% if user_is_active_pic_pmde %}
                             {% if tiket.status_tiket == STATUS_PENGENDALIAN_MUTU %}
                                 <div class="d-grid gap-2 mt-2">
-                                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#selesaikanTiketModal">
+                                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#selesaikanTiketModal" disabled>
                                         <i class="feather-check me-1"></i>Selesaikan Tiket
                                     </button>
                                 </div>
