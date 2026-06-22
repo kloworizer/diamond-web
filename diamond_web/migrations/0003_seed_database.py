@@ -211,7 +211,7 @@ BENTUK_DATA_DATA = [
 CARA_PENYAMPAIAN_DATA = [
     {"deskripsi": "Langsung"},
     {"deskripsi": "Online"},
-    {"deskripsi": "Nadine"},
+    {"deskripsi": "Pos"},
     {"deskripsi": "Data Tidak Tersedia"},
 ]
 
