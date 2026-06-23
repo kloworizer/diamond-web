@@ -39,8 +39,28 @@ Aplikasi ini mengelola siklus hidup **Tiket Data** — dari penerimaan, peneliti
 - [🛠️ Development Tools](#️-development-tools)
 - [📦 Library yang Digunakan](#-library-yang-digunakan)
 - [🤝 Panduan Kolaborasi](#-panduan-kolaborasi)
-- [� Database Backup & Restore](#-database-backup--restore)
-- [�📋 Misc Commands](#-misc-commands)
+- [💾 Database Backup & Restore](#-database-backup--restore)
+- [📋 Misc Commands](#-misc-commands)
+
+---
+
+## 📖 Dokumentasi Lengkap
+
+Seluruh dokumentasi proyek tersedia di folder [`docs/`](docs/):
+
+| Dokumen | Deskripsi |
+|---------|-----------|
+| [📘 **PRODUCTION_SETUP.md**](docs/PRODUCTION_SETUP.md) | Panduan deployment produksi (server, Nginx, Gunicorn, Celery, Redis) |
+| [🔐 **SECURITY.md**](docs/SECURITY.md) | Dokumentasi keamanan (autentikasi, session, CSRF, HTTPS) |
+| [🌐 **API_DOCUMENTATION.md**](docs/API_DOCUMENTATION.md) | Dokumentasi semua endpoint API |
+| [🗄️ **models_erd.md**](docs/models_erd.md) | Diagram ERD dan dokumentasi model database |
+| [📋 **DEPLOYMENT_CHECKLIST.md**](docs/DEPLOYMENT_CHECKLIST.md) | Checklist pre-deployment untuk production release |
+| [📤 **HANDOVER_DOCUMENT.md**](docs/HANDOVER_DOCUMENT.md) | Dokumen serah terima proyek untuk tim baru |
+| [🤝 **CONTRIBUTING.md**](docs/CONTRIBUTING.md) | Panduan kontribusi untuk developer |
+| [📝 **CHANGELOG.md**](docs/CHANGELOG.md) | Riwayat rilis dan perubahan |
+| [🔄 **ORACLE_SETUP.md**](docs/ORACLE_SETUP.md) | Panduan setup koneksi Oracle (thick mode) |
+| [📊 **status_tiket_flow.md**](docs/status_tiket_flow.md) | Diagram alur status tiket |
+| [📄 **TEMPLATES_SETUP.md**](docs/TEMPLATES_SETUP.md) | Setup template DOCX |
 
 ---
 
@@ -720,7 +740,7 @@ python manage.py mediarestore
 
 ---
 
-## �📋 Misc Commands
+## 📋 Misc Commands
 
 ```powershell
 # ─── VENV ───
@@ -747,4 +767,12 @@ pip install --no-index --find-links=./packages -r requirements/base.txt
 
 ---
 
-> **Butuh bantuan?** Lihat dokumentasi lebih lanjut di folder `docs/` atau template DOCX di `diamond_web/fixtures/default_templates/README.md`.
+> **Butuh bantuan?** Lihat dokumentasi lebih lanjut di folder `docs/`:
+> - [Panduan Deployment](docs/PRODUCTION_SETUP.md)
+> - [Dokumentasi API](docs/API_DOCUMENTATION.md)
+> - [Dokumentasi Keamanan](docs/SECURITY.md)
+> - [Checklist Deployment](docs/DEPLOYMENT_CHECKLIST.md)
+> - [Dokumen Serah Terima](docs/HANDOVER_DOCUMENT.md)
+> - [Panduan Kontribusi](docs/CONTRIBUTING.md)
+> - [Riwayat Rilis](docs/CHANGELOG.md)
+> - Template DOCX di `diamond_web/fixtures/default_templates/README.md`
