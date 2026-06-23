@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.conf import settings
-from django.db.models import Q, Exists, OuterRef
+from django.db.models import F, Q, Exists, OuterRef, Max, Subquery
 from django.contrib.auth.models import Group
 from django.contrib.auth.decorators import login_required
 from diamond_web.views.task_to_do import (
@@ -20,7 +20,6 @@ from diamond_web.constants.tiket_status import (
     STATUS_DIKIRIM_KE_PIDE,
     STATUS_IDENTIFIKASI,
     STATUS_PENGENDALIAN_MUTU,
-    STATUS_KLARIFIKASI_MAX,
 )
 from diamond_web.constants.tiket_action_types import TiketActionType
 
@@ -128,6 +127,8 @@ def home(request):
             'pengembalian_sebagian_dari_pide': Tiket.objects.filter(
                 id__in=tiket_ids,
                 baris_cde__gt=0
+            ).exclude(
+                baris_cde=F('baris_lengkap')
             ).select_related(
                 'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
                 'id_periode_data__id_sub_jenis_data_ilap',
@@ -136,10 +137,18 @@ def home(request):
             ).order_by('-id'),
             'diklarifikasi': Tiket.objects.filter(
                 id__in=tiket_ids,
-                status_tiket__lte=STATUS_KLARIFIKASI_MAX
+                penyampaian=Subquery(
+                    Tiket.objects.filter(
+                        id_periode_data=OuterRef('id_periode_data'),
+                        periode=OuterRef('periode'),
+                        tahun=OuterRef('tahun'),
+                        id__in=tiket_ids,
+                    ).values('id_periode_data', 'periode', 'tahun')
+                    .annotate(max_penyampaian=Max('penyampaian'))
+                    .values('max_penyampaian')[:1]
+                )
             ).filter(
-                Q(baris_tidak_lengkap__gt=0) |
-                Q(baris_cde__gt=0)
+                ~Q(id_status_penelitian=1) | Q(baris_cde__gt=0)
             ).select_related(
                 'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
                 'id_periode_data__id_sub_jenis_data_ilap',
@@ -157,6 +166,15 @@ def home(request):
                     end_date__isnull=True
                 ))
             ).select_related('id_ilap').order_by('id_sub_jenis_data')
+            # Admin: Tiket with Tahun=2099 (null periode/tahun data from migration)
+            context['p3de_tiket_periode_null'] = Tiket.objects.filter(
+                tahun=2099
+            ).select_related(
+                'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                'id_periode_data__id_sub_jenis_data_ilap',
+                'id_bentuk_data',
+                'id_cara_penyampaian'
+            ).order_by('-id')
     if is_pide:
         context['tiket_summary_pide'] = get_tiket_summary_for_user_pide(request.user)
         pide_pic = TiketPIC.objects.filter(id_user=request.user, role=TiketPIC.Role.PIDE, active=True)
