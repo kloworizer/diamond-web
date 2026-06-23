@@ -13,11 +13,11 @@ from django.views.generic import TemplateView
 from django.http import JsonResponse
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_protect
-from django.db.models import Q, Func, Value, F
-from django.db.models.functions import Cast, Concat
+from django.db.models import Q, Value
+from django.db.models.functions import Cast
 from django.db.models import (
     DateField, IntegerField, Subquery, OuterRef,
-    ExpressionWrapper, Exists
+    Exists
 )
 from django.db.models.functions import Coalesce
 from django.utils import timezone
@@ -102,25 +102,6 @@ def quality_control_data(request):
             Value(0)
         ),
     ).annotate(
-        # Deadline = tgl_transfer + durasi days (SQLite DATE function)
-        deadline_sort=Func(
-            Cast('tgl_transfer', DateField()),
-            Concat(Value('+'), F('active_durasi'), Value(' days')),
-            function='DATE',
-            output_field=DateField(),
-        ),
-        # Sisa hari = julianday(deadline) - julianday('now')
-        sisa_hari=ExpressionWrapper(
-            Func(
-                Func(
-                    Cast('tgl_transfer', DateField()),
-                    Concat(Value('+'), F('active_durasi'), Value(' days')),
-                    function='DATE',
-                ),
-                function='julianday',
-            ) - Func(Value('now'), function='julianday'),
-            output_field=IntegerField()
-        ),
         # Prioritas: check if tgl_terima_dip falls within JenisPrioritasData range
         is_prioritas=Exists(
             JenisPrioritasData.objects.filter(
@@ -177,10 +158,10 @@ def quality_control_data(request):
         4: 'id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data',
         5: 'id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel__deskripsi',
         6: 'id',
-        7: 'deadline_sort',
+        7: 'tgl_transfer_date',
         8: 'tgl_transfer_date',
         9: 'tgl_rematch_date',
-        10: 'sisa_hari',
+        10: 'tgl_transfer_date',
         11: 'is_prioritas',
         12: 'baris_i',
         13: 'sudah_qc',
@@ -253,12 +234,12 @@ def quality_control_data(request):
                     jatuh_tempo = '-'
 
         # Compute sort-friendly values for orthogonal DataTable sorting
-        deadline_sort_iso = tiket.deadline_sort.isoformat() if tiket.deadline_sort else ''
+        deadline_sort_iso = deadline_date.strftime('%Y-%m-%d') if deadline != '-' and 'deadline_date' in locals() else ''
         tgl_transfer_sort = tiket.tgl_transfer.strftime('%Y-%m-%d') if tiket.tgl_transfer else ''
         tgl_rematch_sort = tiket.tgl_rematch.strftime('%Y-%m-%d') if tiket.tgl_rematch else ''
-        sisa_hari_val = tiket.sisa_hari if tiket.sisa_hari is not None else ''
+        sisa_hari_val = str(sisa_hari) if 'sisa_hari' in locals() else ''
         # Numeric days remaining for frontend row coloring (None = unknown)
-        jatuh_tempo_days = locals().get('sisa_hari', tiket.sisa_hari)
+        jatuh_tempo_days = locals().get('sisa_hari', None)
 
         row = {
             'nama_tabel': sub_jenis_data.nama_tabel_I or '',

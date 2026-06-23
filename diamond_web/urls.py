@@ -13,6 +13,7 @@ urlpatterns = [
     
     path('tanda-terima-data/<int:pk>/view/', views.TandaTerimaDataViewOnly.as_view(), name='tanda_terima_data_view'),
     path('', views.home, name='home'),
+    path('home/data/', views.home_data, name='home_data'),
     path('keep-alive/', keep_alive, name='keep_alive'),
     path('session-expired/', session_expired, name='session_expired'),
     path('notifications/', views.notification_list, name='notification_list'),
