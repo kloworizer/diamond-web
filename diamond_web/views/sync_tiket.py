@@ -61,7 +61,7 @@ _TIKET_ORACLE_SQL = """
     END periode_penerimaan,
     SUBSTR(id_tiket, 1, 9) || '_20' || SUBSTR(id_tiket, 10, 2) jenis_prioritas_data,
     COALESCE(periode_data, 'Tahun') periode_data,
-    COALESCE(tahun_data, EXTRACT(YEAR FROM SYSDATE)) tahun_data,
+    COALESCE(tahun_data, 2099) tahun_data,
     ROW_NUMBER() OVER (
         PARTITION BY
             CASE
@@ -69,11 +69,23 @@ _TIKET_ORACLE_SQL = """
                 ELSE id_tiket
             END,
             COALESCE(periode_data, 'Tahun'),
-            COALESCE(tahun_data, EXTRACT(YEAR FROM SYSDATE))
+            COALESCE(tahun_data, 2099)
         ORDER BY TGL_TERIMA ASC
     ) penyampaian,
     COALESCE(NO_SURATPENGANTAR, '-') nomor_surat_pengantar,
-    COALESCE(TGL_SURATPENGANTAR, TGL_TERIMA, SYSDATE) tanggal_surat_pengantar,
+    COALESCE(
+        TGL_SURATPENGANTAR,
+        TGL_TERIMA,
+        CASE
+            WHEN LENGTH(id_tiket) = 16 AND SUBSTR(id_tiket,1,1) = 'E'
+             AND SUBSTR(id_tiket, 12, 2) BETWEEN '01' AND '12'
+             AND SUBSTR(id_tiket, 14, 2) BETWEEN '01' AND '31'
+            THEN TO_DATE(SUBSTR(SUBSTR(id_tiket, 1, 1) || 'I' || SUBSTR(id_tiket, 2), 11, 6), 'YYMMDD')
+            WHEN SUBSTR(id_tiket, 12, 2) BETWEEN '01' AND '12'
+             AND SUBSTR(id_tiket, 14, 2) BETWEEN '01' AND '31'
+            THEN TO_DATE(SUBSTR(id_tiket, 10, 6), 'YYMMDD')
+        END
+    ) tanggal_surat_pengantar,
     COALESCE(nama_pengirim, '-') nama_pengirim,
     BENTUK_DATA,
     CARA_PENYAMPAIAN,
@@ -85,7 +97,18 @@ _TIKET_ORACLE_SQL = """
     COALESCE(JML_ROW_P3DE, 0) baris_diterima,
     1 satuan_data,
     NULL tgl_terima_vertikal,
-    COALESCE(TGL_TERIMA, SYSDATE) tgl_terima_dip,
+    COALESCE(
+        TGL_TERIMA,
+        CASE
+            WHEN LENGTH(id_tiket) = 16 AND SUBSTR(id_tiket,1,1) = 'E'
+             AND SUBSTR(id_tiket, 12, 2) BETWEEN '01' AND '12'
+             AND SUBSTR(id_tiket, 14, 2) BETWEEN '01' AND '31'
+            THEN TO_DATE(SUBSTR(SUBSTR(id_tiket, 1, 1) || 'I' || SUBSTR(id_tiket, 2), 11, 6), 'YYMMDD')
+            WHEN SUBSTR(id_tiket, 12, 2) BETWEEN '01' AND '12'
+             AND SUBSTR(id_tiket, 14, 2) BETWEEN '01' AND '31'
+            THEN TO_DATE(SUBSTR(id_tiket, 10, 6), 'YYMMDD')
+        END
+    ) tgl_terima_dip,
     0 backup,
     0 tanda_terima,
     CASE
