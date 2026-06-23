@@ -519,9 +519,7 @@
                 {% if git_commit_info.date %}<span> &middot; {{ git_commit_info.date }}</span>{% endif %}
             </p>
             <div class="d-flex align-items-center gap-4">
-                <a href="javascript:void(0);" class="fs-11 fw-semibold text-uppercase">Help</a>
-                <a href="javascript:void(0);" class="fs-11 fw-semibold text-uppercase">Terms</a>
-                <a href="javascript:void(0);" class="fs-11 fw-semibold text-uppercase">Privacy</a>
+                <a href="{% url 'docs_index' %}" class="fs-11 fw-semibold text-uppercase">Docs</a>
             </div>
         </footer>
     </main>
