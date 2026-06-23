@@ -100,6 +100,15 @@
                             {% endif %}
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="periode_tiket_null_p3de">
+                            <span class="icon-bg-soft icon-bg-soft-purple"><i class="feather-alert-triangle" style="color:#F59E0B"></i></span>
+                            <span>Periode Tiket Null</span>
+                            {% if p3de_tiket_periode_null %}
+                            <span class="badge bg-warning ms-auto">{{ p3de_tiket_periode_null|length }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
                 </ul>
                 {% endif %}
             </div>
@@ -493,6 +502,56 @@
                     </div>
                 </div>
                 {% endif %}
+                {% endif %}
+                {% if is_admin_p3de %}
+                <!-- Admin: Periode Tiket Null - P3DE -->
+                <div class="card stretch stretch-full" data-category="periode_tiket_null_p3de" style="display:none;">
+                    <div class="card-header">
+                        <h5 class="mb-0">Periode Tiket Null (Tahun=2099)</h5>
+                    </div>
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Nomor Tiket</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
+                                        <th>Periode</th>
+                                        <th>Tahun</th>
+                                        <th>Status</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for tiket in p3de_tiket_periode_null %}
+                                    <tr>
+                                        <td>{{ tiket.nomor_tiket }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
+                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
+                                        <td>{{ tiket.periode }}</td>
+                                        <td>{{ tiket.tahun }}</td>
+                                        <td>{{ tiket.get_status_tiket_display }}</td>
+                                        <td>
+                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted">Tidak ada tiket dengan tahun 2099</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <small class="text-muted">
+                            <i class="feather-info me-1"></i>
+                            <strong>Catatan:</strong> Ketika migrasi tiket dengan periode data / tahun data NULL, diisi dengan <strong>2099</strong>.
+                        </small>
+                    </div>
+                </div>
                 {% endif %}
                 {% if is_pide %}
                 <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">PIDE - Identifikasi</h6> -->
