@@ -60,9 +60,18 @@ _TIKET_ORACLE_SQL = """
         ELSE PERIODE_PENGIRIMAN
     END periode_penerimaan,
     SUBSTR(id_tiket, 1, 9) || '_20' || SUBSTR(id_tiket, 10, 2) jenis_prioritas_data,
-    COALESCE(periode_data, 'tahun') periode_data,
+    COALESCE(periode_data, 'Tahun') periode_data,
     COALESCE(tahun_data, EXTRACT(YEAR FROM SYSDATE)) tahun_data,
-    1 penyampaian,
+    ROW_NUMBER() OVER (
+        PARTITION BY
+            CASE
+                WHEN LENGTH(id_tiket) = 16 AND SUBSTR(id_tiket,1,1) = 'E' THEN SUBSTR(id_tiket, 1, 1) || 'I' || SUBSTR(id_tiket, 2)
+                ELSE id_tiket
+            END,
+            COALESCE(periode_data, 'Tahun'),
+            COALESCE(tahun_data, EXTRACT(YEAR FROM SYSDATE))
+        ORDER BY TGL_TERIMA ASC
+    ) penyampaian,
     COALESCE(NO_SURATPENGANTAR, '-') nomor_surat_pengantar,
     COALESCE(TGL_SURATPENGANTAR, TGL_TERIMA, SYSDATE) tanggal_surat_pengantar,
     COALESCE(nama_pengirim, '-') nama_pengirim,

@@ -3242,71 +3242,76 @@ class OracleDataSyncService:
             if stop_checker and stop_checker():
                 logger.info(f'Stop signal received before processing table {idx}/{total_tables}')
                 break
-                
+
+            # Wrap each table in a nested savepoint so a failure in one table
+            # does not break the outer transaction for subsequent tables.
+            # This prevents "can't execute queries until end of atomic block" errors
+            # cascading to dependent tables like pic_pmde_ref / durasi_jatuh_tempo_pmde.
             try:
-                summary, target_model, inserts, updates = self._calculate_diff_for_config(cfg, stop_checker=stop_checker)
-                table_summaries.append(summary)
+                with transaction.atomic():
+                    summary, target_model, inserts, updates = self._calculate_diff_for_config(cfg, stop_checker=stop_checker)
+                    table_summaries.append(summary)
 
-                if apply_changes and not summary.errors:
-                    self._apply_operations(target_model, inserts, updates)
+                    if apply_changes and not summary.errors:
+                        self._apply_operations(target_model, inserts, updates)
 
-                cumulative_inserts += summary.inserts
-                cumulative_updates += summary.updates
-                cumulative_errors += len(summary.errors)
+                    cumulative_inserts += summary.inserts
+                    cumulative_updates += summary.updates
+                    cumulative_errors += len(summary.errors)
 
-                # Pre-process: before kategori_ilap sync, ensure KW record exists
-                if cfg.name == "kategori_ilap":
-                    pre_summary = self._pre_process_kategori_ilap_kw(
-                        apply_changes=apply_changes
-                    )
-                    if pre_summary:
-                        table_summaries.append(pre_summary)
-                        cumulative_inserts += pre_summary.inserts
-                        cumulative_updates += pre_summary.updates
-                        cumulative_errors += len(pre_summary.errors)
+                    # Pre-process: before kategori_ilap sync, ensure KW record exists
+                    if cfg.name == "kategori_ilap":
+                        pre_summary = self._pre_process_kategori_ilap_kw(
+                            apply_changes=apply_changes
+                        )
+                        if pre_summary:
+                            table_summaries.append(pre_summary)
+                            cumulative_inserts += pre_summary.inserts
+                            cumulative_updates += pre_summary.updates
+                            cumulative_errors += len(pre_summary.errors)
 
-                # Post-process: after ilap sync, insert additional default ILAP records
-                if cfg.name == "ilap":
-                    post_summary = self._post_process_ilap_insert_defaults(
-                        apply_changes=apply_changes
-                    )
-                    if post_summary:
-                        table_summaries.append(post_summary)
-                        cumulative_inserts += post_summary.inserts
-                        cumulative_updates += post_summary.updates
-                        cumulative_errors += len(post_summary.errors)
+                    # Post-process: after ilap sync, insert additional default ILAP records
+                    if cfg.name == "ilap":
+                        post_summary = self._post_process_ilap_insert_defaults(
+                            apply_changes=apply_changes
+                        )
+                        if post_summary:
+                            table_summaries.append(post_summary)
+                            cumulative_inserts += post_summary.inserts
+                            cumulative_updates += post_summary.updates
+                            cumulative_errors += len(post_summary.errors)
 
-                # Post-process: after jenis_data_ilap sync, insert AEOI domestic row
-                # and additional hardcoded records from additional_jenis_data_ilap.csv
-                if cfg.name == "jenis_data_ilap":
-                    post_summary = self._post_process_jenis_data_ilap_aeoi_domestic(
-                        apply_changes=apply_changes
-                    )
-                    if post_summary:
-                        table_summaries.append(post_summary)
-                        cumulative_inserts += post_summary.inserts
-                        cumulative_updates += post_summary.updates
-                        cumulative_errors += len(post_summary.errors)
+                    # Post-process: after jenis_data_ilap sync, insert AEOI domestic row
+                    # and additional hardcoded records from additional_jenis_data_ilap.csv
+                    if cfg.name == "jenis_data_ilap":
+                        post_summary = self._post_process_jenis_data_ilap_aeoi_domestic(
+                            apply_changes=apply_changes
+                        )
+                        if post_summary:
+                            table_summaries.append(post_summary)
+                            cumulative_inserts += post_summary.inserts
+                            cumulative_updates += post_summary.updates
+                            cumulative_errors += len(post_summary.errors)
 
-                    post_summary = self._post_process_jenis_data_ilap_additional(
-                        apply_changes=apply_changes
-                    )
-                    if post_summary:
-                        table_summaries.append(post_summary)
-                        cumulative_inserts += post_summary.inserts
-                        cumulative_updates += post_summary.updates
-                        cumulative_errors += len(post_summary.errors)
+                        post_summary = self._post_process_jenis_data_ilap_additional(
+                            apply_changes=apply_changes
+                        )
+                        if post_summary:
+                            table_summaries.append(post_summary)
+                            cumulative_inserts += post_summary.inserts
+                            cumulative_updates += post_summary.updates
+                            cumulative_errors += len(post_summary.errors)
 
-                # Post-process: after periode_jenis_data sync, insert additional records
-                if cfg.name == "periode_jenis_data":
-                    post_summary = self._post_process_periode_jenis_data_additional(
-                        apply_changes=apply_changes
-                    )
-                    if post_summary:
-                        table_summaries.append(post_summary)
-                        cumulative_inserts += post_summary.inserts
-                        cumulative_updates += post_summary.updates
-                        cumulative_errors += len(post_summary.errors)
+                    # Post-process: after periode_jenis_data sync, insert additional records
+                    if cfg.name == "periode_jenis_data":
+                        post_summary = self._post_process_periode_jenis_data_additional(
+                            apply_changes=apply_changes
+                        )
+                        if post_summary:
+                            table_summaries.append(post_summary)
+                            cumulative_inserts += post_summary.inserts
+                            cumulative_updates += post_summary.updates
+                            cumulative_errors += len(post_summary.errors)
 
             except Exception as exc:
                 err_summary = OracleSyncSummary(
