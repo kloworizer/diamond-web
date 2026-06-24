@@ -243,7 +243,7 @@ def laporan_pengendalian_mutu_data(request):
         row = {
             'nama_ilap': ilap.nama_ilap,
             'nama_sub_jenis_data': sub_jenis_data.nama_sub_jenis_data,
-            'nama_tabel': jenis_tabel.deskripsi if jenis_tabel else '',
+            'nama_tabel': sub_jenis_data.nama_tabel_I or '',
             'nomor_tiket': tiket.nomor_tiket,
             'status_tiket': STATUS_LABELS.get(tiket.status_tiket, 'Unknown'),
             'data_diterima': tiket.baris_diterima or 0,

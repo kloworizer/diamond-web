@@ -17,8 +17,10 @@ from ..models.ilap import ILAP
 from ..models.jenis_data_ilap import JenisDataILAP
 from ..models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ..models.periode_pengiriman import PeriodePengiriman
+from ..models.periode_jenis_data import PeriodeJenisData
 from ..models.jenis_tabel import JenisTabel
 from ..models.dasar_hukum import DasarHukum
+from ..models.kategori_ilap import KategoriILAP
 
 
 def is_pmde_user(user):
@@ -33,16 +35,16 @@ def _get_filtered_data(params):
 
     Applies filters for kategori ILAP, nama ILAP, dasar hukum, jenis data,
     periode pengiriman, and nama tabel. Each filter is applied via the
-    related model fields (e.g., jenis_data_ilap, periode_jenis_data).
+    related model fields using correct reverse relations.
 
     Args:
         params: QueryDict or dict-like object containing filter parameters.
             - kategori_ilap (str, optional): Kategori ILAP ID to filter by.
             - nama_ilap (str, optional): ILAP ID to filter by.
             - dasar_hukum (str, optional): Dasar hukum ID; filters ILAPs that
-              have JenisDataILAP with the given dasar hukum.
-            - jenis_data (str, optional): Jenis Data ID; filters ILAPs that
-              have JenisDataILAP with the given ID.
+              have JenisDataILAP with KlasifikasiJenisData matching the given
+              dasar hukum.
+            - jenis_data (str, optional): Jenis Data ILAP ID to filter by.
             - periode (str, optional): Periode pengiriman ID; filters ILAPs that
               have PeriodeJenisData with the given periode.
             - nama_tabel (str, optional): Jenis Tabel ID; filters ILAPs that
@@ -58,32 +60,36 @@ def _get_filtered_data(params):
     periode = params.get('periode')
     nama_tabel = params.get('nama_tabel')
 
-    # Base query
-    ilaps = ILAP.objects.all()
+    # Base query with select_related for efficiency
+    ilaps = ILAP.objects.select_related('id_kategori').all()
 
     # Filter by kategori ILAP
     if kategori_ilap and kategori_ilap != 'all' and kategori_ilap != '':
-        ilaps = ilaps.filter(id_kategori_ilap_id=kategori_ilap)
+        ilaps = ilaps.filter(id_kategori_id=kategori_ilap)
 
     # Filter by nama ILAP
     if nama_ilap and nama_ilap != 'all' and nama_ilap != '':
         ilaps = ilaps.filter(id=nama_ilap)
 
-    # Filter by dasar hukum
+    # Filter by dasar hukum (via JenisDataILAP -> KlasifikasiJenisData -> DasarHukum)
     if dasar_hukum and dasar_hukum != 'all' and dasar_hukum != '':
-        ilaps = ilaps.filter(jenis_data_ilap__id_dasar_hukum_id=dasar_hukum).distinct()
+        ilaps = ilaps.filter(
+            jenisdatailap__klasifikasijenisdata__id_klasifikasi_tabel_id=dasar_hukum
+        ).distinct()
 
-    # Filter by jenis data
+    # Filter by jenis data ILAP
     if jenis_data and jenis_data != 'all' and jenis_data != '':
-        ilaps = ilaps.filter(jenis_data_ilap__id=jenis_data).distinct()
+        ilaps = ilaps.filter(jenisdatailap__id=jenis_data).distinct()
 
-    # Filter by periode pengiriman
+    # Filter by periode pengiriman (via JenisDataILAP -> PeriodeJenisData)
     if periode and periode != 'all' and periode != '':
-        ilaps = ilaps.filter(periode_jenis_data__id_periode_pengiriman_id=periode).distinct()
+        ilaps = ilaps.filter(
+            jenisdatailap__periodejenisdata__id_periode_pengiriman_id=periode
+        ).distinct()
 
-    # Filter by nama tabel
+    # Filter by nama tabel (jenis tabel)
     if nama_tabel and nama_tabel != 'all' and nama_tabel != '':
-        ilaps = ilaps.filter(jenis_data_ilap__id_jenis_tabel_id=nama_tabel).distinct()
+        ilaps = ilaps.filter(jenisdatailap__id_jenis_tabel_id=nama_tabel).distinct()
 
     return ilaps
 
@@ -101,15 +107,23 @@ class LaporanRekapHimpunOlahDataView(LoginRequiredMixin, UserPassesTestMixin, Te
         return is_pmde_user(self.request.user)
 
     def get_context_data(self, **kwargs):
-        """Add context data to the template.
+        """Add filter options context to the template.
+
+        Provides lists of ILAP for the filter dropdowns.
 
         Args:
             **kwargs: Additional context arguments passed to the parent.
 
         Returns:
-            dict: The template context dictionary.
+            dict: The template context dictionary with filter_options.
         """
         context = super().get_context_data(**kwargs)
+        context['filter_options'] = {
+            'ilap': [
+                {'id': ilap['id'], 'deskripsi': ilap['nama_ilap']}
+                for ilap in ILAP.objects.values('id', 'nama_ilap').order_by('nama_ilap')
+            ],
+        }
         return context
 
 
@@ -173,30 +187,62 @@ def laporan_rekap_himpun_olah_data_data(request):
     # Build response data
     data = []
     for idx, ilap in enumerate(ilaps_paginated, start=start + 1):
-        # Get jenis data for this ILAP
-        jenis_data_list = ilap.jenis_data_ilap.all()
+        # Get all JenisDataILAP records for this ILAP
+        jenis_data_ids = JenisDataILAP.objects.filter(id_ilap=ilap).values_list('id', flat=True)
 
-        # Count by klasifikasi
-        wajib_count = jenis_data_list.filter(
-            id_klasifikasi_jenis_data__nama_klasifikasi='WAJIB'
-        ).count()
-        penting_count = jenis_data_list.filter(
-            id_klasifikasi_jenis_data__nama_klasifikasi='PENTING'
-        ).count()
-        lengkap_count = jenis_data_list.filter(
-            id_klasifikasi_jenis_data__nama_klasifikasi='LENGKAP'
-        ).count()
-        langka_count = jenis_data_list.filter(
-            id_klasifikasi_jenis_data__nama_klasifikasi='LANGKA'
-        ).count()
+        # JENIS DATA WAJIB = total JenisDataILAP for this ILAP
+        jenis_data_wajib = len(jenis_data_ids)
+
+        # Get PeriodeJenisData IDs linked to these JenisDataILAP records
+        periode_ids = PeriodeJenisData.objects.filter(
+            id_sub_jenis_data_ilap_id__in=jenis_data_ids
+        ).values_list('id', flat=True)
+
+        # Get Tiket records linked via these PeriodeJenisData
+        tikets_related = Tiket.objects.filter(id_periode_data_id__in=periode_ids)
+
+        # Distinct JenisDataILAP that have at least one tiket = KIRIM
+        jd_with_tikets = PeriodeJenisData.objects.filter(
+            id__in=periode_ids,
+            tiket__isnull=False
+        ).values_list('id_sub_jenis_data_ilap_id', flat=True).distinct()
+        jenis_data_kirim = len(set(jd_with_tikets))
+
+        # Distinct JenisDataILAP with tikets that are on time (tgl_kirim_pide is not null)
+        jd_tepat_waktu = PeriodeJenisData.objects.filter(
+            id__in=periode_ids,
+            tiket__tgl_kirim_pide__isnull=False
+        ).values_list('id_sub_jenis_data_ilap_id', flat=True).distinct()
+        jenis_data_tepat_waktu = len(set(jd_tepat_waktu))
+
+        # Distinct JenisDataILAP with tikets that have complete data (baris_lengkap > 0)
+        jd_lengkap = PeriodeJenisData.objects.filter(
+            id__in=periode_ids,
+            tiket__baris_lengkap__gt=0
+        ).values_list('id_sub_jenis_data_ilap_id', flat=True).distinct()
+        jenis_data_lengkap = len(set(jd_lengkap))
+
+        # Total counts
+        jumlah_data_kirim = tikets_related.count()
+        jumlah_data_lengkap = tikets_related.filter(baris_lengkap__gt=0).count()
+
+        # Calculate percentages
+        persentase_kirim = round((jenis_data_kirim / jenis_data_wajib * 100), 2) if jenis_data_wajib > 0 else 0
+        persentase_tepat_waktu = round((jenis_data_tepat_waktu / jenis_data_wajib * 100), 2) if jenis_data_wajib > 0 else 0
+        persentase_lengkap = round((jenis_data_lengkap / jenis_data_wajib * 100), 2) if jenis_data_wajib > 0 else 0
 
         row = {
-            'kategori_ilap': ilap.id_kategori_ilap.nama_kategori_ilap if ilap.id_kategori_ilap else '',
+            'kategori_ilap': ilap.id_kategori.nama_kategori if ilap.id_kategori else '',
             'nama_ilap': ilap.nama_ilap,
-            'jenis_data_wajib': wajib_count,
-            'jenis_data_penting': penting_count,
-            'jenis_data_lengkap': lengkap_count,
-            'jenis_data_langka': langka_count,
+            'jenis_data_wajib': jenis_data_wajib,
+            'jenis_data_kirim': jenis_data_kirim,
+            'jenis_data_tepat_waktu': jenis_data_tepat_waktu,
+            'jenis_data_lengkap': jenis_data_lengkap,
+            'persentase_kirim': persentase_kirim,
+            'persentase_tepat_waktu': persentase_tepat_waktu,
+            'persentase_lengkap': persentase_lengkap,
+            'jumlah_data_kirim': jumlah_data_kirim,
+            'jumlah_data_lengkap': jumlah_data_lengkap,
         }
         data.append(row)
 
@@ -272,21 +318,26 @@ def _export_to_excel(ilaps):
     center_alignment = Alignment(horizontal="center", vertical="center")
 
     # Write title
-    ws.merge_cells('A1:G1')
+    ws.merge_cells('A1:L1')
     title_cell = ws['A1']
     title_cell.value = 'REKAP PENGHIMPUNAN DAN PENGOLAHAN DATA'
     title_cell.font = Font(bold=True, size=12)
     title_cell.alignment = center_alignment
 
     # Write subtitle
-    ws.merge_cells('A2:G2')
+    ws.merge_cells('A2:L2')
     subtitle_cell = ws['A2']
     subtitle_cell.value = 'Informasi IPC Penghimpunan Data yang telah disampaikan ke AP'
     subtitle_cell.font = Font(italic=True, size=10)
     subtitle_cell.alignment = center_alignment
 
     # Write headers
-    headers = ['NO', 'KATEGORI ILAP', 'NAMA ILAP', 'JENIS DATA WAJIB', 'JENIS DATA PENTING', 'JENIS DATA LENGKAP', 'JENIS DATA LANGKA']
+    headers = [
+        'NO', 'KATEGORI ILAP', 'NAMA ILAP', 'JENIS DATA WAJIB',
+        'JENIS DATA KIRIM', 'JENIS DATA TEPAT WAKTU', 'JENIS DATA LENGKAP',
+        'PERSENTASE KIRIM', 'PERSENTASE TEPAT WAKTU', 'PERSENTASE LENGKAP',
+        'JUMLAH DATA KIRIM', 'JUMLAH DATA LENGKAP'
+    ]
     for col_idx, header in enumerate(headers, 1):
         cell = ws.cell(row=4, column=col_idx)
         cell.value = header
@@ -297,48 +348,75 @@ def _export_to_excel(ilaps):
 
     # Write data
     for row_idx, ilap in enumerate(ilaps, start=5):
-        # Get jenis data for this ILAP
-        jenis_data_list = ilap.jenis_data_ilap.all()
+        # Get all JenisDataILAP records for this ILAP
+        jenis_data_ids = JenisDataILAP.objects.filter(id_ilap=ilap).values_list('id', flat=True)
+        jenis_data_wajib = len(jenis_data_ids)
 
-        # Count by klasifikasi
-        wajib_count = jenis_data_list.filter(
-            id_klasifikasi_jenis_data__nama_klasifikasi='WAJIB'
-        ).count()
-        penting_count = jenis_data_list.filter(
-            id_klasifikasi_jenis_data__nama_klasifikasi='PENTING'
-        ).count()
-        lengkap_count = jenis_data_list.filter(
-            id_klasifikasi_jenis_data__nama_klasifikasi='LENGKAP'
-        ).count()
-        langka_count = jenis_data_list.filter(
-            id_klasifikasi_jenis_data__nama_klasifikasi='LANGKA'
-        ).count()
+        # Get PeriodeJenisData IDs
+        periode_ids = PeriodeJenisData.objects.filter(
+            id_sub_jenis_data_ilap_id__in=jenis_data_ids
+        ).values_list('id', flat=True)
+
+        # Tiket counts
+        tikets_related = Tiket.objects.filter(id_periode_data_id__in=periode_ids)
+        jumlah_data_kirim = tikets_related.count()
+        jumlah_data_lengkap = tikets_related.filter(baris_lengkap__gt=0).count()
+
+        # Distinct JenisDataILAP counts
+        jd_with_tikets = PeriodeJenisData.objects.filter(
+            id__in=periode_ids, tiket__isnull=False
+        ).values_list('id_sub_jenis_data_ilap_id', flat=True).distinct()
+        jenis_data_kirim = len(set(jd_with_tikets))
+
+        jd_tepat_waktu = PeriodeJenisData.objects.filter(
+            id__in=periode_ids, tiket__tgl_kirim_pide__isnull=False
+        ).values_list('id_sub_jenis_data_ilap_id', flat=True).distinct()
+        jenis_data_tepat_waktu = len(set(jd_tepat_waktu))
+
+        jd_lengkap = PeriodeJenisData.objects.filter(
+            id__in=periode_ids, tiket__baris_lengkap__gt=0
+        ).values_list('id_sub_jenis_data_ilap_id', flat=True).distinct()
+        jenis_data_lengkap = len(set(jd_lengkap))
+
+        persentase_kirim = round((jenis_data_kirim / jenis_data_wajib * 100), 2) if jenis_data_wajib > 0 else 0
+        persentase_tepat_waktu = round((jenis_data_tepat_waktu / jenis_data_wajib * 100), 2) if jenis_data_wajib > 0 else 0
+        persentase_lengkap = round((jenis_data_lengkap / jenis_data_wajib * 100), 2) if jenis_data_wajib > 0 else 0
 
         row_data = [
             row_idx - 4,
-            ilap.id_kategori_ilap.nama_kategori_ilap if ilap.id_kategori_ilap else '',
+            ilap.id_kategori.nama_kategori if ilap.id_kategori else '',
             ilap.nama_ilap,
-            wajib_count,
-            penting_count,
-            lengkap_count,
-            langka_count,
+            jenis_data_wajib,
+            jenis_data_kirim,
+            jenis_data_tepat_waktu,
+            jenis_data_lengkap,
+            persentase_kirim,
+            persentase_tepat_waktu,
+            persentase_lengkap,
+            jumlah_data_kirim,
+            jumlah_data_lengkap,
         ]
 
         for col_idx, value in enumerate(row_data, 1):
             cell = ws.cell(row=row_idx, column=col_idx)
             cell.value = value
             cell.border = border
-            if col_idx > 3:
+            if col_idx in (1, 4, 5, 6, 7, 8, 9, 10, 11, 12):
                 cell.alignment = center_alignment
 
     # Adjust column widths
     ws.column_dimensions['A'].width = 5
     ws.column_dimensions['B'].width = 20
     ws.column_dimensions['C'].width = 25
-    ws.column_dimensions['D'].width = 18
-    ws.column_dimensions['E'].width = 18
+    ws.column_dimensions['D'].width = 16
+    ws.column_dimensions['E'].width = 16
     ws.column_dimensions['F'].width = 18
-    ws.column_dimensions['G'].width = 18
+    ws.column_dimensions['G'].width = 16
+    ws.column_dimensions['H'].width = 16
+    ws.column_dimensions['I'].width = 18
+    ws.column_dimensions['J'].width = 16
+    ws.column_dimensions['K'].width = 16
+    ws.column_dimensions['L'].width = 16
 
     # Save to BytesIO
     excel_file = BytesIO()
@@ -384,27 +462,62 @@ def _export_to_pdf(ilaps):
         pdf = SimpleDocTemplate(buffer, pagesize=landscape(A4), topMargin=0.5*inch, bottomMargin=0.5*inch)
 
         # Prepare data
-        data = [['NO', 'KATEGORI ILAP', 'NAMA ILAP', 'JENIS DATA WAJIB', 'JENIS DATA PENTING', 'JENIS DATA LENGKAP', 'JENIS DATA LANGKA']]
+        headers = [
+            'NO', 'KATEGORI ILAP', 'NAMA ILAP', 'JENIS DATA WAJIB',
+            'JENIS DATA KIRIM', 'JENIS DATA TEPAT WAKTU', 'JENIS DATA LENGKAP',
+            'PERSENTASE KIRIM', 'PERSENTASE TEPAT WAKTU', 'PERSENTASE LENGKAP',
+            'JUMLAH DATA KIRIM', 'JUMLAH DATA LENGKAP'
+        ]
+        data = [headers]
 
         for row_idx, ilap in enumerate(ilaps, start=1):
-            jenis_data_list = ilap.jenis_data_ilap.all()
-            wajib_count = jenis_data_list.filter(id_klasifikasi_jenis_data__nama_klasifikasi='WAJIB').count()
-            penting_count = jenis_data_list.filter(id_klasifikasi_jenis_data__nama_klasifikasi='PENTING').count()
-            lengkap_count = jenis_data_list.filter(id_klasifikasi_jenis_data__nama_klasifikasi='LENGKAP').count()
-            langka_count = jenis_data_list.filter(id_klasifikasi_jenis_data__nama_klasifikasi='LANGKA').count()
+            jenis_data_ids = JenisDataILAP.objects.filter(id_ilap=ilap).values_list('id', flat=True)
+            jenis_data_wajib = len(jenis_data_ids)
+            periode_ids = PeriodeJenisData.objects.filter(
+                id_sub_jenis_data_ilap_id__in=jenis_data_ids
+            ).values_list('id', flat=True)
+
+            tikets_related = Tiket.objects.filter(id_periode_data_id__in=periode_ids)
+            jumlah_data_kirim = tikets_related.count()
+            jumlah_data_lengkap = tikets_related.filter(baris_lengkap__gt=0).count()
+
+            jd_with_tikets = PeriodeJenisData.objects.filter(
+                id__in=periode_ids, tiket__isnull=False
+            ).values_list('id_sub_jenis_data_ilap_id', flat=True).distinct()
+            jenis_data_kirim = len(set(jd_with_tikets))
+
+            jd_tepat_waktu = PeriodeJenisData.objects.filter(
+                id__in=periode_ids, tiket__tgl_kirim_pide__isnull=False
+            ).values_list('id_sub_jenis_data_ilap_id', flat=True).distinct()
+            jenis_data_tepat_waktu = len(set(jd_tepat_waktu))
+
+            jd_lengkap = PeriodeJenisData.objects.filter(
+                id__in=periode_ids, tiket__baris_lengkap__gt=0
+            ).values_list('id_sub_jenis_data_ilap_id', flat=True).distinct()
+            jenis_data_lengkap = len(set(jd_lengkap))
+
+            persentase_kirim = round((jenis_data_kirim / jenis_data_wajib * 100), 2) if jenis_data_wajib > 0 else 0
+            persentase_tepat_waktu = round((jenis_data_tepat_waktu / jenis_data_wajib * 100), 2) if jenis_data_wajib > 0 else 0
+            persentase_lengkap = round((jenis_data_lengkap / jenis_data_wajib * 100), 2) if jenis_data_wajib > 0 else 0
 
             data.append([
                 str(row_idx),
-                ilap.id_kategori_ilap.nama_kategori_ilap if ilap.id_kategori_ilap else '',
+                ilap.id_kategori.nama_kategori if ilap.id_kategori else '',
                 ilap.nama_ilap,
-                str(wajib_count),
-                str(penting_count),
-                str(lengkap_count),
-                str(langka_count),
+                str(jenis_data_wajib),
+                str(jenis_data_kirim),
+                str(jenis_data_tepat_waktu),
+                str(jenis_data_lengkap),
+                str(persentase_kirim),
+                str(persentase_tepat_waktu),
+                str(persentase_lengkap),
+                str(jumlah_data_kirim),
+                str(jumlah_data_lengkap),
             ])
 
         # Create table
-        table = Table(data, colWidths=[0.6*inch, 1.5*inch, 1.8*inch, 1.3*inch, 1.3*inch, 1.3*inch, 1.3*inch])
+        col_widths = [0.4*inch, 1.2*inch, 1.5*inch, 1.0*inch, 1.0*inch, 1.1*inch, 1.0*inch, 1.0*inch, 1.1*inch, 1.0*inch, 1.0*inch, 1.0*inch]
+        table = Table(data, colWidths=col_widths)
 
         # Add table style
         table.setStyle(TableStyle([

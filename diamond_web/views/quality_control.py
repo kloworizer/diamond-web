@@ -125,10 +125,10 @@ def quality_control_data(request):
             tikets = tikets.filter(id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data__icontains=columns_search[4])
         if len(columns_search) > 5 and columns_search[5]:
             tikets = tikets.filter(id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel__deskripsi__icontains=columns_search[5])
+        if len(columns_search) > 7 and columns_search[7]:
+            tikets = tikets.filter(tgl_transfer__icontains=columns_search[7])
         if len(columns_search) > 8 and columns_search[8]:
-            tikets = tikets.filter(tgl_transfer__icontains=columns_search[8])
-        if len(columns_search) > 9 and columns_search[9]:
-            tikets = tikets.filter(tgl_rematch__icontains=columns_search[9])
+            tikets = tikets.filter(tgl_rematch__icontains=columns_search[8])
         if len(columns_search) > 10 and columns_search[10]:
             search_val = columns_search[10].lower()
             prioritas_qs = JenisPrioritasData.objects.filter(
@@ -159,8 +159,8 @@ def quality_control_data(request):
         5: 'id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel__deskripsi',
         6: 'id',
         7: 'tgl_transfer_date',
-        8: 'tgl_transfer_date',
-        9: 'tgl_rematch_date',
+        8: 'tgl_rematch_date',
+        9: 'tgl_transfer_date',
         10: 'tgl_transfer_date',
         11: 'is_prioritas',
         12: 'baris_i',
