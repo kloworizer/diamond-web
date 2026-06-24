@@ -693,6 +693,7 @@ HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
                 DATE '2015-01-01' AS start_date
             FROM
                 REF_TABEL_PMDE
+            where TABEL_I <> 'KPDE_DATA_UNSTRUCTURED'
         """,
         target_model_label="diamond_web.PIC",
         target_key_field="id_sub_jenis_data_ilap",
