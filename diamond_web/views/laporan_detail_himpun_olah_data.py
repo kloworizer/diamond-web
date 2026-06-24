@@ -15,6 +15,8 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from ..models.ilap import ILAP
 from ..models.jenis_data_ilap import JenisDataILAP
 from ..models.klasifikasi_jenis_data import KlasifikasiJenisData
+from ..models.periode_pengiriman import PeriodePengiriman
+from ..models.dasar_hukum import DasarHukum
 
 
 def is_pmde_user(user):
@@ -29,14 +31,14 @@ def _get_filtered_detail_data(params):
 
     Applies filters for kategori ILAP, nama ILAP, dasar hukum, jenis data,
     periode pengiriman, and nama tabel. Uses select_related to efficiently
-    join related models (id_ilap, id_kategori_ilap, id_klasifikasi_jenis_data,
-    id_dasar_hukum, id_jenis_tabel).
+    join related models (id_ilap, id_jenis_tabel).
 
     Args:
         params: QueryDict or dict-like object containing filter parameters.
             - kategori_ilap (str, optional): Kategori ILAP ID to filter by.
             - nama_ilap (str, optional): ILAP ID to filter by.
-            - dasar_hukum (str, optional): Dasar hukum ID to filter by.
+            - dasar_hukum (str, optional): Dasar hukum ID; filters via
+              KlasifikasiJenisData relation.
             - jenis_data (str, optional): Jenis Data ILAP ID to filter by.
             - periode (str, optional): Periode pengiriman ID; filters via
               periode_jenis_data relation.
@@ -53,34 +55,41 @@ def _get_filtered_detail_data(params):
     periode = params.get('periode')
     nama_tabel = params.get('nama_tabel')
 
-    # Base query
+    # Base query with select_related for efficiency
     jenis_data_ilap_list = JenisDataILAP.objects.all().select_related(
         'id_ilap',
-        'id_ilap__id_kategori_ilap',
-        'id_klasifikasi_jenis_data',
-        'id_dasar_hukum',
-        'id_jenis_tabel'
+        'id_ilap__id_kategori',
+        'id_jenis_tabel',
+    ).prefetch_related(
+        'klasifikasijenisdata_set',
+        'klasifikasijenisdata_set__id_klasifikasi_tabel',
+        'periodejenisdata_set',
+        'periodejenisdata_set__id_periode_pengiriman',
     )
 
     # Filter by kategori ILAP
     if kategori_ilap and kategori_ilap != 'all' and kategori_ilap != '':
-        jenis_data_ilap_list = jenis_data_ilap_list.filter(id_ilap__id_kategori_ilap_id=kategori_ilap)
+        jenis_data_ilap_list = jenis_data_ilap_list.filter(id_ilap__id_kategori_id=kategori_ilap)
 
     # Filter by nama ILAP
     if nama_ilap and nama_ilap != 'all' and nama_ilap != '':
         jenis_data_ilap_list = jenis_data_ilap_list.filter(id_ilap_id=nama_ilap)
 
-    # Filter by dasar hukum
+    # Filter by dasar hukum (via KlasifikasiJenisData)
     if dasar_hukum and dasar_hukum != 'all' and dasar_hukum != '':
-        jenis_data_ilap_list = jenis_data_ilap_list.filter(id_dasar_hukum_id=dasar_hukum)
+        jenis_data_ilap_list = jenis_data_ilap_list.filter(
+            klasifikasijenisdata__id_klasifikasi_tabel_id=dasar_hukum
+        ).distinct()
 
     # Filter by jenis data
     if jenis_data and jenis_data != 'all' and jenis_data != '':
         jenis_data_ilap_list = jenis_data_ilap_list.filter(id=jenis_data)
 
-    # Filter by periode pengiriman
+    # Filter by periode pengiriman (via PeriodeJenisData)
     if periode and periode != 'all' and periode != '':
-        jenis_data_ilap_list = jenis_data_ilap_list.filter(periode_jenis_data__id_periode_pengiriman_id=periode).distinct()
+        jenis_data_ilap_list = jenis_data_ilap_list.filter(
+            periodejenisdata__id_periode_pengiriman_id=periode
+        ).distinct()
 
     # Filter by nama tabel
     if nama_tabel and nama_tabel != 'all' and nama_tabel != '':
@@ -102,15 +111,23 @@ class LaporanDetailHimpunOlahDataView(LoginRequiredMixin, UserPassesTestMixin, T
         return is_pmde_user(self.request.user)
 
     def get_context_data(self, **kwargs):
-        """Add context data to the template.
+        """Add filter options context to the template.
+
+        Provides lists of ILAP for the filter dropdowns.
 
         Args:
             **kwargs: Additional context arguments passed to the parent.
 
         Returns:
-            dict: The template context dictionary.
+            dict: The template context dictionary with filter_options.
         """
         context = super().get_context_data(**kwargs)
+        context['filter_options'] = {
+            'ilap': [
+                {'id': ilap['id'], 'deskripsi': ilap['nama_ilap']}
+                for ilap in ILAP.objects.values('id', 'nama_ilap').order_by('nama_ilap')
+            ],
+        }
         return context
 
 
@@ -175,15 +192,34 @@ def laporan_detail_himpun_olah_data_data(request):
     # Build response data
     data = []
     for idx, jenis_data in enumerate(jenis_data_paginated, start=start + 1):
+        # Get Klasifikasi data via reverse relation
+        klasifikasi_qs = jenis_data.klasifikasijenisdata_set.all()
+        klasifikasi_list = []
+        dasar_hukum_list = []
+        for k in klasifikasi_qs:
+            if k.id_klasifikasi_tabel:
+                klasifikasi_list.append(k.id_klasifikasi_tabel.kategori)
+                dasar_hukum_list.append(k.id_klasifikasi_tabel.deskripsi)
+        klasifikasi_str = ', '.join(set(klasifikasi_list)) if klasifikasi_list else ''
+        dasar_hukum_str = ', '.join(set(dasar_hukum_list)) if dasar_hukum_list else ''
+
+        # Get Periode Pengiriman data via reverse relation
+        periode_list = jenis_data.periodejenisdata_set.filter(
+            id_periode_pengiriman__isnull=False
+        ).values_list(
+            'id_periode_pengiriman__periode_penyampaian', flat=True
+        ).distinct()
+        periode_str = ', '.join(periode_list) if periode_list else ''
+
         row = {
-            'kategori_ilap': jenis_data.id_ilap.id_kategori_ilap.nama_kategori_ilap if jenis_data.id_ilap and jenis_data.id_ilap.id_kategori_ilap else '',
+            'kategori_ilap': jenis_data.id_ilap.id_kategori.nama_kategori if jenis_data.id_ilap and jenis_data.id_ilap.id_kategori else '',
             'nama_ilap': jenis_data.id_ilap.nama_ilap if jenis_data.id_ilap else '',
             'nama_jenis_data': jenis_data.nama_jenis_data,
             'nama_sub_jenis_data': jenis_data.nama_sub_jenis_data,
-            'nama_tabel': jenis_data.id_jenis_tabel.nama_jenis_tabel if jenis_data.id_jenis_tabel else '',
-            'klasifikasi': jenis_data.id_klasifikasi_jenis_data.nama_klasifikasi if jenis_data.id_klasifikasi_jenis_data else '',
-            'dasar_hukum': jenis_data.id_dasar_hukum.nama_dasar_hukum if jenis_data.id_dasar_hukum else '',
-            'periode_pengiriman': ', '.join([p.nama_periode_pengiriman for p in jenis_data.periode_jenis_data.filter(id_periode_pengiriman__isnull=False).values_list('id_periode_pengiriman__nama_periode_pengiriman', flat=True).distinct()]) if hasattr(jenis_data, 'periode_jenis_data') else '',
+            'nama_tabel': jenis_data.id_jenis_tabel.deskripsi if jenis_data.id_jenis_tabel else '',
+            'klasifikasi': klasifikasi_str,
+            'dasar_hukum': dasar_hukum_str,
+            'periode_pengiriman': periode_str,
         }
         data.append(row)
 
@@ -284,18 +320,34 @@ def _export_detail_to_excel(jenis_data_ilap_list):
 
     # Write data
     for row_idx, jenis_data in enumerate(jenis_data_ilap_list, start=5):
-        periode_list = jenis_data.periode_jenis_data.filter(id_periode_pengiriman__isnull=False).values_list('id_periode_pengiriman__nama_periode_pengiriman', flat=True).distinct()
+        # Get Klasifikasi data via reverse relation
+        klasifikasi_qs = jenis_data.klasifikasijenisdata_set.all()
+        klasifikasi_list = []
+        dasar_hukum_list = []
+        for k in klasifikasi_qs:
+            if k.id_klasifikasi_tabel:
+                klasifikasi_list.append(k.id_klasifikasi_tabel.kategori)
+                dasar_hukum_list.append(k.id_klasifikasi_tabel.deskripsi)
+        klasifikasi_str = ', '.join(set(klasifikasi_list)) if klasifikasi_list else ''
+        dasar_hukum_str = ', '.join(set(dasar_hukum_list)) if dasar_hukum_list else ''
+
+        # Get Periode Pengiriman data
+        periode_list = jenis_data.periodejenisdata_set.filter(
+            id_periode_pengiriman__isnull=False
+        ).values_list(
+            'id_periode_pengiriman__periode_penyampaian', flat=True
+        ).distinct()
         periode_str = ', '.join(periode_list) if periode_list else ''
 
         row_data = [
             row_idx - 4,
-            jenis_data.id_ilap.id_kategori_ilap.nama_kategori_ilap if jenis_data.id_ilap and jenis_data.id_ilap.id_kategori_ilap else '',
+            jenis_data.id_ilap.id_kategori.nama_kategori if jenis_data.id_ilap and jenis_data.id_ilap.id_kategori else '',
             jenis_data.id_ilap.nama_ilap if jenis_data.id_ilap else '',
             jenis_data.nama_jenis_data,
             jenis_data.nama_sub_jenis_data,
-            jenis_data.id_jenis_tabel.nama_jenis_tabel if jenis_data.id_jenis_tabel else '',
-            jenis_data.id_klasifikasi_jenis_data.nama_klasifikasi if jenis_data.id_klasifikasi_jenis_data else '',
-            jenis_data.id_dasar_hukum.nama_dasar_hukum if jenis_data.id_dasar_hukum else '',
+            jenis_data.id_jenis_tabel.deskripsi if jenis_data.id_jenis_tabel else '',
+            klasifikasi_str,
+            dasar_hukum_str,
             periode_str,
         ]
 

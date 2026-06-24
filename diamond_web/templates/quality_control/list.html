@@ -53,9 +53,9 @@
                         <th>Sub Jenis Data</th>
                         <th>Jenis Tabel</th>
                         <th>Klasifikasi</th>
-                        <th>Deadline</th>
                         <th>Tgl Transfer</th>
                         <th>Tgl Rematch</th>
+                        <th>Deadline</th>
                         <th>Jatuh Tempo</th>
                         <th>Prioritas</th>
                         <th>Jml Baris I</th>
@@ -71,9 +71,9 @@
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari Sub Jenis Data" data-column="4" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari Jenis Tabel" data-column="5" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari Klasifikasi" data-column="6" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Deadline" data-column="7" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Tgl Transfer" data-column="8" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Tgl Rematch" data-column="9" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Tgl Transfer" data-column="7" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Tgl Rematch" data-column="8" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Deadline" data-column="9" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari Jatuh Tempo" data-column="10" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari Prioritas" data-column="11" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari Jml Baris I" data-column="12" /></th>
@@ -145,15 +145,15 @@
                     { data: 'jenis_tabel' },
                     { data: 'klasifikasi' },
                     {
-                        data: 'deadline',
-                        render: { _: 'display', sort: 'sort' }
-                    },
-                    {
                         data: 'tgl_transfer',
                         render: { _: 'display', sort: 'sort' }
                     },
                     {
                         data: 'tgl_rematch',
+                        render: { _: 'display', sort: 'sort' }
+                    },
+                    {
+                        data: 'deadline',
                         render: { _: 'display', sort: 'sort' }
                     },
                     {
