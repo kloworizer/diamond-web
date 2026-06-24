@@ -146,6 +146,16 @@ def home(request):
                     end_date__isnull=True
                 ))
             ).count()
+            # Admin: Tickets in Dikirim ke PIDE status without an active PIDE PIC
+            context['pide_tiket_dikirim_ke_pide_tanpa_pic_count'] = Tiket.objects.filter(
+                status_tiket=STATUS_DIKIRIM_KE_PIDE
+            ).filter(
+                ~Exists(TiketPIC.objects.filter(
+                    id_tiket=OuterRef('pk'),
+                    role=TiketPIC.Role.PIDE,
+                    active=True
+                ))
+            ).count()
     if is_pmde:
         context['tiket_summary_pmde'] = get_tiket_summary_for_user_pmde(request.user)
         pmde_tiket_ids = TiketPIC.objects.filter(
@@ -164,6 +174,16 @@ def home(request):
                     id_sub_jenis_data_ilap=OuterRef('pk'),
                     tipe=PIC.TipePIC.PMDE,
                     end_date__isnull=True
+                ))
+            ).count()
+            # Admin: Tickets in Pengendalian Mutu status without an active PMDE PIC
+            context['pmde_tiket_pengendalian_mutu_tanpa_pic_count'] = Tiket.objects.filter(
+                status_tiket=STATUS_PENGENDALIAN_MUTU
+            ).filter(
+                ~Exists(TiketPIC.objects.filter(
+                    id_tiket=OuterRef('pk'),
+                    role=TiketPIC.Role.PMDE,
+                    active=True
                 ))
             ).count()
     if settings.DEBUG:
@@ -221,6 +241,34 @@ def _build_tiket_base_qs(category, user):
         if not user.groups.filter(name='admin_p3de').exists():
             return None
         return tiket_qs.filter(tahun=2099)
+
+    # Admin category: tickets in Pengendalian Mutu status without an active PMDE PIC
+    if category == 'tiket_pengendalian_mutu_tanpa_pic':
+        if not user.groups.filter(name='admin_pmde').exists():
+            return None
+        return tiket_qs.filter(
+            status_tiket=STATUS_PENGENDALIAN_MUTU
+        ).filter(
+            ~Exists(TiketPIC.objects.filter(
+                id_tiket=OuterRef('pk'),
+                role=TiketPIC.Role.PMDE,
+                active=True
+            ))
+        )
+
+    # Admin category: tickets in Dikirim ke PIDE status without an active PIDE PIC
+    if category == 'tiket_dikirim_ke_pide_tanpa_pic':
+        if not user.groups.filter(name='admin_pide').exists():
+            return None
+        return tiket_qs.filter(
+            status_tiket=STATUS_DIKIRIM_KE_PIDE
+        ).filter(
+            ~Exists(TiketPIC.objects.filter(
+                id_tiket=OuterRef('pk'),
+                role=TiketPIC.Role.PIDE,
+                active=True
+            ))
+        )
 
     # Map each category to (ids_func, extra_filter)
     category_map = {
@@ -347,6 +395,8 @@ def home_data(request):
         'pengembalian_sebagian_dari_pide', 'diklarifikasi',
         'belum_mulai_proses_identifikasi', 'dalam_proses_identifikasi',
         'dalam_proses_pengendalian_mutu', 'periode_tiket_null_p3de',
+        'tiket_pengendalian_mutu_tanpa_pic',
+        'tiket_dikirim_ke_pide_tanpa_pic',
     }
     jenis_data_categories = {
         'jenis_data_tanpa_pic_p3de', 'jenis_data_tanpa_pic_pide', 'jenis_data_tanpa_pic_pmde',
@@ -392,9 +442,9 @@ def home_data(request):
 
     if is_tiket_category:
         columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'tgl_terima_dip']
-        if category in ('belum_mulai_proses_identifikasi', 'dalam_proses_identifikasi'):
+        if category in ('belum_mulai_proses_identifikasi', 'dalam_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic'):
             columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'tgl_kirim_pide']
-        elif category == 'dalam_proses_pengendalian_mutu':
+        elif category in ('dalam_proses_pengendalian_mutu', 'tiket_pengendalian_mutu_tanpa_pic'):
             columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'tgl_transfer']
         elif category == 'periode_tiket_null_p3de':
             columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode', 'tahun', 'status_tiket']
@@ -447,10 +497,10 @@ def home_data(request):
             view_url = reverse('tiket_detail', args=[obj.id])
             action_html = f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>'
 
-            if category in ('belum_mulai_proses_identifikasi', 'dalam_proses_identifikasi'):
+            if category in ('belum_mulai_proses_identifikasi', 'dalam_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic'):
                 date_val = obj.tgl_kirim_pide.strftime('%d-%m-%Y') if obj.tgl_kirim_pide else ''
                 date_order = obj.tgl_kirim_pide.strftime('%Y-%m-%d') if obj.tgl_kirim_pide else ''
-            elif category == 'dalam_proses_pengendalian_mutu':
+            elif category in ('dalam_proses_pengendalian_mutu', 'tiket_pengendalian_mutu_tanpa_pic'):
                 date_val = obj.tgl_transfer.strftime('%d-%m-%Y') if obj.tgl_transfer else ''
                 date_order = obj.tgl_transfer.strftime('%Y-%m-%d') if obj.tgl_transfer else ''
             else:

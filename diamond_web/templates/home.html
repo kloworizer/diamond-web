@@ -152,6 +152,15 @@
                             {% endif %}
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="tiket_dikirim_ke_pide_tanpa_pic">
+                            <span class="icon-bg-soft icon-bg-soft-red"><i class="feather-send" style="color:#EF4444"></i></span>
+                            <span>Tiket Status Dikirim Ke PIDE Belum Punya PIC</span>
+                            {% if pide_tiket_dikirim_ke_pide_tanpa_pic_count %}
+                            <span class="badge bg-danger ms-auto">{{ pide_tiket_dikirim_ke_pide_tanpa_pic_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
                 </ul>
                 {% endif %}
             </div>
@@ -183,6 +192,15 @@
                             <span>Jenis Data Tidak Punya PIC Aktif</span>
                             {% if pmde_jenis_data_tanpa_pic_count %}
                             <span class="badge bg-secondary ms-auto">{{ pmde_jenis_data_tanpa_pic_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="tiket_pengendalian_mutu_tanpa_pic">
+                            <span class="icon-bg-soft icon-bg-soft-red"><i class="feather-alert-triangle" style="color:#EF4444"></i></span>
+                            <span>Tiket Status Pengendalian Mutu Belum Punya PIC</span>
+                            {% if pmde_tiket_pengendalian_mutu_tanpa_pic_count %}
+                            <span class="badge bg-danger ms-auto">{{ pmde_tiket_pengendalian_mutu_tanpa_pic_count }}</span>
                             {% endif %}
                         </a>
                     </li>
@@ -396,15 +414,12 @@
                 {% if is_admin_p3de %}
                 <!-- Admin: Jenis Data Tidak Punya PIC Aktif - P3DE -->
                 <div class="card stretch stretch-full" data-category="jenis_data_tanpa_pic_p3de" style="display:none;">
-                    <div class="card-header">
-                        <h5 class="mb-0">Jenis Data Tidak Punya PIC Aktif (P3DE)</h5>
-                    </div>
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-jenis_data_tanpa_pic_p3de" style="width:100%">
                                 <thead>
                                     <tr>
-                                        <th>ID Sub Jenis Data</th>
+                                        <th>Sub Jenis Data</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
                                         <th>Sub Jenis Data</th>
@@ -421,9 +436,6 @@
                 {% if is_admin_p3de %}
                 <!-- Admin: Periode Tiket Null - P3DE -->
                 <div class="card stretch stretch-full" data-category="periode_tiket_null_p3de" style="display:none;">
-                    <div class="card-header">
-                        <h5 class="mb-0">Periode Tiket Null (Tahun=2099)</h5>
-                    </div>
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-periode_tiket_null_p3de" style="width:100%">
@@ -497,18 +509,35 @@
                 {% if is_admin_pide %}
                 <!-- Admin: Jenis Data Tidak Punya PIC Aktif - PIDE -->
                 <div class="card stretch stretch-full" data-category="jenis_data_tanpa_pic_pide" style="display:none;">
-                    <div class="card-header">
-                        <h5 class="mb-0">Jenis Data Tidak Punya PIC Aktif (PIDE)</h5>
-                    </div>
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-jenis_data_tanpa_pic_pide" style="width:100%">
                                 <thead>
                                     <tr>
-                                        <th>ID Sub Jenis Data</th>
+                                        <th>Sub Jenis Data</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
                                         <th>Sub Jenis Data</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <!-- Admin: Tiket Status Dikirim Ke PIDE Belum Punya PIC - PIDE -->
+                <div class="card stretch stretch-full" data-category="tiket_dikirim_ke_pide_tanpa_pic" style="display:none;">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-tiket_dikirim_ke_pide_tanpa_pic" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Nomor Tiket</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
+                                        <th>Tgl Kirim PIDE</th>
+                                        <th>Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -544,9 +573,6 @@
                 {% if is_admin_pmde %}
                 <!-- Admin: Jenis Data Tidak Punya PIC Aktif - PMDE -->
                 <div class="card stretch stretch-full" data-category="jenis_data_tanpa_pic_pmde" style="display:none;">
-                    <div class="card-header">
-                        <h5 class="mb-0">Jenis Data Tidak Punya PIC Aktif (PMDE)</h5>
-                    </div>
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-jenis_data_tanpa_pic_pmde" style="width:100%">
@@ -556,6 +582,26 @@
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
                                         <th>Sub Jenis Data</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <!-- Admin: Tiket Status Pengendalian Mutu Belum Punya PIC - PMDE -->
+                <div class="card stretch stretch-full" data-category="tiket_pengendalian_mutu_tanpa_pic" style="display:none;">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-tiket_pengendalian_mutu_tanpa_pic" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Nomor Tiket</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
+                                        <th>Tgl Transfer</th>
+                                        <th>Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -624,10 +670,50 @@
             { data: 'actions', title: 'Aksi', orderable: false, searchable: false }
         ];
 
+        const tiketPengendalianMutuTanpaPicColumns = [
+            { data: 'nomor_tiket', title: 'Nomor Tiket' },
+            { data: 'nama_ilap', title: 'Nama ILAP' },
+            { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
+            { 
+                data: 'tanggal', 
+                title: 'Tanggal Transfer',
+                render: function(data, type, row) {
+                    if (type === 'order' || type === 'type') {
+                        return row.tanggal_order || '';
+                    }
+                    return data || '';
+                }
+            },
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false }
+        ];
+
+        const tiketDikirimKePideTanpaPicColumns = [
+            { data: 'nomor_tiket', title: 'Nomor Tiket' },
+            { data: 'nama_ilap', title: 'Nama ILAP' },
+            { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
+            { 
+                data: 'tanggal', 
+                title: 'Tanggal Kirim PIDE',
+                render: function(data, type, row) {
+                    if (type === 'order' || type === 'type') {
+                        return row.tanggal_order || '';
+                    }
+                    return data || '';
+                }
+            },
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false }
+        ];
+
         // Map category to column config
         function getColumnsForCategory(category) {
             if (category === 'periode_tiket_null_p3de') {
                 return periodeTiketNullColumns;
+            }
+            if (category === 'tiket_pengendalian_mutu_tanpa_pic') {
+                return tiketPengendalianMutuTanpaPicColumns;
+            }
+            if (category === 'tiket_dikirim_ke_pide_tanpa_pic') {
+                return tiketDikirimKePideTanpaPicColumns;
             }
             if (category.startsWith('jenis_data_tanpa_pic')) {
                 return jenisDataTanpaPicColumns;
@@ -642,6 +728,7 @@
 
             datatableTables[category] = $(table).DataTable({
                 serverSide: true,
+                processing: true,
                 ajax: {
                     url: '{% url "home_data" %}',
                     data: function(d) {
@@ -688,7 +775,7 @@
                 const firstCard = document.querySelector(`[data-category="${firstCategory}"]`);
                 if (firstCard) firstCard.style.display = 'block';
                 // update breadcrumb/title for first active filter
-                const firstLabel = filterLinks[0]?.querySelector('span')?.innerText?.trim() || filterLinks[0]?.textContent?.trim();
+                const firstLabel = filterLinks[0]?.querySelector('span:not(.icon-bg-soft):not(.badge)')?.innerText?.trim() || filterLinks[0]?.textContent?.trim();
                 if (firstLabel) updateBreadcrumb(firstLabel);
             }
         }
@@ -702,7 +789,7 @@
                 this.classList.add('active');
 
                 // update breadcrumb + page title
-                const label = this.querySelector('span')?.innerText?.trim() || this.textContent.trim();
+                const label = this.querySelector('span:not(.icon-bg-soft):not(.badge)')?.innerText?.trim() || this.textContent.trim();
                 if (label) updateBreadcrumb(label);
                 
                 // Show/hide cards based on filter
