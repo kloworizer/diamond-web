@@ -13,12 +13,14 @@ from django.views.generic import TemplateView
 from django.http import JsonResponse
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_protect
+from django.db import connection as db_connection
 from django.db.models import Q, Value
 from django.db.models.functions import Cast
 from django.db.models import (
     DateField, IntegerField, Subquery, OuterRef,
     Exists
 )
+from django.db.models.expressions import RawSQL
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from datetime import date
@@ -110,6 +112,42 @@ def quality_control_data(request):
                 end_date__gte=Cast(OuterRef('tgl_terima_dip'), DateField()),
             )
         ),
+    ).annotate(
+        # Compute deadline date = tgl_transfer + active_durasi days.
+        # Correlated subquery embedded in RawSQL (no params) to avoid
+        # parameter-binding issues with nested expressions.
+        # SQLite (dev): DATE(date, '+' || days || ' days')
+        # PostgreSQL (prod): (date::date + days * INTERVAL '1 day')::date
+        deadline_date=RawSQL(
+            """
+            DATE("tiket"."tgl_transfer", '+' || CAST(COALESCE(
+                (SELECT "durasi_jatuh_tempo"."durasi"
+                 FROM "durasi_jatuh_tempo"
+                 INNER JOIN "auth_group" ON ("durasi_jatuh_tempo"."seksi" = "auth_group"."id")
+                 WHERE ("durasi_jatuh_tempo"."id_sub_jenis_data" = "periode_jenis_data"."id_sub_jenis_data_ilap"
+                   AND "auth_group"."name" = 'user_pmde'
+                   AND "durasi_jatuh_tempo"."start_date" <= DATE("tiket"."tgl_transfer")
+                   AND ("durasi_jatuh_tempo"."end_date" IS NULL
+                        OR "durasi_jatuh_tempo"."end_date" >= DATE("tiket"."tgl_transfer")))
+                 ORDER BY "durasi_jatuh_tempo"."start_date" DESC LIMIT 1
+            ), 0) AS TEXT) || ' days')
+            """ if db_connection.vendor == 'sqlite' else
+            """
+            ("tiket"."tgl_transfer"::date + COALESCE(
+                (SELECT "durasi_jatuh_tempo"."durasi"
+                 FROM "durasi_jatuh_tempo"
+                 INNER JOIN "auth_group" ON ("durasi_jatuh_tempo"."seksi" = "auth_group"."id")
+                 WHERE ("durasi_jatuh_tempo"."id_sub_jenis_data" = "periode_jenis_data"."id_sub_jenis_data_ilap"
+                   AND "auth_group"."name" = 'user_pmde'
+                   AND "durasi_jatuh_tempo"."start_date" <= "tiket"."tgl_transfer"::date
+                   AND ("durasi_jatuh_tempo"."end_date" IS NULL
+                        OR "durasi_jatuh_tempo"."end_date" >= "tiket"."tgl_transfer"::date))
+                 ORDER BY "durasi_jatuh_tempo"."start_date" DESC LIMIT 1
+            ), 0) * INTERVAL '1 day')::date
+            """,
+            [],
+            output_field=DateField(),
+        ),
     )
 
     # ---- Column search ----
@@ -160,8 +198,8 @@ def quality_control_data(request):
         6: 'id',
         7: 'tgl_transfer_date',
         8: 'tgl_rematch_date',
-        9: 'tgl_transfer_date',
-        10: 'tgl_transfer_date',
+        9: 'deadline_date',
+        10: 'deadline_date',
         11: 'is_prioritas',
         12: 'baris_i',
         13: 'sudah_qc',

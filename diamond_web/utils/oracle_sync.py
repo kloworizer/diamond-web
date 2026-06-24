@@ -1510,13 +1510,13 @@ class OracleDataSyncService:
         oracle_rows: list[dict[str, Any]],
         discovered_years: list[int],
     ) -> tuple[list[dict[str, Any]], list[dict]]:
-        """Supplement durasi_jatuh_tempo_pmde oracle rows with default rows (durasi=90)
+        """Supplement durasi_jatuh_tempo_pmde oracle rows with default rows (durasi=85)
         for every (id_sub_jenis_data, year) pair in JenisDataILAP that has no PMDE
         PRIORITAS record in oracle_rows.
 
         Example: if oracle has records for LM0081401 in 2025 and 2026, and
         discovered_years = [2022, 2023, 2024, 2025, 2026], then default rows are
-        generated for LM0081401 × [2022, 2023, 2024] with durasi=90.
+        generated for LM0081401 × [2022, 2023, 2024] with durasi=85.
         """
         from datetime import date as _date
         from diamond_web.models import JenisDataILAP
@@ -1543,7 +1543,7 @@ class OracleDataSyncService:
                         "END_DATE": _date(year, 12, 31),
                         "NO_ND": "ND-",
                         "TAHUN": str(year),
-                        "DURASI": 90,
+                        "DURASI": 85,
                     })
 
         logger.info(
@@ -3057,7 +3057,7 @@ class OracleDataSyncService:
             source_rows, expansion_skipped = self._expand_pic_pmde_rows(source_rows)
             skipped_rows_detail.extend(expansion_skipped)
 
-        # For durasi_jatuh_tempo_pmde: supplement oracle rows with default (durasi=90) rows
+        # For durasi_jatuh_tempo_pmde: supplement oracle rows with default (durasi=85) rows
         # for every (id_sub_jenis_data, year) in JenisDataILAP not covered by oracle data
         if cfg.name == "durasi_jatuh_tempo_pmde":
             source_rows, expansion_skipped = self._expand_durasi_jatuh_tempo_default_rows(
