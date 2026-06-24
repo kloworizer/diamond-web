@@ -1,86 +1,85 @@
-# API Documentation
+# Dokumentasi API
 
-> **Last Updated:** June 23, 2026  
-> **Base URL:** `https://diamond.pajak.go.id` (production) or `http://localhost:8000` (development)
-
----
-
-## Table of Contents
-
-- [Authentication](#authentication)
-- [API Endpoints Overview](#api-endpoints-overview)
-- [AJAX DataTables Endpoints](#ajax-datatables-endpoints)
-- [CRUD Master Data Endpoints](#crud-master-data-endpoints)
-- [Tiket Workflow Endpoints](#tiket-workflow-endpoints)
-- [Report & Export Endpoints](#report--export-endpoints)
-- [Document Generation Endpoints](#document-generation-endpoints)
-- [Oracle Sync Endpoints](#oracle-sync-endpoints)
-- [Notification Endpoints](#notification-endpoints)
-- [Utility Endpoints](#utility-endpoints)
-- [Error Handling](#error-handling)
+> **Terakhir Diperbarui:** June 24, 2026  
+> **Base URL:** `http://10.xxx.xxx.xxx`
 
 ---
 
-## Authentication
+## Daftar Isi
 
-This application uses Django's built-in session-based authentication. All authenticated endpoints require an active session.
+- [Autentikasi](#autentikasi)
+- [Gambaran Endpoint API](#gambaran-endpoint-api)
+- [Endpoint DataTables AJAX](#endpoint-datatables-ajax)
+- [Endpoint CRUD Data Master](#endpoint-crud-data-master)
+- [Endpoint Workflow Tiket](#endpoint-workflow-tiket)
+- [Endpoint Laporan & Ekspor](#endpoint-laporan--ekspor)
+- [Endpoint Generasi Dokumen](#endpoint-generasi-dokumen)
+- [Endpoint Sinkronisasi Oracle](#endpoint-sinkronisasi-oracle)
+- [Endpoint Notifikasi](#endpoint-notifikasi)
+- [Endpoint Utilitas](#endpoint-utilitas)
+- [Penanganan Error](#penanganan-error)
 
-| Method | URL | Description |
+---
+
+## Autentikasi
+
+Aplikasi ini menggunakan autentikasi berbasis sesi bawaan Django. Semua endpoint yang memerlukan autentikasi membutuhkan sesi aktif.
+
+| Method | URL | Deskripsi |
 |--------|-----|-------------|
-| `POST` | `/login/` | Login form submission (CSRF protected) |
-| `POST` | `/logout/` | Logout (POST required) |
-| `GET` | `/accounts/password_change/` | Change password form |
-| `POST` | `/accounts/password_change/` | Submit password change |
+| `POST` | `/login/` | Pengiriman formulir login (dilindungi CSRF) |
+| `POST` | `/logout/` | Logout (memerlukan POST) |
+| `GET` | `/accounts/password_change/` | Formulir ubah kata sandi |
+| `POST` | `/accounts/password_change/` | Kirim perubahan kata sandi |
 
-### Session Configuration
-- Session timeout: **30 minutes** (`SESSION_COOKIE_AGE = 1800`)
-- Session expires at browser close: **No**
-- Cookie secure: **Yes** (production only)
+### Konfigurasi Sesi
+- Waktu tunggu sesi: **30 menit** (`SESSION_COOKIE_AGE = 1800`)
+- Sesi berakhir saat browser ditutup: **Tidak**
 
 ---
 
-## API Endpoints Overview
+## Gambaran Endpoint API
 
-### JSON API Endpoints (used by frontend AJAX)
+### Endpoint JSON API (digunakan oleh frontend AJAX)
 
-| Method | URL | Description | Auth |
+| Method | URL | Deskripsi | Autentikasi |
 |--------|-----|-------------|------|
-| `GET` | `/api/ilap/<ilap_id>/periode-jenis-data/` | Get period data for an ILAP | ✓ |
-| `GET` | `/api/check-jenis-prioritas/<jenis_data_id>/<tahun>/` | Check data priority status | ✓ |
-| `GET` | `/api/check-tiket-exists/` | Check if a ticket already exists | ✓ |
-| `GET` | `/api/preview-nomor-tiket/` | Preview auto-generated ticket number | ✓ |
-| `GET` | `/api/ilap/<ilap_id>/periode-jenis-data/` | Get ILAP period data types | ✓ |
+| `GET` | `/api/ilap/<ilap_id>/periode-jenis-data/` | Ambil data periode untuk ILAP | ✓ |
+| `GET` | `/api/check-jenis-prioritas/<jenis_data_id>/<tahun>/` | Periksa status prioritas data | ✓ |
+| `GET` | `/api/check-tiket-exists/` | Periksa apakah tiket sudah ada | ✓ |
+| `GET` | `/api/preview-nomor-tiket/` | Pratinjau nomor tiket yang dihasilkan otomatis | ✓ |
+| `GET` | `/api/ilap/<ilap_id>/periode-jenis-data/` | Ambil tipe data periode ILAP | ✓ |
 
-### General Endpoints
+### Endpoint Umum
 
-| Method | URL | Description |
+| Method | URL | Deskripsi |
 |--------|-----|-------------|
-| `GET` | `/` | Home page (role-based dashboard) |
-| `GET` | `/home/data/` | Home page data (AJAX) |
-| `GET` | `/keep-alive/` | Health check / session keep-alive |
-| `GET` | `/session-expired/` | Session expired notification page |
-| `GET` | `/profil/` | User profile page |
-| `GET` | `/docs/` | Internal documentation index |
-| `GET` | `/docs/<slug>/` | Internal documentation detail |
+| `GET` | `/` | Halaman beranda (dasbor berdasarkan peran) |
+| `GET` | `/home/data/` | Data halaman beranda (AJAX) |
+| `GET` | `/keep-alive/` | Pemeriksaan kesehatan / menjaga sesi tetap aktif |
+| `GET` | `/session-expired/` | Halaman notifikasi sesi berakhir |
+| `GET` | `/profil/` | Halaman profil pengguna |
+| `GET` | `/docs/` | Indeks dokumentasi internal |
+| `GET` | `/docs/<slug>/` | Detail dokumentasi internal |
 
 ---
 
-## AJAX DataTables Endpoints
+## Endpoint DataTables AJAX
 
-All master data list views provide server-side DataTables JSON endpoints (via `GET` with DataTables query parameters).
+Semua tampilan daftar data master menyediakan endpoint JSON DataTables sisi server (melalui `GET` dengan parameter kueri DataTables).
 
-### Parameters (sent by DataTables automatically)
-| Parameter | Description |
+### Parameter (dikirim oleh DataTables secara otomatis)
+| Parameter | Deskripsi |
 |-----------|-------------|
-| `draw` | Draw counter (echoed back) |
-| `start` | Offset for pagination |
-| `length` | Number of records per page |
-| `order[0][column]` | Column index to sort by |
-| `order[0][dir]` | Sort direction (`asc`/`desc`) |
-| `search[value]` | Global search value |
-| `columns[0][search][value]` | Column-specific search |
+| `draw` | Penghitung draw (dikembalikan) |
+| `start` | Offset untuk paginasi |
+| `length` | Jumlah catatan per halaman |
+| `order[0][column]` | Indeks kolom untuk diurutkan |
+| `order[0][dir]` | Arah pengurutan (`asc`/`desc`) |
+| `search[value]` | Nilai pencarian global |
+| `columns[0][search][value]` | Pencarian khusus kolom |
 
-### Response Format
+### Format Respons
 ```json
 {
     "draw": 1,
@@ -90,7 +89,7 @@ All master data list views provide server-side DataTables JSON endpoints (via `G
 }
 ```
 
-### DataTables Endpoints
+### Endpoint DataTables
 
 | URL | Model |
 |-----|-------|
@@ -121,23 +120,23 @@ All master data list views provide server-side DataTables JSON endpoints (via `G
 
 ---
 
-## CRUD Master Data Endpoints
+## Endpoint CRUD Data Master
 
-Each master data module follows a consistent URL pattern:
+Setiap modul data master mengikuti pola URL yang konsisten:
 
-| Method | URL Pattern | Description |
+| Method | Pola URL | Deskripsi |
 |--------|-------------|-------------|
-| `GET` | `/{module}/` | List view (renders HTML) |
-| `GET` | `/{module}/data/` | DataTables JSON data |
-| `GET` | `/{module}/create/` | Create form (HTML) |
-| `POST` | `/{module}/create/` | Submit create form |
-| `GET` | `/{module}/<pk>/update/` | Update form (HTML) |
-| `POST` | `/{module}/<pk>/update/` | Submit update form |
-| `POST` | `/{module}/<pk>/delete/` | Delete record |
+| `GET` | `/{module}/` | Tampilan daftar (merender HTML) |
+| `GET` | `/{module}/data/` | Data JSON DataTables |
+| `GET` | `/{module}/create/` | Formulir buat (HTML) |
+| `POST` | `/{module}/create/` | Kirim formulir buat |
+| `GET` | `/{module}/<pk>/update/` | Formulir ubah (HTML) |
+| `POST` | `/{module}/<pk>/update/` | Kirim formulir ubah |
+| `POST` | `/{module}/<pk>/delete/` | Hapus catatan |
 
-### Available CRUD Modules
+### Modul CRUD yang Tersedia
 
-| Module | URL Prefix | Model |
+| Modul | Prefiks URL | Model |
 |--------|-----------|-------|
 | ILAP | `/ilap/` | `ILAP` |
 | Kategori ILAP | `/kategori-ilap/` | `KategoriILAP` |
@@ -164,162 +163,162 @@ Each master data module follows a consistent URL pattern:
 | Durasi Jatuh Tempo PIDE | `/durasi-jatuh-tempo-pide/` | `DurasiJatuhTempo` (seksi=PIDE) |
 | Durasi Jatuh Tempo PMDE | `/durasi-jatuh-tempo-pmde/` | `DurasiJatuhTempo` (seksi=PMDE) |
 
-### Special Endpoints (non-standard CRUD)
+### Endpoint Khusus (non-standard CRUD)
 
-| Method | URL | Description |
+| Method | URL | Deskripsi |
 |--------|-----|-------------|
-| `GET` | `/ilap/next-id/` | Get next available ILAP ID |
-| `GET` | `/jenis-data/get-next-id/` | Get next Jenis Data ID |
-| `GET` | `/jenis-data/existing/` | Get existing Jenis Data list |
-| `GET` | `/jenis-data/sub/existing/` | Get existing Sub Jenis Data list |
-| `GET` | `/jenis-data/sub/next/` | Get next Sub Jenis Data ID |
-| `GET` | `/tanda-terima-data/next-number/` | Get next tanda terima number |
-| `GET` | `/tanda-terima-data/tikets-by-ilap/` | Get tikets grouped by ILAP |
+| `GET` | `/ilap/next-id/` | Ambil ID ILAP berikutnya |
+| `GET` | `/jenis-data/get-next-id/` | Ambil ID Jenis Data berikutnya |
+| `GET` | `/jenis-data/existing/` | Ambil daftar Jenis Data yang ada |
+| `GET` | `/jenis-data/sub/existing/` | Ambil daftar Sub Jenis Data yang ada |
+| `GET` | `/jenis-data/sub/next/` | Ambil ID Sub Jenis Data berikutnya |
+| `GET` | `/tanda-terima-data/next-number/` | Ambil nomor tanda terima berikutnya |
+| `GET` | `/tanda-terima-data/tikets-by-ilap/` | Ambil tiket yang dikelompokkan berdasarkan ILAP |
 
 ---
 
-## Tiket Workflow Endpoints
+## Endpoint Workflow Tiket
 
-### List & Detail
+### Daftar & Detail
 
-| Method | URL | Description |
+| Method | URL | Deskripsi |
 |--------|-----|-------------|
-| `GET` | `/tiket/` | Tiket list view (HTML) |
-| `GET` | `/tiket/data/` | Tiket DataTables JSON |
-| `GET` | `/tiket/<pk>/` | Tiket detail view (HTML) |
-| `GET` | `/tiket/<pk>/documents/download/` | Download all tiket documents (ZIP) |
+| `GET` | `/tiket/` | Tampilan daftar tiket (HTML) |
+| `GET` | `/tiket/data/` | Data JSON DataTables tiket |
+| `GET` | `/tiket/<pk>/` | Tampilan detail tiket (HTML) |
+| `GET` | `/tiket/<pk>/documents/download/` | Unduh semua dokumen tiket (ZIP) |
 
-### Workflow Steps
+### Langkah Workflow
 
-| Method | URL | Description | Status Change |
+| Method | URL | Deskripsi | Perubahan Status |
 |--------|-----|-------------|---------------|
-| `GET/POST` | `/tiket/rekam/` | Record new tiket | → **Direkam (1)** |
-| `GET/POST` | `/tiket/identifikasi/create/` | Record new tiket (identifikasi flow) | → **Direkam (1)** |
-| `GET/POST` | `/tiket/<pk>/rekam-hasil-penelitian/` | Record research results (modal) | → **Diteliti (2)** |
-| `GET/POST` | `/tiket/kirim-tiket/` | Send tiket to PIDE | → **Dikirim ke PIDE (4)** |
-| `GET/POST` | `/tiket/<pk>/kirim-pide/` | Send specific tiket to PIDE | → **Dikirim ke PIDE (4)** |
-| `GET/POST` | `/tiket/<pk>/identifikasi/` | Identify tiket data | → **Identifikasi (5)** |
-| `GET/POST` | `/tiket/<pk>/batalkan/` | Cancel tiket (modal) | → **Dibatalkan (7)** |
-| `GET/POST` | `/tiket/<pk>/dikembalikan/` | Return tiket to P3DE (modal) | → **Dikembalikan (3)** |
-| `GET/POST` | `/tiket/<pk>/transfer-ke-pmde/` | Transfer tiket to PMDE (modal) | → **Pengendalian Mutu (6)** |
-| `GET/POST` | `/tiket/<pk>/selesaikan/` | Complete tiket (modal) | → **Selesai (8)** |
+| `GET/POST` | `/tiket/rekam/` | Rekam tiket baru | → **Direkam (1)** |
+| `GET/POST` | `/tiket/identifikasi/create/` | Rekam tiket baru (alur identifikasi) | → **Direkam (1)** |
+| `GET/POST` | `/tiket/<pk>/rekam-hasil-penelitian/` | Rekam hasil penelitian (modal) | → **Diteliti (2)** |
+| `GET/POST` | `/tiket/kirim-tiket/` | Kirim tiket ke PIDE | → **Dikirim ke PIDE (4)** |
+| `GET/POST` | `/tiket/<pk>/kirim-pide/` | Kirim tiket tertentu ke PIDE | → **Dikirim ke PIDE (4)** |
+| `GET/POST` | `/tiket/<pk>/identifikasi/` | Identifikasi data tiket | → **Identifikasi (5)** |
+| `GET/POST` | `/tiket/<pk>/batalkan/` | Batalkan tiket (modal) | → **Dibatalkan (7)** |
+| `GET/POST` | `/tiket/<pk>/dikembalikan/` | Kembalikan tiket ke P3DE (modal) | → **Dikembalikan (3)** |
+| `GET/POST` | `/tiket/<pk>/transfer-ke-pmde/` | Transfer tiket ke PMDE (modal) | → **Pengendalian Mutu (6)** |
+| `GET/POST` | `/tiket/<pk>/selesaikan/` | Selesaikan tiket (modal) | → **Selesai (8)** |
 
-### Kirim Tiket Sub-endpoints
+### Sub-endpoint Kirim Tiket
 
-| Method | URL | Description |
+| Method | URL | Deskripsi |
 |--------|-----|-------------|
-| `GET` | `/tiket/kirim-tiket/download/<id_temp>/` | Download ND Pengantar DOCX |
-| `POST` | `/tiket/kirim-tiket/temp-update/<id_temp>/` | Update temporary kirim data |
-| `POST` | `/tiket/kirim-tiket/temp-delete/<id_temp>/` | Delete temporary kirim data |
-| `POST` | `/tiket/kirim-tiket/kirim-ke-pide/<id_temp>/` | Confirm send to PIDE |
+| `GET` | `/tiket/kirim-tiket/download/<id_temp>/` | Unduh ND Pengantar DOCX |
+| `POST` | `/tiket/kirim-tiket/temp-update/<id_temp>/` | Perbarui data kirim sementara |
+| `POST` | `/tiket/kirim-tiket/temp-delete/<id_temp>/` | Hapus data kirim sementara |
+| `POST` | `/tiket/kirim-tiket/kirim-ke-pide/<id_temp>/` | Konfirmasi kirim ke PIDE |
 
-### Filtered List Views
+### Tampilan Daftar yang Difilter
 
-| Method | URL | Description |
+| Method | URL | Deskripsi |
 |--------|-----|-------------|
-| `GET` | `/tiket/identifikasi/` | Tiket list filtered for identification |
-| `GET` | `/tiket/kirim/` | Tiket list filtered for sending |
-| `GET` | `/backup-data/filter-options/` | Filter options for backup data |
+| `GET` | `/tiket/identifikasi/` | Daftar tiket difilter untuk identifikasi |
+| `GET` | `/tiket/kirim/` | Daftar tiket difilter untuk pengiriman |
+| `GET` | `/backup-data/filter-options/` | Opsi filter untuk data cadangan |
 
 ---
 
-## Report & Export Endpoints
+## Endpoint Laporan & Ekspor
 
-### Laporan (Reports)
+### Laporan
 
-Each report follows a consistent pattern:
+Setiap laporan mengikuti pola yang konsisten:
 
-| Method | URL | Description |
+| Method | URL | Deskripsi |
 |--------|-----|-------------|
-| `GET` | `/laporan-{nama}/` | Report page (HTML with filter form) |
-| `GET` | `/laporan-{nama}/data/` | Report data (DataTables JSON) |
-| `GET` | `/laporan-{nama}/export/` | Export to Excel (.xlsx) |
+| `GET` | `/laporan-{nama}/` | Halaman laporan (HTML dengan formulir filter) |
+| `GET` | `/laporan-{nama}/data/` | Data laporan (DataTables JSON) |
+| `GET` | `/laporan-{nama}/export/` | Ekspor ke Excel (.xlsx) |
 
-### Available Reports
+### Laporan yang Tersedia
 
-| Report | URL Prefix | Description |
+| Laporan | Prefiks URL | Deskripsi |
 |--------|-----------|-------------|
-| Register Penerimaan Data | `/register-penerimaan-data/` | Data receipt register |
-| Laporan Transfer | `/laporan-transfer/` | Transfer report |
-| SLA Perekaman | `/laporan-sla-perekaman/` | SLA recording report |
-| SLA Identifikasi | `/laporan-sla-identifikasi/` | SLA identification report |
-| Metrik Data Eksternal | `/laporan-metrik-data-eksternal/` | External data metrics |
-| Pengendalian Mutu | `/laporan-pengendalian-mutu/` | Quality control report |
-| Hasil Pengolahan Data Prioritas | `/laporan-hasil-pengolahan-data-prioritas/` | Priority data processing |
-| Kelengkapan Data | `/laporan-kelengkapan-data/` | Data completeness report |
-| Rekap Himpun Olah Data | `/laporan-rekap-himpun-olah-data/` | Data compilation recap |
-| Detail Himpun Olah Data | `/laporan-detail-himpun-olah-data/` | Detailed compilation report |
+| Register Penerimaan Data | `/register-penerimaan-data/` | Register penerimaan data |
+| Laporan Transfer | `/laporan-transfer/` | Laporan transfer |
+| SLA Perekaman | `/laporan-sla-perekaman/` | Laporan SLA perekaman |
+| SLA Identifikasi | `/laporan-sla-identifikasi/` | Laporan SLA identifikasi |
+| Metrik Data Eksternal | `/laporan-metrik-data-eksternal/` | Metrik data eksternal |
+| Pengendalian Mutu | `/laporan-pengendalian-mutu/` | Laporan pengendalian mutu |
+| Hasil Pengolahan Data Prioritas | `/laporan-hasil-pengolahan-data-prioritas/` | Pengolahan data prioritas |
+| Kelengkapan Data | `/laporan-kelengkapan-data/` | Laporan kelengkapan data |
+| Rekap Himpun Olah Data | `/laporan-rekap-himpun-olah-data/` | Rekap himpun olah data |
+| Detail Himpun Olah Data | `/laporan-detail-himpun-olah-data/` | Laporan detail himpun olah data |
 
-### Other Reports & Exports
+### Laporan & Ekspor Lainnya
 
-| Method | URL | Description |
+| Method | URL | Deskripsi |
 |--------|-----|-------------|
-| `GET` | `/backup-data/export/excel/` | Backup data export (Excel) |
-| `GET` | `/backup-data/export/pdf/` | Backup data export (PDF) |
-| `GET` | `/laporan-pide/filter-options/` | PIDE report filter options (AJAX) |
+| `GET` | `/backup-data/export/excel/` | Ekspor data cadangan (Excel) |
+| `GET` | `/backup-data/export/pdf/` | Ekspor data cadangan (PDF) |
+| `GET` | `/laporan-pide/filter-options/` | Opsi filter laporan PIDE (AJAX) |
 
 ---
 
-## Document Generation Endpoints
+## Endpoint Generasi Dokumen
 
-| Method | URL | Description |
+| Method | URL | Deskripsi |
 |--------|-----|-------------|
-| `POST` | `/bulk-generate/pkdi-klarifikasi/` | Bulk generate PKDI/Klarifikasi letters |
-| `POST` | `/bulk-generate/nd-pengantar-pide/` | Bulk generate ND Pengantar PIDE |
-| `GET` | `/docx-template/<pk>/download/` | Download specific DOCX template |
+| `POST` | `/bulk-generate/pkdi-klarifikasi/` | Hasilkan massal surat PKDI/Klarifikasi |
+| `POST` | `/bulk-generate/nd-pengantar-pide/` | Hasilkan massal ND Pengantar PIDE |
+| `GET` | `/docx-template/<pk>/download/` | Unduh template DOCX tertentu |
 
-### Generated Document Types
+### Jenis Dokumen yang Dihasilkan
 
-1. **Tanda Terima** (Receipt) — Nasional/Internasional & Regional (with attachment)
-2. **ND Pengantar PIDE** — Cover letter to PIDE
-3. **Surat Klarifikasi** — Clarification letter
-4. **Surat PKDI** — Incomplete Data Notification (full/partial)
-5. **Register Penerimaan Data** — Data receipt register
+1. **Tanda Terima** — Nasional/Internasional & Regional (with attachment)
+2. **ND Pengantar PIDE** — Surat pengantar ke PIDE
+3. **Surat Klarifikasi** — Surat klarifikasi
+4. **Surat PKDI** — Pemberitahuan Data Tidak Lengkap (full/partial)
+5. **Register Penerimaan Data** — Register penerimaan data
 
-### Document Generation Flow
+### Alur Generasi Dokumen
 
 ```
-User clicks "Generate" → System selects template based on:
-  1. Document type
-  2. Region type (Regional vs Nasional/Internasional) from tiket
-  3. Fills placeholders {{variable}} with tiket data
-  4. Returns generated DOCX file for download
+Pengguna mengklik "Generate" → Sistem memilih template berdasarkan:
+  1. Tipe dokumen
+  2. Tipe wilayah (Regional vs Nasional/Internasional) dari tiket
+  3. Mengisi placeholder {{variable}} dengan data tiket
+  4. Mengembalikan file DOCX yang telah dihasilkan untuk diunduh
 ```
 
 ---
 
-## Oracle Sync Endpoints
+## Endpoint Sinkronisasi Oracle
 
-### Sync Data Referensi
+### Sinkronisasi Data Referensi
 
-| Method | URL | Description |
+| Method | URL | Deskripsi |
 |--------|-----|-------------|
-| `GET` | `/sync-data-referensi/` | Sync page (HTML) |
-| `POST` | `/sync-data-referensi/test/` | Test Oracle connection |
-| `POST` | `/sync-data-referensi/check/` | Check for data changes (dry-run) |
-| `POST` | `/sync-data-referensi/run/` | Run full data synchronization |
-| `POST` | `/sync-data-referensi/stop/` | Stop running sync |
-| `GET` | `/sync-data-referensi/stop-check/` | Check if stop requested |
-| `GET` | `/sync-data-referensi/progress/` | Get sync progress (AJAX poll) |
-| `POST` | `/sync-data-referensi/truncate/` | Truncate synced tables |
-| `GET` | `/sync-data-referensi/download-errors/<sync_id>/` | Download error log |
-| `POST` | `/sync-data-referensi/clear-session/` | Clear sync session data |
+| `GET` | `/sync-data-referensi/` | Halaman sinkronisasi (HTML) |
+| `POST` | `/sync-data-referensi/test/` | Uji koneksi Oracle |
+| `POST` | `/sync-data-referensi/check/` | Periksa perubahan data (dry-run) |
+| `POST` | `/sync-data-referensi/run/` | Jalankan sinkronisasi data penuh |
+| `POST` | `/sync-data-referensi/stop/` | Hentikan sinkronisasi yang berjalan |
+| `GET` | `/sync-data-referensi/stop-check/` | Periksa apakah penghentian diminta |
+| `GET` | `/sync-data-referensi/progress/` | Ambil progres sinkronisasi (polling AJAX) |
+| `POST` | `/sync-data-referensi/truncate/` | Kosongkan tabel yang disinkronkan |
+| `GET` | `/sync-data-referensi/download-errors/<sync_id>/` | Unduh log kesalahan |
+| `POST` | `/sync-data-referensi/clear-session/` | Hapus data sesi sinkronisasi |
 
-### Sync Tiket
+### Sinkronisasi Tiket
 
-| Method | URL | Description |
+| Method | URL | Deskripsi |
 |--------|-----|-------------|
-| `GET` | `/sync-tiket/` | Sync tiket page (HTML) |
-| `POST` | `/sync-tiket/test/` | Test Oracle connection |
-| `POST` | `/sync-tiket/check/` | Check for tiket changes (dry-run) |
-| `POST` | `/sync-tiket/run/` | Run tiket synchronization |
-| `POST` | `/sync-tiket/stop/` | Stop running sync |
-| `GET` | `/sync-tiket/stop-check/` | Check if stop requested |
-| `GET` | `/sync-tiket/progress/` | Get sync progress (AJAX poll) |
-| `POST` | `/sync-tiket/truncate/` | Truncate synced tiket tables |
-| `GET` | `/sync-tiket/download-errors/<sync_id>/` | Download error log |
+| `GET` | `/sync-tiket/` | Halaman sinkronisasi tiket (HTML) |
+| `POST` | `/sync-tiket/test/` | Uji koneksi Oracle |
+| `POST` | `/sync-tiket/check/` | Periksa perubahan tiket (dry-run) |
+| `POST` | `/sync-tiket/run/` | Jalankan sinkronisasi tiket |
+| `POST` | `/sync-tiket/stop/` | Hentikan sinkronisasi yang berjalan |
+| `GET` | `/sync-tiket/stop-check/` | Periksa apakah penghentian diminta |
+| `GET` | `/sync-tiket/progress/` | Ambil progres sinkronisasi (polling AJAX) |
+| `POST` | `/sync-tiket/truncate/` | Kosongkan tabel tiket yang disinkronkan |
+| `GET` | `/sync-tiket/download-errors/<sync_id>/` | Unduh log kesalahan |
 
-### Sync Progress Response Format
+### Format Respons Progres Sinkronisasi
 
 ```json
 {
@@ -335,57 +334,57 @@ User clicks "Generate" → System selects template based on:
 
 ---
 
-## Notification Endpoints
+## Endpoint Notifikasi
 
-| Method | URL | Description |
+| Method | URL | Deskripsi |
 |--------|-----|-------------|
-| `GET` | `/notifications/` | Notification list |
-| `POST` | `/notifications/read/<pk>/` | Mark single notification as read |
-| `POST` | `/notifications/read-all/` | Mark all notifications as read |
+| `GET` | `/notifications/` | Daftar notifikasi |
+| `POST` | `/notifications/read/<pk>/` | Tandai satu notifikasi sebagai sudah dibaca |
+| `POST` | `/notifications/read-all/` | Tandai semua notifikasi sebagai sudah dibaca |
 
 ---
 
-## Utility Endpoints
+## Endpoint Utilitas
 
-| Method | URL | Description |
+| Method | URL | Deskripsi |
 |--------|-----|-------------|
-| `GET` | `/dashboard/` | Power BI embedded dashboard |
-| `GET` | `/quality-control/` | Quality control page |
-| `GET` | `/quality-control/data/` | Quality control DataTables JSON |
-| `GET` | `/profil-ilap/` | ILAP profile list |
-| `GET` | `/profil-ilap/<pk>/` | ILAP profile detail |
-| `GET` | `/monitoring-penyampaian-data/` | Data delivery monitoring |
-| `GET` | `/monitoring-penyampaian-data/data/` | Monitoring DataTables JSON |
+| `GET` | `/dashboard/` | Dasbor PowerBI tertanam |
+| `GET` | `/quality-control/` | Halaman pengendalian mutu |
+| `GET` | `/quality-control/data/` | Data JSON DataTables pengendalian mutu |
+| `GET` | `/profil-ilap/` | Daftar profil ILAP |
+| `GET` | `/profil-ilap/<pk>/` | Detail profil ILAP |
+| `GET` | `/monitoring-penyampaian-data/` | Pemantauan penyampaian data |
+| `GET` | `/monitoring-penyampaian-data/data/` | Data JSON DataTables pemantauan |
 
-### Django Admin
+### Admin Django
 
-| Method | URL | Description |
+| Method | URL | Deskripsi |
 |--------|-----|-------------|
-| `GET/POST` | `/admin/` | Django admin interface (superuser only) |
+| `GET/POST` | `/admin/` | Antarmuka admin Django (hanya superuser) |
 
-### Development-only Endpoints (DEBUG=True)
+### Endpoint Khusus Pengembangan (DEBUG=True)
 
-| Method | URL | Description |
+| Method | URL | Deskripsi |
 |--------|-----|-------------|
-| `GET` | `/schema/` | Interactive ERD diagram (django-schema-graph) |
+| `GET` | `/schema/` | Diagram ERD interaktif (django-schema-graph) |
 
 ---
 
-## Error Handling
+## Penanganan Error
 
-### HTTP Status Codes
+### Kode Status HTTP
 
-| Code | Description |
+| Kode | Deskripsi |
 |------|-------------|
-| `200` | Success |
-| `302` | Redirect (login required, etc.) |
-| `400` | Bad request (invalid form data) |
-| `403` | Forbidden (permission denied) |
-| `404` | Not found |
-| `405` | Method not allowed |
-| `500` | Internal server error |
+| `200` | Berhasil |
+| `302` | Redirect (memerlukan login, dll.) |
+| `400` | Permintaan buruk (data formulir tidak valid) |
+| `403` | Dilarang (izin ditolak) |
+| `404` | Tidak ditemukan |
+| `405` | Metode tidak diizinkan |
+| `500` | Kesalahan server internal |
 
-### Error Response Format (JSON)
+### Format Respons Error (JSON)
 
 ```json
 {
@@ -394,18 +393,18 @@ User clicks "Generate" → System selects template based on:
 }
 ```
 
-### CSRF Protection
+### Perlindungan CSRF
 
-All `POST` requests require a CSRF token. Include in forms:
+Semua permintaan `POST` memerlukan token CSRF. Sertakan dalam formulir:
 
 ```html
 {% csrf_token %}
 ```
 
-For AJAX POST requests, include the CSRF header:
+Untuk permintaan AJAX POST, sertakan header CSRF:
 
 ```javascript
-// From Django docs - get CSRF token from cookie
+// Dari dokumen Django - ambil token CSRF dari cookie
 const csrftoken = getCookie('csrftoken');
 
 fetch('/api/endpoint/', {
