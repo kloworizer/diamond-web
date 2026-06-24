@@ -16,13 +16,16 @@
                 </div>
             </div>
             <div class="content-sidebar-body">
-                <div style="margin:0; padding-left:1rem;">
-                    <small class="text-uppercase fw-bold">Daftar Dokumen</small>
+                {% for group in docs %}
+                <div class="mt-2" style="margin:0; padding-left:1rem;">
+                    <small class="text-uppercase fw-bold" style="font-size:0.65rem;letter-spacing:0.05em;">
+                        {{ group.group }}
+                    </small>
                 </div>
                 <ul class="nav flex-column nxl-content-sidebar-item">
-                    {% for doc in docs %}
+                    {% for doc in group.docs %}
                     <li class="nav-item">
-                        <a class="nav-link doc-link {% if forloop.first %}active{% endif %}" 
+                        <a class="nav-link doc-link {% if forloop.first and forloop.parentloop.first %}active{% endif %}" 
                            href="{% url 'docs_detail' slug=doc.slug %}">
                             <span class="icon-bg-soft icon-bg-soft-primary">
                                 <i class="feather-file-text" style="color:#0C92FF"></i>
@@ -32,6 +35,7 @@
                     </li>
                     {% endfor %}
                 </ul>
+                {% endfor %}
             </div>
         </div>
         <!-- [ Sidebar ] end -->
@@ -56,8 +60,12 @@
                         <p class="text-muted mb-0 mt-1">Pilih dokumen dari sidebar untuk membaca panduan dan referensi.</p>
                     </div>
                     <div class="card-body">
-                        <div class="row g-3">
-                            {% for doc in docs %}
+                        {% for group in docs %}
+                        <h6 class="text-uppercase fw-bold text-muted mt-3 mb-2" style="font-size:0.75rem;letter-spacing:0.08em;">
+                            {{ group.group }}
+                        </h6>
+                        <div class="row g-3 mb-4">
+                            {% for doc in group.docs %}
                             <div class="col-md-6 col-lg-4">
                                 <a href="{% url 'docs_detail' slug=doc.slug %}" class="text-decoration-none">
                                     <div class="card border h-100">
@@ -73,6 +81,7 @@
                             </div>
                             {% endfor %}
                         </div>
+                        {% endfor %}
                     </div>
                 </div>
             </div>

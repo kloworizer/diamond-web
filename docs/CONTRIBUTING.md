@@ -1,44 +1,44 @@
-# Contributing to Diamond
+# Panduan Kontribusi — Diamond
 
-> **Last Updated:** June 23, 2026
+> **Terakhir Diperbarui:** June 23, 2026
 
-Thank you for considering contributing to the Diamond project! This document outlines the guidelines for contributing to the codebase.
-
----
-
-## Table of Contents
-
-- [Code of Conduct](#code-of-conduct)
-- [Getting Started](#getting-started)
-- [Development Workflow](#development-workflow)
-- [Coding Standards](#coding-standards)
-- [Testing Guidelines](#testing-guidelines)
-- [Pull Request Process](#pull-request-process)
-- [Git Commit Guidelines](#git-commit-guidelines)
-- [Documentation](#documentation)
+Terima kasih telah mempertimbangkan untuk berkontribusi pada proyek Diamond! Dokumen ini menguraikan panduan untuk berkontribusi pada basis kode.
 
 ---
 
-## Code of Conduct
+## Daftar Isi
 
-By participating in this project, you agree to:
-
-- Be respectful and inclusive
-- Focus on constructive feedback
-- Prioritize the project's goals
-- Collaborate openly
+- [Kode Etik](#kode-etik)
+- [Memulai](#memulai)
+- [Workflow Pengembangan](#workflow-pengembangan)
+- [Standar Penulisan Kode](#standar-penulisan-kode)
+- [Panduan Pengujian](#panduan-pengujian)
+- [Proses Pull Request](#proses-pull-request)
+- [Panduan Commit Git](#panduan-commit-git)
+- [Dokumentasi](#dokumentasi)
 
 ---
 
-## Getting Started
+## Kode Etik
 
-### Prerequisites
+Dengan berpartisipasi dalam proyek ini, Anda setuju untuk:
+
+- Bersikap hormat dan inklusif
+- Fokus pada masukan yang konstruktif
+- Mengutamakan tujuan proyek
+- Berkolaborasi secara terbuka
+
+---
+
+## Memulai
+
+### Prasyarat
 
 - Python 3.10+
 - Git
-- Basic understanding of Django 5.2
+- Pemahaman dasar tentang Django 5.2
 
-### Setup Development Environment
+### Persiapan Lingkungan Pengembangan
 
 ```bash
 # 1. Fork and clone the repository
@@ -76,9 +76,9 @@ python manage.py runserver
 
 ---
 
-## Development Workflow
+## Workflow Pengembangan
 
-### Branch Naming Convention
+### Konvensi Penamaan Branch
 
 Use the format: `{team-name}-{feature-description}`
 
@@ -88,17 +88,17 @@ bimo-fitur-laporan-transfer
 p3de-team-fix-tiket-workflow
 ```
 
-### Development Process
+### Proses Pengembangan
 
-1. **Create a branch** from `main`
-2. **Make changes** following coding standards
-3. **Write/update tests** for your changes
-4. **Run tests** to ensure nothing is broken
-5. **Commit** with meaningful commit messages
-6. **Push** to your fork
-7. **Create a Pull Request**
+1. **Buat branch** dari `main`
+2. **Lakukan perubahan** sesuai standar penulisan kode
+3. **Tulis/perbarui pengujian** untuk perubahan Anda
+4. **Jalankan pengujian** untuk memastikan tidak ada yang rusak
+5. **Commit** dengan pesan commit yang bermakna
+6. **Push** ke fork Anda
+7. **Buat Pull Request**
 
-### Sync with Main Branch
+### Sinkronisasi dengan Branch Main
 
 ```bash
 git checkout main
@@ -109,26 +109,26 @@ git merge main
 
 ---
 
-## Coding Standards
+## Standar Penulisan Kode
 
 ### Python / Django
 
-- Follow **PEP 8** style guide
-- Use **4 spaces** for indentation (no tabs)
-- Maximum line length: **100 characters** (PEP 8 recommends 79, but 100 is acceptable for Django)
-- Use **meaningful variable names** (Indonesian/English consistent with project)
+- Ikuti panduan gaya **PEP 8**
+- Gunakan **4 spasi** untuk indentasi (tanpa tab)
+- Panjang baris maksimal: **100 karakter** (PEP 8 merekomendasikan 79, tetapi 100 dapat diterima untuk Django)
+- Gunakan **nama variabel yang bermakna** (Indonesia/Inggris konsisten dengan proyek)
 
-### Django-Specific
+### Ketentuan Khusus Django
 
-- **Views**: Use class-based views where appropriate (ListView, CreateView, UpdateView, DeleteView)
-- **Models**: Each model in its own file under `diamond_web/models/`
-- **URLs**: Maintain the existing URL pattern structure
-- **Forms**: Place forms in `diamond_web/forms/` with clear naming
-- **Templates**: Use `diamond_web/templates/` with Bootstrap 5 classes
-- **Queries**: Use Django ORM, avoid raw SQL unless absolutely necessary
-- **Context processors**: For global template variables
+- **Views**: Gunakan class-based views jika sesuai (ListView, CreateView, UpdateView, DeleteView)
+- **Models**: Setiap model dalam file sendiri di `diamond_web/models/`
+- **URLs**: Pertahankan struktur pola URL yang ada
+- **Forms**: Tempatkan form di `diamond_web/forms/` dengan penamaan yang jelas
+- **Templates**: Gunakan `diamond_web/templates/` dengan kelas Bootstrap 5
+- **Queries**: Gunakan Django ORM, hindari SQL mentah kecuali sangat diperlukan
+- **Context processors**: Untuk variabel template global
 
-### Naming Conventions
+### Konvensi Penamaan
 
 | Element | Convention | Example |
 |---------|-----------|---------|
@@ -140,7 +140,7 @@ git merge main
 | Variables | snake_case | `nama_ilap`, `jumlah_baris` |
 | Functions | snake_case | `get_next_ilap_id()` |
 
-### Imports Organization
+### Organisasi Impor
 
 ```python
 # 1. Standard library
@@ -158,9 +158,9 @@ from ..forms import TiketForm
 
 ---
 
-## Testing Guidelines
+## Panduan Pengujian
 
-### Running Tests
+### Menjalankan Pengujian
 
 ```bash
 # Run all tests
@@ -182,37 +182,37 @@ pytest -m unit
 pytest -m integration
 ```
 
-### Writing Tests
+### Menulis Pengujian
 
-- **Unit tests**: Test individual functions, forms, model methods
-- **Integration tests**: Test views, workflows, and database interactions
-- **Coverage target**: Minimum **80%** for new code
-- Test files go in `diamond_web/tests/`
-- Test classes: `Test*` pattern
-- Test functions: `test_*` pattern
+- **Unit tests**: Uji fungsi individu, form, dan metode model
+- **Integration tests**: Uji view, workflow, dan interaksi database
+- **Target cakupan**: Minimal **80%** untuk kode baru
+- File pengujian ditempatkan di `diamond_web/tests/`
+- Kelas pengujian: pola `Test*`
+- Fungsi pengujian: pola `test_*`
 
-### What to Test
+### Apa yang Harus Diuji
 
-- ✅ Form validation (valid and invalid inputs)
-- ✅ View responses (status codes, template used, context data)
-- ✅ Model methods and properties
-- ✅ Workflow transitions (tiket status changes)
-- ✅ Permission checks (role-based access)
-- ✅ Report generation and export
-- ⚠️ Oracle sync (mock external dependencies)
+- ✅ Validasi form (input valid dan tidak valid)
+- ✅ Respons view (kode status, template yang digunakan, data konteks)
+- ✅ Metode dan properti model
+- ✅ Transisi workflow (perubahan status tiket)
+- ✅ Pemeriksaan izin (akses berbasis peran)
+- ✅ Pembuatan dan ekspor laporan
+- ⚠️ Sinkronisasi Oracle (mock dependensi eksternal)
 
 ---
 
-## Pull Request Process
+## Proses Pull Request
 
-### Before Submitting
+### Sebelum Mengirimkan
 
-1. Ensure your code compiles without errors
-2. Run the full test suite: `pytest`
-3. Update documentation if needed
-4. Review your own diff first
+1. Pastikan kode Anda tidak mengandung error
+2. Jalankan seluruh rangkaian pengujian: `pytest`
+3. Perbarui dokumentasi jika diperlukan
+4. Tinjau diff Anda sendiri terlebih dahulu
 
-### PR Title Format
+### Format Judul PR
 
 ```
 type(scope): brief description
@@ -227,7 +227,7 @@ test(forms): add validation tests for tiket form
 refactor(views): simplify home view logic
 ```
 
-### PR Description Template
+### Template Deskripsi PR
 
 ```markdown
 ## Description
@@ -250,18 +250,18 @@ Brief description of the changes.
 Fixes #123
 ```
 
-### Review Process
+### Proses Review
 
-1. At least **one approval** required from a team lead
-2. All automated checks must pass
-3. Address all review comments before merging
-4. Squash commits before merging (if requested)
+1. Setidaknya **satu persetujuan** dari team lead diperlukan
+2. Semua pemeriksaan otomatis harus lulus
+3. Tanggapi semua komentar review sebelum merge
+4. Squash commit sebelum merge (jika diminta)
 
 ---
 
-## Git Commit Guidelines
+## Panduan Commit Git
 
-### Commit Message Format
+### Format Pesan Commit
 
 ```
 type(scope): subject
@@ -269,7 +269,7 @@ type(scope): subject
 body (optional)
 ```
 
-### Types
+### Tipe
 
 | Type | Usage |
 |------|-------|
@@ -281,7 +281,7 @@ body (optional)
 | `style` | Formatting, missing semicolons, etc. |
 | `chore` | Build tasks, dependencies, etc. |
 
-### Examples
+### Contoh
 
 ```
 feat(tiket): add ability to filter by date range in tiket list
@@ -292,17 +292,17 @@ test(forms): add validation for empty tiket form submission
 
 ---
 
-## Documentation
+## Dokumentasi
 
-### When to Update Documentation
+### Kapan Harus Memperbarui Dokumen
 
-- Adding new features → update relevant docs
-- Changing workflows → update status flow docs
-- Adding environment variables → update `.env.example.*`
-- Adding database models → update `docs/models_erd.md`
-- Changing API endpoints → update `docs/API_DOCUMENTATION.md`
+- Menambahkan fitur baru → perbarui dokumen terkait
+- Mengubah workflow → perbarui dokumen alur status
+- Menambahkan variabel lingkungan → perbarui `.env.example.*`
+- Menambahkan model database → perbarui `docs/models_erd.md`
+- Mengubah endpoint API → perbarui `docs/API_DOCUMENTATION.md`
 
-### Documentation Location
+### Lokasi Dokumen
 
 | Document | Location | Description |
 |----------|----------|-------------|
@@ -321,6 +321,6 @@ test(forms): add validation for empty tiket form submission
 
 ---
 
-## Questions?
+## Ada Pertanyaan?
 
-If you have questions about contributing, please open a discussion in the repository or contact the project lead.
+Jika Anda memiliki pertanyaan tentang kontribusi, silakan buka diskusi di repositori atau hubungi pimpinan proyek.

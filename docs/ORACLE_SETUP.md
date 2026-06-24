@@ -1,74 +1,74 @@
-# Oracle Database Setup Guide for python-oracledb (Thick Mode)
+# Panduan Setup Database Oracle untuk python-oracledb (Mode Thick)
 
-## Problem
-If you encounter the error:
+## Masalah
+Jika Anda mengalami error:
 ```
 DPY-3010: connections to this database server version are not supported by python-oracledb in thin mode
 ```
 
-This means python-oracledb is running in **thin mode** which doesn't support your Oracle database version. You need to enable **thick mode**.
+Ini berarti python-oracledb berjalan dalam **mode thin** yang tidak mendukung versi database Oracle Anda. Anda perlu mengaktifkan **mode thick**.
 
-## Solution: Enable Thick Mode
+## Solusi: Aktifkan Mode Thick
 
-Thick mode requires Oracle Client libraries to be installed on your system.
+Mode thick memerlukan library Oracle Client untuk diinstal di sistem Anda.
 
-### Prerequisites
+### Prasyarat
 
 #### Windows
-- **Oracle Instant Client Basic** or **Oracle Database Client** installed
-- Download from: https://www.oracle.com/database/technologies/instant-client/downloads.html
-- Extract to a folder, e.g., `C:\oracle\instantclient_21_9`
+- **Oracle Instant Client Basic** atau **Oracle Database Client** terinstal
+- Unduh dari: https://www.oracle.com/database/technologies/instant-client/downloads.html
+- Ekstrak ke folder, misalnya `C:\oracle\instantclient_21_9`
 
 #### Linux/Unix
-- Install Oracle Client libraries
-- Set `LD_LIBRARY_PATH` environment variable
+- Instal library Oracle Client
+- Atur variabel lingkungan `LD_LIBRARY_PATH`
 
 #### macOS
-- Install Oracle Instant Client
-- May require additional configuration
+- Instal Oracle Instant Client
+- Mungkin memerlukan konfigurasi tambahan
 
-### Setup Instructions
+### Petunjuk Setup
 
 #### Windows
 
-1. **Download Oracle Instant Client Basic**
-   - Visit: https://www.oracle.com/database/technologies/instant-client/downloads.html
-   - Select your OS (Windows) and download the Basic package
-   - Extract to a location like `C:\oracle\instantclient_21_9`
+1. **Unduh Oracle Instant Client Basic**
+   - Kunjungi: https://www.oracle.com/database/technologies/instant-client/downloads.html
+   - Pilih OS Anda (Windows) dan unduh paket Basic
+   - Ekstrak ke lokasi seperti `C:\oracle\instantclient_21_9`
 
-2. **Set Environment Variables**
+2. **Atur Variabel Lingkungan**
    ```batch
    setx ORACLE_CLIENT_HOME "C:\oracle\instantclient_21_9"
    setx PATH "%PATH%;C:\oracle\instantclient_21_9"
    ```
    
-   Or add via Python:
+   Atau tambahkan melalui Python:
    ```python
    import os
    os.environ['ORACLE_CLIENT_HOME'] = r'C:\oracle\instantclient_21_9'
    ```
 
-3. **Test Connection**
+3. **Uji Koneksi**
    ```bash
    python -m diamond_web.utils.oracle_sync --check
    ```
 
 #### Linux
 
-1. **Install Oracle Client**
+1. **Instal Oracle Client**
    ```bash
    # Ubuntu/Debian
    sudo apt-get install oracle-instantclient-basic
    
-   # Or download and install manually from Oracle
+   # Atau unduh dan instal secara manual dari Oracle
    ```
 
-2. **Set LD_LIBRARY_PATH**
+2. **Atur LD_LIBRARY_PATH**
    ```bash
    export LD_LIBRARY_PATH=/usr/lib/oracle/21/client64/lib:$LD_LIBRARY_PATH
    ```
    
-   Add to `.bashrc` or `.bash_profile`:
+   Tambahkan ke `.bashrc` atau `.bash_profile`:
    ```bash
    echo 'export LD_LIBRARY_PATH=/usr/lib/oracle/21/client64/lib:$LD_LIBRARY_PATH' >> ~/.bashrc
    source ~/.bashrc
@@ -76,35 +76,35 @@ Thick mode requires Oracle Client libraries to be installed on your system.
 
 #### macOS
 
-1. **Install Oracle Instant Client**
+1. **Instal Oracle Instant Client**
    ```bash
    brew install oracle-instantclient
    ```
 
-2. **Set Environment Variables**
+2. **Atur Variabel Lingkungan**
    ```bash
    export DYLD_LIBRARY_PATH=/usr/local/lib/oracle/instantclient_21_9:$DYLD_LIBRARY_PATH
    ```
 
-### Configuration in Django
+### Konfigurasi di Django
 
-The code automatically initializes thick mode when `OracleDataSyncService` is instantiated:
+Kode secara otomatis menginisialisasi mode thick ketika `OracleDataSyncService` dipakai (diinstansiasi):
 
 ```python
 from diamond_web.utils.oracle_sync import OracleDataSyncService
 
-# This will initialize thick mode automatically
+# Ini akan menginisialisasi mode thick secara otomatis
 service = OracleDataSyncService()
 ```
 
-If initialization fails, check:
-1. Oracle Client is installed
-2. `ORACLE_CLIENT_HOME` is set correctly (Windows)
-3. `LD_LIBRARY_PATH` is set correctly (Linux)
+Jika inisialisasi gagal, periksa:
+1. Oracle Client sudah terinstal
+2. `ORACLE_CLIENT_HOME` sudah diatur dengan benar (Windows)
+3. `LD_LIBRARY_PATH` sudah diatur dengan benar (Linux)
 
-### Environment Variables Required
+### Variabel Lingkungan yang Diperlukan
 
-Set these in your `.env` file:
+Atur ini di file `.env` Anda:
 
 ```env
 # Primary Oracle Connection
@@ -122,22 +122,22 @@ ORACLE_SECONDARY_PORT=1521
 ORACLE_SECONDARY_SERVICE_NAME=
 ```
 
-### Troubleshooting
+### Pemecahan Masalah
 
 #### Error: "Oracle Client is not found"
-- Ensure Oracle Instant Client is installed
-- Verify `ORACLE_CLIENT_HOME` or `LD_LIBRARY_PATH` is set correctly
-- Restart your terminal/IDE after setting environment variables
+- Pastikan Oracle Instant Client sudah terinstal
+- Verifikasi bahwa `ORACLE_CLIENT_HOME` atau `LD_LIBRARY_PATH` sudah diatur dengan benar
+- Mulai ulang terminal/IDE Anda setelah mengatur variabel lingkungan
 
 #### Error: "cannot connect to database"
-- Verify Oracle credentials and connection string
-- Test with `sqlplus` or other Oracle client tools first
-- Check firewall/network connectivity to Oracle server
+- Verifikasi kredensial Oracle dan string koneksi
+- Uji dengan `sqlplus` atau alat Oracle client lainnya terlebih dahulu
+- Periksa konektivitas firewall/jaringan ke server Oracle
 
-#### Error: "DPY-3010" still occurring
-- Make sure you've restarted your Python process/IDE
-- Environment variables must be set BEFORE Python starts
-- Try setting them programmatically as first import:
+#### Error: "DPY-3010" masih terjadi
+- Pastikan Anda telah memulai ulang proses Python/IDE Anda
+- Variabel lingkungan harus diatur SEBELUM Python dimulai
+- Coba atur secara terprogram sebagai import pertama:
   ```python
   import os
   os.environ['ORACLE_CLIENT_HOME'] = r'C:\oracle\instantclient_21_9'
@@ -145,21 +145,21 @@ ORACLE_SECONDARY_SERVICE_NAME=
   oracledb.init_oracle_client()
   ```
 
-### Testing the Connection
+### Menguji Koneksi
 
 ```bash
 cd diamond-web
 python manage.py shell
 ```
 
-Then in the Python shell:
+Kemudian di shell Python:
 ```python
 from diamond_web.utils.oracle_sync import OracleDataSyncService
 service = OracleDataSyncService()
 print("Oracle connection successful!")
 ```
 
-### More Information
+### Informasi Lebih Lanjut
 
 - [python-oracledb Documentation](https://python-oracledb.readthedocs.io/)
 - [Oracle Instant Client Setup](https://www.oracle.com/database/technologies/instant-client/downloads.html)

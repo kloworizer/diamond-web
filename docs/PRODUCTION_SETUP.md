@@ -1,32 +1,31 @@
-# Production Setup Guide
+# Panduan Setup Produksi
 
-> **Last Updated:** June 23, 2026  
-> **Target:** Production deployment of Diamond Web Application
+> **Terakhir Diperbarui:** June 23, 2026  
+> **Target:** Deployment produksi aplikasi Diamond Web
 
 ---
 
-## Table of Contents
+## Daftar Isi
 
-- [System Requirements](#system-requirements)
-- [Environment Variables](#environment-variables)
-- [Database Setup (PostgreSQL)](#database-setup-postgresql)
-- [Installing Dependencies](#installing-dependencies)
-- [Static Files & Media](#static-files--media)
-- [Web Server Configuration](#web-server-configuration)
-  - [Gunicorn (Systemd Service)](#gunicorn-systemd-service)
-  - [Nginx Reverse Proxy](#nginx-reverse-proxy)
-- [Celery & Redis Setup](#celery--redis-setup)
-- [SSL / HTTPS](#ssl--https)
-- [Backup Configuration](#backup-configuration)
+- [Kebutuhan Sistem](#kebutuhan-sistem)
+- [Variabel Lingkungan](#variabel-lingkungan)
+- [Setup Database (PostgreSQL)](#setup-database-postgresql)
+- [Instalasi Dependensi](#instalasi-dependensi)
+- [File Statis & Media](#file-statis--media)
+- [Konfigurasi Web Server](#konfigurasi-web-server)
+  - [Gunicorn (Layanan Systemd)](#gunicorn-layanan-systemd)
+  - [Reverse Proxy Nginx](#reverse-proxy-nginx)
+- [Setup Celery & Redis](#setup-celery--redis)
+- [Konfigurasi Backup](#konfigurasi-backup)
 - [Logging & Monitoring](#logging--monitoring)
 - [Health Check & Keep-Alive](#health-check--keep-alive)
-- [Troubleshooting](#troubleshooting)
+- [Pemecahan Masalah](#pemecahan-masalah)
 
 ---
 
-## System Requirements
+## Kebutuhan Sistem
 
-### Minimum (Small Deployment)
+### Minimum (Deploy Kecil)
 | Resource | Spec |
 |----------|------|
 | CPU | 2 cores |
@@ -34,7 +33,7 @@
 | Disk | 20 GB SSD |
 | OS | Ubuntu 22.04 LTS / Rocky Linux 9 / Windows Server 2022 |
 
-### Recommended (Production)
+### Rekomendasi (Produksi)
 | Resource | Spec |
 |----------|------|
 | CPU | 4+ cores |
@@ -42,7 +41,7 @@
 | Disk | 50 GB SSD (expandable for media/backups) |
 | OS | Ubuntu 22.04 LTS |
 
-### Software Requirements
+### Kebutuhan Software
 | Software | Version | Purpose |
 |----------|---------|---------|
 | Python | 3.10+ | Application runtime |
@@ -53,7 +52,7 @@
 
 ---
 
-## Environment Variables
+## Variabel Lingkungan
 
 Copy the production environment template:
 
@@ -61,14 +60,14 @@ Copy the production environment template:
 cp .env.example.prod .env
 ```
 
-### Required Variables
+### Variabel Wajib
 
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `SECRET_KEY` | Django secret key (generate a long random string) | `django-insecure-<64-char-random>` |
 | `DEBUG` | Must be `False` in production | `False` |
 | `ALLOWED_HOSTS` | Comma-separated domain/IP list | `diamond.pajak.go.id,10.10.10.50` |
-| `CSRF_TRUSTED_ORIGINS` | Comma-separated origins for CSRF | `https://diamond.pajak.go.id` |
+| `CSRF_TRUSTED_ORIGINS` | Comma-separated origins for CSRF | `http://diamond.pajak.go.id` |
 | `DB_ENGINE` | Database engine | `postgresql` |
 | `DB_NAME` | Database name | `diamond_web_prod` |
 | `DB_USER` | Database user | `diamond_user` |
@@ -78,7 +77,7 @@ cp .env.example.prod .env
 | `CELERY_BROKER_URL` | Redis URL for Celery broker | `redis://localhost:6379/0` |
 | `REDIS_CACHE_URL` | Redis URL for cache | `redis://localhost:6379/1` |
 
-### Oracle Sync Variables (if used)
+### Variabel Sinkronisasi Oracle (jika digunakan)
 
 | Variable | Description |
 |----------|-------------|
@@ -89,7 +88,7 @@ cp .env.example.prod .env
 | `ORACLE_SERVICE_NAME` | Oracle service name (e.g., `ORCLPDB1`) |
 | `ORACLE_SECONDARY_*` | Secondary Oracle connection (optional) |
 
-### Email Variables (if used)
+### Variabel Email (jika digunakan)
 
 | Variable | Description |
 |----------|-------------|
@@ -101,7 +100,7 @@ cp .env.example.prod .env
 
 ---
 
-## Database Setup (PostgreSQL)
+## Setup Database (PostgreSQL)
 
 ### 1. Install PostgreSQL
 
@@ -149,9 +148,9 @@ python manage.py migrate
 
 ---
 
-## Installing Dependencies
+## Instalasi Dependensi
 
-### On a server with internet access
+### Di server dengan akses internet
 
 ```bash
 python -m venv .venv
@@ -159,7 +158,7 @@ source .venv/bin/activate
 pip install -r requirements/prod.txt
 ```
 
-### On an air-gapped server (no internet)
+### Di server tanpa internet
 
 1. On a development machine with internet, download packages:
 
@@ -179,7 +178,7 @@ pip install --no-index --find-links=./packages -r requirements/prod.txt
 
 ---
 
-## Static Files & Media
+## File Statis & Media
 
 ```bash
 # Collect all static files into STATIC_ROOT
@@ -192,9 +191,9 @@ Media files (user uploads, generated documents) are stored in `media/`.
 
 ---
 
-## Web Server Configuration
+## Konfigurasi Web Server
 
-### Gunicorn (Systemd Service)
+### Gunicorn (Layanan Systemd)
 
 Create `/etc/systemd/system/diamond_web_gunicorn.service`:
 
@@ -242,7 +241,7 @@ sudo systemctl start diamond_web_gunicorn
 > waitress-serve --port=8000 config.wsgi:application
 > ```
 
-### Nginx Reverse Proxy
+### Reverse Proxy Nginx
 
 Create `/etc/nginx/sites-available/diamond`:
 
@@ -250,23 +249,6 @@ Create `/etc/nginx/sites-available/diamond`:
 server {
     listen 80;
     server_name diamond.pajak.go.id;
-
-    # Redirect HTTP to HTTPS
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl;
-    server_name diamond.pajak.go.id;
-
-    ssl_certificate /etc/ssl/certs/diamond.pajak.go.id.crt;
-    ssl_certificate_key /etc/ssl/private/diamond.pajak.go.id.key;
-
-    # Security headers
-    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload";
-    add_header X-Content-Type-Options nosniff;
-    add_header X-Frame-Options DENY;
-    add_header X-XSS-Protection "1; mode=block";
 
     client_max_body_size 50M;
 
@@ -315,9 +297,9 @@ sudo systemctl restart nginx
 
 ---
 
-## Celery & Redis Setup
+## Setup Celery & Redis
 
-### Install Redis
+### Instalasi Redis
 
 ```bash
 # Ubuntu/Debian
@@ -330,7 +312,7 @@ redis-cli ping
 # Output: PONG
 ```
 
-### Celery Worker Service
+### Layanan Celery Worker
 
 Create `/etc/systemd/system/diamond_web_celery.service`:
 
@@ -366,7 +348,7 @@ sudo systemctl start diamond_web_celery
 
 > **Note:** `--pool=solo` is required on Windows. On Linux, you can use `--pool=prefork` for better performance (multiple workers).
 
-### Monitor Celery
+### Monitoring Celery
 
 ```bash
 # Check worker status
@@ -382,30 +364,9 @@ celery -A config flower --port=5555
 
 ---
 
-## SSL / HTTPS
+## Konfigurasi Backup
 
-### Using Let's Encrypt (Certbot)
-
-```bash
-sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d diamond.pajak.go.id
-```
-
-### Using Self-Signed Certificate (Internal Network)
-
-```bash
-sudo mkdir -p /etc/ssl/certs /etc/ssl/private
-sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout /etc/ssl/private/diamond.pajak.go.id.key \
-    -out /etc/ssl/certs/diamond.pajak.go.id.crt \
-    -subj "/C=ID/ST=DKI Jakarta/L=Jakarta/O=DJP/CN=diamond.pajak.go.id"
-```
-
----
-
-## Backup Configuration
-
-### Automated Daily Backup (Cron)
+### Backup Harian Otomatis (Cron)
 
 Add to crontab (`crontab -e`):
 
@@ -420,22 +381,7 @@ Add to crontab (`crontab -e`):
 0 4 * * * find /var/backups/diamond -type f -name "*.dump" -mtime +30 -delete
 ```
 
-### Backup to S3-Compatible Storage
-
-Configure in `.env`:
-
-```env
-BACKUP_STORAGE=storages.backends.s3boto3.S3Boto3Storage
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
-AWS_STORAGE_BUCKET_NAME=diamond-backups
-AWS_S3_REGION_NAME=us-east-1
-AWS_DEFAULT_ACL=private
-```
-
-> S3-compatible services: MinIO, AWS S3, DigitalOcean Spaces, Backblaze B2.
-
-### Restore from Backup
+### Restore dari Backup
 
 ```bash
 # List available backups
@@ -452,7 +398,7 @@ python manage.py dbrestore -i 20260622-020000.dump
 
 ## Logging & Monitoring
 
-### Application Logs
+### Log Aplikasi
 
 | Log | Location |
 |-----|----------|
@@ -461,18 +407,18 @@ python manage.py dbrestore -i 20260622-020000.dump
 | Celery worker | `sudo journalctl -u diamond_web_celery` |
 | Oracle sync logs | `sync_logs/` (in project directory) |
 
-### Create Log Directory
+### Buat Direktori Log
 
 ```bash
 sudo mkdir -p /var/log/diamond
 sudo chown pajak:pajak /var/log/diamond
 ```
 
-### Health Check Endpoint
+### Endpoint Health Check
 
 The application provides a keep-alive endpoint at `/keep-alive/` that returns HTTP 200. Configure your load balancer or monitoring tool to hit this endpoint every 30 seconds to verify the application is running.
 
-### Resource Monitoring
+### Monitoring Resource
 
 ```bash
 # Monitor Gunicorn workers
@@ -502,7 +448,26 @@ Configure your reverse proxy or load balancer to periodically ping `/keep-alive/
 
 ---
 
-## Troubleshooting
+### Setelah Git Pull di VM
+
+Setelah melakukan `git pull` di server VM, layanan berikut WAJIB di-restart agar perubahan kode diterapkan:
+
+```bash
+# Restart Redis (jika ada perubahan konfigurasi)
+sudo systemctl restart redis
+
+# Restart Celery Worker
+sudo systemctl restart diamond_web_celery
+
+# Restart Gunicorn
+sudo systemctl restart diamond_web_gunicorn
+```
+
+> **Penting:** Jika tidak merestart Redis, Celery, dan Gunicorn setelah git pull, perubahan kode tidak akan terlihat karena proses worker masih menggunakan kode lama yang sudah di-cache di memori.
+
+---
+
+## Pemecahan Masalah
 
 ### "502 Bad Gateway" from Nginx
 - Check if Gunicorn is running: `sudo systemctl status diamond_web_gunicorn`

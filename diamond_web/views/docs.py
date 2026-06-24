@@ -8,53 +8,67 @@ from django.http import Http404
 DOCS_DIR = os.path.join(settings.BASE_DIR, 'docs')
 README_PATH = os.path.join(settings.BASE_DIR, 'readme.md')
 
-# Mapping of filename to display title
+# Mapping of filename to display title (Bahasa Indonesia)
 DOC_TITLES = {
-    'readme.md': 'README — Diamond System Overview',
-    'PRODUCTION_SETUP.md': 'Production Setup Guide',
-    'API_DOCUMENTATION.md': 'API Documentation',
-    'models_erd.md': 'Model ER Diagram',
-    'DEPLOYMENT_CHECKLIST.md': 'Deployment Checklist',
-    'SECURITY.md': 'Security Documentation',
-    'HANDOVER_DOCUMENT.md': 'Project Handover Document',
-    'CONTRIBUTING.md': 'Contributing Guidelines',
-    'CHANGELOG.md': 'Changelog & Release Notes',
-    'ORACLE_SETUP.md': 'Oracle Database Setup Guide',
+    'readme.md': 'README — Gambaran Umum Sistem Diamond',
+    'PRODUCTION_SETUP.md': 'Panduan Setup Produksi',
+    'API_DOCUMENTATION.md': 'Dokumentasi API',
+    'models_erd.md': 'Diagram ERD Model',
+    'SECURITY.md': 'Dokumentasi Keamanan',
+    'HANDOVER_DOCUMENT.md': 'Dokumen Serah Terima Proyek',
+    'CONTRIBUTING.md': 'Panduan Kontribusi',
+    'CHANGELOG.md': 'Catatan Rilis & Perubahan',
+    'ORACLE_SETUP.md': 'Panduan Setup Database Oracle',
     'status_tiket_flow.md': 'Diagram Alur Status Tiket',
-    'TEMPLATES_SETUP.md': 'Default Templates Setup Guide',
+    'TEMPLATES_SETUP.md': 'Panduan Setup Template Default',
+    'RBAC_MATRIX.md': 'Matriks RBAC & Hak Akses Menu',
 }
 
-# Ordered list of docs for the index page
-DOC_ORDER = [
-    'readme.md',
-    'PRODUCTION_SETUP.md',
-    'API_DOCUMENTATION.md',
-    'models_erd.md',
-    'DEPLOYMENT_CHECKLIST.md',
-    'SECURITY.md',
-    'HANDOVER_DOCUMENT.md',
-    'CONTRIBUTING.md',
-    'CHANGELOG.md',
-    'ORACLE_SETUP.md',
-    'status_tiket_flow.md',
-    'TEMPLATES_SETUP.md',
-]
+# Phase grouping for documentation (Bahasa Indonesia)
+DOC_GROUPS = {
+    'Pendahuluan': [
+        'readme.md',
+    ],
+    'Fase Desain': [
+        'models_erd.md',
+        'status_tiket_flow.md',
+        'RBAC_MATRIX.md',
+    ],
+    'Fase Pengembangan': [
+        'API_DOCUMENTATION.md',
+        'CONTRIBUTING.md',
+        'SECURITY.md',
+        'CHANGELOG.md',
+    ],
+    'Fase Produksi': [
+        'PRODUCTION_SETUP.md',
+        'ORACLE_SETUP.md',
+        'TEMPLATES_SETUP.md',
+        'HANDOVER_DOCUMENT.md',
+    ],
+}
 
 
 def get_docs_list():
-    """Return a list of doc metadata dictionaries."""
+    """Return a list of doc metadata dictionaries grouped by phase."""
     docs = []
-    for filename in DOC_ORDER:
-        if filename == 'readme.md':
-            filepath = README_PATH
-        else:
-            filepath = os.path.join(DOCS_DIR, filename)
-        if os.path.exists(filepath):
-            docs.append({
-                'filename': filename,
-                'title': DOC_TITLES.get(filename, filename.replace('.md', '').replace('_', ' ').title()),
-                'slug': filename.replace('.md', ''),
-            })
+    for group_name, filenames in DOC_GROUPS.items():
+        group_docs = []
+        for filename in filenames:
+            if filename == 'readme.md':
+                filepath = README_PATH
+            else:
+                filepath = os.path.join(DOCS_DIR, filename)
+            if os.path.exists(filepath):
+                group_docs.append({
+                    'filename': filename,
+                    'title': DOC_TITLES.get(filename, filename.replace('.md', '').replace('_', ' ').title()),
+                    'slug': filename.replace('.md', ''),
+                })
+        docs.append({
+            'group': group_name,
+            'docs': group_docs,
+        })
     return docs
 
 
@@ -106,9 +120,12 @@ def docs_detail(request, slug):
 
     html_content = markdown.markdown(md_content, extensions=md_extensions)
 
-    # Get page title
+    # Get page title from grouped docs
     docs = get_docs_list()
-    doc_titles = {d['slug']: d['title'] for d in docs}
+    doc_titles = {}
+    for group in docs:
+        for d in group['docs']:
+            doc_titles[d['slug']] = d['title']
     page_title = doc_titles.get(slug, slug.replace('-', ' ').title())
 
     context = {

@@ -1,77 +1,76 @@
-# Project Handover Document
+# Dokumen Serah Terima Proyek
 
-> **Project:** Diamond — Sistem P3DE/PIDE/PMDE  
-> **Handover Date:** June 23, 2026  
-> **Prepared for:** Incoming development team / maintenance team
-
----
-
-## Table of Contents
-
-- [1. Executive Summary](#1-executive-summary)
-- [2. Project Overview](#2-project-overview)
-- [3. System Architecture](#3-system-architecture)
-- [4. Tech Stack & Dependencies](#4-tech-stack--dependencies)
-- [5. Codebase Navigation](#5-codebase-navigation)
-- [6. Key Modules & Features](#6-key-modules--features)
-- [7. Database Overview](#7-database-overview)
-- [8. External Integrations](#8-external-integrations)
-- [9. Development Workflow](#9-development-workflow)
-- [10. Deployment & Infrastructure](#10-deployment--infrastructure)
-- [11. Common Tasks & Operations](#11-common-tasks--operations)
-- [12. Known Issues & Limitations](#12-known-issues--limitations)
-- [13. Future Roadmap](#13-future-roadmap)
-- [14. Contacts & Stakeholders](#14-contacts--stakeholders)
-- [15. Appendices](#15-appendices)
+> **Proyek:** Diamond — Sistem P3DE/PIDE/PMDE  
+> **Tanggal Serah Terima:** June 23, 2026  
+> **Disiapkan untuk:** Tim pengembangan / tim pemeliharaan
 
 ---
 
-## 1. Executive Summary
+## Daftar Isi
 
-**Diamond** is a web-based data collection workflow system built with Django 5.2, serving the Direktorat Jenderal Pajak (DJP) environment. The application manages the complete lifecycle of **Tiket Data** (data tickets) — from receipt, research, submission, identification, quality control, to completion.
-
-### Core Business Purpose
-
-The system handles the workflow of external data managed by three units:
-- **P3DE** (Penghimpunan Data Eksternal) — Data Collection
-- **PIDE** (Pengolahan Informasi Data Eksternal) — External Data Processing
-- **PMDE** (Pengendalian Mutu Data Eksternal) — External Data Quality Control
-
-### Key Capabilities
-- Ticketing & workflow management with 8 status stages
-- Oracle database synchronization (data reference & tickets)
-- Automated DOCX document generation from templates
-- 10+ types of reports with Excel export
-- Power BI integrated dashboard
-- Role-based access control (3 user groups + admin)
+- [1. Ringkasan Eksekutif](#1-ringkasan-eksekutif)
+- [2. Gambaran Proyek](#2-gambaran-proyek)
+- [3. Arsitektur Sistem](#3-arsitektur-sistem)
+- [4. Tech Stack & Dependensi](#4-tech-stack--dependensi)
+- [5. Navigasi Codebase](#5-navigasi-codebase)
+- [6. Modul & Fitur Utama](#6-modul--fitur-utama)
+- [7. Gambaran Database](#7-gambaran-database)
+- [8. Integrasi Eksternal](#8-integrasi-eksternal)
+- [9. Workflow Pengembangan](#9-workflow-pengembangan)
+- [10. Deployment & Infrastruktur](#10-deployment--infrastruktur)
+- [11. Tugas & Operasi Umum](#11-tugas--operasi-umum)
+- [12. Masalah & Keterbatasan yang Diketahui](#12-masalah--keterbatasan-yang-diketahui)
+- [14. Kontak & Pemangku Kepentingan](#14-kontak--pemangku-kepentingan)
+- [15. Lampiran](#15-lampiran)
 
 ---
 
-## 2. Project Overview
+## 1. Ringkasan Eksekutif
 
-### Business Context
+**Diamond** adalah sistem alur kerja pengumpulan data berbasis web yang dibangun dengan Django 5.2, melayani lingkungan Direktorat Jenderal Pajak (DJP). Aplikasi ini mengelola siklus hidup lengkap **Tiket Data** — mulai dari penerimaan, penelitian, pengiriman, identifikasi, pengendalian mutu, hingga penyelesaian.
 
-The application was developed to digitize and streamline the data collection workflow that was previously done manually or with spreadsheets. It replaces a legacy Oracle-based system for data tracking and introduces:
+### Tujuan Bisnis Inti
 
-- **Transparency** — Every action is logged with timestamps and user info
-- **Accountability** — Clear ownership (PIC) at each workflow stage
-- **Efficiency** — Automated document generation reduces manual work
-- **Monitoring** — SLA tracking and comprehensive reporting
+Sistem ini menangani alur kerja data eksternal yang dikelola oleh tiga unit:
+- **P3DE** (Penghimpunan Data Eksternal) — Penghimpunan Data
+- **PIDE** (Pengolahan Informasi Data Eksternal) — Pengolahan Data Eksternal
+- **PMDE** (Pengendalian Mutu Data Eksternal) — Pengendalian Mutu Data Eksternal
 
-### User Roles
+### Kemampuan Utama
+- Manajemen tiket & alur kerja dengan 8 tahap status
+- Sinkronisasi database Oracle (data referensi & tiket)
+- Pembuatan dokumen DOCX otomatis dari template
+- 10+ jenis laporan dengan ekspor Excel
+- Dashboard terintegrasi Power BI
+- Kontrol akses berbasis peran (3 grup pengguna + admin)
 
-| Role | Responsibility | Daily Tasks |
+---
+
+## 2. Gambaran Proyek
+
+### Konteks Bisnis
+
+Aplikasi ini dikembangkan untuk mendigitalkan dan menyederhanakan alur kerja pengumpulan data yang sebelumnya dilakukan secara manual atau dengan spreadsheet. Sistem ini menggantikan sistem berbasis Oracle lama untuk pelacakan data dan memperkenalkan:
+
+- **Transparansi** — Setiap tindakan dicatat dengan cap waktu dan info pengguna
+- **Akuntabilitas** — Kepemilikan yang jelas (PIC) di setiap tahap alur kerja
+- **Efisiensi** — Pembuatan dokumen otomatis mengurangi pekerjaan manual
+- **Pemantauan** — Pelacakan SLA dan pelaporan yang komprehensif
+
+### Peran Pengguna
+
+| Peran | Tanggung Jawab | Tugas Harian |
 |------|---------------|-------------|
-| **user_p3de** | Records incoming data, researches, sends to PIDE | Create tiket, record research, upload ND, generate reports |
-| **user_pide** | Identifies data, performs QC, transfers to PMDE | Identify tiket, record results, transfer to PMDE |
-| **user_pmde** | Final quality control, completes tiket | QC review, complete tiket, generate reports |
-| **admin** | System administration | Oracle sync, user management, template management |
+| **user_p3de** | Mencatat data masuk, meneliti, mengirim ke PIDE | Membuat tiket, mencatat penelitian, mengunggah ND, menghasilkan laporan |
+| **user_pide** | Mengidentifikasi data, melakukan QC, mentransfer ke PMDE | Mengidentifikasi tiket, mencatat hasil, mentransfer ke PMDE |
+| **user_pmde** | Pengendalian mutu akhir, menyelesaikan tiket | Tinjauan QC, menyelesaikan tiket, menghasilkan laporan |
+| **admin** | Administrasi sistem | Sinkronisasi Oracle, manajemen pengguna, manajemen template |
 
 ---
 
-## 3. System Architecture
+## 3. Arsitektur Sistem
 
-### High-Level Architecture
+### Arsitektur Tingkat Tinggi
 
 ```
 ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
@@ -96,7 +95,7 @@ The application was developed to digitize and streamline the data collection wor
                                                               └──────────────┘
 ```
 
-### Request Flow
+### Alur Permintaan
 
 ```
 1. User → Browser → HTTP Request
@@ -113,7 +112,7 @@ Async (Oracle Sync):
 5. Progress updates via Redis cache (AJAX polling)
 ```
 
-### File Structure
+### Struktur File
 
 ```
 diamond-web/
@@ -148,200 +147,200 @@ diamond-web/
 
 ---
 
-## 4. Tech Stack & Dependencies
+## 4. Tech Stack & Dependensi
 
-### Core Technologies
+### Teknologi Inti
 
-| Technology | Version | Purpose |
+| Teknologi | Versi | Tujuan |
 |------------|---------|---------|
 | Python | 3.10+ | Runtime |
-| Django | 5.2.14 | Web framework |
-| Celery | 5.3+ | Async task queue |
-| PostgreSQL | 14+ | Production database |
-| Redis | 6+ | Cache & message broker |
+| Django | 5.2.14 | Kerangka Web |
+| Celery | 5.3+ | Antrian tugas async |
+| PostgreSQL | 14+ | Database produksi |
+| Redis | 6+ | Cache & broker pesan |
 | Nginx | 1.24+ | Reverse proxy |
-| Gunicorn | (latest) | WSGI server (Linux) |
+| Gunicorn | (latest) | Server WSGI (Linux) |
 
-### Key Python Libraries
+### Pustaka Python Utama
 
-| Library | Purpose |
+| Pustaka | Tujuan |
 |---------|---------|
-| `oracledb` | Oracle database connectivity |
-| `python-docx` | DOCX document generation |
-| `django-crispy-forms` | Bootstrap 5 form rendering |
-| `django-import-export` | Data import/export (admin) |
-| `django-dbbackup` | Database backup/restore |
-| `django-debug-toolbar` | Development debugging |
-| `django-schema-graph` | ERD visualization |
-| `django-redis` | Redis cache backend |
-| `openpyxl` | Excel file generation |
-| `django-filter` | Advanced filtering |
-| `django-tables2` | Table rendering |
-| `pytest` | Testing framework |
+| `oracledb` | Konektivitas database Oracle |
+| `python-docx` | Pembuatan dokumen DOCX |
+| `django-crispy-forms` | Render formulir Bootstrap 5 |
+| `django-import-export` | Impor/ekspor data (admin) |
+| `django-dbbackup` | Cadangan/pemulihan database |
+| `django-debug-toolbar` | Debugging pengembangan |
+| `django-schema-graph` | Visualisasi ERD |
+| `django-redis` | Backend cache Redis |
+| `openpyxl` | Pembuatan file Excel |
+| `django-filter` | Filtering lanjutan |
+| `django-tables2` | Render tabel |
+| `pytest` | Kerangka pengujian |
 
-### Frontend Libraries (CDN-delivered)
+### Pustaka Frontend (CDN)
 
-| Library | Version | Purpose |
+| Pustaka | Versi | Tujuan |
 |---------|---------|---------|
-| Bootstrap | 5.3.3 | UI framework |
-| DataTables | 2.3.6 | Interactive tables |
-| jQuery | 3.7.1 | DOM manipulation |
-| Remix Icon | 4.6.0 | Icon set |
+| Bootstrap | 5.3.3 | Kerangka UI |
+| DataTables | 2.3.6 | Tabel interaktif |
+| jQuery | 3.7.1 | Manipulasi DOM |
+| Remix Icon | 4.6.0 | Set ikon |
 
 ---
 
-## 5. Codebase Navigation
+## 5. Navigasi Codebase
 
-### Entry Points
+### Titik Masuk
 
-| File | Purpose |
+| Berkas | Tujuan |
 |------|---------|
-| `manage.py` | Django CLI entry point |
-| `config/wsgi.py` | WSGI server entry point |
-| `config/asgi.py` | ASGI server entry point |
-| `config/celery.py` | Celery worker entry point |
-| `config/settings.py` | All Django settings |
-| `config/urls.py` | Root URL configuration |
+| `manage.py` | Titik masuk CLI Django |
+| `config/wsgi.py` | Titik masuk server WSGI |
+| `config/asgi.py` | Titik masuk server ASGI |
+| `config/celery.py` | Titik masuk worker Celery |
+| `config/settings.py` | Semua pengaturan Django |
+| `config/urls.py` | Konfigurasi URL root |
 
-### Key Directories
+### Direktori Utama
 
-| Directory | Contents | Complexity |
+| Direktori | Konten | Kompleksitas |
 |-----------|----------|------------|
-| `diamond_web/views/` | All view logic (50+ files) | ⭐⭐⭐ |
-| `diamond_web/models/` | Database models (30 files) | ⭐⭐⭐ |
-| `diamond_web/forms/` | Django Forms (35+ files) | ⭐⭐ |
-| `diamond_web/templates/` | HTML templates | ⭐⭐ |
-| `diamond_web/utils/oracle_sync.py` | Oracle sync engine | ⭐⭐⭐⭐⭐ (3373 lines) |
-| `diamond_web/tests/` | Test suite | ⭐⭐ |
+| `diamond_web/views/` | Semua logika view (50+ berkas) | ⭐⭐⭐ |
+| `diamond_web/models/` | Model database (30 berkas) | ⭐⭐⭐ |
+| `diamond_web/forms/` | Formulir Django (35+ berkas) | ⭐⭐ |
+| `diamond_web/templates/` | Template HTML | ⭐⭐ |
+| `diamond_web/utils/oracle_sync.py` | Mesin sinkronisasi Oracle | ⭐⭐⭐⭐⭐ (3373 baris) |
+| `diamond_web/tests/` | Rangkaian pengujian | ⭐⭐ |
 
 ---
 
-## 6. Key Modules & Features
+## 6. Modul & Fitur Utama
 
-### 6.1 Tiket Workflow (Core Feature)
+### 6.1 Alur Kerja Tiket (Fitur Inti)
 
-**Location:** `diamond_web/views/tiket/` (8 files) + `diamond_web/models/tiket.py`
+**Lokasi:** `diamond_web/views/tiket/` (8 berkas) + `diamond_web/models/tiket.py`
 
-The tiket workflow is the heart of the application. Key files:
+Alur kerja tiket adalah inti dari aplikasi. Berkas-berkas utama:
 
-| File | Purpose |
+| Berkas | Tujuan |
 |------|---------|
-| `views/tiket/list.py` | Tiket list with DataTables |
-| `views/tiket/detail.py` | Tiket detail page |
-| `views/tiket/rekam_tiket.py` | Create new tiket |
-| `views/tiket/kirim_tiket.py` | Send tiket to PIDE |
-| `models/tiket.py` | Tiket model (most complex model, ~200 fields) |
-| `models/tiket_action.py` | Action log model |
-| `models/tiket_pic.py` | PIC assignment model |
+| `views/tiket/list.py` | Daftar tiket dengan DataTables |
+| `views/tiket/detail.py` | Halaman detail tiket |
+| `views/tiket/rekam_tiket.py` | Membuat tiket baru |
+| `views/tiket/kirim_tiket.py` | Mengirim tiket ke PIDE |
+| `models/tiket.py` | Model tiket (model paling kompleks, ~200 field) |
+| `models/tiket_action.py` | Model log aksi |
+| `models/tiket_pic.py` | Model penugasan PIC |
 
-**Status Flow:** See `docs/status_tiket_flow.md` for detailed diagram.
+**Alur Status:** Lihat `docs/status_tiket_flow.md` untuk diagram detail.
 
-### 6.2 Oracle Data Sync
+### 6.2 Sinkronisasi Data Oracle
 
-**Location:** `diamond_web/utils/oracle_sync.py` (3373 lines)
+**Lokasi:** `diamond_web/utils/oracle_sync.py` (3373 baris)
 
-This is the largest and most complex module. It handles:
+Ini adalah modul terbesar dan paling kompleks. Modul ini menangani:
 
-- Connection to external Oracle database
-- Data comparison (check mode — dry run)
-- Full data synchronization (sync mode — inserts/updates)
-- Two types: **Referensi sync** and **Tiket sync**
-- Progress reporting via Redis cache
-- Stop/resume capability
-- Error logging
+- Koneksi ke database Oracle eksternal
+- Perbandingan data (mode periksa — dry run)
+- Sinkronisasi data penuh (mode sync — insert/update)
+- Dua jenis: **Sinkronisasi Referensi** dan **Sinkronisasi Tiket**
+- Pelaporan progres melalui cache Redis
+- Kemampuan berhenti/melanjutkan
+- Pencatatan error
 
-**Views:** `views/sync_data_referensi.py`, `views/sync_tiket.py`  
-**Celery tasks:** `tasks.py`
+**Tampilan:** `views/sync_data_referensi.py`, `views/sync_tiket.py`  
+**Tugas Celery:** `tasks.py`
 
-### 6.3 Document Generator (DOCX)
+### 6.3 Generator Dokumen (DOCX)
 
-**Location:** `diamond_web/utils/docx_template.py`
+**Lokasi:** `diamond_web/utils/docx_template.py`
 
-Generates Word documents from templates with placeholder variables.
+Menghasilkan dokumen Word dari template dengan variabel placeholder.
 
-**Template types:** Tanda Terima, ND Pengantar, Surat Klarifikasi, Surat PKDI, Register Penerimaan
+**Jenis template:** Tanda Terima, ND Pengantar, Surat Klarifikasi, Surat PKDI, Register Penerimaan
 
-**Templates location:** `diamond_web/fixtures/default_templates/` (11 template files)
+**Lokasi template:** `diamond_web/fixtures/default_templates/` (11 berkas template)
 
-### 6.4 Reporting System
+### 6.4 Sistem Pelaporan
 
-**Location:** `diamond_web/views/laporan_*.py` (12 report files)
+**Lokasi:** `diamond_web/views/laporan_*.py` (12 berkas laporan)
 
-Each report has:
-- HTML page with filter form
-- DataTables server-side data endpoint
-- Excel export endpoint
+Setiap laporan memiliki:
+- Halaman HTML dengan formulir filter
+- Endpoint data sisi server DataTables
+- Endpoint ekspor Excel
 
-Reports: Register Penerimaan, Transfer, SLA Perekaman, SLA Identifikasi, Metrik Data Eksternal, Pengendalian Mutu, Hasil Pengolahan Data Prioritas, Kelengkapan Data, Rekap Himpun Olah Data, Detail Himpun Olah Data.
+Laporan: Register Penerimaan, Transfer, SLA Perekaman, SLA Identifikasi, Metrik Data Eksternal, Pengendalian Mutu, Hasil Pengolahan Data Prioritas, Kelengkapan Data, Rekap Himpun Olah Data, Detail Himpun Olah Data.
 
-### 6.5 Master Data CRUD
+### 6.5 CRUD Data Master
 
-All master data modules follow the same pattern (ListView, DataTables, CreateView, UpdateView, DeleteView). Each module has files in:
-- `diamond_web/views/<module>.py` — View logic
-- `diamond_web/models/<module>.py` — Model definition
-- `diamond_web/forms/<module>.py` — Form definition
-- `diamond_web/templates/<module>/` — HTML templates
+Semua modul data master mengikuti pola yang sama (ListView, DataTables, CreateView, UpdateView, DeleteView). Setiap modul memiliki berkas di:
+- `diamond_web/views/<modul>.py` — Logika view
+- `diamond_web/models/<modul>.py` — Definisi model
+- `diamond_web/forms/<modul>.py` — Definisi formulir
+- `diamond_web/templates/<modul>/` — Template HTML
 
 ---
 
-## 7. Database Overview
+## 7. Gambaran Database
 
-### Current Database: SQLite (Development) → PostgreSQL (Production)
+### Database Saat Ini: SQLite (Pengembangan) → PostgreSQL (Produksi)
 
-See `docs/models_erd.md` for complete ERD diagram.
+Lihat `docs/models_erd.md` untuk diagram ERD lengkap.
 
-### Key Tables
+### Tabel Utama
 
-| Table | Records (approx.) | Description |
+| Tabel | Rekam (perkiraan) | Deskripsi |
 |-------|------------------|-------------|
-| `Tiket` | Varies | Core data tickets (most complex table) |
-| `ILAP` | ~500 | ILAP institutions |
-| `JenisDataILAP` | ~5,000 | Data types with sub-types |
-| `KPP` | ~300 | Tax service offices |
-| `Kanwil` | ~30 | Regional offices |
-| `TiketAction` | 1.5× Tiket | Action audit log |
-| `Notification` | Varies | User notifications |
-| `DocxTemplate` | 11 | Default document templates |
+| `Tiket` | Bervariasi | Tiket data inti (tabel paling kompleks) |
+| `ILAP` | ~500 | Institusi ILAP |
+| `JenisDataILAP` | ~5,000 | Jenis data dengan sub-jenis |
+| `KPP` | ~300 | Kantor Pelayanan Pajak |
+| `Kanwil` | ~30 | Kantor Wilayah |
+| `TiketAction` | 1.5× Tiket | Log audit aksi |
+| `Notification` | Bervariasi | Notifikasi pengguna |
+| `DocxTemplate` | 11 | Template dokumen default |
 
-### Important Notes
+### Catatan Penting
 
-- Database uses **WAL mode** (SQLite dev) to prevent read locks during writes
-- Some fields are Oracle legacy (e.g., `old_db` flag on Tiket)
-- Audit trail is handled via `TiketAction` model (not Django's built-in audit)
-- No `on_delete=models.CASCADE` concerns — all relationships are protected
+- Database menggunakan **mode WAL** (pengembangan SQLite) untuk mencegah kunci baca selama penulisan
+- Beberapa field adalah peninggalan Oracle (mis., flag `old_db` pada Tiket)
+- Jejak audit ditangani melalui model `TiketAction` (bukan audit bawaan Django)
+- Tidak ada masalah `on_delete=models.CASCADE` — semua relasi dilindungi
 
 ---
 
-## 8. External Integrations
+## 8. Integrasi Eksternal
 
-### 8.1 Oracle Database
+### 8.1 Database Oracle
 
-| Detail | Value |
+| Detail | Nilai |
 |--------|-------|
-| Purpose | Data source for sync (referensi + tiket) |
-| Connection | `oracledb` (thick mode) |
-| Frequency | On-demand (manual trigger via UI) |
-| Tables synced | ~20 reference tables + tiket tables |
+| Tujuan | Sumber data untuk sinkronisasi (referensi + tiket) |
+| Koneksi | `oracledb` (thick mode) |
+| Frekuensi | Sesuai permintaan (pemicu manual melalui UI) |
+| Tabel yang disinkronkan | ~20 tabel referensi + tabel tiket |
 
-### 8.2 Power BI Dashboard
+### 8.2 Dashboard Power BI
 
-| Detail | Value |
+| Detail | Nilai |
 |--------|-------|
 | URL | `/dashboard/` |
-| Integration | Embedded iframe |
-| Authentication | Separate from Diamond |
+| Integrasi | Iframe tersemat |
+| Autentikasi | Terpisah dari Diamond |
 
 ---
 
-## 9. Development Workflow
+## 9. Workflow Pengembangan
 
-### Version Control
+### Kontrol Versi
 
-- **Repository:** GitHub (private)
-- **Branch strategy:** Feature branches → PR → `main`
-- **Tag format:** `v1.0.0`, `v1.1.0`, etc.
+- **Repositori:** GitHub (privat)
+- **Strategi branch:** Branch fitur → PR → `main`
+- **Format tag:** `v1.0.0`, `v1.1.0`, dll.
 
-### Local Development
+### Pengembangan Lokal
 
 ```bash
 # Standard workflow
@@ -355,20 +354,20 @@ git push origin feature-name
 # Create PR on GitHub
 ```
 
-### Testing
+### Pengujian
 
-- Framework: `pytest` + `pytest-django`
-- Coverage target: 80%+
-- Test files: 40+ files in `diamond_web/tests/`
-- Run: `pytest -v`
+- Kerangka: `pytest` + `pytest-django`
+- Target cakupan: 80%+
+- Berkas pengujian: 40+ berkas di `diamond_web/tests/`
+- Jalankan: `pytest -v`
 
 ---
 
-## 10. Deployment & Infrastructure
+## 10. Deployment & Infrastruktur
 
-### Production Environment
+### Lingkungan Produksi
 
-| Component | Configuration |
+| Komponen | Konfigurasi |
 |-----------|---------------|
 | OS | Ubuntu 22.04 LTS |
 | App Server | Gunicorn (3 workers) |
@@ -378,11 +377,11 @@ git push origin feature-name
 | Python | 3.10+ |
 | Process Manager | Systemd |
 
-### Deployment Steps
+### Langkah Deployment
 
-See `docs/PRODUCTION_SETUP.md` for detailed instructions.
+Lihat `docs/PRODUCTION_SETUP.md` untuk instruksi detail.
 
-**Quick deploy:**
+**Deploy cepat:**
 ```bash
 git pull origin main
 pip install -r requirements/prod.txt
@@ -391,9 +390,9 @@ python manage.py collectstatic --noinput
 sudo systemctl restart diamond_web_gunicorn diamond_web_celery
 ```
 
-### Services
+### Layanan
 
-| Service | Systemd Unit | Port |
+| Layanan | Unit Systemd | Port |
 |---------|-------------|------|
 | Web App | `diamond_web_gunicorn` | 8000 (internal) |
 | Celery | `diamond_web_celery` | — |
@@ -403,9 +402,9 @@ sudo systemctl restart diamond_web_gunicorn diamond_web_celery
 
 ---
 
-## 11. Common Tasks & Operations
+## 11. Tugas & Operasi Umum
 
-### Daily Operations
+### Operasi Harian
 
 ```bash
 # Check service health
@@ -419,7 +418,7 @@ python manage.py sync_oracle_data
 python manage.py sync_oracle_data --check-only
 ```
 
-### Database Backup
+### Cadangan Database
 
 ```bash
 # Manual backup
@@ -432,117 +431,92 @@ python manage.py listbackups
 python manage.py dbrestore -i <filename>
 ```
 
-### Adding New Master Data
+### Menambahkan Data Master Baru
 
-1. Create model in `diamond_web/models/<module>.py`
-2. Create form in `diamond_web/forms/<module>.py`
-3. Create views in `diamond_web/views/<module>.py`
-4. Create templates in `diamond_web/templates/<module>/`
-5. Add URLs to `diamond_web/urls.py`
-6. Run `python manage.py makemigrations && python manage.py migrate`
-7. Add tests in `diamond_web/tests/`
+1. Buat model di `diamond_web/models/<modul>.py`
+2. Buat formulir di `diamond_web/forms/<modul>.py`
+3. Buat view di `diamond_web/views/<modul>.py`
+4. Buat template di `diamond_web/templates/<modul>/`
+5. Tambahkan URL ke `diamond_web/urls.py`
+6. Jalankan `python manage.py makemigrations && python manage.py migrate`
+7. Tambahkan pengujian di `diamond_web/tests/`
 
-### Adding New Report
+### Menambahkan Laporan Baru
 
-1. Create view in `diamond_web/views/laporan_<nama>.py`
-2. Create template in `diamond_web/templates/laporan_<nama>/`
-3. Add DataTables endpoint + export endpoint
-4. Add URLs to `diamond_web/urls.py`
-5. Register in `diamond_web/views/__init__.py`
+1. Buat view di `diamond_web/views/laporan_<nama>.py`
+2. Buat template di `diamond_web/templates/laporan_<nama>/`
+3. Tambahkan endpoint DataTables + endpoint ekspor
+4. Tambahkan URL ke `diamond_web/urls.py`
+5. Daftarkan di `diamond_web/views/__init__.py`
 
 ---
 
-## 12. Known Issues & Limitations
+## 12. Masalah & Keterbatasan yang Diketahui
 
-### Technical Issues
+### Masalah Teknis
 
-| Issue | Description | Workaround |
+| Masalah | Deskripsi | Solusi Sementara |
 |-------|-------------|------------|
-| SQLite concurrency | SQLite can handle limited concurrent writes | Use PostgreSQL in production; WAL mode helps |
-| Oracle sync speed | Large datasets may take 30+ minutes | Runs async via Celery; progress bar in UI |
-| Celery on Windows | `prefork` pool not supported (no POSIX semaphores) | Use `--pool=solo` on Windows |
-| No automated sync | Oracle sync requires manual trigger | Could be automated with Celery Beat |
-| Template placeholders | Must match exactly with variable names in code | See `fixtures/default_templates/README.md` |
+| SQLite concurrency | SQLite hanya dapat menangani penulisan konkuren yang terbatas | Gunakan PostgreSQL di produksi; mode WAL membantu |
+| Oracle sync speed | Dataset besar mungkin memakan waktu 30+ menit | Berjalan async melalui Celery; bilah progres di UI |
+| Celery on Windows | Pool `prefork` tidak didukung (tidak ada semaphore POSIX) | Gunakan `--pool=solo` di Windows |
+| No automated sync | Sinkronisasi Oracle memerlukan pemicu manual | Dapat diotomatiskan dengan Celery Beat |
+| Template placeholders | Harus cocok persis dengan nama variabel di kode | Lihat `fixtures/default_templates/README.md` |
 
-### Functional Limitations
+### Keterbatasan Fungsional
 
-| Limitation | Impact | Future Improvement |
+| Keterbatasan | Dampak | Peningkatan Masa Depan |
 |------------|--------|--------------------|
-| No REST API | No mobile app or third-party integration | Add Django REST Framework |
-| No email notifications | Users must check app manually | Configure email + Celery Beat |
-| No data archival | Old records stay in active tables | Implement archival strategy |
-| No audit for master data | Only tiket actions are logged | Add model-level audit trail |
-| No file preview | Attachments shown as download links only | Add inline preview |
-| No pagination in all places | Some dropdowns may be slow with large datasets | Add select2 or server-side search |
+| Tidak ada REST API | Tidak ada aplikasi mobile atau integrasi pihak ketiga | Tambahkan Django REST Framework |
+| Tidak ada notifikasi email | Pengguna harus memeriksa aplikasi secara manual | Konfigurasi email + Celery Beat |
+| Tidak ada pengarsipan data | Rekaman lama tetap berada di tabel aktif | Implementasikan strategi pengarsipan |
+| Tidak ada audit untuk data master | Hanya aksi tiket yang dicatat | Tambahkan jejak audit tingkat model |
+| Tidak ada pratinjau file | Lampiran ditampilkan hanya sebagai tautan unduhan | Tambahkan pratinjau inline |
+| Tidak ada paginasi di semua tempat | Beberapa dropdown mungkin lambat dengan dataset besar | Tambahkan select2 atau pencarian sisi server |
 
 ---
 
-## 13. Future Roadmap
+## 14. Kontak & Pemangku Kepentingan
 
-### Short-term (Q3 2026)
+### Tim Pengembangan
 
-- [ ] Implement automated Oracle sync via Celery Beat (scheduled)
-- [ ] Add email notifications for ticket status changes
-- [ ] Improve report performance with database indexes
-- [ ] Data archival strategy for old tiket records
-
-### Medium-term (Q4 2026)
-
-- [ ] Add Django REST Framework for API development
-- [ ] Develop mobile-friendly views
-- [ ] Implement file preview (PDF/Image) in browser
-- [ ] Add advanced search with Elasticsearch (if needed)
-
-### Long-term
-
-- [ ] Microservices migration (separate sync service, report service)
-- [ ] Replace Oracle sync with API-based integration
-- [ ] Single Sign-On (SSO) integration with corporate ID
-- [ ] Real-time dashboard with WebSockets
-
----
-
-## 14. Contacts & Stakeholders
-
-### Development Team
-
-| Role | Name | Contact |
+| Peran | Nama | Kontak |
 |------|------|---------|
 | Project Lead | *(to be filled)* | *(to be filled)* |
 | Lead Developer | *(to be filled)* | *(to be filled)* |
 | Frontend Developer | *(to be filled)* | *(to be filled)* |
 | QA / Tester | *(to be filled)* | *(to be filled)* |
 
-### Business Stakeholders
+### Pemangku Kepentingan Bisnis
 
-| Role | Unit |
+| Peran | Unit |
 |------|------|
 | Product Owner | P3DE — Direktorat Jenderal Pajak |
 | Key User | P3DE, PIDE, PMDE teams |
 
-*Note: Update contact information before handover.*
+*Catatan: Perbarui informasi kontak sebelum serah terima.*
 
 ---
 
-## 15. Appendices
+## 15. Lampiran
 
-### A. Documentation Index
+### A. Indeks Dokumentasi
 
-| Document | Location | Description |
+| Dokumen | Lokasi | Deskripsi |
 |----------|----------|-------------|
-| Main README | `readme.md` | Project overview & setup |
-| API Documentation | `docs/API_DOCUMENTATION.md` | All endpoints documented |
-| Production Setup | `docs/PRODUCTION_SETUP.md` | Deployment guide |
-| Security | `docs/SECURITY.md` | Security measures |
-| Deployment Checklist | `docs/DEPLOYMENT_CHECKLIST.md` | Pre-release checklist |
-| Contributing | `docs/CONTRIBUTING.md` | Developer guidelines |
-| ERD / Models | `docs/models_erd.md` | Database ERD |
-| Status Flow | `docs/status_tiket_flow.md` | Workflow diagram |
-| Oracle Setup | `docs/ORACLE_SETUP.md` | Oracle connectivity |
-| Template Setup | `docs/TEMPLATES_SETUP.md` | DOCX template system |
-| Changelog | `docs/CHANGELOG.md` | Release history |
+| README Utama | `readme.md` | Gambaran proyek & pengaturan |
+| Dokumentasi API | `docs/API_DOCUMENTATION.md` | Semua endpoint didokumentasikan |
+| Pengaturan Produksi | `docs/PRODUCTION_SETUP.md` | Panduan deployment |
+| Keamanan | `docs/SECURITY.md` | Tindakan keamanan |
+| Daftar Periksa Deployment | `docs/DEPLOYMENT_CHECKLIST.md` | Daftar periksa pra-rilis |
+| Kontribusi | `docs/CONTRIBUTING.md` | Panduan pengembang |
+| ERD / Model | `docs/models_erd.md` | ERD Database |
+| Alur Status | `docs/status_tiket_flow.md` | Diagram alur kerja |
+| Pengaturan Oracle | `docs/ORACLE_SETUP.md` | Konektivitas Oracle |
+| Pengaturan Template | `docs/TEMPLATES_SETUP.md` | Sistem template DOCX |
+| Changelog | `docs/CHANGELOG.md` | Riwayat rilis |
 
-### B. Quick Reference Commands
+### B. Perintah Referensi Cepat
 
 ```bash
 # Development
@@ -577,16 +551,16 @@ python manage.py load_default_templates --reset
 celery -A config worker -l info --pool=solo
 ```
 
-### C. Environment Files
+### C. Berkas Lingkungan
 
-| File | Purpose |
+| Berkas | Tujuan |
 |------|---------|
-| `.env.example.dev` | Development environment template |
-| `.env.example.prod` | Production environment template |
-| `.env` | Active environment configuration (not in git) |
+| `.env.example.dev` | Template lingkungan pengembangan |
+| `.env.example.prod` | Template lingkungan produksi |
+| `.env` | Konfigurasi lingkungan aktif (tidak di git) |
 
 ---
 
-> **Prepared by:** Development Team  
-> **Date:** June 23, 2026  
-> **Questions?** Refer to `docs/CONTRIBUTING.md` or open an issue in the repository.
+> **Disiapkan oleh:** Tim Pengembangan  
+> **Tanggal:** June 23, 2026  
+> **Pertanyaan?** Lihat `docs/CONTRIBUTING.md` atau buka issue di repositori.

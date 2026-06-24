@@ -1,49 +1,48 @@
-# Security Documentation
+# Dokumentasi Keamanan
 
-> **Last Updated:** June 23, 2026  
-> **Project:** Diamond — Sistem P3DE/PIDE/PMDE
-
----
-
-## Table of Contents
-
-- [Authentication & Authorization](#authentication--authorization)
-- [Session Management](#session-management)
-- [CSRF Protection](#csrf-protection)
-- [HTTPS & SSL](#https--ssl)
-- [Security Headers](#security-headers)
-- [Database Security](#database-security)
-- [File Upload Security](#file-upload-security)
-- [Oracle Connection Security](#oracle-connection-security)
-- [Environment Variables & Secrets](#environment-variables--secrets)
-- [Input Validation](#input-validation)
-- [Audit Trail](#audit-trail)
-- [Production Security Checklist](#production-security-checklist)
+> **Terakhir Diperbarui:** June 23, 2026  
+> **Proyek:** Diamond — Sistem P3DE/PIDE/PMDE
 
 ---
 
-## Authentication & Authorization
+## Daftar Isi
 
-### User Groups & Roles
+- [Autentikasi & Otorisasi](#autentikasi--otorisasi)
+- [Manajemen Sesi](#manajemen-sesi)
+- [Perlindungan CSRF](#perlindungan-csrf)
+- [Header Keamanan](#header-keamanan)
+- [Keamanan Database](#keamanan-database)
+- [Keamanan Upload File](#keamanan-upload-file)
+- [Keamanan Koneksi Oracle](#keamanan-koneksi-oracle)
+- [Variabel Lingkungan & Rahasia](#variabel-lingkungan--rahasia)
+- [Validasi Input](#validasi-input)
+- [Jejak Audit](#jejak-audit)
+- [Checklist Keamanan Produksi](#checklist-keamanan-produksi)
+
+---
+
+## Autentikasi & Otorisasi
+
+### Grup & Peran Pengguna
 
 The application uses Django's built-in `Group` model for role-based access control.
 
-| Group | Description | Access Rights |
-|-------|-------------|---------------|
-| `user_p3de` | Data collection team | Tiket rekam, kirim, backup, tanda terima, laporan P3DE |
-| `user_pide` | Data processing team | Identifikasi, penelitian, transfer, QC |
-| `user_pmde` | Quality control team | Laporan kelengkapan, rekap himpun olah data |
-| `admin` | Administrators | Oracle sync, user management, full access |
+| Grup | Deskripsi | Hak Akses |
+|------|-----------|-----------|
+| `user_p3de` | Tim pengumpulan data | Tiket rekam, kirim, backup, tanda terima, laporan P3DE |
+| `user_pide` | Tim pemrosesan data | Identifikasi, penelitian, transfer, QC |
+| `user_pmde` | Tim kendali mutu | Laporan kelengkapan, rekap himpun olah data |
+| `admin` | Administrator | Sinkronisasi Oracle, manajemen pengguna, akses penuh |
 
-### Implementation
+### Implementasi
 
-- Group checking is done in views via `request.user.groups.filter(name='user_p3de').exists()`
-- Templates use the `has_group` template tag (`diamond_web/templatetags/auth_extras.py`)
-- Django Admin (`/admin/`) is restricted to **superusers only**
+- Pengecekan grup dilakukan di views melalui `request.user.groups.filter(name='user_p3de').exists()`
+- Template menggunakan template tag `has_group` (`diamond_web/templatetags/auth_extras.py`)
+- Admin Django (`/admin/`) dibatasi hanya untuk **superuser**
 
-### Password Policies
+### Kebijakan Password
 
-Django's built-in password validators are enforced:
+Validator password bawaan Django diterapkan:
 
 ```python
 AUTH_PASSWORD_VALIDATORS = [
@@ -56,82 +55,60 @@ AUTH_PASSWORD_VALIDATORS = [
 
 ---
 
-## Session Management
+## Manajemen Sesi
 
 ### Configuration (`config/settings.py`)
 
-| Setting | Value | Description |
-|---------|-------|-------------|
-| `SESSION_COOKIE_AGE` | 1800 (30 min) | Session lifetime in seconds |
-| `SESSION_EXPIRE_AT_BROWSER_CLOSE` | `False` | Session persists after browser close |
-| `SESSION_SAVE_EVERY_REQUEST` | `False` | Don't update session on every request (reduces DB writes) |
-| `SESSION_COOKIE_SECURE` | `True` (prod) / `False` (dev) | Only send cookie over HTTPS |
-| `SESSION_COOKIE_HTTPONLY` | `True` (Django default) | Cookie not accessible via JavaScript |
+| Pengaturan | Nilai | Deskripsi |
+|------------|-------|-----------|
+| `SESSION_COOKIE_AGE` | 1800 (30 mnt) | Masa berlaku sesi dalam detik |
+| `SESSION_EXPIRE_AT_BROWSER_CLOSE` | `False` | Sesi tetap ada setelah browser ditutup |
+| `SESSION_SAVE_EVERY_REQUEST` | `False` | Jangan perbarui sesi setiap permintaan (mengurangi penulisan DB) |
+| `SESSION_COOKIE_SECURE` | `True` (prod) / `False` (dev) | Hanya kirim cookie melalui HTTPS |
+| `SESSION_COOKIE_HTTPONLY` | `True` (default Django) | Cookie tidak dapat diakses melalui JavaScript |
 
-### Session Expiry Flow
+### Alur Kedaluwarsa Sesi
 
-1. User is inactive for 30 minutes → session expires
-2. Next request redirects to `/session-expired/` page
-3. User must log in again
+1. Pengguna tidak aktif selama 30 menit → sesi kedaluwarsa
+2. Permintaan berikutnya dialihkan ke halaman `/session-expired/`
+3. Pengguna harus masuk kembali
 
-### Keep-Alive Mechanism
+### Mekanisme Keep-Alive
 
-- Endpoint: `GET /keep-alive/` — lightweight JSON response
-- Used by frontend to prevent session timeout during active use
-- Does NOT extend session if user is idle (only actual activity extends session)
+- Endpoint: `GET /keep-alive/` — respons JSON ringan
+- Digunakan oleh frontend untuk mencegah waktu tunggu sesi selama penggunaan aktif
+- TIDAK memperpanjang sesi jika pengguna idle (hanya aktivitas nyata yang memperpanjang sesi)
 
 ---
 
-## CSRF Protection
+## Perlindungan CSRF
 
-### Configuration
+### Konfigurasi
 
 ```python
-CSRF_TRUSTED_ORIGINS = ["https://diamond.pajak.go.id"]
+CSRF_TRUSTED_ORIGINS = ["http://diamond.pajak.go.id"]
 CSRF_COOKIE_SECURE = True  # in production
 ```
 
-### Implementation
+### Implementasi
 
-- All `POST` forms include `{% csrf_token %}`
-- AJAX `POST` requests require `X-CSRFToken` header
-- CSRF token is rotated on login
-- CSRF cookie is set with `SameSite=Lax` (Django default)
-
----
-
-## HTTPS & SSL
-
-### Production Settings
-
-```python
-SECURE_SSL_REDIRECT = True    # Redirect HTTP → HTTPS
-SESSION_COOKIE_SECURE = True  # Session cookies only over HTTPS
-CSRF_COOKIE_SECURE = True     # CSRF cookies only over HTTPS
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-USE_X_FORWARDED_HOST = True
-```
-
-### Nginx SSL Configuration
-
-See [Production Setup Guide](PRODUCTION_SETUP.md#nginx-reverse-proxy) for full Nginx SSL configuration including:
-- TLS certificate configuration
-- HSTS headers
-- Strong cipher suites (if configured)
+- Semua formulir `POST` menyertakan `{% csrf_token %}`
+- Permintaan AJAX `POST` memerlukan header `X-CSRFToken`
+- Token CSRF diputar saat login
+- Cookie CSRF diatur dengan `SameSite=Lax` (default Django)
 
 ---
 
-## Security Headers
+## Header Keamanan
 
 ### Production (via Nginx or Django settings)
 
-| Header | Value | Purpose |
-|--------|-------|---------|
-| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains` | Enforce HTTPS |
-| `X-Content-Type-Options` | `nosniff` | Prevent MIME type sniffing |
-| `X-Frame-Options` | `DENY` | Prevent clickjacking |
-| `X-XSS-Protection` | `1; mode=block` | XSS filter (legacy browsers) |
-| `Referrer-Policy` | `same-origin` (recommended) | Limit referrer information |
+| Header | Nilai | Tujuan |
+|--------|-------|--------|
+| `X-Content-Type-Options` | `nosniff` | Mencegah sniffing tipe MIME |
+| `X-Frame-Options` | `DENY` | Mencegah clickjacking |
+| `X-XSS-Protection` | `1; mode=block` | Filter XSS (browser lawas) |
+| `Referrer-Policy` | `same-origin` (direkomendasikan) | Membatasi informasi referrer |
 
 ### Django Settings
 
@@ -143,119 +120,117 @@ X_FRAME_OPTIONS = "DENY"  # Prevents iframe embedding
 
 ---
 
-## Database Security
+## Keamanan Database
 
 ### PostgreSQL (Production)
 
-| Practice | Description |
-|----------|-------------|
-| Dedicated user | Application uses a non-privileged database user |
-| Password auth | `md5` or `scram-sha-256` authentication |
-| Network binding | PostgreSQL bound to `localhost` (not exposed) |
-| Least privilege | Database user has only `INSERT`, `SELECT`, `UPDATE`, `DELETE` on application tables |
-| Regular backups | Automated daily backups (see [Production Setup](PRODUCTION_SETUP.md#backup-configuration)) |
+| Praktik | Deskripsi |
+|---------|-----------|
+| Pengguna khusus | Aplikasi menggunakan pengguna database non-privilege |
+| Autentikasi password | Autentikasi `md5` atau `scram-sha-256` |
+| Ikat jaringan | PostgreSQL terikat ke `localhost` (tidak terekspos) |
+| Hak akses minimal | Pengguna database hanya memiliki `INSERT`, `SELECT`, `UPDATE`, `DELETE` pada tabel aplikasi |
+| Backup rutin | Backup otomatis harian (lihat [Pengaturan Produksi](PRODUCTION_SETUP.md#backup-configuration)) |
 
-### SQLite (Development)
+### SQLite (Pengembangan)
 
-- SQLite mode: `WAL` (Write-Ahead Logging) prevents read locks
-- Timeout: 30 seconds for write contention
-- Used only for development (not production-safe for concurrent access)
-
----
-
-## File Upload Security
-
-### Media Files
-
-- Uploaded files are stored in `media/` directory (gitignored)
-- Django serves media files only in development (`DEBUG=True`)
-- In production, Nginx serves media files directly
-- File type is validated via Django forms
-
-### DOCX Templates
-
-- Uploaded templates are validated as `.docx` files
-- Templates are stored with randomized filenames in `media/docx_templates/YYYYMMDD/` subdirectories
-- Default templates are version-controlled in `fixtures/default_templates/`
-
-### Backup Files
-
-- Database backups are stored in `backups/` or configured `BACKUP_DIR`
-- Backup files contain sensitive data — ensure directory permissions are restrictive
-- For off-site backups, consider encryption
+- Mode SQLite: `WAL` (Write-Ahead Logging) mencegah kunci baca
+- Timeout: 30 detik untuk kontensi penulisan
+- Hanya digunakan untuk pengembangan (tidak aman untuk produksi dengan akses bersamaan)
 
 ---
 
-## Oracle Connection Security
+## Keamanan Upload File
 
-- Oracle credentials stored in `.env` file (not in code)
-- Connection uses `oracledb` with thick mode for production Oracle versions
-- Connection can be tested via UI before running sync
-- No Oracle credentials are logged or exposed in error messages
+### File Media
+
+- File yang diupload disimpan di direktori `media/` (gitignored)
+- Django menyajikan file media hanya di pengembangan (`DEBUG=True`)
+- Di produksi, Nginx menyajikan file media secara langsung
+- Tipe file divalidasi melalui Django forms
+
+### Template DOCX
+
+- Template yang diupload divalidasi sebagai file `.docx`
+- Template disimpan dengan nama file acak di subdirektori `media/docx_templates/YYYYMMDD/`
+- Template bawaan dikontrol versi di `fixtures/default_templates/`
+
+### File Backup
+
+- Backup database disimpan di `backups/` atau `BACKUP_DIR` yang dikonfigurasi
+- File backup berisi data sensitif — pastikan izin direktori bersifat restriktif
+- Untuk backup di luar lokasi, pertimbangkan enkripsi
 
 ---
 
-## Environment Variables & Secrets
+## Keamanan Koneksi Oracle
+
+- Kredensial Oracle disimpan di file `.env` (bukan di kode)
+- Koneksi menggunakan `oracledb` dengan mode thick untuk versi Oracle produksi
+- Koneksi dapat diuji melalui UI sebelum menjalankan sinkronisasi
+- Tidak ada kredensial Oracle yang dicatat atau terekspos di pesan error
+
+---
+
+## Variabel Lingkungan & Rahasia
 
 ### .env File Security
 
-| Practice | Description |
-|----------|-------------|
-| Not committed | `.env` is in `.gitignore` |
-| Template provided | `.env.example.dev` and `.env.example.prod` show required variables |
-| File permissions | `.env` should be readable only by the application user (`chmod 600`) |
-| Secret key | Generate unique secret key per deployment: `python -c "import secrets; print(secrets.token_urlsafe(50))"` |
+| Praktik | Deskripsi |
+|---------|-----------|
+| Tidak dikomit | `.env` ada di `.gitignore` |
+| Template disediakan | `.env.example.dev` dan `.env.example.prod` menunjukkan variabel yang diperlukan |
+| Izin file | `.env` hanya dapat dibaca oleh pengguna aplikasi (`chmod 600`) |
+| Kunci rahasia | Hasilkan kunci rahasia unik per deployment: `python -c "import secrets; print(secrets.token_urlsafe(50))"` |
 
 ### Sensitive Variables
 
-| Variable | Sensitivity | Notes |
-|----------|-------------|-------|
-| `SECRET_KEY` | Critical | Keep secret; rotating invalidates sessions |
-| `DB_PASSWORD` | Critical | Database credentials |
-| `ORACLE_PASSWORD` | Critical | Oracle credentials |
-| `EMAIL_HOST_PASSWORD` | Medium | Email account password |
-| `AWS_SECRET_ACCESS_KEY` | Critical | Cloud storage credentials |
+| Variabel | Sensitivitas | Catatan |
+|----------|-------------|--------|
+| `SECRET_KEY` | Kritis | Jaga kerahasiaan; rotasi membatalkan sesi |
+| `DB_PASSWORD` | Kritis | Kredensial database |
+| `ORACLE_PASSWORD` | Kritis | Kredensial Oracle |
+| `EMAIL_HOST_PASSWORD` | Sedang | Password akun email |
+| `AWS_SECRET_ACCESS_KEY` | Kritis | Kredensial penyimpanan cloud |
 
 ---
 
-## Input Validation
+## Validasi Input
 
-- All form inputs are validated via Django Forms
-- Server-side DataTables parameters are sanitized
-- SQL injection is prevented by Django ORM (parameterized queries)
-- Cross-site scripting (XSS) is mitigated by Django template auto-escaping
-- File uploads are validated by form field types
-
----
-
-## Audit Trail
-
-The application has an audit log model (`AuditTrailModel`) that records:
-
-- Model changes (create/update/delete)
-- Timestamp of changes
-- User who made the change
-
-Tiket actions are tracked via `TiketAction` model:
-- Every status change is logged
-- Each action records: user, timestamp, action type, and notes
+- Semua input formulir divalidasi melalui Django Forms
+- Parameter DataTables sisi server telah dibersihkan
+- Injeksi SQL dicegah oleh Django ORM (kueri terparameter)
+- Scripting lintas situs (XSS) dimitigasi oleh auto-escaping template Django
+- Upload file divalidasi oleh tipe bidang formulir
 
 ---
 
-## Production Security Checklist
+## Jejak Audit
 
-- [ ] `DEBUG=False` — never run with debug mode in production
-- [ ] `SECRET_KEY` is unique and not the default value
-- [ ] HTTPS is enforced (`SECURE_SSL_REDIRECT=True`)
-- [ ] `SESSION_COOKIE_SECURE=True` and `CSRF_COOKIE_SECURE=True`
-- [ ] `ALLOWED_HOSTS` only contains production domains/IPs
-- [ ] `CSRF_TRUSTED_ORIGINS` is set correctly
-- [ ] `X_FRAME_OPTIONS=DENY` (clickjacking protection)
-- [ ] Database uses strong password (not default/dev password)
-- [ ] Redis is bound to `127.0.0.1` only
-- [ ] `.env` file permissions are `600` (owner read/write only)
-- [ ] Static/media file serving is handled by Nginx, not Django
-- [ ] Regular backup schedule is configured
-- [ ] Server firewall restricts access to necessary ports only (80, 443, SSH)
-- [ ] Failed login attempts are monitored (consider rate limiting)
-- [ ] Application and system logs are monitored for suspicious activity
+Aplikasi memiliki model log audit (`AuditTrailModel`) yang mencatat:
+
+- Perubahan model (buat/ubah/hapus)
+- Stempel waktu perubahan
+- Pengguna yang melakukan perubahan
+
+Aksi tiket dilacak melalui model `TiketAction`:
+- Setiap perubahan status dicatat
+- Setiap aksi mencatat: pengguna, stempel waktu, jenis aksi, dan catatan
+
+---
+
+## Checklist Keamanan Produksi
+
+- [ ] `DEBUG=False` — jangan pernah menjalankan mode debug di produksi
+- [ ] `SECRET_KEY` unik dan bukan nilai default
+- [ ] `ALLOWED_HOSTS` hanya berisi domain/IP produksi
+- [ ] `CSRF_TRUSTED_ORIGINS` diatur dengan benar
+- [ ] `X_FRAME_OPTIONS=DENY` (perlindungan clickjacking)
+- [ ] Database menggunakan password kuat (bukan password default/dev)
+- [ ] Redis terikat hanya ke `127.0.0.1`
+- [ ] Izin file `.env` adalah `600` (hanya baca/tulis pemilik)
+- [ ] Penyajian file statis/media ditangani oleh Nginx, bukan Django
+- [ ] Jadwal backup rutin telah dikonfigurasi
+- [ ] Firewall server membatasi akses hanya ke port yang diperlukan (80, 443, SSH)
+- [ ] Upaya login gagal dipantau (pertimbangkan pembatasan rate)
+- [ ] Log aplikasi dan sistem dipantau untuk aktivitas mencurigakan

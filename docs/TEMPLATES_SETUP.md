@@ -1,10 +1,10 @@
-# Default Templates Setup - Implementation Guide
+# Panduan Setup Template Default
 
-## Overview
+## Gambaran Umum
 
-The application now uses **version-controlled default templates** committed to git, while still allowing users to upload custom templates to the `media/` folder.
+Aplikasi sekarang menggunakan **template default yang dikontrol versi** yang dikomit ke git, sambil tetap memungkinkan pengguna mengunggah template kustom ke folder `media/`.
 
-## Architecture
+## Arsitektur
 
 ```
 Project Root
@@ -19,27 +19,27 @@ Project Root
 ├── .gitignore                          ← Updated to allow fixtures
 ```
 
-## File Structure
+## Struktur File
 
-### Fixtures (Version Controlled)
-**Location:** `diamond_web/fixtures/default_templates/`
+### Fixtures (Dikontrol Versi)
+**Lokasi:** `diamond_web/fixtures/default_templates/`
 
-Contains 11 default DOCX template files:
-- Template files are committed to git
-- Used as examples and defaults on first setup
-- Read-only reference for developers
-- Can be edited and committed for template improvements
+Berisi 11 file template DOCX default:
+- File template dikomit ke git
+- Digunakan sebagai contoh dan default pada setup pertama
+- Referensi baca-saja untuk pengembang
+- Dapat diedit dan dikomit untuk peningkatan template
 
-### Media (User Uploads - Not Version Controlled)  
-**Location:** `diamond_web/media/docx_templates/`
+### Media (Upload Pengguna - Tidak Dikontrol Versi)
+**Lokasi:** `diamond_web/media/docx_templates/`
 
-Contains user-uploaded templates stored via Django FileField:
-- All files here are ignored by git (as per `.gitignore`)
-- Automatically organized by date (`YYYYMMDD/` subdirectories)
-- Generated/uploaded files live here
-- Production data stays local to each deployment
+Berisi template yang diunggah pengguna yang disimpan melalui Django FileField:
+- Semua file di sini diabaikan oleh git (sesuai `.gitignore`)
+- Secara otomatis diatur berdasarkan tanggal (subdirektori `YYYYMMDD/`)
+- File yang dibuat/diunggah berada di sini
+- Data produksi tetap lokal untuk setiap deployment
 
-## .gitignore Configuration
+## Konfigurasi .gitignore
 
 ```ignore
 media/                                    # Ignore all media files
@@ -48,32 +48,32 @@ media/                                    # Ignore all media files
 !diamond_web/fixtures/default_templates/*.docx
 ```
 
-This allows:
-- ✓ Template DOCX files in `fixtures/` to be committed
-- ✓ README.md in `fixtures/` to be committed
-- ✗ All files in `media/` to be ignored
+Ini memungkinkan:
+- ✓ File template DOCX di `fixtures/` untuk dikomit
+- ✓ README.md di `fixtures/` untuk dikomit
+- ✗ Semua file di `media/` untuk diabaikan
 
-## Setup Process
+## Proses Setup
 
-### First Time Setup
+### Setup Pertama Kali
 
-1. Clone the repository (fixtures templates are already included)
-2. Run migrations
-3. Load default templates into database:
+1. Clone repositori (template fixtures sudah termasuk)
+2. Jalankan migrasi
+3. Muat template default ke database:
 
 ```bash
 python manage.py load_default_templates
 ```
 
-This command:
-- Reads templates from `diamond_web/fixtures/default_templates/`
-- Creates DocxTemplate records in database
-- Copies files to `diamond_web/media/docx_templates/` via FileField
-- Marks all templates as active
+Perintah ini:
+- Membaca template dari `diamond_web/fixtures/default_templates/`
+- Membuat record DocxTemplate di database
+- Menyalin file ke `diamond_web/media/docx_templates/` melalui FileField
+- Menandai semua template sebagai aktif
 
 ### Workflow
 
-**On First Setup:**
+**Pada Setup Pertama:**
 ```
 fixtures/default_templates/*.docx
            ↓ (via load_default_templates command)
@@ -84,7 +84,7 @@ media/docx_templates/*.docx
       Generated documents
 ```
 
-**When User Uploads Custom Template:**
+**Saat Pengguna Mengunggah Template Kustom:**
 ```
 User uploads via UI
            ↓
@@ -95,9 +95,9 @@ media/docx_templates/*.docx (automatically saved)
       Generated documents
 ```
 
-## Template Management Commands
+## Perintah Manajemen Template
 
-### Load Default Templates
+### Muat Template Default
 
 ```bash
 # Load templates (skip if already exist)
@@ -107,42 +107,83 @@ python manage.py load_default_templates
 python manage.py load_default_templates --reset
 ```
 
-## User Workflow
+## Workflow Pengguna
 
-### Admin Users
+### Pengguna Admin
 
-1. **View templates:** Go to "Kelola Template Dokumen" menu
-2. **Upload custom:** Use the form to upload new templates
-3. **Edit:** Update template content directly in UI
-4. **Delete:** Remove custom templates
-5. **Download:** Download any template to verify content
+1. **Lihat template:** Buka menu "Kelola Template Dokumen"
+2. **Upload kustom:** Gunakan formulir untuk mengunggah template baru
+3. **Edit:** Perbarui konten template langsung di UI
+4. **Hapus:** Hapus template kustom
+5. **Unduh:** Unduh template apa pun untuk memverifikasi konten
 
-### Document Generation
+### Generasi Dokumen
 
-The system automatically:
-1. Detects document type requested
-2. Checks region type (Regional vs Nasional/Internasional) from tiket
-3. Selects appropriate template from database
-4. Fills placeholders with tiket data
-5. Returns generated DOCX file
+Sistem secara otomatis:
+1. Mendeteksi jenis dokumen yang diminta
+2. Memeriksa tipe wilayah (Regional vs Nasional/Internasional) dari tiket
+3. Memilih template yang sesuai dari database
+4. Mengisi placeholder dengan data tiket
+5. Mengembalikan file DOCX yang telah dibuat
 
-## Development Workflow
+## Panduan Placeholder Template
 
-### Improving Templates
+Template dokumen menggunakan dua jenis placeholder yang akan diganti secara otomatis dengan data dari sistem saat dokumen dibuat.
 
-1. Edit `.docx` files in `diamond_web/fixtures/default_templates/`
-2. Keep placeholder variables intact: `{{variable_name}}`
-3. Test in development
-4. Commit changes to git
+### 1. Placeholder Variabel Tunggal
 
-### For Reviewers
-- Template changes are visible in git history
-- Can see exactly what changed in templates
-- Template quality is part of code review
+Gunakan `{{nama_placeholder}}` untuk data tunggal seperti nama, nomor, tanggal, dan lain-lain.
 
-## Database Reset Scenario
+**Contoh:**
+- `{{nomor_tanda_terima}}`
+- `{{diterima_dari}}`
+- `{{nama_ilap}}`
+- `{{jenis_data}}`
+- `{{periode_data}}`
+- `{{bentuk_data}}`
+- `{{cara_penyampaian}}`
+- `{{nama_pic_p3de}}`
 
-If database is reset but templates aren't:
+### 2. Placeholder Baris Berulang (untuk Tabel)
+
+Gunakan `{{row.nama_field}}` dalam tabel untuk data yang berisi banyak baris (lampiran, register data).
+
+**Cara penggunaan:**
+1. Buat tabel di dokumen Word dengan header dan satu baris template
+2. Isi sel baris template dengan placeholder `{{row.field}}`
+3. Saat dokumen dibuat, baris template akan otomatis diklon untuk setiap data
+
+**Contoh:**
+- `{{row.nama_ilap}}`
+- `{{row.jenis_data}}`
+- `{{row.periode_tahun}}`
+
+**Field yang tersedia:**
+`nomor`, `nama_kanwil`, `nama_ilap`, `jenis_data`, `periode_tahun`, `status_data`, `baris_diterima`, `dasar_hukum`, `nomor_tiket`, `baris_lengkap`, `baris_tidak_lengkap`
+
+**Contoh struktur tabel di Word:**
+
+| No | Kanwil | Nama ILAP | Jenis Data | Periode | Status |
+|----|--------|-----------|------------|---------|--------|
+| `{{row.nomor}}` | `{{row.nama_kanwil}}` | `{{row.nama_ilap}}` | `{{row.jenis_data}}` | `{{row.periode_tahun}}` | `{{row.status_data}}` |
+
+## Workflow Pengembangan
+
+### Meningkatkan Template
+
+1. Edit file `.docx` di `diamond_web/fixtures/default_templates/`
+2. Jaga variabel placeholder tetap utuh: `{{variable_name}}`
+3. Uji coba di pengembangan
+4. Komit perubahan ke git
+
+### Untuk Reviewer
+- Perubahan template terlihat di riwayat git
+- Dapat melihat dengan tepat apa yang berubah di template
+- Kualitas template adalah bagian dari review kode
+
+## Skenario Reset Database
+
+Jika database direset tetapi template tidak:
 
 ```bash
 # Reload default templates from fixtures
@@ -154,22 +195,22 @@ python manage.py load_default_templates --reset
 # - All templates marked as active
 ```
 
-## Benefits
+## Keuntungan
 
-✓ **Version Control:** Templates are tracked in git like code  
-✓ **Reproducibility:** New deployments automatically get default templates  
-✓ **User Customization:** Users can still upload/manage custom templates  
-✓ **Separation:** Development changes (fixtures) separate from user data (media)  
-✓ **Consistency:** All deployments start with same template quality  
-✓ **Documentation:** README explains template system to developers  
+✓ **Kontrol Versi:** Template dilacak di git seperti kode  
+✓ **Reproduksibilitas:** Deployment baru secara otomatis mendapatkan template default  
+✓ **Kustomisasi Pengguna:** Pengguna masih dapat mengunggah/mengelola template kustom  
+✓ **Pemisahan:** Perubahan pengembangan (fixtures) terpisah dari data pengguna (media)  
+✓ **Konsistensi:** Semua deployment dimulai dengan kualitas template yang sama  
+✓ **Dokumentasi:** README menjelaskan sistem template kepada pengembang  
 
-## Migration Notes
+## Catatan Migrasi
 
-The migration from old system:
-1. ✓ Deleted unused folders (old docx_templates/, templates/uploads/)
-2. ✓ Kept current templates in media/ (active/used)
-3. ✓ Copied templates to fixtures/ (for version control)
-4. ✓ Updated .gitignore to allow fixtures but not media
-5. ✓ Created management command for setup
+Migrasi dari sistem lama:
+1. ✓ Menghapus folder yang tidak digunakan (docx_templates/ lama, templates/uploads/)
+2. ✓ Menyimpan template saat ini di media/ (aktif/digunakan)
+3. ✓ Menyalin template ke fixtures/ (untuk kontrol versi)
+4. ✓ Memperbarui .gitignore untuk mengizinkan fixtures tetapi tidak media
+5. ✓ Membuat perintah manajemen untuk setup
 
-No database changes needed - existing DocxTemplate records remain intact.
+Tidak ada perubahan database yang diperlukan - record DocxTemplate yang ada tetap utuh.

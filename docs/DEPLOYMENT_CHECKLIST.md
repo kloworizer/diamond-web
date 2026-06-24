@@ -1,20 +1,20 @@
-# Production Deployment Checklist
+# Checklist Deployment Produksi
 
-> **Project:** Diamond — Sistem P3DE/PIDE/PMDE  
-> **Use this checklist before each production release.**
+> **Proyek:** Diamond — Sistem P3DE/PIDE/PMDE  
+> **Gunakan checklist ini sebelum setiap rilis produksi.**
 
 ---
 
-## ✅ Pre-Deployment Preparation
+## ✅ Persiapan Pra-Deployment
 
-### Code & Version Control
+### Kode & Version Control
 - [ ] All features are merged to `main` branch
 - [ ] No unstaged or uncommitted changes
 - [ ] Git tag created for release: `git tag v1.0.0 && git push --tags`
 - [ ] Release branch (if any) is up to date with `main`
 - [ ] CHANGELOG.md updated with release notes
 
-### Environment Configuration
+### Konfigurasi Lingkungan
 - [ ] `.env` file is configured for production (use `.env.example.prod` as reference)
 - [ ] `SECRET_KEY` is a unique, long, random string (generate with: `python -c "import secrets; print(secrets.token_urlsafe(50))"`)
 - [ ] `DEBUG=False`
@@ -31,37 +31,37 @@
 - [ ] If migrating from SQLite to PostgreSQL, data has been migrated
 - [ ] Database indexes are optimized (run `python manage.py sqlmigrate` to review)
 
-### Static & Media Files
+### File Statis & Media
 - [ ] Static files collected: `python manage.py collectstatic --noinput --clear`
 - [ ] Media directory exists with correct permissions
 - [ ] Default DOCX templates loaded: `python manage.py load_default_templates`
 
 ---
 
-## 🧪 Testing
+## 🧪 Pengujian
 
-### Automated Tests
+### Tes Otomatis
 - [ ] All unit tests pass: `pytest -v`
 - [ ] Coverage report reviewed: target ≥ 80%
 - [ ] No new test failures compared to previous release
 
-### Manual Testing Checklist
+### Checklist Pengujian Manual
 
-#### Authentication
+#### Autentikasi
 - [ ] Login with valid credentials works
 - [ ] Login with invalid credentials shows error
 - [ ] Logout works and redirects to login page
 - [ ] Session timeout after 30 minutes of inactivity
 - [ ] Password change flow works
 
-#### Role-Based Access
+#### Akses Berbasis Peran (RBAC)
 - [ ] **user_p3de** can access P3DE menus only
 - [ ] **user_pide** can access PIDE menus only
 - [ ] **user_pmde** can access PMDE menus only
 - [ ] **admin** can access sync pages and admin panel
 - [ ] Unauthorized users see 403 Forbidden
 
-#### Tiket Workflow
+#### Workflow Tiket
 - [ ] Tiket can be created (Rekam)
 - [ ] Research results can be recorded
 - [ ] Tiket can be sent to PIDE (with ND Pengantar generation)
@@ -72,18 +72,18 @@
 - [ ] PMDE can complete tiket
 - [ ] Tiket can be cancelled at any stage
 
-#### Master Data CRUD
+#### CRUD Data Master
 - [ ] Create, Read, Update, Delete works for all master data modules
 - [ ] DataTables server-side processing works (pagination, search, sort)
 - [ ] Form validation works (required fields, unique constraints)
 
-#### Reports
+#### Laporan
 - [ ] All 10+ report pages load correctly
 - [ ] Report filters work
 - [ ] Excel export generates valid `.xlsx` files
 - [ ] Report data matches database records
 
-#### Document Generation
+#### Generasi Dokumen
 - [ ] Tanda Terima documents generate correctly
 - [ ] ND Pengantar PIDE generates correctly
 - [ ] Surat Klarifikasi generates correctly
@@ -91,7 +91,7 @@
 - [ ] Bulk document generation works
 - [ ] All placeholders are correctly populated
 
-#### Oracle Sync (if configured)
+#### Sinkronisasi Oracle (jika dikonfigurasi)
 - [ ] Connection test succeeds
 - [ ] Check (dry-run) reports correct changes
 - [ ] Sync completes without errors
@@ -106,7 +106,7 @@
 
 ---
 
-## 🚀 Deployment Steps
+## 🚀 Langkah Deployment
 
 ### 1. Preparation
 ```bash
@@ -130,6 +130,11 @@ git pull origin main
 
 # Install any new dependencies
 pip install -r requirements/prod.txt
+
+# RESTART layanan agar perubahan diterapkan
+sudo systemctl restart redis
+sudo systemctl restart diamond_web_celery
+sudo systemctl restart diamond_web_gunicorn
 ```
 
 ### 3. Apply Changes
@@ -164,7 +169,7 @@ sudo systemctl status diamond_web_celery
 sudo systemctl status nginx
 
 # Check application health
-curl -I https://diamond.pajak.go.id/keep-alive/
+curl -I http://diamond.pajak.go.id/keep-alive/
 # Should return HTTP 200
 
 # Check logs for errors
@@ -173,7 +178,7 @@ sudo tail -f /var/log/diamond/gunicorn-error.log
 
 ---
 
-## 🔄 Rollback Plan
+## 🔄 Rencana Rollback
 
 ### If deployment fails, rollback immediately:
 
@@ -194,21 +199,21 @@ sudo systemctl restart diamond_web_celery
 
 ---
 
-## 📊 Post-Deployment Monitoring
+## 📊 Monitoring Pasca-Deployment
 
-### First Hour
+### Jam Pertama
 - [ ] Monitor application logs for errors
 - [ ] Check all critical workflows (login, tiket creation, reports)
 - [ ] Verify database connections (both PostgreSQL and Oracle)
 - [ ] Monitor server resource usage (CPU, memory, disk)
 
-### First Day
+### Hari Pertama
 - [ ] Review slow queries / database performance
 - [ ] Check Celery task queue for backlog
 - [ ] Verify backup cron jobs ran successfully
 - [ ] Collect user feedback on any issues
 
-### First Week
+### Minggu Pertama
 - [ ] Review error logs for patterns
 - [ ] Check disk usage (media, backups, logs)
 - [ ] Verify all scheduled tasks are running
@@ -216,13 +221,10 @@ sudo systemctl restart diamond_web_celery
 
 ---
 
-## 🔐 Security Verification
+## 🔐 Verifikasi Keamanan
 
 - [ ] `DEBUG=False` confirmed
 - [ ] `SECRET_KEY` is not default/known
-- [ ] HTTPS is enforced (SSL redirect active)
-- [ ] `SESSION_COOKIE_SECURE=True`
-- [ ] `CSRF_COOKIE_SECURE=True`
 - [ ] `X_FRAME_OPTIONS=DENY`
 - [ ] `SECURE_BROWSER_XSS_FILTER=True`
 - [ ] `SECURE_CONTENT_TYPE_NOSNIFF=True`

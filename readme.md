@@ -51,7 +51,7 @@ Seluruh dokumentasi proyek tersedia di folder [`docs/`](docs/):
 | Dokumen | Deskripsi |
 |---------|-----------|
 | [📘 **PRODUCTION_SETUP.md**](docs/PRODUCTION_SETUP.md) | Panduan deployment produksi (server, Nginx, Gunicorn, Celery, Redis) |
-| [🔐 **SECURITY.md**](docs/SECURITY.md) | Dokumentasi keamanan (autentikasi, session, CSRF, HTTPS) |
+| [🔐 **SECURITY.md**](docs/SECURITY.md) | Dokumentasi keamanan (autentikasi, session, CSRF) |
 | [🌐 **API_DOCUMENTATION.md**](docs/API_DOCUMENTATION.md) | Dokumentasi semua endpoint API |
 | [🗄️ **models_erd.md**](docs/models_erd.md) | Diagram ERD dan dokumentasi model database |
 | [📋 **DEPLOYMENT_CHECKLIST.md**](docs/DEPLOYMENT_CHECKLIST.md) | Checklist pre-deployment untuk production release |
@@ -61,6 +61,7 @@ Seluruh dokumentasi proyek tersedia di folder [`docs/`](docs/):
 | [🔄 **ORACLE_SETUP.md**](docs/ORACLE_SETUP.md) | Panduan setup koneksi Oracle (thick mode) |
 | [📊 **status_tiket_flow.md**](docs/status_tiket_flow.md) | Diagram alur status tiket |
 | [📄 **TEMPLATES_SETUP.md**](docs/TEMPLATES_SETUP.md) | Setup template DOCX |
+| [🔑 **RBAC_MATRIX.md**](docs/RBAC_MATRIX.md) | Matriks RBAC & hak akses menu berdasarkan role |
 
 ---
 
