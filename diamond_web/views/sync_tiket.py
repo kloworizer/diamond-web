@@ -44,6 +44,7 @@ _TIKET_ORACLE_SQL = """
         -- 2. Override to 7 ONLY if it falls into the 'Tidak Lengkap' criteria
         WHEN NOT (COALESCE(JML_ROW_P3DE, 0) = COALESCE(JML_DATA_TELITI, 0) AND COALESCE(JML_DATA_TELITI, 0) <> 0) -- Not Lengkap
          AND NOT (COALESCE(JML_ROW_P3DE, 0) > COALESCE(JML_DATA_TELITI, 0) AND COALESCE(JML_DATA_TELITI, 0) <> 0) -- Not Lengkap Sebagian
+         AND JML_DATA_TELITI IS NOT NULL
         THEN 7
         -- 3. Otherwise, fall back to standard status mappings (Lengkap & Lengkap Sebagian end up here)
         WHEN status_tiket IN ('[P3DE]-Close Tiket', '[PIDE]-Close Tiket') THEN 7
