@@ -22,6 +22,7 @@ DOC_TITLES = {
     'status_tiket_flow.md': 'Diagram Alur Status Tiket',
     'TEMPLATES_SETUP.md': 'Panduan Setup Template Default',
     'RBAC_MATRIX.md': 'Matriks RBAC & Hak Akses Menu',
+    'DATA_MIGRATION_DEV_PHASE.md': 'Panduan Migrasi Data',
 }
 
 # Phase grouping for documentation (Bahasa Indonesia)
@@ -39,6 +40,7 @@ DOC_GROUPS = {
         'CONTRIBUTING.md',
         'SECURITY.md',
         'CHANGELOG.md',
+        'DATA_MIGRATION_DEV_PHASE.md',
     ],
     'Fase Produksi': [
         'PRODUCTION_SETUP.md',
