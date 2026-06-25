@@ -150,27 +150,21 @@ def dasar_hukum_data(request):
         # Column-specific filtering
         columns_search = request.GET.getlist('columns_search[]')
         if columns_search:
-            if columns_search[0]:  # ID
-                try:
-                    id_value = int(columns_search[0])
-                    qs = qs.filter(id=id_value)
-                except ValueError:
-                    pass
-            if len(columns_search) > 1 and columns_search[1]:  # Kategori
+            if columns_search[0]:  # Deskripsi (column 0)
+                qs = qs.filter(deskripsi__icontains=columns_search[0])
+            if len(columns_search) > 1 and columns_search[1]:  # Kategori (column 1)
                 qs = qs.filter(kategori__icontains=columns_search[1])
-            if len(columns_search) > 2 and columns_search[2]:  # Deskripsi
-                qs = qs.filter(deskripsi__icontains=columns_search[2])
-            if len(columns_search) > 3 and columns_search[3]:  # Start Date
-                qs = qs.filter(start_date__icontains=columns_search[3])
-            if len(columns_search) > 4 and columns_search[4]:  # End Date
-                qs = qs.filter(end_date__icontains=columns_search[4])
+            if len(columns_search) > 2 and columns_search[2]:  # Start Date (column 2)
+                qs = qs.filter(start_date__icontains=columns_search[2])
+            if len(columns_search) > 3 and columns_search[3]:  # End Date (column 3)
+                qs = qs.filter(end_date__icontains=columns_search[3])
 
         records_filtered = qs.count()
 
         # ordering
         order_col_index = request.GET.get('order[0][column]')
         order_dir = request.GET.get('order[0][dir]', 'asc')
-        columns = ['id', 'kategori', 'deskripsi', 'start_date', 'end_date']
+        columns = ['deskripsi', 'kategori', 'start_date', 'end_date', 'id']
         if order_col_index is not None:
             try:
                 idx = int(order_col_index)
