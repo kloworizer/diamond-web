@@ -1628,6 +1628,34 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                                     str(getattr(tiket_obj, 'tahun', '')),
                                     error_msg
                                 )
+
+        # --- Auto-settle qualifying tickets to Selesai after sync ---
+        # Find PeriodeJenisData records linked to "Tidak Diidentifikasi" JenisTabel,
+        # then update all matching Tiket records.
+        from ..constants.tiket_status import STATUS_PENGENDALIAN_MUTU, STATUS_SELESAI
+        try:
+            from datetime import datetime
+            from django.conf import settings as django_settings
+            cutoff_date = datetime(2024, 5, 1)
+            if django_settings.USE_TZ:
+                cutoff_date = timezone.make_aware(cutoff_date)
+            
+            # Resolve PeriodeJenisData IDs whose JenisDataILAP has JenisTabel = 'Tidak Diidentifikasi'
+            auto_settle_periode_ids = PeriodeJenisData.objects.filter(
+                id_sub_jenis_data_ilap__id_jenis_tabel__deskripsi='Tidak Diidentifikasi',
+            ).values_list('pk', flat=True)
+            
+            auto_settled = Tiket.objects.filter(
+                status_tiket=STATUS_PENGENDALIAN_MUTU,
+                tgl_transfer__lt=cutoff_date,
+                id_periode_data__in=auto_settle_periode_ids,
+            ).update(status_tiket=STATUS_SELESAI)
+            
+            if auto_settled:
+                logger.info(f'Auto-settled {auto_settled} tickets to Selesai (status 8)')
+        except Exception as settle_err:
+            logger.warning(f'Auto-settlement failed (non-blocking): {settle_err}')
+        
         return {
             'source_rows': len(rows),
             'inserts': inserts,
