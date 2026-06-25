@@ -1636,7 +1636,7 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
         try:
             from datetime import datetime
             from django.conf import settings as django_settings
-            cutoff_date = datetime(2025, 5, 1)
+            cutoff_date = datetime(2024, 5, 1)
             if django_settings.USE_TZ:
                 cutoff_date = timezone.make_aware(cutoff_date)
             
