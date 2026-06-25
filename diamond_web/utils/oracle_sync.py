@@ -1246,17 +1246,24 @@ class OracleDataSyncService:
                         raise ValueError(
                             f"{cfg.name}: referensi {target_field} tidak ditemukan untuk nilai {raw_value}"
                         ) from exc
-                    except related_model.MultipleObjectsReturned as exc:
-                        # Get details about the duplicates for debugging
-                        duplicate_objs = related_model.objects.filter(**{lookup_field: raw_value})
-                        duplicate_details = [
-                            f"pk={obj.pk}" + (f", {', '.join([f'{k}={getattr(obj, k, None)}' for k in ['id_ilap', 'id_jenis_data', 'id_sub_jenis_data'] if hasattr(obj, k)])}" if hasattr(obj, 'id_jenis_data') else "")
-                            for obj in duplicate_objs[:5]
-                        ]
-                        raise ValueError(
-                            f"{cfg.name}: referensi {target_field} ditemukan {duplicate_objs.count()} records untuk {lookup_field}={raw_value}. "
-                            f"Details (max 5): [{', '.join(duplicate_details)}]"
-                        ) from exc
+                    except related_model.MultipleObjectsReturned:
+                        # When multiple FK records match (e.g. duplicate id_sub_jenis_data in
+                        # JenisDataILAP), pick the first match and log a warning instead of
+                        # skipping the entire row.
+                        related_obj = (
+                            related_model.objects
+                            .filter(**{lookup_field: raw_value})
+                            .only("pk")
+                            .first()
+                        )
+                        if related_obj is None:
+                            raise ValueError(
+                                f"{cfg.name}: referensi {target_field} tidak ditemukan untuk nilai {raw_value}"
+                            )
+                        logger.warning(
+                            f"{cfg.name}: Multiple records found for {lookup_field}={raw_value} "
+                            f"in {related_model._meta.label}. Using first match (pk={related_obj.pk})"
+                        )
                     mapped_values[field_obj.attname] = related_obj.pk
                 return
 
@@ -1838,7 +1845,6 @@ class OracleDataSyncService:
             ('KM005', 'KM00514', 'KM0051401', 'DATA LABORATORIUM/BANK JARINGAN', 'DATA LABORATORIUM/BANK JARINGAN', 'KPDE_ADHOC_KEMENKES_LABJRNGN', 'KPDE_ADHOC_KEMENKES_LABJRNGN_U', 'Diidentifikasi', ''),
             ('KM009', 'KM00902', 'KM0090201', 'DATA PELAPORAN HASIL MONITORING DAN EVALUASI KSWP', 'DATA PELAPORAN HASIL MONITORING DAN EVALUASI KSWP', '', '', 'Diidentifikasi', ''),
             ('KM014', 'KM01407', 'KM0140701', 'DATA PNBP UNTUK DSAB', 'DATA PNBP UNTUK DSAB', 'KPDE_ADHOC_DJA_PNBP_DSAB', 'KPDE_ADHOC_DJA_PNBP_DSAB_U', 'Diidentifikasi', ''),
-            ('KM014', 'KM01415', 'KM0141501', 'BUKU SAKU APBN DAN INDIKATOR EKONOMI', 'BUKU SAKU APBN DAN INDIKATOR EKONOMI', 'KPDE_DATA_UNSTRUCTURED', 'KPDE_DATA_UNSTRUCTURED_U', 'Tidak Terstruktur', ''),
             ('KM015', 'KM01507', 'KM0150702', 'ADHOC - DATA PEMADANAN NPWP SUPPLIER SPAN', 'ADHOC - DATA PEMADANAN NPWP SUPPLIER SPAN', 'KPDE_ADHOC_UMKM_AKAD', 'KPDE_ADHOC_UMKM_AKAD_U', 'Diidentifikasi', ''),
             ('KM015', 'KM01508', 'KM0150801', 'DATA KUR', 'DATA KUR', 'KPDE_DJPBN_KUR_AKAD', 'KPDE_DJPBN_KUR_AKAD_U', 'Tidak Diidentifikasi', ''),
             ('KM015', 'KM01508', 'KM0150801', 'DATA KUR', 'DATA KUR', 'KPDE_ADHOC_ASN_TNI_POLRI', 'KPDE_ADHOC_ASN_TNI_POLRI_U', 'Tidak Diidentifikasi', ''),
@@ -1873,7 +1879,6 @@ class OracleDataSyncService:
             ('LK103', 'LK10390', 'LK1039000', '', '', 'TBL_ADHOC_ND32_KSP', 'TBL_ADHOC_ND32_KSP_U', 'Diidentifikasi', ''),
             ('LK103', 'LK10390', 'LK1039000', '', '', 'TBL_ADHOC_ND32_LKM', 'TBL_ADHOC_ND32_LKM_U', 'Diidentifikasi', ''),
             ('LK104', 'LK10490', 'LK1049000', '', '', 'TBL_ADHOC_ND32_PLG_BRJGKA', 'TBL_ADHOC_ND32_PLG_BRJGKA_U', 'Diidentifikasi', ''),
-            ('LK105', 'LK10590', 'LK1059000', '', '', '', '', 'Diidentifikasi', ''),
             ('LK105', 'LK10590', 'LK1059000', '', '', 'KPDE_LJK_BPR', 'KPDE_LJK_BPR_U', 'Diidentifikasi', ''),
             ('LK106', 'LK10690', 'LK1069000', '', '', 'TBL_ADHOC_ND32_MAN_INVES', 'TBL_ADHOC_ND32_MAN_INVES_U', 'Diidentifikasi', ''),
             ('LK107', 'LK10790', 'LK1079000', '', '', 'KPDE_LJK_BANK_UMUM', 'KPDE_LJK_BANK_UMUM_U', 'Diidentifikasi', ''),
