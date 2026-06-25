@@ -699,7 +699,7 @@ Tiket — Inti sistem pelacakan pengajuan data.
 | `periode` | `IntegerField` | | | | ✅ `tiket_thn_prd_idx`, ✅ `tiket_lookup_idx` | Periode |
 | `tahun` | `IntegerField` | | | | ✅ `tiket_thn_prd_idx`, ✅ `tiket_lookup_idx` | Tahun |
 | `penyampaian` | `IntegerField` | | | `default=0` | ✅ `tiket_penyampaian_idx`, ✅ `tiket_lookup_idx` | Penyampaian ke- |
-| `nomor_surat_pengantar` | `CharField(50)` | | | `blank=True` | | Nomor surat pengantar |
+| `nomor_surat_pengantar` | `CharField(80)` | | | `blank=True` | | Nomor surat pengantar |
 | `tanggal_surat_pengantar` | `DateTimeField` | | | `null=True, blank=True` | | Tanggal surat pengantar |
 | `nama_pengirim` | `CharField(50)` | | | `blank=True` | | Nama pengirim |
 | `id_bentuk_data` | `ForeignKey` | | ✅ → `BentukData` | `on_delete=PROTECT` | | Bentuk data |
