@@ -44,17 +44,17 @@
             <table id="ilap-table" class="table table-hover mb-0" style="width:100%">
                 <thead>
                     <tr>
-                        <th>Kategori Wilayah</th>
                         <th>ID ILAP</th>
-                        <th>Kategori</th>
                         <th>Nama ILAP</th>
-                        <th>Actions</th>
+                        <th>Kategori</th>
+                        <th>Kategori Wilayah</th>
+                        <th>Aksi</th>
                     </tr>
                     <tr id="column-search-row">
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Wilayah" data-column="0" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari ID" data-column="1" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari ID" data-column="0" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Nama" data-column="1" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari Kategori" data-column="2" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Nama" data-column="3" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Wilayah" data-column="3" /></th>
                         <th></th>
                     </tr>
                 </thead>
@@ -91,6 +91,7 @@
             table = $('#ilap-table').DataTable({
                 serverSide: true,
                 processing: true,
+                searching: false,
                 layout: {
                     topStart: null,
                     topEnd: null
@@ -109,16 +110,16 @@
                 },
                 pageLength: 10,
                 columns: [
-                    { data: 'kategori_wilayah' },
                     { data: 'id_ilap' },
-                    { data: 'id_kategori' },
                     { data: 'nama_ilap' },
+                    { data: 'id_kategori' },
+                    { data: 'kategori_wilayah' },
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [
                     { targets: 4, render: function (data, type, row, meta) { return data; } }
                 ],
-                order: [[1, 'asc']]
+                order: [[0, 'asc']]
             });
 
             // Add individual column search

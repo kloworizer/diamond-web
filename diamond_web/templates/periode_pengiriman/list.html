@@ -44,15 +44,13 @@
             <table id="periode-table" class="table table-hover mb-0" style="width:100%">
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>Periode Penyampaian</th>
                         <th>Periode Penerimaan</th>
-                        <th>Actions</th>
+                        <th>Aksi</th>
                     </tr>
                     <tr id="column-search-row">
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari ID" data-column="0" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Periode Penyampaian" data-column="1" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Periode Penerimaan" data-column="2" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Periode Penyampaian" data-column="0" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Periode Penerimaan" data-column="1" /></th>
                         <th></th>
                     </tr>
                 </thead>
@@ -89,6 +87,7 @@
             table = $('#periode-table').DataTable({
                 serverSide: true,
                 processing: true,
+                searching: false,
                 layout: {
                     topStart: null,
                     topEnd: null
@@ -107,13 +106,12 @@
                 },
                 pageLength: 10,
                 columns: [
-                    { data: 'id' },
                     { data: 'periode_penyampaian' },
                     { data: 'periode_penerimaan' },
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [
-                    { targets: 3, render: function (data, type, row, meta) { return data; } }
+                    { targets: 2, render: function (data, type, row, meta) { return data; } }
                 ],
                 order: [[0, 'asc']]
             });

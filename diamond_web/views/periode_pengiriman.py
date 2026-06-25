@@ -149,19 +149,17 @@ def periode_pengiriman_data(request):
     # Column-specific filtering
     columns_search = request.GET.getlist('columns_search[]')
     if columns_search:
-        if columns_search[0]:  # ID
-            qs = qs.filter(id__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:  # Periode Penyampaian
-            qs = qs.filter(periode_penyampaian__icontains=columns_search[1])
-        if len(columns_search) > 2 and columns_search[2]:  # Periode Penerimaan
-            qs = qs.filter(periode_penerimaan__icontains=columns_search[2])
+        if columns_search[0]:  # Periode Penyampaian (column 0)
+            qs = qs.filter(periode_penyampaian__icontains=columns_search[0])
+        if len(columns_search) > 1 and columns_search[1]:  # Periode Penerimaan (column 1)
+            qs = qs.filter(periode_penerimaan__icontains=columns_search[1])
 
     records_filtered = qs.count()
 
     # ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id', 'periode_penyampaian', 'periode_penerimaan']
+    columns = ['periode_penyampaian', 'periode_penerimaan']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)

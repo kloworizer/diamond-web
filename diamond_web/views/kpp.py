@@ -245,8 +245,8 @@ def kpp_data(request):
         - ``draw``: Draw counter to ensure response matches request.
         - ``start``: Offset for paginated results.
         - ``length``: Number of records per page.
-        - ``columns_search[]``: Per-column search values (index 0 = ID,
-          1 = Kode KPP, 2 = Nama KPP).
+        - ``columns_search[]``: Per-column search values (index 0 = Kode KPP,
+          1 = Nama KPP, 2 = Kode Kanwil, 3 = Nama Kanwil).
         - ``order[0][column]``: Index of the column to sort by.
         - ``order[0][dir]``: Sort direction (``asc`` or ``desc``).
 
@@ -260,31 +260,34 @@ def kpp_data(request):
             - ``recordsTotal`` (int): Total number of KPP records.
             - ``recordsFiltered`` (int): Number of records after filtering.
             - ``data`` (list[dict]): The page of KPP records, each with
-              ``id``, ``kode_kpp``, ``nama_kpp``, and ``actions`` (HTML).
+              ``kode_kpp``, ``nama_kpp``, ``kode_kanwil``, ``nama_kanwil``,
+              and ``actions`` (HTML).
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
 
-    qs = KPP.objects.all()
+    qs = KPP.objects.select_related('id_kanwil').all()
     records_total = qs.count()
 
     # Column-specific filtering
     columns_search = request.GET.getlist('columns_search[]')
     if columns_search:
-        if columns_search[0]:  # ID
-            qs = qs.filter(id__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:  # Kode KPP
-            qs = qs.filter(kode_kpp__icontains=columns_search[1])
-        if len(columns_search) > 2 and columns_search[2]:  # Nama KPP
-            qs = qs.filter(nama_kpp__icontains=columns_search[2])
+        if columns_search[0]:  # Kode KPP
+            qs = qs.filter(kode_kpp__icontains=columns_search[0])
+        if len(columns_search) > 1 and columns_search[1]:  # Nama KPP
+            qs = qs.filter(nama_kpp__icontains=columns_search[1])
+        if len(columns_search) > 2 and columns_search[2]:  # Kode Kanwil
+            qs = qs.filter(id_kanwil__kode_kanwil__icontains=columns_search[2])
+        if len(columns_search) > 3 and columns_search[3]:  # Nama Kanwil
+            qs = qs.filter(id_kanwil__nama_kanwil__icontains=columns_search[3])
 
     records_filtered = qs.count()
 
     # ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id', 'kode_kpp', 'nama_kpp']
+    columns = ['kode_kpp', 'nama_kpp', 'id_kanwil__kode_kanwil', 'id_kanwil__nama_kanwil']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -305,6 +308,8 @@ def kpp_data(request):
             'id': obj.id,
             'kode_kpp': obj.kode_kpp,
             'nama_kpp': obj.nama_kpp,
+            'kode_kanwil': obj.id_kanwil.kode_kanwil if obj.id_kanwil else '-',
+            'nama_kanwil': obj.id_kanwil.nama_kanwil if obj.id_kanwil else '-',
             'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('kpp_update', args=[obj.pk])}' title='Edit'><i class='feather-edit-2'></i></button>"
                        f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('kpp_delete', args=[obj.pk])}' title='Delete'><i class='feather-trash-2'></i></button>"
         })

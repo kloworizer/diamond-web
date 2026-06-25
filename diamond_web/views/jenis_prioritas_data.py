@@ -164,7 +164,7 @@ def jenis_prioritas_data_data(request):
     GET parameters:
     - draw: DataTables draw counter.
     - start, length: paging offset and page size.
-    - columns_search[]: column-specific search values (sub_jenis_data_ilap, no_nd, tahun, start_date, end_date).
+    - columns_search[]: column-specific search values (id_sub_jenis_data, nama_sub_jenis_data, no_nd, tahun, start_date, end_date).
     - order[0][column], order[0][dir]: ordering index and direction.
 
     Behavior:
@@ -173,7 +173,7 @@ def jenis_prioritas_data_data(request):
       conventions.
 
     Returns JSON: `{'draw', 'recordsTotal', 'recordsFiltered', 'data'}` where
-    each data row contains: `sub_jenis_data_ilap`, `no_nd`, `tahun`, `start_date`, `end_date`, and `actions` HTML.
+    each data row contains: `id_sub_jenis_data`, `nama_sub_jenis_data`, `no_nd`, `tahun`, `start_date`, `end_date`, and `actions` HTML.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
@@ -185,21 +185,23 @@ def jenis_prioritas_data_data(request):
     # Column-specific filtering
     columns_search = request.GET.getlist('columns_search[]')
     if columns_search:
-        if columns_search[0]:  # Sub Jenis Data ILAP
-            qs = qs.filter(id_sub_jenis_data_ilap__nama_sub_jenis_data__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:  # No ND
-            qs = qs.filter(no_nd__icontains=columns_search[1])
-        if len(columns_search) > 2 and columns_search[2]:  # Tahun
-            qs = qs.filter(tahun__icontains=columns_search[2])
-        if len(columns_search) > 3 and columns_search[3]:  # Start Date
-            qs = qs.filter(start_date__icontains=columns_search[3])
-        if len(columns_search) > 4 and columns_search[4]:  # End Date
-            qs = qs.filter(end_date__icontains=columns_search[4])
+        if columns_search[0]:  # ID Sub Jenis Data
+            qs = qs.filter(id_sub_jenis_data_ilap__id_sub_jenis_data__icontains=columns_search[0])
+        if len(columns_search) > 1 and columns_search[1]:  # Nama Sub Jenis Data
+            qs = qs.filter(id_sub_jenis_data_ilap__nama_sub_jenis_data__icontains=columns_search[1])
+        if len(columns_search) > 2 and columns_search[2]:  # No ND
+            qs = qs.filter(no_nd__icontains=columns_search[2])
+        if len(columns_search) > 3 and columns_search[3]:  # Tahun
+            qs = qs.filter(tahun__icontains=columns_search[3])
+        if len(columns_search) > 4 and columns_search[4]:  # Start Date
+            qs = qs.filter(start_date__icontains=columns_search[4])
+        if len(columns_search) > 5 and columns_search[5]:  # End Date
+            qs = qs.filter(end_date__icontains=columns_search[5])
 
     records_filtered = qs.count()
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns =['id_sub_jenis_data_ilap__nama_sub_jenis_data', 'no_nd', 'tahun', 'start_date', 'end_date']
+    columns =['id_sub_jenis_data_ilap__id_sub_jenis_data', 'id_sub_jenis_data_ilap__nama_sub_jenis_data', 'no_nd', 'tahun', 'start_date', 'end_date']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -217,7 +219,8 @@ def jenis_prioritas_data_data(request):
     data = []
     for obj in qs_page:
         data.append({
-         'sub_jenis_data_ilap': str(obj.id_sub_jenis_data_ilap),
+            'id_sub_jenis_data': obj.id_sub_jenis_data_ilap.id_sub_jenis_data,
+            'nama_sub_jenis_data': obj.id_sub_jenis_data_ilap.nama_sub_jenis_data,
             'no_nd': str(obj.no_nd),
             'tahun': str(obj.tahun),
             'start_date': obj.start_date.strftime('%Y-%m-%d') if obj.start_date else '',
