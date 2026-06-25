@@ -50,6 +50,20 @@ set +a
 # Activate virtual environment
 source "$VENV_DIR/bin/activate"
 
+# ---------- Helper functions ----------
+log() {
+    local level="$1"
+    local msg="$2"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$level] $msg" | tee -a "$LOG_FILE"
+}
+
+log_step() {
+    echo "" | tee -a "$LOG_FILE"
+    echo "========================================" | tee -a "$LOG_FILE"
+    echo "  $1" | tee -a "$LOG_FILE"
+    echo "========================================" | tee -a "$LOG_FILE"
+}
+
 # ---------- Safety check: hanya jalan di tanggal yang benar ----------
 # Mode dry-run (--dry-run) boleh jalan kapan saja untuk testing / simulasi
 # Tanpa --dry-run, script hanya akan jalan pada TARGET_DATE untuk eksekusi nyata
@@ -71,20 +85,6 @@ if [ "$DRY_RUN_MODE" = true ]; then
     DRY_RUN_FLAG="--dry-run"
     log "INFO" "DRY-RUN MODE: tidak ada data yang benar-benar dihapus."
 fi
-
-# ---------- Helper functions ----------
-log() {
-    local level="$1"
-    local msg="$2"
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$level] $msg" | tee -a "$LOG_FILE"
-}
-
-log_step() {
-    echo "" | tee -a "$LOG_FILE"
-    echo "========================================" | tee -a "$LOG_FILE"
-    echo "  $1" | tee -a "$LOG_FILE"
-    echo "========================================" | tee -a "$LOG_FILE"
-}
 
 # ---------- Start ----------
 mkdir -p "$LOG_DIR"
