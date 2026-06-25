@@ -187,3 +187,23 @@ def sync_tiket_data_task(self, sync_id, user_id=None):
         cache.set(f'sync_tiket_error_{sync_id}', str(e), timeout=3600)
         cache.set(f'sync_tiket_done_{sync_id}', True, timeout=3600)
         cache.set(f'sync_tiket_in_progress_{sync_id}', False, timeout=3600)
+
+
+@shared_task(bind=True, name='diamond_web.tasks.cleanup_pre_production_task')
+def cleanup_pre_production_task(self):
+    """
+    Celery task to delete all Tiket records with old_db=False and their
+    related records (TiketPIC, TiketAction, KirimPideTemp, DetilTandaTerima,
+    BackupData).
+
+    Scheduled via CELERY_BEAT_SCHEDULE to run once on July 1, 2026 at 00:00
+    to prepare the database for production deployment.
+    """
+    logger.info('[TASK] Starting pre-production cleanup (old_db=False)...')
+    try:
+        from django.core.management import call_command
+        call_command('cleanup_pre_production')
+        logger.info('[TASK] Pre-production cleanup completed successfully.')
+    except Exception as e:
+        logger.error(f'[TASK] Pre-production cleanup failed: {str(e)}', exc_info=True)
+        raise
