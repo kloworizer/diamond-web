@@ -51,12 +51,25 @@ set +a
 source "$VENV_DIR/bin/activate"
 
 # ---------- Safety check: hanya jalan di tanggal yang benar ----------
+# Mode dry-run (--dry-run) boleh jalan kapan saja untuk testing / simulasi
+# Tanpa --dry-run, script hanya akan jalan pada TARGET_DATE untuk eksekusi nyata
+DRY_RUN_MODE=false
+if [ "${1:-}" = "--dry-run" ]; then
+    DRY_RUN_MODE=true
+fi
+
 TARGET_DATE="2026-07-01"
 CURRENT_DATE=$(date '+%Y-%m-%d')
 
-if [ "$CURRENT_DATE" != "$TARGET_DATE" ]; then
+if [ "$CURRENT_DATE" != "$TARGET_DATE" ] && [ "$DRY_RUN_MODE" = false ]; then
     echo "[$TIMESTAMP] WARN: Script hanya boleh dijalankan pada $TARGET_DATE (saat ini: $CURRENT_DATE)." >> "$LOG_DIR/cleanup_pre_production_error.log"
     exit 0
+fi
+
+DRY_RUN_FLAG=""
+if [ "$DRY_RUN_MODE" = true ]; then
+    DRY_RUN_FLAG="--dry-run"
+    log "INFO" "DRY-RUN MODE: tidak ada data yang benar-benar dihapus."
 fi
 
 # ---------- Helper functions ----------
@@ -105,7 +118,8 @@ log_step "STEP 2/3: Eksekusi Penghapusan"
 CLEANUP_LOG="$LOG_DIR/cleanup_exec_$TIMESTAMP.log"
 log "INFO" "Menjalankan penghapusan (log: $CLEANUP_LOG)..."
 
-if python manage.py cleanup_pre_production >> "$CLEANUP_LOG" 2>&1; then
+MANAGE_CMD="python manage.py cleanup_pre_production $DRY_RUN_FLAG"
+if $MANAGE_CMD >> "$CLEANUP_LOG" 2>&1; then
     log "OK" "Penghapusan BERHASIL."
     while IFS= read -r line; do
         log "INFO" "  $line"
@@ -135,11 +149,16 @@ fi
 # ===== Summary =====
 log_step "SUMMARY"
 
-log "OK" "Pre-production cleanup SELESAI."
+MODE_MSG=""
+if [ "$DRY_RUN_MODE" = true ]; then
+    MODE_MSG=" (DRY-RUN — tidak ada data yang dihapus)"
+fi
+
+log "OK" "Pre-production cleanup SELESAI$MODE_MSG."
 log "INFO" "Dry-run log    : $DRYRUN_LOG"
 log "INFO" "Execute log    : $CLEANUP_LOG"
 log "INFO" "Verify log     : $VERIF_LOG"
 log "INFO" "Master log     : $LOG_FILE"
-log "INFO" "=== Pre-Production Cleanup selesai ==="
+log "INFO" "=== Pre-Production Cleanup selesai$MODE_MSG ==="
 
 exit 0
