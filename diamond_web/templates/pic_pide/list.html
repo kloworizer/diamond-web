@@ -44,18 +44,22 @@
                 <thead>
                     <tr>
                         <th>ILAP</th>
-                        <th>Sub Jenis Data</th>
-                        <th>Username - Fullname</th>
+                        <th>ID Sub Jenis Data</th>
+                        <th>Nama Sub Jenis Data</th>
+                        <th>Username</th>
+                        <th>Full Name</th>
                         <th>Start Date</th>
                         <th>End Date</th>
-                        {% if is_admin %}<th>Actions</th>{% endif %}
+                        {% if is_admin %}<th>Aksi</th>{% endif %}
                     </tr>
                     <tr id="column-search-row">
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search ILAP" data-column="0" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Sub Jenis Data" data-column="1" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Username" data-column="2" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Start Date" data-column="3" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Search End Date" data-column="4" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search ID Sub Jenis Data" data-column="1" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Nama Sub Jenis Data" data-column="2" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Username" data-column="3" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Full Name" data-column="4" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search Start Date" data-column="5" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Search End Date" data-column="6" /></th>
                         {% if is_admin %}<th></th>{% endif %}
                     </tr>
                 </thead>
@@ -92,8 +96,10 @@
             $(document).ready(function () {
                 var columns = [
                     { data: 'ilap' },
-                    { data: 'sub_jenis_data' },
-                    { data: 'username_fullname' },
+                    { data: 'id_sub_jenis_data' },
+                    { data: 'nama_sub_jenis_data' },
+                    { data: 'username' },
+                    { data: 'full_name' },
                     { data: 'start_date' },
                     { data: 'end_date' }
                 ];
@@ -101,7 +107,7 @@
 
                 if (isAdmin) {
                     columns.push({ data: 'actions', orderable: false, searchable: false });
-                    columnDefs.push({ targets: 5, render: function (data, type, row, meta) { return data; } });
+                    columnDefs.push({ targets: 7, render: function (data, type, row, meta) { return data; } });
                 }
 
                 table = $('#pic-pide-table').DataTable({

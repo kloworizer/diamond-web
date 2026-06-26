@@ -171,11 +171,11 @@ def periode_jenis_data_data(request):
     GET parameters:
     - draw: DataTables draw counter.
     - start, length: paging offset and page size.
-    - columns_search[]: column-specific search values (sub_jenis_data_ilap, periode_pengiriman, start_date, end_date).
+    - columns_search[]: column-specific search values (id_sub_jenis_data, nama_sub_jenis_data, periode_pengiriman, start_date, end_date, akhir_penyampaian).
     - order[0][column], order[0][dir]: ordering index and direction.
 
     Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data` rows.
-    Each row contains: `sub_jenis_data_ilap`, `periode_pengiriman`, `start_date`, `end_date`, and `actions` HTML.
+    Each row contains: `id_sub_jenis_data`, `nama_sub_jenis_data`, `periode_pengiriman`, `start_date`, `end_date`, and `actions` HTML.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
@@ -187,23 +187,25 @@ def periode_jenis_data_data(request):
     # Column-specific filtering
     columns_search = request.GET.getlist('columns_search[]')
     if columns_search:
-        if columns_search[0]:  # Sub Jenis Data ILAP
-            qs = qs.filter(id_sub_jenis_data_ilap__nama_sub_jenis_data__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:  # Periode Pengiriman
-            qs = qs.filter(id_periode_pengiriman__periode_penyampaian__icontains=columns_search[1])
-        if len(columns_search) > 2 and columns_search[2]:  # Start Date
-            qs = qs.filter(start_date__icontains=columns_search[2])
-        if len(columns_search) > 3 and columns_search[3]:  # End Date
-            qs = qs.filter(end_date__icontains=columns_search[3])
-        if len(columns_search) > 4 and columns_search[4]:  # Akhir Penyampaian
-            qs = qs.filter(akhir_penyampaian__icontains=columns_search[4])
+        if columns_search[0]:  # ID Sub Jenis Data
+            qs = qs.filter(id_sub_jenis_data_ilap__id_sub_jenis_data__icontains=columns_search[0])
+        if len(columns_search) > 1 and columns_search[1]:  # Nama Sub Jenis Data
+            qs = qs.filter(id_sub_jenis_data_ilap__nama_sub_jenis_data__icontains=columns_search[1])
+        if len(columns_search) > 2 and columns_search[2]:  # Periode Pengiriman
+            qs = qs.filter(id_periode_pengiriman__periode_penyampaian__icontains=columns_search[2])
+        if len(columns_search) > 3 and columns_search[3]:  # Akhir Penyampaian
+            qs = qs.filter(akhir_penyampaian__icontains=columns_search[3])
+        if len(columns_search) > 4 and columns_search[4]:  # Start Date
+            qs = qs.filter(start_date__icontains=columns_search[4])
+        if len(columns_search) > 5 and columns_search[5]:  # End Date
+            qs = qs.filter(end_date__icontains=columns_search[5])
 
     records_filtered = qs.count()
 
     # ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id_sub_jenis_data_ilap__nama_sub_jenis_data', 'id_periode_pengiriman__periode_penyampaian', 'start_date', 'end_date', 'akhir_penyampaian']
+    columns = ['id_sub_jenis_data_ilap__id_sub_jenis_data', 'id_sub_jenis_data_ilap__nama_sub_jenis_data', 'id_periode_pengiriman__periode_penyampaian', 'akhir_penyampaian', 'start_date', 'end_date']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -221,11 +223,12 @@ def periode_jenis_data_data(request):
     data = []
     for obj in qs_page:
         data.append({
-            'sub_jenis_data_ilap': str(obj.id_sub_jenis_data_ilap),
+            'id_sub_jenis_data': obj.id_sub_jenis_data_ilap.id_sub_jenis_data,
+            'nama_sub_jenis_data': obj.id_sub_jenis_data_ilap.nama_sub_jenis_data,
             'periode_pengiriman': str(obj.id_periode_pengiriman),
+            'akhir_penyampaian': obj.akhir_penyampaian,
             'start_date': obj.start_date.strftime('%Y-%m-%d') if obj.start_date else '',
             'end_date': obj.end_date.strftime('%Y-%m-%d') if obj.end_date else '',
-            'akhir_penyampaian': obj.akhir_penyampaian,
             'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('periode_jenis_data_update', args=[obj.pk])}' title='Edit'><i class='feather-edit-2'></i></button>"
                        f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('periode_jenis_data_delete', args=[obj.pk])}' title='Delete'><i class='feather-trash-2'></i></button>"
         })

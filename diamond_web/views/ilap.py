@@ -108,22 +108,20 @@ def ilap_data(request):
     # Column-specific filtering
     columns_search = request.GET.getlist('columns_search[]')
     if columns_search:
-        if columns_search[0]:  # Kategori Wilayah
-            qs = qs.filter(id_kategori_wilayah__deskripsi__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:  # ID ILAP
-            qs = qs.filter(id_ilap__icontains=columns_search[1])
-        if len(columns_search) > 2 and columns_search[2]:  # ID Kategori
+        if columns_search[0]:  # ID ILAP (column 0)
+            qs = qs.filter(id_ilap__icontains=columns_search[0])
+        if len(columns_search) > 1 and columns_search[1]:  # Nama ILAP (column 1)
+            qs = qs.filter(nama_ilap__icontains=columns_search[1])
+        if len(columns_search) > 2 and columns_search[2]:  # ID Kategori (column 2)
             qs = qs.filter(id_kategori__id_kategori__icontains=columns_search[2])
-        if len(columns_search) > 3 and columns_search[3]:  # Nama ILAP
-            qs = qs.filter(nama_ilap__icontains=columns_search[3])
-        if len(columns_search) > 4 and columns_search[4]:  # KPP
-            qs = qs.filter(id_kpp__nama_kpp__icontains=columns_search[4])
+        if len(columns_search) > 3 and columns_search[3]:  # Kategori Wilayah (column 3)
+            qs = qs.filter(id_kategori_wilayah__deskripsi__icontains=columns_search[3])
 
     records_filtered = qs.count()
 
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id_kategori_wilayah__deskripsi', 'id_ilap', 'id_kategori__id_kategori', 'nama_ilap', 'id_kpp__nama_kpp']
+    columns = ['id_ilap', 'nama_ilap', 'id_kategori__id_kategori', 'id_kategori_wilayah__deskripsi']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)

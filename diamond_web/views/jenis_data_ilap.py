@@ -136,15 +136,15 @@ def jenis_data_ilap_data(request):
     GET parameters:
     - draw: DataTables draw counter.
     - start, length: paging offset and page size.
-    - columns_search[]: column-specific search values (id_sub_jenis_data, jenis_tabel, kategori_ilap, ilap, nama_jenis_data, nama_sub_jenis_data).
+    - columns_search[]: column-specific search values (id_sub_jenis_data, nama_sub_jenis_data, id_jenis_data, nama_jenis_data, id_ilap, nama_ilap, status_data).
     - order[0][column], order[0][dir]: ordering index and direction.
 
     Behavior:
-    - Uses `select_related` for `id_ilap`, `id_ilap__id_kategori`, and `id_jenis_tabel` to reduce queries.
+    - Uses `select_related` for `id_ilap` and `id_status_data` to reduce queries.
     - Applies column-specific filters and ordering according to DataTables conventions.
 
     Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data` rows.
-    Each row contains: `id_sub_jenis_data`, `jenis_tabel`, `kategori_ilap`, `ilap`, `nama_jenis_data`, `nama_sub_jenis_data`, and `actions` HTML.
+    Each row contains: `id_sub_jenis_data`, `nama_sub_jenis_data`, `id_jenis_data`, `nama_jenis_data`, `id_ilap`, `nama_ilap`, `status_data`, and `actions` HTML.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
@@ -152,8 +152,6 @@ def jenis_data_ilap_data(request):
 
     qs = JenisDataILAP.objects.select_related(
         'id_ilap',
-        'id_ilap__id_kategori',
-        'id_jenis_tabel',
         'id_status_data'
     ).all()
     records_total = qs.count()
@@ -163,16 +161,16 @@ def jenis_data_ilap_data(request):
     if columns_search:
         if columns_search[0]:  # ID Sub Jenis Data
             qs = qs.filter(id_sub_jenis_data__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:  # Jenis Tabel
-            qs = qs.filter(id_jenis_tabel__deskripsi__icontains=columns_search[1])
-        if len(columns_search) > 2 and columns_search[2]:  # Kategori ILAP
-            qs = qs.filter(id_ilap__id_kategori__nama_kategori__icontains=columns_search[2])
-        if len(columns_search) > 3 and columns_search[3]:  # ILAP
-            qs = qs.filter(id_ilap__nama_ilap__icontains=columns_search[3])
-        if len(columns_search) > 4 and columns_search[4]:  # Nama Jenis Data
-            qs = qs.filter(nama_jenis_data__icontains=columns_search[4])
-        if len(columns_search) > 5 and columns_search[5]:  # Nama Sub Jenis Data
-            qs = qs.filter(nama_sub_jenis_data__icontains=columns_search[5])
+        if len(columns_search) > 1 and columns_search[1]:  # Nama Sub Jenis Data
+            qs = qs.filter(nama_sub_jenis_data__icontains=columns_search[1])
+        if len(columns_search) > 2 and columns_search[2]:  # ID Jenis Data
+            qs = qs.filter(id_jenis_data__icontains=columns_search[2])
+        if len(columns_search) > 3 and columns_search[3]:  # Nama Jenis Data
+            qs = qs.filter(nama_jenis_data__icontains=columns_search[3])
+        if len(columns_search) > 4 and columns_search[4]:  # ID ILAP
+            qs = qs.filter(id_ilap__id_ilap__icontains=columns_search[4])
+        if len(columns_search) > 5 and columns_search[5]:  # Nama ILAP
+            qs = qs.filter(id_ilap__nama_ilap__icontains=columns_search[5])
         if len(columns_search) > 6 and columns_search[6]:  # Status Data
             qs = qs.filter(id_status_data__deskripsi__icontains=columns_search[6])
 
@@ -181,8 +179,8 @@ def jenis_data_ilap_data(request):
     # ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id_sub_jenis_data', 'id_jenis_tabel__deskripsi', 'id_ilap__id_kategori__nama_kategori', 
-               'id_ilap__nama_ilap', 'nama_jenis_data', 'nama_sub_jenis_data', 'id_status_data__deskripsi']
+    columns = ['id_sub_jenis_data', 'nama_sub_jenis_data', 'id_jenis_data', 
+               'nama_jenis_data', 'id_ilap__id_ilap', 'id_ilap__nama_ilap', 'id_status_data__deskripsi']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -201,11 +199,11 @@ def jenis_data_ilap_data(request):
     for obj in qs_page:
         data.append({
             'id_sub_jenis_data': obj.id_sub_jenis_data,
-            'jenis_tabel': str(obj.id_jenis_tabel),
-            'kategori_ilap': str(obj.id_ilap.id_kategori),
-            'ilap': str(obj.id_ilap),
-            'nama_jenis_data': obj.nama_jenis_data,
             'nama_sub_jenis_data': obj.nama_sub_jenis_data,
+            'id_jenis_data': obj.id_jenis_data,
+            'nama_jenis_data': obj.nama_jenis_data,
+            'id_ilap': obj.id_ilap.id_ilap,
+            'ilap': obj.id_ilap.nama_ilap,
             'status_data': str(obj.id_status_data) if obj.id_status_data else '-',
             'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('jenis_data_ilap_update', args=[obj.pk])}' title='Edit'><i class='feather-edit-2'></i></button>"
                        f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('jenis_data_ilap_delete', args=[obj.pk])}' title='Delete'><i class='feather-trash-2'></i></button>"

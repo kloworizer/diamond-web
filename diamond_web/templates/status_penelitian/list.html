@@ -46,7 +46,7 @@
                     <tr>
                         <th>ID</th>
                         <th>Deskripsi</th>
-                        <th>Actions</th>
+                        <th>Aksi</th>
                     </tr>
                     <tr id="column-search-row">
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari ID" data-column="0" /></th>
@@ -87,6 +87,7 @@
             table = $('#status-penelitian-table').DataTable({
                 serverSide: true,
                 processing: true,
+                searching: false,
                 layout: {
                     topStart: null,
                     topEnd: null

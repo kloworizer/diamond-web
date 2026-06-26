@@ -260,12 +260,10 @@ def kanwil_data(request):
     # Column-specific filtering
     columns_search = request.GET.getlist('columns_search[]')
     if columns_search:
-        if columns_search[0]:  # ID
-            qs = qs.filter(id__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:  # Kode Kanwil
-            qs = qs.filter(kode_kanwil__icontains=columns_search[1])
-        if len(columns_search) > 2 and columns_search[2]:  # Nama Kanwil
-            qs = qs.filter(nama_kanwil__icontains=columns_search[2])
+        if columns_search[0]:  # Kode Kanwil (column 0)
+            qs = qs.filter(kode_kanwil__icontains=columns_search[0])
+        if len(columns_search) > 1 and columns_search[1]:  # Nama Kanwil (column 1)
+            qs = qs.filter(nama_kanwil__icontains=columns_search[1])
 
     records_filtered = qs.count()
 
