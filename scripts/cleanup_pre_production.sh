@@ -1,11 +1,14 @@
 #!/bin/bash
 # =============================================================================
 # Pre-Production Cleanup Script
-# Menghapus semua tiket dengan old_db=False beserta relasinya.
+# Membersihkan semua data testing sebelum go-live produksi:
+#   1. Truncate semua BackupData, TandaTerimaData, DetilTandaTerima
+#   2. Hapus TiketAction kecuali action=301 (PIC Ditambahkan)
+#   3. Hapus semua tiket dengan old_db=False beserta relasinya
 #
 # Tujuan:
-#   Hanya menyisakan tiket yang sudah disinkron/dimigrasi dari DB lama
-#   (old_db=True) sebelum go-live produksi.
+#   Menghapus seluruh data entry testing user, hanya menyisakan tiket
+#   yang sudah disinkron/dimigrasi dari DB lama (old_db=True).
 #
 # Schedule: satu kali pada 1 Juli 2026 pukul 00:00 WIB (GMT+7)
 #   via crontab: 0 0 1 7 * /home/pajak/diamond-web/scripts/cleanup_pre_production.sh
@@ -92,7 +95,7 @@ cd "$DJANGO_DIR"
 
 log "INFO" "=== Pre-Production Cleanup dimulai ==="
 log "INFO" "Log file: $LOG_FILE"
-log "INFO" "Target : menghapus tiket dengan old_db=False"
+log "INFO" "Target : bersihkan data testing (BackupData, TandaTerimaData, DetilTandaTerima, TiketAction) + hapus tiket old_db=False"
 
 # ===== STEP 1: Dry-run untuk lihat estimasi =====
 log_step "STEP 1/3: Dry-Run (estimasi data yang akan dihapus)"

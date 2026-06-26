@@ -205,6 +205,12 @@
                         <span class="nxl-mtext">Template Dokumen</span>
                     </a>
                 </li>
+                <li class="nxl-item">
+                    <a class="nxl-link" href="{% url 'sequence_tanda_terima_list' %}">
+                        <span class="nxl-micon"><i class="feather-hash"></i></span>
+                        <span class="nxl-mtext">Sequence Tanda Terima</span>
+                    </a>
+                </li>
                 {% endif %}
 
                 {% if user|has_group:"admin" or user|has_group:"admin_pide" %}

@@ -25,6 +25,7 @@ from .backup_data import *
 from .tanda_terima_data import *
 from .monitoring_penyampaian_data import *
 from .docx_template import *
+from .sequence_tanda_terima import *
 from .laporan_pengendalian_mutu import *
 from .laporan_hasil_pengolahan_data_prioritas import *
 from .laporan_kelengkapan_data import *
