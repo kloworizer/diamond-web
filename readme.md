@@ -142,7 +142,7 @@ diamond-web/
 │   │   ├── tiket.py           # Model utama: Tiket (paling kompleks)
 │   │   ├── tiket_action.py    # Riwayat aksi pada tiket
 │   │   ├── tiket_pic.py       # PIC yang ditugaskan ke tiket
-│   │   ├── ilap.py            # ILAP (Indeks Layanan Administrasi Perpajakan)
+│   │   ├── ilap.py            # ILAP
 │   │   ├── kategori_ilap.py   # Kategori ILAP
 │   │   ├── jenis_data_ilap.py # Jenis data dalam ILAP (dengan sub-jenis)
 │   │   ├── periode_jenis_data.py, periode_pengiriman.py  # Periode data
