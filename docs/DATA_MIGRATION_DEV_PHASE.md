@@ -301,7 +301,12 @@ cat /home/pajak/diamond-web/sync_logs/daily_sync_$(date +%F)*.log
 
 ### Fase 5: Pre-Production Cleanup
 
-Fase ini adalah langkah terakhir sebelum go-live produksi. Semua tiket dengan `old_db=False` (yang dibuat secara manual selama development/testing) akan dihapus.
+Fase ini adalah langkah terakhir sebelum go-live produksi. Dua kelompok data akan dibersihkan:
+
+1. **Data testing** — seluruh data yang dimasukkan user selama masa pengujian:
+   - Semua `BackupData`, `TandaTerimaData`, `DetilTandaTerima` akan di-truncate
+   - Semua `TiketAction` kecuali action tipe 301 (PIC Ditambahkan) akan dihapus
+2. **Tiket old_db=False** — tiket yang dibuat secara manual (bukan hasil sinkronisasi Oracle)
 
 #### Langkah 5.1 — Dry-Run Cleanup
 
@@ -311,17 +316,27 @@ Jalankan beberapa hari sebelum eksekusi untuk memastikan data yang akan dihapus 
 ./scripts/cleanup_pre_production.sh --dry-run
 ```
 
-**Output yang diharapkan:**
+**Output yang diharapkan (Phase 1 — data testing):**
 ```
-Ditemukan 45 tiket dengan old_db=False.
+==================================================
+PHASE 1: Pembersihan data testing
+==================================================
+Record testing yang akan dibersihkan:
+  - BackupData (semua): 50
+  - TandaTerimaData (semua): 30
+  - DetilTandaTerima (semua): 80
+  - TiketAction (selain action=301): 500
+  Total data testing: 660 records
+
+==================================================
+PHASE 2: Hapus 45 tiket dengan old_db=False
+==================================================
 Record terkait yang akan dihapus:
   - TiketPIC: 45
   - TiketAction: 120
   - KirimPideTemp: 10
-  - DetilTandaTerima: 30
-  - BackupData: 5
   - Tiket: 45
-  Total: 255 records
+
 Dry-run mode: tidak ada perubahan yang dilakukan.
 ```
 
@@ -345,21 +360,25 @@ Pada 1 Juli 2026 pukul 00:00 WIB, cron akan menjalankan:
 
 Script akan:
 1. **Dry-run otomatis** — melihat estimasi data yang akan dihapus
-2. **Eksekusi penghapusan** — menghapus Tiket + relasi dalam 1 transaksi atomik:
+2. **Phase 1 — Pembersihan data testing** (hapus semua data entry testing user):
+   - Truncate `DetilTandaTerima` (semua, harus pertama karena FK ke TandaTerimaData)
+   - Truncate `TandaTerimaData` (semua)
+   - Truncate `BackupData` (semua)
+   - Hapus `TiketAction` (kecuali action=301 / PIC Ditambahkan)
+3. **Phase 2 — Hapus tiket old_db=False** (dalam 1 transaksi atomik):
    - `TiketPIC` (id_tiket in tiket_ids)
    - `TiketAction` (id_tiket in tiket_ids)
    - `KirimPideTemp` (id_tiket in tiket_ids)
-   - `DetilTandaTerima` (id_tiket in tiket_ids)
-   - `BackupData` (id_tiket in tiket_ids)
    - `Tiket` (old_db=False)
-3. **Verifikasi** — memastikan tidak ada lagi tiket dengan `old_db=False`
+4. **Verifikasi** — memastikan tidak ada lagi data testing dan tiket `old_db=False`
 
 #### Langkah 5.4 — Verifikasi Pasca-Cleanup
 
 ```bash
 # Verifikasi manual
 python manage.py cleanup_pre_production --dry-run
-# Output: "Tidak ada tiket dengan old_db=False untuk dibersihkan."
+# Output: "Tidak ada data testing untuk dibersihkan."
+#         "Tidak ada tiket dengan old_db=False untuk dibersihkan."
 
 # Cek sisa data
 python manage.py shell_plus -c "
@@ -368,6 +387,8 @@ print(f'Tiket tersisa: {Tiket.objects.count()}')
 print(f'Semua dari Oracle: {Tiket.objects.filter(old_db=True).count()}')
 "
 ```
+
+> **Catatan:** `DetilTandaTerima` dan `TandaTerimaData` yang ditruncate di Phase 1 adalah data testing secara keseluruhan (tanpa filter id_tiket), karena tabel-tabel tersebut berisi data input pengguna selama masa pengujian dan bukan hasil sinkronisasi Oracle.
 
 ---
 
@@ -1184,18 +1205,26 @@ Mulai
   ├─► Safety check: hanya jalan jika tanggal = 2026-07-01 (kecuali --dry-run)
   │
   ├─► STEP 1: Dry-Run
-  │   └─► Hitung jumlah tiket & relasi yang akan dihapus
+  │   ├─► Phase 1: Hitung data testing yang akan dibersihkan
+  │   │     (BackupData, TandaTerimaData, DetilTandaTerima, TiketAction selain 301)
+  │   └─► Phase 2: Hitung tiket old_db=False & relasinya
+  │          (TiketPIC, TiketAction old_db=False, KirimPideTemp, Tiket)
   │
   ├─► STEP 2: Eksekusi Penghapusan (dalam 1 transaksi)
-  │   ├─► Hapus TiketPIC (id_tiket in tiket_ids)
-  │   ├─► Hapus TiketAction (id_tiket in tiket_ids)
-  │   ├─► Hapus KirimPideTemp (id_tiket in tiket_ids)
-  │   ├─► Hapus DetilTandaTerima (id_tiket in tiket_ids)
-  │   ├─► Hapus BackupData (id_tiket in tiket_ids)
-  │   └─► Hapus Tiket (old_db=False)
+  │   ├─► Phase 1 — Pembersihan Data Testing:
+  │   │     ├─ Hapus DetilTandaTerima (semua)
+  │   │     ├─ Hapus TandaTerimaData (semua)
+  │   │     ├─ Hapus BackupData (semua)
+  │   │     └─ Hapus TiketAction (kecuali action=301)
+  │   │
+  │   └─► Phase 2 — Hapus Tiket old_db=False:
+  │         ├─ Hapus TiketPIC (id_tiket in tiket_ids)
+  │         ├─ Hapus TiketAction (id_tiket in tiket_ids)
+  │         ├─ Hapus KirimPideTemp (id_tiket in tiket_ids)
+  │         └─ Hapus Tiket (old_db=False)
   │
   ├─► STEP 3: Verifikasi
-  │   └─► Jalankan dry-run → pastikan tidak ada old_db=False tersisa
+  │   └─► Jalankan dry-run → pastikan bersih
   │
   └─► Ringkasan hasil cleanup
 ```
@@ -1204,13 +1233,20 @@ Mulai
 
 Penghapusan dilakukan dalam urutan tertentu untuk menghindari constraint violation:
 
+**Phase 1 — Data Testing (dihapus semua, tanpa filter id_tiket):**
 ```
-1. TiketPIC ──────► child dari Tiket (hapus dulu)
-2. TiketAction ───► child dari Tiket
-3. KirimPideTemp ─► child dari Tiket
-4. DetilTandaTerima ► child dari Tiket
-5. BackupData ────► child dari Tiket
-6. Tiket ─────────► parent (hapus terakhir)
+1. DetilTandaTerima ──► child dari TandaTerimaData & Tiket (hapus dulu)
+2. TandaTerimaData ───► parent (hapus setelah child-nya habis)
+3. BackupData ────────► child dari Tiket (hapus semua)
+4. TiketAction ───────► kecuali action=301 (PIC Ditambahkan)
+```
+
+**Phase 2 — Tiket old_db=False (filter id_tiket):**
+```
+5. TiketPIC ──────────► child dari Tiket (hapus dulu)
+6. TiketAction ───────► child dari Tiket (sisa action=301 milik old_db=False)
+7. KirimPideTemp ─────► child dari Tiket
+8. Tiket ─────────────► parent (hapus terakhir)
 ```
 
 Semua operasi dijalankan dalam `transaction.atomic()` — jika ada kegagalan di tengah jalan, semua perubahan akan di-rollback.
@@ -1237,7 +1273,7 @@ Berikut adalah daftar lengkap cron job yang terpasang di server produksi:
 |-------|--------------|--------|-----------|
 | **00:00 WIB setiap hari** | `0 0 * * *` | `/home/pajak/diamond-web/scripts/db_backup_daily.sh` | **Backup Database Harian** — Mencadangkan database dan media, membersihkan backup lama (retensi 30 hari). |
 | **09:00 WIB setiap hari** | `0 9 * * *` | `/home/pajak/diamond-web/scripts/sync_daily_cron.sh` | **Sinkronisasi Oracle Harian** — Menjalankan sync referensi dilanjutkan sync tiket dari Oracle. Berhenti otomatis setelah 1 Juli 2026. |
-| **1 Juli 2026 00:00 WIB** | `0 0 1 7 *` | `/home/pajak/diamond-web/scripts/cleanup_pre_production.sh` | **Pre-Production Cleanup** — Sekali jalan: menghapus semua tiket `old_db=False` dan relasinya. |
+| **1 Juli 2026 00:00 WIB** | `0 0 1 7 *` | `/home/pajak/diamond-web/scripts/cleanup_pre_production.sh` | **Pre-Production Cleanup** — Sekali jalan: (1) truncate data testing (BackupData, TandaTerimaData, DetilTandaTerima, TiketAction selain 301), (2) hapus tiket `old_db=False` dan relasinya. |
 
 ### Detail Setiap Cron Job
 
@@ -1297,7 +1333,7 @@ Berikut adalah daftar lengkap cron job yang terpasang di server produksi:
 |---------|-------|
 | **Frekuensi** | **Sekali saja** — 1 Juli 2026 pukul 00:00 WIB |
 | **Script** | `/home/pajak/diamond-web/scripts/cleanup_pre_production.sh` |
-| **Fungsi** | Menghapus semua tiket `old_db=False` beserta relasinya. Hanya menyisakan tiket hasil sinkronisasi Oracle. |
+| **Fungsi** | **Phase 1:** Truncate data testing (BackupData, TandaTerimaData, DetilTandaTerima); hapus TiketAction selain action=301. **Phase 2:** Hapus tiket `old_db=False` beserta relasinya (TiketPIC, KirimPideTemp). Hanya menyisakan tiket hasil sinkronisasi Oracle. |
 | **Log output** | `/home/pajak/diamond-web/sync_logs/cleanup_pre_production_<timestamp>.log` |
 | **Lock file** | `/tmp/diamond_cleanup_pre_production.lock` |
 | **Safety check** | Hanya berjalan jika tanggal = `2026-07-01` (kecuali dengan flag `--dry-run`) |
@@ -1306,8 +1342,8 @@ Berikut adalah daftar lengkap cron job yang terpasang di server produksi:
 
 | Step | Aksi | Log |
 |------|------|-----|
-| 1/3 | Dry-run (estimasi data yang akan dihapus) | `cleanup_dryrun_<timestamp>.log` |
-| 2/3 | Eksekusi penghapusan (transaction atomic) | `cleanup_exec_<timestamp>.log` |
+| 1/3 | Dry-run (estimasi data testing + tiket old_db=False) | `cleanup_dryrun_<timestamp>.log` |
+| 2/3 | Eksekusi: Phase 1 (data testing) + Phase 2 (old_db=False) | `cleanup_exec_<timestamp>.log` |
 | 3/3 | Verifikasi (dry-run ulang untuk memastikan bersih) | `cleanup_verify_<timestamp>.log` |
 
 ---
@@ -1360,7 +1396,7 @@ chmod +x /home/pajak/diamond-web/scripts/*.sh
 |---------|-----------|------|
 | `sync_oracle_data` | Sinkronisasi data referensi dari Oracle | `--check-only` (dry) / normal (execute) |
 | `sync_tiket_data` | Sinkronisasi data tiket dari Oracle | `--check-only` (dry) / normal (execute) |
-| `cleanup_pre_production` | Hapus semua tiket `old_db=False` | `--dry-run` / normal (execute) |
+| `cleanup_pre_production` | Bersihkan data testing + hapus tiket `old_db=False` | `--dry-run` / `--skip-test-data` / normal (execute) |
 | `dbbackup` | Backup database (django-dbbackup) | `--compress`, `--database=default` |
 | `mediabackup` | Backup media files (django-dbbackup) | `--compress` |
 | `dbrestore` | Restore database dari backup | `-i <filename>` (spesifik) / tanpa flag (latest) |
@@ -1389,11 +1425,14 @@ SETIAP HARI (00:00)     │  Cron: db_backup_daily.sh
                         │
 H-7 BEFORE GO-LIVE      │  ./cleanup_pre_production.sh --dry-run
                         │  Backup database: python manage.py dbbackup --compress
-                        │  Review hasil dry-run dengan tim
+                        │  Review hasil dry-run dengan tim (cek data testing & tiket)
                         │
 1 JULI 2026 (00:00)     │  Cron: cleanup_pre_production.sh
                         │    ├─ Dry-run otomatis
-                        │    ├─ Eksekusi penghapusan atomic
+                        │    ├─ Phase 1: Truncate data testing
+                        │    │     (BackupData, TandaTerimaData, DetilTandaTerima,
+                        │    │      TiketAction selain action=301)
+                        │    ├─ Phase 2: Hapus tiket old_db=False
                         │    └─ Verifikasi akhir
                         │
 GO-LIVE                 │  Sistem siap produksi dengan data Oracle murni
@@ -1456,7 +1495,8 @@ tail -50 /home/pajak/diamond-web/sync_logs/daily_sync_*.log
 | `Lock file error: Sync already running` | Proses sebelumnya masih berjalan atau crash | Hapus lock file: `rm -f /tmp/diamond_oracle_sync.lock` |
 | `Backup gagal: disk penuh` | Kapasitas disk tidak mencukupi | Hapus backup lama: `find backups/ -name '*.dump' -mtime +30 -delete` |
 | `Cleanup tidak berjalan di tanggal yang salah` | Safety check mencegah eksekusi | Gunakan `--dry-run` untuk simulasi; tunggu tanggal yang benar |
-| `IntegrityError saat cleanup` | Ada relasi yang tidak terduga | Periksa manual data yang akan dihapus; pastikan urutan penghapusan benar |
+| `IntegrityError saat cleanup` | Ada relasi yang tidak terduga | Periksa manual data yang akan dihapus; pastikan urutan penghapusan benar: DetilTandaTerima → TandaTerimaData → BackupData → TiketAction (phase 1), lalu TiketPIC → TiketAction → KirimPideTemp → Tiket (phase 2) |
+| `Data testing tidak ikut terhapus` | Menggunakan `--skip-test-data` | Hapus flag `--skip-test-data` atau jalankan tanpa flag tersebut |
 
 ---
 
