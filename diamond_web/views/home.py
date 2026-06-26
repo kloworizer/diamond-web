@@ -108,7 +108,8 @@ def home(request):
                     ).values('id_periode_data', 'periode', 'tahun')
                     .annotate(max_penyampaian=Max('penyampaian'))
                     .values('max_penyampaian')[:1]
-                )
+                ),
+                status_tiket__gt=STATUS_DITELITI
             ).filter(~Q(id_status_penelitian=1) | Q(baris_cde__gt=0)).count(),
         }
         # Admin: Jenis Data ILAP without active P3DE PIC
@@ -313,7 +314,7 @@ def _build_tiket_base_qs(category, user):
                     .annotate(max_penyampaian=Max('penyampaian'))
                     .values('max_penyampaian')[:1]
                 )
-            ) & (~Q(id_status_penelitian=1) | Q(baris_cde__gt=0))
+            ) & (~Q(id_status_penelitian=1) | Q(baris_cde__gt=0)) & Q(status_tiket__gt=STATUS_DITELITI)
         ),
         # PIDE categories
         'belum_mulai_proses_identifikasi': (
