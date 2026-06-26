@@ -213,12 +213,26 @@ def tanda_terima_next_number(request):
 
     tahun = (tanggal or timezone.now()).year
 
-    # Get the max sequence for this year
+    from ..models.sequence_tanda_terima import SequenceTandaTerima
+
+    # Get the max sequence for this year from existing records
     max_seq = TandaTerimaData.objects.filter(tahun_terima=tahun).aggregate(
         max_nomor=models.Max('nomor_tanda_terima')
     )['max_nomor'] or 0
 
-    next_seq = max_seq + 1
+    if max_seq > 0:
+        # If there are existing records, continue from the max
+        next_seq = max_seq + 1
+    else:
+        # No existing records — check for SequenceTandaTerima config
+        seq_config = SequenceTandaTerima.objects.filter(tahun=tahun).first()
+        if seq_config:
+            # Use configured sequence: start from nomor_terakhir + 1
+            next_seq = seq_config.nomor_terakhir + 1
+        else:
+            # Fallback: start from 1
+            next_seq = 1
+
     nomor_tanda_terima = f"{str(next_seq).zfill(5)}.TTD/PJ.1031/{tahun}"
 
     return JsonResponse({

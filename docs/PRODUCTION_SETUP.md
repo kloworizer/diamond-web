@@ -1,6 +1,6 @@
 # Panduan Setup Produksi
 
-> **Terakhir Diperbarui:** June 23, 2026  
+> **Terakhir Diperbarui:** June 26, 2026  
 > **Target:** Deployment produksi aplikasi Diamond Web
 
 ---
@@ -19,6 +19,7 @@
 - [Konfigurasi Backup](#konfigurasi-backup)
 - [Logging & Monitoring](#logging--monitoring)
 - [Health Check & Keep-Alive](#health-check--keep-alive)
+- [Setup Sequence Tanda Terima](#setup-sequence-tanda-terima)
 - [Pemecahan Masalah](#pemecahan-masalah)
 
 ---
@@ -467,6 +468,53 @@ sudo systemctl restart diamond_web_gunicorn
 
 ---
 
+## Setup Sequence Tanda Terima
+
+Fitur ini memungkinkan administrator P3DE untuk mengatur awal nomor urut pembuatan **Tanda Terima** setiap tahun. Dengan ini, nomor awal Tanda Terima dapat disesuaikan (misalnya mulai dari 100), bukan selalu dari 1.
+
+### Cara Kerja
+
+1. **Default (tanpa konfigurasi):** Jika tidak ada data sequence untuk suatu tahun, maka nomor Tanda Terima pertama di tahun tersebut akan dimulai dari `1`.
+2. **Kustom:** Admin P3DE dapat mengisi **Nomor Terakhir** di halaman *Setup Sequence Tanda Terima*. Nomor Tanda Terima pertama di tahun tersebut akan menjadi `nomor_terakhir + 1`.
+   - Contoh: Jika `nomor_terakhir = 100`, maka nomor pertama adalah `101`.
+3. **Terkunci:** Data sequence tidak dapat diubah atau dihapus jika sudah ada Tanda Terima Data yang tercatat di tahun tersebut, untuk menjaga integritas data.
+
+### Format Nomor Tanda Terima
+
+```
+XXXXX.TTD/PJ.1031/YYYY
+```
+
+| Bagian | Keterangan | Contoh |
+|--------|------------|--------|
+| `XXXXX` | Nomor urut 5 digit (zero-padded) | `00101` |
+| `TTD` | Kode tetap Tanda Terima | `TTD` |
+| `PJ.1031` | Kode unit | `PJ.1031` |
+| `YYYY` | Tahun penerbitan | `2026` |
+
+**Contoh output:** `00101.TTD/PJ.1031/2026`
+
+### Administrasi
+
+- **Akses:** Menu *Admin P3DE* → *Setup Sequence Tanda Terima*
+- **URL:** `/sequence-tanda-terima/`
+- **Hak akses:** Hanya user dalam grup `admin` atau `admin_p3de`
+- **Tabel database:** `sequence_tanda_terima`
+
+### Melakukan Setup di Tahun Baru
+
+Ketika memasuki tahun baru (misalnya 2027), lakukan langkah berikut agar sequence berjalan dengan benar:
+
+1. Buka menu **Setup Sequence Tanda Terima**
+2. Klik **Tambah Sequence**
+3. Isi **Tahun** dengan tahun baru (contoh: `2027`)
+4. Isi **Nomor Terakhir** sesuai nomor terakhir yang tercatat dari tahun sebelumnya (atau biarkan 0 jika ingin mulai dari 1)
+5. Klik **Simpan**
+
+> **Catatan:** Jika sudah ada Tanda Terima Data yang tercatat di suatu tahun, data sequence untuk tahun tersebut otomatis terkunci dan tidak dapat diubah.
+
+---
+
 ## Pemecahan Masalah
 
 ### "502 Bad Gateway" from Nginx
@@ -499,3 +547,12 @@ sudo systemctl restart diamond_web_gunicorn
 sudo chown -R pajak:pajak /home/pajak/diamond-web/media
 sudo chmod -R 755 /home/pajak/diamond-web/media
 ```
+
+### "Sequence Tanda Terima tidak dapat diubah"
+- Data sequence untuk suatu tahun terkunci otomatis jika sudah ada Tanda Terima Data (`tanda_terima_data`) yang tercatat di tahun tersebut.
+- Solusi: Hapus atau batalkan Tanda Terima Data yang ada di tahun tersebut terlebih dahulu, baru kemudian edit sequence.
+
+### "Nomor Tanda Terima tidak sesuai dengan sequence yang diatur"
+- Pastikan data sequence untuk tahun yang dimaksud sudah benar di halaman *Setup Sequence Tanda Terima*.
+- Periksa apakah sudah ada Tanda Terima Data sebelumnya di tahun tersebut. Jika sudah ada, nomor akan melanjutkan dari nomor maksimum yang sudah ada, bukan dari sequence yang diatur.
+- Sequence hanya berlaku jika belum ada Tanda Terima Data sama sekali di tahun tersebut.

@@ -21,6 +21,7 @@ from .durasi_jatuh_tempo import DurasiJatuhTempo
 from .backup_data import BackupData
 from .tanda_terima_data import TandaTerimaData
 from .detil_tanda_terima import DetilTandaTerima
+from .sequence_tanda_terima import SequenceTandaTerima
 from .tiket import Tiket
 from .tiket_action import TiketAction
 from .tiket_pic import TiketPIC

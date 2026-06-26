@@ -171,6 +171,12 @@ urlpatterns = [
     path('docx-template/<int:pk>/update/', views.DocxTemplateUpdateView.as_view(), name='docx_template_update'),
     path('docx-template/<int:pk>/delete/', views.DocxTemplateDeleteView.as_view(), name='docx_template_delete'),
     path('docx-template/<int:pk>/download/', views.docx_template_download, name='docx_template_download'),
+    # Sequence Tanda Terima URLs
+    path('sequence-tanda-terima/', views.SequenceTandaTerimaListView.as_view(), name='sequence_tanda_terima_list'),
+    path('sequence-tanda-terima/data/', views.sequence_tanda_terima_data, name='sequence_tanda_terima_data'),
+    path('sequence-tanda-terima/create/', views.SequenceTandaTerimaCreateView.as_view(), name='sequence_tanda_terima_create'),
+    path('sequence-tanda-terima/<int:pk>/update/', views.SequenceTandaTerimaUpdateView.as_view(), name='sequence_tanda_terima_update'),
+    path('sequence-tanda-terima/<int:pk>/delete/', views.SequenceTandaTerimaDeleteView.as_view(), name='sequence_tanda_terima_delete'),
     # Register Penerimaan Data
     path('register-penerimaan-data/', views.LaporanRegisterPenerimaanView.as_view(), name='register_penerimaan_data'),
     path('register-penerimaan-data/data/', views.register_penerimaan_data, name='register_penerimaan_data_data'),
