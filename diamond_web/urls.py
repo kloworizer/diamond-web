@@ -43,6 +43,10 @@ urlpatterns = [
     path('sync-tiket/truncate/', views.sync_tiket_truncate, name='sync_tiket_truncate'),
     path('sync-tiket/download-errors/<str:sync_id>/', views.sync_tiket_download_errors, name='sync_tiket_download_errors'),
 
+    # Sync Log Status
+    path('sync-log-status/', views.sync_log_status, name='sync_log_status'),
+    path('sync-log-status/download/<str:filename>/', views.sync_log_download, name='sync_log_download'),
+
     # === Dashboard Section ===
     path('dashboard/', views.DashboardMonitoringView.as_view(), name='dashboard_monitoring'),
     # path('dashboard/', views.index, name='dashboard_index'),
