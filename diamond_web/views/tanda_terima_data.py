@@ -34,6 +34,20 @@ class TandaTerimaDataListView(LoginRequiredMixin, UserP3DERequiredMixin, Templat
     template_name = 'tanda_terima_data/list.html'
 
     def get(self, request, *args, **kwargs):
+        """Handle GET request and display success message after delete redirect.
+
+        Checks for `deleted` and `name` query parameters (URL-encoded) passed
+        from the delete view redirect. If present, decodes the name and
+        registers a success notification via Django messages framework.
+
+        Args:
+            request: The incoming HTTP request.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            HttpResponse: The rendered template response.
+        """
         deleted = request.GET.get('deleted')
         name = request.GET.get('name')
         if deleted and name:
@@ -199,12 +213,26 @@ def tanda_terima_next_number(request):
 
     tahun = (tanggal or timezone.now()).year
 
-    # Get the max sequence for this year
+    from ..models.sequence_tanda_terima import SequenceTandaTerima
+
+    # Get the max sequence for this year from existing records
     max_seq = TandaTerimaData.objects.filter(tahun_terima=tahun).aggregate(
         max_nomor=models.Max('nomor_tanda_terima')
     )['max_nomor'] or 0
 
-    next_seq = max_seq + 1
+    if max_seq > 0:
+        # If there are existing records, continue from the max
+        next_seq = max_seq + 1
+    else:
+        # No existing records — check for SequenceTandaTerima config
+        seq_config = SequenceTandaTerima.objects.filter(tahun=tahun).first()
+        if seq_config:
+            # Use configured sequence: start from nomor_terakhir + 1
+            next_seq = seq_config.nomor_terakhir + 1
+        else:
+            # Fallback: start from 1
+            next_seq = 1
+
     nomor_tanda_terima = f"{str(next_seq).zfill(5)}.TTD/PJ.1031/{tahun}"
 
     return JsonResponse({
@@ -292,6 +320,14 @@ def tanda_terima_tikets_by_ilap(request):
 
 
 class TandaTerimaDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxFormMixin, CreateView):
+    """Create view for `TandaTerimaData` with AJAX support and tiket selection.
+
+    Handles creation of a new Tanda Terima Data record, automatically setting
+    the logged-in user as the recorder (`id_perekam`), extracting the sequence
+    number from the formatted number string, and creating `DetilTandaTerima`
+    entries for each selected tiket. Also updates tiket status and records
+    `TiketAction` entries for each linked tiket.
+    """
     model = TandaTerimaData
     form_class = TandaTerimaDataForm
     template_name = 'tanda_terima_data/form.html'
@@ -299,21 +335,61 @@ class TandaTerimaDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxF
     success_message = 'Tanda Terima Data "{object}" berhasil dibuat.'
 
     def get_context_data(self, **kwargs):
+        """Add form action URL to the template context.
+
+        Args:
+            **kwargs: Additional keyword arguments passed to the parent.
+
+        Returns:
+            dict: Template context dictionary with 'form_action' key.
+        """
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('tanda_terima_data_create')
         return context
 
     def get_form_kwargs(self):
+        """Pass the current user to the form class.
+
+        Returns:
+            dict: Keyword arguments for form instantiation including the
+                  authenticated user.
+        """
         kwargs = super().get_form_kwargs()
         kwargs['user'] = self.request.user
         return kwargs
 
     def get(self, request, *args, **kwargs):
+        """Handle GET request and render the creation form.
+
+        Initializes the object to ``None`` and renders the form via the
+        AJAX-capable mixin.
+
+        Args:
+            request: The incoming HTTP request.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            HttpResponse: The rendered form response.
+        """
         self.object = None
         form = self.get_form()
         return self.render_form_response(form)
 
     def form_valid(self, form):
+        """Process valid form submission and create related records.
+
+        Sets the logged-in user as ``id_perekam``, extracts the sequence
+        number from the formatted nomor string, saves the form, creates
+        `DetilTandaTerima` entries for each selected tiket, updates tiket
+        status flags, and records `TiketAction` entries.
+
+        Args:
+            form: The validated `TandaTerimaDataForm` instance.
+
+        Returns:
+            HttpResponse: Redirect response or AJAX JSON response.
+        """
         # Set the logged-in user as id_perekam and tahun from tanggal_tanda_terima
         form.instance.id_perekam = self.request.user
         form.instance.tahun_terima = form.instance.tanggal_tanda_terima.year
@@ -375,6 +451,12 @@ class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMix
     success_message = 'Tanda Terima Data "{object}" berhasil dibuat.'
 
     def get_success_url(self):
+        """Return the redirect URL to the originating tiket detail page.
+
+        Returns:
+            str: URL string for the tiket detail view using ``tiket_pk`` from
+                 URL kwargs.
+        """
         return reverse('tiket_detail', kwargs={'pk': self.kwargs['tiket_pk']})
     
     def test_func(self):
@@ -394,12 +476,25 @@ class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMix
             return False
 
     def get_form_kwargs(self):
+        """Pass the current user and tiket primary key to the form class.
+
+        Returns:
+            dict: Keyword arguments including ``tiket_pk`` and ``user``.
+        """
         kwargs = super().get_form_kwargs()
         kwargs['tiket_pk'] = self.kwargs.get('tiket_pk')
         kwargs['user'] = self.request.user
         return kwargs
 
     def get_context_data(self, **kwargs):
+        """Add form action URL and originating tiket to the template context.
+
+        Args:
+            **kwargs: Additional keyword arguments passed to the parent.
+
+        Returns:
+            dict: Template context with ``form_action`` and ``tiket`` keys.
+        """
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('tanda_terima_data_from_tiket_create', args=[self.kwargs['tiket_pk']])
         from ..models.tiket import Tiket
@@ -407,11 +502,38 @@ class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMix
         return context
 
     def get(self, request, *args, **kwargs):
+        """Handle GET request and render the creation form for a specific tiket.
+
+        Initializes the object to ``None`` and renders the form via the
+        AJAX-capable mixin.
+
+        Args:
+            request: The incoming HTTP request.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            HttpResponse: The rendered form response.
+        """
         self.object = None
         form = self.get_form()
         return self.render_form_response(form)
 
     def form_valid(self, form):
+        """Process valid form submission for single-tiket creation flow.
+
+        Sets the logged-in user as ``id_perekam``, extracts the sequence
+        number, sets the ILAP from the associated tiket, saves the form,
+        creates a `DetilTandaTerima` entry, updates tiket status, records
+        a `TiketAction`, and returns either an AJAX JSON response or an
+        HTTP redirect back to the tiket detail page.
+
+        Args:
+            form: The validated `TandaTerimaDataForm` instance.
+
+        Returns:
+            JsonResponse or HttpResponseRedirect: AJAX or redirect response.
+        """
         from ..models.tiket import Tiket
         
         # Set the logged-in user as id_perekam and tahun from tanggal_tanda_terima
@@ -470,6 +592,13 @@ class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMix
 
 
 class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, AjaxFormMixin, UpdateView):
+    """Update view for `TandaTerimaData` with AJAX support and tiket management.
+
+    Handles editing an existing Tanda Terima Data record, allowing
+    modification of tiket selections. Updates tiket status flags and records
+    `TiketAction` entries for newly added tikets. Prevents editing if the
+    tanda terima or any of its tikets have been cancelled.
+    """
     model = TandaTerimaData
     form_class = TandaTerimaDataForm
     template_name = 'tanda_terima_data/form.html'
@@ -487,17 +616,46 @@ class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, Activ
         ).exists()
 
     def get_form_kwargs(self):
+        """Pass the current user to the form class for update flow.
+
+        Returns:
+            dict: Keyword arguments for form instantiation including the
+                  authenticated user.
+        """
         kwargs = super().get_form_kwargs()
         kwargs['user'] = self.request.user
         return kwargs
 
     def get_context_data(self, **kwargs):
+        """Add form action URL and tanda terima ID to template context.
+
+        Args:
+            **kwargs: Additional keyword arguments passed to the parent.
+
+        Returns:
+            dict: Template context with ``form_action`` and
+                  ``tanda_terima_id`` keys.
+        """
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('tanda_terima_data_update', args=[self.object.pk])
         context['tanda_terima_id'] = self.object.pk  # Pass ID for edit mode
         return context
 
     def get(self, request, *args, **kwargs):
+        """Handle GET request and render the edit form with validation.
+
+        Checks if the tanda terima is active and whether any linked tiket
+        has progressed beyond the allowed editing stage. If editing is not
+        allowed, returns an error JSON response.
+
+        Args:
+            request: The incoming HTTP request.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            JsonResponse or HttpResponse: Error response or rendered form.
+        """
         self.object = self.get_object()
         # Prevent edit if any tiket in this tanda terima is dibatalkan
         if not self.object.active or self.object.detil_items.filter(id_tiket__status_tiket__gte=STATUS_DIKIRIM_KE_PIDE).exists():
@@ -506,6 +664,18 @@ class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, Activ
         return self.render_form_response(form)
     
     def form_valid(self, form):
+        """Process valid form submission for updating tanda terima data.
+
+        Saves the form, reconciles tiket selections by removing unselected
+        tikets and adding newly selected ones, updates tiket status flags,
+        and records `TiketAction` entries for newly added tikets.
+
+        Args:
+            form: The validated `TandaTerimaDataForm` instance.
+
+        Returns:
+            JsonResponse or HttpResponseRedirect: AJAX or redirect response.
+        """
         # Save the form first (this is done by the parent UpdateView)
         self.object = form.save()
         
@@ -581,6 +751,13 @@ class TandaTerimaDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, Activ
 
 
 class TandaTerimaDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, DeleteView):
+    """Delete (soft-cancel) view for `TandaTerimaData` with permission checks.
+
+    Performs a soft delete by setting ``active=False`` on the tanda terima
+    record. Also updates all linked tikets by clearing their ``tanda_terima``
+    flag, resetting their status to ``STATUS_DIREKAM``, and recording
+    `TiketAction` entries for the cancellation.
+    """
     model = TandaTerimaData
     template_name = 'tanda_terima_data/confirm_delete.html'
     success_url = reverse_lazy('tanda_terima_data_list')
@@ -596,11 +773,32 @@ class TandaTerimaDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, UserP3DEReq
         ).exists()
 
     def get_context_data(self, **kwargs):
+        """Add delete form action URL to the template context.
+
+        Args:
+            **kwargs: Additional keyword arguments passed to the parent.
+
+        Returns:
+            dict: Template context with ``form_action`` key.
+        """
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('tanda_terima_data_delete', args=[self.object.pk])
         return context
 
     def get(self, request, *args, **kwargs):
+        """Handle GET request and render the delete confirmation dialog.
+
+        Supports AJAX requests by rendering the template to an HTML string
+        and returning it as a JSON response.
+
+        Args:
+            request: The incoming HTTP request.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            JsonResponse or HttpResponse: AJAX HTML string or full page.
+        """
         self.object = self.get_object()
         if request.GET.get('ajax'):
             from django.template.loader import render_to_string
@@ -609,6 +807,20 @@ class TandaTerimaDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, UserP3DEReq
         return self.render_to_response(self.get_context_data())
 
     def delete(self, request, *args, **kwargs):
+        """Perform soft-delete (cancel) of the tanda terima record.
+
+        Sets ``active=False`` on the tanda terima, clears the ``tanda_terima``
+        flag and resets status to ``STATUS_DIREKAM`` on all linked tikets,
+        and records `TiketAction` entries for the cancellation.
+
+        Args:
+            request: The incoming HTTP request.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            JsonResponse: JSON response with success status and redirect URL.
+        """
         from django.utils import timezone
         self.object = self.get_object()
         name = str(self.object)
@@ -640,6 +852,16 @@ class TandaTerimaDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, UserP3DEReq
         return JsonResponse({'success': True, 'redirect': self.success_url})
 
     def post(self, request, *args, **kwargs):
+        """Handle POST request by delegating to the delete method.
+
+        Args:
+            request: The incoming HTTP request.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            JsonResponse: Result from the delete method.
+        """
         return self.delete(request, *args, **kwargs)
 
 
@@ -659,6 +881,14 @@ class TandaTerimaDataViewOnly(LoginRequiredMixin, ActiveTiketP3DERequiredForEdit
         ).exists()
 
     def get_context_data(self, **kwargs):
+        """Add related detil items (tikets) to the template context.
+
+        Args:
+            **kwargs: Additional keyword arguments passed to the parent.
+
+        Returns:
+            dict: Template context with ``detil_items`` queryset key.
+        """
         context = super().get_context_data(**kwargs)
         context['detil_items'] = DetilTandaTerima.objects.filter(id_tanda_terima=self.object).select_related('id_tiket')
         return context

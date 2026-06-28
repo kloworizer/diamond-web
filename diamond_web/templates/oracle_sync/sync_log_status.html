@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Status Sinkronisasi{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+            <h5 class="m-b-10">
+                <i class="feather-clock me-2"></i>Status Sinkronisasi
+            </h5>
+        </div>
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="javascript:void(0);">Admin</a></li>
+            <li class="breadcrumb-item active">Status Sinkronisasi</li>
+        </ul>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="card stretch stretch-full">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <h5 class="card-title mb-0">Riwayat Sinkronisasi Terakhir</h5>
+            <button type="button" class="btn btn-sm btn-light" onclick="location.reload();">
+                <i class="feather-refresh-cw me-1"></i>Refresh
+            </button>
+        </div>
+        <div class="card-body">
+            {% if latest_logs %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 30%;">Tipe Sinkronisasi</th>
+                            <th style="width: 25%;">Terakhir Dijalankan</th>
+                            <th style="width: 15%;">Ukuran File</th>
+                            <th style="width: 30%;">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in latest_logs %}
+                        <tr>
+                            <td>
+                                <strong>{{ log.sync_type_display }}</strong>
+                            </td>
+                            <td>
+                                {% if log.timestamp %}
+                                <span class="text-nowrap">{{ log.timestamp|date:"d/m/Y H:i:s" }}</span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.file_size < 1024 %}
+                                    {{ log.file_size }} B
+                                {% elif log.file_size < 1048576 %}
+                                    {{ log.file_size|filesizeformat }}
+                                {% else %}
+                                    {{ log.file_size|filesizeformat }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'sync_log_download' filename=log.filename %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="feather-download me-1"></i>Download Log
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <img src="{% static 'assets/images/no-notification.png' %}" alt="Tidak ada log" class="img-fluid mb-3" style="max-width: 120px;" />
+                <p class="text-muted mb-0">Belum ada log sinkronisasi yang tersedia.</p>
+                <small class="text-muted">Log sinkronisasi akan muncul setelah proses sinkronisasi dijalankan.</small>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

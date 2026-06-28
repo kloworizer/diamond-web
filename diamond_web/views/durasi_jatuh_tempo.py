@@ -188,14 +188,14 @@ def durasi_jatuh_tempo_pide_data(request):
     GET parameters:
     - draw: DataTables draw counter.
     - start, length: paging offset and page size.
-    - columns_search[]: column-specific search values (sub_jenis_data, durasi, start_date, end_date).
+    - columns_search[]: column-specific search values (id_sub_jenis_data, nama_sub_jenis_data, durasi, start_date, end_date).
     - order[0][column], order[0][dir]: ordering index and direction.
 
     Behavior:
     - Filters queryset to `seksi__name='user_pide'` and uses
         `select_related('id_sub_jenis_data', 'seksi')` for efficiency.
     - Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data`.
-    - Each data row contains: `sub_jenis_data`, `durasi`, `start_date`, `end_date`, and `actions`.
+    - Each data row contains: `id_sub_jenis_data`, `nama_sub_jenis_data`, `durasi`, `start_date`, `end_date`, and `actions`.
 
     Side effects: None — read-only endpoint.
     """
@@ -209,21 +209,23 @@ def durasi_jatuh_tempo_pide_data(request):
     # Column-specific filtering
     columns_search = request.GET.getlist('columns_search[]')
     if columns_search:
-        if columns_search[0]:
-            qs = qs.filter(id_sub_jenis_data__nama_sub_jenis_data__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:
-            qs = qs.filter(durasi__icontains=columns_search[1])
-        if len(columns_search) > 2 and columns_search[2]:
-            qs = qs.filter(start_date__icontains=columns_search[2])
-        if len(columns_search) > 3 and columns_search[3]:
-            qs = qs.filter(end_date__icontains=columns_search[3])
+        if columns_search[0]:  # ID Sub Jenis Data
+            qs = qs.filter(id_sub_jenis_data__id_sub_jenis_data__icontains=columns_search[0])
+        if len(columns_search) > 1 and columns_search[1]:  # Nama Sub Jenis Data
+            qs = qs.filter(id_sub_jenis_data__nama_sub_jenis_data__icontains=columns_search[1])
+        if len(columns_search) > 2 and columns_search[2]:  # Durasi
+            qs = qs.filter(durasi__icontains=columns_search[2])
+        if len(columns_search) > 3 and columns_search[3]:  # Start Date
+            qs = qs.filter(start_date__icontains=columns_search[3])
+        if len(columns_search) > 4 and columns_search[4]:  # End Date
+            qs = qs.filter(end_date__icontains=columns_search[4])
 
     records_filtered = qs.count()
 
     # ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id_sub_jenis_data__nama_sub_jenis_data', 'durasi', 'start_date', 'end_date']
+    columns = ['id_sub_jenis_data__id_sub_jenis_data', 'id_sub_jenis_data__nama_sub_jenis_data', 'durasi', 'start_date', 'end_date']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -241,7 +243,8 @@ def durasi_jatuh_tempo_pide_data(request):
     data = []
     for obj in qs_page:
         data.append({
-            'sub_jenis_data': str(obj.id_sub_jenis_data),
+            'id_sub_jenis_data': obj.id_sub_jenis_data.id_sub_jenis_data,
+            'nama_sub_jenis_data': obj.id_sub_jenis_data.nama_sub_jenis_data,
             'durasi': obj.durasi,
             'start_date': obj.start_date.strftime('%Y-%m-%d') if obj.start_date else '',
             'end_date': obj.end_date.strftime('%Y-%m-%d') if obj.end_date else '',
@@ -417,14 +420,14 @@ def durasi_jatuh_tempo_pmde_data(request):
     GET parameters:
     - draw: DataTables draw counter.
     - start, length: paging offset and page size.
-    - columns_search[]: column-specific search values (sub_jenis_data, durasi, start_date, end_date).
+    - columns_search[]: column-specific search values (id_sub_jenis_data, nama_sub_jenis_data, durasi, start_date, end_date).
     - order[0][column], order[0][dir]: ordering index and direction.
 
     Behavior:
     - Filters queryset to `seksi__name='user_pmde'` and uses
         `select_related('id_sub_jenis_data', 'seksi')` for efficiency.
     - Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data`.
-    - Each data row contains: `sub_jenis_data`, `durasi`, `start_date`, `end_date`, and `actions`.
+    - Each data row contains: `id_sub_jenis_data`, `nama_sub_jenis_data`, `durasi`, `start_date`, `end_date`, and `actions`.
 
     Side effects: None — read-only endpoint.
     """
@@ -438,21 +441,23 @@ def durasi_jatuh_tempo_pmde_data(request):
     # Column-specific filtering
     columns_search = request.GET.getlist('columns_search[]')
     if columns_search:
-        if columns_search[0]:
-            qs = qs.filter(id_sub_jenis_data__nama_sub_jenis_data__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:
-            qs = qs.filter(durasi__icontains=columns_search[1])
-        if len(columns_search) > 2 and columns_search[2]:
-            qs = qs.filter(start_date__icontains=columns_search[2])
-        if len(columns_search) > 3 and columns_search[3]:
-            qs = qs.filter(end_date__icontains=columns_search[3])
+        if columns_search[0]:  # ID Sub Jenis Data
+            qs = qs.filter(id_sub_jenis_data__id_sub_jenis_data__icontains=columns_search[0])
+        if len(columns_search) > 1 and columns_search[1]:  # Nama Sub Jenis Data
+            qs = qs.filter(id_sub_jenis_data__nama_sub_jenis_data__icontains=columns_search[1])
+        if len(columns_search) > 2 and columns_search[2]:  # Durasi
+            qs = qs.filter(durasi__icontains=columns_search[2])
+        if len(columns_search) > 3 and columns_search[3]:  # Start Date
+            qs = qs.filter(start_date__icontains=columns_search[3])
+        if len(columns_search) > 4 and columns_search[4]:  # End Date
+            qs = qs.filter(end_date__icontains=columns_search[4])
 
     records_filtered = qs.count()
 
     # ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id_sub_jenis_data__nama_sub_jenis_data', 'durasi', 'start_date', 'end_date']
+    columns = ['id_sub_jenis_data__id_sub_jenis_data', 'id_sub_jenis_data__nama_sub_jenis_data', 'durasi', 'start_date', 'end_date']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -470,7 +475,8 @@ def durasi_jatuh_tempo_pmde_data(request):
     data = []
     for obj in qs_page:
         data.append({
-            'sub_jenis_data': str(obj.id_sub_jenis_data),
+            'id_sub_jenis_data': obj.id_sub_jenis_data.id_sub_jenis_data,
+            'nama_sub_jenis_data': obj.id_sub_jenis_data.nama_sub_jenis_data,
             'durasi': obj.durasi,
             'start_date': obj.start_date.strftime('%Y-%m-%d') if obj.start_date else '',
             'end_date': obj.end_date.strftime('%Y-%m-%d') if obj.end_date else '',

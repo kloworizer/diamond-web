@@ -1,14 +1,17 @@
 {% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Profil - Diamond Web{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div class="page-header-left d-flex align-items-center">
         <div class="page-header-title">
-            <h5 class="m-b-10"><i class="feather-check-circle me-2"></i>Password Changed</h5>
+            <h5 class="m-b-10"><i class="feather-user me-2"></i>Profil</h5>
         </div>
         <ul class="breadcrumb">
             <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-            <li class="breadcrumb-item active">Password Changed</li>
+            <li class="breadcrumb-item active">Profil</li>
         </ul>
     </div>
     <div class="page-header-right ms-auto d-flex d-lg-none">
@@ -21,16 +24,16 @@
 <div class="main-content">
     <div class="card stretch stretch-full h-100">
         <div class="card-header">
-            <h5 class="card-title mb-0"><i class="feather-check me-2"></i>Success</h5>
+            <h5 class="card-title mb-0"><i class="feather-edit me-2"></i>Update Profil & Password</h5>
         </div>
         <div class="card-body">
-            <div class="alert alert-success" role="alert">
-                <h5 class="alert-heading">Ubah Password Sukses!</h5>
-                <p class="mb-0">Password sudah di-update. Sekarang Anda bisa menggunakan password baru untuk masuk.</p>
-            </div>
-            <div class="mt-3">
-                <a href="{% url 'home' %}" class="btn btn-primary">Kembali ke Home</a>
-            </div>
+            <form method="post">
+                {% csrf_token %}
+                {{ form|crispy }}
+                <div class="d-grid gap-2 mt-3">
+                    <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

@@ -34,32 +34,62 @@ _TIKET_ORACLE_SQL = """
     SELECT
     DISTINCT
     CASE 
-        WHEN LENGTH(id_tiket) = 16 and substr(id_tiket,1,1) = 'E' THEN SUBSTR(id_tiket, 1, 1) || 'I' || SUBSTR(id_tiket, 2)
-        ELSE id_tiket END id_tiket,
+        WHEN LENGTH(id_tiket) = 16 AND SUBSTR(id_tiket,1,1) = 'E' THEN SUBSTR(id_tiket, 1, 1) || 'I' || SUBSTR(id_tiket, 2)
+        ELSE id_tiket 
+    END id_tiket,
     1 old_db,
     CASE
+        -- 1. Check if the ticket is already 'Selesai' (Status 8)
         WHEN status_tiket IN ('[SELESAI]-Sudah QC', '[SELESAI]-Tidak di QC', '[SELESAI]-Tiket 0 Row') THEN 8
+        -- 2. Override to 7 ONLY if it falls into the 'Tidak Lengkap' criteria
+        WHEN NOT (COALESCE(JML_ROW_P3DE, 0) = COALESCE(JML_DATA_TELITI, 0) AND COALESCE(JML_DATA_TELITI, 0) <> 0) -- Not Lengkap
+         AND NOT (COALESCE(JML_ROW_P3DE, 0) > COALESCE(JML_DATA_TELITI, 0) AND COALESCE(JML_DATA_TELITI, 0) <> 0) -- Not Lengkap Sebagian
+         AND JML_DATA_TELITI IS NOT NULL
+        THEN 7
+        -- 3. Otherwise, fall back to standard status mappings (Lengkap & Lengkap Sebagian end up here)
         WHEN status_tiket IN ('[P3DE]-Close Tiket', '[PIDE]-Close Tiket') THEN 7
         WHEN status_tiket IN ('[PMDE]-Proses QC') THEN 6
-        WHEN status_tiket IN ('[PIDE]-Proses Identifikasi') THEN 5
+        WHEN status_tiket IN ('[PIDE]-Proses Identifikasi') AND c.tgl_tiket IS NOT NULL THEN 5
+        WHEN status_tiket IN ('[PIDE]-Proses Identifikasi') AND c.tgl_tiket IS NULL THEN 4
         WHEN status_tiket IN ('[P3DE]-Proses Nadine') THEN 2
         WHEN status_tiket IN ('[P3DE]-Proses Penelitian') THEN 1
         ELSE 1
     END status_tiket,
     CASE 
-    	WHEN PERIODE_PENGIRIMAN IS NULL AND periode_data LIKE '%ahun' THEN 'Tahunan' 
-    	WHEN PERIODE_PENGIRIMAN IS NULL AND periode_data NOT LIKE '%ahun' THEN 'Bulanan'
-    	ELSE PERIODE_PENGIRIMAN
-    	END periode_penerimaan,
-    substr(id_tiket, 1, 9) || '_20' || substr(id_tiket, 10, 2) jenis_prioritas_data,
-    COALESCE(periode_data, 'tahun') periode_data,
-    COALESCE(tahun_data, EXTRACT(YEAR FROM SYSDATE)) tahun_data,
-    1 penyampaian,
-    '-' nomor_surat_pengantar,
-    COALESCE(TGL_TERIMA, SYSDATE) tanggal_surat_pengantar,
-    '-' nama_pengirim,
-    'Softcopy' bentuk_data,
-    'Online' cara_penyampaian,
+        WHEN PERIODE_PENGIRIMAN IS NULL AND periode_data LIKE '%ahun' THEN 'Tahunan' 
+        WHEN PERIODE_PENGIRIMAN IS NULL AND periode_data NOT LIKE '%ahun' THEN 'Bulanan'
+        ELSE PERIODE_PENGIRIMAN
+    END periode_penerimaan,
+    SUBSTR(id_tiket, 1, 9) || '_20' || SUBSTR(id_tiket, 10, 2) jenis_prioritas_data,
+    COALESCE(periode_data, 'Tahun') periode_data,
+    COALESCE(tahun_data, 2099) tahun_data,
+    ROW_NUMBER() OVER (
+        PARTITION BY
+            CASE
+                WHEN LENGTH(id_tiket) = 16 AND SUBSTR(id_tiket,1,1) = 'E' THEN SUBSTR(id_tiket, 1, 1) || 'I' || SUBSTR(id_tiket, 2)
+                ELSE id_tiket
+            END,
+            COALESCE(periode_data, 'Tahun'),
+            COALESCE(tahun_data, 2099)
+        ORDER BY TGL_TERIMA ASC
+    ) penyampaian,
+    COALESCE(NO_SURATPENGANTAR, '-') nomor_surat_pengantar,
+    COALESCE(
+        TGL_SURATPENGANTAR,
+        TGL_TERIMA,
+        CASE
+            WHEN LENGTH(id_tiket) = 16 AND SUBSTR(id_tiket,1,1) = 'E'
+             AND SUBSTR(id_tiket, 12, 2) BETWEEN '01' AND '12'
+             AND SUBSTR(id_tiket, 14, 2) BETWEEN '01' AND '31'
+            THEN TO_DATE(SUBSTR(SUBSTR(id_tiket, 1, 1) || 'I' || SUBSTR(id_tiket, 2), 11, 6), 'YYMMDD')
+            WHEN SUBSTR(id_tiket, 12, 2) BETWEEN '01' AND '12'
+             AND SUBSTR(id_tiket, 14, 2) BETWEEN '01' AND '31'
+            THEN TO_DATE(SUBSTR(id_tiket, 10, 6), 'YYMMDD')
+        END
+    ) tanggal_surat_pengantar,
+    COALESCE(nama_pengirim, '-') nama_pengirim,
+    BENTUK_DATA,
+    CARA_PENYAMPAIAN,
     CASE
         WHEN status_tiket IN ('[SELESAI]-Tiket 0 Row') THEN 0
         ELSE 1
@@ -68,11 +98,23 @@ _TIKET_ORACLE_SQL = """
     COALESCE(JML_ROW_P3DE, 0) baris_diterima,
     1 satuan_data,
     NULL tgl_terima_vertikal,
-    COALESCE(TGL_TERIMA, SYSDATE) tgl_terima_dip,
+    COALESCE(
+        TGL_TERIMA,
+        CASE
+            WHEN LENGTH(id_tiket) = 16 AND SUBSTR(id_tiket,1,1) = 'E'
+             AND SUBSTR(id_tiket, 12, 2) BETWEEN '01' AND '12'
+             AND SUBSTR(id_tiket, 14, 2) BETWEEN '01' AND '31'
+            THEN TO_DATE(SUBSTR(SUBSTR(id_tiket, 1, 1) || 'I' || SUBSTR(id_tiket, 2), 11, 6), 'YYMMDD')
+            WHEN SUBSTR(id_tiket, 12, 2) BETWEEN '01' AND '12'
+             AND SUBSTR(id_tiket, 14, 2) BETWEEN '01' AND '31'
+            THEN TO_DATE(SUBSTR(id_tiket, 10, 6), 'YYMMDD')
+        END
+    ) tgl_terima_dip,
     0 backup,
     0 tanda_terima,
     CASE
-        WHEN COALESCE(JML_ROW_P3DE, 0) - COALESCE(JML_DATA_TELITI, 0) = 0 THEN 'Lengkap'
+        WHEN COALESCE(JML_ROW_P3DE, 0) = COALESCE(JML_DATA_TELITI, 0) AND COALESCE(JML_DATA_TELITI, 0) <> 0 THEN 'Lengkap'
+        WHEN COALESCE(JML_ROW_P3DE, 0) > COALESCE(JML_DATA_TELITI, 0) AND COALESCE(JML_DATA_TELITI, 0) <> 0 THEN 'Lengkap Sebagian'
         ELSE 'Tidak Lengkap'
     END status_penelitian,
     TGL_TELITI,
@@ -81,7 +123,7 @@ _TIKET_ORACLE_SQL = """
     TGL_NADINE,
     NO_NADINE,
     TGL_NADINE tgl_kirim_pide,
-    NULL tgl_rekam_pide,
+    c.tgl_tiket tgl_rekam_pide,
     NULL id_durasi_jatuh_tempo_pide,
     COALESCE(b.JML_LOG, 0) baris_i,
     COALESCE(b.JML_LOG_U, 0) baris_u,
@@ -107,46 +149,68 @@ _TIKET_ORACLE_SQL = """
     COALESCE(b.QC_E, 0) QC_E,
     COALESCE(b.QC_V, 0) QC_V,
     COALESCE(b.QC_R, 0) QC_R,
-    COALESCE(b.QC_D, 0) QC_D
+    COALESCE(b.QC_D, 0) QC_D,
+    c.tgl_tiket
     FROM
         PVPTD.ZA_DDE_TABEL_FACT a
     LEFT JOIN (
         SELECT
             no_tiket,
-            min(tgl_transfer) tgl_transfer,
-            max(tgl_rematch) tgl_rematch,
-            sum(JML_LOG) JML_LOG,
-            sum(JML_LOG_U) JML_LOG_U,
-            sum(JML_RES) JML_RES,
-            sum(JML_CDE) JML_CDE,
-            sum(SUDAH_QC) SUDAH_QC,
-            sum(belum_qc) belum_qc,
-            sum(lolos_qc) lolos_qc,
-            sum(TIDAK_LOLOS_QC) TIDAK_LOLOS_QC,
-            sum(QC_P) QC_P,
-            sum(QC_X) QC_X,
-            sum(QC_W) QC_W,
-            sum(QC_F) QC_F,
-            sum(QC_A) QC_A,
-            sum(QC_C) QC_C,
-            sum(QC_N) QC_N,
-            sum(QC_Y) QC_Y,
-            sum(QC_Z) QC_Z,
-            sum(QC_U) QC_U,
-            sum(QC_E) QC_E,
-            sum(QC_V) QC_V,
-            sum(QC_R) QC_R,
-            sum(QC_D) QC_D
+            MIN(tgl_transfer) tgl_transfer,
+            MAX(tgl_rematch) tgl_rematch,
+            SUM(JML_LOG) JML_LOG,
+            SUM(JML_LOG_U) JML_LOG_U,
+            SUM(JML_RES) JML_RES,
+            SUM(JML_CDE) JML_CDE,
+            SUM(SUDAH_QC) SUDAH_QC,
+            SUM(belum_qc) belum_qc,
+            SUM(lolos_qc) lolos_qc,
+            SUM(TIDAK_LOLOS_QC) TIDAK_LOLOS_QC,
+            SUM(QC_P) QC_P,
+            SUM(QC_X) QC_X,
+            SUM(QC_W) QC_W,
+            SUM(QC_F) QC_F,
+            SUM(QC_A) QC_A,
+            SUM(QC_C) QC_C,
+            SUM(QC_N) QC_N,
+            SUM(QC_Y) QC_Y,
+            SUM(QC_Z) QC_Z,
+            SUM(QC_U) QC_U,
+            SUM(QC_E) QC_E,
+            SUM(QC_V) QC_V,
+            SUM(QC_R) QC_R,
+            SUM(QC_D) QC_D
         FROM
             PVPTD.ZA_REKAP_TARIKAN
         GROUP BY
             no_tiket
     ) b ON a.ID_TIKET = b.NO_TIKET
+    LEFT JOIN 
+    (select no_tiket, tgl_tiket from pvptd.za_rekap_tiket) c ON a.ID_TIKET = c.NO_TIKET
+    LEFT JOIN 
+    (SELECT ID_TIKET ID_TIKET_D, NO_SURATPENGANTAR, TGL_SURATPENGANTAR, NAMA_PENGIRIM, BENTUK_DATA, CARA_PENYAMPAIAN FROM PROD.APP_PENERIMAANBACKUP) d
+    ON a.ID_TIKET = d.ID_TIKET_D
 """
 
 
 def retry_on_db_lock(max_retries=5, initial_delay=0.1, backoff_factor=2.0):
-    """Decorator to retry database operations on lock with exponential backoff."""
+    """Decorator to retry database operations on lock with exponential backoff.
+
+    Args:
+        max_retries: Maximum number of retry attempts before giving up.
+            Defaults to 5.
+        initial_delay: Initial delay in seconds before the first retry.
+            Defaults to 0.1.
+        backoff_factor: Multiplier applied to the delay after each retry.
+            Defaults to 2.0.
+
+    Returns:
+        A decorator that wraps the target function with retry logic.
+
+    Side Effects:
+        Logs debug messages on each retry attempt and a warning when
+        all retries are exhausted.
+    """
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -183,6 +247,15 @@ logger = logging.getLogger(__name__)
 
 
 def _is_admin_user(user):
+    """Check if the given user is an admin user.
+
+    Args:
+        user: The Django User instance to check.
+
+    Returns:
+        True if the user is authenticated and is either a superuser
+        or belongs to the 'admin' group. False otherwise.
+    """
     if not user or not user.is_authenticated:
         return False
     if user.is_superuser:
@@ -191,10 +264,21 @@ def _is_admin_user(user):
 
 
 class SyncTimeoutError(Exception):
+    """Custom exception raised when a sync operation exceeds the timeout limit."""
     pass
 
 
 def timeout_handler(signum, frame):
+    """Signal handler for sync timeout.
+
+    Args:
+        signum: The signal number received.
+        frame: The current stack frame at the time of the signal.
+
+    Raises:
+        SyncTimeoutError: Always raised to indicate the sync has timed out
+            (more than 5 minutes).
+    """
     raise SyncTimeoutError('Sinkronisasi timeout (> 5 menit)')
 
 
@@ -202,6 +286,14 @@ def timeout_handler(signum, frame):
 @user_passes_test(_is_admin_user)
 @require_GET
 def sync_tiket_page(request):
+    """Render the Oracle tiket sync page.
+
+    Args:
+        request: The incoming HTTP request.
+
+    Returns:
+        HttpResponse with the rendered 'oracle_sync/tiket.html' template.
+    """
     return render(request, 'oracle_sync/tiket.html')
 
 
@@ -209,6 +301,19 @@ def sync_tiket_page(request):
 @user_passes_test(_is_admin_user)
 @require_POST
 def sync_tiket_test_connection(request):
+    """Test Oracle database connections (primary and optional secondary).
+
+    Args:
+        request: The incoming HTTP request (must be POST).
+
+    Returns:
+        JsonResponse with success status and connection status messages
+        for both primary and secondary Oracle connections.
+
+    Raises:
+        400: If Oracle configuration is invalid (OracleSyncConfigError).
+        500: If connection to Oracle server fails unexpectedly.
+    """
     try:
         service = OracleDataSyncService()
         with service._connect_oracle("primary") as conn:
@@ -254,6 +359,23 @@ def sync_tiket_test_connection(request):
 @require_POST
 @never_cache
 def sync_tiket_check(request):
+    """Start a tiket data check operation (dry-run comparing Oracle vs local DB).
+
+    Dispatches a Celery task to compare Oracle tiket data with the local
+    database without making any changes. Progress can be polled via
+    sync_tiket_progress with mode='check'.
+
+    Args:
+        request: The incoming HTTP request (must be POST).
+
+    Returns:
+        JsonResponse with a unique check_id for progress tracking and
+        a message indicating the check has started.
+
+    Raises:
+        400: If Oracle configuration is invalid.
+        500: If an unexpected error occurs during dispatch.
+    """
     try:
         check_id = str(uuid.uuid4())
         cache.set(f'check_tiket_done_{check_id}', False, timeout=3600)
@@ -292,6 +414,24 @@ def _sync_tiket_data_background(sync_id, request_user=None):
 @require_POST
 @never_cache
 def sync_tiket_run(request):
+    """Start a full tiket sync operation from Oracle to local database.
+
+    Dispatches a Celery task to synchronise all tiket data from Oracle
+    into the local database, performing inserts for new records and
+    updates for existing ones. Progress can be polled via
+    sync_tiket_progress with mode='sync'.
+
+    Args:
+        request: The incoming HTTP request (must be POST).
+
+    Returns:
+        JsonResponse with a unique sync_id for progress tracking and
+        a message indicating the sync has started.
+
+    Raises:
+        400: If Oracle configuration is invalid.
+        500: If an unexpected error occurs during dispatch.
+    """
     try:
         # Generate unique sync ID for tracking progress and stop signals
         sync_id = str(uuid.uuid4())
@@ -329,7 +469,22 @@ def sync_tiket_run(request):
 @require_POST
 @never_cache
 def sync_tiket_stop(request):
-    """Stop an in-progress sync operation (no auth check to avoid session locks)."""
+    """Stop an in-progress sync operation (no auth check to avoid session locks).
+
+    Revokes the associated Celery task and sets cache flags to signal
+    the sync runner to stop. No authentication check is performed to
+    avoid session lock contention.
+
+    Args:
+        request: The incoming HTTP request with JSON body containing
+            'sync_id'.
+
+    Returns:
+        JsonResponse indicating success or failure of the stop request.
+
+    Side Effects:
+        Revokes the Celery task (SIGTERM) and sets cache stop signals.
+    """
     try:
         data = json.loads(request.body)
         sync_id = data.get('sync_id')
@@ -364,7 +519,26 @@ def sync_tiket_stop(request):
 @require_GET
 @never_cache
 def sync_tiket_progress(request):
-    """Get current progress of in-progress check or sync (no auth check to avoid session locks)."""
+    """Get current progress of an in-progress check or sync operation.
+
+    No authentication check is performed to avoid session lock contention.
+    Supports two modes: 'check' (dry-run comparison) and 'sync' (data sync).
+    Returns progress data including current/total rows, percentage, inserts,
+    updates, and errors.
+
+    Args:
+        request: The incoming HTTP request. Expects 'mode' (default 'sync')
+            and either 'check_id' or 'sync_id' query parameters.
+
+    Returns:
+        JsonResponse with success status, done flag, progress data,
+        and optionally a summary result when the operation is complete.
+        Includes an error_log_url if a CSV error log file exists.
+
+    Side Effects:
+        Sets request.session.modified = False to avoid unnecessary
+        session saves during polling.
+    """
     try:
         mode = request.GET.get('mode', 'sync')
         request.session.modified = False
@@ -484,6 +658,23 @@ def sync_tiket_progress(request):
 @require_POST
 @never_cache
 def sync_tiket_truncate(request):
+    """Delete all tiket records and reset the primary key sequence.
+
+    Removes all dependent records (DetilTandaTerima, BackupData,
+    TiketAction, TiketPIC) before deleting all Tiket rows. Resets
+    the auto-increment sequence in a database-agnostic way.
+
+    Args:
+        request: The incoming HTTP request (must be POST).
+
+    Returns:
+        JsonResponse with the number of deleted rows and a success
+        message, or an error message on failure.
+
+    Side Effects:
+        Deletes all rows from DetilTandaTerima, BackupData, TiketAction,
+        TiketPIC, and Tiket tables. Resets the primary key sequence.
+    """
     try:
         from django.db import connection
         
@@ -524,7 +715,24 @@ def sync_tiket_truncate(request):
 
 
 def _log_failed_row(sync_id, nomor_tiket, periode_str, jenis_prioritas_str, tahun_data, error_msg, row_number=None):
-    """Log a failed row to CSV file for review and debugging."""
+    """Log a failed row to a CSV file for review and debugging.
+
+    Creates or appends to a CSV file named 'sync_failed_rows_{sync_id}.csv'
+    in the sync_logs directory. Each row contains timestamp, row number,
+    ticket identifier, metadata, and the error reason.
+
+    Args:
+        sync_id: Unique identifier for the sync run.
+        nomor_tiket: The ticket number that failed.
+        periode_str: The period string from Oracle data.
+        jenis_prioritas_str: The jenis prioritas string from Oracle data.
+        tahun_data: The year data from Oracle.
+        error_msg: Description of the error that occurred.
+        row_number: Optional 1-based row number in the source data.
+
+    Side Effects:
+        Writes a row to a CSV log file on disk.
+    """
     try:
         # Create CSV log file for this sync run
         log_filename = os.path.join(SYNC_LOGS_DIR, f'sync_failed_rows_{sync_id}.csv')
@@ -566,7 +774,16 @@ def _log_failed_row(sync_id, nomor_tiket, periode_str, jenis_prioritas_str, tahu
 @require_GET
 @never_cache
 def sync_tiket_download_errors(request, sync_id):
-    """Download error log CSV file for a completed tiket sync."""
+    """Download the error log CSV file for a completed tiket sync.
+
+    Args:
+        request: The incoming HTTP request.
+        sync_id: The UUID of the sync run to download errors for.
+
+    Returns:
+        FileResponse with the CSV file content, or JsonResponse with
+        404 if the file does not exist, or 400 if sync_id is invalid.
+    """
     try:
         try:
             uuid.UUID(sync_id)
@@ -590,7 +807,22 @@ def sync_tiket_download_errors(request, sync_id):
 @require_POST
 @never_cache
 def sync_tiket_stop_check(request):
-    """Stop an in-progress tiket check operation."""
+    """Stop an in-progress tiket check (dry-run) operation.
+
+    Revokes the associated Celery task and sets cache flags to signal
+    the check runner to stop. No authentication check is performed to
+    avoid session lock contention.
+
+    Args:
+        request: The incoming HTTP request with JSON body containing
+            'check_id'.
+
+    Returns:
+        JsonResponse indicating success or failure of the stop request.
+
+    Side Effects:
+        Revokes the Celery task (SIGTERM) and sets cache stop signals.
+    """
     try:
         data = json.loads(request.body)
         check_id = data.get('check_id', '')
@@ -724,6 +956,15 @@ def _assign_tiket_pics_sync(tiket, periode_jenis_data, today, base_time, request
 
 
 def _safe_int(value, default=None):
+    """Safely convert a value to int, returning a default on failure.
+
+    Args:
+        value: The value to convert (can be None, string, or numeric).
+        default: Value to return if conversion fails. Defaults to None.
+
+    Returns:
+        The integer value if conversion succeeds, otherwise the default.
+    """
     try:
         if value is None or value == '':
             return default
@@ -768,7 +1009,16 @@ def _parse_jenis_prioritas_data(jenis_prioritas_str, tahun_override=None):
 
 
 def _build_periode_lookup_cache():
-    """Build cache: id_sub_jenis_data -> first PeriodeJenisData row."""
+    """Build a lookup cache mapping id_sub_jenis_data to PeriodeJenisData.
+
+    Iterates over all PeriodeJenisData rows ordered by id and keeps
+    only the first row for each unique id_sub_jenis_data. This cache
+    is used by _map_periode_data to avoid per-row database queries.
+
+    Returns:
+        dict[str, PeriodeJenisData]: A mapping from id_sub_jenis_data
+        string to the first matching PeriodeJenisData instance.
+    """
     cache_by_sub_jenis: dict[str, PeriodeJenisData] = {}
 
     for pjd in PeriodeJenisData.objects.select_related('id_sub_jenis_data_ilap').all().order_by('id'):
@@ -872,6 +1122,26 @@ def _map_periode_data(
         return None, periode_value
 
     return pjd, periode_value
+
+
+def _build_bentuk_data_lookup_cache():
+    """Build a lookup cache mapping deskripsi to BentukData instances.
+
+    Returns:
+        dict[str, BentukData]: A mapping from deskripsi string to the
+        corresponding BentukData instance.
+    """
+    return {bd.deskripsi: bd for bd in BentukData.objects.all()}
+
+
+def _build_cara_penyampaian_lookup_cache():
+    """Build a lookup cache mapping deskripsi to CaraPenyampaian instances.
+
+    Returns:
+        dict[str, CaraPenyampaian]: A mapping from deskripsi string to the
+        corresponding CaraPenyampaian instance.
+    """
+    return {cp.deskripsi: cp for cp in CaraPenyampaian.objects.all()}
 
 
 def _check_tiket_data(service, check_id=None, stop_checker=None):
@@ -1055,6 +1325,14 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
             f'Periode lookup cache loaded: {len(periode_lookup_cache)} sub_jenis_data with PeriodeJenisData'
         )
 
+        # Build BentukData and CaraPenyampaian caches for Oracle value lookups
+        bentuk_data_cache = _build_bentuk_data_lookup_cache()
+        cara_penyampaian_cache = _build_cara_penyampaian_lookup_cache()
+        logger.info(
+            f'BentukData cache: {len(bentuk_data_cache)} entries, '
+            f'CaraPenyampaian cache: {len(cara_penyampaian_cache)} entries'
+        )
+
         # --- Bulk exists pre-fetch (same pattern as _check_tiket_data) ---
         all_nomor_tikets = list(dict.fromkeys(
             dict(zip(column_names, r)).get('id_tiket')
@@ -1077,8 +1355,8 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
         updated_keys = []
         
         logger.info('Setting up default lookups...')
-        default_bentuk_data = BentukData.objects.filter(deskripsi='Softcopy').first() or BentukData.objects.first()
-        default_cara_penyampaian = CaraPenyampaian.objects.filter(deskripsi='Online').first() or CaraPenyampaian.objects.first()
+        default_bentuk_data = bentuk_data_cache.get('Softcopy') or BentukData.objects.first()
+        default_cara_penyampaian = cara_penyampaian_cache.get('Online') or CaraPenyampaian.objects.first()
         
         logger.info(f'Parsing {len(rows)} rows for bulk insert/update...')
         today = timezone.now().date()
@@ -1152,6 +1430,19 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                 if status_penelitian_str:
                     status_penelitian_obj = StatusPenelitian.objects.filter(deskripsi__icontains=status_penelitian_str).first()
                 
+                # Look up BentukData and CaraPenyampaian from Oracle row values
+                bentuk_data_str = row_dict.get('bentuk_data')
+                if bentuk_data_str and bentuk_data_str in bentuk_data_cache:
+                    bentuk_data_obj = bentuk_data_cache[bentuk_data_str]
+                else:
+                    bentuk_data_obj = default_bentuk_data
+
+                cara_penyampaian_str = row_dict.get('cara_penyampaian')
+                if cara_penyampaian_str and cara_penyampaian_str in cara_penyampaian_cache:
+                    cara_penyampaian_obj = cara_penyampaian_cache[cara_penyampaian_str]
+                else:
+                    cara_penyampaian_obj = default_cara_penyampaian
+
                 # Prepare tiket data dict
                 tiket_data = {
                     'nomor_tiket': nomor_tiket,
@@ -1162,11 +1453,11 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                     'periode': periode_value,
                     'tahun': tahun_data,
                     'penyampaian': row_dict.get('penyampaian', 1),
-                    'nomor_surat_pengantar': row_dict.get('nomor_surat_pengantar', '-'),
-                    'tanggal_surat_pengantar': _make_aware_datetime(row_dict.get('tanggal_surat_pengantar')),
+                    'nomor_surat_pengantar': row_dict.get('nomor_surat_pengantar') or '-',
+                    'tanggal_surat_pengantar': _make_aware_datetime(row_dict.get('tanggal_surat_pengantar')) or timezone.now(),
                     'nama_pengirim': row_dict.get('nama_pengirim', '-'),
-                    'id_bentuk_data': default_bentuk_data,
-                    'id_cara_penyampaian': default_cara_penyampaian,
+                    'id_bentuk_data': bentuk_data_obj,
+                    'id_cara_penyampaian': cara_penyampaian_obj,
                     'status_ketersediaan_data': bool(row_dict.get('status_ketersediaan_data', 1)),
                     'alasan_ketidaktersediaan': row_dict.get('alasan_ketidaktersediaan'),
                     'baris_diterima': row_dict.get('baris_diterima') if row_dict.get('baris_diterima') is not None else 0,
@@ -1338,6 +1629,34 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                                     str(getattr(tiket_obj, 'tahun', '')),
                                     error_msg
                                 )
+
+        # --- Auto-settle qualifying tickets to Selesai after sync ---
+        # Find PeriodeJenisData records linked to "Tidak Diidentifikasi" JenisTabel,
+        # then update all matching Tiket records.
+        from ..constants.tiket_status import STATUS_PENGENDALIAN_MUTU, STATUS_SELESAI
+        try:
+            from datetime import datetime
+            from django.conf import settings as django_settings
+            cutoff_date = datetime(2024, 5, 1)
+            if django_settings.USE_TZ:
+                cutoff_date = timezone.make_aware(cutoff_date)
+            
+            # Resolve PeriodeJenisData IDs whose JenisDataILAP has JenisTabel = 'Tidak Diidentifikasi'
+            auto_settle_periode_ids = PeriodeJenisData.objects.filter(
+                id_sub_jenis_data_ilap__id_jenis_tabel__deskripsi='Tidak Diidentifikasi',
+            ).values_list('pk', flat=True)
+            
+            auto_settled = Tiket.objects.filter(
+                status_tiket=STATUS_PENGENDALIAN_MUTU,
+                tgl_transfer__lt=cutoff_date,
+                id_periode_data__in=auto_settle_periode_ids,
+            ).update(status_tiket=STATUS_SELESAI)
+            
+            if auto_settled:
+                logger.info(f'Auto-settled {auto_settled} tickets to Selesai (status 8)')
+        except Exception as settle_err:
+            logger.warning(f'Auto-settlement failed (non-blocking): {settle_err}')
+        
         return {
             'source_rows': len(rows),
             'inserts': inserts,

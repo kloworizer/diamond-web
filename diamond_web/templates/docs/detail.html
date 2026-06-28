@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }} - Docs - Diamond Web{% endblock %}
+
+{% block extra_head %}
+<style>
+    .doc-content h1 { font-size: 1.75rem; margin-top: 1.5rem; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e9ecef; }
+    .doc-content h2 { font-size: 1.4rem; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+    .doc-content h3 { font-size: 1.2rem; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+    .doc-content h4 { font-size: 1.1rem; margin-top: 1rem; margin-bottom: 0.5rem; }
+    .doc-content p { margin-bottom: 1rem; line-height: 1.7; }
+    .doc-content ul, .doc-content ol { margin-bottom: 1rem; padding-left: 1.5rem; }
+    .doc-content li { margin-bottom: 0.25rem; }
+    .doc-content table { width: 100%; margin-bottom: 1rem; border-collapse: collapse; }
+    .doc-content table th, .doc-content table td { padding: 0.5rem 0.75rem; border: 1px solid #dee2e6; }
+    .doc-content table th { background-color: #f8f9fa; font-weight: 600; }
+    .doc-content table tr:nth-child(even) { background-color: #f8f9fa; }
+    .doc-content blockquote { border-left: 4px solid #0C92FF; padding: 0.75rem 1rem; margin: 1rem 0; background: #f0f7ff; border-radius: 0 0.25rem 0.25rem 0; }
+    .doc-content code { background: #f0f0f0; padding: 0.15rem 0.4rem; border-radius: 0.25rem; font-size: 0.875em; }
+    .doc-content pre { background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 1rem; }
+    .doc-content pre code { background: none; padding: 0; color: inherit; font-size: 0.875rem; }
+    .doc-content img { max-width: 100%; height: auto; border-radius: 0.5rem; margin: 1rem 0; }
+    .doc-content hr { margin: 2rem 0; border-color: #dee2e6; }
+    .doc-content a { color: #0C92FF; }
+    .doc-content a:hover { text-decoration: underline; }
+    .doc-content .codehilite { background: #1e293b; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 1rem; }
+    .doc-content .codehilite pre { background: none; padding: 0; margin: 0; }
+    /* Mermaid diagram styling */
+    .doc-content pre.mermaid {
+        background: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        text-align: center;
+        border: 1px solid #e9ecef;
+        overflow-x: auto;
+    }
+    .doc-content pre.mermaid svg {
+        max-width: 100%;
+        height: auto;
+    }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            securityLevel: 'loose',
+        });
+    });
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="nxl-content without-header nxl-full-content">
+    <div class="main-content d-flex">
+
+        <!-- [ Sidebar ] start -->
+        <div class="content-sidebar content-sidebar-md" data-scrollbar-target="#psScrollbarInit">
+            <div class="content-sidebar-header bg-white sticky-top hstack justify-content-between">
+                <div>
+                    <h4 class="fw-bolder mb-0">Dokumentasi</h4>
+                    <small class="text-muted">Panduan & Referensi</small>
+                </div>
+            </div>
+            <div class="content-sidebar-body">
+                {% for group in docs %}
+                <div class="mt-2" style="margin:0; padding-left:1rem;">
+                    <small class="text-uppercase fw-bold" style="font-size:0.65rem;letter-spacing:0.05em;">
+                        {{ group.group }}
+                    </small>
+                </div>
+                <ul class="nav flex-column nxl-content-sidebar-item">
+                    {% for doc in group.docs %}
+                    <li class="nav-item">
+                        <a class="nav-link doc-link {% if doc.slug == slug %}active{% endif %}" 
+                           href="{% url 'docs_detail' slug=doc.slug %}">
+                            <span class="icon-bg-soft icon-bg-soft-primary">
+                                <i class="feather-file-text" style="color:#0C92FF"></i>
+                            </span>
+                            <span>{{ doc.title }}</span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endfor %}
+            </div>
+        </div>
+        <!-- [ Sidebar ] end -->
+
+        <!-- [ Content Area ] start -->
+        <div class="content-area" data-scrollbar-target="#psScrollbarInit">
+            <div class="content-area-header sticky-top">
+                <div class="page-header-left d-flex align-items-center gap-2">
+                    <a href="javascript:void(0);" class="app-sidebar-open-trigger me-2">
+                        <i class="feather-align-left fs-20"></i>
+                    </a>
+                    <ul class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{% url 'docs_index' %}">Dokumentasi</a></li>
+                        <li class="breadcrumb-item active">{{ page_title }}</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="content-area-body">
+                <div class="card stretch stretch-full">
+                    <div class="card-header">
+                        <h5 class="mb-0">{{ page_title }}</h5>
+                    </div>
+                    <div class="card-body doc-content p-4">
+                        {{ html_content|safe }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- [ Content Area ] end -->
+
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Docs - Diamond Web{% endblock %}
+
+{% block content %}
+<div class="nxl-content without-header nxl-full-content">
+    <div class="main-content d-flex">
+
+        <!-- [ Sidebar ] start -->
+        <div class="content-sidebar content-sidebar-md" data-scrollbar-target="#psScrollbarInit">
+            <div class="content-sidebar-header bg-white sticky-top hstack justify-content-between">
+                <div>
+                    <h4 class="fw-bolder mb-0">Dokumentasi</h4>
+                    <small class="text-muted">Panduan & Referensi</small>
+                </div>
+            </div>
+            <div class="content-sidebar-body">
+                {% for group in docs %}
+                <div class="mt-2" style="margin:0; padding-left:1rem;">
+                    <small class="text-uppercase fw-bold" style="font-size:0.65rem;letter-spacing:0.05em;">
+                        {{ group.group }}
+                    </small>
+                </div>
+                <ul class="nav flex-column nxl-content-sidebar-item">
+                    {% for doc in group.docs %}
+                    <li class="nav-item">
+                        <a class="nav-link doc-link {% if forloop.first and forloop.parentloop.first %}active{% endif %}" 
+                           href="{% url 'docs_detail' slug=doc.slug %}">
+                            <span class="icon-bg-soft icon-bg-soft-primary">
+                                <i class="feather-file-text" style="color:#0C92FF"></i>
+                            </span>
+                            <span>{{ doc.title }}</span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endfor %}
+            </div>
+        </div>
+        <!-- [ Sidebar ] end -->
+
+        <!-- [ Content Area ] start -->
+        <div class="content-area" data-scrollbar-target="#psScrollbarInit">
+            <div class="content-area-header sticky-top">
+                <div class="page-header-left d-flex align-items-center gap-2">
+                    <a href="javascript:void(0);" class="app-sidebar-open-trigger me-2">
+                        <i class="feather-align-left fs-20"></i>
+                    </a>
+                    <ul class="breadcrumb mb-0">
+                        <li class="breadcrumb-item active">Dokumentasi</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="content-area-body">
+                <div class="card stretch stretch-full">
+                    <div class="card-header">
+                        <h5 class="mb-0">Dokumentasi Diamond Web</h5>
+                        <p class="text-muted mb-0 mt-1">Pilih dokumen dari sidebar untuk membaca panduan dan referensi.</p>
+                    </div>
+                    <div class="card-body">
+                        {% for group in docs %}
+                        <h6 class="text-uppercase fw-bold text-muted mt-3 mb-2" style="font-size:0.75rem;letter-spacing:0.08em;">
+                            {{ group.group }}
+                        </h6>
+                        <div class="row g-3 mb-4">
+                            {% for doc in group.docs %}
+                            <div class="col-md-6 col-lg-4">
+                                <a href="{% url 'docs_detail' slug=doc.slug %}" class="text-decoration-none">
+                                    <div class="card border h-100">
+                                        <div class="card-body text-center py-4">
+                                            <div class="icon-bg-soft icon-bg-soft-primary mb-3" style="width:48px;height:48px;margin:0 auto;">
+                                                <i class="feather-file-text fs-4" style="color:#0C92FF;line-height:48px;"></i>
+                                            </div>
+                                            <h6 class="mb-1">{{ doc.title }}</h6>
+                                            <small class="text-muted">{{ doc.filename }}</small>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- [ Content Area ] end -->
+
+    </div>
+</div>
+{% endblock %}

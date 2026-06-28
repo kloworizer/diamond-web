@@ -26,8 +26,8 @@
                         <a class="nav-link tiket-filter-link active" href="javascript:void(0);" data-filter="belum_rekam_backup_data">
                             <span class="icon-bg-soft icon-bg-soft-blue"><i class="feather-save" style="color:#9BB0F8"></i></span>
                             <span>Belum Rekam Backup Data</span>
-                            {% if p3de_tiket_categories.belum_rekam_backup_data %}
-                            <span class="badge bg-warning ms-auto">{{ p3de_tiket_categories.belum_rekam_backup_data|length }}</span>
+                            {% if p3de_category_counts.belum_rekam_backup_data %}
+                            <span class="badge bg-warning ms-auto">{{ p3de_category_counts.belum_rekam_backup_data }}</span>
                             {% endif %}
                         </a>
                     </li>
@@ -35,8 +35,8 @@
                         <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="belum_dibuat_tanda_terima">
                             <span class="icon-bg-soft icon-bg-soft-blue"><i class="feather-file-text" style="color:#9BB0F8"></i></span>
                             <span>Belum Dibuat Tanda Terima</span>
-                            {% if p3de_tiket_categories.belum_dibuat_tanda_terima %}
-                            <span class="badge bg-info ms-auto">{{ p3de_tiket_categories.belum_dibuat_tanda_terima|length }}</span>
+                            {% if p3de_category_counts.belum_dibuat_tanda_terima %}
+                            <span class="badge bg-info ms-auto">{{ p3de_category_counts.belum_dibuat_tanda_terima }}</span>
                             {% endif %}
                         </a>
                     </li>
@@ -44,8 +44,8 @@
                         <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="belum_diteliti">
                             <span class="icon-bg-soft icon-bg-soft-yellow"><i class="feather-search" style="color:#EFBA22"></i></span>
                             <span>Belum Diteliti</span>
-                            {% if p3de_tiket_categories.belum_diteliti %}
-                            <span class="badge bg-success ms-auto">{{ p3de_tiket_categories.belum_diteliti|length }}</span>
+                            {% if p3de_category_counts.belum_diteliti %}
+                            <span class="badge bg-success ms-auto">{{ p3de_category_counts.belum_diteliti }}</span>
                             {% endif %}
                         </a>
                     </li>
@@ -53,8 +53,8 @@
                         <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="belum_dikirim_ke_pide">
                             <span class="icon-bg-soft icon-bg-soft-yellow"><i class="feather-send" style="color:#EFBA22"></i></span>
                             <span>Belum Dikirim ke PIDE</span>
-                            {% if p3de_tiket_categories.belum_dikirim_ke_pide %}
-                            <span class="badge bg-primary ms-auto">{{ p3de_tiket_categories.belum_dikirim_ke_pide|length }}</span>
+                            {% if p3de_category_counts.belum_dikirim_ke_pide %}
+                            <span class="badge bg-primary ms-auto">{{ p3de_category_counts.belum_dikirim_ke_pide }}</span>
                             {% endif %}
                         </a>
                     </li>
@@ -62,8 +62,8 @@
                         <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="pengembalian_seluruhnya_dari_pide">
                             <span class="icon-bg-soft icon-bg-soft-red"><i class="feather-rotate-ccw" style="color:#EA4D4D"></i></span>
                             <span>Pengembalian Seluruhnya dari PIDE</span>
-                            {% if p3de_tiket_categories.pengembalian_seluruhnya_dari_pide %}
-                            <span class="badge bg-danger ms-auto">{{ p3de_tiket_categories.pengembalian_seluruhnya_dari_pide|length }}</span>
+                            {% if p3de_category_counts.pengembalian_seluruhnya_dari_pide %}
+                            <span class="badge bg-danger ms-auto">{{ p3de_category_counts.pengembalian_seluruhnya_dari_pide }}</span>
                             {% endif %}
                         </a>
                     </li>
@@ -71,8 +71,8 @@
                         <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="pengembalian_sebagian_dari_pide">
                             <span class="icon-bg-soft icon-bg-soft-red"><i class="feather-rotate-ccw" style="color:#EA4D4D"></i></span>
                             <span>Pengembalian Sebagian dari PIDE</span>
-                            {% if p3de_tiket_categories.pengembalian_sebagian_dari_pide %}
-                            <span class="badge bg-danger ms-auto">{{ p3de_tiket_categories.pengembalian_sebagian_dari_pide|length }}</span>
+                            {% if p3de_category_counts.pengembalian_sebagian_dari_pide %}
+                            <span class="badge bg-danger ms-auto">{{ p3de_category_counts.pengembalian_sebagian_dari_pide }}</span>
                             {% endif %}
                         </a>
                     </li>
@@ -80,12 +80,37 @@
                         <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="diklarifikasi">
                             <span class="icon-bg-soft icon-bg-soft-orange"><i class="feather-alert-triangle" style="color:#FF8D28"></i></span>
                             <span>Monitor Klarifikasi</span>
-                            {% if p3de_tiket_categories.diklarifikasi %}
-                            <span class="badge bg-danger ms-auto">{{ p3de_tiket_categories.diklarifikasi|length }}</span>
+                            {% if p3de_category_counts.diklarifikasi %}
+                            <span class="badge bg-danger ms-auto">{{ p3de_category_counts.diklarifikasi }}</span>
                             {% endif %}
                         </a>
                     </li>
                 </ul>
+                {% if is_admin_p3de %}
+                <div style="margin:5px 0 0; padding-left:1rem; border-top:1px solid #eee; padding-top:5px;">
+                    <small class="text-uppercase fw-bold">Admin P3DE</small>
+                </div>
+                <ul class="nav flex-column nxl-content-sidebar-item">
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="jenis_data_tanpa_pic_p3de">
+                            <span class="icon-bg-soft icon-bg-soft-purple"><i class="feather-users" style="color:#8B5CF6"></i></span>
+                            <span>Jenis Data Tidak Punya PIC Aktif</span>
+                            {% if p3de_jenis_data_tanpa_pic_count %}
+                            <span class="badge bg-secondary ms-auto">{{ p3de_jenis_data_tanpa_pic_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="periode_tiket_null_p3de">
+                            <span class="icon-bg-soft icon-bg-soft-purple"><i class="feather-alert-triangle" style="color:#F59E0B"></i></span>
+                            <span>Periode Tiket Null</span>
+                            {% if p3de_tiket_periode_null_count %}
+                            <span class="badge bg-warning ms-auto">{{ p3de_tiket_periode_null_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                </ul>
+                {% endif %}
             </div>
             {% endif %}
             {% if is_pide %}
@@ -98,8 +123,8 @@
                         <a class="nav-link tiket-filter-link {% if not is_p3de %}active{% endif %}" href="javascript:void(0);" data-filter="belum_mulai_proses_identifikasi">
                             <span class="icon-bg-soft icon-bg-soft-cyan"><i class="feather-clock" style="color:#06C4D2"></i></span>
                             <span>Belum Mulai Proses Identifikasi</span>
-                            {% if pide_tiket_categories.belum_mulai_proses_identifikasi %}
-                            <span class="badge bg-warning ms-auto">{{ pide_tiket_categories.belum_mulai_proses_identifikasi|length }}</span>
+                            {% if pide_category_counts.belum_mulai_proses_identifikasi %}
+                            <span class="badge bg-warning ms-auto">{{ pide_category_counts.belum_mulai_proses_identifikasi }}</span>
                             {% endif %}
                         </a>
                     </li>
@@ -107,12 +132,37 @@
                         <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="dalam_proses_identifikasi">
                             <span class="icon-bg-soft icon-bg-soft-cyan"><i class="feather-activity" style="color:#06C4D2"></i></span>
                             <span>Dalam Proses Identifikasi</span>
-                            {% if pide_tiket_categories.dalam_proses_identifikasi %}
-                            <span class="badge bg-info ms-auto">{{ pide_tiket_categories.dalam_proses_identifikasi|length }}</span>
+                            {% if pide_category_counts.dalam_proses_identifikasi %}
+                            <span class="badge bg-info ms-auto">{{ pide_category_counts.dalam_proses_identifikasi }}</span>
                             {% endif %}
                         </a>
                     </li>
                 </ul>
+                {% if is_admin_pide %}
+                <div style="margin:5px 0 0; padding-left:1rem; border-top:1px solid #eee; padding-top:5px;">
+                    <small class="text-uppercase fw-bold">Admin PIDE</small>
+                </div>
+                <ul class="nav flex-column nxl-content-sidebar-item">
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="jenis_data_tanpa_pic_pide">
+                            <span class="icon-bg-soft icon-bg-soft-purple"><i class="feather-users" style="color:#8B5CF6"></i></span>
+                            <span>Jenis Data Tidak Punya PIC Aktif</span>
+                            {% if pide_jenis_data_tanpa_pic_count %}
+                            <span class="badge bg-secondary ms-auto">{{ pide_jenis_data_tanpa_pic_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="tiket_dikirim_ke_pide_tanpa_pic">
+                            <span class="icon-bg-soft icon-bg-soft-red"><i class="feather-send" style="color:#EF4444"></i></span>
+                            <span>Tiket Status Dikirim Ke PIDE Belum Punya PIC</span>
+                            {% if pide_tiket_dikirim_ke_pide_tanpa_pic_count %}
+                            <span class="badge bg-danger ms-auto">{{ pide_tiket_dikirim_ke_pide_tanpa_pic_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                </ul>
+                {% endif %}
             </div>
             {% endif %}
             {% if is_pmde %}
@@ -125,12 +175,37 @@
                         <a class="nav-link tiket-filter-link {% if not is_p3de and not is_pide %}active{% endif %}" href="javascript:void(0);" data-filter="dalam_proses_pengendalian_mutu">
                             <span class="icon-bg-soft icon-bg-soft-blue-dark"><i class="feather-shield" style="color:#0C92FF"></i></span>
                             <span>Dalam Proses Pengendalian Mutu</span>
-                            {% if pmde_tiket_categories.dalam_proses_pengendalian_mutu %}
-                            <span class="badge bg-primary ms-auto">{{ pmde_tiket_categories.dalam_proses_pengendalian_mutu|length }}</span>
+                            {% if pmde_category_counts.dalam_proses_pengendalian_mutu %}
+                            <span class="badge bg-primary ms-auto">{{ pmde_category_counts.dalam_proses_pengendalian_mutu }}</span>
                             {% endif %}
                         </a>
                     </li>
                 </ul>
+                {% if is_admin_pmde %}
+                <div style="margin:5px 0 0; padding-left:1rem; border-top:1px solid #eee; padding-top:5px;">
+                    <small class="text-uppercase fw-bold">Admin PMDE</small>
+                </div>
+                <ul class="nav flex-column nxl-content-sidebar-item">
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="jenis_data_tanpa_pic_pmde">
+                            <span class="icon-bg-soft icon-bg-soft-purple"><i class="feather-users" style="color:#8B5CF6"></i></span>
+                            <span>Jenis Data Tidak Punya PIC Aktif</span>
+                            {% if pmde_jenis_data_tanpa_pic_count %}
+                            <span class="badge bg-secondary ms-auto">{{ pmde_jenis_data_tanpa_pic_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="tiket_pengendalian_mutu_tanpa_pic">
+                            <span class="icon-bg-soft icon-bg-soft-red"><i class="feather-alert-triangle" style="color:#EF4444"></i></span>
+                            <span>Tiket Status Pengendalian Mutu Belum Punya PIC</span>
+                            {% if pmde_tiket_pengendalian_mutu_tanpa_pic_count %}
+                            <span class="badge bg-danger ms-auto">{{ pmde_tiket_pengendalian_mutu_tanpa_pic_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                </ul>
+                {% endif %}
             </div>
             {% endif %}
             {% if not is_p3de and not is_pide and not is_pmde %}
@@ -196,7 +271,7 @@
                 <div class="card stretch stretch-full" data-category="belum_rekam_backup_data">
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-belum_rekam_backup_data" style="width:100%">
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
@@ -207,17 +282,6 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for tiket in p3de_tiket_categories.belum_rekam_backup_data %}
-                                    <tr>
-                                        <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
-                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
-                                        <td data-order="{{ tiket.tgl_terima_dip|date:'Y-m-d' }}">{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
-                                        <td>
-                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
                                 </tbody>
                             </table>
                         </div>
@@ -228,7 +292,7 @@
                 <div class="card stretch stretch-full" data-category="belum_dibuat_tanda_terima" style="display:none;">
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-belum_dibuat_tanda_terima" style="width:100%">
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
@@ -239,17 +303,6 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for tiket in p3de_tiket_categories.belum_dibuat_tanda_terima %}
-                                    <tr>
-                                        <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
-                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
-                                        <td data-order="{{ tiket.tgl_terima_dip|date:'Y-m-d' }}">{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
-                                        <td>
-                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
                                 </tbody>
                             </table>
                         </div>
@@ -260,7 +313,7 @@
                 <div class="card stretch stretch-full" data-category="belum_diteliti" style="display:none;">
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-belum_diteliti" style="width:100%">
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
@@ -271,17 +324,6 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for tiket in p3de_tiket_categories.belum_diteliti %}
-                                    <tr>
-                                        <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
-                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
-                                        <td data-order="{{ tiket.tgl_terima_dip|date:'Y-m-d' }}">{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
-                                        <td>
-                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
                                 </tbody>
                             </table>
                         </div>
@@ -292,7 +334,7 @@
                 <div class="card stretch stretch-full" data-category="belum_dikirim_ke_pide" style="display:none;">
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-belum_dikirim_ke_pide" style="width:100%">
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
@@ -303,17 +345,6 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for tiket in p3de_tiket_categories.belum_dikirim_ke_pide %}
-                                    <tr>
-                                        <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
-                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
-                                        <td data-order="{{ tiket.tgl_terima_dip|date:'Y-m-d' }}">{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
-                                        <td>
-                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
                                 </tbody>
                             </table>
                         </div>
@@ -324,7 +355,7 @@
                 <div class="card stretch stretch-full" data-category="pengembalian_seluruhnya_dari_pide" style="display:none;">
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-pengembalian_seluruhnya_dari_pide" style="width:100%">
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
@@ -335,17 +366,6 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for tiket in p3de_tiket_categories.pengembalian_seluruhnya_dari_pide %}
-                                    <tr>
-                                        <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
-                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
-                                        <td data-order="{{ tiket.tgl_terima_dip|date:'Y-m-d' }}">{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
-                                        <td>
-                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
                                 </tbody>
                             </table>
                         </div>
@@ -355,7 +375,7 @@
                 <div class="card stretch stretch-full" data-category="pengembalian_sebagian_dari_pide" style="display:none;">
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-pengembalian_sebagian_dari_pide" style="width:100%">
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
@@ -366,17 +386,6 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for tiket in p3de_tiket_categories.pengembalian_sebagian_dari_pide %}
-                                    <tr>
-                                        <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
-                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
-                                        <td data-order="{{ tiket.tgl_terima_dip|date:'Y-m-d' }}">{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
-                                        <td>
-                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
                                 </tbody>
                             </table>
                         </div>
@@ -386,7 +395,7 @@
                 <div class="card stretch stretch-full" data-category="diklarifikasi" style="display:none;">
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-diklarifikasi" style="width:100%">
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
@@ -397,20 +406,60 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for tiket in p3de_tiket_categories.diklarifikasi %}
-                                    <tr>
-                                        <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
-                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
-                                        <td data-order="{{ tiket.tgl_terima_dip|date:'Y-m-d' }}">{{ tiket.tgl_terima_dip|date:"d-m-Y" }}</td>
-                                        <td>
-                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+                {% if is_admin_p3de %}
+                <!-- Admin: Jenis Data Tidak Punya PIC Aktif - P3DE -->
+                <div class="card stretch stretch-full" data-category="jenis_data_tanpa_pic_p3de" style="display:none;">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-jenis_data_tanpa_pic_p3de" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Sub Jenis Data</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
+                                        <th>Sub Jenis Data</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endif %}
+                {% if is_admin_p3de %}
+                <!-- Admin: Periode Tiket Null - P3DE -->
+                <div class="card stretch stretch-full" data-category="periode_tiket_null_p3de" style="display:none;">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-periode_tiket_null_p3de" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Nomor Tiket</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
+                                        <th>Periode</th>
+                                        <th>Tahun</th>
+                                        <th>Status</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <small class="text-muted">
+                            <i class="feather-info me-1"></i>
+                            <strong>Catatan:</strong> Ketika migrasi tiket dengan periode data / tahun data NULL, diisi dengan <strong>2099</strong>.
+                        </small>
                     </div>
                 </div>
                 {% endif %}
@@ -420,7 +469,7 @@
                 <div class="card stretch stretch-full" data-category="belum_mulai_proses_identifikasi">
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-belum_mulai_proses_identifikasi" style="width:100%">
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
@@ -431,17 +480,6 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for tiket in pide_tiket_categories.belum_mulai_proses_identifikasi %}
-                                    <tr>
-                                        <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
-                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
-                                        <td data-order="{{ tiket.tgl_kirim_pide|date:'Y-m-d' }}">{{ tiket.tgl_kirim_pide|date:"d-m-Y" }}</td>
-                                        <td>
-                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
                                 </tbody>
                             </table>
                         </div>
@@ -452,7 +490,7 @@
                 <div class="card stretch stretch-full" data-category="dalam_proses_identifikasi" style="display:none;">
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-dalam_proses_identifikasi" style="width:100%">
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
@@ -463,22 +501,52 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for tiket in pide_tiket_categories.dalam_proses_identifikasi %}
-                                    <tr>
-                                        <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
-                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
-                                        <td data-order="{{ tiket.tgl_kirim_pide|date:'Y-m-d' }}">{{ tiket.tgl_kirim_pide|date:"d-m-Y" }}</td>
-                                        <td>
-                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
+                {% if is_admin_pide %}
+                <!-- Admin: Jenis Data Tidak Punya PIC Aktif - PIDE -->
+                <div class="card stretch stretch-full" data-category="jenis_data_tanpa_pic_pide" style="display:none;">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-jenis_data_tanpa_pic_pide" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Sub Jenis Data</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
+                                        <th>Sub Jenis Data</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <!-- Admin: Tiket Status Dikirim Ke PIDE Belum Punya PIC - PIDE -->
+                <div class="card stretch stretch-full" data-category="tiket_dikirim_ke_pide_tanpa_pic" style="display:none;">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-tiket_dikirim_ke_pide_tanpa_pic" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Nomor Tiket</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
+                                        <th>Tgl Kirim PIDE</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
                 {% endif %}
                 {% if is_pmde %}
                 <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">PMDE - Pengendalian Mutu</h6> -->
@@ -486,7 +554,7 @@
                 <div class="card stretch stretch-full" data-category="dalam_proses_pengendalian_mutu">
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover mb-0 tiket-datatable" style="width:100%">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-dalam_proses_pengendalian_mutu" style="width:100%">
                                 <thead>
                                     <tr>
                                         <th>Nomor Tiket</th>
@@ -497,22 +565,52 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for tiket in pmde_tiket_categories.dalam_proses_pengendalian_mutu %}
-                                    <tr>
-                                        <td>{{ tiket.nomor_tiket }}</td>
-                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap }}</td>
-                                        <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data }}</td>
-                                        <td data-order="{{ tiket.tgl_transfer|date:'Y-m-d' }}">{{ tiket.tgl_transfer|date:"d-m-Y" }}</td>
-                                        <td>
-                                            <a href="{% url 'tiket_detail' tiket.id %}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
+                {% if is_admin_pmde %}
+                <!-- Admin: Jenis Data Tidak Punya PIC Aktif - PMDE -->
+                <div class="card stretch stretch-full" data-category="jenis_data_tanpa_pic_pmde" style="display:none;">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-jenis_data_tanpa_pic_pmde" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>ID Sub Jenis Data</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
+                                        <th>Sub Jenis Data</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <!-- Admin: Tiket Status Pengendalian Mutu Belum Punya PIC - PMDE -->
+                <div class="card stretch stretch-full" data-category="tiket_pengendalian_mutu_tanpa_pic" style="display:none;">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-tiket_pengendalian_mutu_tanpa_pic" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Nomor Tiket</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
+                                        <th>Tgl Transfer</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
             {% endif %}
         </div>
@@ -537,19 +635,113 @@
             }
         };
         
-        // Initialize datatables for each category
+        // Define column configurations per category type
+        const tiketCategoryColumns = [
+            { data: 'nomor_tiket', title: 'Nomor Tiket' },
+            { data: 'nama_ilap', title: 'Nama ILAP' },
+            { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
+            { 
+                data: 'tanggal', 
+                title: 'Tanggal',
+                render: function(data, type, row) {
+                    if (type === 'order' || type === 'type') {
+                        return row.tanggal_order || '';
+                    }
+                    return data || '';
+                }
+            },
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false }
+        ];
+
+        const jenisDataTanpaPicColumns = [
+            { data: 'id_sub_jenis_data', title: 'ID Sub Jenis Data' },
+            { data: 'nama_ilap', title: 'Nama ILAP' },
+            { data: 'nama_jenis_data', title: 'Jenis Data' },
+            { data: 'nama_sub_jenis_data', title: 'Sub Jenis Data' }
+        ];
+
+        const periodeTiketNullColumns = [
+            { data: 'nomor_tiket', title: 'Nomor Tiket' },
+            { data: 'nama_ilap', title: 'Nama ILAP' },
+            { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
+            { data: 'periode', title: 'Periode' },
+            { data: 'tahun', title: 'Tahun' },
+            { data: 'status_tiket', title: 'Status' },
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false }
+        ];
+
+        const tiketPengendalianMutuTanpaPicColumns = [
+            { data: 'nomor_tiket', title: 'Nomor Tiket' },
+            { data: 'nama_ilap', title: 'Nama ILAP' },
+            { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
+            { 
+                data: 'tanggal', 
+                title: 'Tanggal Transfer',
+                render: function(data, type, row) {
+                    if (type === 'order' || type === 'type') {
+                        return row.tanggal_order || '';
+                    }
+                    return data || '';
+                }
+            },
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false }
+        ];
+
+        const tiketDikirimKePideTanpaPicColumns = [
+            { data: 'nomor_tiket', title: 'Nomor Tiket' },
+            { data: 'nama_ilap', title: 'Nama ILAP' },
+            { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
+            { 
+                data: 'tanggal', 
+                title: 'Tanggal Kirim PIDE',
+                render: function(data, type, row) {
+                    if (type === 'order' || type === 'type') {
+                        return row.tanggal_order || '';
+                    }
+                    return data || '';
+                }
+            },
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false }
+        ];
+
+        // Map category to column config
+        function getColumnsForCategory(category) {
+            if (category === 'periode_tiket_null_p3de') {
+                return periodeTiketNullColumns;
+            }
+            if (category === 'tiket_pengendalian_mutu_tanpa_pic') {
+                return tiketPengendalianMutuTanpaPicColumns;
+            }
+            if (category === 'tiket_dikirim_ke_pide_tanpa_pic') {
+                return tiketDikirimKePideTanpaPicColumns;
+            }
+            if (category.startsWith('jenis_data_tanpa_pic')) {
+                return jenisDataTanpaPicColumns;
+            }
+            return tiketCategoryColumns;
+        }
+
+        // Initialize server-side datatables for each category
         document.querySelectorAll('.tiket-datatable').forEach(table => {
             const category = table.closest('[data-category]').getAttribute('data-category');
+            const columns = getColumnsForCategory(category);
+
             datatableTables[category] = $(table).DataTable({
+                serverSide: true,
+                processing: true,
+                ajax: {
+                    url: '{% url "home_data" %}',
+                    data: function(d) {
+                        d.category = category;
+                    }
+                },
+                columns: columns,
                 paging: true,
                 pageLength: 10,
                 searching: true,
                 ordering: true,
                 info: true,
                 lengthChange: true,
-                columnDefs: [
-                    { orderable: false, targets: -1 }
-                ],
                 layout: {
                     topStart: 'pageLength',
                     topEnd: 'search',
@@ -583,7 +775,7 @@
                 const firstCard = document.querySelector(`[data-category="${firstCategory}"]`);
                 if (firstCard) firstCard.style.display = 'block';
                 // update breadcrumb/title for first active filter
-                const firstLabel = filterLinks[0]?.querySelector('span')?.innerText?.trim() || filterLinks[0]?.textContent?.trim();
+                const firstLabel = filterLinks[0]?.querySelector('span:not(.icon-bg-soft):not(.badge)')?.innerText?.trim() || filterLinks[0]?.textContent?.trim();
                 if (firstLabel) updateBreadcrumb(firstLabel);
             }
         }
@@ -597,7 +789,7 @@
                 this.classList.add('active');
 
                 // update breadcrumb + page title
-                const label = this.querySelector('span')?.innerText?.trim() || this.textContent.trim();
+                const label = this.querySelector('span:not(.icon-bg-soft):not(.badge)')?.innerText?.trim() || this.textContent.trim();
                 if (label) updateBreadcrumb(label);
                 
                 // Show/hide cards based on filter

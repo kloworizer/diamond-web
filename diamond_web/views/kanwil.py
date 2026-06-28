@@ -17,7 +17,20 @@ class KanwilListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
     template_name = 'kanwil/list.html'
 
     def get(self, request, *args, **kwargs):
-        """Render the list template and surface optional delete message."""
+        """Handle GET request for the Kanwil list page.
+
+        Extracts optional query parameters for a deletion notification,
+        decodes the Kanwil name, and surfaces a success message to the user
+        before rendering the template.
+
+        Args:
+            request: The incoming HTTP request object.
+            *args: Additional positional arguments passed to the parent handler.
+            **kwargs: Additional keyword arguments passed to the parent handler.
+
+        Returns:
+            django.http.HttpResponse: The rendered list template response.
+        """
         deleted = request.GET.get('deleted')
         name = request.GET.get('name')
         if deleted and name:
@@ -38,12 +51,36 @@ class KanwilCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin
     success_message = 'Kanwil "{object}" berhasil dibuat.'
 
     def get_context_data(self, **kwargs):
+        """Add extra context for the create form template.
+
+        Inserts the URL endpoint used as the form action so the template
+        knows where to submit the new Kanwil entry.
+
+        Args:
+            **kwargs: Additional keyword arguments passed to the parent
+                      context builder.
+
+        Returns:
+            dict: The template context dictionary with the added `form_action`.
+        """
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('kanwil_create')
         return context
 
     def get(self, request, *args, **kwargs):
-        """Return the create form rendered for AJAX or full-page requests."""
+        """Handle GET request for the Kanwil creation page.
+
+        Prepares an unbound form instance and renders it either as an AJAX
+        response or a full-page HTML form depending on the request type.
+
+        Args:
+            request: The incoming HTTP request object.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            django.http.HttpResponse: The rendered form response.
+        """
         self.object = None
         form = self.get_form()
         return self.render_form_response(form)
@@ -58,12 +95,38 @@ class KanwilUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin
     success_message = 'Kanwil "{object}" berhasil diperbarui.'
 
     def get_context_data(self, **kwargs):
+        """Add extra context for the update form template.
+
+        Inserts the URL endpoint used as the form action, including the
+        primary key of the Kanwil being edited, so the form submits to the
+        correct update URL.
+
+        Args:
+            **kwargs: Additional keyword arguments passed to the parent
+                      context builder.
+
+        Returns:
+            dict: The template context dictionary with the added `form_action`.
+        """
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('kanwil_update', args=[self.object.pk])
         return context
 
     def get(self, request, *args, **kwargs):
-        """Return the edit form for the requested instance."""
+        """Handle GET request for the Kanwil edit page.
+
+        Retrieves the existing Kanwil instance, binds an unbound form with
+        its current data, and renders the form either as an AJAX response
+        or a full-page HTML template.
+
+        Args:
+            request: The incoming HTTP request object.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            django.http.HttpResponse: The rendered form response.
+        """
         self.object = self.get_object()
         form = self.get_form()
         return self.render_form_response(form)
@@ -76,11 +139,39 @@ class KanwilDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequiredMix
     success_url = reverse_lazy('kanwil_list')
 
     def get_context_data(self, **kwargs):
+        """Add extra context for the delete confirmation template.
+
+        Inserts the URL endpoint used as the form action for deleting
+        a specific Kanwil entry.
+
+        Args:
+            **kwargs: Additional keyword arguments passed to the parent
+                      context builder.
+
+        Returns:
+            dict: The template context dictionary with the added `form_action`.
+        """
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('kanwil_delete', args=[self.object.pk])
         return context
 
     def get(self, request, *args, **kwargs):
+        """Handle GET request for the Kanwil delete confirmation page.
+
+        Fetches the Kanwil instance to be deleted. If the request is AJAX,
+        returns the confirmation dialog HTML as JSON; otherwise renders
+        the full-page confirmation template.
+
+        Args:
+            request: The incoming HTTP request object.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            django.http.JsonResponse | django.http.HttpResponse:
+                A JSON response with the rendered HTML for AJAX requests,
+                or a full template response for standard requests.
+        """
         self.object = self.get_object()
         if request.GET.get('ajax'):
             from django.template.loader import render_to_string
@@ -89,6 +180,22 @@ class KanwilDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequiredMix
         return self.render_to_response(self.get_context_data())
 
     def delete(self, request, *args, **kwargs):
+        """Delete the specified Kanwil instance.
+
+        Performs the actual deletion of the Kanwil object. For AJAX requests
+        returns a JSON response with the success message. For standard
+        requests a success message is flashed and the user is redirected.
+
+        Args:
+            request: The incoming HTTP request object.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            django.http.JsonResponse:
+                A JSON object containing `success`, an optional `message`,
+                and a `redirect` URL for non-AJAX submissions.
+        """
         self.object = self.get_object()
         name = str(self.object)
         self.object.delete()
@@ -101,6 +208,20 @@ class KanwilDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequiredMix
         return JsonResponse({'success': True, 'redirect': self.success_url})
 
     def post(self, request, *args, **kwargs):
+        """Handle POST request as a deletion action.
+
+        Delegates directly to the `delete()` method so the same logic
+        applies regardless of whether the HTTP verb is DELETE or POST.
+
+        Args:
+            request: The incoming HTTP request object.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            django.http.JsonResponse:
+                The response from the `delete()` method.
+        """
         return self.delete(request, *args, **kwargs)
 
 
@@ -108,7 +229,27 @@ class KanwilDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequiredMix
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def kanwil_data(request):
-    """Server-side DataTables endpoint for `Kanwil`."""
+    """Return paginated, searchable, and ordered Kanwil data for DataTables.
+
+    Handles server-side processing for a DataTable, including column-specific
+    filtering, multi-column sorting, and pagination. Returns a JSON payload
+    conforming to the DataTables server-side protocol.
+
+    The function supports filtering on the following columns:
+        - ID
+        - Kode Kanwil
+        - Nama Kanwil
+
+    Args:
+        request: The incoming HTTP GET request containing DataTables
+            parameters (`draw`, `start`, `length`, `columns_search[]`,
+            `order[0][column]`, `order[0][dir]`).
+
+    Returns:
+        django.http.JsonResponse:
+            A JSON object with `draw`, `recordsTotal`, `recordsFiltered`,
+            and `data` keys as required by the DataTables protocol.
+    """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
@@ -119,12 +260,10 @@ def kanwil_data(request):
     # Column-specific filtering
     columns_search = request.GET.getlist('columns_search[]')
     if columns_search:
-        if columns_search[0]:  # ID
-            qs = qs.filter(id__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:  # Kode Kanwil
-            qs = qs.filter(kode_kanwil__icontains=columns_search[1])
-        if len(columns_search) > 2 and columns_search[2]:  # Nama Kanwil
-            qs = qs.filter(nama_kanwil__icontains=columns_search[2])
+        if columns_search[0]:  # Kode Kanwil (column 0)
+            qs = qs.filter(kode_kanwil__icontains=columns_search[0])
+        if len(columns_search) > 1 and columns_search[1]:  # Nama Kanwil (column 1)
+            qs = qs.filter(nama_kanwil__icontains=columns_search[1])
 
     records_filtered = qs.count()
 

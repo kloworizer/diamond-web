@@ -133,11 +133,11 @@ def klasifikasi_jenis_data_data(request):
     GET parameters:
     - draw: DataTables draw counter.
     - start, length: paging offset and page size.
-    - columns_search[]: column-specific search values (jenis_data_ilap, dasar_hukum).
+    - columns_search[]: column-specific search values (nama_sub_jenis_data, dasar_hukum).
     - order[0][column], order[0][dir]: ordering index and direction.
 
     Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data` rows.
-    Each row contains: `jenis_data_ilap`, `dasar_hukum`, and `actions` HTML.
+    Each row contains: `id_sub_jenis_data`, `nama_sub_jenis_data`, `dasar_hukum`, and `actions` HTML.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
@@ -152,17 +152,19 @@ def klasifikasi_jenis_data_data(request):
     # Column-specific filtering
     columns_search = request.GET.getlist('columns_search[]')
     if columns_search:
-        if columns_search[0]:  # Sub Jenis Data ILAP
-            qs = qs.filter(id_sub_jenis_data__nama_sub_jenis_data__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:  # Dasar Hukum
-            qs = qs.filter(id_klasifikasi_tabel__deskripsi__icontains=columns_search[1])
+        if columns_search[0]:  # ID Sub Jenis Data
+            qs = qs.filter(id_sub_jenis_data__id_sub_jenis_data__icontains=columns_search[0])
+        if len(columns_search) > 1 and columns_search[1]:  # Nama Sub Jenis Data
+            qs = qs.filter(id_sub_jenis_data__nama_sub_jenis_data__icontains=columns_search[1])
+        if len(columns_search) > 2 and columns_search[2]:  # Dasar Hukum
+            qs = qs.filter(id_klasifikasi_tabel__deskripsi__icontains=columns_search[2])
 
     records_filtered = qs.count()
 
     # ordering
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['id_sub_jenis_data__nama_sub_jenis_data', 'id_klasifikasi_tabel__deskripsi']
+    columns = ['id_sub_jenis_data__id_sub_jenis_data', 'id_sub_jenis_data__nama_sub_jenis_data', 'id_klasifikasi_tabel__deskripsi']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -180,8 +182,9 @@ def klasifikasi_jenis_data_data(request):
     data = []
     for obj in qs_page:
         data.append({
-            'jenis_data_ilap': str(obj.id_sub_jenis_data),
-            'klasifikasi_tabel': str(obj.id_klasifikasi_tabel),
+            'id_sub_jenis_data': obj.id_sub_jenis_data.id_sub_jenis_data,
+            'nama_sub_jenis_data': obj.id_sub_jenis_data.nama_sub_jenis_data,
+            'dasar_hukum': str(obj.id_klasifikasi_tabel),
             'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('klasifikasi_jenis_data_update', args=[obj.pk])}' title='Edit'><i class='feather-edit-2'></i></button>"
                        f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('klasifikasi_jenis_data_delete', args=[obj.pk])}' title='Delete'><i class='feather-trash-2'></i></button>"
         })

@@ -107,6 +107,14 @@ def tiket_data(request):
 
     # Helper to split comma-separated multi-select values
     def _split_filter_options(v):
+        """Split a comma-separated string into a list of stripped values.
+
+        Args:
+            v: Raw comma-separated string input.
+
+        Returns:
+            list: Cleaned list of non-empty string values.
+        """
         if not v:
             return []
         return [x.strip() for x in v.split(',') if x.strip()]
@@ -529,7 +537,15 @@ def tiket_data(request):
                 periode_penerimaan_options.append({'id': val, 'name': val})
 
         def _pic_options_filtered(tipe, qs):
-            """Get PIC options filtered by the current queryset"""
+            """Get PIC options filtered by the current queryset.
+
+            Args:
+                tipe: PIC.TipePIC enum value (P3DE, PIDE, or PMDE).
+                qs: Django QuerySet to derive user IDs from.
+
+            Returns:
+                list: Dicts with 'id' and 'name' keys for each active PIC user.
+            """
             user_ids = qs.filter(
                 tiketpic__role=TiketPIC.Role.P3DE if tipe == PIC.TipePIC.P3DE else 
                 TiketPIC.Role.PIDE if tipe == PIC.TipePIC.PIDE else 
@@ -1104,6 +1120,14 @@ def tiket_data(request):
 
     # Helper to split comma-separated multi-select values
     def _split(v):
+        """Split a comma-separated string into a list of stripped values.
+
+        Args:
+            v: Raw comma-separated string input.
+
+        Returns:
+            list: Cleaned list of non-empty string values.
+        """
         if not v:
             return []
         return [x.strip() for x in v.split(',') if x.strip()]

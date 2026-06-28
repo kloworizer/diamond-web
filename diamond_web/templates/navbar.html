@@ -129,7 +129,7 @@
                 {% if user|has_group:"admin_pmde" or user|has_group:"user_pmde" %}
                 <li class="nxl-item nxl-caption"><label>PMDE</label></li>
                 <li class="nxl-item">
-                    <a class="nxl-link" href="#">
+                    <a class="nxl-link" href="{% url 'quality_control' %}">
                         <span class="nxl-micon"><i class="feather-user-check"></i></span>
                         <span class="nxl-mtext">Quality Control</span>
                     </a>
@@ -205,6 +205,12 @@
                         <span class="nxl-mtext">Template Dokumen</span>
                     </a>
                 </li>
+                <li class="nxl-item">
+                    <a class="nxl-link" href="{% url 'sequence_tanda_terima_list' %}">
+                        <span class="nxl-micon"><i class="feather-hash"></i></span>
+                        <span class="nxl-mtext">Sequence Tanda Terima</span>
+                    </a>
+                </li>
                 {% endif %}
 
                 {% if user|has_group:"admin" or user|has_group:"admin_pide" %}
@@ -245,8 +251,7 @@
                 </li>
                 {% endif %}
 
-                {% comment %} Sinkronisasi Data menu moved here from Kelola Referensi P3DE {% endcomment %}
-                {% if user|has_group:"admin" or user|has_group:"admin_pmde" %}
+                {% if user|has_group:"admin"%}
                 <li class="nxl-item nxl-caption"><label>Sinkronisasi Data</label></li>
                 <li class="nxl-item">
                     <a class="nxl-link" href="{% url 'oracle_sync_page' %}">
@@ -258,6 +263,12 @@
                     <a class="nxl-link" href="{% url 'sync_tiket_page' %}">
                         <span class="nxl-micon"><i class="feather-refresh-cw"></i></span>
                         <span class="nxl-mtext">Sinkronisasi Data Tiket</span>
+                    </a>
+                </li>
+                <li class="nxl-item">
+                    <a class="nxl-link" href="{% url 'sync_log_status' %}">
+                        <span class="nxl-micon"><i class="feather-clock"></i></span>
+                        <span class="nxl-mtext">Status Sinkronisasi</span>
                     </a>
                 </li>
                 {% endif %}
@@ -288,6 +299,51 @@
                 <i class="feather-plus" style="font-size: 14px;"></i>
                 <span class="d-none d-sm-inline">Rekam Tiket</span>
             </a>
+            {% endif %}
+
+            {% if user.is_authenticated %}
+            <form class="d-flex align-items-center ms-2" id="navbar-tiket-search">
+                {% csrf_token %}
+                <div class="input-group input-group-sm">
+                    <input type="text" class="form-control" id="navbar-search-nomor-tiket" placeholder="Cari Nomor Tiket..." aria-label="Cari Nomor Tiket" style="min-width: 180px;">
+                    <button class="btn btn-outline-secondary" type="submit" title="Cari">
+                        <i class="feather-search"></i>
+                    </button>
+                </div>
+            </form>
+            <script>
+                document.getElementById('navbar-tiket-search').addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    var input = document.getElementById('navbar-search-nomor-tiket');
+                    var nomorTiket = input.value.trim();
+                    if (!nomorTiket) return;
+
+                    var searchBtn = this.querySelector('button[type="submit"]');
+                    searchBtn.disabled = true;
+                    searchBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+                    fetch('{% url "tiket_data" %}?nomor_tiket=' + encodeURIComponent(nomorTiket) + '&length=5', {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.data && data.data.length === 1) {
+                            window.location.href = '{% url "tiket_detail" 0 %}'.replace('/0/', '/' + data.data[0].id + '/');
+                        } else if (data.data && data.data.length > 1) {
+                            window.location.href = '{% url "tiket_list" %}?nomor_tiket=' + encodeURIComponent(nomorTiket);
+                        } else {
+                            showToast('Tiket dengan nomor "' + nomorTiket + '" tidak ditemukan', 'warning', 'Pencarian');
+                        }
+                    })
+                    .catch(function () {
+                        showToast('Gagal mencari tiket', 'danger', 'Kesalahan');
+                    })
+                    .finally(function () {
+                        searchBtn.disabled = false;
+                        searchBtn.innerHTML = '<i class="feather-search"></i>';
+                    });
+                });
+            </script>
             {% endif %}
         </div>
 
@@ -328,6 +384,10 @@
                             <img src="{% static 'assets/images/no-notification.png' %}" alt="Tidak ada notifikasi" class="img-fluid no-notification-img mx-auto" />
                         </div>
                         {% endfor %}
+                        <div class="dropdown-divider mb-0 mt-0"></div>
+                        <a class="dropdown-item text-center py-2 fw-semibold small" href="{% url 'notification_list' %}">
+                            <i class="feather-bell me-1"></i>Lihat Semua Notifikasi
+                        </a>
                     </div>
                 </div>
 
@@ -340,9 +400,9 @@
                             <h6 class="mb-0">{{ user.username }}</h6>
                             {% if user.get_full_name %}<span class="fs-12 text-muted">{{ user.get_full_name }}</span>{% endif %}
                         </div>
-                        <a class="dropdown-item" href="{% url 'user_password_change' %}">
-                            <i class="feather-lock me-2"></i>
-                            <span>Ubah Password</span>
+                        <a class="dropdown-item" href="{% url 'user_profil' %}">
+                            <i class="feather-user me-2"></i>
+                            <span>Profil</span>
                         </a>
                         <div class="dropdown-divider"></div>
                         <form action="{% url 'logout' %}" method="post" class="m-0">

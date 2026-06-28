@@ -57,6 +57,25 @@ class ILAPPeriodeDataAPIView(View):
     """
     
     def get(self, request, ilap_id):
+        """Handle GET request: return periode data options for the given ILAP.
+
+        Fetches all valid PeriodeJenisData entries for the specified ILAP that
+        the current user has permission to access. For non-admin users, only
+        their assigned P3DE ILAPs are shown.
+
+        Args:
+            request: The HTTP request object.
+            ilap_id: Primary key of the ILAP to fetch periode data for.
+
+        Returns:
+            JsonResponse: With success flag and data array containing periode
+                         details including ILAP info, PICs, and classifications.
+                         Returns 400 with error message on failure.
+
+        Side Effects:
+            Queries PIC, KlasifikasiJenisData, and JenisPrioritasData tables
+            to enrich the response with current active PICs and metadata.
+        """
         try:
             from datetime import datetime
             
@@ -204,6 +223,20 @@ class CheckJenisPrioritasAPIView(View):
     """
     
     def get(self, request, jenis_data_id, tahun):
+        """Handle GET request: check if priority data exists for sub jenis data and year.
+
+        Args:
+            request: The HTTP request object.
+            jenis_data_id: Sub jenis data identifier string (e.g., 'KM0330101').
+            tahun: Year string to check priority data existence for.
+
+        Returns:
+            JsonResponse: With success flag and has_prioritas boolean.
+                         Returns 400 with error message on failure.
+
+        Database Queries:
+            Filters JenisPrioritasData by sub jenis data and year.
+        """
         try:
             from ...models.jenis_data_ilap import JenisDataILAP
             
@@ -254,6 +287,23 @@ class CheckTiketExistsAPIView(View):
     """
 
     def get(self, request):
+        """Handle GET request: check for existing tikets with same data signature.
+
+        Prevents duplicate tiket creation by verifying if a tiket already exists
+        for the same sub jenis data, periode (month), and tahun (year) combination.
+
+        Args:
+            request: The HTTP request object with GET parameters
+                     (periode_data_id, periode, tahun).
+
+        Returns:
+            JsonResponse: With success flag, exists boolean, nomor_tiket list of
+                         duplicates, and tiket_count of matching records.
+                         Returns 400 with error message on missing parameters.
+
+        Database Queries:
+            Fetches PeriodeJenisData and counts matching Tiket records.
+        """
         try:
             periode_data_id = request.GET.get('periode_data_id')
             periode = request.GET.get('periode')
@@ -315,6 +365,25 @@ class PreviewNomorTiketAPIView(View):
     """
 
     def get(self, request):
+        """Handle GET request: preview generated tiket number before creation.
+
+        Generates a nomor_tiket preview in the format:
+        <id_sub_jenis_data><YYMMDD><sequence> based on the selected periode data.
+
+        Args:
+            request: The HTTP request object with GET parameter (periode_data_id).
+
+        Returns:
+            JsonResponse: With success flag and generated nomor_tiket string.
+                         Returns 400 with error message on missing parameters.
+
+        Database Queries:
+            Counts existing Tiket records with same nomor_tiket prefix to
+            determine the next sequence number.
+
+        Side Effects:
+            Uses current datetime for YYMMDD generation.
+        """
         try:
             periode_data_id = request.GET.get('periode_data_id')
             if not periode_data_id:

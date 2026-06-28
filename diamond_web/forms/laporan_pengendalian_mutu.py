@@ -118,7 +118,7 @@ class TiketExportResource(resources.ModelResource):
     
     nama_ilap = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__id_ilap__nama_ilap')
     nama_sub_jenis_data = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data')
-    nama_tabel = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel__deskripsi')
+    nama_tabel = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__nama_tabel_I')
     nomor_tiket = fields.Field(attribute='nomor_tiket')
     status_tiket = fields.Field()
     data_diterima = fields.Field(attribute='baris_diterima')

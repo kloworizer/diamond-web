@@ -41,6 +41,17 @@ class BentukDataCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormM
         return context
 
     def get(self, request, *args, **kwargs):
+        """Handle GET request.
+
+        Instantiate an empty form and render it for user input.
+
+        Args:
+            request: The incoming HTTP request.
+
+        Returns:
+            HttpResponse: The rendered form response (optionally wrapped for
+                AJAX requests via AjaxFormMixin).
+        """
         self.object = None
         form = self.get_form()
         return self.render_form_response(form)
@@ -59,6 +70,18 @@ class BentukDataUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormM
         return context
 
     def get(self, request, *args, **kwargs):
+        """Handle GET request.
+
+        Retrieve the existing object and populate the form with its current
+        data for editing.
+
+        Args:
+            request: The incoming HTTP request.
+
+        Returns:
+            HttpResponse: The rendered form response (optionally wrapped for
+                AJAX requests via AjaxFormMixin).
+        """
         self.object = self.get_object()
         form = self.get_form()
         return self.render_form_response(form)
@@ -70,11 +93,30 @@ class BentukDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequire
     success_url = reverse_lazy('bentuk_data_list')
 
     def get_context_data(self, **kwargs):
+        """Add deletion form action URL to the template context.
+
+        Returns:
+            dict: Template context with an extra ``form_action`` key pointing
+                to the delete endpoint for the current object.
+        """
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('bentuk_data_delete', args=[self.object.pk])
         return context
 
     def get(self, request, *args, **kwargs):
+        """Handle GET request.
+
+        Retrieve the object to be deleted and render the confirmation page.
+        When the ``ajax`` query parameter is present the response is returned
+        as JSON containing the rendered HTML snippet.
+
+        Args:
+            request: The incoming HTTP request.
+
+        Returns:
+            JsonResponse | HttpResponse: An AJAX JSON response with the
+                rendered HTML, or a full confirmation-page response.
+        """
         self.object = self.get_object()
         if request.GET.get('ajax'):
             from django.template.loader import render_to_string
@@ -83,6 +125,19 @@ class BentukDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequire
         return self.render_to_response(self.get_context_data())
 
     def delete(self, request, *args, **kwargs):
+        """Handle object deletion.
+
+        Performs the actual delete and returns a JSON response indicating
+        success. A flash success message is stored for non-AJAX flows; AJAX
+        callers receive the message inline.
+
+        Args:
+            request: The incoming HTTP request.
+
+        Returns:
+            JsonResponse: Always returns JSON with ``success`` and
+                ``redirect`` keys, and optionally an inline ``message``.
+        """
         self.object = self.get_object()
         name = str(self.object)
         self.object.delete()
@@ -96,6 +151,17 @@ class BentukDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequire
         return JsonResponse({'success': True, 'redirect': str(self.success_url)})
 
     def post(self, request, *args, **kwargs):
+        """Handle POST request by delegating to the delete handler.
+
+        Allows HTML forms (which can only issue GET/POST) to trigger the
+        deletion logic.
+
+        Args:
+            request: The incoming HTTP request.
+
+        Returns:
+            JsonResponse: The same response as :meth:`delete`.
+        """
         return self.delete(request, *args, **kwargs)
 
 
@@ -103,7 +169,30 @@ class BentukDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequire
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
 @require_GET
 def bentuk_data_data(request):
-    """Server-side DataTables endpoint for `BentukData`."""
+    """Return JSON data for server-side DataTables processing.
+
+    Handles pagination, per-column filtering, and single-column sorting
+    for the ``BentukData`` model.  Designed to be consumed by a jQuery
+    DataTable initialised with ``serverSide: true``.
+
+    Args:
+        request: The incoming HTTP GET request.  Expected query parameters:
+
+            - ``draw`` (int): Draw counter for DataTables.
+            - ``start`` (int): Offset for pagination.
+            - ``length`` (int): Number of records per page.
+            - ``columns_search[]`` (list of str, optional): Column-specific
+              search values (index 0 = *id*, index 1 = *deskripsi*).
+            - ``order[0][column]`` (int, optional): Index of the column to
+              sort by.
+            - ``order[0][dir]`` (str, optional): Sort direction -- ``asc``
+              or ``desc`` (default ``asc``).
+
+    Returns:
+        JsonResponse: A JSON object with the DataTables contract keys
+        (``draw``, ``recordsTotal``, ``recordsFiltered``, ``data``).  On
+        failure a 500 response with ``error`` and ``traceback`` is returned.
+    """
     try:
         draw = int(request.GET.get('draw', '1'))
         start = int(request.GET.get('start', '0'))

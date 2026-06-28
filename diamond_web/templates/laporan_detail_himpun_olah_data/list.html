@@ -174,3 +174,103 @@
 </div>
 
 {% endblock %}
+{% block scripts %}
+<script>
+    (function () {
+        const ajaxUrl = "{% url 'laporan_detail_himpun_olah_data_data' %}";
+        let table;
+
+        $(document).ready(function () {
+            const csrfToken = $('[name=csrfmiddlewaretoken]').val();
+
+            table = $('#detail-himpun-olah-table').DataTable({
+                serverSide: true,
+                processing: true,
+                ajax: {
+                    url: ajaxUrl,
+                    type: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    },
+                    data: function (d) {
+                        d.kategori_ilap = $('#filter-kategori-ilap').val();
+                        d.nama_ilap = $('#filter-ilap').val();
+                        d.jenis_data = $('#filter-jenis-data').val();
+                        d.dasar_hukum = $('#filter-periode-data').val();
+                        d.periode = $('#filter-periode-pengiriman').val();
+                        d.nama_tabel = $('#filter-pic-p3de').val();
+                        d.csrfmiddlewaretoken = csrfToken;
+                        return d;
+                    }
+                },
+                columns: [
+                    {
+                        data: null,
+                        render: function (data, type, row, meta) {
+                            return meta.row + meta.settings._iDisplayStart + 1;
+                        },
+                        width: '50px',
+                        className: 'text-center'
+                    },
+                    { data: 'kategori_ilap' },
+                    { data: 'nama_ilap' },
+                    { data: 'nama_jenis_data' },
+                    { data: 'nama_sub_jenis_data' },
+                    { data: 'nama_tabel' },
+                    { data: 'klasifikasi' },
+                    { data: 'dasar_hukum' },
+                    { data: 'periode_pengiriman' },
+                ],
+                pageLength: 10,
+                order: [[1, 'asc']],
+                processing: true,
+                deferLoading: 0,
+                language: {
+                    emptyTable: 'Gunakan filter lalu klik Cari.',
+                    zeroRecords: 'Tidak ada data ditemukan.',
+                }
+            });
+
+            // Search button
+            $('#btn-search').on('click', function () {
+                table.ajax.reload();
+            });
+
+            // Clear filter button
+            $('#btn-clear-filter').on('click', function (e) {
+                e.preventDefault();
+                $('#filter-kategori-ilap, #filter-ilap, #filter-jenis-data, #filter-subjenis-data, #filter-periode-data, #filter-periode-pengiriman, #filter-media-backup, #filter-pic-p3de').val('');
+                table.ajax.reload();
+            });
+
+            // Export Excel
+            $('#btn-export-excel').on('click', function () {
+                const params = $.param({
+                    kategori_ilap: $('#filter-kategori-ilap').val(),
+                    nama_ilap: $('#filter-ilap').val(),
+                    jenis_data: $('#filter-jenis-data').val(),
+                    dasar_hukum: $('#filter-periode-data').val(),
+                    periode: $('#filter-periode-pengiriman').val(),
+                    nama_tabel: $('#filter-pic-p3de').val(),
+                    format: 'excel'
+                });
+                window.location.href = "{% url 'laporan_detail_himpun_olah_data_export' %}?" + params;
+            });
+
+            // Export PDF
+            $('#btn-export-pdf').on('click', function () {
+                const params = $.param({
+                    kategori_ilap: $('#filter-kategori-ilap').val(),
+                    nama_ilap: $('#filter-ilap').val(),
+                    jenis_data: $('#filter-jenis-data').val(),
+                    dasar_hukum: $('#filter-periode-data').val(),
+                    periode: $('#filter-periode-pengiriman').val(),
+                    nama_tabel: $('#filter-pic-p3de').val(),
+                    format: 'pdf'
+                });
+                window.location.href = "{% url 'laporan_detail_himpun_olah_data_export' %}?" + params;
+            });
+        });
+    })();
+</script>
+{% endblock %}

@@ -693,6 +693,7 @@ HARD_CODED_SYNC_TABLES: list[OracleSyncTableConfig] = [
                 DATE '2015-01-01' AS start_date
             FROM
                 REF_TABEL_PMDE
+            where TABEL_I <> 'KPDE_DATA_UNSTRUCTURED'
         """,
         target_model_label="diamond_web.PIC",
         target_key_field="id_sub_jenis_data_ilap",
@@ -1245,17 +1246,24 @@ class OracleDataSyncService:
                         raise ValueError(
                             f"{cfg.name}: referensi {target_field} tidak ditemukan untuk nilai {raw_value}"
                         ) from exc
-                    except related_model.MultipleObjectsReturned as exc:
-                        # Get details about the duplicates for debugging
-                        duplicate_objs = related_model.objects.filter(**{lookup_field: raw_value})
-                        duplicate_details = [
-                            f"pk={obj.pk}" + (f", {', '.join([f'{k}={getattr(obj, k, None)}' for k in ['id_ilap', 'id_jenis_data', 'id_sub_jenis_data'] if hasattr(obj, k)])}" if hasattr(obj, 'id_jenis_data') else "")
-                            for obj in duplicate_objs[:5]
-                        ]
-                        raise ValueError(
-                            f"{cfg.name}: referensi {target_field} ditemukan {duplicate_objs.count()} records untuk {lookup_field}={raw_value}. "
-                            f"Details (max 5): [{', '.join(duplicate_details)}]"
-                        ) from exc
+                    except related_model.MultipleObjectsReturned:
+                        # When multiple FK records match (e.g. duplicate id_sub_jenis_data in
+                        # JenisDataILAP), pick the first match and log a warning instead of
+                        # skipping the entire row.
+                        related_obj = (
+                            related_model.objects
+                            .filter(**{lookup_field: raw_value})
+                            .only("pk")
+                            .first()
+                        )
+                        if related_obj is None:
+                            raise ValueError(
+                                f"{cfg.name}: referensi {target_field} tidak ditemukan untuk nilai {raw_value}"
+                            )
+                        logger.warning(
+                            f"{cfg.name}: Multiple records found for {lookup_field}={raw_value} "
+                            f"in {related_model._meta.label}. Using first match (pk={related_obj.pk})"
+                        )
                     mapped_values[field_obj.attname] = related_obj.pk
                 return
 
@@ -1509,13 +1517,13 @@ class OracleDataSyncService:
         oracle_rows: list[dict[str, Any]],
         discovered_years: list[int],
     ) -> tuple[list[dict[str, Any]], list[dict]]:
-        """Supplement durasi_jatuh_tempo_pmde oracle rows with default rows (durasi=90)
+        """Supplement durasi_jatuh_tempo_pmde oracle rows with default rows (durasi=85)
         for every (id_sub_jenis_data, year) pair in JenisDataILAP that has no PMDE
         PRIORITAS record in oracle_rows.
 
         Example: if oracle has records for LM0081401 in 2025 and 2026, and
         discovered_years = [2022, 2023, 2024, 2025, 2026], then default rows are
-        generated for LM0081401 × [2022, 2023, 2024] with durasi=90.
+        generated for LM0081401 × [2022, 2023, 2024] with durasi=85.
         """
         from datetime import date as _date
         from diamond_web.models import JenisDataILAP
@@ -1542,7 +1550,7 @@ class OracleDataSyncService:
                         "END_DATE": _date(year, 12, 31),
                         "NO_ND": "ND-",
                         "TAHUN": str(year),
-                        "DURASI": 90,
+                        "DURASI": 85,
                     })
 
         logger.info(
@@ -1837,7 +1845,6 @@ class OracleDataSyncService:
             ('KM005', 'KM00514', 'KM0051401', 'DATA LABORATORIUM/BANK JARINGAN', 'DATA LABORATORIUM/BANK JARINGAN', 'KPDE_ADHOC_KEMENKES_LABJRNGN', 'KPDE_ADHOC_KEMENKES_LABJRNGN_U', 'Diidentifikasi', ''),
             ('KM009', 'KM00902', 'KM0090201', 'DATA PELAPORAN HASIL MONITORING DAN EVALUASI KSWP', 'DATA PELAPORAN HASIL MONITORING DAN EVALUASI KSWP', '', '', 'Diidentifikasi', ''),
             ('KM014', 'KM01407', 'KM0140701', 'DATA PNBP UNTUK DSAB', 'DATA PNBP UNTUK DSAB', 'KPDE_ADHOC_DJA_PNBP_DSAB', 'KPDE_ADHOC_DJA_PNBP_DSAB_U', 'Diidentifikasi', ''),
-            ('KM014', 'KM01415', 'KM0141501', 'BUKU SAKU APBN DAN INDIKATOR EKONOMI', 'BUKU SAKU APBN DAN INDIKATOR EKONOMI', 'KPDE_DATA_UNSTRUCTURED', 'KPDE_DATA_UNSTRUCTURED_U', 'Tidak Terstruktur', ''),
             ('KM015', 'KM01507', 'KM0150702', 'ADHOC - DATA PEMADANAN NPWP SUPPLIER SPAN', 'ADHOC - DATA PEMADANAN NPWP SUPPLIER SPAN', 'KPDE_ADHOC_UMKM_AKAD', 'KPDE_ADHOC_UMKM_AKAD_U', 'Diidentifikasi', ''),
             ('KM015', 'KM01508', 'KM0150801', 'DATA KUR', 'DATA KUR', 'KPDE_DJPBN_KUR_AKAD', 'KPDE_DJPBN_KUR_AKAD_U', 'Tidak Diidentifikasi', ''),
             ('KM015', 'KM01508', 'KM0150801', 'DATA KUR', 'DATA KUR', 'KPDE_ADHOC_ASN_TNI_POLRI', 'KPDE_ADHOC_ASN_TNI_POLRI_U', 'Tidak Diidentifikasi', ''),
@@ -1872,7 +1879,6 @@ class OracleDataSyncService:
             ('LK103', 'LK10390', 'LK1039000', '', '', 'TBL_ADHOC_ND32_KSP', 'TBL_ADHOC_ND32_KSP_U', 'Diidentifikasi', ''),
             ('LK103', 'LK10390', 'LK1039000', '', '', 'TBL_ADHOC_ND32_LKM', 'TBL_ADHOC_ND32_LKM_U', 'Diidentifikasi', ''),
             ('LK104', 'LK10490', 'LK1049000', '', '', 'TBL_ADHOC_ND32_PLG_BRJGKA', 'TBL_ADHOC_ND32_PLG_BRJGKA_U', 'Diidentifikasi', ''),
-            ('LK105', 'LK10590', 'LK1059000', '', '', '', '', 'Diidentifikasi', ''),
             ('LK105', 'LK10590', 'LK1059000', '', '', 'KPDE_LJK_BPR', 'KPDE_LJK_BPR_U', 'Diidentifikasi', ''),
             ('LK106', 'LK10690', 'LK1069000', '', '', 'TBL_ADHOC_ND32_MAN_INVES', 'TBL_ADHOC_ND32_MAN_INVES_U', 'Diidentifikasi', ''),
             ('LK107', 'LK10790', 'LK1079000', '', '', 'KPDE_LJK_BANK_UMUM', 'KPDE_LJK_BANK_UMUM_U', 'Diidentifikasi', ''),
@@ -3056,7 +3062,7 @@ class OracleDataSyncService:
             source_rows, expansion_skipped = self._expand_pic_pmde_rows(source_rows)
             skipped_rows_detail.extend(expansion_skipped)
 
-        # For durasi_jatuh_tempo_pmde: supplement oracle rows with default (durasi=90) rows
+        # For durasi_jatuh_tempo_pmde: supplement oracle rows with default (durasi=85) rows
         # for every (id_sub_jenis_data, year) in JenisDataILAP not covered by oracle data
         if cfg.name == "durasi_jatuh_tempo_pmde":
             source_rows, expansion_skipped = self._expand_durasi_jatuh_tempo_default_rows(
@@ -3222,6 +3228,401 @@ class OracleDataSyncService:
             table_summaries=table_summaries,
         )
 
+    def _post_process_update_nama_tabel_I_from_dde(self, apply_changes: bool) -> OracleSyncSummary:
+        """After syncing jenis_data_ilap, update nama_tabel_I from ZA_DDE_TABEL_FACT.
+
+        Runs a query against the primary Oracle connection to fetch distinct
+        (id_sub_jenis_data, nama_tabel_dbbd) pairs from PVPTD.ZA_DDE_TABEL_FACT
+        where each id_sub_jenis_data maps to exactly one nama_tabel_dbbd.
+        Then updates the matching JenisDataILAP records with the new nama_tabel_I value.
+
+        The Oracle query applies an id_tiket transformation:
+        - If id_tiket length = 16 and starts with 'E', replace the 2nd char with 'I'
+        - Then take the first 9 characters as id_sub_jenis_data
+
+        Args:
+            apply_changes: whether to persist the updates to DB.
+
+        Returns:
+            OracleSyncSummary describing what was done.
+        """
+        from diamond_web.models import JenisDataILAP
+
+        update_query = """
+            WITH unique_data AS (
+                SELECT DISTINCT 
+                    SUBSTR(CASE 
+                        WHEN LENGTH(id_tiket) = 16 AND SUBSTR(id_tiket,1,1) = 'E' 
+                        THEN SUBSTR(id_tiket, 1, 1) || 'I' || SUBSTR(id_tiket, 2)
+                        ELSE id_tiket 
+                    END, 1, 9) AS id_sub_jenis_data,
+                    nama_tabel_dbbd
+                FROM
+                    PVPTD.ZA_DDE_TABEL_FACT
+                WHERE 
+                    nama_tabel_dbbd IS NOT NULL
+            ),
+            counted_data AS (
+                SELECT 
+                    id_sub_jenis_data,
+                    nama_tabel_dbbd,
+                    COUNT(*) OVER (PARTITION BY id_sub_jenis_data) AS total_count
+                FROM 
+                    unique_data
+            )
+            SELECT 
+                id_sub_jenis_data,
+                nama_tabel_dbbd nama_tabel_I
+            FROM 
+                counted_data
+            WHERE 
+                total_count = 1
+        """
+
+        source_rows_count = 0
+        updates_count = 0
+        unchanged_count = 0
+        errors: list[str] = []
+        updated_keys: list[str] = []
+
+        try:
+            with self._connect_oracle("primary") as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(update_query)
+                    columns = [col[0].upper() for col in cursor.description]
+                    rows = cursor.fetchall()
+                    source_rows_count = len(rows)
+
+                    logger.info(
+                        f"[post_update_nama_tabel_I] Fetched {source_rows_count} rows from "
+                        f"PVPTD.ZA_DDE_TABEL_FACT for nama_tabel_I update"
+                    )
+
+                    for row in rows:
+                        row_dict = {
+                            columns[idx]: self._normalize_value(value)
+                            for idx, value in enumerate(row)
+                        }
+                        id_sub_jenis_data = row_dict.get("ID_SUB_JENIS_DATA")
+                        new_nama_tabel_I = row_dict.get("NAMA_TABEL_I")
+
+                        if not id_sub_jenis_data or not new_nama_tabel_I:
+                            continue
+
+                        # Find matching JenisDataILAP records (id_sub_jenis_data may not be unique)
+                        jdi_list = list(JenisDataILAP.objects.filter(
+                            id_sub_jenis_data=id_sub_jenis_data
+                        ))
+
+                        if not jdi_list:
+                            logger.info(
+                                f"[post_update_nama_tabel_I] No JenisDataILAP found for "
+                                f"id_sub_jenis_data={id_sub_jenis_data}, skipping"
+                            )
+                            unchanged_count += 1
+                            continue
+
+                        any_updated = False
+                        for jdi in jdi_list:
+                            if jdi.nama_tabel_I == new_nama_tabel_I:
+                                unchanged_count += 1
+                                continue
+
+                            if apply_changes:
+                                try:
+                                    new_nama_tabel_U = new_nama_tabel_I + '_U'
+                                    jdi.nama_tabel_I = new_nama_tabel_I
+                                    jdi.nama_tabel_U = new_nama_tabel_U
+                                    jdi.save(update_fields=["nama_tabel_I", "nama_tabel_U"])
+                                    logger.info(
+                                        f"[post_update_nama_tabel_I] Updated {id_sub_jenis_data}: "
+                                        f"nama_tabel_I '{new_nama_tabel_I}', "
+                                        f"nama_tabel_U '{new_nama_tabel_U}'"
+                                    )
+                                except Exception as exc:
+                                    err = (
+                                        f"Failed to update {id_sub_jenis_data}: {exc}"
+                                    )
+                                    logger.error(f"[post_update_nama_tabel_I] {err}")
+                                    errors.append(err)
+                                    continue
+
+                            any_updated = True
+                            updated_keys.append(str(id_sub_jenis_data))
+
+                        if any_updated:
+                            updates_count += 1
+
+        except Exception as exc:
+            err = f"Failed to query PVPTD.ZA_DDE_TABEL_FACT: {exc}"
+            logger.error(f"[post_update_nama_tabel_I] {err}")
+            errors.append(err)
+
+        logger.info(
+            f"[post_update_nama_tabel_I] Completed: {updates_count} updates, "
+            f"{unchanged_count} unchanged, {len(errors)} errors"
+        )
+
+        return OracleSyncSummary(
+            table_name="post_update_nama_tabel_I_from_dde",
+            source_table="PVPTD.ZA_DDE_TABEL_FACT",
+            target_model="diamond_web.JenisDataILAP",
+            source_rows=source_rows_count,
+            inserts=0,
+            updates=updates_count,
+            unchanged=unchanged_count,
+            errors=errors,
+            inserted_keys=[],
+            updated_keys=updated_keys[:20],
+            skipped_rows_detail=[],
+        )
+
+    def _post_process_update_id_jenis_tabel_from_dde(self, apply_changes: bool) -> OracleSyncSummary:
+        """After syncing jenis_data_ilap, update id_jenis_tabel from ZA_DDE_TABEL_FACT.
+
+        Runs a query against the primary Oracle connection to fetch distinct
+        (id_sub_jenis_data, JENIS_TABEL) pairs from PVPTD.ZA_DDE_TABEL_FACT
+        where each id_sub_jenis_data maps to exactly one JENIS_TABEL.
+        Then updates the matching JenisDataILAP records by resolving JENIS_TABEL
+        to a JenisTabel FK reference via the deskripsi field.
+
+        The Oracle query applies an id_tiket transformation:
+        - If id_tiket length = 16 and starts with 'E', replace the 2nd char with 'I'
+        - Then take the first 9 characters as id_sub_jenis_data
+
+        Args:
+            apply_changes: whether to persist the updates to DB.
+
+        Returns:
+            OracleSyncSummary describing what was done.
+        """
+        from diamond_web.models import JenisDataILAP, JenisTabel
+
+        update_query = """
+            WITH unique_data AS (
+                SELECT DISTINCT 
+                    SUBSTR(CASE 
+                        WHEN LENGTH(id_tiket) = 16 AND SUBSTR(id_tiket,1,1) = 'E' 
+                        THEN SUBSTR(id_tiket, 1, 1) || 'I' || SUBSTR(id_tiket, 2)
+                        ELSE id_tiket 
+                    END, 1, 9) AS id_sub_jenis_data,
+                    JENIS_TABEL
+                FROM
+                    PVPTD.ZA_DDE_TABEL_FACT
+                WHERE 
+                    JENIS_TABEL IS NOT NULL
+            ),
+            counted_data AS (
+                SELECT 
+                    id_sub_jenis_data,
+                    JENIS_TABEL,
+                    COUNT(*) OVER (PARTITION BY id_sub_jenis_data) AS total_count
+                FROM 
+                    unique_data
+            )
+            SELECT 
+                id_sub_jenis_data,
+                JENIS_TABEL
+            FROM 
+                counted_data
+            WHERE 
+                total_count = 1
+        """
+
+        source_rows_count = 0
+        updates_count = 0
+        unchanged_count = 0
+        errors: list[str] = []
+        updated_keys: list[str] = []
+
+        try:
+            with self._connect_oracle("primary") as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(update_query)
+                    columns = [col[0].upper() for col in cursor.description]
+                    rows = cursor.fetchall()
+                    source_rows_count = len(rows)
+
+                    logger.info(
+                        f"[post_update_id_jenis_tabel] Fetched {source_rows_count} rows from "
+                        f"PVPTD.ZA_DDE_TABEL_FACT for id_jenis_tabel update"
+                    )
+
+                    for row in rows:
+                        row_dict = {
+                            columns[idx]: self._normalize_value(value)
+                            for idx, value in enumerate(row)
+                        }
+                        id_sub_jenis_data = row_dict.get("ID_SUB_JENIS_DATA")
+                        jenis_tabel_value = row_dict.get("JENIS_TABEL")
+
+                        if not id_sub_jenis_data or not jenis_tabel_value:
+                            continue
+
+                        # Resolve JenisTabel FK reference via deskripsi
+                        try:
+                            jenis_tabel_obj = JenisTabel.objects.get(
+                                deskripsi=jenis_tabel_value
+                            )
+                        except JenisTabel.DoesNotExist:
+                            err = (
+                                f"JenisTabel with deskripsi='{jenis_tabel_value}' "
+                                f"not found for {id_sub_jenis_data}"
+                            )
+                            logger.warning(f"[post_update_id_jenis_tabel] {err}")
+                            errors.append(err)
+                            unchanged_count += 1
+                            continue
+
+                        # Find matching JenisDataILAP records (id_sub_jenis_data may not be unique)
+                        jdi_list = list(JenisDataILAP.objects.filter(
+                            id_sub_jenis_data=id_sub_jenis_data
+                        ))
+
+                        if not jdi_list:
+                            logger.info(
+                                f"[post_update_id_jenis_tabel] No JenisDataILAP found for "
+                                f"id_sub_jenis_data={id_sub_jenis_data}, skipping"
+                            )
+                            unchanged_count += 1
+                            continue
+
+                        any_updated = False
+                        for jdi in jdi_list:
+                            if jdi.id_jenis_tabel_id == jenis_tabel_obj.pk:
+                                unchanged_count += 1
+                                continue
+
+                            if apply_changes:
+                                try:
+                                    jdi.id_jenis_tabel = jenis_tabel_obj
+                                    jdi.save(update_fields=["id_jenis_tabel"])
+                                    logger.info(
+                                        f"[post_update_id_jenis_tabel] Updated {id_sub_jenis_data}: "
+                                        f"id_jenis_tabel -> '{jenis_tabel_value}' (pk={jenis_tabel_obj.pk})"
+                                    )
+                                except Exception as exc:
+                                    err = (
+                                        f"Failed to update {id_sub_jenis_data}: {exc}"
+                                    )
+                                    logger.error(f"[post_update_id_jenis_tabel] {err}")
+                                    errors.append(err)
+                                    continue
+
+                            any_updated = True
+                            updated_keys.append(str(id_sub_jenis_data))
+
+                        if any_updated:
+                            updates_count += 1
+
+        except Exception as exc:
+            err = f"Failed to query PVPTD.ZA_DDE_TABEL_FACT: {exc}"
+            logger.error(f"[post_update_id_jenis_tabel] {err}")
+            errors.append(err)
+
+        logger.info(
+            f"[post_update_id_jenis_tabel] Completed: {updates_count} updates, "
+            f"{unchanged_count} unchanged, {len(errors)} errors"
+        )
+
+        return OracleSyncSummary(
+            table_name="post_update_id_jenis_tabel_from_dde",
+            source_table="PVPTD.ZA_DDE_TABEL_FACT",
+            target_model="diamond_web.JenisDataILAP",
+            source_rows=source_rows_count,
+            inserts=0,
+            updates=updates_count,
+            unchanged=unchanged_count,
+            errors=errors,
+            inserted_keys=[],
+            updated_keys=updated_keys[:20],
+            skipped_rows_detail=[],
+        )
+
+    def _post_process_set_unstructured_jenis_tabel(self, apply_changes: bool) -> OracleSyncSummary:
+        """After syncing jenis_data_ilap, set id_jenis_tabel to 'Tidak Terstruktur'
+        for all records where nama_tabel_I = 'KPDE_DATA_UNSTRUCTURED'.
+
+        Args:
+            apply_changes: whether to persist the updates to DB.
+
+        Returns:
+            OracleSyncSummary describing what was done.
+        """
+        from diamond_web.models import JenisDataILAP, JenisTabel
+
+        # Look up the 'Tidak Terstruktur' JenisTabel reference
+        try:
+            unstructured = JenisTabel.objects.get(deskripsi='Tidak Terstruktur')
+        except JenisTabel.DoesNotExist:
+            err = "JenisTabel with deskripsi='Tidak Terstruktur' not found"
+            logger.error(f"[post_set_unstructured_jenis_tabel] {err}")
+            return OracleSyncSummary(
+                table_name="post_set_unstructured_jenis_tabel",
+                source_table="<post-process>",
+                target_model="diamond_web.JenisDataILAP",
+                source_rows=0,
+                inserts=0,
+                updates=0,
+                unchanged=0,
+                errors=[err],
+                inserted_keys=[],
+                updated_keys=[],
+                skipped_rows_detail=[],
+            )
+
+        # Find all records with nama_tabel_I = 'KPDE_DATA_UNSTRUCTURED'
+        jdi_list = list(JenisDataILAP.objects.filter(
+            nama_tabel_I='KPDE_DATA_UNSTRUCTURED'
+        ))
+        source_rows_count = len(jdi_list)
+
+        updates_count = 0
+        unchanged_count = 0
+        errors: list[str] = []
+        updated_keys: list[str] = []
+
+        for jdi in jdi_list:
+            if jdi.id_jenis_tabel_id == unstructured.pk:
+                unchanged_count += 1
+                continue
+
+            if apply_changes:
+                try:
+                    jdi.id_jenis_tabel = unstructured
+                    jdi.save(update_fields=["id_jenis_tabel"])
+                    logger.info(
+                        f"[post_set_unstructured_jenis_tabel] Updated {jdi.id_sub_jenis_data}: "
+                        f"id_jenis_tabel -> 'Tidak Terstruktur' (pk={unstructured.pk})"
+                    )
+                except Exception as exc:
+                    err = f"Failed to update {jdi.id_sub_jenis_data}: {exc}"
+                    logger.error(f"[post_set_unstructured_jenis_tabel] {err}")
+                    errors.append(err)
+                    continue
+
+            updates_count += 1
+            updated_keys.append(str(jdi.id_sub_jenis_data))
+
+        logger.info(
+            f"[post_set_unstructured_jenis_tabel] Completed: {updates_count} updates, "
+            f"{unchanged_count} unchanged, {len(errors)} errors"
+        )
+
+        return OracleSyncSummary(
+            table_name="post_set_unstructured_jenis_tabel",
+            source_table="<post-process>",
+            target_model="diamond_web.JenisDataILAP",
+            source_rows=source_rows_count,
+            inserts=0,
+            updates=updates_count,
+            unchanged=unchanged_count,
+            errors=errors,
+            inserted_keys=[],
+            updated_keys=updated_keys[:20],
+            skipped_rows_detail=[],
+        )
+
     def _run_sequential(self, apply_changes: bool, progress_callback=None, stop_checker=None) -> OracleSyncBatchSummary:
         """Run sync/check sequentially over all configured tables.
 
@@ -3242,71 +3643,107 @@ class OracleDataSyncService:
             if stop_checker and stop_checker():
                 logger.info(f'Stop signal received before processing table {idx}/{total_tables}')
                 break
-                
+
+            # Wrap each table in a nested savepoint so a failure in one table
+            # does not break the outer transaction for subsequent tables.
+            # This prevents "can't execute queries until end of atomic block" errors
+            # cascading to dependent tables like pic_pmde_ref / durasi_jatuh_tempo_pmde.
             try:
-                summary, target_model, inserts, updates = self._calculate_diff_for_config(cfg, stop_checker=stop_checker)
-                table_summaries.append(summary)
+                with transaction.atomic():
+                    summary, target_model, inserts, updates = self._calculate_diff_for_config(cfg, stop_checker=stop_checker)
+                    table_summaries.append(summary)
 
-                if apply_changes and not summary.errors:
-                    self._apply_operations(target_model, inserts, updates)
+                    if apply_changes and not summary.errors:
+                        self._apply_operations(target_model, inserts, updates)
 
-                cumulative_inserts += summary.inserts
-                cumulative_updates += summary.updates
-                cumulative_errors += len(summary.errors)
+                    cumulative_inserts += summary.inserts
+                    cumulative_updates += summary.updates
+                    cumulative_errors += len(summary.errors)
 
-                # Pre-process: before kategori_ilap sync, ensure KW record exists
-                if cfg.name == "kategori_ilap":
-                    pre_summary = self._pre_process_kategori_ilap_kw(
-                        apply_changes=apply_changes
-                    )
-                    if pre_summary:
-                        table_summaries.append(pre_summary)
-                        cumulative_inserts += pre_summary.inserts
-                        cumulative_updates += pre_summary.updates
-                        cumulative_errors += len(pre_summary.errors)
+                    # Pre-process: before kategori_ilap sync, ensure KW record exists
+                    if cfg.name == "kategori_ilap":
+                        pre_summary = self._pre_process_kategori_ilap_kw(
+                            apply_changes=apply_changes
+                        )
+                        if pre_summary:
+                            table_summaries.append(pre_summary)
+                            cumulative_inserts += pre_summary.inserts
+                            cumulative_updates += pre_summary.updates
+                            cumulative_errors += len(pre_summary.errors)
 
-                # Post-process: after ilap sync, insert additional default ILAP records
-                if cfg.name == "ilap":
-                    post_summary = self._post_process_ilap_insert_defaults(
-                        apply_changes=apply_changes
-                    )
-                    if post_summary:
-                        table_summaries.append(post_summary)
-                        cumulative_inserts += post_summary.inserts
-                        cumulative_updates += post_summary.updates
-                        cumulative_errors += len(post_summary.errors)
+                    # Post-process: after ilap sync, insert additional default ILAP records
+                    if cfg.name == "ilap":
+                        post_summary = self._post_process_ilap_insert_defaults(
+                            apply_changes=apply_changes
+                        )
+                        if post_summary:
+                            table_summaries.append(post_summary)
+                            cumulative_inserts += post_summary.inserts
+                            cumulative_updates += post_summary.updates
+                            cumulative_errors += len(post_summary.errors)
 
-                # Post-process: after jenis_data_ilap sync, insert AEOI domestic row
-                # and additional hardcoded records from additional_jenis_data_ilap.csv
-                if cfg.name == "jenis_data_ilap":
-                    post_summary = self._post_process_jenis_data_ilap_aeoi_domestic(
-                        apply_changes=apply_changes
-                    )
-                    if post_summary:
-                        table_summaries.append(post_summary)
-                        cumulative_inserts += post_summary.inserts
-                        cumulative_updates += post_summary.updates
-                        cumulative_errors += len(post_summary.errors)
+                    # Post-process: after jenis_data_ilap sync, insert AEOI domestic row
+                    # and additional hardcoded records from additional_jenis_data_ilap.csv
+                    if cfg.name == "jenis_data_ilap":
+                        post_summary = self._post_process_jenis_data_ilap_aeoi_domestic(
+                            apply_changes=apply_changes
+                        )
+                        if post_summary:
+                            table_summaries.append(post_summary)
+                            cumulative_inserts += post_summary.inserts
+                            cumulative_updates += post_summary.updates
+                            cumulative_errors += len(post_summary.errors)
 
-                    post_summary = self._post_process_jenis_data_ilap_additional(
-                        apply_changes=apply_changes
-                    )
-                    if post_summary:
-                        table_summaries.append(post_summary)
-                        cumulative_inserts += post_summary.inserts
-                        cumulative_updates += post_summary.updates
-                        cumulative_errors += len(post_summary.errors)
+                        post_summary = self._post_process_jenis_data_ilap_additional(
+                            apply_changes=apply_changes
+                        )
+                        if post_summary:
+                            table_summaries.append(post_summary)
+                            cumulative_inserts += post_summary.inserts
+                            cumulative_updates += post_summary.updates
+                            cumulative_errors += len(post_summary.errors)
 
-                # Post-process: after periode_jenis_data sync, insert additional records
-                if cfg.name == "periode_jenis_data":
-                    post_summary = self._post_process_periode_jenis_data_additional(
-                        apply_changes=apply_changes
-                    )
-                    if post_summary:
-                        table_summaries.append(post_summary)
-                        cumulative_inserts += post_summary.inserts
-                        cumulative_updates += post_summary.updates
-                        cumulative_errors += len(post_summary.errors)
+                        # Post-process: after jenis_data_ilap sync, update nama_tabel_I from ZA_DDE_TABEL_FACT
+                        post_summary = self._post_process_update_nama_tabel_I_from_dde(
+                            apply_changes=apply_changes
+                        )
+                        if post_summary:
+                            table_summaries.append(post_summary)
+                            cumulative_inserts += post_summary.inserts
+                            cumulative_updates += post_summary.updates
+                            cumulative_errors += len(post_summary.errors)
+
+                        # Post-process: after jenis_data_ilap sync, update id_jenis_tabel from ZA_DDE_TABEL_FACT
+                        post_summary = self._post_process_update_id_jenis_tabel_from_dde(
+                            apply_changes=apply_changes
+                        )
+                        if post_summary:
+                            table_summaries.append(post_summary)
+                            cumulative_inserts += post_summary.inserts
+                            cumulative_updates += post_summary.updates
+                            cumulative_errors += len(post_summary.errors)
+
+                        # Post-process: after jenis_data_ilap sync, set id_jenis_tabel to 'Tidak Terstruktur'
+                        # for records with nama_tabel_I = 'KPDE_DATA_UNSTRUCTURED'
+                        post_summary = self._post_process_set_unstructured_jenis_tabel(
+                            apply_changes=apply_changes
+                        )
+                        if post_summary:
+                            table_summaries.append(post_summary)
+                            cumulative_inserts += post_summary.inserts
+                            cumulative_updates += post_summary.updates
+                            cumulative_errors += len(post_summary.errors)
+
+                    # Post-process: after periode_jenis_data sync, insert additional records
+                    if cfg.name == "periode_jenis_data":
+                        post_summary = self._post_process_periode_jenis_data_additional(
+                            apply_changes=apply_changes
+                        )
+                        if post_summary:
+                            table_summaries.append(post_summary)
+                            cumulative_inserts += post_summary.inserts
+                            cumulative_updates += post_summary.updates
+                            cumulative_errors += len(post_summary.errors)
 
             except Exception as exc:
                 err_summary = OracleSyncSummary(

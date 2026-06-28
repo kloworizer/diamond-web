@@ -1,4 +1,4 @@
-from django.urls import path, reverse_lazy
+from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
 from .views.general import keep_alive, session_expired
@@ -13,11 +13,15 @@ urlpatterns = [
     
     path('tanda-terima-data/<int:pk>/view/', views.TandaTerimaDataViewOnly.as_view(), name='tanda_terima_data_view'),
     path('', views.home, name='home'),
+    path('home/data/', views.home_data, name='home_data'),
+        path('docs/', views.docs_index, name='docs_index'),
+    path('docs/<slug:slug>/', views.docs_detail, name='docs_detail'),
     path('keep-alive/', keep_alive, name='keep_alive'),
     path('session-expired/', session_expired, name='session_expired'),
+    path('notifications/', views.notification_list, name='notification_list'),
     path('notifications/read/<int:pk>/', views.mark_notification_read, name='mark_notification_read'),
-    path('password_change/', auth_views.PasswordChangeView.as_view(template_name='registration/change_password_form.html', success_url=reverse_lazy('user_password_change_done')), name='user_password_change'),
-    path('password_change/done/', auth_views.PasswordChangeDoneView.as_view(template_name='registration/change_password_done.html'), name='user_password_change_done'),
+    path('notifications/read-all/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
+    path('profil/', views.ProfilView.as_view(), name='user_profil'),
     path('sync-data-referensi/', views.oracle_sync_page, name='oracle_sync_page'),
     path('sync-data-referensi/test/', views.oracle_sync_test_connection, name='oracle_sync_test'),
     path('sync-data-referensi/check/', views.oracle_sync_check, name='oracle_sync_check'),
@@ -38,6 +42,10 @@ urlpatterns = [
     path('sync-tiket/progress/', views.sync_tiket_progress, name='sync_tiket_progress'),
     path('sync-tiket/truncate/', views.sync_tiket_truncate, name='sync_tiket_truncate'),
     path('sync-tiket/download-errors/<str:sync_id>/', views.sync_tiket_download_errors, name='sync_tiket_download_errors'),
+
+    # Sync Log Status
+    path('sync-log-status/', views.sync_log_status, name='sync_log_status'),
+    path('sync-log-status/download/<str:filename>/', views.sync_log_download, name='sync_log_download'),
 
     # === Dashboard Section ===
     path('dashboard/', views.DashboardMonitoringView.as_view(), name='dashboard_monitoring'),
@@ -167,6 +175,12 @@ urlpatterns = [
     path('docx-template/<int:pk>/update/', views.DocxTemplateUpdateView.as_view(), name='docx_template_update'),
     path('docx-template/<int:pk>/delete/', views.DocxTemplateDeleteView.as_view(), name='docx_template_delete'),
     path('docx-template/<int:pk>/download/', views.docx_template_download, name='docx_template_download'),
+    # Sequence Tanda Terima URLs
+    path('sequence-tanda-terima/', views.SequenceTandaTerimaListView.as_view(), name='sequence_tanda_terima_list'),
+    path('sequence-tanda-terima/data/', views.sequence_tanda_terima_data, name='sequence_tanda_terima_data'),
+    path('sequence-tanda-terima/create/', views.SequenceTandaTerimaCreateView.as_view(), name='sequence_tanda_terima_create'),
+    path('sequence-tanda-terima/<int:pk>/update/', views.SequenceTandaTerimaUpdateView.as_view(), name='sequence_tanda_terima_update'),
+    path('sequence-tanda-terima/<int:pk>/delete/', views.SequenceTandaTerimaDeleteView.as_view(), name='sequence_tanda_terima_delete'),
     # Register Penerimaan Data
     path('register-penerimaan-data/', views.LaporanRegisterPenerimaanView.as_view(), name='register_penerimaan_data'),
     path('register-penerimaan-data/data/', views.register_penerimaan_data, name='register_penerimaan_data_data'),
@@ -253,6 +267,9 @@ urlpatterns = [
     path('laporan-detail-himpun-olah-data/', views.LaporanDetailHimpunOlahDataView.as_view(), name='laporan_detail_himpun_olah_data'),
     path('laporan-detail-himpun-olah-data/data/', views.laporan_detail_himpun_olah_data_data, name='laporan_detail_himpun_olah_data_data'),
     path('laporan-detail-himpun-olah-data/export/', views.laporan_detail_himpun_olah_data_export, name='laporan_detail_himpun_olah_data_export'),
+    # Quality Control URLs
+    path('quality-control/', views.QualityControlView.as_view(), name='quality_control'),
+    path('quality-control/data/', views.quality_control_data, name='quality_control_data'),
     # PIC PMDE URLs
     path('pic-pmde/', views.PICPMDEListView.as_view(), name='pic_pmde_list'),
     path('pic-pmde/data/', views.pic_pmde_data, name='pic_pmde_data'),

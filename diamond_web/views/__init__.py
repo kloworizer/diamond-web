@@ -25,6 +25,7 @@ from .backup_data import *
 from .tanda_terima_data import *
 from .monitoring_penyampaian_data import *
 from .docx_template import *
+from .sequence_tanda_terima import *
 from .laporan_pengendalian_mutu import *
 from .laporan_hasil_pengolahan_data_prioritas import *
 from .laporan_kelengkapan_data import *
@@ -44,4 +45,8 @@ from .laporan_detail_himpun_olah_data import *
 from .bulk_document_generation import *
 from .sync_data_referensi import *
 from .sync_tiket import *
+from .sync_log_status import *
+from .profil import *
 from .profil_ilap import *
+from .quality_control import *
+from .docs import *

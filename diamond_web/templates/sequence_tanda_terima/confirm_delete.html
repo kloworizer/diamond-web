@@ -1,0 +1,13 @@
+<form method="post" action="{{ form_action }}" class="form-modal">
+    {% csrf_token %}
+    <div class="text-center py-3">
+        <i class="feather-alert-triangle text-warning" style="font-size: 48px;"></i>
+        <h5 class="mt-3">Konfirmasi Hapus</h5>
+        <p class="text-muted">Apakah Anda yakin ingin menghapus data sequence tahun <strong>{{ object.tahun }}</strong>?</p>
+        <p class="text-muted small">Nomor terakhir: <strong>{{ object.nomor_terakhir }}</strong></p>
+    </div>
+    <div class="modal-footer border-top pt-3">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="submit" class="btn btn-danger">Hapus</button>
+    </div>
+</form>
