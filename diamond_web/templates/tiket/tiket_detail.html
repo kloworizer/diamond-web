@@ -26,7 +26,28 @@
                     </span>
                     {% endif %}
                     <span class="badge {{ status_badge_class }} fs-6 px-3 py-2">
-                        <i class="feather-check-circle me-1"></i>{{ status_label }}
+                        {% if tiket.status_tiket == 1 %}
+                            <i class="feather-edit-2 me-1"></i>
+                        {% elif tiket.status_tiket == 2 %}
+                            <i class="feather-search me-1"></i>
+                        {% elif tiket.status_tiket == 3 %}
+                            <i class="feather-corner-up-left me-1"></i>
+                        {% elif tiket.status_tiket == 4 %}
+                            <i class="feather-clock me-1"></i>
+                        {% elif tiket.status_tiket == 5 %}
+                            <i class="feather-info me-1"></i>
+                        {% elif tiket.status_tiket == 6 %}
+                            <i class="feather-shield me-1"></i>
+                        {% elif tiket.status_tiket == 7 %}
+                            <i class="feather-x-circle me-1"></i>
+                        {% elif tiket.status_tiket == 8 %}
+                            <i class="feather-check-circle me-1"></i>
+                        {% elif tiket.status_tiket == 9 %}
+                            <i class="feather-slash me-1"></i>
+                        {% else %}
+                            <i class="feather-info me-1"></i>
+                        {% endif %}
+                        {{ status_label }}
                     </span>
                 </div>
             </div>
@@ -36,395 +57,391 @@
     <div class="row">
         <!-- Main Content -->
         <div class="col-lg-8">
-            <!-- Tiket Information Card -->
+            <!-- Informasi Utama (Tiket & ILAP) -->
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0"><i class="feather-tag me-2"></i>Informasi Tiket</h5>
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="feather-tag me-2"></i>Informasi Utama (Tiket & ILAP)</h5>
                 </div>
                 <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Nomor Tiket</label>
-                                <p class="fw-bold mb-0 fs-5">{{ tiket.nomor_tiket }}</p>
+                    <div class="row g-4">
+                        <!-- Left Column: Detail Tiket & Pengiriman -->
+                        <div class="col-md-6 border-end pe-md-4">
+                            <h6 class="text-muted text-uppercase fw-bold mb-3 fs-7" style="letter-spacing: 0.05em;">
+                                <i class="feather-file-text me-1 text-primary"></i>Detail Tiket & Pengiriman
+                            </h6>
+                            <div class="meta-list">
+                                <div class="meta-item">
+                                    <span class="meta-label">Nomor Tiket</span>
+                                    <span class="meta-value fw-bold text-primary">{{ tiket.nomor_tiket }}</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Status Tiket</span>
+                                    <span class="meta-value">
+                                        <span class="badge {{ status_badge_class }}">
+                                            {% if tiket.status_tiket == 1 %}
+                                                <i class="feather-edit-2 me-1"></i>
+                                            {% elif tiket.status_tiket == 2 %}
+                                                <i class="feather-search me-1"></i>
+                                            {% elif tiket.status_tiket == 3 %}
+                                                <i class="feather-corner-up-left me-1"></i>
+                                            {% elif tiket.status_tiket == 4 %}
+                                                <i class="feather-clock me-1"></i>
+                                            {% elif tiket.status_tiket == 5 %}
+                                                <i class="feather-info me-1"></i>
+                                            {% elif tiket.status_tiket == 6 %}
+                                                <i class="feather-shield me-1"></i>
+                                            {% elif tiket.status_tiket == 7 %}
+                                                <i class="feather-x-circle me-1"></i>
+                                            {% elif tiket.status_tiket == 8 %}
+                                                <i class="feather-check-circle me-1"></i>
+                                            {% elif tiket.status_tiket == 9 %}
+                                                <i class="feather-slash me-1"></i>
+                                            {% else %}
+                                                <i class="feather-info me-1"></i>
+                                            {% endif %}
+                                            {{ status_label }}
+                                        </span>
+                                    </span>
+                                </div>
+                                {% if periode_formatted %}
+                                <div class="meta-item">
+                                    <span class="meta-label">Periode</span>
+                                    <span class="meta-value">
+                                        <span class="badge bg-dark">{{ periode_formatted }}</span>
+                                    </span>
+                                </div>
+                                {% endif %}
+                                <div class="meta-item">
+                                    <span class="meta-label">Data Prioritas</span>
+                                    <span class="meta-value">
+                                        {% if tiket.id_jenis_prioritas_data %}
+                                        <span class="badge bg-success">Ya</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Tidak</span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Tanggal Terima DIP</span>
+                                    <span class="meta-value">
+                                        {% if tiket.tgl_terima_dip %}
+                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_terima_dip|date:"d/m/Y H:i" }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                {% if tiket.tgl_terima_vertikal %}
+                                <div class="meta-item">
+                                    <span class="meta-label">Tanggal Terima Vertikal</span>
+                                    <span class="meta-value">
+                                        <i class="feather-calendar me-1"></i>{{ tiket.tgl_terima_vertikal|date:"d/m/Y H:i" }}
+                                    </span>
+                                </div>
+                                {% endif %}
+                                {% if tiket.nomor_surat_pengantar %}
+                                <div class="meta-item">
+                                    <span class="meta-label">Nomor Surat Pengantar</span>
+                                    <span class="meta-value fw-semibold">{{ tiket.nomor_surat_pengantar }}</span>
+                                </div>
+                                {% endif %}
+                                <div class="meta-item">
+                                    <span class="meta-label">Tanggal Surat Pengantar</span>
+                                    <span class="meta-value">
+                                        {% if tiket.tanggal_surat_pengantar %}
+                                            <i class="feather-calendar me-1"></i>{{ tiket.tanggal_surat_pengantar|date:"d/m/Y H:i" }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                {% if tiket.nama_pengirim %}
+                                <div class="meta-item">
+                                    <span class="meta-label">Nama Pengirim</span>
+                                    <span class="meta-value">{{ tiket.nama_pengirim }}</span>
+                                </div>
+                                {% endif %}
+                                {% if tiket.id_bentuk_data %}
+                                <div class="meta-item">
+                                    <span class="meta-label">Bentuk Data</span>
+                                    <span class="meta-value">{{ tiket.id_bentuk_data.deskripsi }}</span>
+                                </div>
+                                {% endif %}
+                                {% if tiket.id_cara_penyampaian %}
+                                <div class="meta-item">
+                                    <span class="meta-label">Cara Penyampaian</span>
+                                    <span class="meta-value">{{ tiket.id_cara_penyampaian.deskripsi }}</span>
+                                </div>
+                                {% endif %}
+                                <div class="meta-item">
+                                    <span class="meta-label">Status Ketersediaan Data</span>
+                                    <span class="meta-value">
+                                        {% if tiket.status_ketersediaan_data %}
+                                            <span class="badge bg-success"><i class="feather-check me-1"></i>Tersedia</span>
+                                        {% else %}
+                                            <span class="badge bg-danger"><i class="feather-x me-1"></i>Tidak Tersedia</span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                {% if not tiket.status_ketersediaan_data %}
+                                <div class="meta-item">
+                                    <span class="meta-label">Alasan Ketidaktersediaan</span>
+                                    <span class="meta-value text-danger fw-semibold">{{ tiket.alasan_ketidaktersediaan|default:"-" }}</span>
+                                </div>
+                                {% endif %}
+                                {% if tiket_details.status_penelitian %}
+                                <div class="meta-item">
+                                    <span class="meta-label">Status Penelitian</span>
+                                    <span class="meta-value">{{ tiket_details.status_penelitian }}</span>
+                                </div>
+                                {% endif %}
+                                {% if tiket.tgl_teliti %}
+                                <div class="meta-item">
+                                    <span class="meta-label">Tanggal Teliti</span>
+                                    <span class="meta-value">
+                                        <i class="feather-calendar me-1"></i>{{ tiket.tgl_teliti|date:"d/m/Y H:i" }}
+                                    </span>
+                                </div>
+                                {% endif %}
+                                {% if tiket.nomor_nd_nadine %}
+                                <div class="meta-item">
+                                    <span class="meta-label">Nomor ND Nadine</span>
+                                    <span class="meta-value fw-semibold">{{ tiket.nomor_nd_nadine }}</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Tanggal Nadine</span>
+                                    <span class="meta-value">
+                                        {% if tiket.tgl_nadine %}
+                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_nadine|date:"d/m/Y H:i" }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Tanggal Kirim PIDE</span>
+                                    <span class="meta-value">
+                                        {% if tiket.tgl_kirim_pide %}
+                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_kirim_pide|date:"d/m/Y H:i" }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                {% endif %}
+                                {% if tiket.tgl_dibatalkan %}
+                                <div class="meta-item">
+                                    <span class="meta-label">Tanggal Dibatalkan</span>
+                                    <span class="meta-value">
+                                        <span class="badge bg-danger"><i class="feather-calendar me-1"></i>{{ tiket.tgl_dibatalkan|date:"d/m/Y H:i" }}</span>
+                                    </span>
+                                </div>
+                                {% endif %}
+                                {% if tiket.tgl_dikembalikan %}
+                                <div class="meta-item">
+                                    <span class="meta-label">Tanggal Dikembalikan</span>
+                                    <span class="meta-value">
+                                        <i class="feather-calendar me-1"></i>{{ tiket.tgl_dikembalikan|date:"d/m/Y H:i" }}
+                                    </span>
+                                </div>
+                                {% endif %}
+                                {% if tiket.tgl_rekam_pide %}
+                                <div class="meta-item">
+                                    <span class="meta-label">Tanggal Rekam PIDE</span>
+                                    <span class="meta-value">
+                                        <i class="feather-calendar me-1"></i>{{ tiket.tgl_rekam_pide|date:"d/m/Y H:i" }}
+                                    </span>
+                                </div>
+                                {% endif %}
+                                {% if tiket.tgl_transfer %}
+                                <div class="meta-item">
+                                    <span class="meta-label">Tanggal Transfer</span>
+                                    <span class="meta-value">
+                                        <i class="feather-calendar me-1"></i>{{ tiket.tgl_transfer|date:"d/m/Y H:i" }}
+                                    </span>
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Status Tiket</label>
-                                <p class="fw-semibold mb-0">
-                                    <span class="badge {{ status_badge_class }}">{{ status_label }}</span>
-                                </p>
-                            </div>
-                        </div>
-                        {% if periode_formatted %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Periode</label>
-                                <p class="fw-semibold mb-0">
-                                    <span class="badge bg-dark">{{ periode_formatted }}</span>
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Data Prioritas</label>
-                                <p class="fw-semibold mb-0">
-                                    {% if tiket.id_jenis_prioritas_data %}
-                                    <span class="badge bg-success">Ya</span>
-                                    {% else %}
-                                    <span class="badge bg-secondary">Tidak</span>
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Terima DIP</label>
-                                <p class="fw-semibold mb-0">
-                                    {% if tiket.tgl_terima_dip %}
-                                        <i class="feather-calendar me-1"></i>{{ tiket.tgl_terima_dip|date:"d/m/Y H:i" }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-                        {% if tiket.tgl_terima_vertikal %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Terima Vertikal</label>
-                                <p class="fw-semibold mb-0">
-                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_terima_vertikal|date:"d/m/Y H:i" }}
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.nomor_surat_pengantar %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Nomor Surat Pengantar</label>
-                                <p class="fw-semibold mb-0">{{ tiket.nomor_surat_pengantar }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Surat Pengantar</label>
-                                <p class="fw-semibold mb-0">
-                                    {% if tiket.tanggal_surat_pengantar %}
-                                        <i class="feather-calendar me-1"></i>{{ tiket.tanggal_surat_pengantar|date:"d/m/Y H:i" }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-                        {% if tiket.nama_pengirim %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Nama Pengirim</label>
-                                <p class="fw-semibold mb-0">{{ tiket.nama_pengirim }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.id_bentuk_data %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Bentuk Data</label>
-                                <p class="fw-semibold mb-0">{{ tiket.id_bentuk_data.deskripsi }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.id_cara_penyampaian %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Cara Penyampaian</label>
-                                <p class="fw-semibold mb-0">{{ tiket.id_cara_penyampaian.deskripsi }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Status Ketersediaan Data</label>
-                                <p class="fw-semibold mb-0">
-                                    {% if tiket.status_ketersediaan_data %}
-                                        <span class="badge bg-success"><i class="feather-check me-1"></i>Tersedia</span>
-                                    {% else %}
-                                        <span class="badge bg-danger"><i class="feather-x me-1"></i>Tidak Tersedia</span>
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-                        {% if not tiket.status_ketersediaan_data %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Alasan Ketidaktersediaan</label>
-                                <p class="fw-semibold mb-0">{{ tiket.alasan_ketidaktersediaan|default:"-" }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket_details.status_penelitian %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Status Penelitian</label>
-                                <p class="fw-semibold mb-0">{{ tiket_details.status_penelitian }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.tgl_teliti %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Teliti</label>
-                                <p class="fw-semibold mb-0">
-                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_teliti|date:"d/m/Y H:i" }}
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.nomor_nd_nadine %}
-                        <div class="col-md-4">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Nomor ND Nadine</label>
-                                <p class="fw-semibold mb-0">{{ tiket.nomor_nd_nadine }}</p>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Nadine</label>
-                                <p class="fw-semibold mb-0">
-                                    {% if tiket.tgl_nadine %}
-                                        <i class="feather-calendar me-1"></i>{{ tiket.tgl_nadine|date:"d/m/Y H:i" }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Kirim PIDE</label>
-                                <p class="fw-semibold mb-0">
-                                    {% if tiket.tgl_kirim_pide %}
-                                        <i class="feather-calendar me-1"></i>{{ tiket.tgl_kirim_pide|date:"d/m/Y H:i" }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.tgl_dibatalkan %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Dibatalkan</label>
-                                <p class="fw-semibold mb-0">
-                                    <i class="feather-calendar me-1"></i><span class="badge bg-danger">{{ tiket.tgl_dibatalkan|date:"d/m/Y H:i" }}</span>
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.tgl_dikembalikan %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Dikembalikan</label>
-                                <p class="fw-semibold mb-0">
-                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_dikembalikan|date:"d/m/Y H:i" }}
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.tgl_rekam_pide %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Rekam PIDE</label>
-                                <p class="fw-semibold mb-0">
-                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_rekam_pide|date:"d/m/Y H:i" }}
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.tgl_transfer %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Transfer</label>
-                                <p class="fw-semibold mb-0">
-                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_transfer|date:"d/m/Y H:i" }}
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
 
-                        <!-- QC and Baris Information -->
-                        {% if tiket_details.baris_diterima %}
-                        <div class="col-md-3">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Baris Diterima</label>
-                                <p class="fw-semibold mb-0">{{ tiket_details.baris_diterima }} {% if tiket_details.satuan_data == 1 %}Baris{% else %}{{ tiket_details.satuan_data }}{% endif %}</p>
+                        <!-- Right Column: Identitas & Klasifikasi ILAP -->
+                        <div class="col-md-6 ps-md-4">
+                            <h6 class="text-muted text-uppercase fw-bold mb-3 fs-7" style="letter-spacing: 0.05em;">
+                                <i class="feather-database me-1 text-success"></i>Identitas & Klasifikasi ILAP
+                            </h6>
+                            <div class="meta-list">
+                                <div class="meta-item">
+                                    <span class="meta-label">Nama ILAP</span>
+                                    <span class="meta-value">{{ ilap_info.nama_ilap }}</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Kategori ILAP</span>
+                                    <span class="meta-value">{{ ilap_info.kategori_ilap }}</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Kategori Wilayah</span>
+                                    <span class="meta-value">{{ ilap_info.kategori_wilayah }}</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Jenis Tabel</span>
+                                    <span class="meta-value">{{ ilap_info.jenis_tabel }}</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Jenis Data</span>
+                                    <span class="meta-value">
+                                        <span class="badge bg-secondary">{{ ilap_info.id_sub_jenis_data }} - {{ ilap_info.nama_sub_jenis_data }}</span>
+                                    </span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Nama Sub Jenis Data</span>
+                                    <span class="meta-value">{{ ilap_info.nama_sub_jenis_data }}</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Periode Penyampaian - Penerimaan</span>
+                                    <span class="meta-value">{{ ilap_info.deskripsi_periode }} - {{ ilap_info.periode_penerimaan }}</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Klasifikasi</span>
+                                    <span class="meta-value">
+                                        {% if ilap_info.klasifikasi %}
+                                        <div class="d-flex flex-wrap gap-2 justify-content-end">
+                                            {% for klas in ilap_info.klasifikasi %}
+                                            <span class="badge bg-info">{{ klas }}</span>
+                                            {% endfor %}
+                                        </div>
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                        {% endif %}
-                        {% if tiket_details.baris_lengkap %}
-                        <div class="col-md-3">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Baris Lengkap</label>
-                                <p class="fw-semibold mb-0">{{ tiket_details.baris_lengkap }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket_details.baris_tidak_lengkap %}
-                        <div class="col-md-3">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Baris Tidak Lengkap</label>
-                                <p class="fw-semibold mb-0">{{ tiket_details.baris_tidak_lengkap }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket_details.baris_i %}
-                        <div class="col-md-3">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Baris I</label>
-                                <p class="fw-semibold mb-0">{{ tiket_details.baris_i }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket_details.baris_u %}
-                        <div class="col-md-3">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Baris U</label>
-                                <p class="fw-semibold mb-0">{{ tiket_details.baris_u }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket_details.baris_res %}
-                        <div class="col-md-3">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Baris Res</label>
-                                <p class="fw-semibold mb-0">{{ tiket_details.baris_res }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket_details.baris_cde %}
-                        <div class="col-md-3">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Baris CDE</label>
-                                <p class="fw-semibold mb-0">{{ tiket_details.baris_cde }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket_details.sudah_qc %}
-                        <div class="col-md-3">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Sudah QC</label>
-                                <p class="fw-semibold mb-0">{{ tiket_details.sudah_qc }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket_details.belum_qc %}
-                        <div class="col-md-3">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Belum QC</label>
-                                <p class="fw-semibold mb-0">{{ tiket_details.belum_qc }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket_details.lolos_qc %}
-                        <div class="col-md-3">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Lolos QC</label>
-                                <p class="fw-semibold mb-0">{{ tiket_details.lolos_qc }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket_details.tidak_lolos_qc %}
-                        <div class="col-md-3">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tidak Lolos QC</label>
-                                <p class="fw-semibold mb-0">{{ tiket_details.tidak_lolos_qc }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.qc_c %}
-                        <div class="col-md-3">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">QC C</label>
-                                <p class="fw-semibold mb-0">{{ tiket.qc_c }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
                     </div>
                 </div>
             </div>
 
-            <!-- ILAP Information Card -->
+            <!-- Metrik Kualitas & Hasil QC Data -->
+            {% if tiket_details.baris_diterima %}
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="feather-database me-2"></i>Informasi ILAP</h5>
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="feather-bar-chart-2 me-2"></i>Metrik Kualitas & Hasil QC Data</h5>
                 </div>
                 <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Nama ILAP</label>
-                                <p class="fw-semibold mb-0">{{ ilap_info.nama_ilap }}</p>
+                    <!-- Parallel Metric Counters Row -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <div class="metric-card bg-light-primary">
+                                <span class="metric-label">Baris Diterima</span>
+                                <span class="metric-value text-primary">{{ tiket_details.baris_diterima }}</span>
+                                <span class="metric-sub">{% if tiket_details.satuan_data == 1 %}Baris{% else %}{{ tiket_details.satuan_data }}{% endif %}</span>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Kategori ILAP</label>
-                                <p class="fw-semibold mb-0">{{ ilap_info.kategori_ilap }}</p>
+                        {% if tiket_details.baris_lengkap is not null %}
+                        <div class="col-md-3">
+                            <div class="metric-card bg-light-success">
+                                <span class="metric-label">Baris Lengkap</span>
+                                <span class="metric-value text-success">{{ tiket_details.baris_lengkap }}</span>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Kategori Wilayah</label>
-                                <p class="fw-semibold mb-0">{{ ilap_info.kategori_wilayah }}</p>
+                        {% endif %}
+                        {% if tiket_details.baris_tidak_lengkap is not null %}
+                        <div class="col-md-3">
+                            <div class="metric-card bg-light-danger">
+                                <span class="metric-label">Baris Tidak Lengkap</span>
+                                <span class="metric-value text-danger">{{ tiket_details.baris_tidak_lengkap }}</span>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Jenis Tabel</label>
-                                <p class="fw-semibold mb-0">{{ ilap_info.jenis_tabel }}</p>
+                        {% endif %}
+                        {% if tiket_details.baris_cde is not null %}
+                        <div class="col-md-3">
+                            <div class="metric-card bg-light-info">
+                                <span class="metric-label">Baris CDE</span>
+                                <span class="metric-value text-info">{{ tiket_details.baris_cde }}</span>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Jenis Data</label>
-                                <p class="fw-semibold mb-0">
-                                    <span class="badge bg-secondary">{{ ilap_info.id_sub_jenis_data }} - {{ ilap_info.nama_sub_jenis_data }}</span>
-                                </p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Nama Sub Jenis Data</label>
-                                <p class="fw-semibold mb-0">{{ ilap_info.nama_sub_jenis_data }}</p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Periode Penyampaian - Periode Penerimaan</label>
-                                <p class="fw-semibold mb-0">{{ ilap_info.deskripsi_periode }} - {{ ilap_info.periode_penerimaan }}</p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Klasifikasi</label>
-                                {% if ilap_info.klasifikasi %}
-                                <div class="d-flex flex-wrap gap-2">
-                                    {% for klas in ilap_info.klasifikasi %}
-                                    <span class="badge bg-info">{{ klas }}</span>
-                                    {% endfor %}
-                                </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Validation details and QC status split -->
+                    <div class="row g-3 pt-3 border-top">
+                        <div class="col-md-6 border-end pe-md-4">
+                            <h6 class="text-muted text-uppercase fw-bold mb-3 fs-7" style="letter-spacing: 0.05em;">Rincian Validasi Baris</h6>
+                            <div class="meta-list">
+                                {% if tiket_details.baris_i is not null or tiket_details.baris_u is not null or tiket_details.baris_res is not null %}
+                                    {% if tiket_details.baris_i is not null %}
+                                    <div class="meta-item">
+                                        <span class="meta-label">Baris I</span>
+                                        <span class="meta-value">{{ tiket_details.baris_i }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if tiket_details.baris_u is not null %}
+                                    <div class="meta-item">
+                                        <span class="meta-label">Baris U</span>
+                                        <span class="meta-value">{{ tiket_details.baris_u }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if tiket_details.baris_res is not null %}
+                                    <div class="meta-item">
+                                        <span class="meta-label">Baris Res</span>
+                                        <span class="meta-value">{{ tiket_details.baris_res }}</span>
+                                    </div>
+                                    {% endif %}
                                 {% else %}
-                                <p class="fw-semibold mb-0">-</p>
+                                    <div class="text-muted fs-8 py-2"><i class="feather-info me-1"></i>Tidak ada data validasi baris.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6 ps-md-4">
+                            <h6 class="text-muted text-uppercase fw-bold mb-3 fs-7" style="letter-spacing: 0.05em;">Status Quality Control (QC)</h6>
+                            <div class="meta-list">
+                                {% if tiket_details.sudah_qc is not null or tiket_details.belum_qc is not null or tiket_details.lolos_qc is not null or tiket_details.tidak_lolos_qc is not null or tiket.qc_c %}
+                                    {% if tiket_details.sudah_qc is not null %}
+                                    <div class="meta-item">
+                                        <span class="meta-label">Sudah QC</span>
+                                        <span class="meta-value">{{ tiket_details.sudah_qc }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if tiket_details.belum_qc is not null %}
+                                    <div class="meta-item">
+                                        <span class="meta-label">Belum QC</span>
+                                        <span class="meta-value">{{ tiket_details.belum_qc }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if tiket_details.lolos_qc is not null %}
+                                    <div class="meta-item">
+                                        <span class="meta-label">Lolos QC</span>
+                                        <span class="meta-value">
+                                            {% if tiket_details.lolos_qc == "Ya" or tiket_details.lolos_qc == 1 %}
+                                                <span class="badge bg-success">Ya</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ tiket_details.lolos_qc }}</span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    {% endif %}
+                                    {% if tiket_details.tidak_lolos_qc is not null %}
+                                    <div class="meta-item">
+                                        <span class="meta-label">Tidak Lolos QC</span>
+                                        <span class="meta-value">
+                                            <span class="badge bg-danger">{{ tiket_details.tidak_lolos_qc }}</span>
+                                        </span>
+                                    </div>
+                                    {% endif %}
+                                    {% if tiket.qc_c %}
+                                    <div class="meta-item">
+                                        <span class="meta-label">QC C</span>
+                                        <span class="meta-value">{{ tiket.qc_c }}</span>
+                                    </div>
+                                    {% endif %}
+                                {% else %}
+                                    <div class="text-muted fs-8 py-2"><i class="feather-info me-1"></i>Tidak ada data status Quality Control.</div>
                                 {% endif %}
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+            {% endif %}
 
             <!-- Tiket Actions History -->
             <div class="card shadow-sm mb-4">
@@ -449,7 +466,7 @@
                                     <td class="text-nowrap">{{ action.timestamp|date:"d/m/Y H:i:s" }}</td>
                                     <td>{{ action.user_display }}</td>
                                     <td>
-                                        <span class="badge {{ action.badge_class }}">{{ action.badge_label }}</span>
+                                        <span class="badge {{ action.badge_class }} action-badge-{{ action.badge_label|slugify }}">{{ action.badge_label }}</span>
                                     </td>
                                     <td>{{ action.catatan|default:"-" }}</td>
                                 </tr>
@@ -588,7 +605,30 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <span class="badge {{ rt.status_badge_class }}">{{ rt.status_label }}</span>
+                                    <span class="badge {{ rt.status_badge_class }}">
+                                        {% if rt.status_tiket == 1 %}
+                                            <i class="feather-edit-2 me-1"></i>
+                                        {% elif rt.status_tiket == 2 %}
+                                            <i class="feather-search me-1"></i>
+                                        {% elif rt.status_tiket == 3 %}
+                                            <i class="feather-corner-up-left me-1"></i>
+                                        {% elif rt.status_tiket == 4 %}
+                                            <i class="feather-clock me-1"></i>
+                                        {% elif rt.status_tiket == 5 %}
+                                            <i class="feather-info me-1"></i>
+                                        {% elif rt.status_tiket == 6 %}
+                                            <i class="feather-shield me-1"></i>
+                                        {% elif rt.status_tiket == 7 %}
+                                            <i class="feather-x-circle me-1"></i>
+                                        {% elif rt.status_tiket == 8 %}
+                                            <i class="feather-check-circle me-1"></i>
+                                        {% elif rt.status_tiket == 9 %}
+                                            <i class="feather-slash me-1"></i>
+                                        {% else %}
+                                            <i class="feather-info me-1"></i>
+                                        {% endif %}
+                                        {{ rt.status_label }}
+                                    </span>
                                 </td>
                                 <td>
                                     {% if rt.id_status_penelitian %}
@@ -634,7 +674,7 @@
                             {% ifchanged pic.badge_label %}
                             <div class="list-group-item px-0 py-2 bg-light">
                                 <div class="fw-semibold text-uppercase small">
-                                    <span class="badge {{ pic.badge_class }}">{{ pic.badge_label }}</span>
+                                    <span class="badge pic-role-badge-{{ pic.badge_label|lower }}">{{ pic.badge_label }}</span>
                                 </div>
                             </div>
                             {% endifchanged %}
@@ -782,36 +822,36 @@
                         <h6 class="text-muted mb-3"><i class="feather-download me-2"></i>Download Dokumen</h6>
                         <div class="d-grid gap-2">
                             {% if tiket.tanda_terima %}
-                            <button type="button" class="btn btn-sm btn-primary" onclick="downloadTiketDoc({{ tiket.pk }}, 'tanda_terima')">
+                            <button type="button" class="btn btn-sm btn-primary btn-download-doc" data-id="{{ tiket.pk }}" data-type="tanda_terima">
                                 <i class="feather-file-text me-1"></i>Tanda Terima
                             </button>
-                            <button type="button" class="btn btn-sm btn-primary" onclick="downloadTiketDoc({{ tiket.pk }}, 'lampiran')">
+                            <button type="button" class="btn btn-sm btn-primary btn-download-doc" data-id="{{ tiket.pk }}" data-type="lampiran">
                                 <i class="feather-file-text me-1"></i>Lampiran Tanda Terima
                             </button>
                             {% endif %}
                             {% if tiket.id_status_penelitian.deskripsi == 'Lengkap' %}
-                            <button type="button" class="btn btn-sm btn-success" onclick="downloadPKDILengkap({{ tiket.pk }})">
+                            <button type="button" class="btn btn-sm btn-success btn-download-pkdi-lengkap" data-id="{{ tiket.pk }}">
                                 <i class="feather-file-text me-1"></i>Surat PKDI (Lengkap)
                             </button>
                             {% endif %}
                             {% if tiket.id_status_penelitian.deskripsi == 'Lengkap Sebagian' %}
-                            <button type="button" class="btn btn-sm btn-warning" onclick="downloadPKDILengkapSebagian({{ tiket.pk }})">
+                            <button type="button" class="btn btn-sm btn-warning btn-download-pkdi-sebagian" data-id="{{ tiket.pk }}">
                                 <i class="feather-file-text me-1"></i>Surat PKDI (Sebagian)
                             </button>
                             {% endif %}
                             {% if tiket.id_status_penelitian.deskripsi == 'Lengkap Sebagian' %}
-                            <button type="button" class="btn btn-sm btn-warning" onclick="downloadKlarifikasi({{ tiket.pk }})">
+                            <button type="button" class="btn btn-sm btn-warning btn-download-klarifikasi" data-id="{{ tiket.pk }}">
                                 <i class="feather-file-text me-1"></i>Surat Klarifikasi
                             </button>
                             {% endif %}
                             {% if tiket.id_status_penelitian.deskripsi == 'Tidak Lengkap' %}
-                            <button type="button" class="btn btn-sm btn-danger" onclick="downloadKlarifikasi({{ tiket.pk }})">
+                            <button type="button" class="btn btn-sm btn-danger btn-download-klarifikasi" data-id="{{ tiket.pk }}">
                                 <i class="feather-file-text me-1"></i>Surat Klarifikasi
                             </button>
                             {% endif %}
                             {% if tiket.status_tiket == 3 or tiket.status_tiket == 4 or tiket.status_tiket == 5 or tiket.status_tiket == 6 or tiket.status_tiket == 8 %}
                                 {% if tiket.id_status_penelitian.deskripsi != 'Tidak Lengkap' %}
-                            <button type="button" class="btn btn-sm btn-info" onclick="downloadTiketDoc({{ tiket.pk }}, 'nd_pengantar')">
+                            <button type="button" class="btn btn-sm btn-info btn-download-doc" data-id="{{ tiket.pk }}" data-type="nd_pengantar">
                                 <i class="feather-file-text me-1"></i>ND Pengantar ke PIDE
                             </button>
                                 {% endif %}
@@ -983,53 +1023,576 @@
 </div>
 
 <style>
+    .main-content {
+        background-color: #f8fafc;
+        color: #1e293b;
+    }
+
+    /* Page Header */
+    .main-content h2 {
+        font-weight: 700 !important;
+        color: #0f172a !important;
+        font-size: 1.5rem !important;
+        letter-spacing: -0.02em;
+        margin-bottom: 0.25rem !important;
+        display: flex;
+        align-items: center;
+    }
+    
+    .breadcrumb-item a {
+        color: #64748b !important;
+        text-decoration: none !important;
+        transition: color 0.15s ease;
+    }
+    .breadcrumb-item a:hover {
+        color: #3b82f6 !important;
+    }
+    .breadcrumb-item.active {
+        color: #0f172a !important;
+        font-weight: 500 !important;
+    }
+
+    /* Card styling - Clean SaaS look */
+    .card.shadow-sm {
+        border-radius: 12px !important;
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.02) !important;
+        overflow: hidden !important;
+        background-color: #ffffff !important;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        transform: none !important;
+    }
+
+    /* Small section headers inside card-body */
+    .card-body h6 {
+        font-size: 0.875rem !important;
+        font-weight: 700 !important;
+        color: #475569 !important;
+        letter-spacing: 0.05em !important;
+        margin-bottom: 1.15rem !important;
+    }
+
+    .card.shadow-sm:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02) !important;
+    }
+
+    /* Card Headers overrides - Soft Tint bg + left bar + matching icon color */
+    .card-header.bg-success,
+    .card-header.bg-primary,
+    .card-header.bg-info,
+    .card-header.bg-warning,
+    .card-header.bg-secondary {
+        color: #0f172a !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        padding: 1.1rem 1.35rem !important;
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .card-header.bg-success { background: rgba(16, 185, 129, 0.035) !important; }
+    .card-header.bg-primary { background: rgba(59, 130, 246, 0.035) !important; }
+    .card-header.bg-info { background: rgba(6, 182, 212, 0.035) !important; }
+    .card-header.bg-warning { background: rgba(245, 158, 11, 0.035) !important; }
+    .card-header.bg-secondary { background: rgba(100, 116, 139, 0.035) !important; }
+
+    .card-header.bg-success h5,
+    .card-header.bg-primary h5,
+    .card-header.bg-info h5,
+    .card-header.bg-warning h5,
+    .card-header.bg-secondary h5 {
+        color: #0f172a !important;
+        font-weight: 600 !important;
+        font-size: 1.05rem !important;
+        display: flex;
+        align-items: center;
+        margin: 0 !important;
+        gap: 0.5rem;
+    }
+
+    /* Left bar accent indicators */
+    .card-header.bg-success::after,
+    .card-header.bg-primary::after,
+    .card-header.bg-info::after,
+    .card-header.bg-warning::after,
+    .card-header.bg-secondary::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 4px;
+        border-radius: 0;
+    }
+
+    .card-header.bg-success::after { background-color: #10b981 !important; }
+    .card-header.bg-primary::after { background-color: #3b82f6 !important; }
+    .card-header.bg-info::after { background-color: #06b6d4 !important; }
+    .card-header.bg-warning::after { background-color: #f59e0b !important; }
+    .card-header.bg-secondary::after { background-color: #64748b !important; }
+
+    /* Header Icons colored states */
+    .card-header.bg-success h5 i { color: #10b981 !important; }
+    .card-header.bg-primary h5 i { color: #3b82f6 !important; }
+    .card-header.bg-info h5 i { color: #06b6d4 !important; }
+    .card-header.bg-warning h5 i { color: #f59e0b !important; }
+    .card-header.bg-secondary h5 i { color: #64748b !important; }
+
+    /* Info Groups (Grid Cells) */
     .info-group {
-        padding: 0.5rem;
-        border-left: 3px solid #dee2e6;
-        background-color: #f8f9fa;
-        border-radius: 4px;
+        padding: 0.85rem 1rem !important;
+        border: 1px solid #f1f5f9 !important;
+        border-left: 3px solid #e2e8f0 !important;
+        background-color: #f8fafc !important;
+        border-radius: 8px !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
 
     .info-group:hover {
-        background-color: #e9ecef;
-        border-left-color: #0d6efd;
-        transition: all 0.2s ease;
+        background-color: #ffffff !important;
+        border-color: #e2e8f0 !important;
+        border-left-color: #3b82f6 !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+        transform: translateY(-1px) !important;
     }
 
-    .card {
-        border: none;
-        transition: transform 0.2s ease;
+    .info-group label {
+        font-weight: 600 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.65rem !important;
+        color: #64748b !important;
+        margin-bottom: 0.35rem !important;
+        display: block;
     }
 
-    .card:hover {
-        transform: translateY(-2px);
+    .info-group p {
+        color: #0f172a !important;
+        font-size: 0.9rem !important;
+        line-height: 1.4 !important;
+    }
+    
+    .info-group p.fs-5 {
+        font-size: 1.05rem !important;
     }
 
-    .card-header {
-        border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    /* Meta list and items (Key-Value rows) */
+    .meta-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
     }
 
-    .badge {
+    .meta-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px dashed #e2e8f0;
+    }
+
+    .meta-item:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .meta-label {
+        font-size: 0.8rem;
         font-weight: 500;
-        padding: 0.35em 0.65em;
+        color: #64748b;
     }
 
-    .list-group-item {
-        border-left: 3px solid transparent;
+    .meta-value {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #0f172a;
+        text-align: right;
+    }
+
+    /* Metric counter cards */
+    .metric-card {
+        padding: 1.15rem 1rem !important;
+        border-radius: 10px !important;
+        border: 1px solid #e2e8f0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        height: 100%;
         transition: all 0.2s ease;
     }
+    
+    .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    }
 
-    .list-group-item:hover {
-        border-left-color: #0d6efd;
-        background-color: #f8f9fa;
+    .metric-card.bg-light-primary {
+        background-color: rgba(59, 130, 246, 0.04) !important;
+        border-color: rgba(59, 130, 246, 0.1) !important;
+    }
+
+    .metric-card.bg-light-success {
+        background-color: rgba(16, 185, 129, 0.04) !important;
+        border-color: rgba(16, 185, 129, 0.1) !important;
+    }
+
+    .metric-card.bg-light-danger {
+        background-color: rgba(239, 68, 68, 0.04) !important;
+        border-color: rgba(239, 68, 68, 0.1) !important;
+    }
+
+    .metric-card.bg-light-info {
+        background-color: rgba(6, 182, 212, 0.04) !important;
+        border-color: rgba(6, 182, 212, 0.1) !important;
+    }
+
+    .metric-label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+        margin-bottom: 0.35rem;
+    }
+
+    .metric-value {
+        font-size: 1.6rem;
+        font-weight: 700;
+        line-height: 1.1;
+    }
+
+    .metric-sub {
+        font-size: 0.72rem;
+        color: #64748b;
+        margin-top: 0.25rem;
+    }
+
+    /* Soft Badge styling - Replaces solid primary/secondary/etc badges */
+    .badge {
+        font-size: 0.72rem;
+        font-weight: 600 !important;
+        padding: 0.35em 0.75em;
+        border-radius: 6px !important;
+        letter-spacing: 0.01em;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    /* PIC Role Badges Custom Theme Colors */
+    .pic-role-badge-p3de {
+        background-color: rgba(200, 215, 253, 0.25) !important;
+        color: #2f54c4 !important;
+        border: 1px solid rgba(200, 215, 253, 0.7) !important;
+    }
+    .pic-role-badge-pide {
+        background-color: rgba(6, 196, 210, 0.08) !important;
+        color: #048c96 !important;
+        border: 1px solid rgba(6, 196, 210, 0.3) !important;
+    }
+    .pic-role-badge-pmde {
+        background-color: rgba(12, 146, 255, 0.08) !important;
+        color: #006fcc !important;
+        border: 1px solid rgba(12, 146, 255, 0.3) !important;
+    }
+
+    /* Style for large badges (like in the top-right header) */
+    .badge.fs-6 {
+        font-size: 0.95rem !important;
+        padding: 0.55rem 1.1rem !important;
+        border-radius: 8px !important;
+    }
+
+    .badge.bg-success {
+        background-color: rgba(16, 185, 129, 0.1) !important;
+        color: #065f46 !important;
+        border: 1px solid rgba(16, 185, 129, 0.2) !important;
+    }
+
+    .badge.bg-primary {
+        background-color: rgba(59, 130, 246, 0.1) !important;
+        color: #1e40af !important;
+        border: 1px solid rgba(59, 130, 246, 0.2) !important;
+    }
+
+    .badge.bg-info {
+        background-color: rgba(6, 182, 212, 0.1) !important;
+        color: #155e75 !important;
+        border: 1px solid rgba(6, 182, 212, 0.2) !important;
+    }
+
+    .badge.bg-warning {
+        background-color: rgba(245, 158, 11, 0.1) !important;
+        color: #92400e !important;
+        border: 1px solid rgba(245, 158, 11, 0.2) !important;
+    }
+
+    .badge.bg-danger {
+        background-color: rgba(239, 68, 68, 0.1) !important;
+        color: #991b1b !important;
+        border: 1px solid rgba(239, 68, 68, 0.2) !important;
+    }
+
+    .badge.bg-secondary {
+        background-color: rgba(100, 116, 139, 0.1) !important;
+        color: #334155 !important;
+        border: 1px solid rgba(100, 116, 139, 0.2) !important;
+    }
+
+    .badge.bg-dark {
+        background-color: rgba(15, 23, 42, 0.1) !important;
+        color: #0f172a !important;
+        border: 1px solid rgba(15, 23, 42, 0.2) !important;
+    }
+
+    /* Riwayat Aksi (Audit Trail) Role-based Badges Custom Theme Colors */
+    /* P3DE Actions */
+    .badge.action-badge-direkam,
+    .badge.action-badge-diteliti,
+    .badge.action-badge-dikirim-ke-pide,
+    .badge.action-badge-backup-direkam,
+    .badge.action-badge-tanda-terima-direkam,
+    .badge.action-badge-pic-ditambahkan,
+    .badge.action-badge-pic-diaktifkan-kembali {
+        background-color: rgba(200, 215, 253, 0.25) !important;
+        color: #2f54c4 !important;
+        border: 1px solid rgba(200, 215, 253, 0.7) !important;
+    }
+    
+    /* PIDE Actions */
+    .badge.action-badge-identifikasi,
+    .badge.action-badge-dikembalikan,
+    .badge.action-badge-pic-tidak-aktif {
+        background-color: rgba(6, 196, 210, 0.08) !important;
+        color: #048c96 !important;
+        border: 1px solid rgba(6, 196, 210, 0.3) !important;
+    }
+
+    /* PMDE Actions */
+    .badge.action-badge-pengendalian-mutu,
+    .badge.action-badge-ditransfer-ke-pmde {
+        background-color: rgba(12, 146, 255, 0.08) !important;
+        color: #006fcc !important;
+        border: 1px solid rgba(12, 146, 255, 0.3) !important;
+    }
+
+    /* Semantic Outcome Actions */
+    .badge.action-badge-selesai {
+        background-color: rgba(16, 185, 129, 0.05) !important;
+        color: #059669 !important;
+        border: 1px solid rgba(16, 185, 129, 0.3) !important;
+    }
+
+    .badge.action-badge-dibatalkan,
+    .badge.action-badge-backup-dihapus,
+    .badge.action-badge-tanda-terima-dibatalkan,
+    .badge.action-badge-tidak-diterbitkan-tanda-terima {
+        background-color: rgba(239, 68, 68, 0.05) !important;
+        color: #dc2626 !important;
+        border: 1px solid rgba(239, 68, 68, 0.3) !important;
+    }
+
+
+
+    /* Polished Tables */
+    .table-responsive {
+        border-radius: 8px !important;
+        border: 1px solid #e2e8f0 !important;
+        overflow: hidden !important;
+        background: #ffffff;
+    }
+
+    .table {
+        margin-bottom: 0 !important;
+        width: 100% !important;
+    }
+
+    .table th {
+        background-color: #f8fafc !important;
+        color: #475569 !important;
+        font-weight: 600 !important;
+        font-size: 0.72rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 0.85rem 1rem !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        vertical-align: middle !important;
+    }
+
+    .table td {
+        padding: 0.95rem 1rem !important;
+        font-size: 0.825rem !important;
+        color: #334155 !important;
+        vertical-align: middle !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+    }
+
+    .table tbody tr:last-child td {
+        border-bottom: none !important;
     }
 
     .table-hover tbody tr:hover {
-        background-color: rgba(13, 110, 253, 0.05);
+        background-color: rgba(59, 130, 246, 0.015) !important;
+        transition: background-color 0.15s ease;
     }
 
-    .shadow-sm {
-        box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .075) !important;
+    .table th i, .table td i {
+        font-size: 0.85rem;
+    }
+
+    /* Sidebar list group overrides */
+    .list-group-item {
+        padding: 0.95rem 1.25rem !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        border-left: 3px solid transparent !important;
+        transition: all 0.2s ease !important;
+        background-color: transparent !important;
+    }
+
+    .list-group-item:hover {
+        border-left-color: #3b82f6 !important;
+        background-color: rgba(59, 130, 246, 0.015) !important;
+    }
+    
+    .list-group-item.bg-light {
+        background-color: #f8fafc !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        padding: 0.65rem 1.25rem !important;
+    }
+    
+    .list-group-item.bg-light:hover {
+        border-left-color: transparent !important;
+        background-color: #f8fafc !important;
+    }
+
+    /* Premium Button styling */
+    .main-content .btn {
+        border-radius: 8px !important;
+        font-weight: 550 !important;
+        padding: 0.55rem 1.1rem !important;
+        font-size: 0.875rem !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        border-width: 1px !important;
+        cursor: pointer !important;
+    }
+
+    .main-content .btn-sm {
+        padding: 0.4rem 0.85rem !important;
+        font-size: 0.785rem !important;
+    }
+
+    .main-content .btn i {
+        font-size: 0.9rem;
+    }
+
+    .main-content .btn-primary {
+        background-color: #3b82f6 !important;
+        border-color: #3b82f6 !important;
+        color: #ffffff !important;
+    }
+
+    .main-content .btn-primary:hover {
+        background-color: #2563eb !important;
+        border-color: #2563eb !important;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2) !important;
+        transform: translateY(-1px);
+    }
+
+    .main-content .btn-success {
+        background-color: #10b981 !important;
+        border-color: #10b981 !important;
+        color: #ffffff !important;
+    }
+
+    .main-content .btn-success:hover {
+        background-color: #059669 !important;
+        border-color: #059669 !important;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2) !important;
+        transform: translateY(-1px);
+    }
+
+    .main-content .btn-warning {
+        background-color: #f59e0b !important;
+        border-color: #f59e0b !important;
+        color: #ffffff !important;
+    }
+
+    .main-content .btn-warning:hover {
+        background-color: #d97706 !important;
+        border-color: #d97706 !important;
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2) !important;
+        transform: translateY(-1px);
+    }
+
+    .main-content .btn-info {
+        background-color: #06b6d4 !important;
+        border-color: #06b6d4 !important;
+        color: #ffffff !important;
+    }
+
+    .main-content .btn-info:hover {
+        background-color: #0891b2 !important;
+        border-color: #0891b2 !important;
+        box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2) !important;
+        transform: translateY(-1px);
+    }
+
+    .main-content .btn-danger {
+        background-color: #ef4444 !important;
+        border-color: #ef4444 !important;
+        color: #ffffff !important;
+    }
+
+    .main-content .btn-danger:hover {
+        background-color: #dc2626 !important;
+        border-color: #dc2626 !important;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2) !important;
+        transform: translateY(-1px);
+    }
+    
+    .main-content .btn-secondary {
+        background-color: #64748b !important;
+        border-color: #64748b !important;
+        color: #ffffff !important;
+    }
+    
+    .main-content .btn-secondary:hover {
+        background-color: #475569 !important;
+        border-color: #475569 !important;
+        box-shadow: 0 4px 12px rgba(100, 116, 139, 0.2) !important;
+        transform: translateY(-1px);
+    }
+
+    /* Modal Styling Improvements */
+    .modal-content {
+        border-radius: 14px !important;
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+        overflow: hidden;
+    }
+
+    .modal-header {
+        border-bottom: 1px solid #f1f5f9 !important;
+        padding: 1.25rem 1.5rem !important;
+    }
+    
+    .modal-body {
+        padding: 1.5rem !important;
+    }
+
+    .modal-footer {
+        border-top: 1px solid #f1f5f9 !important;
+        padding: 1.1rem 1.5rem !important;
     }
 </style>
 
@@ -2079,5 +2642,41 @@
         a.click();
         document.body.removeChild(a);
     }
+
+    // Document download event delegation
+    document.addEventListener('click', function(e) {
+        // Handle download doc button
+        const btnDownloadDoc = e.target.closest('.btn-download-doc');
+        if (btnDownloadDoc) {
+            const pk = btnDownloadDoc.dataset.id;
+            const docType = btnDownloadDoc.dataset.type;
+            downloadTiketDoc(pk, docType);
+            return;
+        }
+        
+        // Handle PKDI lengkap
+        const btnPkdiLengkap = e.target.closest('.btn-download-pkdi-lengkap');
+        if (btnPkdiLengkap) {
+            const pk = btnPkdiLengkap.dataset.id;
+            downloadPKDILengkap(pk);
+            return;
+        }
+        
+        // Handle PKDI sebagian
+        const btnPkdiSebagian = e.target.closest('.btn-download-pkdi-sebagian');
+        if (btnPkdiSebagian) {
+            const pk = btnPkdiSebagian.dataset.id;
+            downloadPKDILengkapSebagian(pk);
+            return;
+        }
+        
+        // Handle klarifikasi
+        const btnKlarifikasi = e.target.closest('.btn-download-klarifikasi');
+        if (btnKlarifikasi) {
+            const pk = btnKlarifikasi.dataset.id;
+            downloadKlarifikasi(pk);
+            return;
+        }
+    });
 </script>
 {% endblock %}

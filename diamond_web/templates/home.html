@@ -3,6 +3,77 @@
 
 {% block content %}
 {% if user.is_authenticated %}
+<style>
+    /* Section Headers in Sidebar */
+    .role-section-header {
+        margin: 18px 0 8px !important;
+        padding-left: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .role-section-header small {
+        font-size: 10px !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #64748b !important;
+    }
+    
+    /* PIC Specific Dots */
+    .role-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .role-dot-p3de { background-color: #2f54c4; }
+    .role-dot-pide { background-color: #06C4D2; }
+    .role-dot-pmde { background-color: #0C92FF; }
+    .role-dot-admin { background-color: #8B5CF6; }
+
+    /* Custom Left-Accent Active State on Nav Links */
+    .nxl-content-sidebar-item .nav-item {
+        position: relative;
+    }
+    .nxl-content-sidebar-item .nav-link {
+        border-radius: 0 6px 6px 0 !important;
+        margin-left: 0 !important;
+        border-left: 3px solid transparent !important;
+        transition: all 0.2s ease-in-out !important;
+        padding: 8px 16px 8px 20px !important;
+    }
+    
+    /* Hover and Active border highlights depending on PIC type */
+    /* P3DE links hover/active */
+    .p3de-tasks .nav-link:hover,
+    .p3de-tasks .nav-link.active {
+        border-left-color: #2f54c4 !important;
+        background-color: rgba(200, 215, 253, 0.15) !important;
+    }
+    
+    /* PIDE links hover/active */
+    .pide-tasks .nav-link:hover,
+    .pide-tasks .nav-link.active {
+        border-left-color: #06C4D2 !important;
+        background-color: rgba(6, 196, 210, 0.08) !important;
+    }
+    
+    /* PMDE links hover/active */
+    .pmde-tasks .nav-link:hover,
+    .pmde-tasks .nav-link.active {
+        border-left-color: #0c92ff !important;
+        background-color: rgba(12, 146, 255, 0.08) !important;
+    }
+
+    /* Transition animations */
+    .tiket-filter-link .badge {
+        transition: transform 0.2s ease;
+    }
+    .tiket-filter-link:hover .badge {
+        transform: scale(1.05);
+    }
+</style>
 <div class="nxl-content without-header nxl-full-content">
 
     <div class="main-content d-flex">
@@ -16,11 +87,11 @@
                 </div>
             </div>
             {% if is_p3de %}
-            <div class="content-sidebar-body" style="margin-top:0;">
-                <div style="margin:15px 0 0; padding-left:1rem;">
-                    <small class="text-uppercase fw-bold">Pelaksana P3DE</small>
+            <div class="content-sidebar-body p3de-tasks" style="margin-top:0;">
+                <div class="role-section-header">
+                    <span class="role-dot role-dot-p3de"></span>
+                    <small>Pelaksana P3DE</small>
                 </div>
-                <!-- Tiket Status Categories for P3DE -->
                 <ul class="nav flex-column nxl-content-sidebar-item">
                     <li class="nav-item">
                         <a class="nav-link tiket-filter-link active" href="javascript:void(0);" data-filter="belum_rekam_backup_data">
@@ -87,8 +158,9 @@
                     </li>
                 </ul>
                 {% if is_admin_p3de %}
-                <div style="margin:5px 0 0; padding-left:1rem; border-top:1px solid #eee; padding-top:5px;">
-                    <small class="text-uppercase fw-bold">Admin P3DE</small>
+                <div class="role-section-header" style="border-top:1px solid #eee; padding-top:10px;">
+                    <span class="role-dot role-dot-admin"></span>
+                    <small>Admin P3DE</small>
                 </div>
                 <ul class="nav flex-column nxl-content-sidebar-item">
                     <li class="nav-item">
@@ -114,9 +186,10 @@
             </div>
             {% endif %}
             {% if is_pide %}
-            <div class="content-sidebar-body" style="margin-top:0;">
-                <div style="margin:0; padding-left:1rem;">
-                    <small class="text-uppercase fw-bold">Pelaksana PIDE</small>
+            <div class="content-sidebar-body pide-tasks" style="margin-top:0;">
+                <div class="role-section-header">
+                    <span class="role-dot role-dot-pide"></span>
+                    <small>Pelaksana PIDE</small>
                 </div>
                 <ul class="nav flex-column nxl-content-sidebar-item">
                     <li class="nav-item">
@@ -139,8 +212,9 @@
                     </li>
                 </ul>
                 {% if is_admin_pide %}
-                <div style="margin:5px 0 0; padding-left:1rem; border-top:1px solid #eee; padding-top:5px;">
-                    <small class="text-uppercase fw-bold">Admin PIDE</small>
+                <div class="role-section-header" style="border-top:1px solid #eee; padding-top:10px;">
+                    <span class="role-dot role-dot-admin"></span>
+                    <small>Admin PIDE</small>
                 </div>
                 <ul class="nav flex-column nxl-content-sidebar-item">
                     <li class="nav-item">
@@ -166,9 +240,10 @@
             </div>
             {% endif %}
             {% if is_pmde %}
-            <div class="content-sidebar-body" style="margin-top:0;">
-                <div style="margin:0; padding-left:1rem;">
-                    <small class="text-uppercase fw-bold">Pelaksana PMDE</small>
+            <div class="content-sidebar-body pmde-tasks" style="margin-top:0;">
+                <div class="role-section-header">
+                    <span class="role-dot role-dot-pmde"></span>
+                    <small>Pelaksana PMDE</small>
                 </div>
                 <ul class="nav flex-column nxl-content-sidebar-item">
                     <li class="nav-item">
@@ -182,8 +257,9 @@
                     </li>
                 </ul>
                 {% if is_admin_pmde %}
-                <div style="margin:5px 0 0; padding-left:1rem; border-top:1px solid #eee; padding-top:5px;">
-                    <small class="text-uppercase fw-bold">Admin PMDE</small>
+                <div class="role-section-header" style="border-top:1px solid #eee; padding-top:10px;">
+                    <span class="role-dot role-dot-admin"></span>
+                    <small>Admin PMDE</small>
                 </div>
                 <ul class="nav flex-column nxl-content-sidebar-item">
                     <li class="nav-item">
