@@ -329,6 +329,27 @@ def monitoring_penyampaian_data_data(request):
                 'jenis_tabel': [{'id': str(k['id']), 'name': k['deskripsi']} for k in jenis_tabel_list],
                 'dasar_hukum': [{'id': str(k['id']), 'name': k['deskripsi']} for k in dasar_hukum_list],
                 'periode_pengiriman': [{'id': str(k['id']), 'name': k['periode_penyampaian']} for k in periode_pengiriman_list],
+                'periode': [
+                    {'id': 'Januari', 'name': 'Januari'},
+                    {'id': 'Februari', 'name': 'Februari'},
+                    {'id': 'Maret', 'name': 'Maret'},
+                    {'id': 'April', 'name': 'April'},
+                    {'id': 'Mei', 'name': 'Mei'},
+                    {'id': 'Juni', 'name': 'Juni'},
+                    {'id': 'Juli', 'name': 'Juli'},
+                    {'id': 'Agustus', 'name': 'Agustus'},
+                    {'id': 'September', 'name': 'September'},
+                    {'id': 'Oktober', 'name': 'Oktober'},
+                    {'id': 'November', 'name': 'November'},
+                    {'id': 'Desember', 'name': 'Desember'},
+                    {'id': 'Triwulan I', 'name': 'Triwulan I'},
+                    {'id': 'Triwulan II', 'name': 'Triwulan II'},
+                    {'id': 'Triwulan III', 'name': 'Triwulan III'},
+                    {'id': 'Triwulan IV', 'name': 'Triwulan IV'},
+                    {'id': 'Semester I', 'name': 'Semester I'},
+                    {'id': 'Semester II', 'name': 'Semester II'},
+                    {'id': 'Tahunan', 'name': 'Tahunan'},
+                ],
             }
         })
     
@@ -358,6 +379,7 @@ def monitoring_penyampaian_data_data(request):
     jenis_tabel_filter = request.GET.get('jenis_tabel', '')
     dasar_hukum_filter = request.GET.get('dasar_hukum', '')
     periode_pengiriman_filter = request.GET.get('periode_pengiriman', '')
+    periode_filter = request.GET.get('periode', '')
 
     # Apply RBAC at query level to avoid building records that will be discarded
     allowed_jenis_data_ids = None
@@ -465,7 +487,6 @@ def monitoring_penyampaian_data_data(request):
     tiket_map: dict[tuple[int, int, int], Tiket] = {}
     for tiket in Tiket.objects.filter(
         id_periode_data_id__in=periode_data_ids,
-        penyampaian=1,
     ).only(
         'id',
         'id_periode_data_id',
@@ -592,6 +613,7 @@ def monitoring_penyampaian_data_data(request):
                 'status_terlambat': status_terlambat,
                 'status_terlambat_class': status_terlambat_class,
                 'tiket_exists': tiket_exists,
+                'tiket_id': tiket.id if tiket_exists else None,
                 'is_late': is_late,
                 'days_diff': days_diff,
                 'pic_p3de_id': pic_p3de_id,
@@ -621,11 +643,14 @@ def monitoring_penyampaian_data_data(request):
             return False
         if dasar_hukum_filter and int(dasar_hukum_filter) not in r.get('dasar_hukum_ids', set()):
             return False
+        if periode_filter and str(r.get('periode_display_name', '')) != periode_filter:
+            return False
         return True
 
     filtered_records = records if not any([
         tahun_filter, pic_p3de_filter, status_penyampaian_filter,
         terlambat_filter, jenis_data_id, dasar_hukum_filter,
+        periode_filter,
     ]) else [r for r in records if record_matches_filters(r)]
 
     records_filtered = len(filtered_records)
@@ -677,12 +702,23 @@ def monitoring_penyampaian_data_data(request):
             'periode': record['periode_num'],
             'tahun': record['tahun'],
         })
+        if record["tiket_id"]:
+            tiket_detail_url = f'/tiket/{record["tiket_id"]}/'
+        else:
+            tiket_detail_url = f'/tiket/?{tiket_query}'
+        
+        lihat_tiket_btn = ""
+        if record["status_penyampaian"] != "Belum Menyampaikan":
+            lihat_tiket_btn = (
+                f'<a href="{tiket_detail_url}" '
+                f'class="btn btn-primary btn-sm" title="Lihat Tiket">'
+                f'<i class="feather-eye"></i>'
+                f'</a>'
+            )
+
         actions = (
             f'<div class="btn-group btn-group-sm">'
-            f'<a href="/tiket/?{tiket_query}" '
-            f'class="btn btn-primary btn-sm" title="Lihat Tiket">'
-            f'<i class="feather-eye"></i>'
-            f'</a>'
+            f'{lihat_tiket_btn}'
             f'<a href="/tiket/rekam/?{tiket_rekam_query}" '
             f'class="btn btn-success btn-sm" title="Rekam Penerimaan Data">'
             f'<i class="feather-file-plus"></i>'
@@ -720,5 +756,135 @@ def monitoring_penyampaian_data_data(request):
         'recordsTotal': records_total,
         'recordsFiltered': records_filtered,
         'data': data,
+    })
+
+
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
+@require_GET
+def monitoring_penyampaian_data_filter_relations(request):
+    """Return relationship data for client-side cascading filters.
+
+    Returns JSON describing how filter dimensions relate to each other so the
+    frontend can narrow down combobox options based on the current selection
+    (e.g. selecting a Tahun restricts which Kategori ILAP / ILAP / Jenis Data
+    are shown).
+
+    **Permissions:** same as ``monitoring_penyampaian_data_data``.
+
+    **Read-only:** queries existing models only, does not modify data.
+    """
+    from django.db.models import Min, Max
+
+    is_admin = request.user.is_superuser or request.user.groups.filter(
+        name__in=['admin', 'admin_p3de', 'admin_pide', 'admin_pmde']
+    ).exists()
+    allowed_jenis_data_ids = None
+    if not is_admin:
+        allowed_jenis_data_ids = set(get_active_p3de_jenis_data_ilap_ids(request.user))
+
+    # --- ILAP -> kategori, jenis_data_ids, tahuns ---
+    ilap_qs = ILAP.objects.select_related('id_kategori')
+    jenis_qs = JenisDataILAP.objects.all()
+    if allowed_jenis_data_ids is not None:
+        jenis_qs = jenis_qs.filter(id__in=allowed_jenis_data_ids)
+        active_ilap_ids = set(jenis_qs.values_list('id_ilap_id', flat=True))
+        ilap_qs = ilap_qs.filter(id__in=active_ilap_ids)
+
+    jenis_list = list(jenis_qs.values('id', 'id_ilap_id', 'id_jenis_data', 'nama_jenis_data'))
+    ilap_list = list(ilap_qs.values('id', 'id_ilap', 'nama_ilap', 'id_kategori_id'))
+
+    # Map ilap_id (pk) -> {kategori_id, jenis_data list}
+    ilap_data = {}
+    ilap_by_kategori = {}
+    for il in ilap_list:
+        pk = str(il['id'])
+        kat_id = str(il['id_kategori_id']) if il['id_kategori_id'] else ''
+        ilap_data[pk] = {
+            'id': pk,
+            'name': f"{il['id_ilap']} - {il['nama_ilap']}",
+            'kategori_id': kat_id,
+            'jenis_data': [],
+            'tahuns': [],
+        }
+        ilap_by_kategori.setdefault(kat_id, []).append({
+            'id': pk, 'name': ilap_data[pk]['name']
+        })
+
+    # Attach jenis_data to each ilap
+    jenis_data_by_ilap = {}
+    for j in jenis_list:
+        ilap_pk = str(j['id_ilap_id']) if j['id_ilap_id'] else ''
+        jd_id = j['id_jenis_data']
+        jd_obj = {
+            'id': jd_id,
+            'name': f"{jd_id} - {j['nama_jenis_data']}",
+        }
+        if ilap_pk in ilap_data:
+            ilap_data[ilap_pk]['jenis_data'].append(jd_obj)
+        jenis_data_by_ilap.setdefault(ilap_pk, []).append(jd_obj)
+
+    # --- tahun relations via PeriodeJenisData ---
+    periode_qs = PeriodeJenisData.objects.all()
+    if allowed_jenis_data_ids is not None:
+        periode_qs = periode_qs.filter(id_sub_jenis_data_ilap_id__in=allowed_jenis_data_ids)
+
+    # For each ilap, which years appear in its periode data?
+    # Group by ilap through the sub jenis data path.
+    periode_rows = list(
+        periode_qs.values(
+            'id_sub_jenis_data_ilap__id_ilap_id',
+            'id_sub_jenis_data_ilap__id_ilap__id_kategori_id',
+        ).annotate(
+            min_year=Min('start_date__year'),
+            max_year=Max('start_date__year'),
+        )
+    )
+    tahun_global = periode_qs.aggregate(
+        min_year=Min('start_date__year'),
+        max_year=Max('start_date__year'),
+    )
+    g_min = tahun_global.get('min_year') or datetime.now().year
+    g_max = max(tahun_global.get('max_year') or datetime.now().year, datetime.now().year)
+    all_tahuns = list(range(g_min, g_max + 1))
+
+    # Build kategori_by_tahun and ilap tahuns
+    kategori_by_tahun = {}
+    for row in periode_rows:
+        ilap_pk = row.get('id_sub_jenis_data_ilap__id_ilap_id')
+        kat_id = row.get('id_sub_jenis_data_ilap__id_ilap__id_kategori_id')
+        if not ilap_pk:
+            continue
+        ilap_pk = str(ilap_pk)
+        kat_id_str = str(kat_id) if kat_id else ''
+        if row.get('min_year') and row.get('max_year'):
+            years = list(range(row['min_year'], row['max_year'] + 1))
+            if ilap_pk in ilap_data:
+                ilap_data[ilap_pk]['tahuns'] = years
+            for y in years:
+                kobj = {'id': kat_id_str}
+                lst = kategori_by_tahun.setdefault(str(y), [])
+                # de-dupe kategori per tahun
+                if not any(k['id'] == kat_id_str for k in lst):
+                    lst.append(kobj)
+
+    # Resolve kategori names
+    kat_ids = {il['kategori_id'] for il in ilap_data.values() if il['kategori_id']}
+    kat_map = {}
+    if kat_ids:
+        for k in KategoriILAP.objects.filter(id__in=kat_ids).values('id', 'id_kategori', 'nama_kategori'):
+            kat_map[str(k['id'])] = f"{k['id_kategori']} - {k['nama_kategori']}"
+    # Enrich kategori_by_tahun with names
+    for y, lst in kategori_by_tahun.items():
+        for k in lst:
+            k['name'] = kat_map.get(k['id'], k['id'])
+
+    return JsonResponse({
+        'all_tahuns': all_tahuns,
+        'kategori_by_tahun': kategori_by_tahun,
+        'ilap_by_kategori': ilap_by_kategori,
+        'jenis_data_by_ilap': jenis_data_by_ilap,
+        'ilap_data': ilap_data,
+        'kategori_map': kat_map,
     })
 

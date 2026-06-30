@@ -20,50 +20,50 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
         queryset=ILAP.objects.all(),
         empty_label="Pilih ILAP",
         widget=forms.Select(attrs={
-            'class': 'form-control',
+            'class': 'form-select',
             'id': 'id_ilap'
         }),
         label='ILAP',
         required=True
     )
-    
+
     class Meta:
         model = Tiket
         fields = ['id_ilap', 'id_periode_data', 'periode', 'tahun', 'penyampaian', 'tgl_terima_vertikal', 'tgl_terima_dip', 'nomor_surat_pengantar', 'tanggal_surat_pengantar', 'nama_pengirim', 'id_bentuk_data', 'id_cara_penyampaian', 'baris_diterima', 'satuan_data', 'status_ketersediaan_data', 'alasan_ketidaktersediaan']
         widgets = {
-            'id_periode_data': forms.Select(attrs={'class': 'form-control', 'id': 'id_periode_data'}),
-            'periode': forms.Select(attrs={'class': 'form-control', 'id': 'id_periode'}),
-            'tahun': forms.Select(attrs={'class': 'form-control'}),
+            'id_periode_data': forms.Select(attrs={'class': 'form-select', 'id': 'id_periode_data'}),
+            'periode': forms.Select(attrs={'class': 'form-select', 'id': 'id_periode'}),
+            'tahun': forms.Select(attrs={'class': 'form-select'}),
             'tgl_terima_vertikal': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
             'tgl_terima_dip': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
             'nomor_surat_pengantar': forms.TextInput(attrs={'class': 'form-control'}),
             'tanggal_surat_pengantar': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
             'nama_pengirim': forms.TextInput(attrs={'class': 'form-control'}),
-            'id_bentuk_data': forms.Select(attrs={'class': 'form-control'}),
-            'id_cara_penyampaian': forms.Select(attrs={'class': 'form-control'}),
+            'id_bentuk_data': forms.Select(attrs={'class': 'form-select'}),
+            'id_cara_penyampaian': forms.Select(attrs={'class': 'form-select'}),
             'penyampaian': forms.NumberInput(attrs={'class': 'form-control', 'id': 'id_penyampaian', 'type': 'number', 'min': '0'}),
             'baris_diterima': forms.NumberInput(attrs={'class': 'form-control'}),
             'status_ketersediaan_data': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'alasan_ketidaktersediaan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Alasan jika data tidak tersedia'}),
         }
-        
+
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        
+
         # Get today's date for active durasi filtering
         today = datetime.now().date()
-        
+
         # Get PIDE and PMDE groups
         pide_group = Group.objects.get(name='user_pide')
         pmde_group = Group.objects.get(name='user_pmde')
-        
+
         # Get all JenisDataILAP IDs that have:
         # 1. PIC P3DE assigned
         # 2. Active PIDE durasi
         # 3. Active PMDE durasi
         from ..models.jenis_data_ilap import JenisDataILAP
-        
+
         # JenisData with active P3DE PIC assignments (restricted to current user if not admin)
         if self.user and (self.user.is_superuser or self.user.groups.filter(name='admin').exists()):
             jenis_data_with_pic = JenisDataILAP.objects.values_list(
@@ -75,40 +75,40 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
             jenis_data_with_pic = JenisDataILAP.objects.filter(
                 id_ilap_id__in=allowed_ilap_ids
             ).values_list('id_sub_jenis_data', flat=True).distinct()
-        
+
         # Previously we required active PIDE/PMDE durasi here which hid ILAPs when
         # durasi entries were missing. Keep only the P3DE PIC requirement so ILAPs
         # with assigned P3DE are shown; durasi validation is enforced later
         # during tiket creation in the view.
         valid_jenis_data_ids = set(jenis_data_with_pic)
-        
+
         # Get valid PeriodeJenisData IDs
         valid_periode_ids = PeriodeJenisData.objects.filter(
             id_sub_jenis_data_ilap__id_sub_jenis_data__in=valid_jenis_data_ids
         ).values_list('id', flat=True)
-        
+
         # Show only ILAPs that have at least one valid PeriodeJenisData
         self.fields['id_ilap'].queryset = ILAP.objects.filter(
             jenisdatailap__periodejenisdata__id__in=valid_periode_ids
         ).select_related(
             'id_kategori', 'id_kategori_wilayah'
         ).distinct()
-        
+
         # Initialize id_periode_data with empty queryset
         self.fields['id_periode_data'].queryset = PeriodeJenisData.objects.none()
         self.fields['id_periode_data'].label = 'Jenis Data ILAP'
         # Django automatically sets required=True for non-nullable fields and required=False for nullable fields
         # No need to manually set required status - it's inherited from the model
-        
+
         # Generate year choices (current year to 20 years back)
         current_year = datetime.now().year
         year_choices = [(year, str(year)) for year in range(current_year - 20, current_year + 1)]
         self.fields['tahun'].widget.choices = year_choices
-        
+
         # Set default value for tahun to current year if creating new instance
         if not self.instance.pk:
             self.fields['tahun'].initial = current_year
-        
+
         # Make nomor_surat_pengantar, tanggal_surat_pengantar, and nama_pengirim optional
         self.fields['nomor_surat_pengantar'].required = False
         self.fields['tanggal_surat_pengantar'].required = False
@@ -128,7 +128,7 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
                 id__in=valid_periode_ids,
                 id_sub_jenis_data_ilap__id_ilap_id=ilap_id
             ).select_related('id_sub_jenis_data_ilap').distinct()
-            
+
             # For non-admin users, further filter to only show PeriodeJenisData where they are an active P3DE PIC
             if self.user and not (self.user.is_superuser or self.user.groups.filter(name='admin').exists()):
                 from ..models.pic import PIC
@@ -140,8 +140,9 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
                     Q(id_sub_jenis_data_ilap__pic__end_date__isnull=True) |
                     Q(id_sub_jenis_data_ilap__pic__end_date__gte=today)
                 ).distinct()
-            
+
             self.fields['id_periode_data'].queryset = periode_queryset
+
     def clean_tgl_terima_vertikal(self):
         value = self.cleaned_data.get('tgl_terima_vertikal')
         return validate_not_future_datetime(value, "Tanggal Terima Vertikal")

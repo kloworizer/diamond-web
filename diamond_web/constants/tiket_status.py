@@ -1,23 +1,25 @@
 STATUS_LABELS = {
-    1: 'Direkam',
+    1: 'Proses Perekaman',
     2: 'Diteliti',
-    3: 'Dikembalikan',
-    4: 'Dikirim ke PIDE',
-    5: 'Identifikasi',
-    6: 'Pengendalian Mutu',
-    7: 'Dibatalkan',
-    8: 'Selesai'
+    3: 'Data Dikembalikan',
+    4: 'Belum Diterima',
+    5: 'Proses Identifikasi',
+    6: 'Proses QC',
+    7: 'Tiket Dibatalkan',
+    8: 'Selesai',
+    9: 'Tidak Direkam'
 }
 
 STATUS_BADGE_CLASSES = {
-    1: 'bg-primary',
-    2: 'bg-secondary',
-    3: 'bg-info',
-    4: 'bg-warning text-dark',
-    5: 'bg-info',
-    6: 'bg-secondary',
-    7: 'bg-danger',
-    8: 'bg-success'
+    1: 'status-perekaman',
+    2: 'status-diteliti',
+    3: 'status-dikembalikan',
+    4: 'status-belum-diterima',
+    5: 'status-identifikasi',
+    6: 'status-qc',
+    7: 'status-dibatalkan',
+    8: 'status-selesai',
+    9: 'status-tidak-direkam'
 }
 
 # Named constants for ticket statuses to avoid magic numbers across the codebase.

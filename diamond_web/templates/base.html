@@ -20,6 +20,7 @@
     <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/select2-theme.min.css' %}" />
     <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/datatables.min.css' %}" />
     <link rel="stylesheet" type="text/css" href="{% static 'assets/css/theme.min.css' %}" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
 
     <style>
         i[class^="feather-"],
@@ -31,6 +32,73 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
+        /* Custom Status Badge Styles based on Figma design guidelines */
+        .badge.status-belum-diterima {
+            background-color: rgba(209, 226, 255, 0.15) !important;
+            color: #7b9ccf !important;
+            border: 1px solid rgba(209, 226, 255, 0.4) !important;
+        }
+        .badge.status-diteliti {
+            background-color: rgba(245, 158, 11, 0.05) !important;
+            color: #d97706 !important;
+            border: 1px solid rgba(245, 158, 11, 0.3) !important;
+        }
+        .badge.status-perekaman {
+            background-color: rgba(249, 115, 22, 0.05) !important;
+            color: #ea580c !important;
+            border: 1px solid rgba(249, 115, 22, 0.3) !important;
+        }
+        .badge.status-identifikasi {
+            background-color: rgba(6, 182, 212, 0.05) !important;
+            color: #0891b2 !important;
+            border: 1px solid rgba(6, 182, 212, 0.3) !important;
+        }
+        .badge.status-qc {
+            background-color: rgba(59, 130, 246, 0.05) !important;
+            color: #2563eb !important;
+            border: 1px solid rgba(59, 130, 246, 0.3) !important;
+        }
+        .badge.status-selesai {
+            background-color: rgba(16, 185, 129, 0.05) !important;
+            color: #059669 !important;
+            border: 1px solid rgba(16, 185, 129, 0.3) !important;
+        }
+        .badge.status-tidak-direkam {
+            background-color: rgba(148, 163, 184, 0.05) !important;
+            color: #64748b !important;
+            border: 1px solid rgba(148, 163, 184, 0.3) !important;
+        }
+        .badge.status-dikembalikan {
+            background-color: rgba(239, 68, 68, 0.05) !important;
+            color: #dc2626 !important;
+            border: 1px solid rgba(239, 68, 68, 0.3) !important;
+        }
+        .badge.status-dibatalkan {
+            background-color: rgba(168, 85, 247, 0.05) !important;
+            color: #9333ea !important;
+            border: 1px solid rgba(168, 85, 247, 0.3) !important;
+        }
+        .badge.status-sudah-menyampaikan {
+            background-color: rgba(16, 185, 129, 0.05) !important;
+            color: #059669 !important;
+            border: 1px solid rgba(16, 185, 129, 0.3) !important;
+        }
+        .badge.status-belum-menyampaikan {
+            background-color: rgba(239, 68, 68, 0.05) !important;
+            color: #dc2626 !important;
+            border: 1px solid rgba(239, 68, 68, 0.3) !important;
+        }
+        .badge {
+            font-size: 0.72rem;
+            font-weight: 600 !important;
+            padding: 0.35em 0.75em;
+            border-radius: 6px !important;
+            letter-spacing: 0.01em;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
         .notifications-dropdown {
             width: 320px;
             min-width: 320px;
@@ -39,6 +107,85 @@
             overflow-y: auto;
             white-space: normal;
             padding: 0.15rem;
+        }
+
+        /* Modern Custom Toast Styling */
+        .toast-container {
+            padding: 1.5rem !important;
+        }
+        
+        .custom-toast {
+            background: rgba(255, 255, 255, 0.88) !important;
+            backdrop-filter: blur(12px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+            border: 1px solid rgba(226, 232, 240, 0.8) !important;
+            border-radius: 12px !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05) !important;
+            overflow: hidden;
+            margin-bottom: 0.75rem;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+            position: relative;
+        }
+        
+        /* Left accent borders */
+        .custom-toast::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            height: 100%;
+        }
+        
+        .toast-success::before { background-color: #10b981 !important; }
+        .toast-danger::before { background-color: #ef4444 !important; }
+        .toast-warning::before { background-color: #f59e0b !important; }
+        .toast-info::before { background-color: #3b82f6 !important; }
+        
+        /* Icon styling */
+        .toast-icon-wrapper {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        
+        .toast-success .toast-icon-wrapper {
+            background-color: rgba(16, 185, 129, 0.1) !important;
+            color: #10b981 !important;
+        }
+        .toast-danger .toast-icon-wrapper {
+            background-color: rgba(239, 68, 68, 0.1) !important;
+            color: #ef4444 !important;
+        }
+        .toast-warning .toast-icon-wrapper {
+            background-color: rgba(245, 158, 11, 0.1) !important;
+            color: #f59e0b !important;
+        }
+        .toast-info .toast-icon-wrapper {
+            background-color: rgba(59, 130, 246, 0.1) !important;
+            color: #3b82f6 !important;
+        }
+        
+        .toast-title {
+            font-size: 0.85rem !important;
+            letter-spacing: -0.01em;
+        }
+        
+        .toast-message {
+            font-size: 0.78rem !important;
+            line-height: 1.4 !important;
+        }
+
+        @keyframes scaleUpToast {
+            0% { transform: scale(0.4); opacity: 0; }
+            50% { transform: scale(1.15); }
+            100% { transform: scale(1); opacity: 1; }
         }
 
         .notification-item {
@@ -535,7 +682,22 @@
     <script src="{% static 'assets/js/common-init.min.js' %}"></script>
     <script src="{% static 'assets/js/theme-customizer-init.min.js' %}"></script>
     <script src="{% static 'assets/vendors/js/dataTables.min.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
     <script>
+        // Initialize Flatpickr on all date inputs globally
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof flatpickr !== 'undefined') {
+                flatpickr('input[type="date"]', {
+                    locale: 'id',
+                    dateFormat: 'Y-m-d',
+                    altInput: true,
+                    altFormat: 'd F Y',
+                    allowInput: true
+                });
+            }
+        });
+
         // Cleanup stale modal backdrops that can block interaction on AJAX-heavy pages.
         document.addEventListener('hidden.bs.modal', function () {
             setTimeout(function () {
@@ -785,44 +947,93 @@
             });
         })();
 
-        // Standard toast notification function with Indonesian titles
+        // Standard toast notification function with Indonesian titles and modern style
         function showToast(message, type = 'info', title = null) {
             const toastId = 'toast-' + Date.now();
-            const bgClass = type === 'success' ? 'bg-success' : type === 'danger' ? 'bg-danger' : type === 'warning' ? 'bg-warning' : 'bg-info';
             const defaultTitles = {
                 'success': 'Berhasil',
                 'danger': 'Kesalahan',
                 'warning': 'Peringatan',
                 'info': 'Informasi'
             };
+            const defaultIcons = {
+                'success': 'feather-check-circle',
+                'danger': 'feather-alert-circle',
+                'warning': 'feather-alert-triangle',
+                'info': 'feather-info'
+            };
             const displayTitle = title || defaultTitles[type] || 'Pemberitahuan';
+            const iconClass = defaultIcons[type] || 'feather-bell';
             const toastHtml = `
-                <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-                    <div class="toast-header ${bgClass} text-white">
-                        <strong class="me-auto">${displayTitle}</strong>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
-                    </div>
-                    <div class="toast-body">
-                        ${message}
+                <div id="${toastId}" class="toast custom-toast toast-${type}" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex align-items-center p-3">
+                        <div class="toast-icon-wrapper me-3">
+                            <i class="${iconClass}"></i>
+                        </div>
+                        <div class="toast-content-wrapper flex-grow-1">
+                            <h6 class="toast-title mb-1 fw-bold text-dark">${displayTitle}</h6>
+                            <p class="toast-message mb-0 text-muted">${message}</p>
+                        </div>
+                        <button type="button" class="btn-close ms-2" data-bs-dismiss="toast" aria-label="Close"></button>
                     </div>
                 </div>
             `;
             const container = document.querySelector('.toast-container');
-            container.insertAdjacentHTML('beforeend', toastHtml);
-            const toastElement = document.getElementById(toastId);
-            const toast = new bootstrap.Toast(toastElement);
-            toast.show();
-            toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
+            if (container) {
+                container.insertAdjacentHTML('beforeend', toastHtml);
+                const toastElement = document.getElementById(toastId);
+                const toast = new bootstrap.Toast(toastElement);
+                toast.show();
+                toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
+            }
         }
 
         // Display Django messages as toasts
+        // Reusable Success Modal Dialog for Workflow Completions
+        function showSuccessModal(message, title = 'Berhasil') {
+            const modalId = 'success-modal-' + Date.now();
+            const modalHtml = `
+                <div class="modal fade" id="${modalId}" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+                    <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+                        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden; background: #ffffff;">
+                            <div class="modal-body text-center p-5">
+                                <div class="mb-4 d-inline-flex align-items-center justify-content-center" style="width: 76px; height: 76px; background: rgba(16, 185, 129, 0.08); color: #10b981; border-radius: 50%; font-size: 2.5rem; animation: scaleUpToast 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+                                    <i class="feather-check-circle"></i>
+                                </div>
+                                <h4 class="fw-bold mb-2 text-dark">${title}</h4>
+                                <p class="text-muted fs-13 mb-4" style="line-height: 1.5;">${message}</p>
+                                <div class="d-grid gap-2">
+                                    <button type="button" class="btn btn-primary btn-lg fs-14 py-2" data-bs-dismiss="modal" style="border-radius: 10px; font-weight: 600;">
+                                        <i class="feather-check me-1"></i>Selesai
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            const modalElement = document.getElementById(modalId);
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+            modalElement.addEventListener('hidden.bs.modal', () => modalElement.remove());
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
             const messagesJson = document.querySelector('[data-messages]');
             if (messagesJson) {
                 try {
                     const messages = JSON.parse(messagesJson.dataset.messages);
                     messages.forEach(msg => {
-                        showToast(msg.message, msg.tags || 'info');
+                        const lowercaseMsg = (msg.message || '').toLowerCase();
+                        // Intercept major completion events for a rich visual feedback modal
+                        if (lowercaseMsg.includes('berhasil dibuat') || 
+                            lowercaseMsg.includes('berhasil diselesaikan') || 
+                            lowercaseMsg.includes('berhasil dikirim ke pide')) {
+                            showSuccessModal(msg.message, 'Transaksi Berhasil');
+                        } else {
+                            showToast(msg.message, msg.tags || 'info');
+                        }
                     });
                 } catch (e) {
                     console.error('Error parsing messages:', e);
