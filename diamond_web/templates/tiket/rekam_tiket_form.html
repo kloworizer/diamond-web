@@ -618,11 +618,12 @@
 {% block scripts %}
 <script>
     (function() {
-        // Mapping for periode options based on deskripsi
+        const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                             'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+        // Static mapping for fixed-period types
         const periodeMapping = {
             'Harian': Array.from({length: 31}, (_, i) => ({value: i + 1, label: `Hari ${i + 1}`})),
-            'Mingguan': Array.from({length: 52}, (_, i) => ({value: i + 1, label: `Minggu ${i + 1}`})),
-            '2 Mingguan': Array.from({length: 26}, (_, i) => ({value: i + 1, label: `2 Minggu ${i + 1}`})),
             'Bulanan': [
                 {value: 1, label: 'Januari'}, {value: 2, label: 'Februari'}, 
                 {value: 3, label: 'Maret'}, {value: 4, label: 'April'},
@@ -644,6 +645,58 @@
             ],
             'Tahunan': [{value: 1, label: '1'}]
         };
+
+        /**
+         * Generate week-of-month labels for 'Mingguan' period type.
+         * Week 1 starts on January 1st. Each subsequent week adds 7 days.
+         * Each label shows the week number within its month and the month name.
+         * Example: "Minggu 1 - Januari", "Minggu 2 - Januari", "Minggu 1 - Februari"
+         */
+        function getMingguanLabels(year) {
+            const labels = [];
+            const jan1 = new Date(year, 0, 1); // January 1
+
+            for (let week = 1; week <= 52; week++) {
+                const currentDate = new Date(jan1);
+                currentDate.setDate(jan1.getDate() + (week - 1) * 7);
+
+                const month = currentDate.getMonth();
+                const monthName = MONTH_NAMES[month];
+
+                // Calculate week-of-month (1-based)
+                const firstDayOfMonth = new Date(currentDate.getFullYear(), month, 1);
+                const diffDays = Math.floor((currentDate - firstDayOfMonth) / (24 * 60 * 60 * 1000));
+                const weekOfMonth = Math.floor(diffDays / 7) + 1;
+
+                labels.push({value: week, label: `Minggu ${weekOfMonth} - ${monthName}`});
+            }
+            return labels;
+        }
+
+        /**
+         * Generate labels for '2 Mingguan' (biweekly) period type.
+         * First period starts on January 1st. Each subsequent period adds 14 days.
+         */
+        function get2MingguanLabels(year) {
+            const labels = [];
+            const jan1 = new Date(year, 0, 1); // January 1
+
+            for (let period = 1; period <= 26; period++) {
+                const currentDate = new Date(jan1);
+                currentDate.setDate(jan1.getDate() + (period - 1) * 14);
+
+                const month = currentDate.getMonth();
+                const monthName = MONTH_NAMES[month];
+
+                // Calculate week-of-month (1-based)
+                const firstDayOfMonth = new Date(currentDate.getFullYear(), month, 1);
+                const diffDays = Math.floor((currentDate - firstDayOfMonth) / (24 * 60 * 60 * 1000));
+                const weekOfMonth = Math.floor(diffDays / 7) + 1;
+
+                labels.push({value: period, label: `2 Minggu ${weekOfMonth} - ${monthName}`});
+            }
+            return labels;
+        }
 
         let periodeDataCache = {};
 
@@ -710,20 +763,31 @@
             document.getElementById('info-pic-pmde').textContent = selectedData.pic_pmde || '-';
 
             // Update periode options based on Reception Period instead of Submission Period
-            updatePeriodeOptions(selectedData.periode_penerimaan);
+            const tahunVal = document.getElementById('id_tahun')?.value || new Date().getFullYear();
+            updatePeriodeOptions(selectedData.periode_penerimaan, parseInt(tahunVal));
 
             infoSection.style.display = 'block';
         }
 
-        function updatePeriodeOptions(deskripsi) {
+        function updatePeriodeOptions(deskripsi, tahun) {
             const periodeSelect = document.getElementById('id_periode');
             if (!periodeSelect) return;
 
             // Clear existing options
             periodeSelect.innerHTML = '<option value="">---------</option>';
 
+            // Determine year: use provided year or current year
+            const year = tahun || new Date().getFullYear();
+
             // Get periode options based on deskripsi
-            const options = periodeMapping[deskripsi] || [];
+            let options;
+            if (deskripsi === 'Mingguan') {
+                options = getMingguanLabels(year);
+            } else if (deskripsi === '2 Mingguan') {
+                options = get2MingguanLabels(year);
+            } else {
+                options = periodeMapping[deskripsi] || [];
+            }
             
             options.forEach(opt => {
                 const option = document.createElement('option');
@@ -986,7 +1050,18 @@
             }
 
             if (tahunSelect) {
-                tahunSelect.addEventListener('change', checkJenisPrioritas);
+                tahunSelect.addEventListener('change', function() {
+                    checkJenisPrioritas();
+                    // Refresh periode options when year changes (week labels depend on year)
+                    const periodeDataId = periodeDataSelect?.value;
+                    if (periodeDataId) {
+                        const selectedData = periodeDataCache[periodeDataId];
+                        if (selectedData) {
+                            const tahunVal = tahunSelect.value || new Date().getFullYear();
+                            updatePeriodeOptions(selectedData.periode_penerimaan, parseInt(tahunVal));
+                        }
+                    }
+                });
             }
 
             // Handle confirmation button click
