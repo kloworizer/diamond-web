@@ -189,6 +189,72 @@ def sync_tiket_data_task(self, sync_id, user_id=None):
         cache.set(f'sync_tiket_in_progress_{sync_id}', False, timeout=3600)
 
 
+@shared_task(bind=True, name='diamond_web.tasks.check_tiket_update_data_task')
+def check_tiket_update_data_task(self, check_id):
+    """Run Oracle tiket update check in a Celery worker (dry-run)."""
+    try:
+        logger.info(f'[TASK] Starting tiket update check (check_id={check_id})...')
+        from .utils.oracle_sync import OracleDataSyncService
+        from .views.sync_tiket_update import _check_tiket_update_data
+
+        if cache.get(f'check_tiket_update_stop_requested_{check_id}'):
+            logger.info(f'[TASK] Tiket update check stop requested before start (check_id={check_id})')
+            cache.set(f'check_tiket_update_error_{check_id}', 'Cek Data dihentikan oleh pengguna', timeout=3600)
+            cache.set(f'check_tiket_update_done_{check_id}', True, timeout=3600)
+            cache.set(f'check_tiket_update_in_progress_{check_id}', False, timeout=3600)
+            return
+
+        service = OracleDataSyncService(connection_only=True)
+
+        def _stop_checker():
+            return bool(cache.get(f'check_tiket_update_stop_requested_{check_id}'))
+
+        try:
+            summary = _check_tiket_update_data(service, check_id=check_id, stop_checker=_stop_checker)
+        except InterruptedError as e:
+            logger.info(f'[TASK] Tiket update check interrupted: {str(e)}')
+            cache.set(f'check_tiket_update_error_{check_id}', str(e), timeout=3600)
+            cache.set(f'check_tiket_update_done_{check_id}', True, timeout=3600)
+            cache.set(f'check_tiket_update_in_progress_{check_id}', False, timeout=3600)
+            return
+
+        cache.set(f'check_tiket_update_result_{check_id}', summary, timeout=3600)
+        cache.set(f'check_tiket_update_done_{check_id}', True, timeout=3600)
+        cache.set(f'check_tiket_update_in_progress_{check_id}', False, timeout=3600)
+        logger.info(f'[TASK] Tiket update check completed (check_id={check_id})')
+    except Exception as e:
+        logger.error(f'[TASK] Exception in tiket update check: {str(e)}', exc_info=True)
+        cache.set(f'check_tiket_update_error_{check_id}', str(e), timeout=3600)
+        cache.set(f'check_tiket_update_done_{check_id}', True, timeout=3600)
+        cache.set(f'check_tiket_update_in_progress_{check_id}', False, timeout=3600)
+
+
+@shared_task(bind=True, name='diamond_web.tasks.sync_tiket_update_data_task')
+def sync_tiket_update_data_task(self, sync_id, user_id=None):
+    """Run Oracle tiket update sync in a Celery worker."""
+    try:
+        logger.info(f'[TASK] Starting tiket update sync (sync_id={sync_id})...')
+        from .utils.oracle_sync import OracleDataSyncService
+        from .views.sync_tiket_update import _update_tiket_data
+
+        service = OracleDataSyncService(connection_only=True)
+
+        def _stop_checker():
+            return bool(cache.get(f'tiket_update_stop_{sync_id}'))
+
+        summary = _update_tiket_data(service, sync_id=sync_id, stop_checker=_stop_checker)
+        logger.info(f'[TASK] Tiket update sync completed (sync_id={sync_id}): {summary}')
+
+        cache.set(f'tiket_update_result_{sync_id}', summary, timeout=3600)
+        cache.set(f'tiket_update_done_{sync_id}', True, timeout=3600)
+        cache.set(f'tiket_update_in_progress_{sync_id}', False, timeout=3600)
+    except Exception as e:
+        logger.error(f'[TASK] Exception in tiket update sync: {str(e)}', exc_info=True)
+        cache.set(f'tiket_update_error_{sync_id}', str(e), timeout=3600)
+        cache.set(f'tiket_update_done_{sync_id}', True, timeout=3600)
+        cache.set(f'tiket_update_in_progress_{sync_id}', False, timeout=3600)
+
+
 @shared_task(bind=True, name='diamond_web.tasks.cleanup_pre_production_task')
 def cleanup_pre_production_task(self):
     """

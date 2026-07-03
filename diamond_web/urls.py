@@ -43,6 +43,17 @@ urlpatterns = [
     path('sync-tiket/truncate/', views.sync_tiket_truncate, name='sync_tiket_truncate'),
     path('sync-tiket/download-errors/<str:sync_id>/', views.sync_tiket_download_errors, name='sync_tiket_download_errors'),
 
+    # Tiket Update (Tarikan) Sync
+    # Tiket Update (Tarikan) Sync
+    path('sync-tiket-update/', views.sync_tiket_update_page, name='sync_tiket_update_page'),
+    path('sync-tiket-update/test/', views.sync_tiket_update_test_connection, name='sync_tiket_update_test'),
+    path('sync-tiket-update/check/', views.sync_tiket_update_check, name='sync_tiket_update_check'),
+    path('sync-tiket-update/run/', views.sync_tiket_update_run, name='sync_tiket_update_run'),
+    path('sync-tiket-update/stop/', views.sync_tiket_update_stop, name='sync_tiket_update_stop'),
+    path('sync-tiket-update/stop-check/', views.sync_tiket_update_stop_check, name='sync_tiket_update_stop_check'),
+    path('sync-tiket-update/progress/', views.sync_tiket_update_progress, name='sync_tiket_update_progress'),
+    path('sync-tiket-update/download-errors/<str:sync_id>/', views.sync_tiket_update_download_errors, name='sync_tiket_update_download_errors'),
+
     # Sync Log Status
     path('sync-log-status/', views.sync_log_status, name='sync_log_status'),
     path('sync-log-status/download/<str:filename>/', views.sync_log_download, name='sync_log_download'),

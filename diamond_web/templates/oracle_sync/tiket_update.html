@@ -1,0 +1,474 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+            <h5 class="m-b-10">
+                <i class="feather-download me-2"></i>Sinkronisasi Tarikan Tiket
+            </h5>
+        </div>
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="javascript:void(0);">Admin</a></li>
+            <li class="breadcrumb-item active">Sinkronisasi Tarikan Tiket</li>
+        </ul>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="card stretch stretch-full h-100">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <h5 class="card-title mb-0">Sinkronisasi Tarikan Tiket</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-4">
+                Update kolom <strong>tarikan/QC</strong> dari Oracle (baris_i, baris_u, baris_res, baris_cde,
+                tgl_transfer, tgl_rematch, sudah_qc, belum_qc, lolos_qc, tidak_lolos_qc, qc_*)
+                dan terapkan <strong>transisi status</strong> otomatis.
+            </p>
+            <div class="d-flex gap-2 flex-wrap">
+                <button id="btn-test" class="btn btn-secondary" type="button">
+                    <i class="feather-wifi me-1"></i>Test Koneksi
+                </button>
+                <button id="btn-check" class="btn btn-primary" type="button">
+                    <i class="feather-search me-1"></i>Cek Data
+                </button>
+                <button id="btn-stop-check" class="btn btn-warning" type="button" style="display:none;">
+                    <i class="feather-square me-1"></i>Stop Cek
+                </button>
+                <button id="btn-sync" class="btn btn-success" type="button" disabled>
+                    <i class="feather-upload me-1"></i>Update Data
+                </button>
+                <button id="btn-stop" class="btn btn-warning" type="button" disabled style="display:none;">
+                    <i class="feather-square me-1"></i>Stop Update
+                </button>
+            </div>
+
+            <div id="sync-progress" class="mt-4" style="display:none;">
+                <h6 class="mb-2">Progress <span id="progress-phase" class="badge bg-secondary ms-1"></span></h6>
+                <div class="progress mb-2" style="height: 25px;">
+                    <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;">
+                        <span id="progress-text">0%</span>
+                    </div>
+                </div>
+                <p class="text-muted small mb-0">
+                    <span id="progress-counter">0 / 0</span> |
+                    Update: <span id="progress-updated">0</span> |
+                    &rarr; PMDE: <span id="progress-pmde">0</span> |
+                    &rarr; Selesai: <span id="progress-selesai">0</span> |
+                    Error: <span id="progress-errors">0</span>
+                </p>
+            </div>
+
+            <div id="sync-result" class="mt-4" style="display:none;">
+                <h6 class="mb-3">Hasil</h6>
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0">
+                        <tbody>
+                            <tr><th style="width: 240px;">Jumlah Data Oracle</th><td id="result-source">-</td></tr>
+                            <tr><th>Baris Diupdate</th><td id="result-updated">-</td></tr>
+                            <tr><th>Tidak Berubah</th><td id="result-unchanged">-</td></tr>
+                            <tr><th>Belum Disinkronisasi</th><td id="result-notfound">-</td></tr>
+                            <tr><th>Status &rarr; Pengendalian Mutu</th><td id="result-pmde">-</td></tr>
+                            <tr><th>Status &rarr; Selesai</th><td id="result-selesai">-</td></tr>
+                            <tr><th>Error</th><td id="result-error">-</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-3" id="result-details"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        const btnTest = document.getElementById('btn-test');
+        const btnCheck = document.getElementById('btn-check');
+        const btnSync = document.getElementById('btn-sync');
+        const btnStop = document.getElementById('btn-stop');
+        const btnStopCheck = document.getElementById('btn-stop-check');
+        const progressBox = document.getElementById('sync-progress');
+        const resultBox = document.getElementById('sync-result');
+        const progressPhase = document.getElementById('progress-phase');
+
+        const resultSource = document.getElementById('result-source');
+        const resultUpdated = document.getElementById('result-updated');
+        const resultUnchanged = document.getElementById('result-unchanged');
+        const resultNotfound = document.getElementById('result-notfound');
+        const resultPmde = document.getElementById('result-pmde');
+        const resultSelesai = document.getElementById('result-selesai');
+        const resultError = document.getElementById('result-error');
+        const resultDetails = document.getElementById('result-details');
+
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const progressCounter = document.getElementById('progress-counter');
+        const progressUpdated = document.getElementById('progress-updated');
+        const progressPmde = document.getElementById('progress-pmde');
+        const progressSelesai = document.getElementById('progress-selesai');
+        const progressErrors = document.getElementById('progress-errors');
+
+        let currentSyncId = null;
+        let currentCheckId = null;
+        let syncIntervalId = null;
+        let checkIntervalId = null;
+        let lastProgressSnapshot = {
+            current: 0, total: 0, percentage: 0,
+            updated_rows: 0, status_to_pmde: 0, status_to_selesai: 0, errors: 0,
+        };
+
+        const SYNC_ID_KEY = 'tiket_update_sync_id';
+        const CHECK_ID_KEY = 'tiket_update_check_id';
+
+        function resumeActiveSyncIfExists() {
+            const storedSyncId = localStorage.getItem(SYNC_ID_KEY);
+            if (storedSyncId) {
+                currentSyncId = storedSyncId;
+                fetch("{% url 'sync_tiket_update_progress' %}?sync_id=" + currentSyncId, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                }).then(r => r.json()).then(data => {
+                    if (data.success && !data.done) {
+                        progressBox.style.display = 'block';
+                        btnStop.style.display = 'inline-block';
+                        btnStop.disabled = false;
+                        setLoading(btnSync, true, '<i class="feather-upload me-1"></i>Update Data', 'Updating...');
+                        btnCheck.disabled = true;
+                        if (data.progress) updateSyncProgress(data.progress);
+                        startSyncPolling();
+                    } else if (data.done) {
+                        localStorage.removeItem(SYNC_ID_KEY);
+                        if (data.success && data.summary) {
+                            renderSyncSummary(data.summary);
+                            showToast(data.message || 'Update selesai.', 'success');
+                        }
+                    } else {
+                        localStorage.removeItem(SYNC_ID_KEY);
+                        currentSyncId = null;
+                        resumeCheckIfExists();
+                    }
+                }).catch(() => {
+                    localStorage.removeItem(SYNC_ID_KEY);
+                    currentSyncId = null;
+                    resumeCheckIfExists();
+                });
+                return;
+            }
+            resumeCheckIfExists();
+        }
+
+        function resumeCheckIfExists() {
+            const storedCheckId = localStorage.getItem(CHECK_ID_KEY);
+            if (!storedCheckId) return;
+            currentCheckId = storedCheckId;
+            fetch("{% url 'sync_tiket_update_progress' %}?mode=check&check_id=" + currentCheckId, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            }).then(r => r.json()).then(data => {
+                if (data.success && !data.done) {
+                    progressBox.style.display = 'block';
+                    btnCheck.disabled = true;
+                    btnSync.disabled = true;
+                    btnStopCheck.style.display = 'inline-block';
+                    btnStopCheck.disabled = false;
+                    setLoading(btnCheck, true, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
+                    if (data.progress) updateCheckProgress(data.progress);
+                    startCheckPolling();
+                } else if (data.done) {
+                    localStorage.removeItem(CHECK_ID_KEY);
+                    btnStopCheck.style.display = 'none';
+                    if (data.success && data.summary) {
+                        renderCheckSummary(data.summary);
+                        showToast(data.message || 'Check selesai.', 'success');
+                    }
+                } else {
+                    localStorage.removeItem(CHECK_ID_KEY);
+                    btnStopCheck.style.display = 'none';
+                    currentCheckId = null;
+                }
+            }).catch(() => {
+                localStorage.removeItem(CHECK_ID_KEY);
+                currentCheckId = null;
+            });
+        }
+
+        function startCheckPolling() {
+            if (checkIntervalId) clearInterval(checkIntervalId);
+            progressPhase.textContent = 'Memeriksa…';
+            progressPhase.className = 'badge bg-info ms-1';
+
+            checkIntervalId = setInterval(async function () {
+                try {
+                    const res = await fetch("{% url 'sync_tiket_update_progress' %}?mode=check&check_id=" + currentCheckId, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    const data = await res.json();
+
+                    if (data.success && data.progress) updateCheckProgress(data.progress);
+
+                    if (data.done) {
+                        clearInterval(checkIntervalId);
+                        localStorage.removeItem(CHECK_ID_KEY);
+                        progressBox.style.display = 'none';
+                        progressPhase.textContent = '';
+                        btnStopCheck.style.display = 'none';
+                        setLoading(btnCheck, false, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
+                        btnCheck.disabled = false;
+
+                        if (!data.success) {
+                            showToast(data.message || 'Check error', 'danger');
+                        } else if (data.summary) {
+                            renderCheckSummary(data.summary);
+                            showToast(data.message || 'Check data selesai.', 'success');
+                        }
+                    }
+                } catch (e) {
+                    console.error('Check progress fetch error:', e);
+                }
+            }, 800);
+        }
+
+        function startSyncPolling() {
+            if (syncIntervalId) clearInterval(syncIntervalId);
+            progressPhase.textContent = 'Mengupdate…';
+            progressPhase.className = 'badge bg-primary ms-1';
+
+            syncIntervalId = setInterval(async function () {
+                try {
+                    const res = await fetch("{% url 'sync_tiket_update_progress' %}?sync_id=" + currentSyncId, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    const data = await res.json();
+
+                    if (data.success && data.progress) updateSyncProgress(data.progress);
+
+                    if (data.done) {
+                        clearInterval(syncIntervalId);
+                        localStorage.removeItem(SYNC_ID_KEY);
+
+                        if (!data.success) {
+                            showToast(data.message || 'Update error', 'danger');
+                        } else if (data.summary) {
+                            renderSyncSummary(data.summary, data.error_log_url);
+                            showToast(data.message || 'Update selesai.', 'success');
+                        }
+
+                        progressBox.style.display = 'none';
+                        progressPhase.textContent = '';
+                        btnStop.style.display = 'none';
+                        setLoading(btnSync, false, '<i class="feather-upload me-1"></i>Update Data', 'Updating...');
+                        btnCheck.disabled = false;
+                    }
+                } catch (e) {
+                    console.error('Sync fetch error:', e);
+                }
+            }, 500);
+        }
+
+        function setLoading(button, isLoading, defaultText, loadingText) {
+            button.disabled = isLoading;
+            button.innerHTML = isLoading
+                ? '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>' + loadingText
+                : defaultText;
+        }
+
+        function renderCheckSummary(summary) {
+            resultBox.style.display = 'block';
+            resultSource.textContent = summary.source_rows || 0;
+            resultUpdated.textContent = summary.would_update || 0;
+            resultUnchanged.textContent = summary.would_unchanged || 0;
+            resultNotfound.textContent = summary.not_found || 0;
+            resultPmde.textContent = summary.would_pmde || 0;
+            resultSelesai.textContent = summary.would_selesai || 0;
+            resultError.textContent = (summary.errors || []).length;
+
+            resultDetails.innerHTML = '';
+            btnSync.disabled = (summary.would_update || 0) === 0;
+        }
+
+        function renderSyncSummary(summary, errorLogUrl) {
+            resultBox.style.display = 'block';
+            resultSource.textContent = summary.source_rows || summary.updated_rows || 0;
+            resultUpdated.textContent = summary.updated_rows || 0;
+            resultUnchanged.textContent = summary.source_rows ? (summary.source_rows - (summary.updated_rows || 0)) : '-';
+            resultPmde.textContent = summary.status_to_pmde || 0;
+            resultSelesai.textContent = summary.status_to_selesai || 0;
+            resultError.textContent = (summary.errors || []).length;
+
+            let details = '';
+            if (errorLogUrl) {
+                details += '<div class="alert alert-secondary mt-3 mb-0"><strong>Log Kesalahan:</strong> <a href="' + errorLogUrl + '" class="alert-link" download>Unduh CSV</a></div>';
+            }
+            resultDetails.innerHTML = details;
+
+            btnSync.disabled = (summary.updated_rows || 0) === 0;
+        }
+
+        function updateCheckProgress(p) {
+            if (!p) return;
+            const pct = Math.min(100, p.percentage || 0);
+            progressBar.style.width = pct + '%';
+            progressText.textContent = pct + '%';
+            progressCounter.textContent = (p.current || 0) + ' / ' + (p.total || 0);
+            progressUpdated.textContent = p.would_update || 0;
+            progressPmde.textContent = p.would_pmde || 0;
+            progressSelesai.textContent = p.would_selesai || 0;
+            progressErrors.textContent = p.errors || 0;
+        }
+
+        function updateSyncProgress(progressData) {
+            if (!progressData) return;
+
+            const incoming = {
+                current: Number(progressData.current || 0),
+                total: Number(progressData.total || 0),
+                percentage: Number(progressData.percentage || 0),
+                updated_rows: Number(progressData.updated_rows || 0),
+                status_to_pmde: Number(progressData.status_to_pmde || 0),
+                status_to_selesai: Number(progressData.status_to_selesai || 0),
+                errors: Number(progressData.errors || 0),
+            };
+
+            const isTransientZero = (
+                incoming.current === 0 && incoming.total === 0 && incoming.percentage === 0 &&
+                (lastProgressSnapshot.current > 0 || lastProgressSnapshot.total > 0 || lastProgressSnapshot.percentage > 0)
+            );
+            if (isTransientZero) return;
+
+            const merged = {
+                current: Math.max(lastProgressSnapshot.current, incoming.current),
+                total: Math.max(lastProgressSnapshot.total, incoming.total),
+                percentage: Math.max(lastProgressSnapshot.percentage, incoming.percentage),
+                updated_rows: Math.max(lastProgressSnapshot.updated_rows, incoming.updated_rows),
+                status_to_pmde: Math.max(lastProgressSnapshot.status_to_pmde, incoming.status_to_pmde),
+                status_to_selesai: Math.max(lastProgressSnapshot.status_to_selesai, incoming.status_to_selesai),
+                errors: Math.max(lastProgressSnapshot.errors, incoming.errors),
+            };
+            lastProgressSnapshot = merged;
+
+            const pct = Math.min(100, merged.percentage || 0);
+            progressBar.style.width = pct + '%';
+            progressText.textContent = pct + '%';
+            progressCounter.textContent = merged.current + ' / ' + merged.total;
+            progressUpdated.textContent = merged.updated_rows || 0;
+            progressPmde.textContent = merged.status_to_pmde || 0;
+            progressSelesai.textContent = merged.status_to_selesai || 0;
+            progressErrors.textContent = merged.errors || 0;
+        }
+
+        async function postJson(url, body) {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify(body || {}),
+            });
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                throw new Error('Server error: ' + (text.substring(0, 100) || 'Unknown error'));
+            }
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Terjadi kesalahan');
+            }
+            return data;
+        }
+
+        btnTest.addEventListener('click', async function () {
+            setLoading(btnTest, true, '<i class="feather-wifi me-1"></i>Test Koneksi', 'Testing...');
+            try {
+                await postJson("{% url 'sync_tiket_update_test' %}");
+                showToast('Koneksi Oracle berhasil.', 'success');
+            } catch (error) {
+                showToast(error.message, 'danger');
+            } finally {
+                setLoading(btnTest, false, '<i class="feather-wifi me-1"></i>Test Koneksi', 'Testing...');
+            }
+        });
+
+        btnCheck.addEventListener('click', async function () {
+            setLoading(btnCheck, true, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
+            btnSync.disabled = true;
+            lastProgressSnapshot = { current: 0, total: 0, percentage: 0, updated_rows: 0, status_to_pmde: 0, status_to_selesai: 0, errors: 0 };
+            progressBox.style.display = 'block';
+            resultBox.style.display = 'none';
+            try {
+                const data = await postJson("{% url 'sync_tiket_update_check' %}");
+                currentCheckId = data.check_id;
+                localStorage.setItem(CHECK_ID_KEY, currentCheckId);
+                showToast(data.message || 'Check dimulai...', 'info');
+                btnStopCheck.style.display = 'inline-block';
+                btnStopCheck.disabled = false;
+                startCheckPolling();
+            } catch (error) {
+                clearInterval(checkIntervalId);
+                progressBox.style.display = 'none';
+                localStorage.removeItem(CHECK_ID_KEY);
+                setLoading(btnCheck, false, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
+                btnSync.disabled = false;
+                showToast(error.message, 'danger');
+            }
+        });
+
+        btnStopCheck.addEventListener('click', async function () {
+            if (!currentCheckId) return;
+            btnStopCheck.disabled = true;
+            try {
+                await postJson("{% url 'sync_tiket_update_stop_check' %}", { check_id: currentCheckId });
+                showToast('Permintaan stop cek data dikirim.', 'info');
+            } catch (error) {
+                showToast(error.message, 'danger');
+                btnStopCheck.disabled = false;
+            }
+        });
+
+        btnSync.addEventListener('click', async function () {
+            setLoading(btnSync, true, '<i class="feather-upload me-1"></i>Update Data', 'Updating...');
+            btnCheck.disabled = true;
+            lastProgressSnapshot = { current: 0, total: 0, percentage: 0, updated_rows: 0, status_to_pmde: 0, status_to_selesai: 0, errors: 0 };
+            progressBox.style.display = 'block';
+            resultBox.style.display = 'none';
+            btnStop.style.display = 'inline-block';
+            btnStop.disabled = false;
+
+            try {
+                const startResp = await postJson("{% url 'sync_tiket_update_run' %}");
+                currentSyncId = startResp.sync_id;
+                localStorage.setItem(SYNC_ID_KEY, currentSyncId);
+                showToast(startResp.message, 'info');
+                startSyncPolling();
+            } catch (error) {
+                clearInterval(syncIntervalId);
+                progressBox.style.display = 'none';
+                btnStop.style.display = 'none';
+                localStorage.removeItem(SYNC_ID_KEY);
+                setLoading(btnSync, false, '<i class="feather-upload me-1"></i>Update Data', 'Updating...');
+                btnCheck.disabled = false;
+                showToast(error.message, 'danger');
+            }
+        });
+
+        btnStop.addEventListener('click', async function () {
+            if (!currentSyncId) return;
+            btnStop.disabled = true;
+            try {
+                await postJson("{% url 'sync_tiket_update_stop' %}", { sync_id: currentSyncId });
+                showToast('Permintaan stop dikirim. Menunggu update selesai...', 'info');
+            } catch (error) {
+                showToast(error.message, 'danger');
+                btnStop.disabled = false;
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            resumeActiveSyncIfExists();
+        });
+    })();
+</script>
+{% endblock %}
