@@ -12,7 +12,7 @@
         </div>
         
         <h5 class="fw-bold mb-1" style="font-size: 16px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Konfirmasi Hapus</h5>
-        <span class="text-muted text-uppercase fw-semibold d-block mb-3" style="font-size: 10px; letter-spacing: 0.5px;">Jenis Tabel</span>
+        <span class="text-muted text-uppercase fw-semibold d-block mb-3" style="font-size: 10px; letter-spacing: 0.5px;">Template Dokumen</span>
         
         <div class="py-2 text-start w-100">
             <p class="mb-3 text-center text-secondary" style="font-size: 13.5px;">Apakah Anda yakin ingin menghapus data berikut?</p>
@@ -24,6 +24,16 @@
                             <td class="fw-bold text-muted ps-3 py-2" style="width: 30%; white-space: nowrap;">Detail Data</td>
                             <td class="text-dark py-2 pe-3" style="width: 70%; white-space: normal !important; word-break: break-word;">{{ object }}</td>
                         </tr>
+                        {% if download_url %}
+                        <tr>
+                            <td class="fw-bold text-muted ps-3 py-2" style="white-space: nowrap;">File Template</td>
+                            <td class="py-2 pe-3">
+                                <a href="{{ download_url }}" class="btn btn-xs btn-outline-info py-0 px-2 fw-semibold" style="font-size: 11px; height: 24px; display: inline-flex; align-items: center; border-radius: 4px;">
+                                    <i class="feather-download me-1"></i> Unduh & Periksa Dokumen
+                                </a>
+                            </td>
+                        </tr>
+                        {% endif %}
                     </tbody>
                 </table>
             </div>

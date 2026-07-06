@@ -35,9 +35,14 @@
 
     <div class="main-content">
     <div class="card stretch stretch-full h-100">
-        <div class="card-header">
+        <div class="card-header border-bottom-0 pb-0 bg-transparent d-flex justify-content-between align-items-center">
             <h5 class="card-title mb-0"><i class="feather-grid me-2"></i>Daftar Media Backup</h5>
-            <button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>
+            <div class="d-flex align-items-center gap-3">
+                <a href="javascript:void(0);" id="btn-reset-pencarian" class="btn border-0 text-primary text-decoration-none p-0 fw-bold align-items-center gap-1" style="display: none; font-size: 13px;">
+                    <i class="feather-x" style="width: 16px; height: 16px;"></i> Reset Pencarian
+                </a>
+                <button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>
+            </div>
         </div>
         <div class="card-body custom-card-action p-0">
             <div class="table-responsive">
@@ -115,8 +120,48 @@
                 order: [[0, 'asc']]
             });
 
+            function toggleResetButton() {
+                let hasValue = false;
+                $('#column-search-row input').each(function () {
+                    if ($(this).val().trim() !== '') {
+                        hasValue = true;
+                    }
+                });
+                if (hasValue) {
+                    $('#btn-reset-pencarian').css('display', 'inline-flex').hide().fadeIn(200);
+                } else {
+                    $('#btn-reset-pencarian').fadeOut(200);
+                }
+            }
+
+            // Add individual column search with support for both client-side and server-side configurations
             $('#column-search-row input').on('keyup change', function () {
-                table.ajax.reload();
+                if (table && typeof table.column === 'function') {
+                    table.column($(this).data('column')).search($(this).val());
+                }
+                if (table && table.ajax && typeof table.ajax.reload === 'function') {
+                    table.ajax.reload();
+                } else if (table && typeof table.draw === 'function') {
+                    table.draw();
+                }
+                toggleResetButton();
+            });
+
+            // Reset search when button clicked
+            $('#btn-reset-pencarian').on('click', function () {
+                $('#column-search-row input').val('');
+                $('#column-search-row input').each(function () {
+                    var colIdx = $(this).data('column');
+                    if (colIdx !== undefined && table && typeof table.column === 'function') {
+                        table.column(colIdx).search('');
+                    }
+                });
+                if (table && table.ajax && typeof table.ajax.reload === 'function') {
+                    table.ajax.reload();
+                } else if (table && typeof table.draw === 'function') {
+                    table.draw();
+                }
+                toggleResetButton();
             });
 
             const modalElement = document.getElementById('crudModal');

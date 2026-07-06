@@ -14,7 +14,7 @@ class BackupDataForm(AutoRequiredFormMixin, forms.ModelForm):
             }),
             'lokasi_backup': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Contoh: /mnt/backup/tiket_123.zip atau Google Drive Link'
+                'placeholder': 'Contoh: /mnt/backup/tiket_123.zip atau Sharepoint Kemenkeu link'
             }),
             'nama_file': forms.TextInput(attrs={
                 'class': 'form-control',
