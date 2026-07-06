@@ -4,14 +4,126 @@
 {% block title %}Rekap Penghimpunan dan Pengolahan Data{% endblock %}
 
 {% block content %}
+<style>
+    /* Table row compactness */
+    #rekap-himpun-olah-table th, 
+    #rekap-himpun-olah-table td {
+        padding: 8px 10px !important;
+        font-size: 13px !important;
+        vertical-align: middle !important;
+    }
+
+    /* Table frame: only body scrolls, header stays sticky */
+    .table-frame {
+        max-height: calc(100vh - 290px);
+        overflow: auto;
+        border-top: 1px solid #e2e8f0;
+        position: relative;
+    }
+
+    .table-frame thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #f8fafc !important;
+        box-shadow: inset 0 -1px 0 #dee2e6;
+    }
+
+    /* Premium Card Padding rules */
+    .card.stretch {
+        border-radius: 16px !important;
+        overflow: hidden;
+    }
+    
+    .card.stretch .card-header {
+        padding-top: 20px !important;
+        padding-bottom: 20px !important;
+        padding-left: 28px !important;
+        padding-right: 28px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+    }
+    
+    .card.stretch .card-body {
+        padding-bottom: 36px !important;
+        padding-left: 28px !important;
+        padding-right: 28px !important;
+    }
+
+    /* Center DataTable info and pagination vertically - Absolute Global */
+    .dt-layout-row {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding-top: 12px !important;
+        padding-bottom: 8px !important;
+    }
+    
+    .dt-layout-cell {
+        display: flex !important;
+        align-items: center !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .dt-info {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        line-height: 1 !important;
+        height: 38px !important; /* Matches height of pagination controls */
+    }
+
+    .dt-paging {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+    }
+
+    .dt-paging .pagination {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    /* Style form-control and form-select to mimic placeholder when empty or 'all' is selected */
+    #filter-form .form-control,
+    #filter-form .form-select {
+        height: 40px !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        line-height: normal !important;
+        font-size: 13px !important;
+        border-radius: 8px !important;
+        border: 1px solid #cbd5e1 !important;
+        color: #64748b !important; /* Muted gray for placeholder */
+        font-style: italic !important; /* Italic by default */
+        transition: all 0.15s ease !important;
+    }
+    
+    #filter-form .form-control.has-value,
+    #filter-form .form-select.has-value {
+        color: #334155 !important; /* Dark text for valid values */
+        font-style: normal !important; /* Normal font style */
+    }
+
+    #filter-form .form-select option {
+        color: #334155 !important;
+        font-style: normal !important;
+    }
+
+    #filter-form .form-select option[value="all"],
+    #filter-form .form-select option[value=""] {
+        color: #64748b !important;
+        font-style: italic !important;
+    }
+</style>
+
 <div class="page-header">
     <div class="page-header-left d-flex align-items-center">
-        <!-- <div class="page-header-title">
-            <h5 class="m-b-10">
-                <i class="feather-bar-chart-2 me-2"></i>Rekap Penghimpunan dan Pengolahan Data
-            </h5>
-            <p class="text-muted mb-0">Informasi IPC Penghimpunan Data yang telah disampaikan ke AP</p>
-        </div> -->
         <ul class="breadcrumb">
             <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
             <li class="breadcrumb-item"><a href="javascript:void(0);">Laporan</a></li>
@@ -36,128 +148,101 @@
 </div>
 
 <div class="main-content">
-    <!-- Filter Card -->
-    <div class="card shadow-sm mb-3">
-        <div class="card-body">
-            <h5 class="m-b-10">
-                <!-- <i class="feather-bar-chart-2 me-2"></i> -->
-                Rekap Penghimpunan dan Pengolahan Data
-            </h5>
-            <p class="text-muted mb-0">Informasi IPC Penghimpunan Data yang telah disampaikan ke AP</p>
-            <form action="#" method="GET">
-                                        <!-- Row Filter Utama -->
-                                        <div class="row">
-                                            <!-- Kolom Kiri -->
-                                            <div class="col-md-6">
-                                                <div class="row mb-3 align-items-center">
-                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Kategori ILAP</label>
-                                                    <div class="col-sm-8">
-                                                        <select id="filter-kategori-ilap" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
-                                                            <option value="">Pilih Kategori ILAP</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="row mb-3 align-items-center">
-                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Nama ILAP</label>
-                                                    <div class="col-sm-8">
-                                                        <select id="filter-ilap" class="form-select form-select-sm border-gray-200 fs-12 text-muted">
-                                                            <option value="">Pilih ILAP</option>
-                                                            {% for ilap in filter_options.ilap %}
-                                                            <option value="{{ ilap.id }}">{{ ilap.deskripsi }}</option>
-                                                            {% endfor %}
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="row mb-3 align-items-center">
-                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Jenis Data</label>
-                                                    <div class="col-sm-8">
-                                                        <select id="filter-jenis-data" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
-                                                            <option value="">Pilih Jenis Data</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="row mb-3 align-items-center">
-                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Subjenis Data</label>
-                                                    <div class="col-sm-8">
-                                                        <select id="filter-subjenis-data" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
-                                                            <option value="">Pilih Subjenis Data</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                
-                                            </div>
+    <div class="card stretch stretch-full">
+        <!-- Top Info Header & Stats Widgets -->
+        <div class="px-4 pt-4 pb-3" style="border-bottom: 1px solid #f1f5f9 !important;">
+            <!-- Header: Judul & Deskripsi -->
+            <div class="d-flex align-items-start justify-content-between mb-4">
+                <div class="me-3">
+                    <h5 class="fw-bold text-dark mb-1">Rekap Penghimpunan dan Pengolahan Data</h5>
+                    <p class="fs-12 text-muted mb-0">
+                        Informasi IPC Penghimpunan Data yang telah disampaikan ke AP.
+                    </p>
+                </div>
+            </div>
 
-                                            <!-- Kolom Kanan -->
-                                            <div class="col-md-6">
-                                                <div class="row mb-3 align-items-center">
-                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Dasar Hukum</label>
-                                                    <div class="col-sm-8">
-                                                        <select id="filter-periode-data" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
-                                                            <option value="">Pilih Dasar Hukum</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="row mb-3 align-items-center">
-                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Periode Pelaporan</label>
-                                                    <div class="col-sm-8">
-                                                        <select id="filter-periode-pengiriman" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
-                                                            <option value="">Tanggal Mulai</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="row mb-3 align-items-center">
-                                                    <label class="col-sm-4 col-form-label fs-12 text-muted"></label>
-                                                    <div class="col-sm-8">
-                                                        <select id="filter-media-backup" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
-                                                            <option value="">Tanggal Selesai</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="row mb-3 align-items-center">
-                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Nama Tabel</label>
-                                                    <div class="col-sm-8">
-                                                        <select id="filter-pic-p3de" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
-                                                            <option value="">Pilih Nama Tabel</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+            <!-- Direct visible Filter form (no accordion) -->
+            <form action="#" method="GET" id="filter-form">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-xl-3 col-md-4 col-sm-6">
+                        <label class="form-label mb-1" style="font-size: 11.5px; font-weight: 600; color: #475569;">Kategori ILAP</label>
+                        <select id="filter-kategori-ilap" class="form-select form-select-sm w-100" disabled>
+                            <option value="">Pilih Kategori ILAP</option>
+                        </select>
+                    </div>
+                    <div class="col-xl-3 col-md-4 col-sm-6">
+                        <label class="form-label mb-1" style="font-size: 11.5px; font-weight: 600; color: #475569;">Nama ILAP</label>
+                        <select id="filter-ilap" class="form-select form-select-sm w-100">
+                            <option value="">Pilih ILAP</option>
+                            {% for ilap in filter_options.ilap %}
+                            <option value="{{ ilap.id }}">{{ ilap.deskripsi }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-xl-3 col-md-4 col-sm-6">
+                        <label class="form-label mb-1" style="font-size: 11.5px; font-weight: 600; color: #475569;">Jenis Data</label>
+                        <select id="filter-jenis-data" class="form-select form-select-sm w-100" disabled>
+                            <option value="">Pilih Jenis Data</option>
+                        </select>
+                    </div>
+                    <div class="col-xl-3 col-md-4 col-sm-6">
+                        <label class="form-label mb-1" style="font-size: 11.5px; font-weight: 600; color: #475569;">Subjenis Data</label>
+                        <select id="filter-subjenis-data" class="form-select form-select-sm w-100" disabled>
+                            <option value="">Pilih Subjenis Data</option>
+                        </select>
+                    </div>
+                    <div class="col-xl-3 col-md-4 col-sm-6">
+                        <label class="form-label mb-1" style="font-size: 11.5px; font-weight: 600; color: #475569;">Dasar Hukum</label>
+                        <select id="filter-periode-data" class="form-select form-select-sm w-100" disabled>
+                            <option value="">Pilih Dasar Hukum</option>
+                        </select>
+                    </div>
+                    <div class="col-xl-3 col-md-4 col-sm-6">
+                        <label class="form-label mb-1" style="font-size: 11.5px; font-weight: 600; color: #475569;">Tanggal Mulai</label>
+                        <select id="filter-periode-pengiriman" class="form-select form-select-sm w-100" disabled>
+                            <option value="">Tanggal Mulai</option>
+                        </select>
+                    </div>
+                    <div class="col-xl-3 col-md-4 col-sm-6">
+                        <label class="form-label mb-1" style="font-size: 11.5px; font-weight: 600; color: #475569;">Tanggal Selesai</label>
+                        <select id="filter-media-backup" class="form-select form-select-sm w-100" disabled>
+                            <option value="">Tanggal Selesai</option>
+                        </select>
+                    </div>
+                    <div class="col-xl-3 col-md-4 col-sm-6">
+                        <label class="form-label mb-1" style="font-size: 11.5px; font-weight: 600; color: #475569;">Nama Tabel</label>
+                        <select id="filter-pic-p3de" class="form-select form-select-sm w-100" disabled>
+                            <option value="">Pilih Nama Tabel</option>
+                        </select>
+                    </div>
+                </div>
 
-                                        <!-- Bagian Tombol Aksi -->
-                                        <div class="d-flex flex-wrap align-items-center justify-content-between mt-4 pt-3 border-top border-gray-100">
-                                            <!-- Tombol Ekspor -->
-                                            <div class="d-flex gap-2">
-                                                <button type="button" id="btn-export-excel" class="btn btn-sm btn-outline-success d-flex align-items-center gap-2 fs-11 fw-bold">
-                                                    <i class="feather-file-text"></i> EKSPOR KE EXCEL
-                                                </button>
-                                                <button type="button" id="btn-export-pdf" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-2 fs-11 fw-bold">
-                                                    <i class="feather-file-text"></i> EKSPOR KE PDF
-                                                </button>
-                                            </div>
-
-                                            <!-- Tombol Filter & Cari -->
-                                            <div class="d-flex align-items-center gap-3">
-                                                <a href="#" id="btn-clear-filter" class="btn border-0 text-primary text-decoration-none p-0 fw-bold">
-                                                    <i class="feather-x me-2"></i> Hapus Filter
-                                                </a>
-                                                
-                                                <button type="button" id="btn-search" class="btn btn-primary"><i class="feather-search me-1"></i>Cari</button>
-                                            </div>
-                                        </div>
-                                    </form>
-            
-
+                <!-- Buttons row at the bottom of the filters -->
+                <div class="d-flex align-items-center justify-content-between mt-3 pt-3" style="border-top: 1px solid #f1f5f9 !important;">
+                    <div class="d-flex gap-2">
+                        <button type="button" id="btn-export-excel" class="btn btn-sm btn-outline-success d-flex align-items-center justify-content-center gap-2 fw-bold" style="height: 38px !important; border-radius: 6px !important; padding: 0 16px !important;">
+                            <i class="feather-file-text"></i> EXCEL
+                        </button>
+                        <button type="button" id="btn-export-pdf" class="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center gap-2 fw-bold" style="height: 38px !important; border-radius: 6px !important; padding: 0 16px !important;">
+                            <i class="feather-file-text"></i> PDF
+                        </button>
+                    </div>
+                    <div class="d-flex gap-2 align-items-center">
+                        <a href="#" id="btn-clear-filter" class="btn btn-sm btn-link text-primary text-decoration-none fw-bold fs-12 d-none" style="height: 38px !important; display: inline-flex; align-items: center; justify-content: center;">
+                            <i class="feather-x me-1"></i> Hapus Filter
+                        </a>
+                        <button type="button" id="btn-search" class="btn btn-sm btn-primary fw-bold" style="height: 38px !important; border-radius: 6px !important; padding: 0 16px !important;">
+                            <i class="feather-search me-1"></i> Cari
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
-    </div>
 
-    
-
-    <!-- Data Table Card -->
-    <div class="card stretch stretch-full h-100">
-        
-        <div class="card-body custom-card-action p-0">
-            <div class="table-responsive">
+        <!-- Table Container -->
+        <div class="card-body custom-card-action">
+            <div class="table-frame">
                 <table id="rekap-himpun-olah-table" data-skip-empty-state class="table table-hover mb-0" style="width: 100%;">
                     <thead>
                         <tr>
@@ -174,30 +259,14 @@
                             <th>JUMLAH DATA KIRIM</th>
                             <th>JUMLAH DATA LENGKAP</th>
                         </tr>
-                        
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>1</td>
-                            <td>KATEGORI ILAP</td>
-                            <td>NAMA ILAP</td>
-                            <td>JENIS DATA WAJIB</td>
-                            <td>JENIS DATA KIRIM</td>
-                            <td>JENIS DATA TEPAT WAKTU</td>
-                            <td>JENIS DATA LENGKAP</td>
-                            <td>PERSENTASE KIRIM</td>
-                            <td>PERSENTASE TEPAT WAKTU</td>
-                            <td>PERSENTASE LENGKAP</td>
-                            <td>JUMLAH DATA KIRIM</td>
-                            <td>JUMLAH DATA LENGKAP</td>
-                        </tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 </div>
-
 {% endblock %}
 {% block scripts %}
 <script>
@@ -205,8 +274,43 @@
         const ajaxUrl = "{% url 'laporan_rekap_himpun_olah_data_data' %}";
         let table;
 
+        function updateSelectPlaceholderStyle($el) {
+            const val = $el.val();
+            if (val && val !== 'all' && val !== '') {
+                $el.addClass('has-value');
+            } else {
+                $el.removeClass('has-value');
+            }
+        }
+
         $(document).ready(function () {
             const csrfToken = $('[name=csrfmiddlewaretoken]').val();
+
+            function toggleClearFilterButton() {
+                let hasActiveFilter = false;
+                $('#filter-form select, #filter-form input:not([type="hidden"])').each(function() {
+                    const val = $(this).val();
+                    if (val && val !== '' && val !== 'all') {
+                        hasActiveFilter = true;
+                    }
+                });
+                if (hasActiveFilter) {
+                    $('#btn-clear-filter').removeClass('d-none');
+                } else {
+                    $('#btn-clear-filter').addClass('d-none');
+                }
+            }
+
+            // Init placeholder styling & clear filter visibility
+            $('#filter-form select, #filter-form input').each(function() {
+                updateSelectPlaceholderStyle($(this));
+            });
+            toggleClearFilterButton();
+
+            $('#filter-form select, #filter-form input').on('change keyup', function() {
+                updateSelectPlaceholderStyle($(this));
+                toggleClearFilterButton();
+            });
 
             table = $('#rekap-himpun-olah-table').DataTable({
                 serverSide: true,
@@ -267,12 +371,13 @@
             // Clear filter button
             $('#btn-clear-filter').on('click', function (e) {
                 e.preventDefault();
-                $('#filter-kategori-ilap, #filter-ilap, #filter-jenis-data, #filter-subjenis-data, #filter-periode-data, #filter-periode-pengiriman, #filter-media-backup, #filter-pic-p3de').val('');
+                $('#filter-kategori-ilap, #filter-ilap, #filter-jenis-data, #filter-subjenis-data, #filter-periode-data, #filter-periode-pengiriman, #filter-media-backup, #filter-pic-p3de').val('').trigger('change');
                 table.ajax.reload();
             });
 
             // Export Excel
             $('#btn-export-excel').on('click', function () {
+                showDownloadToast();
                 const params = $.param({
                     kategori_ilap: $('#filter-kategori-ilap').val(),
                     nama_ilap: $('#filter-ilap').val(),
@@ -284,9 +389,10 @@
                 });
                 window.location.href = "{% url 'laporan_rekap_himpun_olah_data_export' %}?" + params;
             });
-
+ 
             // Export PDF
             $('#btn-export-pdf').on('click', function () {
+                showDownloadToast();
                 const params = $.param({
                     kategori_ilap: $('#filter-kategori-ilap').val(),
                     nama_ilap: $('#filter-ilap').val(),

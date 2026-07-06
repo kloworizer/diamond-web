@@ -10,7 +10,7 @@ class LaporanHasilPengolahanDataPrioritasFilterForm(forms.Form):
     """Form untuk filter Laporan Hasil Pengolahan Data Prioritas."""
 
     PERIODE_TYPE_CHOICES = [
-        ('', '-- Pilih Jenis Periode --'),
+        ('', 'Pilih Jenis Periode'),
         ('bulanan', 'Bulanan'),
         ('triwulanan', 'Triwulanan'),
         ('semester', 'Semester'),
@@ -18,7 +18,7 @@ class LaporanHasilPengolahanDataPrioritasFilterForm(forms.Form):
     ]
 
     BULAN_CHOICES = [
-        ('', '-- Pilih Periode --'),
+        ('', 'Pilih Periode'),
         ('1', 'Januari'),
         ('2', 'Februari'),
         ('3', 'Maret'),
@@ -33,7 +33,7 @@ class LaporanHasilPengolahanDataPrioritasFilterForm(forms.Form):
         ('12', 'Desember'),
     ]
     TRIWULAN_CHOICES = [
-        ('', '-- Pilih Periode --'),
+        ('', 'Pilih Periode'),
         ('1', 'Triwulan 1 (Jan - Mar)'),
         ('2', 'Triwulan 2 (Apr - Jun)'),        
         ('3', 'Triwulan 3 (Jul - Sep)'),
@@ -41,13 +41,13 @@ class LaporanHasilPengolahanDataPrioritasFilterForm(forms.Form):
     ]
 
     SEMESTER_CHOICES = [
-        ('', '-- Pilih Periode --'),
+        ('', 'Pilih Periode'),
         ('1', 'Semester 1 (Jan - Jun)'),
         ('2', 'Semester 2 (Jul - Dec)'),
     ]
 
     TAHUNAN_CHOICES = [
-        ('', '-- Pilih Periode --'),
+        ('', 'Pilih Periode'),
         ('all', 'Seluruh Tahun'),
     ]   
 
@@ -74,7 +74,7 @@ class LaporanHasilPengolahanDataPrioritasFilterForm(forms.Form):
 
     tahun = forms.ChoiceField(
         label='Tahun Transfer',
-        choices=[('', '-- Pilih Tahun --')],
+        choices=[('', 'Pilih Tahun')],
         widget=forms.Select(attrs={
             'class': 'form-select',
             'id': 'filter-tahun',
@@ -86,7 +86,7 @@ class LaporanHasilPengolahanDataPrioritasFilterForm(forms.Form):
     def __init__(self, *args, years=None, **kwargs):
         super().__init__(*args, **kwargs)
         if years:
-            self.fields['tahun'].choices = [('', '-- Pilih Tahun --')] + [
+            self.fields['tahun'].choices = [('', 'Pilih Tahun')] + [
                 (str(year), str(year)) for year in sorted(years, reverse=True)
             ]
 
