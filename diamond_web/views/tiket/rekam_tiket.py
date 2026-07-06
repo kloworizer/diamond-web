@@ -176,8 +176,12 @@ class ILAPPeriodeDataAPIView(View):
 
                 data.append({
                     'id': pd.id,
+                    'id_jenis_data': jenis_data.id_jenis_data,
                     'id_sub_jenis_data': jenis_data.id_sub_jenis_data,
-                    'nama_sub_jenis_data': jenis_data.nama_sub_jenis_data,                    'jenis_data_id': jenis_data.id_sub_jenis_data,                    'nama_ilap': ilap.nama_ilap,
+                    'jenis_data_id': jenis_data.id_sub_jenis_data,
+                    'nama_jenis_data': jenis_data.nama_jenis_data,
+                    'nama_sub_jenis_data': jenis_data.nama_sub_jenis_data,
+                    'nama_ilap': ilap.nama_ilap,
                     'kategori_ilap': ilap.id_kategori.nama_kategori if ilap.id_kategori else '-',
                     'kategori_wilayah': ilap.id_kategori_wilayah.deskripsi if ilap.id_kategori_wilayah else '-',
                     'jenis_tabel': jenis_data.id_jenis_tabel.deskripsi if jenis_data.id_jenis_tabel else '-',
@@ -319,15 +323,21 @@ class CheckTiketExistsAPIView(View):
                 id_periode_data__id_sub_jenis_data_ilap__id_sub_jenis_data=id_sub_jenis_data,
                 periode=int(periode),
                 tahun=int(tahun)
-            )
-            existing_numbers = list(existing_qs.values_list('nomor_tiket', flat=True))
+            ).order_by('tgl_terima_dip')
+            existing_tikets = list(existing_qs.values('id', 'nomor_tiket', 'tgl_terima_dip'))
+            existing_numbers = [t['nomor_tiket'] for t in existing_tikets]
+            tiket_ids = [t['id'] for t in existing_tikets]
+            tiket_dates = [
+                t['tgl_terima_dip'].strftime('%d-%m-%Y') if t['tgl_terima_dip'] else None
+                for t in existing_tikets
+            ]
             exists = len(existing_numbers) > 0
             
             # Get count of existing tikets for this combination
             # New penyampaian should be equal to the count (0-indexed: first=0, second=1, etc)
-            tiket_count = existing_qs.count()
+            tiket_count = len(existing_tikets)
 
-            return JsonResponse({'success': True, 'exists': exists, 'nomor_tiket': existing_numbers, 'tiket_count': tiket_count})
+            return JsonResponse({'success': True, 'exists': exists, 'nomor_tiket': existing_numbers, 'tiket_ids': tiket_ids, 'tiket_dates': tiket_dates, 'tiket_count': tiket_count})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
 

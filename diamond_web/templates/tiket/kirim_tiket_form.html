@@ -34,55 +34,129 @@
     </div>
 </div>
 
+<style>
+    /* Tab Line Styles matching Figma folder-tabs mockup */
+    .custom-line-tabs {
+        border-bottom: 1px solid #e2e8f0 !important;
+        display: flex;
+        gap: 4px;
+        padding-left: 0;
+        margin-bottom: 0;
+    }
+    
+    .custom-line-tabs .nav-item {
+        margin-bottom: -1px; /* Overlaps the container's bottom border */
+    }
+    
+    .custom-line-tabs .nav-link {
+        border-radius: 8px 8px 0 0 !important;
+        padding: 10px 24px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        color: #475569 !important;
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        display: inline-flex;
+        align-items: center;
+        transition: all 0.15s ease-in-out;
+    }
+    
+    .custom-line-tabs .nav-link:hover {
+        background-color: #f8fafc !important;
+        border-color: #cbd5e1 #cbd5e1 #e2e8f0 !important;
+    }
+    
+    .custom-line-tabs .nav-link.active {
+        background-color: #00BDFB !important;
+        border-color: #00BDFB !important;
+        color: #ffffff !important;
+        border-bottom-color: #00BDFB !important; /* Covers the bottom border line */
+        box-shadow: none !important;
+    }
+    
+    /* Custom badge inside the line tabs */
+    .custom-line-tabs .nav-link .badge-tab {
+        border-radius: 50px !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        padding: 1px 8px !important;
+        margin-left: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 22px;
+        height: 18px;
+        transition: all 0.15s ease-in-out;
+    }
+    
+    /* Active State Badge (white outline, transparent inside, white text) */
+    .custom-line-tabs .nav-link.active .badge-tab {
+        background-color: transparent !important;
+        color: #ffffff !important;
+        border: 1px solid #ffffff !important;
+    }
+    
+    /* Inactive State Badge (gray outline, transparent inside, gray text) */
+    .custom-line-tabs .nav-link:not(.active) .badge-tab {
+        background-color: transparent !important;
+        color: #64748b !important;
+        border: 1px solid #cbd5e1 !important;
+    }
+</style>
+
 <div class="main-content">
     <div class="card stretch stretch-full h-100">
-        <div class="card-header">
-            <ul class="nav nav-tabs card-header-tabs" id="kirimTiketTabs" role="tablist">
+        <div class="card-header border-bottom-0 pb-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <ul class="nav nav-tabs custom-line-tabs" id="kirimTiketTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="generate-tab" data-bs-toggle="tab"
                             data-bs-target="#generate" type="button" role="tab"
                             aria-controls="generate" aria-selected="true">
-                        <i class="feather-file-text me-1"></i>Generate ND Pengantar PIDE
+                        Generate ND Pengantar PIDE <span class="badge-tab">{{ total_count|default:0 }}</span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="temp-list-tab" data-bs-toggle="tab"
                             data-bs-target="#temp-list" type="button" role="tab"
                             aria-controls="temp-list" aria-selected="false">
-                        <i class="feather-inbox me-1"></i>Kirim ke PIDE
+                        Kirim ke PIDE <span class="badge-tab">{{ temp_groups|length|default:0 }}</span>
                     </button>
                 </li>
             </ul>
+
+            <!-- Filter ILAP on the right side of the card header -->
+            <div id="ilap-filter-container" class="d-flex align-items-center gap-2 mb-2">
+                <label class="fs-12 text-muted text-nowrap mb-0 fw-semibold">Filter ILAP</label>
+                <select class="form-select form-select-sm border-gray-300" id="ilap-filter-tab1" style="width: 200px; height: 36px !important; font-size: 12.5px; border-radius: 6px !important; padding-top: 0 !important; padding-bottom: 0 !important;">
+                    <option value="">Semua ILAP</option>
+                    {% for ilap in ilap_options %}
+                    <option value="{{ ilap.id }}" {% if selected_ilap_id|stringformat:"s" == ilap.id|stringformat:"s" %}selected{% endif %}>
+                        {{ ilap.nama_ilap }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
         <div class="card-body">
             <div class="tab-content" id="kirimTiketTabsContent">
                 <!-- ==================== TAB 1: Generate ND Pengantar PIDE ==================== -->
                 <div class="tab-pane fade show active" id="generate" role="tabpanel" aria-labelledby="generate-tab">
-                    <!-- ILAP Filter -->
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label"><strong>Filter ILAP</strong></label>
-                            <select class="form-select form-select-sm" id="ilap-filter-tab1">
-                                <option value="">-- Semua ILAP --</option>
-                                {% for ilap in ilap_options %}
-                                <option value="{{ ilap.id }}" {% if selected_ilap_id|stringformat:"s" == ilap.id|stringformat:"s" %}selected{% endif %}>
-                                    {{ ilap.nama_ilap }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-
                     <form method="post" action="{{ form_action }}" id="kirim-tiket-form">
                         {% csrf_token %}
 
+                        <!-- Header Area: Pilih Tiket Title -->
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div>
+                                <h6 class="fw-bold mb-0">
+                                    Pilih Tiket <span class="text-danger">*</span>
+                                    <small class="text-muted ms-2 fw-normal" id="selected-count-badge"></small>
+                                </h6>
+                            </div>
+                        </div>
+
                         <!-- Tiket Selection Table -->
                         <div class="mb-3">
-                            <label class="form-label">
-                                <strong>Pilih Tiket</strong>
-                                <span class="text-danger">*</span>
-                                <span class="text-muted ms-2" id="selected-count-badge"></span>
-                            </label>
                             <div style="max-height: 450px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 6px;">
                                 <table class="table table-hover mb-0">
                                     <thead class="table-light" style="position: sticky; top: 0; z-index: 1;">
@@ -207,9 +281,9 @@
                 <!-- ==================== TAB 2: Kirim ke PIDE ==================== -->
                 <div class="tab-pane fade" id="temp-list" role="tabpanel" aria-labelledby="temp-list-tab">
                     <div class="mb-3">
-                        <label class="form-label">
-                            <strong>Daftar Template Kirim PIDE</strong>
-                        </label>
+                        <div class="d-flex align-items-center mb-3">
+                            <h6 class="fw-bold mb-0">Daftar Template Kirim PIDE</h6>
+                        </div>
                         <div style="max-height: 500px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 6px;">
                             <table class="table table-hover mb-0">
                                 <thead class="table-light" style="position: sticky; top: 0; z-index: 1;">
@@ -268,11 +342,11 @@
 
 <!-- Modal for updating temp records -->
 <div class="modal fade" id="updateTempModal" tabindex="-1" aria-labelledby="updateTempModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="updateTempModalLabel">Update Template</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold" id="updateTempModalLabel">Update Template</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div id="update-temp-form-container">
                 <!-- Loaded via AJAX -->
@@ -283,13 +357,13 @@
 
 <!-- Modal for Kirim ke PIDE -->
 <div class="modal fade" id="kirimPideModal" tabindex="-1" aria-labelledby="kirimPideModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title" id="kirimPideModalLabel">
-                    <i class="feather-send me-1"></i>Kirim ke PIDE
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold" id="kirimPideModalLabel">
+                    <i class="feather-send me-1 text-success"></i>Kirim ke PIDE
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div id="kirim-pide-form-container">
                 <!-- Loaded via AJAX -->
@@ -312,7 +386,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectedCountBadge = document.getElementById('selected-count-badge');
     const form = document.getElementById('kirim-tiket-form');
     const submitButton = document.querySelector('#kirim-tiket-form button[type="submit"]');
-    const totalCount = {{ total_count|default:0 }};
+    const totalCount = parseInt("{{ total_count|default:0 }}") || 0;
 
     if (tiketIdsInput) {
         let selectAllPagesActive = false;
@@ -649,6 +723,27 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('ilap-filter-tab1')?.addEventListener('change', function() {
         filterByILAP(this.value);
     });
+
+    // Tab visibility handling for ILAP filter
+    function updateFilterVisibility() {
+        const activeTab = document.querySelector('#kirimTiketTabs .nav-link.active');
+        const filterContainer = document.getElementById('ilap-filter-container');
+        if (filterContainer) {
+            if (activeTab && activeTab.id === 'generate-tab') {
+                filterContainer.style.setProperty('display', 'flex', 'important');
+            } else {
+                filterContainer.style.setProperty('display', 'none', 'important');
+            }
+        }
+    }
+    
+    // Listen to tab changes
+    document.querySelectorAll('#kirimTiketTabs button[data-bs-toggle="tab"]').forEach(tabButton => {
+        tabButton.addEventListener('shown.bs.tab', updateFilterVisibility);
+    });
+
+    // Initial check
+    updateFilterVisibility();
 
     // Initialize Bootstrap tooltips
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');

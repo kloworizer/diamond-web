@@ -141,6 +141,7 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
             'kategori_ilap': ilap.id_kategori.nama_kategori if ilap.id_kategori else '-',
             'kategori_wilayah': ilap.id_kategori_wilayah.deskripsi if ilap.id_kategori_wilayah else '-',
             'id_sub_jenis_data': jenis_data.id_sub_jenis_data,
+            'nama_jenis_data': jenis_data.nama_jenis_data,
             'nama_sub_jenis_data': jenis_data.nama_sub_jenis_data,
             'jenis_tabel': jenis_data.id_jenis_tabel.deskripsi if jenis_data.id_jenis_tabel else '-',
             'deskripsi_periode': periode_jenis_data.id_periode_pengiriman.periode_penyampaian,

@@ -144,6 +144,7 @@ urlpatterns = [
     path('jenis-data-ilap/create/', views.JenisDataILAPCreateView.as_view(), name='jenis_data_ilap_create'),
     path('jenis-data-ilap/<int:pk>/update/', views.JenisDataILAPUpdateView.as_view(), name='jenis_data_ilap_update'),
     path('jenis-data-ilap/<int:pk>/delete/', views.JenisDataILAPDeleteView.as_view(), name='jenis_data_ilap_delete'),
+    path('jenis-data-ilap/<int:pk>/info/', views.jenis_data_ilap_info_ajax, name='jenis_data_ilap_info_ajax'),
     # Klasifikasi Jenis Data URLs
     path('klasifikasi-jenis-data/', views.KlasifikasiJenisDataListView.as_view(), name='klasifikasi_jenis_data_list'),
     path('klasifikasi-jenis-data/data/', views.klasifikasi_jenis_data_data, name='klasifikasi_jenis_data_data'),
@@ -294,6 +295,7 @@ urlpatterns = [
     path('backup-data/from-tiket/<int:tiket_pk>/create/', views.BackupDataFromTiketCreateView.as_view(), name='backup_data_from_tiket_create'),
     path('backup-data/<int:pk>/update/', views.BackupDataUpdateView.as_view(), name='backup_data_update'),
     path('backup-data/<int:pk>/delete/', views.BackupDataDeleteView.as_view(), name='backup_data_delete'),
+    path('backup-data/tiket-info/<int:tiket_pk>/', views.backup_data_tiket_info, name='backup_data_tiket_info'),
     # === Tiket Workflow ===
     # List view (shared across all workflow steps)
     path('tiket/', views.TiketListView.as_view(), name='tiket_list'),

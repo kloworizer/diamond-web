@@ -842,3 +842,34 @@ def pic_pmde_data(request):
     `_pic_data_common`. Action buttons are only included for admin users.
     """
     return _pic_data_common(request, PIC.TipePIC.PMDE)
+
+
+@login_required
+def jenis_data_ilap_info_ajax(request, pk):
+    """AJAX view to fetch classification details of a JenisDataILAP."""
+    try:
+        from ..models.jenis_data_ilap import JenisDataILAP
+        from ..models.jenis_prioritas_data import JenisPrioritasData
+        obj = JenisDataILAP.objects.select_related('id_ilap__id_kategori').get(pk=pk)
+        
+        # Check if it has an active priority mapping
+        has_prioritas = JenisPrioritasData.objects.filter(id_sub_jenis_data_ilap=obj).exists()
+        
+        # Check if it has a linked periode data
+        from ..models.periode_jenis_data import PeriodeJenisData
+        periode_obj = PeriodeJenisData.objects.filter(id_sub_jenis_data_ilap=obj).select_related('id_periode_pengiriman').first()
+        periode_str = periode_obj.id_periode_pengiriman.periode_penyampaian if periode_obj else '-'
+        
+        return JsonResponse({
+            'success': True,
+            'kategori_ilap': obj.id_ilap.id_kategori.nama_kategori,
+            'jenis_data': obj.nama_jenis_data,
+            'subjenis_data': obj.nama_sub_jenis_data,
+            'is_prioritas': has_prioritas,
+            'periode_data': periode_str
+        })
+    except JenisDataILAP.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Jenis Data tidak ditemukan.'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+

@@ -51,4 +51,9 @@ packages/
 # Backup dumps created by django-dbbackup
 backups/
 !backups/.gitkeep
- 
+
+.claude/
+CLAUDE.md
+# Local-only directories (agent config, personal notes)
+.agents/
+catatan_penting/
