@@ -70,13 +70,28 @@ class DocxTemplateUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFor
         context = super().get_context_data(**kwargs)
         context['form_action'] = 'update'
         context['form_url'] = reverse_lazy('docx_template_update', kwargs={'pk': self.object.pk})
+        if self.object.file_template:
+            context['download_url'] = reverse_lazy('docx_template_download', kwargs={'pk': self.object.pk})
         return context
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        return self.render_form_response(form)
 
 
 class DocxTemplateDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, SafeDeleteMixin, DeleteView):
     """Delete view for `DocxTemplate`."""
     model = DocxTemplate
+    template_name = 'docx_template/confirm_delete.html'
     success_url = reverse_lazy('docx_template_list')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form_action'] = reverse_lazy('docx_template_delete', kwargs={'pk': self.object.pk})
+        if self.object.file_template:
+            context['download_url'] = reverse_lazy('docx_template_download', kwargs={'pk': self.object.pk})
+        return context
 
     def get_object(self, queryset=None):
         obj = super().get_object(queryset)

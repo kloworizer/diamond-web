@@ -134,7 +134,7 @@ class ProfilILAPListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView
                 'kategori': ilap.id_kategori.nama_kategori if ilap.id_kategori else '---',
                 'nama': ilap.nama_ilap,
                 'wilayah': ilap.id_kategori_wilayah.deskripsi if ilap.id_kategori_wilayah else '---',
-                'actions': f'<a href="/profil-ilap/{ilap.pk}/" class="btn btn-sm btn-info"><i class="feather-eye me-1"></i>View</a>'
+                'actions': f'<a href="/profil-ilap/{ilap.pk}/" class="btn btn-sm btn-primary"><i class="feather-eye me-1"></i>Detail</a>'
             })
         
         return JsonResponse({

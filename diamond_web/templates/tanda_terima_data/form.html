@@ -1,34 +1,221 @@
 {% load crispy_forms_tags %}
 <form method="post" action="{{ form_action }}" {% if tanda_terima_id %}data-tanda-terima-id="{{ tanda_terima_id }}"{% endif %}>
     {% csrf_token %}
-    <div class="modal-body" {% if tanda_terima_id %}data-tanda-terima-id="{{ tanda_terima_id }}"{% endif %}>
+    
+    <style>
+        .form-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.75px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 6px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .form-section-title i {
+            color: #0c92ff;
+            font-size: 13px;
+        }
+
+        .checkbox-container-premium {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #cbd5e1;
+            padding: 12px;
+            border-radius: 8px;
+            background-color: #f8fafc;
+            transition: border-color 0.2s;
+        }
+
+        .checkbox-container-premium:focus-within {
+            border-color: #00BDFB;
+            box-shadow: 0 0 0 3px rgba(0, 189, 251, 0.15);
+        }
+
+        .form-check-premium {
+            padding: 8px 12px;
+            border-radius: 6px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 6px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-check-premium:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-check-premium:hover {
+            border-color: #0c92ff;
+            background-color: rgba(12, 146, 255, 0.02);
+        }
+
+        .form-check-premium input[type="checkbox"] {
+            margin-top: 0;
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            border: 1.5px solid #cbd5e1;
+            cursor: pointer;
+            accent-color: #0c92ff;
+        }
+
+        .form-check-premium label {
+            font-size: 12.5px;
+            font-weight: 500;
+            color: #334155;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 0;
+        }
+        
+        .form-label-premium {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .input-icon-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-icon-wrapper i {
+            position: absolute;
+            left: 12px;
+            color: #94a3b8;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .input-icon-wrapper .form-control,
+        .input-icon-wrapper .form-select {
+            padding-left: 36px !important;
+            height: 40px !important;
+            border-radius: 8px !important;
+            border: 1px solid #cbd5e1 !important;
+            font-size: 13px !important;
+            transition: all 0.2s ease !important;
+        }
+
+        .input-icon-wrapper .form-control:focus,
+        .input-icon-wrapper .form-select:focus {
+            border-color: #00BDFB !important;
+            box-shadow: 0 0 0 3px rgba(0, 189, 251, 0.15) !important;
+        }
+        
+        /* Custom scrollbar for checkboxes */
+        .checkbox-container-premium::-webkit-scrollbar {
+            width: 6px;
+        }
+        .checkbox-container-premium::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .checkbox-container-premium::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 99px;
+        }
+        .checkbox-container-premium::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+
+    <div class="modal-body pt-2 px-4 pb-1" {% if tanda_terima_id %}data-tanda-terima-id="{{ tanda_terima_id }}"{% endif %}>
         {% if form.non_field_errors %}
-            <div class="alert alert-danger mb-3">
-                {% for error in form.non_field_errors %}
-                    <p class="mb-0">{{ error }}</p>
-                {% endfor %}
+            <div class="alert alert-danger border-0 shadow-sm d-flex align-items-center mb-4" role="alert" style="border-radius: 8px;">
+                <i class="feather-alert-triangle fs-16 me-2"></i>
+                <div class="fs-12">
+                    {% for error in form.non_field_errors %}
+                        <p class="mb-0">{{ error }}</p>
+                    {% endfor %}
+                </div>
             </div>
         {% endif %}
 
-        {{ form.tanggal_tanda_terima|as_crispy_field }}
-        {{ form.nomor_tanda_terima|as_crispy_field }}
-        {{ form.id_ilap|as_crispy_field }}
+        <!-- SECTION 1: Metadata Penerimaan -->
+        <div class="form-section-title">
+            <i class="feather-info"></i>Informasi Tanda Terima
+        </div>
+        
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <label for="id_tanggal_tanda_terima" class="form-label-premium">Tanggal Tanda Terima</label>
+                <div class="input-icon-wrapper">
+                    <i class="feather-calendar"></i>
+                    {{ form.tanggal_tanda_terima }}
+                </div>
+                {% if form.tanggal_tanda_terima.errors %}
+                    <div class="text-danger fs-11 mt-1">{{ form.tanggal_tanda_terima.errors.as_text }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="col-md-6">
+                <label for="id_nomor_tanda_terima" class="form-label-premium">Nomor Tanda Terima (Otomatis)</label>
+                <div class="input-icon-wrapper">
+                    <i class="feather-file-text"></i>
+                    {{ form.nomor_tanda_terima }}
+                </div>
+                {% if form.nomor_tanda_terima.errors %}
+                    <div class="text-danger fs-11 mt-1">{{ form.nomor_tanda_terima.errors.as_text }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- SECTION 2: Sumber Data & Tiket -->
+        <div class="form-section-title">
+            <i class="feather-hash"></i>Sumber Data & Tiket
+        </div>
+
+        <div class="mb-4">
+            <label for="id_id_ilap" class="form-label-premium">ILAP</label>
+            <div class="input-icon-wrapper">
+                <i class="feather-database"></i>
+                {{ form.id_ilap }}
+            </div>
+            {% if form.id_ilap.errors %}
+                <div class="text-danger fs-11 mt-1">{{ form.id_ilap.errors.as_text }}</div>
+            {% endif %}
+        </div>
 
         {% if form.tiket_ids %}
-        <div class="mb-3">
-            <label class="form-label">{{ form.tiket_ids.label }}</label>
-            <div id="tiket-checkbox-container" style="max-height: 200px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px; border-radius: 4px;">
-                {% for checkbox in form.tiket_ids %}
-                    <div class="form-check">
-                        {{ checkbox.tag }}
-                        <label class="form-check-label" for="{{ checkbox.id_for_label }}">
-                            {{ checkbox.choice_label }}
-                        </label>
-                    </div>
-                {% endfor %}
+        <div class="mb-2">
+            <label class="form-label-premium">{{ form.tiket_ids.label }}</label>
+            <div id="tiket-checkbox-container" class="checkbox-container-premium p-0" style="overflow-x: hidden;">
+                <table class="table table-sm table-hover mb-0" style="font-size: 12.5px; width: 100%; border-collapse: collapse;">
+                    <thead style="position: sticky; top: 0; z-index: 10; background-color: #f8fafc; box-shadow: inset 0 -1px 0 #e2e8f0;">
+                        <tr>
+                            <th style="width: 45px;" class="text-center py-2 border-0">Pilih</th>
+                            <th class="py-2 border-0">Nomor Tiket</th>
+                            <th class="py-2 border-0">Jenis Data</th>
+                            <th class="py-2 border-0">Subjenis Data</th>
+                            <th class="py-2 border-0">Periode</th>
+                            <th class="text-end py-2 border-0">Jumlah Baris</th>
+                            <th class="text-center py-2 border-0">Tanggal Terima</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tiket-table-body">
+                        <tr id="tiket-empty-row">
+                            <td colspan="7" class="text-muted text-center py-4 fs-12 border-0">
+                                Pilih ILAP terlebih dahulu untuk memuat tiket tersedia.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
             {% if form.tiket_ids.errors %}
-                <small class="text-danger d-block mt-1">
+                <small class="text-danger d-block mt-1 fs-11">
                     {% for error in form.tiket_ids.errors %}
                         {{ error }}
                     {% endfor %}
@@ -37,13 +224,16 @@
         </div>
         {% endif %}
     </div>
-    <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary me-auto" id="tidak-terbit-tt-btn"{% if tiket %} data-tiket-pk="{{ tiket.pk }}"{% endif %}>
-            <i class="feather-x-circle me-1"></i>Tidak Diterbitkan Tanda Terima
+
+    <div class="modal-footer pt-0 px-4 pb-4 border-top-0 d-flex justify-content-between align-items-center" style="background: transparent !important;">
+        <button type="button" class="btn btn-outline-danger btn-sm px-3" id="tidak-terbit-tt-btn"{% if tiket %} data-tiket-pk="{{ tiket.pk }}"{% endif %} style="height: 38px; font-weight: 600;">
+            <i class="feather-x-circle me-1"></i>Tidak Diterbitkan
         </button>
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-        <button type="submit" class="btn btn-info">
-            <i class="ri-save-line me-1"></i>Simpan
-        </button>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-light btn-sm px-4" data-bs-dismiss="modal" style="height: 38px; font-weight: 600;">Batal</button>
+            <button type="submit" class="btn btn-primary btn-sm px-4" style="height: 38px; font-weight: 600; background: #0c92ff; border-color: #0c92ff;">
+                <i class="feather-save me-1"></i>Simpan
+            </button>
+        </div>
     </div>
 </form>
