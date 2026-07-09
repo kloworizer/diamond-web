@@ -23,6 +23,7 @@ DOC_TITLES = {
     'TEMPLATES_SETUP.md': 'Panduan Setup Template Default',
     'RBAC_MATRIX.md': 'Matriks RBAC & Hak Akses Menu',
     'DATA_MIGRATION_DEV_PHASE.md': 'Panduan Migrasi Data',
+    'SYNC_TIKET_UPDATE_RULES.md': 'Aturan Sinkronisasi Status Tiket (Oracle Sync)',
 }
 
 # Phase grouping for documentation (Bahasa Indonesia)
@@ -41,6 +42,7 @@ DOC_GROUPS = {
         'SECURITY.md',
         'CHANGELOG.md',
         'DATA_MIGRATION_DEV_PHASE.md',
+        'SYNC_TIKET_UPDATE_RULES.md',
     ],
     'Fase Produksi': [
         'PRODUCTION_SETUP.md',

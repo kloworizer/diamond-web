@@ -592,6 +592,13 @@ def oracle_sync_truncate(request):
         and triggers depending on the database vendor.
     """
     try:
+        from django.conf import settings
+        if settings.ENVIRONMENT == 'production':
+            return JsonResponse({
+                'success': False,
+                'message': 'Truncate tidak diizinkan di lingkungan production.'
+            }, status=403)
+
         from django.db import connection
         from django.apps import apps
         from ..utils.oracle_sync import HARD_CODED_SYNC_TABLES

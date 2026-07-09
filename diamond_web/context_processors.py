@@ -100,6 +100,12 @@ def _get_git_branch(repo_dir: Path):
     return os.environ.get("GIT_BRANCH", "")
 
 
+def environment(request):
+    """Expose ENVIRONMENT setting to all templates."""
+    from django.conf import settings
+    return {"environment": settings.ENVIRONMENT}
+
+
 def git_commit(request):
     """Expose commit metadata to templates.
 

@@ -98,6 +98,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "diamond_web.context_processors.notifications",
                 "diamond_web.context_processors.git_commit",
+                "diamond_web.context_processors.environment",
             ],
         },
     },
