@@ -54,11 +54,37 @@
 (function() {
     const kategoriSelect = document.querySelector('#id_id_kategori');
     const ilapInput = document.querySelector('#id_id_ilap');
+    const wilayahSelect = document.querySelector('#id_id_kategori_wilayah');
+    const kppContainer = document.querySelector('#div_id_kpp_list');
     
     // Get original values for edit mode
     const originalIdIlap = '{{ original_id_ilap|default:"" }}';
     const originalIdKategori = '{{ original_id_kategori|default:"" }}';
     const isEditMode = originalIdIlap !== '';
+    
+    function toggleKppVisibility() {
+        if (!wilayahSelect || !kppContainer) return;
+        
+        const selectedText = wilayahSelect.options[wilayahSelect.selectedIndex]?.text || '';
+        const isRegional = selectedText.toLowerCase().indexOf('regional') !== -1;
+        
+        if (isRegional) {
+            kppContainer.style.display = '';
+        } else {
+            kppContainer.style.display = 'none';
+            // Uncheck all KPP checkboxes
+            kppContainer.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+                cb.checked = false;
+            });
+        }
+    }
+    
+    // Listen for changes on kategori_wilayah select
+    if (wilayahSelect) {
+        wilayahSelect.addEventListener('change', toggleKppVisibility);
+        // Run on page load to set initial state
+        toggleKppVisibility();
+    }
     
     if (kategoriSelect && ilapInput) {
         kategoriSelect.addEventListener('change', function() {

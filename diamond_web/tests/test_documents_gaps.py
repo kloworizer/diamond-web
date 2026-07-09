@@ -64,7 +64,9 @@ def _make_tiket_with_tanda_terima(user, kategori_name='nasional'):
     if 'regional' in kategori_name.lower():
         kanwil = KanwilFactory()
         kpp = KPPFactory(id_kanwil=kanwil)
-        ilap = ILAPFactory(id_kpp=kpp)
+        ilap = ILAPFactory()
+        from diamond_web.models import ILAPKPP
+        ILAPKPP.objects.create(id_ilap=ilap, id_kpp=kpp)
     else:
         ilap = ILAPFactory()
     jd = JenisDataILAPFactory(id_ilap=ilap)
@@ -619,7 +621,9 @@ class TestDocumentViewGaps:
         kanwil = KanwilFactory(nama_kanwil='Kanwil Test Regional')
         kpp = KPPFactory(id_kanwil=kanwil)
         kategori = KategoriILAPFactory(nama_kategori='Regional Khusus')
-        ilap = ILAPFactory(id_kategori=kategori, id_kpp=kpp)
+        ilap = ILAPFactory(id_kategori=kategori)
+        from diamond_web.models import ILAPKPP
+        ILAPKPP.objects.create(id_ilap=ilap, id_kpp=kpp)
         jd = JenisDataILAPFactory(id_ilap=ilap)
         pp = PeriodePengirimanFactory()
         pd = PeriodeJenisDataFactory(id_sub_jenis_data_ilap=jd, id_periode_pengiriman=pp)

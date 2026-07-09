@@ -151,14 +151,15 @@
                             <p class="info-item-value">{{ ilap.id_kpp.nama_kpp|default:"---" }}</p>
                         </div>
                     </div>
-                    <div class="info-item mb-0">
-                        <div class="info-item-icon bg-soft-primary text-primary">
-                            <i class="feather-map-pin"></i>
-                        </div>
-                        <div class="info-item-content">
-                            <span class="info-item-label text-muted">Alamat & Kota</span>
-                            <p class="info-item-value">{{ ilap.alamat_ilap|default:"---" }}{% if ilap.kota_ilap %}, {{ ilap.kota_ilap }}{% endif %}</p>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">KPP</label>
+                        <p>
+                            {% for rel in ilap.ilap_kpp_relations.all %}
+                                {{ rel.id_kpp.nama_kpp }}{% if not forloop.last %}, {% endif %}
+                            {% empty %}
+                                ---
+                            {% endfor %}
+                        </p>
                     </div>
                 </div>
                 

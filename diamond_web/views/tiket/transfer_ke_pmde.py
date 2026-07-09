@@ -120,7 +120,7 @@ class TransferKePMDEView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateView):
                     id_user=self.request.user,
                     timestamp=now,
                     action=TiketActionType.DITRANSFER_KE_PMDE,
-                    catatan=f'Transfer ke PMDE - I:{self.object.baris_i}, U:{self.object.baris_u}, Res:{self.object.baris_res}, CDE:{self.object.baris_cde}'
+                    catatan='Tiket ditransfer ke PMDE'
                 )
 
                 # Send notification to active PMDE PIC
@@ -152,7 +152,7 @@ class TransferKePMDEView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateView):
                     recipient = pic.id_user
                     Notification.objects.create(
                         recipient=recipient,
-                        title='Tiket Ditransfer ke Pengendalian Mutu',
+                        title='Tiket ditransfer ke PMDE',
                         message=notif_message
                     )
 

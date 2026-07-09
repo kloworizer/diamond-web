@@ -421,9 +421,10 @@ class TestAdditionalMissingLines:
         """ilap line 119: 5th column search (id_kpp)."""
         obj = ILAPFactory()
         client.force_login(p3de_admin)
+        kpp_name = '-'
         resp = client.get(reverse('ilap_data'), {
             'draw': '1', 'start': '0', 'length': '10',
-            'columns_search[]': ['', '', '', '', obj.id_kpp.nama_kpp if obj.id_kpp else 'test'],
+            'columns_search[]': ['', '', '', '', kpp_name],
         })
         assert resp.status_code == 200
 

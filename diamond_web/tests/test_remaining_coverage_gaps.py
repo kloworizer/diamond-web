@@ -105,7 +105,9 @@ def _make_bundle(regional=True):
     kategori_wilayah = KategoriWilayahFactory()
     kanwil = KanwilFactory()
     kpp = KPPFactory(id_kanwil=kanwil)
-    ilap = ILAPFactory(id_kategori=kategori_ilap, id_kategori_wilayah=kategori_wilayah, id_kpp=kpp)
+    ilap = ILAPFactory(id_kategori=kategori_ilap, id_kategori_wilayah=kategori_wilayah)
+    from diamond_web.models import ILAPKPP
+    ILAPKPP.objects.create(id_ilap=ilap, id_kpp=kpp)
     jenis_tabel = JenisTabelFactory()
     status_data = StatusDataFactory()
     jenis_data = JenisDataILAPFactory(id_ilap=ilap, id_jenis_tabel=jenis_tabel, id_status_data=status_data)

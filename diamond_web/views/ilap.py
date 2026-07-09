@@ -92,17 +92,18 @@ def ilap_data(request):
     - order[0][column], order[0][dir]: ordering index and direction.
 
     Behavior:
-    - Uses `select_related('id_kategori', 'id_kategori_wilayah', 'id_kpp')` for efficiency.
+    - Uses `select_related('id_kategori', 'id_kategori_wilayah')` for efficiency.
+    - Prefetches KPP relations via `prefetch_related('ilap_kpp_relations__id_kpp')`.
     - Filters and orders queryset according to DataTables parameters.
 
     Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data`.
-    Each `data` row contains: `kategori_wilayah`, `id_ilap`, `id_kategori`, `nama_ilap`, `id_kpp`, and `actions` HTML.
+    Each `data` row contains: `kategori_wilayah`, `id_ilap`, `id_kategori`, `nama_ilap`, `kpp_list`, and `actions` HTML.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
 
-    qs = ILAP.objects.select_related('id_kategori', 'id_kategori_wilayah', 'id_kpp').all()
+    qs = ILAP.objects.select_related('id_kategori', 'id_kategori_wilayah').prefetch_related('ilap_kpp_relations__id_kpp').all()
     records_total = qs.count()
 
     # Column-specific filtering
@@ -138,12 +139,13 @@ def ilap_data(request):
 
     data = []
     for obj in qs_page:
+        kpp_names = ', '.join(rel.id_kpp.nama_kpp for rel in obj.ilap_kpp_relations.all() if rel.id_kpp) or '-'
         data.append({
             'kategori_wilayah': str(obj.id_kategori_wilayah) if obj.id_kategori_wilayah else '-',
             'id_ilap': obj.id_ilap,
             'id_kategori': str(obj.id_kategori),
             'nama_ilap': obj.nama_ilap,
-            'id_kpp': obj.id_kpp.nama_kpp if obj.id_kpp else '-',
+            'id_kpp': kpp_names,
             'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('ilap_update', args=[obj.pk])}' title='Edit'><i class='feather-edit-2'></i></button>"
                        f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('ilap_delete', args=[obj.pk])}' title='Delete'><i class='feather-trash-2'></i></button>"
         })
@@ -263,6 +265,9 @@ class ILAPDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequiredMixin
     def delete(self, request, *args, **kwargs):
         self.object = self.get_object()
         name = str(self.object)
+        # Delete ILAPKPP relations first (on_delete=PROTECT would block direct deletion)
+        from ..models.ilap_kpp import ILAPKPP
+        ILAPKPP.objects.filter(id_ilap=self.object).delete()
         self.object.delete()
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({

@@ -171,7 +171,7 @@ class TestILAPViews:
         from diamond_web.tests.conftest import KategoriWilayahFactory, KPPFactory
         wilayah = KategoriWilayahFactory()
         kpp = KPPFactory()
-        data = {'id_ilap': 'ILAP0', 'id_kategori': kategori_ilap.pk, 'nama_ilap': 'Test ILAP', 'id_kategori_wilayah': wilayah.pk, 'id_kpp': kpp.pk}
+        data = {'id_ilap': 'ILAP0', 'id_kategori': kategori_ilap.pk, 'nama_ilap': 'Test ILAP', 'id_kategori_wilayah': wilayah.pk}
         response = client.post(reverse('ilap_create'), data, follow=True)
         assert response.status_code == 200
         assert ILAP.objects.filter(nama_ilap='Test ILAP').exists()

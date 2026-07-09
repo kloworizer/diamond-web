@@ -82,7 +82,8 @@ class ProfilILAPListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView
         base_qs = ILAP.objects.all().select_related(
             'id_kategori',
             'id_kategori_wilayah',
-            'id_kpp'
+        ).prefetch_related(
+            'ilap_kpp_relations__id_kpp',
         )
         
         # Total records (without filtering)

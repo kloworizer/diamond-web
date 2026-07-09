@@ -20,6 +20,7 @@
     <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/select2-theme.min.css' %}" />
     <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/datatables.min.css' %}" />
     <link rel="stylesheet" type="text/css" href="{% static 'assets/css/theme.min.css' %}" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
 
     <style>
         i[class^="feather-"],
@@ -31,6 +32,73 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
+        /* Custom Status Badge Styles based on Figma design guidelines */
+        .badge.status-belum-diterima {
+            background-color: rgba(209, 226, 255, 0.15) !important;
+            color: #7b9ccf !important;
+            border: 1px solid rgba(209, 226, 255, 0.4) !important;
+        }
+        .badge.status-diteliti {
+            background-color: rgba(245, 158, 11, 0.05) !important;
+            color: #d97706 !important;
+            border: 1px solid rgba(245, 158, 11, 0.3) !important;
+        }
+        .badge.status-perekaman {
+            background-color: rgba(249, 115, 22, 0.05) !important;
+            color: #ea580c !important;
+            border: 1px solid rgba(249, 115, 22, 0.3) !important;
+        }
+        .badge.status-identifikasi {
+            background-color: rgba(6, 182, 212, 0.05) !important;
+            color: #0891b2 !important;
+            border: 1px solid rgba(6, 182, 212, 0.3) !important;
+        }
+        .badge.status-qc {
+            background-color: rgba(59, 130, 246, 0.05) !important;
+            color: #2563eb !important;
+            border: 1px solid rgba(59, 130, 246, 0.3) !important;
+        }
+        .badge.status-selesai {
+            background-color: rgba(16, 185, 129, 0.05) !important;
+            color: #059669 !important;
+            border: 1px solid rgba(16, 185, 129, 0.3) !important;
+        }
+        .badge.status-tidak-direkam {
+            background-color: rgba(148, 163, 184, 0.05) !important;
+            color: #64748b !important;
+            border: 1px solid rgba(148, 163, 184, 0.3) !important;
+        }
+        .badge.status-dikembalikan {
+            background-color: rgba(239, 68, 68, 0.05) !important;
+            color: #dc2626 !important;
+            border: 1px solid rgba(239, 68, 68, 0.3) !important;
+        }
+        .badge.status-dibatalkan {
+            background-color: rgba(168, 85, 247, 0.05) !important;
+            color: #9333ea !important;
+            border: 1px solid rgba(168, 85, 247, 0.3) !important;
+        }
+        .badge.status-sudah-menyampaikan {
+            background-color: rgba(16, 185, 129, 0.05) !important;
+            color: #059669 !important;
+            border: 1px solid rgba(16, 185, 129, 0.3) !important;
+        }
+        .badge.status-belum-menyampaikan {
+            background-color: rgba(239, 68, 68, 0.05) !important;
+            color: #dc2626 !important;
+            border: 1px solid rgba(239, 68, 68, 0.3) !important;
+        }
+        .badge {
+            font-size: 0.72rem;
+            font-weight: 600 !important;
+            padding: 0.35em 0.75em;
+            border-radius: 6px !important;
+            letter-spacing: 0.01em;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
         .notifications-dropdown {
             width: 320px;
             min-width: 320px;
@@ -39,6 +107,115 @@
             overflow-y: auto;
             white-space: normal;
             padding: 0.15rem;
+        }
+
+        /* Modern Custom Toast Styling */
+        .toast-container {
+            padding: 1.5rem !important;
+        }
+        
+        .custom-toast {
+            background: rgba(255, 255, 255, 0.88) !important;
+            backdrop-filter: blur(12px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+            border: 1px solid rgba(226, 232, 240, 0.8) !important;
+            border-radius: 12px !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05) !important;
+            overflow: hidden;
+            margin-bottom: 0.75rem;
+            transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+            position: relative;
+        }
+
+        @keyframes slideInFromRight {
+            0% {
+                opacity: 0;
+                transform: translate3d(120%, 0, 0);
+            }
+            100% {
+                opacity: 1;
+                transform: translate3d(0, 0, 0);
+            }
+        }
+        
+        @keyframes slideOutToRight {
+            0% {
+                opacity: 1;
+                transform: translate3d(0, 0, 0);
+            }
+            100% {
+                opacity: 0;
+                transform: translate3d(80px, 0, 0);
+            }
+        }
+        
+        .download-toast-animate {
+            animation: slideInFromRight 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+        }
+
+        .download-toast-fade-out {
+            animation: slideOutToRight 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+        }
+        
+        /* Left accent borders */
+        .custom-toast::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            height: 100%;
+        }
+        
+        .toast-success::before { background-color: #10b981 !important; }
+        .toast-danger::before { background-color: #ef4444 !important; }
+        .toast-warning::before { background-color: #f59e0b !important; }
+        .toast-info::before { background-color: #3b82f6 !important; }
+        
+        /* Icon styling */
+        .toast-icon-wrapper {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        
+        .toast-success .toast-icon-wrapper {
+            background-color: rgba(16, 185, 129, 0.1) !important;
+            color: #10b981 !important;
+        }
+        .toast-danger .toast-icon-wrapper {
+            background-color: rgba(239, 68, 68, 0.1) !important;
+            color: #ef4444 !important;
+        }
+        .toast-warning .toast-icon-wrapper {
+            background-color: rgba(245, 158, 11, 0.1) !important;
+            color: #f59e0b !important;
+        }
+        .toast-info .toast-icon-wrapper {
+            background-color: rgba(59, 130, 246, 0.1) !important;
+            color: #3b82f6 !important;
+        }
+        
+        .toast-title {
+            font-size: 0.85rem !important;
+            letter-spacing: -0.01em;
+        }
+        
+        .toast-message {
+            font-size: 0.78rem !important;
+            line-height: 1.4 !important;
+        }
+
+        @keyframes scaleUpToast {
+            0% { transform: scale(0.4); opacity: 0; }
+            50% { transform: scale(1.15); }
+            100% { transform: scale(1); opacity: 1; }
         }
 
         .notification-item {
@@ -458,6 +635,240 @@
         .icon-bg-soft-blue-dark {
             background-color: rgba(12, 146, 255, 0.15);
         }
+
+        /* Global Sticky Page Header */
+        .page-header {
+            position: sticky !important;
+            top: 80px !important;
+            z-index: 1020 !important;
+            background-color: #ffffff !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+        }
+
+        /* Custom Premium Figma Styled Buttons */
+        .btn-figma-outline {
+            border: 1.5px solid #00BDFB !important;
+            color: #00BDFB !important;
+            background-color: transparent !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.5px;
+            padding: 8px 24px !important;
+            font-size: 13px !important;
+            transition: all 0.2s ease;
+        }
+        .btn-figma-outline:hover {
+            background-color: #00BDFB !important;
+            color: #ffffff !important;
+        }
+
+        .btn-figma-primary {
+            background-color: #00BDFB !important;
+            border: 1.5px solid #00BDFB !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.5px;
+            padding: 8px 24px !important;
+            font-size: 13px !important;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .btn-figma-primary:hover:not(:disabled) {
+            background-color: #009ecc !important;
+            border-color: #009ecc !important;
+            color: #ffffff !important;
+        }
+        .btn-figma-primary:disabled {
+            background-color: #e2e8f0 !important;
+            border-color: #e2e8f0 !important;
+            color: #94a3b8 !important;
+            cursor: not-allowed;
+        }
+
+        .btn-figma-danger {
+            background-color: #ef4444 !important;
+            border: 1.5px solid #ef4444 !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.5px;
+            padding: 8px 24px !important;
+            font-size: 13px !important;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .btn-figma-danger:hover {
+            background-color: #dc2626 !important;
+            border-color: #dc2626 !important;
+            color: #ffffff !important;
+        }
+
+        /* Responsive Adjustable Width Modal */
+        @media (min-width: 576px) {
+            .modal-dialog.modal-adjustable {
+                width: auto !important;
+                min-width: 480px !important;
+                max-width: 750px !important;
+                transition: max-width 0.15s ease-in-out;
+            }
+        }
+
+        /* Premium Scrollable Table Frame & Sticky Actions */
+        .table-frame {
+            max-height: calc(100vh - 290px);
+            overflow: auto;
+            border-top: 1px solid #e2e8f0;
+            position: relative;
+        }
+        .table-frame thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #f8fafc !important;
+            box-shadow: inset 0 -1px 0 #dee2e6;
+        }
+        .col-actions {
+            position: sticky !important;
+            right: 0 !important;
+            z-index: 5 !important;
+            background-color: #ffffff !important;
+            border-left: 1px solid #e2e8f0 !important;
+            box-shadow: -4px 0 8px rgba(0, 0, 0, 0.02) !important;
+            white-space: nowrap !important;
+            text-align: center;
+        }
+
+        /* Compact Table Sizing */
+        .table-compact th, 
+        .table-compact td {
+            padding: 8px 10px !important;
+            font-size: 13px !important;
+            vertical-align: middle !important;
+        }
+        .table-compact tbody td.col-actions {
+            background-color: #ffffff !important;
+            padding: 0 10px !important;
+            vertical-align: middle !important;
+        }
+        .table-compact thead th.col-actions {
+            background-color: #f8fafc !important;
+            z-index: 11 !important;
+        }
+
+        /* Premium Card Spacers */
+        .card.stretch {
+            border-radius: 16px !important;
+            overflow: hidden;
+        }
+        .card.stretch .card-header {
+            padding-top: 20px !important;
+            padding-bottom: 20px !important;
+            padding-left: 28px !important;
+            padding-right: 28px !important;
+            border-bottom: none !important;
+        }
+        .card.stretch .card-body {
+            padding-bottom: 36px !important;
+            padding-left: 28px !important;
+            padding-right: 28px !important;
+        }
+
+        /* DataTables Centering & Alignment */
+        .dt-layout-row {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            padding-top: 12px !important;
+            padding-bottom: 8px !important;
+        }
+        .dt-layout-cell {
+            display: flex !important;
+            align-items: center !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        .dt-info {
+            margin: 0 !important;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            line-height: 1 !important;
+            height: 38px !important; 
+        }
+        .dt-paging {
+            margin: 0 !important;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+        }
+        .dt-paging .pagination {
+            margin: 0 !important;
+            padding: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+
+        .form-control, .form-select {
+            height: 40px !important;
+            border-radius: 8px !important;
+            border: 1px solid #e2e8f0 !important;
+            font-size: 13px !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            line-height: normal !important;
+        }
+        textarea.form-control {
+            height: auto !important;
+            padding-top: 10px !important;
+            padding-bottom: 10px !important;
+            line-height: 1.5 !important;
+        }
+        input[type="file"].form-control {
+            padding-top: 8px !important;
+            padding-bottom: 8px !important;
+            line-height: 1 !important;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #00BDFB !important;
+            box-shadow: 0 0 0 2px rgba(0, 189, 251, 0.1) !important;
+        }
+
+        /* Native Webkit Date & DateTime Alignment & Color */
+        input[type="date"]::-webkit-datetime-edit,
+        input[type="datetime-local"]::-webkit-datetime-edit {
+            display: inline-flex !important;
+            align-items: center !important;
+            height: 100% !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
+        input[type="date"]::-webkit-datetime-edit-text,
+        input[type="datetime-local"]::-webkit-datetime-edit-text {
+            color: inherit !important;
+        }
+
+        .form-label {
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            color: #475569 !important;
+            margin-bottom: 6px !important;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Standard Filter Button styling */
+        .btn-filter {
+            height: 40px !important;
+            font-weight: 600 !important;
+            font-size: 13px !important;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
     </style>
 
     {# Select2 multi-select: prevent close button from overlapping text #}
@@ -535,7 +946,22 @@
     <script src="{% static 'assets/js/common-init.min.js' %}"></script>
     <script src="{% static 'assets/js/theme-customizer-init.min.js' %}"></script>
     <script src="{% static 'assets/vendors/js/dataTables.min.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
     <script>
+        // Initialize Flatpickr on all date inputs globally
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof flatpickr !== 'undefined') {
+                flatpickr('input[type="date"]', {
+                    locale: 'id',
+                    dateFormat: 'Y-m-d',
+                    altInput: true,
+                    altFormat: 'd F Y',
+                    allowInput: true
+                });
+            }
+        });
+
         // Cleanup stale modal backdrops that can block interaction on AJAX-heavy pages.
         document.addEventListener('hidden.bs.modal', function () {
             setTimeout(function () {
@@ -785,44 +1211,211 @@
             });
         })();
 
-        // Standard toast notification function with Indonesian titles
+        // Standard toast notification function with Indonesian titles and modern style
         function showToast(message, type = 'info', title = null) {
             const toastId = 'toast-' + Date.now();
-            const bgClass = type === 'success' ? 'bg-success' : type === 'danger' ? 'bg-danger' : type === 'warning' ? 'bg-warning' : 'bg-info';
             const defaultTitles = {
                 'success': 'Berhasil',
                 'danger': 'Kesalahan',
                 'warning': 'Peringatan',
                 'info': 'Informasi'
             };
+            const defaultIcons = {
+                'success': 'feather-check-circle',
+                'danger': 'feather-alert-circle',
+                'warning': 'feather-alert-triangle',
+                'info': 'feather-info'
+            };
             const displayTitle = title || defaultTitles[type] || 'Pemberitahuan';
+            const iconClass = defaultIcons[type] || 'feather-bell';
             const toastHtml = `
-                <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-                    <div class="toast-header ${bgClass} text-white">
-                        <strong class="me-auto">${displayTitle}</strong>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
-                    </div>
-                    <div class="toast-body">
-                        ${message}
+                <div id="${toastId}" class="toast custom-toast toast-${type}" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex align-items-center p-3">
+                        <div class="toast-icon-wrapper me-3">
+                            <i class="${iconClass}"></i>
+                        </div>
+                        <div class="toast-content-wrapper flex-grow-1">
+                            <h6 class="toast-title mb-1 fw-bold text-dark">${displayTitle}</h6>
+                            <p class="toast-message mb-0 text-muted">${message}</p>
+                        </div>
+                        <button type="button" class="btn-close ms-2" data-bs-dismiss="toast" aria-label="Close"></button>
                     </div>
                 </div>
             `;
             const container = document.querySelector('.toast-container');
-            container.insertAdjacentHTML('beforeend', toastHtml);
-            const toastElement = document.getElementById(toastId);
-            const toast = new bootstrap.Toast(toastElement);
-            toast.show();
-            toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
+            if (container) {
+                container.insertAdjacentHTML('beforeend', toastHtml);
+                const toastElement = document.getElementById(toastId);
+                const toast = new bootstrap.Toast(toastElement);
+                toast.show();
+                toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
+            }
         }
 
+        // Global Download Toast Notification
+        function showDownloadToast() {
+            const toastId = 'download-toast-' + Date.now();
+            const toastHtml = `
+                <div id="${toastId}" class="toast custom-toast download-toast-animate" role="alert" aria-live="assertive" aria-atomic="true" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 16px -8px rgba(0, 0, 0, 0.05); min-width: 350px; position: relative; overflow: hidden;">
+                    <div class="d-flex align-items-center p-3" style="padding-bottom: 20px !important;">
+                        <div class="d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px; background-color: rgba(0, 189, 251, 0.1); border-radius: 50%; color: #00bdfb; flex-shrink: 0;">
+                            <i class="feather-download" style="font-size: 22px;"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1 fw-bold text-dark" style="font-size: 13px; letter-spacing: 0.5px; text-transform: uppercase;">Pengunduhan Sedang Berlangsung</h6>
+                            <p class="mb-0 text-muted" style="font-size: 12px;">Silakan cek hasil pengunduhan Anda</p>
+                        </div>
+                        <button type="button" class="btn-close ms-2" aria-label="Close" style="margin-top: -15px;"></button>
+                    </div>
+                    <!-- Shrinking Progress Bar -->
+                    <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background-color: #f1f5f9; overflow: hidden;">
+                        <div class="toast-progress-bar" style="height: 100%; width: 100%; background-color: #00bdfb; transition: width 4000ms linear;"></div>
+                    </div>
+                </div>
+            `;
+            const container = document.querySelector('.toast-container');
+            if (container) {
+                container.insertAdjacentHTML('beforeend', toastHtml);
+                const toastElement = document.getElementById(toastId);
+                
+                // Initialize Bootstrap Toast WITHOUT autohide so we can control the transition ourselves
+                const toast = new bootstrap.Toast(toastElement, { autohide: false });
+                toast.show();
+
+                // Trigger the progress bar shrinking animation
+                setTimeout(() => {
+                    const progressBar = toastElement.querySelector('.toast-progress-bar');
+                    if (progressBar) {
+                        progressBar.style.width = '0%';
+                    }
+                }, 50);
+
+                // Custom dismiss function that plays the smooth slide-out and fade-out animation
+                const dismissToast = () => {
+                    if (toastElement.classList.contains('download-toast-fade-out')) return;
+                    
+                    toastElement.classList.add('download-toast-fade-out');
+                    toastElement.addEventListener('animationend', function(e) {
+                        if (e.animationName === 'slideOutToRight') {
+                            toast.hide();
+                            toastElement.remove();
+                        }
+                    });
+                };
+
+                // Auto-dismiss after 4 seconds (matching the progress bar animation)
+                const hideTimeout = setTimeout(dismissToast, 4000);
+
+                // Manual dismiss on close button click
+                const closeBtn = toastElement.querySelector('.btn-close');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        clearTimeout(hideTimeout);
+                        dismissToast();
+                    });
+                }
+            }
+        }
+
+        // Global download click listener
+        document.addEventListener('click', function (e) {
+            const target = e.target.closest('a, button');
+            if (!target) return;
+
+            let isDownload = false;
+
+            // Check attributes and content to identify download intent
+            if (target.hasAttribute('download')) {
+                isDownload = true;
+            } else {
+                const href = target.getAttribute('href');
+                if (href && (
+                    href.includes('/download/') || 
+                    href.includes('download') || 
+                    href.includes('export') || 
+                    href.includes('ekspor') ||
+                    href.endsWith('.docx') ||
+                    href.endsWith('.xlsx') ||
+                    href.endsWith('.csv')
+                )) {
+                    isDownload = true;
+                } else {
+                    const className = target.className || '';
+                    const onclickAttr = target.getAttribute('onclick') || '';
+                    const textContent = (target.textContent || '').toLowerCase();
+
+                    if (
+                        className.includes('download') || 
+                        className.includes('export') || 
+                        className.includes('ekspor') ||
+                        onclickAttr.includes('download') ||
+                        onclickAttr.includes('export') ||
+                        onclickAttr.includes('ekspor') ||
+                        textContent.includes('unduh') ||
+                        textContent.includes('ekspor') ||
+                        textContent.includes('export')
+                    ) {
+                        isDownload = true;
+                    }
+                }
+            }
+
+            if (isDownload) {
+                // Throttle toast display to prevent duplicate triggers on fast double clicks
+                if (!window.lastDownloadToastTime || (Date.now() - window.lastDownloadToastTime > 1000)) {
+                    window.lastDownloadToastTime = Date.now();
+                    showDownloadToast();
+                }
+            }
+        }, true);
+
         // Display Django messages as toasts
+        // Reusable Success Modal Dialog for Workflow Completions
+        function showSuccessModal(message, title = 'Berhasil') {
+            const modalId = 'success-modal-' + Date.now();
+            const modalHtml = `
+                <div class="modal fade" id="${modalId}" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+                    <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+                        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden; background: #ffffff;">
+                            <div class="modal-body text-center p-5">
+                                <div class="mb-4 d-inline-flex align-items-center justify-content-center" style="width: 76px; height: 76px; background: rgba(16, 185, 129, 0.08); color: #10b981; border-radius: 50%; font-size: 2.5rem; animation: scaleUpToast 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+                                    <i class="feather-check-circle"></i>
+                                </div>
+                                <h4 class="fw-bold mb-2 text-dark">${title}</h4>
+                                <p class="text-muted fs-13 mb-4" style="line-height: 1.5;">${message}</p>
+                                <div class="d-grid gap-2">
+                                    <button type="button" class="btn btn-primary btn-lg fs-14 py-2" data-bs-dismiss="modal" style="border-radius: 10px; font-weight: 600;">
+                                        <i class="feather-check me-1"></i>Selesai
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            const modalElement = document.getElementById(modalId);
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+            modalElement.addEventListener('hidden.bs.modal', () => modalElement.remove());
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
             const messagesJson = document.querySelector('[data-messages]');
             if (messagesJson) {
                 try {
                     const messages = JSON.parse(messagesJson.dataset.messages);
                     messages.forEach(msg => {
-                        showToast(msg.message, msg.tags || 'info');
+                        const lowercaseMsg = (msg.message || '').toLowerCase();
+                        // Intercept major completion events for a rich visual feedback modal
+                        if (lowercaseMsg.includes('berhasil dibuat') || 
+                            lowercaseMsg.includes('berhasil diselesaikan') || 
+                            lowercaseMsg.includes('berhasil dikirim ke pide')) {
+                            showSuccessModal(msg.message, 'Transaksi Berhasil');
+                        } else {
+                            showToast(msg.message, msg.tags || 'info');
+                        }
                     });
                 } catch (e) {
                     console.error('Error parsing messages:', e);
@@ -861,11 +1454,18 @@
         // Keep-alive behavior & session warning modal (automatic keep-alive + server-side logout on expiry)
         (function () {
             const SESSION_SECONDS = 30 * 60; // must match server SESSION_COOKIE_AGE
-            const WARNING_SECONDS = 60; // show warning 60s before expiry
+            const WARNING_SECONDS = 60; // show warning 60 seconds before expiry
             const KEEP_ALIVE_INTERVAL = 10 * 60 * 1000; // POST keep-alive every 10 minutes
             let expiryTimestamp = Date.now() + SESSION_SECONDS * 1000; // optimistic local expiry
             let warningTimeoutId, timeoutId, keepAliveIntervalId;
-            let modalShown = false;
+            let warningModalShown = false;
+            let timeoutModalShown = false;
+
+            function formatTimeMMSS(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
 
             function scheduleTimers() {
                 clearTimers();
@@ -899,7 +1499,7 @@
 
             function sendKeepAlive() {
                 // Silently extend session via POST to keep-alive endpoint
-                fetch('{% url "keep_alive" %}', {
+                return fetch('{% url "keep_alive" %}', {
                     method: 'POST',
                     headers: {
                         'X-CSRFToken': csrftoken,
@@ -916,31 +1516,37 @@
                         expiryTimestamp = Date.now() + data.expiry * 1000;
                         // Reschedule warning/timeout to account for fresh expiry
                         scheduleTimers();
+                        return true;
                     }
+                    return false;
                 }).catch(err => {
-                    // keep-alive error; will let normal timeout flow catch it
                     console.warn('keep-alive failed:', err);
+                    return false;
                 });
             }
 
             function onShowWarning() {
-                if (modalShown) return;
-                modalShown = true;
+                if (warningModalShown || timeoutModalShown) return;
+                warningModalShown = true;
 
-                // show modal with countdown
+                // remove existing modal if any
+                document.getElementById('sessionWarningModal')?.remove();
+
                 const modalHtml = `
-                <div class="modal fade" id="sessionWarningModal" tabindex="-1" aria-hidden="true">
-                  <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content">
-                      <div class="modal-header">
-                        <h5 class="modal-title">Session expiring</h5>
-                      </div>
-                      <div class="modal-body">
-                        <p>Your session will expire in <span id="sessionCountdown">${WARNING_SECONDS}</span> seconds of inactivity.</p>
-                        <p>Session will be automatically kept alive while you are active.</p>
-                      </div>
-                      <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                <div class="modal fade" id="sessionWarningModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+                  <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
+                    <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+                      <div class="modal-body p-4 text-center">
+                        <div class="d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 56px; height: 56px; border-radius: 50%; background-color: #fffbeb; color: #d97706;">
+                          <i class="feather-clock" style="font-size: 26px;"></i>
+                        </div>
+                        <h5 class="fw-bold mb-2 text-dark" style="font-size: 16px; font-family: 'Outfit', sans-serif; text-transform: uppercase; letter-spacing: 0.5px;">Anda Akan Segera Keluar</h5>
+                        <p class="text-muted mb-4" style="font-size: 13px; line-height: 1.5; font-family: 'Inter', sans-serif;">Untuk alasan keamanan, sistem akan logout otomatis apabila Anda tidak aktif dalam kurun waktu tertentu</p>
+                        <div id="sessionCountdown" class="fw-bold mb-4" style="font-size: 32px; color: #0f172a; font-family: 'Outfit', sans-serif; letter-spacing: 1.5px;">05:00</div>
+                        <div class="d-flex gap-2">
+                          <button type="button" class="btn btn-outline-danger w-50" id="btn-logout-now" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 8px;">KELUAR SEKARANG</button>
+                          <button type="button" class="btn btn-primary w-50" id="btn-extend-session" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 8px; background-color: #0c92ff; border-color: #0c92ff;">LANJUTKAN SESI</button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -948,31 +1554,55 @@
                 `;
                 document.body.insertAdjacentHTML('beforeend', modalHtml);
                 const modalEl = document.getElementById('sessionWarningModal');
-                const bsModal = new bootstrap.Modal(modalEl, { backdrop: 'static' });
+                const bsModal = new bootstrap.Modal(modalEl);
                 bsModal.show();
 
                 const countdownEl = document.getElementById('sessionCountdown');
-                let remaining = Math.max(0, Math.floor((expiryTimestamp - Date.now()) / 1000));
-                const countdownInterval = setInterval(() => {
-                    remaining = Math.max(0, Math.floor((expiryTimestamp - Date.now()) / 1000));
-                    countdownEl.textContent = remaining;
+                
+                const updateCountdown = () => {
+                    const remaining = Math.max(0, Math.floor((expiryTimestamp - Date.now()) / 1000));
+                    countdownEl.textContent = formatTimeMMSS(remaining);
                     if (remaining <= 0) {
                         clearInterval(countdownInterval);
                     }
-                }, 1000);
+                };
 
-                // remove modal from DOM when hidden
+                updateCountdown();
+                const countdownInterval = setInterval(updateCountdown, 1000);
+
+                // Extend session handler
+                document.getElementById('btn-extend-session').addEventListener('click', () => {
+                    // Send keep-alive immediately to extend session on the server side
+                    sendKeepAlive().then(success => {
+                        if (success) {
+                            showToast('Sesi Anda berhasil diperpanjang.', 'success', 'Sesi');
+                        }
+                    });
+                    bsModal.hide();
+                });
+
+                // Logout immediately handler
+                document.getElementById('btn-logout-now').addEventListener('click', () => {
+                    bsModal.hide();
+                    onSessionExpired();
+                });
+
                 modalEl.addEventListener('hidden.bs.modal', () => {
                     clearInterval(countdownInterval);
                     document.getElementById('sessionWarningModal')?.remove();
-                    modalShown = false;
+                    warningModalShown = false;
                 });
             }
 
             function onSessionExpired() {
-                // clear timers and call server-side logout endpoint, then redirect
                 clearTimers();
-                showToast('Sesi Anda telah berakhir. Keluar.', 'info', 'Sesi');
+                
+                // Close warning modal if open
+                const warningModalEl = document.getElementById('sessionWarningModal');
+                if (warningModalEl) {
+                    const bsWarningModal = bootstrap.Modal.getInstance(warningModalEl);
+                    if (bsWarningModal) bsWarningModal.hide();
+                }
 
                 // POST to session-expired endpoint to log out server-side
                 fetch('{% url "session_expired" %}', {
@@ -984,13 +1614,54 @@
                     credentials: 'same-origin',
                     body: JSON.stringify({}),
                 }).then(() => {
-                    // Redirect to login with next to current path
-                    const next = encodeURIComponent(window.location.pathname + window.location.search);
-                    window.location.href = '/accounts/login/?next=' + next;
+                    showTimeoutModal();
                 }).catch(() => {
-                    // Redirect even if logout endpoint fails
+                    showTimeoutModal();
+                });
+            }
+
+            function showTimeoutModal() {
+                if (timeoutModalShown) return;
+                timeoutModalShown = true;
+
+                // remove existing timeout modal if any
+                document.getElementById('sessionTimeoutModal')?.remove();
+
+                const modalHtml = `
+                <div class="modal fade" id="sessionTimeoutModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+                  <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
+                    <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+                      <div class="modal-body p-4 text-center">
+                        <div class="d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 56px; height: 56px; border-radius: 50%; background-color: #fef2f2; color: #dc2626;">
+                          <i class="feather-alert-octagon" style="font-size: 26px;"></i>
+                        </div>
+                        <h5 class="fw-bold mb-2 text-dark" style="font-size: 16px; font-family: 'Outfit', sans-serif; text-transform: uppercase; letter-spacing: 0.5px;">Session Timeout!</h5>
+                        <p class="text-muted mb-4" style="font-size: 13px; line-height: 1.5; font-family: 'Inter', sans-serif;">Anda sudah logout karena terdeteksi tidak aktif selama <strong>30 menit</strong></p>
+                        <button type="button" class="btn btn-primary w-100" id="btn-login-again" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 8px; background-color: #0c92ff; border-color: #0c92ff;">MASUK KEMBALI</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                const modalEl = document.getElementById('sessionTimeoutModal');
+                const bsModal = new bootstrap.Modal(modalEl);
+                bsModal.show();
+
+                const redirectToLogin = () => {
                     const next = encodeURIComponent(window.location.pathname + window.location.search);
                     window.location.href = '/accounts/login/?next=' + next;
+                };
+
+                document.getElementById('btn-login-again').addEventListener('click', () => {
+                    bsModal.hide();
+                    redirectToLogin();
+                });
+
+                modalEl.addEventListener('hidden.bs.modal', () => {
+                    document.getElementById('sessionTimeoutModal')?.remove();
+                    timeoutModalShown = false;
+                    redirectToLogin();
                 });
             }
 

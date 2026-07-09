@@ -118,7 +118,7 @@ class SelesaikanTiketView(LoginRequiredMixin, UserPMDERequiredMixin, UpdateView)
                     id_user=self.request.user,
                     timestamp=now,
                     action=TiketActionType.PENGENDALIAN_MUTU,
-                    catatan=f'Sudah QC:{self.object.sudah_qc}, Lolos QC:{self.object.lolos_qc}, Tidak Lolos QC:{self.object.tidak_lolos_qc}, QC C:{self.object.qc_c}'
+                    catatan='Tiket selesai pengendalian mutu'
                 )
 
                 # Create second action: SELESAI (final status)
