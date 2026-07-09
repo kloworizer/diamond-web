@@ -193,19 +193,20 @@ def monitoring_penyampaian_data_data(request):
                     id__in=active_jenis_data_ilap_ids
                 ).select_related(
                     'id_ilap',
-                    'id_ilap__id_kpp',
-                    'id_ilap__id_kpp__id_kanwil',
                     'id_ilap__id_kategori',
                     'id_ilap__id_kategori_wilayah',
                     'id_jenis_tabel',
+                ).prefetch_related(
+                    'id_ilap__ilap_kpp_relations__id_kpp__id_kanwil',
                 )
 
                 active_jenis_data = list(active_jenis_data_qs)
                 active_ilap_ids = {j.id_ilap_id for j in active_jenis_data if j.id_ilap_id}
                 ilap_qs = ILAP.objects.filter(id__in=active_ilap_ids).select_related(
-                    'id_kpp__id_kanwil',
                     'id_kategori',
                     'id_kategori_wilayah',
+                ).prefetch_related(
+                    'ilap_kpp_relations__id_kpp__id_kanwil',
                 )
                 ilap_list = ilap_qs.values('id', 'id_ilap', 'nama_ilap').order_by('id_ilap')
 
@@ -213,10 +214,11 @@ def monitoring_penyampaian_data_data(request):
                 kanwil_set = set()
                 kpp_set = set()
                 for ilap in ilap_qs:
-                    if ilap.id_kpp:
-                        kpp_set.add(ilap.id_kpp.id)
-                        if ilap.id_kpp.id_kanwil:
-                            kanwil_set.add(ilap.id_kpp.id_kanwil.id)
+                    for rel in ilap.ilap_kpp_relations.all():
+                        if rel.id_kpp:
+                            kpp_set.add(rel.id_kpp.id)
+                            if rel.id_kpp.id_kanwil:
+                                kanwil_set.add(rel.id_kpp.id_kanwil.id)
                 
                 kanwil_list = Kanwil.objects.filter(id__in=kanwil_set).values('id', 'kode_kanwil', 'nama_kanwil').order_by('kode_kanwil')
                 kpp_list = KPP.objects.filter(id__in=kpp_set).values('id', 'kode_kpp', 'nama_kpp').order_by('kode_kpp')
@@ -377,10 +379,10 @@ def monitoring_penyampaian_data_data(request):
         'id_sub_jenis_data_ilap__id_ilap',
         'id_sub_jenis_data_ilap__id_ilap__id_kategori',
         'id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
-        'id_sub_jenis_data_ilap__id_ilap__id_kpp',
-        'id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil',
         'id_sub_jenis_data_ilap__id_jenis_tabel',
         'id_sub_jenis_data_ilap__id_status_data',
+    ).prefetch_related(
+        'id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil',
     )
     if allowed_jenis_data_ids is not None:
         periode_data_qs = periode_data_qs.filter(id_sub_jenis_data_ilap_id__in=allowed_jenis_data_ids)
@@ -388,11 +390,11 @@ def monitoring_penyampaian_data_data(request):
     # Push dimension filters to DB level to drastically reduce rows processed in Python
     if kanwil_id:
         periode_data_qs = periode_data_qs.filter(
-            id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil_id=kanwil_id
+            id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil_id=kanwil_id
         )
     if kpp_id:
         periode_data_qs = periode_data_qs.filter(
-            id_sub_jenis_data_ilap__id_ilap__id_kpp_id=kpp_id
+            id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp_id=kpp_id
         )
     if kategori_wilayah_id:
         periode_data_qs = periode_data_qs.filter(
@@ -520,8 +522,10 @@ def monitoring_penyampaian_data_data(request):
             else ''
         )
         is_regional_ilap = 'regional' in kategori_wilayah_desc
-        jenis_data_kanwil_id = (jenis_data.id_ilap.id_kpp.id_kanwil_id if jenis_data.id_ilap.id_kpp else '')
-        jenis_data_kpp_id = (jenis_data.id_ilap.id_kpp.id if jenis_data.id_ilap.id_kpp else '')
+        # Get first KPP relation if any (for backward compatibility with single-KPP setups)
+        first_kpp_rel = jenis_data.id_ilap.ilap_kpp_relations.first() if jenis_data.id_ilap else None
+        jenis_data_kanwil_id = (first_kpp_rel.id_kpp.id_kanwil_id if first_kpp_rel and first_kpp_rel.id_kpp else '')
+        jenis_data_kpp_id = (first_kpp_rel.id_kpp.id if first_kpp_rel and first_kpp_rel.id_kpp else '')
         jenis_data_kategori_wilayah_id = jenis_data.id_ilap.id_kategori_wilayah.id if jenis_data.id_ilap.id_kategori_wilayah else ''
         jenis_data_kategori_ilap_id = jenis_data.id_ilap.id_kategori.id if jenis_data.id_ilap.id_kategori else ''
         jenis_data_dasar_hukum_ids = dasar_hukum_map.get(jenis_data.id, set())

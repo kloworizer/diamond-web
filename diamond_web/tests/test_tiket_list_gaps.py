@@ -269,8 +269,9 @@ class TestGetFilterOptionsKanwilKppDasarHukum:
         ilap = ILAPFactory(
             id_kategori=kategori,
             id_kategori_wilayah=kategori_wilayah,
-            id_kpp=kpp,
         )
+        from diamond_web.models import ILAPKPP
+        ILAPKPP.objects.create(id_ilap=ilap, id_kpp=kpp)
         jenis_data = JenisDataILAPFactory(id_ilap=ilap)
         pd = PeriodeJenisDataFactory(id_sub_jenis_data_ilap=jenis_data)
         tiket = TiketFactory(id_periode_data=pd)

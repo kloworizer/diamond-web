@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth.models import Group
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
+from ..models.jenis_data_ilap import JenisDataILAP
 from .base import AutoRequiredFormMixin
 
 class DurasiJatuhTempoForm(AutoRequiredFormMixin, forms.ModelForm):
@@ -15,14 +16,17 @@ class DurasiJatuhTempoForm(AutoRequiredFormMixin, forms.ModelForm):
         model = DurasiJatuhTempo
         fields = ['id_sub_jenis_data', 'seksi', 'durasi', 'start_date', 'end_date']
         widgets = {
-            'start_date': forms.DateInput(attrs={'type': 'date'}),
-            'end_date': forms.DateInput(attrs={'type': 'date'}),
+            'start_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'end_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
         }
     
     def __init__(self, *args, **kwargs):
         group_name = kwargs.pop('group_name', None)
         super().__init__(*args, **kwargs)
-        
+
+        # Order dropdown by id_sub_jenis_data (e.g., AS0010101, AS0010102)
+        self.fields['id_sub_jenis_data'].queryset = JenisDataILAP.objects.all().order_by('id_sub_jenis_data')
+
         if group_name:
             # Filter seksi to only show the specific group
             self.fields['seksi'].queryset = Group.objects.filter(name=group_name)

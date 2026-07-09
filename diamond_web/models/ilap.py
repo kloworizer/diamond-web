@@ -1,7 +1,6 @@
 from django.db import models
 from django.db.models import UniqueConstraint
 from .kategori_ilap import KategoriILAP
-from .kpp import KPP
 from .kategori_wilayah import KategoriWilayah
 
 class ILAP(models.Model):
@@ -19,14 +18,6 @@ class ILAP(models.Model):
         on_delete=models.PROTECT,
         db_column="id_kategori_wilayah",
         verbose_name="Kategori Wilayah"
-    )
-    id_kpp = models.ForeignKey(
-        KPP,
-        on_delete=models.PROTECT,
-        db_column="id_kpp",
-        verbose_name="KPP",
-        null=True,
-        blank=True
     )
     alamat_ilap = models.CharField(max_length=3000, null=True, blank=True, verbose_name="Alamat ILAP")
     kota_ilap = models.CharField(max_length=30, null=True, blank=True, verbose_name="Kota ILAP")
@@ -49,7 +40,6 @@ class ILAP(models.Model):
         db_table = "ilap"
         ordering = ["id_ilap"]
         indexes = [
-            models.Index(fields=["id_kpp"], name="ilap_kpp_idx"),
             models.Index(fields=["id_kategori"], name="ilap_kategori_idx"),
             models.Index(fields=["id_kategori_wilayah"], name="ilap_kwil_idx"),
             models.Index(fields=["id_ilap"], name="ilap_id_ilap_idx"),

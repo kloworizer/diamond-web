@@ -52,7 +52,13 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">KPP</label>
-                        <p>{{ ilap.id_kpp.nama_kpp|default:"---" }}</p>
+                        <p>
+                            {% for rel in ilap.ilap_kpp_relations.all %}
+                                {{ rel.id_kpp.nama_kpp }}{% if not forloop.last %}, {% endif %}
+                            {% empty %}
+                                ---
+                            {% endfor %}
+                        </p>
                     </div>
                 </div>
                 <div class="col-md-6">

@@ -154,10 +154,14 @@ def _generate_docx_for_tickets(selected_tickets, doc_type, title_prefix):
         dasar_hukum_map.setdefault(row.id_sub_jenis_data_id, []).append(row.id_klasifikasi_tabel.deskripsi)
 
     # Header-level variables (aligned with documents.py)
-    if ilap and ilap.id_kpp and ilap.id_kpp.id_kanwil:
-        diterima_dari = ilap.id_kpp.id_kanwil.nama_kanwil
+    if ilap:
+        first_kpp_rel = ilap.ilap_kpp_relations.select_related('id_kpp__id_kanwil').first()
+        if first_kpp_rel and first_kpp_rel.id_kpp and first_kpp_rel.id_kpp.id_kanwil:
+            diterima_dari = first_kpp_rel.id_kpp.id_kanwil.nama_kanwil
+        else:
+            diterima_dari = ilap.nama_ilap
     else:
-        diterima_dari = ilap.nama_ilap if ilap else '-'
+        diterima_dari = '-'
 
     periode_list, nomor_surat_list, tanggal_surat_list = [], [], []
     bentuk_data_list, cara_penyampaian_list = [], []
@@ -179,8 +183,10 @@ def _generate_docx_for_tickets(selected_tickets, doc_type, title_prefix):
         tanggal_tt = _format_date_indonesian(tt.tanggal_tanda_terima) if tt else '-'
 
         nama_kanwil = '-'
-        if ilap_obj and ilap_obj.id_kpp and ilap_obj.id_kpp.id_kanwil:
-            nama_kanwil = ilap_obj.id_kpp.id_kanwil.nama_kanwil
+        if ilap_obj:
+            first_kpp_rel = ilap_obj.ilap_kpp_relations.select_related('id_kpp__id_kanwil').first()
+            if first_kpp_rel and first_kpp_rel.id_kpp and first_kpp_rel.id_kpp.id_kanwil:
+                nama_kanwil = first_kpp_rel.id_kpp.id_kanwil.nama_kanwil
 
         periode_label = _format_periode_tiket(t)
         if periode_label not in seen_periode:
