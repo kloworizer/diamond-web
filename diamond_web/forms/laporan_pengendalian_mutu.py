@@ -9,7 +9,7 @@ class LaporanPengendalianMutuFilterForm(forms.Form):
     """Form untuk filter Laporan Pengendalian Mutu."""
 
     PERIODE_TYPE_CHOICES = [
-        ('', '-- Pilih Jenis Periode --'),
+        ('', 'Pilih Jenis Periode'),
         ('bulanan', 'Bulanan'),
         ('triwulanan', 'Triwulanan'),
         ('semester', 'Semester'),
@@ -17,7 +17,7 @@ class LaporanPengendalianMutuFilterForm(forms.Form):
     ]
 
     BULAN_CHOICES = [
-        ('', '-- Pilih Periode --'),
+        ('', 'Pilih Periode'),
         ('1', 'Januari'),
         ('2', 'Februari'),
         ('3', 'Maret'),
@@ -33,7 +33,7 @@ class LaporanPengendalianMutuFilterForm(forms.Form):
     ]
 
     TRIWULAN_CHOICES = [
-        ('', '-- Pilih Periode --'),
+        ('', 'Pilih Periode'),
         ('1', 'Triwulan 1 (Jan - Mar)'),
         ('2', 'Triwulan 2 (Apr - Jun)'),
         ('3', 'Triwulan 3 (Jul - Sep)'),
@@ -41,13 +41,13 @@ class LaporanPengendalianMutuFilterForm(forms.Form):
     ]
 
     SEMESTER_CHOICES = [
-        ('', '-- Pilih Periode --'),
+        ('', 'Pilih Periode'),
         ('1', 'Semester 1 (Jan - Jun)'),
         ('2', 'Semester 2 (Jul - Dec)'),
     ]
 
     TAHUNAN_CHOICES = [
-        ('', '-- Pilih Periode --'),
+        ('', 'Pilih Periode'),
         ('all', 'Seluruh Tahun'),
     ]
 
@@ -97,7 +97,7 @@ class LaporanPengendalianMutuFilterForm(forms.Form):
         )
 
         # Set tahun choices from available years
-        tahun_choices = [('', '-- Pilih Tahun --')]
+        tahun_choices = [('', 'Pilih Tahun')]
         if years:
             tahun_choices.extend([(str(year), str(year)) for year in years])
 

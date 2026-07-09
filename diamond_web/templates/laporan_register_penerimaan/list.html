@@ -1,49 +1,140 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+    /* Table row compactness */
+    #register-penerimaan-table th, 
+    #register-penerimaan-table td {
+        padding: 8px 10px !important;
+        font-size: 13px !important;
+        vertical-align: middle !important;
+    }
+
+    /* Table frame: only body scrolls, header stays sticky */
+    .table-frame {
+        max-height: calc(100vh - 290px);
+        overflow: auto;
+        border-top: 1px solid #cbd5e1;
+        position: relative;
+    }
+
+    .table-frame thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #f8fafc !important;
+        box-shadow: inset 0 -1px 0 #dee2e6;
+    }
+
+    /* Premium Card Padding rules */
+    .card.stretch {
+        border-radius: 16px !important;
+        overflow: hidden;
+    }
+    
+    .card.stretch .card-header {
+        padding-top: 20px !important;
+        padding-bottom: 20px !important;
+        padding-left: 28px !important;
+        padding-right: 28px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+    }
+    
+    .card.stretch .card-body {
+        padding-bottom: 36px !important;
+        padding-left: 28px !important;
+        padding-right: 28px !important;
+    }
+
+    /* Center DataTable info and pagination vertically - Absolute Global */
+    .dt-layout-row {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding-top: 12px !important;
+        padding-bottom: 8px !important;
+    }
+    
+    .dt-layout-cell {
+        display: flex !important;
+        align-items: center !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .dt-info {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        line-height: 1 !important;
+        height: 38px !important; /* Matches height of pagination controls */
+    }
+
+    .dt-paging {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+    }
+
+    .dt-paging .pagination {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+</style>
+
 <div class="page-header">
-        <div class="page-header-left d-flex align-items-center">
-            <div class="page-header-title">
-                <h5 class="m-b-10">
-                    <i class="feather-file-text me-2"></i>Register Penerimaan Data
-                </h5>
-            </div>
-            <ul class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-                <li class="breadcrumb-item"><a href="javascript:void(0);">P3DE</a></li>
-                <li class="breadcrumb-item active">Register Penerimaan Data</li>
-            </ul>
+    <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+            <h5 class="m-b-10">
+                <i class="feather-file-text me-2"></i>Register Penerimaan Data
+            </h5>
         </div>
-        <div class="page-header-right ms-auto">
-            <div class="page-header-right-items">
-                <div class="d-flex d-md-none">
-                    <a href="javascript:void(0)" class="page-header-right-close-toggle">
-                        <i class="feather-arrow-left me-2"></i>
-                        <span>Kembali</span>
-                    </a>
-                </div>
-            </div>
-            <div class="d-md-none d-flex align-items-center">
-                <a href="javascript:void(0)" class="page-header-right-open-toggle">
-                    <i class="feather-align-right fs-20"></i>
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="javascript:void(0);">P3DE</a></li>
+            <li class="breadcrumb-item active">Register Penerimaan Data</li>
+        </ul>
+    </div>
+    <div class="page-header-right ms-auto">
+        <div class="page-header-right-items">
+            <div class="d-flex d-md-none">
+                <a href="javascript:void(0)" class="page-header-right-close-toggle">
+                    <i class="feather-arrow-left me-2"></i>
+                    <span>Kembali</span>
                 </a>
             </div>
         </div>
-    </div>
-
-    <div class="main-content">
-    <!-- Filter Card -->
-    <div class="card shadow-sm mb-3">
-        <div class="card-header bg-light">
-            <h5 class="mb-0">Filter Data</h5>
+        <div class="d-md-none d-flex align-items-center">
+            <a href="javascript:void(0)" class="page-header-right-open-toggle">
+                <i class="feather-align-right fs-20"></i>
+            </a>
         </div>
-        <div class="card-body">
-            <form id="filter-form" class="row g-3 align-items-end">
+    </div>
+</div>
+
+<div class="main-content">
+    <!-- Data Table Card with Integrated Header Filters -->
+    <div class="card stretch stretch-full">
+        <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <h5 class="card-title mb-0">
+                    <i class="feather-grid me-2 text-primary"></i>Data Penerimaan
+                </h5>
+                <span id="periode-label" class="badge bg-light text-dark fs-12 px-3 py-2 border ms-2"></span>
+            </div>
+            
+            <!-- Integrated Filter Form -->
+            <form id="filter-form" class="d-flex flex-wrap align-items-center gap-2 mb-0">
                 {% csrf_token %}
-                <div class="col-md-4">
-                    <label for="filter-bulan" class="form-label fw-semibold">Bulan</label>
-                    <select id="filter-bulan" class="form-select">
-                        <option value="">-- Pilih Bulan --</option>
+                <div class="d-flex align-items-center gap-2">
+                    <label for="filter-bulan" class="mb-0" style="font-size: 11.5px; font-weight: 600; color: #475569; white-space: nowrap;">Bulan</label>
+                    <select id="filter-bulan" class="form-select form-select-sm" style="width: 170px; height: 36px !important; font-size: 12.5px; border-radius: 6px !important; border: 1px solid #cbd5e1; padding-top: 0 !important; padding-bottom: 0 !important;">
+                        <option value="">-- Bulan --</option>
                         <option value="1">Januari</option>
                         <option value="2">Februari</option>
                         <option value="3">Maret</option>
@@ -58,61 +149,50 @@
                         <option value="12">Desember</option>
                     </select>
                 </div>
-                <div class="col-md-4">
-                    <label for="filter-tahun" class="form-label fw-semibold">Tahun</label>
-                    <select id="filter-tahun" class="form-select">
-                        <option value="">-- Pilih Tahun --</option>
+                
+                <div class="d-flex align-items-center gap-2">
+                    <label for="filter-tahun" class="mb-0" style="font-size: 11.5px; font-weight: 600; color: #475569; white-space: nowrap;">Tahun</label>
+                    <select id="filter-tahun" class="form-select form-select-sm" style="width: 125px; height: 36px !important; font-size: 12.5px; border-radius: 6px !important; border: 1px solid #cbd5e1; padding-top: 0 !important; padding-bottom: 0 !important;">
+                        <option value="">-- Tahun --</option>
                         {% for year in years %}
                         <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>{{ year }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-4 d-flex gap-2">
-                    <button type="button" id="filter-btn" class="btn btn-primary flex-fill">
-                        <i class="feather-search me-1"></i>Tampilkan
-                    </button>
-                    <button type="button" id="export-btn" class="btn btn-success flex-fill" disabled>
-                        <i class="feather-download me-1"></i>Export XLSX
-                    </button>
-                </div>
+                
+                <div class="vr text-gray-300 mx-2" style="height: 28px; opacity: 0.8; align-self: center;"></div>
+                
+                <button type="button" id="export-btn" class="btn btn-sm btn-outline-success d-flex align-items-center gap-2 px-3 fw-bold" style="height: 36px !important; border-radius: 6px !important;" disabled>
+                    <i class="feather-file-text"></i> EKSPOR KE EXCEL
+                </button>
             </form>
         </div>
-    </div>
-
-    <!-- Data Table Card -->
-    <div class="card stretch stretch-full h-100">
-        <div class="card-header">
-            <h5 class="card-title mb-0">
-                <i class="feather-grid me-2"></i>Data Penerimaan
-            </h5>
-            <span id="periode-label" class="badge bg-light text-dark fs-6"></span>
-        </div>
-        <div class="card-body custom-card-action p-0">
-            <div class="table-responsive">
-            <table id="register-penerimaan-table" data-skip-empty-state class="table table-hover mb-0" style="width:100%">
-                <thead>
-                    <tr>
-                        <th>No</th>
-                        <th>Nama ILAP</th>
-                        <th>Dasar Hukum</th>
-                        <th>Jenis Data ILAP</th>
-                        <th>Bentuk Data</th>
-                        <th>Periode / Tahun Data</th>
-                        <th>Jumlah Data Diterima</th>
-                        <th>Nomor Surat Pengantar</th>
-                        <th>Tanggal Surat Pengantar</th>
-                        <th>Nomor Tanda Terima</th>
-                        <th>Tanggal Tanda Terima</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+        <div class="card-body custom-card-action">
+            <div class="table-frame">
+                <table id="register-penerimaan-table" data-skip-empty-state class="table table-hover mb-0" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Nama ILAP</th>
+                            <th>Dasar Hukum</th>
+                            <th>Jenis Data ILAP</th>
+                            <th>Bentuk Data</th>
+                            <th>Periode / Tahun Data</th>
+                            <th>Jumlah Data Diterima</th>
+                            <th>Nomor Surat Pengantar</th>
+                            <th>Tanggal Surat Pengantar</th>
+                            <th>Nomor Tanda Terima</th>
+                            <th>Tanggal Tanda Terima</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
         </div>
     </div>
-    </div>
-
+</div>
 {% endblock %}
+
 {% block scripts %}
 <script>
     (function () {
@@ -145,7 +225,9 @@
                     { data: 'nama_ilap' },
                     { data: 'dasar_hukum' },
                     { data: 'jenis_data_ilap' },
-                    { data: 'bentuk_data', className: 'text-center' },
+                    { data: 'shapes', defaultContent: 'Bentuk', className: 'text-center', render: function(data, type, row) {
+                        return row.bentuk_data || '-';
+                    }},
                     { data: 'periode_tahun_data', className: 'text-center' },
                     { data: 'jumlah_data_diterima', className: 'text-end' },
                     { data: 'nomor_surat_pengantar' },
@@ -155,36 +237,30 @@
                 ],
                 pageLength: 10,
                 order: [[0, 'asc']],
-                processing: true,
                 language: {
-                    emptyTable: 'Pilih bulan dan tahun lalu klik Tampilkan.',
+                    emptyTable: 'Pilih bulan dan tahun untuk menampilkan data.',
                     zeroRecords: 'Tidak ada data untuk periode yang dipilih.',
                 }
             });
 
+            // Action when drawing table
             table.on('draw.dt', function () {
                 const info = table.page.info();
                 $('#export-btn').prop('disabled', info.recordsDisplay === 0);
             });
 
-            $('#filter-btn').on('click', function () {
+            // Trigger table reload and header badge update on select changes
+            $('#filter-bulan, #filter-tahun').on('change', function () {
                 const bulan = $('#filter-bulan').val();
                 const tahun = $('#filter-tahun').val();
                 if (!bulan || !tahun) {
-                    alert('Pilih bulan dan tahun terlebih dahulu.');
+                    $('#periode-label').text('');
+                    // Reload table to show the empty info state if one of them is cleared
+                    table.ajax.reload();
                     return;
                 }
                 $('#periode-label').text(`${bulanNames[parseInt(bulan)]} ${tahun}`);
                 table.ajax.reload();
-            });
-
-            // Allow pressing Enter in selects
-            $('#filter-bulan, #filter-tahun').on('change', function () {
-                const bulan = $('#filter-bulan').val();
-                const tahun = $('#filter-tahun').val();
-                if (bulan && tahun) {
-                    $('#filter-btn').trigger('click');
-                }
             });
 
             $('#export-btn').on('click', function () {
