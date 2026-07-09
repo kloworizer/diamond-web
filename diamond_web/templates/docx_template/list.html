@@ -41,21 +41,21 @@
         </div>
         <div class="card-body custom-card-action p-0">
             <div class="table-responsive">
-            <table id="docx-template-table" class="table table-hover mb-0" style="width:100%">
+            <table id="docx-template-table" class="table table-hover mb-0 table-compact" style="width:100%">
                 <thead>
                     <tr>
                         <th>Nama Template</th>
                         <th>Jenis Dokumen</th>
                         <th>Status</th>
                         <th>Diperbarui</th>
-                        <th>Aksi</th>
+                        <th class="col-actions text-center">Aksi</th>
                     </tr>
                     <tr id="column-search-row">
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari Nama" data-column="0" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari Jenis" data-column="1" /></th>
                         <th></th>
                         <th></th>
-                        <th></th>
+                        <th class="col-actions"></th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -96,7 +96,7 @@
                     </div>
                     <div class="bg-light p-2 rounded small">
                         <strong>Contoh struktur tabel di Word:</strong>
-                        <table class="table table-sm mb-0" style="font-size: 0.75rem;">
+                        <table class="table table-sm mb-0 table-compact" style="font-size: 0.75rem;">
                             <thead>
                                 <tr class="table-secondary">
                                     <td><code>No</code></td>
@@ -124,17 +124,11 @@
         </div>
     </div>
 
-    <!-- Modal for Create/Edit/Delete -->
+        <!-- Modal for Create/Edit/Delete -->
     <div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="crudModalLabel">Form</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body" id="modalBody">
-                    <!-- Content will be loaded here -->
-                </div>
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" id="modalContent">
+                <!-- Content will be loaded here dynamically via AJAX -->
             </div>
         </div>
     </div>
@@ -176,7 +170,7 @@
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [
-                    { targets: 4, render: function (data, type, row, meta) { return data; } }
+                    { targets: 4, className: "col-actions text-center", width: "90px", render: function (data, type, row, meta) { return '<div class="d-flex justify-content-center gap-1">' + data + '</div>'; } }
                 ],
                 order: [[3, 'desc']]
             });
@@ -220,7 +214,7 @@
             });
 
             // Handle form submission
-            $(document).on('submit', '#modalBody form', function (e) {
+            $(document).on('submit', '#crudModal form', function (e) {
                 e.preventDefault();
                 const form = $(this);
                 const url = form.attr('action');
@@ -238,7 +232,7 @@
                             table.ajax.reload();
                             showToast(response.message || 'Data berhasil disimpan.', 'success');
                         } else {
-                            $('#modalBody').html(response.html);
+                            $('#modalContent').html(response.html || response);
                         }
                     },
                     error: function (xhr) {
@@ -257,9 +251,19 @@
             });
         });
 
-        function loadModal(url, title) {
-            $('#crudModalLabel').text(title);
-            $('#modalBody').html('<div class="text-center"><div class="spinner-border" role="status"></div></div>');
+                function loadModal(url, title) {
+            var dialog = $('#crudModal .modal-dialog');
+            dialog.removeClass('modal-sm modal-lg modal-xl modal-adjustable').addClass('modal-lg');
+            
+            $('#modalContent').html(`
+                <div class="modal-header">
+                    <h5 class="modal-title" id="crudModalLabel">${title}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+            `);
             $('#crudModal').modal('show');
 
             $.ajax({
@@ -267,10 +271,34 @@
                 type: 'GET',
                 data: { ajax: '1' },
                 success: function (response) {
-                    $('#modalBody').html(response.html || response);
+                    var htmlContent = response.html || response;
+                    
+                    // Gracefully redirect to login if session has expired
+                    if (typeof htmlContent === 'string' && htmlContent.indexOf('Login') !== -1 && htmlContent.indexOf('password') !== -1) {
+                        window.location.href = '/accounts/login/?next=' + window.location.pathname;
+                        return;
+                    }
+                    
+                    $('#modalContent').html(htmlContent);
+                    $('#crudModalLabel').text(title);
+                    
+                    var modalSize = $('#modalContent form').data('modal-size') || 'lg';
+                    dialog.removeClass('modal-sm modal-lg modal-xl modal-adjustable');
+                    if (modalSize === 'sm') dialog.addClass('modal-sm');
+                    else if (modalSize === 'lg') dialog.addClass('modal-lg');
+                    else if (modalSize === 'xl') dialog.addClass('modal-xl');
+                    else if (modalSize === 'adjustable') dialog.addClass('modal-adjustable');
                 },
                 error: function () {
-                    $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');
+                    $('#modalContent').html(`
+                        <div class="modal-header">
+                            <h5 class="modal-title">${title}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-danger mb-0">Gagal memuat form.</div>
+                        </div>
+                    `);
                 }
             });
         }
