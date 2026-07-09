@@ -177,7 +177,6 @@ class PICCreateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Cr
         from ..models.tiket_pic import TiketPIC
         from ..models.tiket_action import TiketAction
         from django.utils import timezone
-        from django.db.models import Q
         from django.contrib.auth.models import User
         
         response = super().form_valid(form)
@@ -200,13 +199,11 @@ class PICCreateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Cr
         action_logged = False
         
         if role:
-            # Find all tikets using this sub_jenis_data with status < 7 (not dibatalkan or selesai)
-            # AND with tgl_terima_dip >= pic.start_date
+            # Find all tikets using this sub_jenis_data with status < STATUS_DIBATALKAN
+            # (i.e., not dibatalkan or selesai)
             active_tikets = Tiket.objects.filter(
                 id_periode_data__id_sub_jenis_data_ilap=pic.id_sub_jenis_data_ilap,
-                status_tiket__lt=STATUS_DIBATALKAN  # status_tiket < STATUS_DIBATALKAN (not dibatalkan or selesai)
-            ).filter(
-                Q(tgl_terima_dip__gte=pic.start_date) | Q(tgl_terima_dip__isnull=True)
+                status_tiket__lt=STATUS_DIBATALKAN
             )
             
             # Create or update TiketPIC records for this user
@@ -350,7 +347,6 @@ class PICUpdateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Up
         from ..models.tiket_pic import TiketPIC
         from ..models.tiket_action import TiketAction
         from django.utils import timezone
-        from django.db.models import Q
         from django.contrib.auth.models import User
         
         # Get the original object before save
@@ -399,13 +395,11 @@ class PICUpdateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Up
         # Check if end_date is being cleared (was set, now is None) - REACTIVATION
         elif original_pic.end_date is not None and form.cleaned_data.get('end_date') is None:
             if role:
-                # Find all tikets using this sub_jenis_data with status < 7 (not dibatalkan or selesai)
-                # AND with tgl_terima_dip >= pic.start_date
+                # Find all tikets using this sub_jenis_data with status < STATUS_DIBATALKAN
+                # (i.e., not dibatalkan or selesai)
                 active_tikets = Tiket.objects.filter(
                     id_periode_data__id_sub_jenis_data_ilap=self.object.id_sub_jenis_data_ilap,
-                    status_tiket__lt=STATUS_DIBATALKAN  # status_tiket < STATUS_DIBATALKAN (not dibatalkan or selesai)
-                ).filter(
-                    Q(tgl_terima_dip__gte=self.object.start_date) | Q(tgl_terima_dip__isnull=True)
+                    status_tiket__lt=STATUS_DIBATALKAN
                 )
                 
                 action_logged = False
