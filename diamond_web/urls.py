@@ -53,6 +53,7 @@ urlpatterns = [
     path('sync-tiket-update/stop-check/', views.sync_tiket_update_stop_check, name='sync_tiket_update_stop_check'),
     path('sync-tiket-update/progress/', views.sync_tiket_update_progress, name='sync_tiket_update_progress'),
     path('sync-tiket-update/download-errors/<str:sync_id>/', views.sync_tiket_update_download_errors, name='sync_tiket_update_download_errors'),
+    path('sync-tiket-update/download-result/<str:operation_id>/', views.sync_tiket_update_download_result, name='sync_tiket_update_download_result'),
 
     # Sync Log Status
     path('sync-log-status/', views.sync_log_status, name='sync_log_status'),

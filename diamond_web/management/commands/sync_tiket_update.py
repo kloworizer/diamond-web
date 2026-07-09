@@ -1,3 +1,4 @@
+import os
 import uuid
 import logging
 from datetime import datetime
@@ -26,10 +27,12 @@ class Command(BaseCommand):
 
             elapsed = (timezone.now() - start_time).total_seconds()
             self.stdout.write(self.style.SUCCESS('Update tiket selesai.'))
-            self.stdout.write(f"- Baris diupdate     : {summary.get('updated_rows', 0)}")
-            self.stdout.write(f"- Status → PMDE      : {summary.get('status_to_pmde', 0)}")
-            self.stdout.write(f"- Status → SELESAI   : {summary.get('status_to_selesai', 0)}")
-            self.stdout.write(f"- Waktu eksekusi     : {elapsed:.1f} detik")
+            self.stdout.write(f"- Baris diupdate       : {summary.get('updated_rows', 0)}")
+            self.stdout.write(f"- Tidak berubah        : {summary.get('unchanged', 0)}")
+            self.stdout.write(f"- Belum disinkronisasi : {summary.get('not_found', 0)}")
+            self.stdout.write(f"- Status → PMDE        : {summary.get('status_to_pmde', 0)}")
+            self.stdout.write(f"- Status → SELESAI     : {summary.get('status_to_selesai', 0)}")
+            self.stdout.write(f"- Waktu eksekusi       : {elapsed:.1f} detik")
 
             errors = summary.get('errors', [])
             if errors:
@@ -43,6 +46,10 @@ class Command(BaseCommand):
             updated_keys = summary.get('updated_keys', [])
             if updated_keys:
                 self.stdout.write(f"Contoh tiket diupdate: {', '.join(updated_keys[:5])}")
+
+            from ...views.sync_tiket_update import SYNC_LOGS_DIR
+            result_log = os.path.join(SYNC_LOGS_DIR, f'tiket_update_result_{sync_id}.csv')
+            self.stdout.write(f"Detail log: {result_log}")
 
         except OracleSyncConfigError as exc:
             raise CommandError(str(exc)) from exc

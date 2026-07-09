@@ -185,6 +185,40 @@ def _log_failed_row(sync_id, nomor_tiket, error_msg, row_number=None):
         logger.error(f"Failed to log error row: {str(e)}")
 
 
+def _log_update_result_row(sync_id, nomor_tiket, kategori, detail=''):
+    """Log a tiket update result row to a comprehensive CSV file.
+
+    Kategori can be one of:
+        - 'Baris Diupdate'       — row data was updated
+        - 'Belum Disinkronisasi' — tiket nomor not found in local DB
+        - 'Status → Pengendalian Mutu' — status transition to PMDE
+        - 'Status → Selesai'     — status transition to Selesai
+        - 'Tidak Berubah'        — no changes detected
+        - 'Error'                — processing error
+
+    The CSV contains one row per tiket per category so each tiket may
+    appear multiple times if it falls into several categories.
+    """
+    try:
+        log_filename = os.path.join(SYNC_LOGS_DIR, f'tiket_update_result_{sync_id}.csv')
+        file_exists = os.path.exists(log_filename)
+
+        with open(log_filename, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow([
+                    'Timestamp', 'Nomor Tiket', 'Kategori', 'Detail'
+                ])
+            writer.writerow([
+                timezone.now().isoformat(),
+                nomor_tiket or '-',
+                kategori,
+                detail or '-',
+            ])
+    except Exception as e:
+        logger.error(f"Failed to log update result row: {str(e)}")
+
+
 def _check_tiket_update_data(service, check_id=None, stop_checker=None):
     """Dry-run check of tiket update data from Oracle without modifying DB.
 
@@ -250,6 +284,12 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                 tiket = existing_tikets_map.get(nomor_tiket)
                 if not tiket:
                     not_found += 1
+                    if check_id:
+                        _log_update_result_row(
+                            check_id, nomor_tiket,
+                            'Belum Disinkronisasi',
+                            'Nomor tiket tidak ditemukan di database lokal (dry-run)'
+                        )
                     continue
 
                 # Compare each field just like _update_tiket_data does
@@ -333,9 +373,16 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                 needs_pmde = (
                     tiket.status_tiket == STATUS_IDENTIFIKASI
                     and tgl_transfer is not None
+                    and (belum_qc is None or belum_qc != 0)
                 )
                 needs_selesai = (
                     tiket.status_tiket == STATUS_PENGENDALIAN_MUTU
+                    and belum_qc is not None
+                    and belum_qc == 0
+                )
+                needs_selesai_from_5 = (
+                    tiket.status_tiket == STATUS_IDENTIFIKASI
+                    and tgl_transfer is not None
                     and belum_qc is not None
                     and belum_qc == 0
                 )
@@ -344,9 +391,17 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                     changed = True
                 if needs_selesai:
                     changed = True
+                if needs_selesai_from_5:
+                    changed = True
 
                 if not changed:
                     would_unchanged += 1
+                    if check_id:
+                        _log_update_result_row(
+                            check_id, nomor_tiket,
+                            'Tidak Berubah',
+                            'Data sudah sinkron, tidak ada perubahan (dry-run)'
+                        )
                     continue
 
                 would_update += 1
@@ -354,8 +409,46 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                     would_pmde += 1
                 if needs_selesai:
                     would_selesai += 1
+                if needs_selesai_from_5:
+                    would_selesai += 1
                 if len(updated_keys) < 5:
                     updated_keys.append(nomor_tiket)
+
+                if check_id:
+                    # Determine which fields would change
+                    detail_parts = []
+                    if needs_pmde:
+                        detail_parts.append(f"Status: IDENTIFIKASI → PENGENDALIAN_MUTU (I:{baris_i}, U:{baris_u}, Res:{baris_res}, CDE:{baris_cde})")
+                    if needs_selesai:
+                        detail_parts.append(f"Status: PENGENDALIAN_MUTU → SELESAI (Sudah QC:{sudah_qc}, Lolos QC:{lolos_qc}, Tidak Lolos QC:{tidak_lolos_qc})")
+                    if needs_selesai_from_5:
+                        detail_parts.append(f"Status: IDENTIFIKASI → SELESAI (I:{baris_i}, U:{baris_u}, Res:{baris_res}, CDE:{baris_cde}, Sudah QC:{sudah_qc}, Lolos QC:{lolos_qc}, Tidak Lolos QC:{tidak_lolos_qc})")
+                    if not needs_pmde and not needs_selesai and not needs_selesai_from_5:
+                        detail_parts.append('Data kolom akan diperbarui')
+
+                    _log_update_result_row(
+                        check_id, nomor_tiket,
+                        'Akan Diupdate',
+                        ' | '.join(detail_parts) if detail_parts else 'Data akan diperbarui (dry-run)'
+                    )
+                    if needs_pmde:
+                        _log_update_result_row(
+                            check_id, nomor_tiket,
+                            'Akan → Pengendalian Mutu',
+                            f'Dari IDENTIFIKASI ke PENGENDALIAN_MUTU (I:{baris_i}, U:{baris_u}, Res:{baris_res}, CDE:{baris_cde})'
+                        )
+                    if needs_selesai:
+                        _log_update_result_row(
+                            check_id, nomor_tiket,
+                            'Akan → Selesai',
+                            f'Dari PENGENDALIAN_MUTU ke SELESAI (Sudah QC:{sudah_qc}, Lolos QC:{lolos_qc}, Tidak Lolos QC:{tidak_lolos_qc})'
+                        )
+                    if needs_selesai_from_5:
+                        _log_update_result_row(
+                            check_id, nomor_tiket,
+                            'Akan → Selesai (langsung dari Identifikasi)',
+                            f'Dari IDENTIFIKASI langsung ke SELESAI (I:{baris_i}, U:{baris_u}, Res:{baris_res}, CDE:{baris_cde}, Sudah QC:{sudah_qc})'
+                        )
 
             except Exception as e:
                 try:
@@ -363,6 +456,12 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                 except (NameError, AttributeError):
                     row_id = f'row_{idx + 1}'
                 errors.append(f'Row {row_id}: {str(e)[:100]}')
+                if check_id:
+                    _log_update_result_row(
+                        check_id, row_id,
+                        'Error',
+                        str(e)[:200]
+                    )
 
             if check_id and (idx % 1000 == 0 or idx == total - 1):
                 pct = int((idx + 1) / total * 100) if total else 100
@@ -463,6 +562,8 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
         updated_rows = 0
         status_to_pmde = 0
         status_to_selesai = 0
+        not_found_count = 0
+        unchanged_count = 0
         errors = []
         updated_keys = []
 
@@ -478,6 +579,8 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                     'updated_rows': updated_rows,
                     'status_to_pmde': status_to_pmde,
                     'status_to_selesai': status_to_selesai,
+                    'not_found': not_found_count,
+                    'unchanged': unchanged_count,
                     'errors': len(errors),
                 }, timeout=3600)
 
@@ -489,6 +592,12 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
 
                 tiket = existing_tikets_map.get(nomor_tiket)
                 if not tiket:
+                    not_found_count += 1
+                    _log_update_result_row(
+                        sync_id, nomor_tiket,
+                        'Belum Disinkronisasi',
+                        'Nomor tiket tidak ditemukan di database lokal'
+                    )
                     continue
 
                 update_fields = []
@@ -623,9 +732,16 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                 needs_pmde_transition = (
                     tiket.status_tiket == STATUS_IDENTIFIKASI
                     and tgl_transfer is not None
+                    and (belum_qc is None or belum_qc != 0)
                 )
                 needs_selesai_transition = (
                     tiket.status_tiket == STATUS_PENGENDALIAN_MUTU
+                    and belum_qc is not None
+                    and belum_qc == 0
+                )
+                needs_selesai_from_5_transition = (
+                    tiket.status_tiket == STATUS_IDENTIFIKASI
+                    and tgl_transfer is not None
                     and belum_qc is not None
                     and belum_qc == 0
                 )
@@ -638,14 +754,38 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                     update_fields.append('status_tiket')
                     tiket.status_tiket = STATUS_SELESAI
                     changed = True
+                if needs_selesai_from_5_transition:
+                    update_fields.append('status_tiket')
+                    tiket.status_tiket = STATUS_SELESAI
+                    changed = True
 
                 if not changed:
+                    unchanged_count += 1
+                    _log_update_result_row(
+                        sync_id, nomor_tiket,
+                        'Tidak Berubah',
+                        'Data sudah sinkron, tidak ada perubahan'
+                    )
                     continue
 
                 tiket.save(update_fields=list(set(update_fields)))
                 updated_rows += 1
                 if len(updated_keys) < 5:
                     updated_keys.append(nomor_tiket)
+
+                # Log field updates detail
+                updated_field_names = list(set(update_fields) - {'status_tiket'})
+                detail_parts = []
+                if updated_field_names:
+                    detail_parts.append(f"Field: {', '.join(updated_field_names)}")
+                if needs_pmde_transition:
+                    detail_parts.append(f"I:{baris_i}, U:{baris_u}, Res:{baris_res}, CDE:{baris_cde}")
+
+                _log_update_result_row(
+                    sync_id, nomor_tiket,
+                    'Baris Diupdate',
+                    ' | '.join(detail_parts) if detail_parts else 'Data diperbarui'
+                )
 
                 if needs_pmde_transition:
                     status_to_pmde += 1
@@ -655,13 +795,19 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                     if action_user:
                         TiketAction.objects.create(
                             id_tiket=tiket, id_user=action_user,
-                            timestamp=tgl_transfer,
+                            timestamp=tgl_transfer or timezone.now(),
                             action=TiketActionType.DITRANSFER_KE_PMDE,
-                            catatan=f'Transfer ke PMDE (auto-sync) - I:{baris_i}, U:{baris_u}, Res:{baris_res}, CDE:{baris_cde}'
+                            catatan='Tiket ditransfer ke PMDE'
                         )
                         logger.info(f'Tiket {nomor_tiket}: {STATUS_IDENTIFIKASI} → {STATUS_PENGENDALIAN_MUTU} (auto-transfer, user={action_user.username})')
                     else:
                         logger.warning(f'Tiket {nomor_tiket}: no active PIDE PIC — status updated but no TiketAction')
+
+                    _log_update_result_row(
+                        sync_id, nomor_tiket,
+                        'Status → Pengendalian Mutu',
+                        f'Dari IDENTIFIKASI ke PENGENDALIAN_MUTU (I:{baris_i}, U:{baris_u}, Res:{baris_res}, CDE:{baris_cde})'
+                    )
 
                 if needs_selesai_transition:
                     status_to_selesai += 1
@@ -673,17 +819,62 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                             id_tiket=tiket, id_user=action_user,
                             timestamp=tgl_close_tiket or timezone.now(),
                             action=TiketActionType.PENGENDALIAN_MUTU,
-                            catatan=f'Sudah QC:{sudah_qc}, Lolos QC:{lolos_qc}, Tidak Lolos QC:{tidak_lolos_qc}, QC C:{qc_c}'
+                            catatan='Tiket selesai pengendalian mutu'
                         )
                         TiketAction.objects.create(
                             id_tiket=tiket, id_user=action_user,
                             timestamp=tgl_close_tiket or timezone.now(),
                             action=TiketActionType.SELESAI,
-                            catatan='Tiket selesai diproses (auto-sync)'
+                            catatan='Tiket selesai diproses)'
                         )
                         logger.info(f'Tiket {nomor_tiket}: {STATUS_PENGENDALIAN_MUTU} → {STATUS_SELESAI} (auto-complete, user={action_user.username})')
                     else:
                         logger.warning(f'Tiket {nomor_tiket}: no active PMDE PIC — status updated but no TiketAction')
+
+                    _log_update_result_row(
+                        sync_id, nomor_tiket,
+                        'Status → Selesai',
+                        f'Dari PENGENDALIAN_MUTU ke SELESAI (Sudah QC:{sudah_qc}, Lolos QC:{lolos_qc}, Tidak Lolos QC:{tidak_lolos_qc})'
+                    )
+
+                if needs_selesai_from_5_transition:
+                    status_to_selesai += 1
+                    tiket_pics = active_pics_map.get(tiket.id, {})
+                    pide_pics = tiket_pics.get(TiketPIC.Role.PIDE, [])
+                    pmde_pics = tiket_pics.get(TiketPIC.Role.PMDE, [])
+                    pide_user = pide_pics[0].id_user if pide_pics else None
+                    pmde_user = pmde_pics[0].id_user if pmde_pics else None
+                    if pide_user:
+                        TiketAction.objects.create(
+                            id_tiket=tiket, id_user=pide_user,
+                            timestamp=tgl_transfer or timezone.now(),
+                            action=TiketActionType.DITRANSFER_KE_PMDE,
+                            catatan='Tiket ditransfer ke PMDE'
+                        )
+                    else:
+                        logger.warning(f'Tiket {nomor_tiket}: no active PIDE PIC — DITRANSFER_KE_PMDE action skipped')
+                    if pmde_user:
+                        TiketAction.objects.create(
+                            id_tiket=tiket, id_user=pmde_user,
+                            timestamp=tgl_close_tiket or timezone.now(),
+                            action=TiketActionType.PENGENDALIAN_MUTU,
+                            catatan='Tiket selesai pengendalian mutu'
+                        )
+                        TiketAction.objects.create(
+                            id_tiket=tiket, id_user=pmde_user,
+                            timestamp=tgl_close_tiket or timezone.now(),
+                            action=TiketActionType.SELESAI,
+                            catatan='Tiket selesai diproses'
+                        )
+                        logger.info(f'Tiket {nomor_tiket}: {STATUS_IDENTIFIKASI} → {STATUS_SELESAI} (langsung, pide={pide_user.username if pide_user else None}, pmde={pmde_user.username})')
+                    else:
+                        logger.warning(f'Tiket {nomor_tiket}: no active PMDE PIC — PENGENDALIAN_MUTU & SELESAI actions skipped')
+
+                    _log_update_result_row(
+                        sync_id, nomor_tiket,
+                        'Status → Selesai (langsung dari Identifikasi)',
+                        f'Dari IDENTIFIKASI langsung ke SELESAI (I:{baris_i}, U:{baris_u}, Res:{baris_res}, CDE:{baris_cde}, Sudah QC:{sudah_qc})'
+                    )
 
             except Exception as e:
                 error_msg = str(e)[:200]
@@ -693,12 +884,19 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                     row_id = f'row_{idx + 1}'
                 errors.append(f'Tiket {row_id}: {error_msg}')
                 _log_failed_row(sync_id, row_id, error_msg, row_number=idx + 1)
+                _log_update_result_row(
+                    sync_id, row_id if row_id else nomor_tiket,
+                    'Error',
+                    error_msg
+                )
                 logger.error(f'Failed to update tiket {row_id}: {error_msg}')
 
         return {
             'updated_rows': updated_rows,
             'status_to_pmde': status_to_pmde,
             'status_to_selesai': status_to_selesai,
+            'not_found': not_found_count,
+            'unchanged': unchanged_count,
             'errors': errors,
             'updated_keys': updated_keys,
         }
@@ -706,6 +904,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
         logger.error(f'Tiket update sync failed: {str(e)}', exc_info=True)
         return {
             'updated_rows': 0, 'status_to_pmde': 0, 'status_to_selesai': 0,
+            'not_found': 0, 'unchanged': 0,
             'errors': [str(e)], 'updated_keys': [],
         }
 
@@ -915,11 +1114,18 @@ def sync_tiket_update_progress(request):
                 if error:
                     return JsonResponse({'success': False, 'done': True, 'progress': progress_data, 'message': error})
                 if result:
-                    return JsonResponse({
+                    response_data = {
                         'success': True, 'done': True,
                         'progress': progress_data, 'summary': result,
                         'message': f"Check selesai: {result.get('would_update', 0)} akan diupdate",
-                    })
+                    }
+                    result_log_path = os.path.join(SYNC_LOGS_DIR, f'tiket_update_result_{check_id}.csv')
+                    if os.path.exists(result_log_path):
+                        response_data['result_log_url'] = reverse(
+                            'sync_tiket_update_download_result',
+                            kwargs={'operation_id': check_id}
+                        )
+                    return JsonResponse(response_data)
                 return JsonResponse({'success': True, 'done': False, 'progress': progress_data})
 
             return JsonResponse({'success': True, 'done': False, 'progress': progress_data})
@@ -966,6 +1172,12 @@ def sync_tiket_update_progress(request):
                 error_log_path = os.path.join(SYNC_LOGS_DIR, f'tiket_update_failed_rows_{sync_id}.csv')
                 if os.path.exists(error_log_path):
                     response_data['error_log_url'] = reverse('sync_tiket_update_download_errors', kwargs={'sync_id': sync_id})
+                result_log_path = os.path.join(SYNC_LOGS_DIR, f'tiket_update_result_{sync_id}.csv')
+                if os.path.exists(result_log_path):
+                    response_data['result_log_url'] = reverse(
+                        'sync_tiket_update_download_result',
+                        kwargs={'operation_id': sync_id}
+                    )
                 return JsonResponse(response_data)
 
         return JsonResponse({'success': True, 'done': False, 'progress': progress_data})
@@ -997,3 +1209,27 @@ def sync_tiket_update_download_errors(request, sync_id):
         error_msg = str(exc).strip()
         logger.error(f'Error downloading tiket update log: {error_msg}', exc_info=True)
         return JsonResponse({'success': False, 'message': error_msg or 'Gagal download error log'}, status=500)
+
+
+@require_GET
+@never_cache
+def sync_tiket_update_download_result(request, operation_id):
+    """Download the detailed result CSV for a completed tiket update check or sync."""
+    try:
+        try:
+            uuid.UUID(operation_id)
+        except (ValueError, TypeError):
+            return JsonResponse({'success': False, 'message': 'Invalid operation_id format'}, status=400)
+
+        result_log_path = os.path.join(SYNC_LOGS_DIR, f'tiket_update_result_{operation_id}.csv')
+
+        if not os.path.exists(result_log_path):
+            return JsonResponse({'success': False, 'message': 'Result log file not found'}, status=404)
+
+        response = FileResponse(open(result_log_path, 'rb'), content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="tiket_update_result_{operation_id}.csv"'
+        return response
+    except Exception as exc:
+        error_msg = str(exc).strip()
+        logger.error(f'Error downloading tiket update result log: {error_msg}', exc_info=True)
+        return JsonResponse({'success': False, 'message': error_msg or 'Gagal download result log'}, status=500)
