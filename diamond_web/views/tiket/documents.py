@@ -142,11 +142,12 @@ def tiket_documents_download(request, pk):
     tiket = get_object_or_404(
         Tiket.objects.select_related(
             'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori',
-            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil',
             'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
             'id_periode_data__id_periode_pengiriman',
             'id_bentuk_data',
             'id_cara_penyampaian',
+        ).prefetch_related(
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil',
         ),
         pk=pk,
     )
@@ -201,11 +202,15 @@ def tiket_documents_download(request, pk):
         if tiket.id_periode_data and tiket.id_periode_data.id_sub_jenis_data_ilap
         else None
     )
-    # For regional ILAPs (those with id_kpp), use nama_kanwil; otherwise use nama_ilap
-    if ilap and ilap.id_kpp and ilap.id_kpp.id_kanwil:
-        diterima_dari = ilap.id_kpp.id_kanwil.nama_kanwil
+    # For regional ILAPs (those with KPP), use nama_kanwil; otherwise use nama_ilap
+    if ilap:
+        first_kpp_rel = ilap.ilap_kpp_relations.select_related('id_kpp__id_kanwil').first()
+        if first_kpp_rel and first_kpp_rel.id_kpp and first_kpp_rel.id_kpp.id_kanwil:
+            diterima_dari = first_kpp_rel.id_kpp.id_kanwil.nama_kanwil
+        else:
+            diterima_dari = ilap.nama_ilap
     else:
-        diterima_dari = ilap.nama_ilap if ilap else '-'
+        diterima_dari = '-'
 
     # Collect multi-value fields from tiket_rows (deduplicated)
     periode_list, nomor_surat_list, tanggal_surat_list = [], [], []
@@ -318,8 +323,10 @@ def tiket_documents_download(request, pk):
                     
                     # Get kanwil name for regional ILAPs
                     nama_kanwil = '-'
-                    if ilap_obj and ilap_obj.id_kpp and ilap_obj.id_kpp.id_kanwil:
-                        nama_kanwil = ilap_obj.id_kpp.id_kanwil.nama_kanwil
+                    if ilap_obj:
+                        first_kpp_rel = ilap_obj.ilap_kpp_relations.select_related('id_kpp__id_kanwil').first()
+                        if first_kpp_rel and first_kpp_rel.id_kpp and first_kpp_rel.id_kpp.id_kanwil:
+                            nama_kanwil = first_kpp_rel.id_kpp.id_kanwil.nama_kanwil
                     
                     # Get status data description from JenisDataILAP's id_status_data relationship
                     status_data = '-'

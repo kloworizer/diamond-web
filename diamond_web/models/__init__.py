@@ -26,3 +26,4 @@ from .tiket import Tiket
 from .tiket_action import TiketAction
 from .tiket_pic import TiketPIC
 from .kirim_pide_temp import KirimPideTemp
+from .ilap_kpp import ILAPKPP

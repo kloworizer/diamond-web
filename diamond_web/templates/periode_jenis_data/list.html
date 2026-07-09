@@ -37,7 +37,7 @@
     <div class="card stretch stretch-full h-100">
         <div class="card-header">
             <h5 class="card-title mb-0"><i class="feather-calendar me-2"></i>Daftar Periode Jenis Data</h5>
-            <button type="button" class="btn btn-outline-primary" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>
+            <button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>
         </div>
         <div class="card-body custom-card-action p-0">
             <div class="table-responsive">
@@ -198,25 +198,8 @@
                 modalElement.addEventListener('hidden.bs.modal', function () {
                     document.getElementById('modalBody').innerHTML = '';
                 });
+
             });
-
-            function loadModal(url, title) {
-                $('#crudModalLabel').text(title);
-                $('#modalBody').html('<div class="text-center"><div class="spinner-border" role="status"></div></div>');
-                $('#crudModal').modal('show');
-
-                $.ajax({
-                    url: url,
-                    type: 'GET',
-                    data: { ajax: '1' },
-                    success: function (response) {
-                        $('#modalBody').html(response.html || response);
-                    },
-                    error: function () {
-                        $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');
-                    }
-                });
-            }
 
             function updatePagination(settings) {
                 const api = settings.oInstance.api();
@@ -252,32 +235,22 @@
                 });
             }
 
-            function showToast(message, type = 'info', title = null) {
-                const toastId = 'toast-' + Date.now();
-                const bgClass = type === 'success' ? 'bg-success' : type === 'danger' ? 'bg-danger' : type === 'warning' ? 'bg-warning' : 'bg-info';
-                const defaultTitles = {
-                    'success': 'Berhasil',
-                    'danger': 'Kesalahan',
-                    'warning': 'Peringatan',
-                    'info': 'Informasi'
-                };
-                const displayTitle = title || defaultTitles[type] || 'Pemberitahuan';
-                const toastHtml = `
-                    <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
-                        <div class="toast-header ${bgClass} text-white">
-                            <strong class="me-auto">${displayTitle}</strong>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
-                        </div>
-                        <div class="toast-body">
-                            ${message}
-                        </div>
-                    </div>
-                `;
-                $('body').append(toastHtml);
-                const toastElement = document.getElementById(toastId);
-                const toast = new bootstrap.Toast(toastElement);
-                toast.show();
-                toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
+            function loadModal(url, title) {
+                $('#crudModalLabel').text(title);
+                $('#modalBody').html('<div class="text-center"><div class="spinner-border" role="status"></div></div>');
+                $('#crudModal').modal('show');
+
+                $.ajax({
+                    url: url,
+                    type: 'GET',
+                    data: { ajax: '1' },
+                    success: function (response) {
+                        $('#modalBody').html(response.html || response);
+                    },
+                    error: function () {
+                        $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');
+                    }
+                });
             }
 
         })();

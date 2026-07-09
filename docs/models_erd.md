@@ -32,7 +32,6 @@ erDiagram
         int id_kategori FK
         string nama_ilap
         int id_kategori_wilayah FK
-        int id_kpp FK
         string alamat_ilap
         string kota_ilap
         string namapic_ilap
@@ -278,6 +277,12 @@ erDiagram
         int id_user FK
     }
 
+    ILAPKPP {
+        int id PK
+        int id_ilap FK
+        int id_kpp FK
+    }
+
     DocxTemplate {
         int id PK
         string nama_template
@@ -292,7 +297,8 @@ erDiagram
     Kanwil ||--o{ KPP : has
     KategoriILAP ||--o{ ILAP : has
     KategoriWilayah ||--o{ ILAP : has
-    KPP ||--o{ ILAP : has
+    ILAP ||--o{ ILAPKPP : has_kpp
+    KPP ||--o{ ILAPKPP : assigned_to
     ILAP ||--o{ JenisDataILAP : has
     JenisTabel ||--o{ JenisDataILAP : classified_as
     StatusData ||--o{ JenisDataILAP : has_status
@@ -345,6 +351,7 @@ KategoriILAP, KategoriWilayah, Kanwil, KPP, JenisTabel, StatusData, StatusPeneli
 
 ### ILAP & Data Classification
 - **ILAP** — Main entity representing an ILAP institution
+- **ILAPKPP** — Relationship table linking ILAP and KPP (one ILAP can have many KPPs)
 - **JenisDataILAP** — Types of data associated with each ILAP
 - **KlasifikasiJenisData** — Many-to-many link between JenisDataILAP and DasarHukum
 - **PeriodeJenisData** — Submission periods for each data type
@@ -539,7 +546,6 @@ Institusi Penerima Data (ILAP) — Entitas utama yang menerima dan mengelola dat
 | `id_kategori` | `ForeignKey` | | ✅ → `KategoriILAP` | `on_delete=PROTECT` | ✅ `ilap_kategori_idx` | Kategori ILAP |
 | `nama_ilap` | `CharField(150)` | | | | | Nama ILAP |
 | `id_kategori_wilayah` | `ForeignKey` | | ✅ → `KategoriWilayah` | `on_delete=PROTECT` | ✅ `ilap_kwil_idx` | Kategori Wilayah |
-| `id_kpp` | `ForeignKey` | | ✅ → `KPP` | `on_delete=PROTECT, null=True, blank=True` | ✅ `ilap_kpp_idx` | KPP terkait |
 | `alamat_ilap` | `CharField(3000)` | | | `null=True, blank=True` | | Alamat ILAP |
 | `kota_ilap` | `CharField(30)` | | | `null=True, blank=True` | | Kota ILAP |
 | `namapic_ilap` | `CharField(100)` | | | `null=True, blank=True` | | Nama PIC ILAP |
@@ -556,6 +562,18 @@ Institusi Penerima Data (ILAP) — Entitas utama yang menerima dan mengelola dat
 | `update_by` | `CharField(9)` | | | `null=True, blank=True` | | Diperbarui oleh |
 
 **Composite Constraints:** `UniqueConstraint(fields=["id_ilap", "nama_ilap"], name="unique_ilap_id_nama")`
+
+---
+
+### `ILAPKPP` — `ilap_kpp`
+
+ILAP KPP — Tabel relasi antara ILAP dan KPP (satu ILAP dapat memiliki banyak KPP).
+
+| Field | Type | PK | FK | Constraints | Index | Description |
+|-------|------|----|----|-------------|-------|-------------|
+| `id` | `AutoField` | ✅ | | | | Primary Key |
+| `id_ilap` | `ForeignKey` | | ✅ → `ILAP` | `on_delete=PROTECT` | ✅ `ilk_id_ilap_idx` | ILAP terkait |
+| `id_kpp` | `ForeignKey` | | ✅ → `KPP` | `on_delete=PROTECT` | ✅ `ilk_id_kpp_idx` | KPP terkait |
 
 ---
 

@@ -260,7 +260,9 @@ class TestMonitoringDataEndpoint:
         kpp = KPPFactory(id_kanwil=kanwil)
         from .conftest import KategoriWilayahFactory
         kat_wil = KategoriWilayahFactory()
-        ilap = ILAPFactory(id_kpp=kpp, id_kategori_wilayah=kat_wil)
+        ilap = ILAPFactory(id_kategori_wilayah=kat_wil)
+        from diamond_web.models import ILAPKPP
+        ILAPKPP.objects.create(id_ilap=ilap, id_kpp=kpp)
         jdi = JenisDataILAPFactory(id_ilap=ilap)
         periode_pengiriman = self._get_or_create_pp('Bulanan', 'Bulanan')
         PeriodeJenisDataFactory(
@@ -377,7 +379,9 @@ class TestMonitoringDataEndpoint:
         """Line 399: filtering by kanwil parameter."""
         kanwil = KanwilFactory()
         kpp = KPPFactory(id_kanwil=kanwil)
-        ilap = ILAPFactory(id_kpp=kpp)
+        ilap = ILAPFactory()
+        from diamond_web.models import ILAPKPP
+        ILAPKPP.objects.create(id_ilap=ilap, id_kpp=kpp)
         jdi = JenisDataILAPFactory(id_ilap=ilap)
         pp = self._get_or_create_pp('BulananKanwil', 'Bulanan')
         PeriodeJenisDataFactory(
@@ -396,7 +400,9 @@ class TestMonitoringDataEndpoint:
         """Line 401: filtering by kpp parameter."""
         kanwil = KanwilFactory()
         kpp = KPPFactory(id_kanwil=kanwil)
-        ilap = ILAPFactory(id_kpp=kpp)
+        ilap = ILAPFactory()
+        from diamond_web.models import ILAPKPP
+        ILAPKPP.objects.create(id_ilap=ilap, id_kpp=kpp)
         jdi = JenisDataILAPFactory(id_ilap=ilap)
         pp = self._get_or_create_pp('BulananKpp', 'Bulanan')
         PeriodeJenisDataFactory(
