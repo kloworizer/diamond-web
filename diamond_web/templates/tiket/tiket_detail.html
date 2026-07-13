@@ -84,7 +84,7 @@
                                 <label class="text-muted small mb-1">Tanggal Terima DIP</label>
                                 <p class="fw-semibold mb-0">
                                     {% if tiket.tgl_terima_dip %}
-                                        <i class="feather-calendar me-1"></i>{{ tiket.tgl_terima_dip|date:"d/m/Y H:i" }}
+                                        <i class="feather-calendar me-1"></i>{{ tiket.tgl_terima_dip|date:"d/m/Y" }}
                                     {% else %}
                                         -
                                     {% endif %}
@@ -96,7 +96,7 @@
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Tanggal Terima Vertikal</label>
                                 <p class="fw-semibold mb-0">
-                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_terima_vertikal|date:"d/m/Y H:i" }}
+                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_terima_vertikal|date:"d/m/Y" }}
                                 </p>
                             </div>
                         </div>
@@ -114,7 +114,7 @@
                                 <label class="text-muted small mb-1">Tanggal Surat Pengantar</label>
                                 <p class="fw-semibold mb-0">
                                     {% if tiket.tanggal_surat_pengantar %}
-                                        <i class="feather-calendar me-1"></i>{{ tiket.tanggal_surat_pengantar|date:"d/m/Y H:i" }}
+                                        <i class="feather-calendar me-1"></i>{{ tiket.tanggal_surat_pengantar|date:"d/m/Y" }}
                                     {% else %}
                                         -
                                     {% endif %}
@@ -178,7 +178,7 @@
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Tanggal Teliti</label>
                                 <p class="fw-semibold mb-0">
-                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_teliti|date:"d/m/Y H:i" }}
+                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_teliti|date:"d/m/Y" }}
                                 </p>
                             </div>
                         </div>
@@ -195,7 +195,7 @@
                                 <label class="text-muted small mb-1">Tanggal Nadine</label>
                                 <p class="fw-semibold mb-0">
                                     {% if tiket.tgl_nadine %}
-                                        <i class="feather-calendar me-1"></i>{{ tiket.tgl_nadine|date:"d/m/Y H:i" }}
+                                        <i class="feather-calendar me-1"></i>{{ tiket.tgl_nadine|date:"d/m/Y" }}
                                     {% else %}
                                         -
                                     {% endif %}
@@ -207,7 +207,7 @@
                                 <label class="text-muted small mb-1">Tanggal Kirim PIDE</label>
                                 <p class="fw-semibold mb-0">
                                     {% if tiket.tgl_kirim_pide %}
-                                        <i class="feather-calendar me-1"></i>{{ tiket.tgl_kirim_pide|date:"d/m/Y H:i" }}
+                                        <i class="feather-calendar me-1"></i>{{ tiket.tgl_kirim_pide|date:"d/m/Y" }}
                                     {% else %}
                                         -
                                     {% endif %}
@@ -220,7 +220,7 @@
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Tanggal Dibatalkan</label>
                                 <p class="fw-semibold mb-0">
-                                    <i class="feather-calendar me-1"></i><span class="badge bg-danger">{{ tiket.tgl_dibatalkan|date:"d/m/Y H:i" }}</span>
+                                    <i class="feather-calendar me-1"></i><span class="badge bg-danger">{{ tiket.tgl_dibatalkan|date:"d/m/Y" }}</span>
                                 </p>
                             </div>
                         </div>
@@ -230,7 +230,7 @@
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Tanggal Dikembalikan</label>
                                 <p class="fw-semibold mb-0">
-                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_dikembalikan|date:"d/m/Y H:i" }}
+                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_dikembalikan|date:"d/m/Y" }}
                                 </p>
                             </div>
                         </div>
@@ -240,7 +240,7 @@
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Tanggal Rekam PIDE</label>
                                 <p class="fw-semibold mb-0">
-                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_rekam_pide|date:"d/m/Y H:i" }}
+                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_rekam_pide|date:"d/m/Y" }}
                                 </p>
                             </div>
                         </div>
@@ -250,7 +250,7 @@
                             <div class="info-group">
                                 <label class="text-muted small mb-1">Tanggal Transfer</label>
                                 <p class="fw-semibold mb-0">
-                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_transfer|date:"d/m/Y H:i" }}
+                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_transfer|date:"d/m/Y" }}
                                 </p>
                             </div>
                         </div>
