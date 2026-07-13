@@ -1,5 +1,22 @@
 # Catatan Rilis & Perubahan
 
+## [1.1.0] — 2026-07-13
+
+### Ditambahkan
+- **Modul Laporan (Halaman UI)** — Halaman antarmuka untuk modul laporan baru yang mencakup tampilan daftar laporan, filter, dan opsi ekspor.
+- **CRUD Widget & Filter Komponen** — Komponen widget filter interaktif untuk tabel CRUD yang memungkinkan pencarian dan penyaringan data secara dinamis.
+- **Global Shell, Halaman Home, & Login** — Penyempurnaan tata letak shell global secara menyeluruh, halaman beranda (home) yang diperbarui, serta halaman login yang lebih responsif.
+- **Workflow Tiket P3DE (Backend)** — Implementasi alur kerja backend untuk siklus tiket P3DE, mencakup validasi transisi status, logging aksi, dan penanganan dokumen terkait.
+- **Sinkronisasi Tiket (Backend)** — Penyempurnaan mekanisme sinkronisasi tiket dari Oracle ke database lokal, termasuk penanganan data tiket baru dan pembaruan status secara otomatis.
+
+### Diubah
+- **Refaktor Modul Dokumen Tiket** — Perombakan struktur kode pada modul dokumen tiket untuk meningkatkan maintainability, mengurangi duplikasi, dan memisahkan concerns antara frontend dan backend.
+- **Perubahan Model Database (RFC)** — Penyesuaian skema model database berdasarkan hasil *Request for Comments* (RFC) guna menyelaraskan struktur data dengan kebutuhan bisnis yang berkembang.
+
+### Diperbaiki
+- Stabilitas sinkronisasi tiket Oracle ditingkatkan untuk menangani kasus tepi (data duplikat, koneksi terputus, dan inkonsistensi status).
+- Bug minor pada rendering dokumen tiket pasca-refaktor.
+
 ## [1.0.0] — 2026-07-01 — Rilis Produksi Awal
 
 ### Ditambahkan
