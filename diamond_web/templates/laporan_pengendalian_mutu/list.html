@@ -2,66 +2,211 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
+<style>
+    /* Table row compactness */
+    #laporan-pengendalian-mutu-table th, 
+    #laporan-pengendalian-mutu-table td {
+        padding: 8px 10px !important;
+        font-size: 13px !important;
+        vertical-align: middle !important;
+    }
+
+    /* Table frame: only body scrolls, header stays sticky */
+    .table-frame {
+        max-height: calc(100vh - 290px);
+        overflow: auto;
+        border-top: 1px solid #e2e8f0;
+        position: relative;
+    }
+
+    .table-frame thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #f8fafc !important;
+        box-shadow: inset 0 -1px 0 #dee2e6;
+    }
+
+    /* Premium Card Padding rules */
+    .card.stretch {
+        border-radius: 16px !important;
+        overflow: hidden;
+    }
+    
+    .card.stretch .card-header {
+        padding-top: 20px !important;
+        padding-bottom: 20px !important;
+        padding-left: 28px !important;
+        padding-right: 28px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+    }
+    
+    .card.stretch .card-body {
+        padding-bottom: 36px !important;
+        padding-left: 28px !important;
+        padding-right: 28px !important;
+    }
+
+    /* Center DataTable info and pagination vertically - Absolute Global */
+    .dt-layout-row {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding-top: 12px !important;
+        padding-bottom: 8px !important;
+    }
+    
+    .dt-layout-cell {
+        display: flex !important;
+        align-items: center !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .dt-info {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        line-height: 1 !important;
+        height: 38px !important; /* Matches height of pagination controls */
+    }
+
+    .dt-paging {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+    }
+
+    .dt-paging .pagination {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    /* Style form-control and form-select to mimic placeholder when empty or 'all' is selected */
+    #filter-form .form-control,
+    #filter-form .form-select {
+        height: 38px !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        line-height: normal !important;
+        font-size: 13px !important;
+        border-radius: 6px !important;
+        border: 1px solid #cbd5e1 !important;
+        color: #64748b !important; /* Muted gray for placeholder */
+        font-style: italic !important; /* Italic by default */
+        transition: all 0.15s ease !important;
+    }
+    
+    #filter-form .form-control.has-value,
+    #filter-form .form-select.has-value {
+        color: #334155 !important; /* Dark text for valid values */
+        font-style: normal !important; /* Normal font style */
+    }
+
+    #filter-form .form-select option {
+        color: #334155 !important;
+        font-style: normal !important;
+    }
+
+    #filter-form .form-select option[value="all"],
+    #filter-form .form-select option[value=""] {
+        color: #64748b !important;
+        font-style: italic !important;
+    }
+
+    /* Reset padding and center datetime content vertically */
+    #filter-form input[type="datetime-local"] {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+    }
+    #filter-form input[type="datetime-local"]::-webkit-datetime-edit {
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        height: 100% !important;
+    }
+    #filter-form input[type="datetime-local"]::-webkit-datetime-edit-text {
+        color: inherit !important; /* Inherits color dynamically from parent input */
+    }
+
+    /* Explicit widths for filter inputs */
+    #filter-periode-type { width: 150px !important; }
+    #filter-periode { width: 170px !important; }
+    #filter-tahun { width: 110px !important; }
+</style>
+
 <div class="page-header">
-        <div class="page-header-left d-flex align-items-center">
-            <div class="page-header-title">
-                <h5 class="m-b-10">
-                    <i class="feather-bar-chart-2 me-2"></i>Laporan Pengendalian Mutu
-                </h5>
-            </div>
-            <ul class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-                <li class="breadcrumb-item"><a href="javascript:void(0);">PMDE</a></li>
-                <li class="breadcrumb-item active">Laporan Pengendalian Mutu</li>
-            </ul>
+    <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+            <h5 class="m-b-10">
+                <i class="feather-bar-chart-2 me-2"></i>Laporan Pengendalian Mutu
+            </h5>
         </div>
-        <div class="page-header-right ms-auto">
-            <div class="page-header-right-items">
-                <div class="d-flex d-md-none">
-                    <a href="javascript:void(0)" class="page-header-right-close-toggle">
-                        <i class="feather-arrow-left me-2"></i>
-                        <span>Kembali</span>
-                    </a>
-                </div>
-            </div>
-            <div class="d-md-none d-flex align-items-center">
-                <a href="javascript:void(0)" class="page-header-right-open-toggle">
-                    <i class="feather-align-right fs-20"></i>
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="javascript:void(0);">PMDE</a></li>
+            <li class="breadcrumb-item active">Laporan Pengendalian Mutu</li>
+        </ul>
+    </div>
+    <div class="page-header-right ms-auto">
+        <div class="page-header-right-items">
+            <div class="d-flex d-md-none">
+                <a href="javascript:void(0)" class="page-header-right-close-toggle">
+                    <i class="feather-arrow-left me-2"></i>
+                    <span>Kembali</span>
                 </a>
             </div>
         </div>
-    </div>
-
-    <div class="main-content">
-    <!-- Filter Card -->
-    <div class="card shadow-sm mb-3">
-        <div class="card-header bg-light">
-            <h5 class="mb-0">Filter Data</h5>
+        <div class="d-md-none d-flex align-items-center">
+            <a href="javascript:void(0)" class="page-header-right-open-toggle">
+                <i class="feather-align-right fs-20"></i>
+            </a>
         </div>
-        <div class="card-body">
-            <form id="filter-form" class="row g-3">
+    </div>
+</div>
+
+<div class="main-content">
+    <!-- Filter Card -->
+    <div class="card stretch stretch-full mb-3">
+        <div class="card-header border-bottom-0 pb-0 bg-transparent">
+            <h5 class="card-title mb-0">
+                <i class="feather-filter me-2 text-primary"></i>Filter Data
+            </h5>
+        </div>
+        <div class="card-body pt-3">
+            <form id="filter-form" class="d-flex flex-wrap align-items-end gap-2">
                 {% csrf_token %}
-                <div class="col-md-3">
+                <div class="d-flex flex-column">
+                    <label class="form-label mb-1" style="font-size: 11.5px; font-weight: 600; color: #475569;">Jenis Periode</label>
                     {{ form.periode_type }}
                     {% if form.periode_type.errors %}
                         <div class="invalid-feedback d-block">{{ form.periode_type.errors }}</div>
                     {% endif %}
                 </div>
-                <div class="col-md-3">
+                <div class="d-flex flex-column">
+                    <label class="form-label mb-1" style="font-size: 11.5px; font-weight: 600; color: #475569;">Periode</label>
                     {{ form.periode }}
                     {% if form.periode.errors %}
                         <div class="invalid-feedback d-block">{{ form.periode.errors }}</div>
                     {% endif %}
                 </div>
-                <div class="col-md-3">
+                <div class="d-flex flex-column">
+                    <label class="form-label mb-1" style="font-size: 11.5px; font-weight: 600; color: #475569;">Tahun</label>
                     {{ form.tahun }}
                     {% if form.tahun.errors %}
                         <div class="invalid-feedback d-block">{{ form.tahun.errors }}</div>
                     {% endif %}
                 </div>
-                <div class="col-md-3 d-flex align-items-end gap-2">
-                    <button type="button" id="export-btn" class="btn btn-success w-100" disabled>
-                        <i class="feather-download me-1"></i>Export XLSX
+                <div class="ms-auto">
+                    <button type="button" id="export-btn" class="btn btn-sm btn-outline-success d-flex align-items-center justify-content-center gap-2 fw-bold" style="height: 38px !important; border-radius: 6px !important; padding-left: 20px !important; padding-right: 20px !important;" disabled>
+                        <i class="feather-file-text"></i> EKSPOR KE EXCEL
                     </button>
                 </div>
             </form>
@@ -69,57 +214,74 @@
     </div>
 
     <!-- Data Table Card -->
-    <div class="card stretch stretch-full h-100">
+    <div class="card stretch stretch-full">
         <div class="card-header">
             <h5 class="card-title mb-0">
-                <i class="feather-grid me-2"></i>Data Pengendalian Mutu
+                <i class="feather-grid me-2 text-primary"></i>Data Pengendalian Mutu
             </h5>
         </div>
-        <div class="card-body custom-card-action p-0">
-            <div class="table-responsive">
-            <table id="laporan-pengendalian-mutu-table" data-skip-empty-state class="table table-hover mb-0" style="width:100%">
-                <thead>
-                    <tr>
-                        <th>Nama ILAP</th>
-                        <th>Nama Sub Jenis Data</th>
-                        <th>Nama Tabel</th>
-                        <th>Nomor Tiket</th>
-                        <th>Status Tiket</th>
-                        <th>Data Diterima</th>
-                        <th>Data Direkam (I+U)</th>
-                        <th>Data Teridentifikasi (I)</th>
-                        <th>Data Tidak Teridentifikasi (U)</th>
-                        <th>Lolos QC</th>
-                        <th>Tidak Lolos QC</th>
-                        <th>QC P</th>
-                        <th>QC X</th>
-                        <th>QC W</th>
-                        <th>QC V</th>
-                        <th>QC A</th>
-                        <th>QC N</th>
-                        <th>QC Y</th>
-                        <th>QC Z</th>
-                        <th>QC D</th>
-                        <th>QC U</th>
-                        <th>QC C</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+        <div class="card-body custom-card-action">
+            <div class="table-frame">
+                <table id="laporan-pengendalian-mutu-table" data-skip-empty-state class="table table-hover mb-0" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>Nama ILAP</th>
+                            <th>Nama Sub Jenis Data</th>
+                            <th>Nama Tabel</th>
+                            <th>Nomor Tiket</th>
+                            <th>Status Tiket</th>
+                            <th>Data Diterima</th>
+                            <th>Data Direkam (I+U)</th>
+                            <th>Data Teridentifikasi (I)</th>
+                            <th>Data Tidak Teridentifikasi (U)</th>
+                            <th>Lolos QC</th>
+                            <th>Tidak Lolos QC</th>
+                            <th>QC P</th>
+                            <th>QC X</th>
+                            <th>QC W</th>
+                            <th>QC V</th>
+                            <th>QC A</th>
+                            <th>QC N</th>
+                            <th>QC Y</th>
+                            <th>QC Z</th>
+                            <th>QC D</th>
+                            <th>QC U</th>
+                            <th>QC C</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
         </div>
     </div>
-    </div>
-
+</div>
 {% endblock %}
+
 {% block scripts %}
 <script>
     (function () {
         const ajaxUrl = "{% url 'laporan_pengendalian_mutu_data' %}";
         let table;
 
+        function updateSelectPlaceholderStyle($el) {
+            const val = $el.val();
+            if (val && val !== 'all' && val !== '') {
+                $el.addClass('has-value');
+            } else {
+                $el.removeClass('has-value');
+            }
+        }
+
         $(document).ready(function () {
             const csrfToken = $('[name=csrfmiddlewaretoken]').val();
+
+            // Init placeholder styling
+            $('#filter-form select, #filter-form input').each(function() {
+                updateSelectPlaceholderStyle($(this));
+            });
+            $('#filter-form select, #filter-form input').on('change keyup', function() {
+                updateSelectPlaceholderStyle($(this));
+            });
 
             table = $('#laporan-pengendalian-mutu-table').DataTable({
                 serverSide: true,
@@ -172,7 +334,7 @@
             $('#filter-periode-type').on('change', function() {
                 const periodeType = $(this).val();
                 const $periodeSelect = $('#filter-periode');
-                $periodeSelect.html('<option value="">-- Pilih Periode --</option>');
+                $periodeSelect.html('<option value="">Pilih Periode</option>');
                 
                 if (!periodeType) return;
                 
@@ -226,6 +388,7 @@
                 if (defaultValue) {
                     $periodeSelect.val(defaultValue);
                 }
+                updateSelectPlaceholderStyle($periodeSelect);
             });
             
             // Enable export button when data is loaded

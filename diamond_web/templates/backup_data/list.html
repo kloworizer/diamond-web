@@ -1,249 +1,512 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% load crispy_forms_tags %}
 
-
 {% block content %}
+<style>
+    /* Table row compactness */
+    #backup-data-table th, 
+    #backup-data-table td {
+        padding: 8px 10px !important;
+        font-size: 12.5px !important;
+        vertical-align: middle !important;
+    }
+
+    /* Table frame: only body scrolls, header stays sticky */
+    .table-frame {
+        max-height: calc(100vh - 350px);
+        min-height: 250px;
+        overflow: auto;
+        border-top: 1px solid #e2e8f0;
+        position: relative;
+    }
+
+    .table-frame thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #f8fafc !important;
+        box-shadow: inset 0 -1px 0 #dee2e6;
+    }
+
+    /* Sticky Actions column in DataTable - Horizontal & Uniform Row Height */
+    .col-actions {
+        position: sticky !important;
+        right: 0 !important;
+        z-index: 5 !important;
+        background-color: #ffffff !important;
+        border-left: 1px solid #e2e8f0 !important;
+        box-shadow: -4px 0 8px rgba(0, 0, 0, 0.02) !important;
+        white-space: nowrap !important;
+        text-align: center !important;
+        min-width: 90px !important;
+        height: 38px !important; /* Forces uniform height */
+    }
+    
+    #backup-data-table tbody td.col-actions {
+        padding: 0 10px !important;
+        vertical-align: middle !important;
+    }
+    
+    #backup-data-table tbody td.col-actions button {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin: 0 2px !important;
+        vertical-align: middle !important;
+        height: 28px !important;
+        width: 28px !important;
+        padding: 0 !important;
+    }
+    
+    #backup-data-table thead th.col-actions {
+        background-color: #f8fafc !important;
+        z-index: 11 !important;
+    }
+
+    /* Premium Card Padding rules */
+    .card.stretch {
+        border-radius: 16px !important;
+        overflow: hidden;
+    }
+    
+    .card.stretch .card-header {
+        padding-top: 20px !important;
+        padding-bottom: 20px !important;
+        padding-left: 28px !important;
+        padding-right: 28px !important;
+        border-bottom: none !important;
+    }
+    
+    .card.stretch .card-body {
+        padding-bottom: 36px !important;
+        padding-left: 28px !important;
+        padding-right: 28px !important;
+    }
+
+    /* Center DataTable info and pagination vertically - Absolute Global */
+    .dt-layout-row {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding-top: 12px !important;
+        padding-bottom: 8px !important;
+        border-top: none !important;
+    }
+    
+    .dt-layout-cell {
+        display: flex !important;
+        align-items: center !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .dt-info {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        line-height: 1 !important;
+        height: 38px !important; /* Matches height of pagination controls */
+    }
+
+    .dt-paging {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+    }
+
+    .dt-paging .pagination {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    /* Table Column Search Inputs - Compact & Simple */
+    #column-search-row input {
+        height: 28px !important;
+        font-size: 11px !important;
+        padding: 2px 8px !important;
+        border-radius: 6px !important;
+        border: 1px solid #e2e8f0 !important;
+        background-color: #ffffff !important;
+        box-shadow: none !important;
+        transition: all 0.15s ease !important;
+    }
+    
+    #column-search-row input:focus {
+        border-color: #00BDFB !important;
+        background-color: #ffffff !important;
+        box-shadow: 0 0 0 2px rgba(0, 189, 251, 0.1) !important;
+    }
+
+    /* Premium styling for Filter Fields - Borderless Accordion Banner */
+    .accordion-button-premium {
+        background-color: #f8fafc !important;
+        color: #475569 !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        padding: 14px 28px !important;
+        border: none !important;
+        box-shadow: none !important;
+        transition: all 0.2s ease !important;
+        cursor: pointer;
+    }
+    
+    .accordion-button-premium:hover {
+        background-color: #f1f5f9 !important;
+        color: #0c92ff !important;
+    }
+    
+    .accordion-button-premium:not(.collapsed) {
+        background-color: #f1f5f9 !important;
+        color: #0c92ff !important;
+        border-bottom: none !important;
+    }
+
+    #filterAccordion,
+    #filterAccordion .accordion-item {
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    .filter-section-premium {
+        background-color: #ffffff !important;
+        padding: 24px 28px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+    }
+    
+    .filter-section-premium .col-form-label {
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #475569 !important;
+    }
+    
+    .filter-section-premium .form-select {
+        height: 40px !important;
+        border-radius: 8px !important;
+        border: 1px solid #cbd5e1 !important;
+        font-size: 13px !important;
+        color: #334155 !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .filter-section-premium .form-select:focus {
+        border-color: #00BDFB !important;
+        box-shadow: 0 0 0 3px rgba(0, 189, 251, 0.15) !important;
+    }
+
+    .filter-section-premium .btn {
+        height: 40px !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        font-size: 12.5px !important;
+    }
+
+    /* Media count card styles */
+    .media-card-widget {
+        border: 1px solid #e2e8f0;
+        background-color: #ffffff;
+        border-radius: 10px;
+        padding: 10px 16px;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        user-select: none;
+    }
+
+    .media-card-widget:hover {
+        border-color: #00BDFB;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 189, 251, 0.08);
+    }
+
+    /* Modal premium styles as per AGENTS.md Section 4 */
+    #crudModal .modal-content {
+        border-radius: 16px !important;
+        border: none !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
+        overflow: hidden;
+    }
+    
+    #crudModal .modal-header {
+        border-bottom: 1px solid #f1f5f9 !important;
+        padding: 20px 24px !important;
+    }
+    
+    #crudModal .modal-body {
+        padding: 8px 24px 4px 24px !important;
+    }
+    
+    #crudModal .modal-footer {
+        background: transparent !important;
+        border-top: 0 !important;
+        padding: 0 24px 24px 24px !important;
+    }
+</style>
+
 <div class="page-header">
-        <div class="page-header-left d-flex align-items-center">
-            <div class="page-header-title">
-                <h5 class="m-b-10">
-                    <i class="feather-database me-2"></i>Perekaman Hasil Backup Data
-                </h5>
-            </div>
-            <ul class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-                <li class="breadcrumb-item"><a href="javascript:void(0);">P3DE</a></li>
-                <li class="breadcrumb-item active">Kelola Backup Data</li>
-            </ul>
+    <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+            <h5 class="m-b-10">
+                <i class="feather-database me-2"></i>Perekaman Hasil Backup Data
+            </h5>
         </div>
-        <div class="page-header-right ms-auto">
-            <div class="page-header-right-items">
-                <div class="d-flex d-md-none">
-                    <a href="javascript:void(0)" class="page-header-right-close-toggle">
-                        <i class="feather-arrow-left me-2"></i>
-                        <span>Kembali</span>
-                    </a>
-                </div>
-            </div>
-            <div class="d-md-none d-flex align-items-center">
-                <a href="javascript:void(0)" class="page-header-right-open-toggle">
-                    <i class="feather-align-right fs-20"></i>
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="javascript:void(0);">P3DE</a></li>
+            <li class="breadcrumb-item active">Kelola Backup Data</li>
+        </ul>
+    </div>
+    <div class="page-header-right ms-auto">
+        <div class="page-header-right-items">
+            <div class="d-flex d-md-none">
+                <a href="javascript:void(0)" class="page-header-right-close-toggle">
+                    <i class="feather-arrow-left me-2"></i>
+                    <span>Kembali</span>
                 </a>
             </div>
         </div>
-    </div>
-
-    <div class="main-content">
-
-
-    <div class="card stretch stretch-full h-100">    
-        
-        <div class="card-body">
-							<!-- Header: Judul & Deskripsi -->
-							<div class="mb-4">
-								<h5 class="fw-bold text-dark mb-2">Backup Data</h5>
-								<p class="fs-12 text-muted mb-0">
-									Administrasi backup data menyediakan daftar rekapitulasi penyimpanan data mentah atas data yang diterima pada media backup yang tersedia di Subdirektorat Pengelolaan Data Eksternal.
-								</p>
-							</div>
-
-							<!-- Section: Filter & Mini Cards -->
-							<div class="d-flex flex-wrap align-items-center gap-3">
-								
-								<!-- Filter Pilih Tahun -->
-								<div class="d-flex align-items-center gap-2">
-									<label class="fs-12 text-muted text-nowrap mb-0">Pilih Tahun</label>
-									<select id="filter-tahun" class="form-select form-select-sm bg-light-subtle border-gray-200" style="width: 120px; font-size: 13px;">
-                                        <option value="">Semua Tahun</option>
-										{% for tahun in tahun_list %}
-                                        <option value="{{ tahun }}" {% if tahun == default_tahun %}selected{% endif %}>{{ tahun }}</option>
-										{% endfor %}
-									</select>
-								</div>
-
-								<!-- Divider (Garis Vertikal khas Duralux) -->
-								<div class="vr text-gray-300 mx-1" style="height: 35px; opacity: 1;"></div>
-
-								<!-- List Mini Cards -->
-                                <div class="d-flex flex-wrap gap-2" id="media-backup-cards">
-									{% for mb in media_backup_list %}
-                                    <div class="d-flex align-items-center border border-gray-200 rounded px-3 py-2 bg-white" data-media-id="{{ mb.id }}">
-										<div class="me-3 text-secondary">
-											<i class="feather-database"></i> 
-										</div>
-										<div class="d-flex align-items-center gap-2">
-											<span class="fw-bold text-dark fs-13">{{ mb.deskripsi }}</span>
-                                            <span class="badge rounded-pill border border-gray-300 text-muted fw-normal px-2 media-count" style="font-size: 11px;">{{ mb.count }}</span>
-										</div>
-									</div>
-									{% endfor %}
-								</div>
-							</div>
-						</div>
-        
-        <div class="card-header">
-            <h5 class="card-title mb-0"><i class="feather-database me-2"></i>Daftar Backup Data</h5>
-            <button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>
+        <div class="d-md-none d-flex align-items-center">
+            <a href="javascript:void(0)" class="page-header-right-open-toggle">
+                <i class="feather-align-right fs-20"></i>
+            </a>
         </div>
-        <div class="card border-top-0 rounded-0 shadow-none">
-                                <div class="card-body">
-                                    <form action="#" method="GET">
-                                        <!-- Row Filter Utama -->
-                                        <div class="row">
-                                            <!-- Kolom Kiri -->
-                                            <div class="col-md-6">
-                                                <div class="row mb-3 align-items-center">
-                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Nama ILAP</label>
-                                                    <div class="col-sm-8">
-                                                        <select id="filter-ilap" class="form-select form-select-sm border-gray-200 fs-12 text-muted">
-                                                            <option value="">Pilih ILAP</option>
-                                                            {% for ilap in filter_options.ilap %}
-                                                            <option value="{{ ilap.id }}">{{ ilap.deskripsi }}</option>
-                                                            {% endfor %}
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="row mb-3 align-items-center">
-                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Jenis Data</label>
-                                                    <div class="col-sm-8">
-                                                        <select id="filter-jenis-data" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
-                                                            <option value="">Semua Jenis Data</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="row mb-3 align-items-center">
-                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Subjenis Data</label>
-                                                    <div class="col-sm-8">
-                                                        <select id="filter-subjenis-data" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
-                                                            <option value="">Semua Subjenis Data</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="row mb-3 align-items-center">
-                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Kategori ILAP</label>
-                                                    <div class="col-sm-8">
-                                                        <select id="filter-kategori-ilap" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
-                                                            <option value="">Semua Kategori ILAP</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Kolom Kanan -->
-                                            <div class="col-md-6">
-                                                <div class="row mb-3 align-items-center">
-                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Periode Data</label>
-                                                    <div class="col-sm-8">
-                                                        <select id="filter-periode-data" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
-                                                            <option value="">Semua Periode Data</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="row mb-3 align-items-center">
-                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Periode Pengiriman</label>
-                                                    <div class="col-sm-8">
-                                                        <select id="filter-periode-pengiriman" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
-                                                            <option value="">Semua Periode Pengiriman</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="row mb-3 align-items-center">
-                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">Media Backup</label>
-                                                    <div class="col-sm-8">
-                                                        <select id="filter-media-backup" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
-                                                            <option value="">Semua Media Backup</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="row mb-3 align-items-center">
-                                                    <label class="col-sm-4 col-form-label fs-12 text-muted">PIC P3DE</label>
-                                                    <div class="col-sm-8">
-                                                        <select id="filter-pic-p3de" class="form-select form-select-sm border-gray-200 fs-12 text-muted" disabled>
-                                                            <option value="">Semua PIC P3DE</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Bagian Tombol Aksi -->
-                                        <div class="d-flex flex-wrap align-items-center justify-content-between mt-4 pt-3 border-top border-gray-100">
-                                            <!-- Tombol Ekspor -->
-                                            <div class="d-flex gap-2">
-                                                <button type="button" id="btn-export-excel" class="btn btn-sm btn-outline-success d-flex align-items-center gap-2 fs-11 fw-bold">
-                                                    <i class="feather-file-text"></i> EKSPOR KE EXCEL
-                                                </button>
-                                                <button type="button" id="btn-export-pdf" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-2 fs-11 fw-bold">
-                                                    <i class="feather-file-text"></i> EKSPOR KE PDF
-                                                </button>
-                                            </div>
-
-                                            <!-- Tombol Filter & Cari -->
-                                            <div class="d-flex align-items-center gap-3">
-                                                <a href="#" id="btn-clear-filter" class="btn border-0 text-primary text-decoration-none p-0 fw-bold">
-                                                    <i class="feather-x me-2"></i> Hapus Filter
-                                                </a>
-                                                
-                                                <button type="button" id="btn-search" class="btn btn-primary"><i class="feather-search me-1"></i>Cari</button>
-                                            </div>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-    <div class="card-body custom-card-action p-0">
-    <!-- Menambahkan class text-nowrap agar teks kolom tidak turun ke bawah dan merusak layout -->
-    <div class="table-responsive text-nowrap">
-        <!-- Mengubah inline style width:100% menjadi min-width: 1200px (sesuaikan dengan jumlah kolommu) -->
-        <table id="backup-data-table" class="table table-hover mb-0" style="min-width: 1400px;">
-            <thead>
-                <tr>
-                    <th>Kategori ILAP</th>
-                    <th>Nama ILAP</th>
-                    <th>Jenis Data</th>
-                    <th>Subjenis Data</th>
-                    <th>Periode Data</th>
-                    <th>Nomor Tiket</th>
-                    <th>Media Backup</th>
-                    <th>Lokasi Penyimpanan</th>
-                    <th>PIC P3DE</th>
-                    <th>Jumlah Data</th>
-                </tr>
-                <tr id="column-search-row">
-                    <!-- Menyelaraskan jumlah kolom input search dengan kolom header di atas (total 10 kolom) -->
-                    <th><input type="text" class="form-control form-control-sm" placeholder="Cari Kategori ILAP" data-column="0" /></th>
-                    <th><input type="text" class="form-control form-control-sm" placeholder="Cari Nama ILAP" data-column="1" /></th>
-                    <th><input type="text" class="form-control form-control-sm" placeholder="Cari Jenis Data" data-column="2" /></th>
-                    <th><input type="text" class="form-control form-control-sm" placeholder="Cari Subjenis Data" data-column="3" /></th>
-                    <th><input type="text" class="form-control form-control-sm" placeholder="Cari Periode Data" data-column="4" /></th>
-                    <th><input type="text" class="form-control form-control-sm" placeholder="Cari Nomor Tiket" data-column="5" /></th>
-                    <th><input type="text" class="form-control form-control-sm" placeholder="Cari Media Backup" data-column="6" /></th>
-                    <th><input type="text" class="form-control form-control-sm" placeholder="Cari Lokasi Penyimpanan" data-column="7" /></th>
-                    <th><input type="text" class="form-control form-control-sm" placeholder="Cari PIC P3DE" data-column="8" /></th>
-                    <th><input type="text" class="form-control form-control-sm" placeholder="Cari Jumlah Data" data-column="9" /></th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
     </div>
 </div>
-    </div>
 
-    <!-- Modal for Create/Edit/Delete -->
-    <div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="crudModalLabel">Form</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<div class="main-content">
+    <div class="card stretch stretch-full">    
+        <!-- Top Info Header & Stats Widgets -->
+        <div class="px-4 pt-4 pb-3 border-bottom border-gray-100">
+            <!-- Header: Judul, Deskripsi & Tombol Tambah -->
+            <div class="d-flex align-items-start justify-content-between mb-4">
+                <div class="me-3">
+                    <h5 class="fw-bold text-dark mb-2">Perekaman Hasil Backup Data</h5>
+                    <p class="fs-12 text-muted mb-0">
+                        Rekapitulasi penyimpanan data mentah atas data ILAP yang diterima pada media backup fisik maupun cloud di Subdirektorat Pengelolaan Data Eksternal.
+                    </p>
                 </div>
-                <div class="modal-body" id="modalBody">
-                    <!-- Content will be loaded here -->
+                <div class="d-flex align-items-center gap-3">
+                    <!-- Reset Pencarian Button next to Tambah -->
+                    <a href="javascript:void(0);" id="btn-reset-pencarian-table" class="btn border-0 text-primary text-decoration-none p-0 fw-bold align-items-center gap-1" style="display: none; font-size: 13px;">
+                        <i class="feather-x" style="width: 16px; height: 16px;"></i> Reset Pencarian
+                    </a>
+                    <button type="button" class="btn btn-success px-4 text-nowrap" data-action="create" style="background: #00BDFB; border-color: #00BDFB; height: 40px; display: flex; align-items: center; justify-content: center; font-weight: 600;">
+                        <i class="feather-plus me-1"></i>Tambah
+                    </button>
+                </div>
+            </div>
+
+            <!-- Section: Filter, Mini Cards & Export Buttons -->
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <!-- Left side: Filter & Mini Cards -->
+                <div class="d-flex flex-wrap align-items-center gap-3">
+                    <!-- Filter Pilih Tahun -->
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="fs-12 text-muted text-nowrap mb-0 fw-semibold">Pilih Tahun</label>
+                        <select id="filter-tahun" class="form-select form-select-sm border-gray-300" style="width: 130px; height: 36px !important; font-size: 12.5px; border-radius: 6px !important; padding-top: 0 !important; padding-bottom: 0 !important;">
+                            <option value="">Semua Tahun</option>
+                            {% for tahun in tahun_list %}
+                            <option value="{{ tahun }}" {% if tahun == default_tahun %}selected{% endif %}>{{ tahun }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="vr text-gray-300 mx-1" style="height: 35px; opacity: 1;"></div>
+
+                    <!-- List Mini Cards -->
+                    <div class="d-flex flex-wrap gap-2" id="media-backup-cards">
+                        {% for mb in media_backup_list %}
+                        <div class="d-flex align-items-center media-card-widget" data-media-id="{{ mb.id }}">
+                            <div class="me-2 text-primary">
+                                <i class="feather-database"></i> 
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fw-bold text-dark fs-12">{{ mb.deskripsi }}</span>
+                                <span class="badge rounded-pill bg-light border border-gray-300 text-dark fw-semibold px-2 media-count" style="font-size: 10px;">{{ mb.count }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Right side: Export buttons -->
+                <div class="d-flex gap-2 ms-auto">
+                    <button type="button" id="btn-export-excel" class="btn btn-sm btn-outline-success d-flex align-items-center gap-2 px-3 fw-bold" style="height: 36px !important; border-radius: 6px !important;">
+                        <i class="feather-file-text"></i> EKSPOR EXCEL
+                    </button>
+                    <button type="button" id="btn-export-pdf" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-2 px-3 fw-bold" style="height: 36px !important; border-radius: 6px !important;">
+                        <i class="feather-file-text"></i> EKSPOR PDF
+                    </button>
                 </div>
             </div>
         </div>
-    </div>
+        
+        <!-- Accordion for Advanced Search / Filter -->
+        <div class="accordion" id="filterAccordion">
+            <div class="accordion-item border-0 rounded-0">
+                <h2 class="accordion-header" id="headingFilters">
+                    <button class="accordion-button accordion-button-premium collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFilters" aria-expanded="false" aria-controls="collapseFilters">
+                        <i class="feather-filter me-2 text-primary"></i>Panel Pencarian / Filter Lanjutan
+                    </button>
+                </h2>
+                <div id="collapseFilters" class="accordion-collapse collapse" aria-labelledby="headingFilters" data-bs-parent="#filterAccordion">
+                    <div class="accordion-body filter-section-premium">
+                        <form action="#" method="GET">
+                            <!-- Row Filter Utama -->
+                            <div class="row">
+                                <!-- Kolom Kiri -->
+                                <div class="col-md-6">
+                                    <div class="row mb-3 align-items-center">
+                                        <label class="col-sm-4 col-form-label">Nama ILAP</label>
+                                        <div class="col-sm-8">
+                                            <select id="filter-ilap" class="form-select">
+                                                <option value="">Pilih ILAP</option>
+                                                {% for ilap in filter_options.ilap %}
+                                                <option value="{{ ilap.id }}">{{ ilap.deskripsi }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3 align-items-center">
+                                        <label class="col-sm-4 col-form-label">Jenis Data</label>
+                                        <div class="col-sm-8">
+                                            <select id="filter-jenis-data" class="form-select" disabled>
+                                                <option value="">Semua Jenis Data</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3 align-items-center">
+                                        <label class="col-sm-4 col-form-label">Subjenis Data</label>
+                                        <div class="col-sm-8">
+                                            <select id="filter-subjenis-data" class="form-select" disabled>
+                                                <option value="">Semua Subjenis Data</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3 align-items-center">
+                                        <label class="col-sm-4 col-form-label">Kategori ILAP</label>
+                                        <div class="col-sm-8">
+                                            <select id="filter-kategori-ilap" class="form-select" disabled>
+                                                <option value="">Semua Kategori ILAP</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
 
+                                <!-- Kolom Kanan -->
+                                <div class="col-md-6">
+                                    <div class="row mb-3 align-items-center">
+                                        <label class="col-sm-4 col-form-label">Periode Data</label>
+                                        <div class="col-sm-8">
+                                            <select id="filter-periode-data" class="form-select" disabled>
+                                                <option value="">Semua Periode Data</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3 align-items-center">
+                                        <label class="col-sm-4 col-form-label">Periode Pengiriman</label>
+                                        <div class="col-sm-8">
+                                            <select id="filter-periode-pengiriman" class="form-select" disabled>
+                                                <option value="">Semua Periode Pengiriman</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3 align-items-center">
+                                        <label class="col-sm-4 col-form-label">Media Backup</label>
+                                        <div class="col-sm-8">
+                                            <select id="filter-media-backup" class="form-select" disabled>
+                                                <option value="">Semua Media Backup</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3 align-items-center">
+                                        <label class="col-sm-4 col-form-label">PIC P3DE</label>
+                                        <div class="col-sm-8">
+                                            <select id="filter-pic-p3de" class="form-select" disabled>
+                                                <option value="">Semua PIC P3DE</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bagian Tombol Aksi -->
+                            <div class="d-flex flex-wrap align-items-center justify-content-end mt-4 pt-3 border-top border-gray-200">
+                                <!-- Tombol Filter -->
+                                <div class="d-flex align-items-center gap-3">
+                                    <a href="#" id="btn-clear-filter" class="btn border-0 text-primary text-decoration-none p-0 fw-bold" style="display: none;">
+                                        <i class="feather-x me-1"></i> Hapus Filter
+                                    </a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+        <div class="card-body custom-card-action">
+            <div class="table-frame">
+                <table id="backup-data-table" class="table table-hover mb-0 table-compact" style="min-width: 1450px;">
+                    <thead>
+                        <tr>
+                            <th>Kategori ILAP</th>
+                            <th>Nama ILAP</th>
+                            <th>Jenis Data</th>
+                            <th>Subjenis Data</th>
+                            <th>Periode Data</th>
+                            <th>Nomor Tiket</th>
+                            <th>Media Backup</th>
+                            <th>Lokasi Penyimpanan</th>
+                            <th>PIC P3DE</th>
+                            <th>Jumlah Data</th>
+                            <th class="col-actions">Aksi</th>
+                        </tr>
+                        <tr id="column-search-row">
+                            <th><input type="text" class="form-control form-control-sm" placeholder="Kategori ILAP" data-column="0" /></th>
+                            <th><input type="text" class="form-control form-control-sm" placeholder="Nama ILAP" data-column="1" /></th>
+                            <th><input type="text" class="form-control form-control-sm" placeholder="Jenis Data" data-column="2" /></th>
+                            <th><input type="text" class="form-control form-control-sm" placeholder="Subjenis Data" data-column="3" /></th>
+                            <th><input type="text" class="form-control form-control-sm" placeholder="Periode Data" data-column="4" /></th>
+                            <th><input type="text" class="form-control form-control-sm" placeholder="Nomor Tiket" data-column="5" /></th>
+                            <th><input type="text" class="form-control form-control-sm" placeholder="Media Backup" data-column="6" /></th>
+                            <th><input type="text" class="form-control form-control-sm" placeholder="Lokasi Penyimpanan" data-column="7" /></th>
+                            <th><input type="text" class="form-control form-control-sm" placeholder="PIC P3DE" data-column="8" /></th>
+                            <th><input type="text" class="form-control form-control-sm" placeholder="Jumlah Data" data-column="9" /></th>
+                            <th class="col-actions"></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Create/Edit/Delete -->
+<div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="crudModalLabel">Form</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Content will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
+
 {% block scripts %}
 <script>
     (function () {
@@ -253,7 +516,7 @@
         const exportPdfUrl = "{% url 'backup_data_export_pdf' %}";
         const defaultYear = "{{ default_tahun }}";
         let table = null;
-        let isInitialized = false;
+        let selectedMediaId = null;
 
         $(document).ready(function () {
             if (!$('#filter-tahun').val()) {
@@ -299,7 +562,7 @@
                     id_kategori_ilap: $('#filter-kategori-ilap').val() || '',
                     id_periode_data: $('#filter-periode-data').val() || '',
                     id_periode_pengiriman: $('#filter-periode-pengiriman').val() || '',
-                    id_media_backup: $('#filter-media-backup').val() || '',
+                    id_media_backup: selectedMediaId || $('#filter-media-backup').val() || '',
                     id_pic_p3de: $('#filter-pic-p3de').val() || ''
                 };
             }
@@ -367,8 +630,8 @@
                 });
             }
 
-            const initializeTable = function() {
-                if (isInitialized) return;
+            function initializeTable() {
+                if (table) return;
                 
                 table = $('#backup-data-table').DataTable({
                     serverSide: true,
@@ -401,19 +664,24 @@
                         { data: 'media_backup' },
                         { data: 'lokasi_penyimpanan' },
                         { data: 'pic_p3de' },
-                        { data: 'jumlah_data' }
+                        { data: 'jumlah_data', className: 'text-end' },
+                        { 
+                            data: 'actions', 
+                            orderable: false, 
+                            searchable: false, 
+                            className: 'text-center col-actions',
+                            width: '90px',
+                            render: function(data, type, row, meta) {
+                                return '<div class="d-flex justify-content-center gap-1">' + data + '</div>';
+                            }
+                        }
                     ],
                     order: [[5, 'desc']]
                 });
-                isInitialized = true;
-            };
+            }
 
-            $('#btn-search').on('click', function () {
-                initializeTable();
-                if (table) {
-                    table.ajax.reload();
-                }
-            });
+            // Instantly load data on load
+            initializeTable();
 
             function buildExportUrl(baseUrl) {
                 const params = new URLSearchParams(getFilterParams());
@@ -421,11 +689,64 @@
             }
 
             $('#btn-export-excel').on('click', function () {
+                showDownloadToast();
                 window.location.href = buildExportUrl(exportExcelUrl);
             });
 
             $('#btn-export-pdf').on('click', function () {
+                showDownloadToast();
                 window.location.href = buildExportUrl(exportPdfUrl);
+            });
+
+            function toggleClearFilterButton() {
+                let hasActiveFilter = false;
+                
+                if ($('#filter-tahun').val() !== defaultYear) {
+                    hasActiveFilter = true;
+                }
+                if ($('#filter-ilap').val()) {
+                    hasActiveFilter = true;
+                }
+                dependentSelects.forEach(selector => {
+                    if ($(selector).val()) {
+                        hasActiveFilter = true;
+                    }
+                });
+                $('#column-search-row input').each(function() {
+                    if ($(this).val().trim() !== '') {
+                        hasActiveFilter = true;
+                    }
+                });
+                if (selectedMediaId !== null) {
+                    hasActiveFilter = true;
+                }
+                
+                if (hasActiveFilter) {
+                    $('#btn-clear-filter').show();
+                } else {
+                    $('#btn-clear-filter').hide();
+                }
+                toggleResetTableSearchButton();
+            }
+
+            function toggleResetTableSearchButton() {
+                let hasValue = false;
+                $('#column-search-row input').each(function () {
+                    if ($(this).val().trim() !== '') {
+                        hasValue = true;
+                    }
+                });
+                if (hasValue) {
+                    $('#btn-reset-pencarian-table').css('display', 'inline-flex').hide().fadeIn(200);
+                } else {
+                    $('#btn-reset-pencarian-table').fadeOut(200);
+                }
+            }
+
+            $('#btn-reset-pencarian-table').on('click', function () {
+                $('#column-search-row input').val('');
+                toggleClearFilterButton();
+                if (table) table.ajax.reload();
             });
 
             $('#btn-clear-filter').on('click', function (e) {
@@ -433,12 +754,21 @@
                 $('#filter-tahun').val(defaultYear);
                 $('#filter-ilap').val('');
                 $('#column-search-row input').val('');
+                selectedMediaId = null;
+                $('#media-backup-cards [data-media-id]').removeClass('active-media-filter').css({
+                    'border-color': '#e2e8f0',
+                    'background-color': '#ffffff'
+                });
                 resetDependentSelects(true);
                 loadDependentOptions();
+                toggleClearFilterButton();
+                if (table) table.ajax.reload();
             });
 
             $('#filter-tahun').on('change', function () {
                 loadDependentOptions();
+                toggleClearFilterButton();
+                if (table) table.ajax.reload();
             });
 
             $('#filter-ilap').on('change', function () {
@@ -446,6 +776,8 @@
                     resetDependentSelects(true);
                 }
                 loadDependentOptions();
+                toggleClearFilterButton();
+                if (table) table.ajax.reload();
             });
 
             dependentSelects.forEach(selector => {
@@ -453,11 +785,51 @@
                     if ($('#filter-ilap').val()) {
                         loadDependentOptions();
                     }
+                    toggleClearFilterButton();
+                    if (table) table.ajax.reload();
                 });
+            });
+
+            // Interactive Click Filtering for Media Cards
+            $(document).on('click', '#media-backup-cards [data-media-id]', function() {
+                const card = $(this);
+                const mediaId = card.data('media-id');
+                
+                if (card.hasClass('active-media-filter')) {
+                    card.removeClass('active-media-filter').css({
+                        'border-color': '#e2e8f0',
+                        'background-color': '#ffffff'
+                    });
+                    selectedMediaId = null;
+                } else {
+                    $('#media-backup-cards [data-media-id]').removeClass('active-media-filter').css({
+                        'border-color': '#e2e8f0',
+                        'background-color': '#ffffff'
+                    });
+                    card.addClass('active-media-filter').css({
+                        'border-color': '#00BDFB',
+                        'background-color': 'rgba(0, 189, 251, 0.04)'
+                    });
+                    selectedMediaId = mediaId;
+                }
+                
+                toggleClearFilterButton();
+                if (table) {
+                    table.ajax.reload();
+                }
+            });
+
+            // Add auto trigger column search on keyup
+            $('#column-search-row input').on('keyup change', function () {
+                toggleClearFilterButton();
+                if (table) {
+                    table.ajax.reload();
+                }
             });
 
             resetDependentSelects(true);
             loadDependentOptions();
+            toggleClearFilterButton();
 
             // Handle modal hide to prevent aria-hidden conflicts
             const modalElement = document.getElementById('crudModal');
@@ -531,6 +903,49 @@
                     }
                 });
             });
+            // Delegated Change handler for dynamic Ticket details in modal forms
+            $(document).on('change select2:select', '#id_id_tiket', function() {
+                const tiketId = $(this).val();
+                const infoDiv = $('#div_id_tiket_info');
+                if (!tiketId) {
+                    infoDiv.hide();
+                    return;
+                }
+                
+                $.ajax({
+                    url: `/backup-data/tiket-info/${tiketId}/`,
+                    type: 'GET',
+                    success: function(res) {
+                        if (res.success) {
+                            $('#lbl-tiket-ilap').text(res.ilap);
+                            $('#lbl-tiket-jenis').text(res.jenis_data);
+                            $('#lbl-tiket-periode').text(res.periode);
+                            $('#lbl-tiket-jumlah').text(res.jumlah_data);
+                            infoDiv.show(); // Use show() to ensure visibility regardless of flex layouts
+                        } else {
+                            infoDiv.hide();
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error("Failed to load ticket info:", xhr.responseText);
+                        infoDiv.hide();
+                    }
+                });
+            });
+
+            // Helper function to color select placeholders gray when empty value is selected
+            function updateSelectPlaceholderColor(el) {
+                if ($(el).val() === "") {
+                    $(el).css('color', '#94a3b8');
+                } else {
+                    $(el).css('color', '#334155');
+                }
+            }
+
+            // Listen to select color changes
+            $(document).on('change', '#modalBody select.form-select', function() {
+                updateSelectPlaceholderColor(this);
+            });
         });
 
         function loadModal(url, title) {
@@ -544,6 +959,31 @@
                 data: { ajax: '1' },
                 success: function (response) {
                     $('#modalBody').html(response.html || response);
+                    
+                    // Replace empty option dashes '-------' with clean placeholder
+                    const $mediaSelect = $('#id_id_media_backup');
+                    if ($mediaSelect.length) {
+                        $mediaSelect.find('option[value=""]').text('-- Pilih Media Backup --');
+                    }
+                    
+                    const $tiketSelect = $('#id_id_tiket');
+                    if ($tiketSelect.length) {
+                        $tiketSelect.find('option[value=""]').text('-- Pilih Tiket --');
+                    }
+
+                    // Update initial placeholder colors
+                    $('#modalBody select.form-select').each(function() {
+                        if ($(this).val() === "") {
+                            $(this).css('color', '#94a3b8');
+                        } else {
+                            $(this).css('color', '#334155');
+                        }
+                    });
+                    
+                    // Automatically display info if a ticket is pre-selected (on edit forms)
+                    if ($tiketSelect.length && $tiketSelect.val()) {
+                        $tiketSelect.trigger('change');
+                    }
                 },
                 error: function () {
                     $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');

@@ -676,6 +676,13 @@ def sync_tiket_truncate(request):
         TiketPIC, and Tiket tables. Resets the primary key sequence.
     """
     try:
+        from django.conf import settings
+        if settings.ENVIRONMENT == 'production':
+            return JsonResponse({
+                'success': False,
+                'message': 'Truncate tidak diizinkan di lingkungan production.'
+            }, status=403)
+
         from django.db import connection
         
         # Delete all dependent records in correct order before Tiket (all have PROTECT FK)

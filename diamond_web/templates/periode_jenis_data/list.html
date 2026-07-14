@@ -37,11 +37,11 @@
     <div class="card stretch stretch-full h-100">
         <div class="card-header">
             <h5 class="card-title mb-0"><i class="feather-calendar me-2"></i>Daftar Periode Jenis Data</h5>
-            <button type="button" class="btn btn-outline-primary" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>
+            <button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>
         </div>
         <div class="card-body custom-card-action p-0">
             <div class="table-responsive">
-            <table id="periode-jenis-data-table" class="table table-hover mb-0" style="width:100%">
+            <table id="periode-jenis-data-table" class="table table-hover mb-0 table-compact" style="width:100%">
                 <thead>
                     <tr>
                         <th>ID Sub Jenis Data</th>
@@ -50,7 +50,7 @@
                         <th>Akhir Penyampaian</th>
                         <th>Start Date</th>
                         <th>End Date</th>
-                        <th>Aksi</th>
+                        <th class="col-actions text-center">Aksi</th>
                     </tr>
                     <tr id="column-search-row">
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari ID" data-column="0" /></th>
@@ -59,7 +59,7 @@
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari Akhir Penyampaian" data-column="3" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari Start Date" data-column="4" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari End Date" data-column="5" /></th>
-                        <th></th>
+                        <th class="col-actions"></th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -68,17 +68,11 @@
         </div>
     </div>
 
-    <!-- Modal for Create/Edit/Delete -->
+        <!-- Modal for Create/Edit/Delete -->
     <div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="crudModalLabel">Form</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body" id="modalBody">
-                    <!-- Content will be loaded here -->
-                </div>
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" id="modalContent">
+                <!-- Content will be loaded here dynamically via AJAX -->
             </div>
         </div>
     </div>
@@ -119,7 +113,7 @@
                         { data: 'actions', orderable: false, searchable: false }
                     ],
                     columnDefs: [
-                        { targets: 6, render: function (data, type, row, meta) { return data; } }
+                        { targets: 6, className: "col-actions text-center", width: "90px", render: function (data, type, row, meta) { return '<div class="d-flex justify-content-center gap-1">' + data + '</div>'; } }
                     ],
                     order: [[0, 'asc']],
                     searching: false,
@@ -158,7 +152,7 @@
                 });
 
                 // Handle form submission
-                $(document).on('submit', '#modalBody form', function (e) {
+                $(document).on('submit', '#crudModal form', function (e) {
                     e.preventDefault();
                     const form = $(this);
                     const url = form.attr('action');
@@ -176,7 +170,7 @@
                                 table.ajax.reload();
                                 showToast(response.message || 'Data berhasil disimpan.', 'success');
                             } else {
-                                $('#modalBody').html(response.html);
+                                $('#modalContent').html(response.html || response);
                             }
                         },
                         error: function (xhr) {
@@ -198,25 +192,59 @@
                 modalElement.addEventListener('hidden.bs.modal', function () {
                     document.getElementById('modalBody').innerHTML = '';
                 });
-            });
 
-            function loadModal(url, title) {
-                $('#crudModalLabel').text(title);
-                $('#modalBody').html('<div class="text-center"><div class="spinner-border" role="status"></div></div>');
-                $('#crudModal').modal('show');
+                    function loadModal(url, title) {
+            var dialog = $('#crudModal .modal-dialog');
+            dialog.removeClass('modal-sm modal-lg modal-xl modal-adjustable').addClass('modal-lg');
+            
+            $('#modalContent').html(`
+                <div class="modal-header">
+                    <h5 class="modal-title" id="crudModalLabel">${title}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+            `);
+            $('#crudModal').modal('show');
 
-                $.ajax({
-                    url: url,
-                    type: 'GET',
-                    data: { ajax: '1' },
-                    success: function (response) {
-                        $('#modalBody').html(response.html || response);
-                    },
-                    error: function () {
-                        $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');
+            $.ajax({
+                url: url,
+                type: 'GET',
+                data: { ajax: '1' },
+                success: function (response) {
+                    var htmlContent = response.html || response;
+                    
+                    // Gracefully redirect to login if session has expired
+                    if (typeof htmlContent === 'string' && htmlContent.indexOf('Login') !== -1 && htmlContent.indexOf('password') !== -1) {
+                        window.location.href = '/accounts/login/?next=' + window.location.pathname;
+                        return;
                     }
-                });
-            }
+                    
+                    $('#modalContent').html(htmlContent);
+                    $('#crudModalLabel').text(title);
+                    
+                    var modalSize = $('#modalContent form').data('modal-size') || 'lg';
+                    dialog.removeClass('modal-sm modal-lg modal-xl modal-adjustable');
+                    if (modalSize === 'sm') dialog.addClass('modal-sm');
+                    else if (modalSize === 'lg') dialog.addClass('modal-lg');
+                    else if (modalSize === 'xl') dialog.addClass('modal-xl');
+                    else if (modalSize === 'adjustable') dialog.addClass('modal-adjustable');
+                },
+                error: function () {
+                    $('#modalContent').html(`
+                        <div class="modal-header">
+                            <h5 class="modal-title">${title}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-danger mb-0">Gagal memuat form.</div>
+                        </div>
+                    `);
+                }
+            });
+        }
+            });
 
             function updatePagination(settings) {
                 const api = settings.oInstance.api();
@@ -252,32 +280,22 @@
                 });
             }
 
-            function showToast(message, type = 'info', title = null) {
-                const toastId = 'toast-' + Date.now();
-                const bgClass = type === 'success' ? 'bg-success' : type === 'danger' ? 'bg-danger' : type === 'warning' ? 'bg-warning' : 'bg-info';
-                const defaultTitles = {
-                    'success': 'Berhasil',
-                    'danger': 'Kesalahan',
-                    'warning': 'Peringatan',
-                    'info': 'Informasi'
-                };
-                const displayTitle = title || defaultTitles[type] || 'Pemberitahuan';
-                const toastHtml = `
-                    <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
-                        <div class="toast-header ${bgClass} text-white">
-                            <strong class="me-auto">${displayTitle}</strong>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
-                        </div>
-                        <div class="toast-body">
-                            ${message}
-                        </div>
-                    </div>
-                `;
-                $('body').append(toastHtml);
-                const toastElement = document.getElementById(toastId);
-                const toast = new bootstrap.Toast(toastElement);
-                toast.show();
-                toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
+            function loadModal(url, title) {
+                $('#crudModalLabel').text(title);
+                $('#modalBody').html('<div class="text-center"><div class="spinner-border" role="status"></div></div>');
+                $('#crudModal').modal('show');
+
+                $.ajax({
+                    url: url,
+                    type: 'GET',
+                    data: { ajax: '1' },
+                    success: function (response) {
+                        $('#modalBody').html(response.html || response);
+                    },
+                    error: function () {
+                        $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');
+                    }
+                });
             }
 
         })();

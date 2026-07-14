@@ -1,13 +1,48 @@
-<form method="post" action="{{ form_action }}" class="form-modal">
+<form method="post" action="{{ form_action }}" class="w-100 text-center" data-modal-size="adjustable">
     {% csrf_token %}
-    <div class="text-center py-3">
-        <i class="feather-alert-triangle text-warning" style="font-size: 48px;"></i>
-        <h5 class="mt-3">Konfirmasi Hapus</h5>
-        <p class="text-muted">Apakah Anda yakin ingin menghapus data sequence tahun <strong>{{ object.tahun }}</strong>?</p>
-        <p class="text-muted small">Nomor terakhir: <strong>{{ object.nomor_terakhir }}</strong></p>
+    <div class="modal-header border-bottom-0 pb-0" style="border-bottom: none !important; position: relative;">
+        <!-- Close button at the absolute top-right corner -->
+        <button type="button" class="btn-close position-absolute" style="top: 20px; right: 24px;" data-bs-dismiss="modal" aria-label="Close"></button>
     </div>
-    <div class="modal-footer border-top pt-3">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-        <button type="submit" class="btn btn-danger">Hapus</button>
+    <div class="modal-body pt-0 px-4">
+        <!-- Circular red background with trash icon -->
+        <div class="d-flex align-items-center justify-content-center mx-auto mb-3" 
+            style="width: 48px; height: 48px; border-radius: 50%; background-color: #fee2e2; color: #ef4444;">
+            <i class="feather-trash-2" style="font-size: 22px;"></i>
+        </div>
+        
+        <h5 class="fw-bold mb-1" style="font-size: 16px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Konfirmasi Hapus</h5>
+        <span class="text-muted text-uppercase fw-semibold d-block mb-3" style="font-size: 10px; letter-spacing: 0.5px;">Sequence Tanda Terima</span>
+        
+        <div class="py-2 text-start w-100">
+            <p class="mb-3 text-center text-secondary" style="font-size: 13.5px;">Apakah Anda yakin ingin menghapus data berikut?</p>
+            
+            <div class="table-responsive rounded border mb-3">
+                <table class="table table-sm table-striped mb-0 w-100" style="font-size: 12.5px; table-layout: auto;">
+                    <tbody>
+                        <tr>
+                            <td class="fw-bold text-muted ps-3 py-2" style="width: 30%; white-space: nowrap;">Detail Data</td>
+                            <td class="text-dark py-2 pe-3" style="width: 70%; white-space: normal !important; word-break: break-word;">{{ object }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+        </div>
+    </div>
+    <div class="modal-footer justify-content-between align-items-center border-top-0 pt-0 px-4 pb-4" style="border-top: none !important;">
+        <div class="d-flex align-items-center rounded px-3 py-2" style="background-color: #fffbeb; color: #b45309; text-align: left;">
+            <i class="feather-alert-triangle me-2" style="font-size: 16px;"></i>
+            <div>
+                <div class="fw-bold" style="font-size: 11px; letter-spacing: 0.2px;">Aksi ini tidak dapat dibatalkan.</div>
+                <div style="font-size: 10px; opacity: 0.9;">Data yang sudah dihapus tidak dapat dikembalikan.</div>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-figma-outline" data-bs-dismiss="modal">BATAL</button>
+            <button type="submit" class="btn btn-figma-danger">
+                <i class="feather-trash-2"></i> HAPUS
+            </button>
+        </div>
     </div>
 </form>

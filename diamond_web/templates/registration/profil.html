@@ -1,40 +1,382 @@
 {% extends "base.html" %}
-{% load crispy_forms_tags %}
+{% load static %}
 
-{% block title %}Profil - Diamond Web{% endblock %}
+{% block title %}Profil Saya - Diamond Web{% endblock %}
 
 {% block content %}
+<style>
+    /* Profile Card Header & Avatar */
+    .profile-avatar-circle {
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #00BDFB 0%, #0C92FF 100%);
+        color: white;
+        font-size: 32px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 20px rgba(12, 146, 255, 0.2);
+        margin: 0 auto 15px auto;
+        border: 4px solid #fff;
+    }
+
+    .profile-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #ffffff;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .profile-card:hover {
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+    }
+
+    .info-list-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 13px;
+    }
+
+    .info-list-item:last-child {
+        border-bottom: none;
+    }
+
+    .info-list-label {
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    .info-list-value {
+        color: #1e293b;
+        font-weight: 600;
+    }
+
+    /* Section Cards */
+    .section-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #ffffff;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .section-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid #f1f5f9;
+        padding-bottom: 10px;
+    }
+
+    .section-title i {
+        color: #0c92ff;
+    }
+
+    /* Premium Input Controls */
+    .input-group-premium {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .input-icon-left {
+        position: absolute;
+        left: 14px;
+        color: #94a3b8;
+        font-size: 16px;
+        pointer-events: none;
+        z-index: 5;
+    }
+
+    .input-premium {
+        height: 48px !important;
+        padding-left: 42px !important;
+        padding-right: 42px !important;
+        border-radius: 8px !important;
+        border: 1px solid #cbd5e1 !important;
+        font-size: 14px !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .input-premium:focus {
+        border-color: #00BDFB !important;
+        box-shadow: 0 0 0 3px rgba(0, 189, 251, 0.15) !important;
+    }
+
+    /* Password Toggle Button */
+    .password-toggle-btn {
+        position: absolute;
+        right: 14px;
+        background: none;
+        border: none;
+        color: #94a3b8;
+        cursor: pointer;
+        padding: 0;
+        z-index: 5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: color 0.2s;
+    }
+
+    .password-toggle-btn:hover {
+        color: #475569;
+    }
+
+    /* Error States */
+    .is-invalid-premium {
+        border-color: #ef4444 !important;
+    }
+
+    .is-invalid-premium:focus {
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+    }
+
+    /* Custom Badges */
+    .badge-role {
+        padding: 6px 12px;
+        border-radius: 9999px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .badge-role-admin {
+        background-color: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    .badge-role-seksi {
+        background-color: rgba(12, 146, 255, 0.1);
+        color: #0c92ff;
+    }
+</style>
+
 <div class="page-header">
     <div class="page-header-left d-flex align-items-center">
         <div class="page-header-title">
-            <h5 class="m-b-10"><i class="feather-user me-2"></i>Profil</h5>
+            <h5 class="m-b-10"><i class="feather-user me-2"></i>Profil Saya</h5>
         </div>
         <ul class="breadcrumb">
             <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-            <li class="breadcrumb-item active">Profil</li>
+            <li class="breadcrumb-item active">Profil Saya</li>
         </ul>
-    </div>
-    <div class="page-header-right ms-auto d-flex d-lg-none">
-        <a href="javascript:void(0)" class="text-dark">
-            <i class="feather-menu"></i>
-        </a>
     </div>
 </div>
 
 <div class="main-content">
-    <div class="card stretch stretch-full h-100">
-        <div class="card-header">
-            <h5 class="card-title mb-0"><i class="feather-edit me-2"></i>Update Profil & Password</h5>
+    <div class="row g-4">
+        <!-- LEFT COLUMN: Profile Card -->
+        <div class="col-lg-4">
+            <div class="profile-card p-4 text-center">
+                <img src="{% static 'assets/images/avatar/13.jpg' %}" alt="user-image" class="profile-avatar-circle" style="object-fit: cover; border: 4px solid #fff; padding: 0; box-shadow: 0 8px 20px rgba(12, 146, 255, 0.2);" />
+                <h5 class="fw-bold text-dark mb-1">{{ request.user.first_name }} {{ request.user.last_name }}</h5>
+                <p class="text-muted fs-12 mb-3">@{{ request.user.username }}</p>
+                
+                <div class="mb-4">
+                    {% if request.user.is_superuser %}
+                        <span class="badge badge-role badge-role-admin"><i class="feather-shield me-1"></i>Administrator</span>
+                    {% else %}
+                        <span class="badge badge-role badge-role-seksi"><i class="feather-user me-1"></i>Staff Pelaksana</span>
+                    {% endif %}
+                </div>
+
+                <div class="text-start border-top pt-3">
+                    <h6 class="fs-12 text-muted fw-bold text-uppercase mb-3">Informasi Akun</h6>
+                    <div class="info-list-item">
+                        <span class="info-list-label">Surel (Email)</span>
+                        <span class="info-list-value text-end">{{ request.user.email|default:"-" }}</span>
+                    </div>
+                    <div class="info-list-item">
+                        <span class="info-list-label">Unit / Seksi</span>
+                        <span class="info-list-value">
+                            {% for group in request.user.groups.all %}
+                                <span class="badge bg-soft-primary text-primary fs-10">{{ group.name }}</span>
+                            {% empty %}
+                                <span class="text-muted fs-11">-</span>
+                            {% endfor %}
+                        </span>
+                    </div>
+                    <div class="info-list-item">
+                        <span class="info-list-label">Bergabung Sejak</span>
+                        <span class="info-list-value">{{ request.user.date_joined|date:"d F Y" }}</span>
+                    </div>
+                    <div class="info-list-item">
+                        <span class="info-list-label">Login Terakhir</span>
+                        <span class="info-list-value">{{ request.user.last_login|date:"d F Y H:i"|default:"Baru saja" }}</span>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-            <form method="post">
+
+        <!-- RIGHT COLUMN: Forms -->
+        <div class="col-lg-8">
+            <form method="post" id="profile-form" novalidate>
                 {% csrf_token %}
-                {{ form|crispy }}
-                <div class="d-grid gap-2 mt-3">
-                    <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger border-0 shadow-sm d-flex align-items-center mb-4" role="alert">
+                        <i class="feather-alert-triangle fs-18 me-2"></i>
+                        <div>
+                            {% for error in form.non_field_errors %}
+                                <p class="mb-0 fs-12">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- SECTION 1: Informasi Personal -->
+                <div class="section-card">
+                    <div class="section-title">
+                        <i class="feather-user"></i>Informasi Personal
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="id_first_name" class="form-label fw-semibold fs-12 text-muted">Nama Depan</label>
+                            <div class="input-group-premium">
+                                <i class="feather-user input-icon-left"></i>
+                                <input type="text" 
+                                       name="first_name" 
+                                       id="id_first_name" 
+                                       value="{{ form.first_name.value|default:'' }}"
+                                       class="form-control input-premium {% if form.first_name.errors %}is-invalid-premium{% endif %}" 
+                                       placeholder="Nama Depan" 
+                                       required>
+                            </div>
+                            {% if form.first_name.errors %}
+                                <div class="text-danger fs-11 mt-1">
+                                    {{ form.first_name.errors.as_text }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="id_last_name" class="form-label fw-semibold fs-12 text-muted">Nama Belakang</label>
+                            <div class="input-group-premium">
+                                <i class="feather-user input-icon-left"></i>
+                                <input type="text" 
+                                       name="last_name" 
+                                       id="id_last_name" 
+                                       value="{{ form.last_name.value|default:'' }}"
+                                       class="form-control input-premium {% if form.last_name.errors %}is-invalid-premium{% endif %}" 
+                                       placeholder="Nama Belakang" 
+                                       required>
+                            </div>
+                            {% if form.last_name.errors %}
+                                <div class="text-danger fs-11 mt-1">
+                                    {{ form.last_name.errors.as_text }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 2: Ganti Password -->
+                <div class="section-card">
+                    <div class="section-title mb-1">
+                        <i class="feather-lock"></i>Keamanan Akun
+                    </div>
+                    <p class="fs-12 text-muted mb-4">Kosongkan kolom sandi (password) jika Anda tidak berniat menggantinya.</p>
+                    
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="id_old_password" class="form-label fw-semibold fs-12 text-muted">Kata Sandi Saat Ini</label>
+                            <div class="input-group-premium">
+                                <i class="feather-key input-icon-left"></i>
+                                <input type="password" 
+                                       name="old_password" 
+                                       id="id_old_password" 
+                                       class="form-control input-premium {% if form.old_password.errors %}is-invalid-premium{% endif %}" 
+                                       placeholder="Masukkan kata sandi lama untuk konfirmasi perubahan">
+                                <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('id_old_password', this)">
+                                    <i class="feather-eye"></i>
+                                </button>
+                            </div>
+                            {% if form.old_password.errors %}
+                                <div class="text-danger fs-11 mt-1">
+                                    {{ form.old_password.errors.as_text }}
+                                </div>
+                            {% else %}
+                                <div class="form-text fs-11 text-muted">Diperlukan hanya jika Anda ingin mengganti kata sandi.</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="id_new_password1" class="form-label fw-semibold fs-12 text-muted">Kata Sandi Baru</label>
+                            <div class="input-group-premium">
+                                <i class="feather-lock input-icon-left"></i>
+                                <input type="password" 
+                                       name="new_password1" 
+                                       id="id_new_password1" 
+                                       class="form-control input-premium {% if form.new_password1.errors %}is-invalid-premium{% endif %}" 
+                                       placeholder="Kata sandi baru minimal 8 karakter">
+                                <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('id_new_password1', this)">
+                                    <i class="feather-eye"></i>
+                                </button>
+                            </div>
+                            {% if form.new_password1.errors %}
+                                <div class="text-danger fs-11 mt-1">
+                                    {{ form.new_password1.errors.as_text }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="id_new_password2" class="form-label fw-semibold fs-12 text-muted">Konfirmasi Kata Sandi Baru</label>
+                            <div class="input-group-premium">
+                                <i class="feather-lock input-icon-left"></i>
+                                <input type="password" 
+                                       name="new_password2" 
+                                       id="id_new_password2" 
+                                       class="form-control input-premium {% if form.new_password2.errors %}is-invalid-premium{% endif %}" 
+                                       placeholder="Ketik ulang kata sandi baru">
+                                <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('id_new_password2', this)">
+                                    <i class="feather-eye"></i>
+                                </button>
+                            </div>
+                            {% if form.new_password2.errors %}
+                                <div class="text-danger fs-11 mt-1">
+                                    {{ form.new_password2.errors.as_text }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="d-flex align-items-center justify-content-end gap-3 mt-4">
+                    <button type="submit" class="btn btn-primary px-5 py-2 fw-semibold" style="height: 48px; border-radius: 8px;">
+                        <i class="feather-save me-2"></i>Simpan Seluruh Perubahan
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<script>
+    function togglePasswordVisibility(inputId, btnEl) {
+        const inputField = document.getElementById(inputId);
+        const icon = btnEl.querySelector('i');
+        if (inputField.type === "password") {
+            inputField.type = "text";
+            icon.classList.remove('feather-eye');
+            icon.classList.add('feather-eye-off');
+        } else {
+            inputField.type = "password";
+            icon.classList.remove('feather-eye-off');
+            icon.classList.add('feather-eye');
+        }
+    }
+</script>
 {% endblock %}

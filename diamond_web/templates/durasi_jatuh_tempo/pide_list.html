@@ -41,7 +41,7 @@
         </div>
         <div class="card-body custom-card-action p-0">
             <div class="table-responsive">
-            <table id="durasi-jatuh-tempo-pide-table" class="table table-hover mb-0" style="width:100%">
+            <table id="durasi-jatuh-tempo-pide-table" class="table table-hover mb-0 table-compact" style="width:100%">
                 <thead>
                     <tr>
                         <th>ID Sub Jenis Data</th>
@@ -49,7 +49,7 @@
                         <th>Durasi</th>
                         <th>Start Date</th>
                         <th>End Date</th>
-                        <th>Aksi</th>
+                        <th class="col-actions text-center">Aksi</th>
                     </tr>
                     <tr id="column-search-row">
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari ID" data-column="0" /></th>
@@ -57,7 +57,7 @@
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari Durasi" data-column="2" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari Start Date" data-column="3" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari End Date" data-column="4" /></th>
-                        <th></th>
+                        <th class="col-actions"></th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -66,17 +66,11 @@
         </div>
     </div>
 
-    <!-- Modal for Create/Edit/Delete -->
+        <!-- Modal for Create/Edit/Delete -->
     <div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="crudModalLabel">Form</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body" id="modalBody">
-                    <!-- Content will be loaded here -->
-                </div>
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" id="modalContent">
+                <!-- Content will be loaded here dynamically via AJAX -->
             </div>
         </div>
     </div>
@@ -120,7 +114,7 @@
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [
-                    { targets: 5, render: function (data, type, row, meta) { return data; } }
+                    { targets: 5, className: "col-actions text-center", width: "90px", render: function (data, type, row, meta) { return '<div class="d-flex justify-content-center gap-1">' + data + '</div>'; } }
                 ],
                 order: [[0, 'asc']]
             });
@@ -164,7 +158,7 @@
             });
 
             // Handle form submission
-            $(document).on('submit', '#modalBody form', function (e) {
+            $(document).on('submit', '#crudModal form', function (e) {
                 e.preventDefault();
                 const form = $(this);
                 const url = form.attr('action');
@@ -187,7 +181,7 @@
                             }
                             table.ajax.reload();
                         } else {
-                            $('#modalBody').html(response.html);
+                            $('#modalContent').html(response.html || response);
                         }
                     },
                     error: function (xhr) {
@@ -197,9 +191,19 @@
             });
         });
 
-        function loadModal(url, title) {
-            $('#crudModalLabel').text(title);
-            $('#modalBody').html('<div class="text-center"><div class="spinner-border" role="status"></div></div>');
+                function loadModal(url, title) {
+            var dialog = $('#crudModal .modal-dialog');
+            dialog.removeClass('modal-sm modal-lg modal-xl modal-adjustable').addClass('modal-lg');
+            
+            $('#modalContent').html(`
+                <div class="modal-header">
+                    <h5 class="modal-title" id="crudModalLabel">${title}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+            `);
             $('#crudModal').modal('show');
 
             $.ajax({
@@ -207,15 +211,73 @@
                 type: 'GET',
                 data: { ajax: '1' },
                 success: function (response) {
-                    $('#modalBody').html(response.html || response);
+                    var htmlContent = response.html || response;
+                    
+                    // Gracefully redirect to login if session has expired
+                    if (typeof htmlContent === 'string' && htmlContent.indexOf('Login') !== -1 && htmlContent.indexOf('password') !== -1) {
+                        window.location.href = '/accounts/login/?next=' + window.location.pathname;
+                        return;
+                    }
+                    
+                    $('#modalContent').html(htmlContent);
+                    $('#crudModalLabel').text(title);
+                    
+                    var modalSize = $('#modalContent form').data('modal-size') || 'lg';
+                    dialog.removeClass('modal-sm modal-lg modal-xl modal-adjustable');
+                    if (modalSize === 'sm') dialog.addClass('modal-sm');
+                    else if (modalSize === 'lg') dialog.addClass('modal-lg');
+                    else if (modalSize === 'xl') dialog.addClass('modal-xl');
+                    else if (modalSize === 'adjustable') dialog.addClass('modal-adjustable');
                 },
                 error: function () {
-                    $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');
+                    $('#modalContent').html(`
+                        <div class="modal-header">
+                            <h5 class="modal-title">${title}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-danger mb-0">Gagal memuat form.</div>
+                        </div>
+                    `);
                 }
             });
         }
 
         // Note: toast display is handled via Django messages and `showToast` in base template.
+
+        // Delegated Change handler for dynamic ILAP details in modal forms
+        $(document).on('change', '#id_id_sub_jenis_data', function() {
+            const subJenisId = $(this).val();
+            const infoDiv = $('#div_id_ilap_info');
+            if (!subJenisId) {
+                infoDiv.hide();
+                return;
+            }
+            
+            $.ajax({
+                url: `/jenis-data-ilap/${subJenisId}/info/`,
+                type: 'GET',
+                success: function(res) {
+                    if (res.success) {
+                        $('#lbl-ilap-kategori').text(res.kategori_ilap);
+                        $('#lbl-ilap-jenis').text(res.jenis_data);
+                        $('#lbl-ilap-subjenis').text(res.subjenis_data);
+                        const prioritasBadge = res.is_prioritas 
+                            ? `<span class="badge bg-soft-danger text-danger fw-bold" style="font-size: 11px; padding: 4px 8px;">Tinggi</span>`
+                            : `<span class="badge bg-soft-secondary text-secondary" style="font-size: 11px; padding: 4px 8px;">Standar</span>`;
+                        $('#lbl-ilap-prioritas').html(prioritasBadge);
+                        $('#lbl-ilap-periode').text(res.periode_data || '-');
+                        infoDiv.show();
+                    } else {
+                        infoDiv.hide();
+                    }
+                },
+                error: function(xhr) {
+                    console.error("Failed to load ILAP info:", xhr.responseText);
+                    infoDiv.hide();
+                }
+            });
+        });
     })();
 </script>
 {% endblock %}

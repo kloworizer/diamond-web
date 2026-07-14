@@ -121,32 +121,34 @@ def _build_table_doc(title, headers, rows_data):
 @login_required
 @user_passes_test(lambda u: _is_p3de_user(u))
 @require_GET
-def tiket_documents_download(request, pk):
-    """Generate and download a single DOCX document for a tiket.
+def _merge_docx(doc1, doc2):
+    """Combine two docx Documents by adding a page break and appending elements."""
+    doc1.add_page_break()
+    import copy
+    for element in list(doc2.element.body):
+        # Skip section properties element to avoid page setup bugs
+        if element.tag.endswith('sectPr'):
+            continue
+        doc1.element.body.append(copy.deepcopy(element))
+    return doc1
 
-    Accepts a ``?doc_type=`` query parameter to select which document to return:
-    - ``tanda_terima`` (default) — Tanda Terima Data
-    - ``lampiran``               — Lampiran Tanda Terima
-    - ``register``               — Register Data
 
-    Access is restricted to admins/superusers and assigned TiketPIC members.
-    
-    If active DOCX templates exist for the document type, uses them to generate
-    the document by filling placeholders. Otherwise, falls back to default generation.
-    """
+def _generate_single_document(request, pk, doc_type):
+    """Inner helper to generate a single docx Document (template or fallback)."""
     try:
         from docx import Document
     except ImportError:
-        return HttpResponse('Library python-docx belum terpasang.', status=500)
+        raise ImportError('Library python-docx belum terpasang.')
 
     tiket = get_object_or_404(
         Tiket.objects.select_related(
             'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori',
-            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil',
             'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
             'id_periode_data__id_periode_pengiriman',
             'id_bentuk_data',
             'id_cara_penyampaian',
+        ).prefetch_related(
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil',
         ),
         pk=pk,
     )
@@ -154,7 +156,7 @@ def tiket_documents_download(request, pk):
     if not request.user.groups.filter(name='admin').exists() and not request.user.is_superuser:
         has_access = TiketPIC.objects.filter(id_tiket=tiket, id_user=request.user, active=True).exists()
         if not has_access:
-            return HttpResponse('Tidak memiliki akses ke tiket ini.', status=403)
+            raise PermissionError('Tidak memiliki akses ke tiket ini.')
 
     # Collect tanda-terima group and associated tiket rows
     detil = DetilTandaTerima.objects.select_related('id_tanda_terima').filter(id_tiket=tiket).order_by('-id').first()
@@ -201,11 +203,15 @@ def tiket_documents_download(request, pk):
         if tiket.id_periode_data and tiket.id_periode_data.id_sub_jenis_data_ilap
         else None
     )
-    # For regional ILAPs (those with id_kpp), use nama_kanwil; otherwise use nama_ilap
-    if ilap and ilap.id_kpp and ilap.id_kpp.id_kanwil:
-        diterima_dari = ilap.id_kpp.id_kanwil.nama_kanwil
+    # For regional ILAPs (those with KPP), use nama_kanwil; otherwise use nama_ilap
+    if ilap:
+        first_kpp_rel = ilap.ilap_kpp_relations.select_related('id_kpp__id_kanwil').first()
+        if first_kpp_rel and first_kpp_rel.id_kpp and first_kpp_rel.id_kpp.id_kanwil:
+            diterima_dari = first_kpp_rel.id_kpp.id_kanwil.nama_kanwil
+        else:
+            diterima_dari = ilap.nama_ilap
     else:
-        diterima_dari = ilap.nama_ilap if ilap else '-'
+        diterima_dari = '-'
 
     # Collect multi-value fields from tiket_rows (deduplicated)
     periode_list, nomor_surat_list, tanggal_surat_list = [], [], []
@@ -246,7 +252,6 @@ def tiket_documents_download(request, pk):
     tahun_data_list = sorted({str(t.tahun) for t in tiket_rows if t.tahun})
 
     # Build variable dictionary for template filling
-    # These placeholders match the ones defined in the templates
     template_variables = {
         '{{nomor_tiket}}': nomor_tanda_terima,
         '{{nomor_tanda_terima}}': nomor_tanda_terima,
@@ -275,7 +280,6 @@ def tiket_documents_download(request, pk):
     # DOC Type Selection and Template Processing
     now_ts = timezone.now().strftime('%Y%m%d_%H%M%S_%f')
     nomor_safe = _safe_filename_part(nomor_tanda_terima)
-    doc_type = request.GET.get('doc_type', 'tanda_terima')
 
     # Determine region type (Regional or Nasional/Internasional)
     region_type = 'regional'
@@ -286,6 +290,7 @@ def tiket_documents_download(request, pk):
     
     # Map doc_type to template jenis_dokumen based on region type
     doc_type_map = {
+        'tanda_terima_only': f'tanda_terima_{region_type}',
         'tanda_terima': f'tanda_terima_{region_type}',
         'lampiran': f'lampiran_tanda_terima_{region_type}',
         'register': 'register_penerimaan_data',
@@ -303,10 +308,7 @@ def tiket_documents_download(request, pk):
     ).first()
 
     if template and template.file_template:
-        # Use template-based document generation
         try:
-            # Build row_data for document types that contain a repeating table
-            # Each dict maps to {{row.field_name}} placeholders in the template
             row_data = None
             if doc_type in ('lampiran', 'register'):
                 row_data = []
@@ -316,19 +318,17 @@ def tiket_documents_download(request, pk):
                     ilap_obj = sub.id_ilap if sub else None
                     dasar_hukum_list = dasar_hukum_map.get(sub.id, []) if sub else []
                     
-                    # Get kanwil name for regional ILAPs
                     nama_kanwil = '-'
-                    if ilap_obj and ilap_obj.id_kpp and ilap_obj.id_kpp.id_kanwil:
-                        nama_kanwil = ilap_obj.id_kpp.id_kanwil.nama_kanwil
+                    if ilap_obj:
+                        first_kpp_rel = ilap_obj.ilap_kpp_relations.select_related('id_kpp__id_kanwil').first()
+                        if first_kpp_rel and first_kpp_rel.id_kpp and first_kpp_rel.id_kpp.id_kanwil:
+                            nama_kanwil = first_kpp_rel.id_kpp.id_kanwil.nama_kanwil
                     
-                    # Get status data description from JenisDataILAP's id_status_data relationship
                     status_data = '-'
                     if sub and sub.id_status_data:
                         status_data = sub.id_status_data.deskripsi
                     
-                    # Build row data based on document type
                     if doc_type == 'lampiran':
-                        # Lampilan tanda terima: nomor, nama_kanwil, nama_ilap, sub_jenis_data, periode_data, status_data, jumlah_baris_diterima, dasar_hukum
                         row_data.append({
                             'nomor': str(nomor_counter),
                             'nama_kanwil': nama_kanwil,
@@ -340,7 +340,6 @@ def tiket_documents_download(request, pk):
                             'dasar_hukum': ', '.join(dasar_hukum_list) if dasar_hukum_list else '-',
                         })
                     else:  # register
-                        # Register: nomor, nama_kanwil, nama_ilap, sub_jenis_data, periode_data, status_data, jumlah_baris_diterima, dasar_hukum
                         row_data.append({
                             'nomor': str(nomor_counter),
                             'nama_kanwil': nama_kanwil,
@@ -352,49 +351,30 @@ def tiket_documents_download(request, pk):
                             'dasar_hukum': ', '.join(dasar_hukum_list) if dasar_hukum_list else '-',
                         })
                     nomor_counter += 1
-            elif doc_type == 'pkdi_lengkap':
+            elif doc_type in ('pkdi_lengkap', 'pkdi_sebagian', 'klarifikasi'):
                 row_data = []
                 nomor_counter = 1
                 for t in tiket_rows:
                     sub = t.id_periode_data.id_sub_jenis_data_ilap if t.id_periode_data else None
-                    row_data.append({
-                        'nomor': str(nomor_counter),
-                        'sub_jenis_data': sub.nama_sub_jenis_data if sub else '-',
-                        'periode_data': _format_periode_tiket(t),
-                        'jumlah_baris_diterima': format_number_with_separator(t.baris_diterima) if t.baris_diterima is not None else '-',
-                        'jumlah_baris_lengkap': format_number_with_separator(t.baris_lengkap) if t.baris_lengkap is not None else '-',
-                        'jumlah_baris_tidak_lengkap': format_number_with_separator(t.baris_tidak_lengkap) if t.baris_tidak_lengkap is not None else '-',
-                    })
-                    nomor_counter += 1
-            elif doc_type == 'pkdi_sebagian':
-                row_data = []
-                nomor_counter = 1
-                for t in tiket_rows:
-                    sub = t.id_periode_data.id_sub_jenis_data_ilap if t.id_periode_data else None
-                    row_data.append({
-                        'nomor': str(nomor_counter),
-                        'sub_jenis_data': sub.nama_sub_jenis_data if sub else '-',
-                        'periode_data': _format_periode_tiket(t),
-                        'jumlah_baris_diterima': format_number_with_separator(t.baris_diterima) if t.baris_diterima is not None else '-',
-                        'jumlah_baris_lengkap': format_number_with_separator(t.baris_lengkap) if t.baris_lengkap is not None else '-',
-                        'jumlah_baris_tidak_lengkap': format_number_with_separator(t.baris_tidak_lengkap) if t.baris_tidak_lengkap is not None else '-',
-                    })
-                    nomor_counter += 1
-            elif doc_type == 'klarifikasi':
-                row_data = []
-                nomor_counter = 1
-                for t in tiket_rows:
-                    sub = t.id_periode_data.id_sub_jenis_data_ilap if t.id_periode_data else None
-                    row_data.append({
-                        'nomor': str(nomor_counter),
-                        'sub_jenis_data': sub.nama_sub_jenis_data if sub else '-',
-                        'periode_data': _format_periode_tiket(t),
-                        'jumlah_baris_diterima': format_number_with_separator(t.baris_diterima) if t.baris_diterima is not None else '-',
-                        'jumlah_baris_tidak_lengkap': format_number_with_separator(t.baris_tidak_lengkap) if t.baris_tidak_lengkap is not None else '-',
-                    })
+                    if doc_type == 'klarifikasi':
+                        row_data.append({
+                            'nomor': str(nomor_counter),
+                            'sub_jenis_data': sub.nama_sub_jenis_data if sub else '-',
+                            'periode_data': _format_periode_tiket(t),
+                            'jumlah_baris_diterima': format_number_with_separator(t.baris_diterima) if t.baris_diterima is not None else '-',
+                            'jumlah_baris_tidak_lengkap': format_number_with_separator(t.baris_tidak_lengkap) if t.baris_tidak_lengkap is not None else '-',
+                        })
+                    else:
+                        row_data.append({
+                            'nomor': str(nomor_counter),
+                            'sub_jenis_data': sub.nama_sub_jenis_data if sub else '-',
+                            'periode_data': _format_periode_tiket(t),
+                            'jumlah_baris_diterima': format_number_with_separator(t.baris_diterima) if t.baris_diterima is not None else '-',
+                            'jumlah_baris_lengkap': format_number_with_separator(t.baris_lengkap) if t.baris_lengkap is not None else '-',
+                            'jumlah_baris_tidak_lengkap': format_number_with_separator(t.baris_tidak_lengkap) if t.baris_tidak_lengkap is not None else '-',
+                        })
                     nomor_counter += 1
 
-            # Open the template file using FileField's open method for better compatibility
             doc_buffer = fill_template_with_data(template.file_template.open('rb'), template_variables, row_data=row_data)
             
             if doc_type == 'lampiran':
@@ -412,14 +392,8 @@ def tiket_documents_download(request, pk):
             else:
                 filename = f'tanda_terima_{nomor_safe}_{now_ts}.docx'
             
-            response = HttpResponse(
-                doc_buffer.getvalue(),
-                content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            )
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            return response
-        except Exception as e:
-            # Fall back to default generation if template processing fails
+            return Document(doc_buffer), filename
+        except Exception:
             pass
 
     # Fallback: Generate default documents
@@ -542,11 +516,59 @@ def tiket_documents_download(request, pk):
         doc = doc_tanda
         filename = f'tanda_terima_{nomor_safe}_{now_ts}.docx'
 
-    buffer = BytesIO()
-    doc.save(buffer)
-    response = HttpResponse(
-        buffer.getvalue(),
-        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    )
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response
+    return doc, filename
+
+
+def tiket_documents_download(request, pk):
+    """Generate and download DOCX documents for a tiket.
+    
+    If doc_type is 'tanda_terima', automatically combines the Tanda Terima
+    and its associated Lampiran into a single document with a page break.
+    Otherwise, returns the single requested document.
+    """
+    doc_type = request.GET.get('doc_type', 'tanda_terima')
+    
+    if doc_type == 'tanda_terima':
+        try:
+            # Generate Tanda Terima (only) and Lampiran, then merge them
+            doc_tanda, filename_tanda = _generate_single_document(request, pk, 'tanda_terima_only')
+            doc_lampiran, _ = _generate_single_document(request, pk, 'lampiran')
+            
+            merged_doc = _merge_docx(doc_tanda, doc_lampiran)
+            
+            buffer = BytesIO()
+            merged_doc.save(buffer)
+            response = HttpResponse(
+                buffer.getvalue(),
+                content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            )
+            response['Content-Disposition'] = f'attachment; filename="{filename_tanda}"'
+            return response
+        except Exception:
+            # Fall back to single Tanda Terima if merge fails
+            try:
+                doc_tanda, filename_tanda = _generate_single_document(request, pk, 'tanda_terima_only')
+                buffer = BytesIO()
+                doc_tanda.save(buffer)
+                response = HttpResponse(
+                    buffer.getvalue(),
+                    content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                )
+                response['Content-Disposition'] = f'attachment; filename="{filename_tanda}"'
+                return response
+            except Exception as inner_e:
+                return HttpResponse(f'Gagal menghasilkan dokumen: {str(inner_e)}', status=500)
+    else:
+        # Generate single requested document (register, klarifikasi, etc.)
+        try:
+            doc, filename = _generate_single_document(request, pk, doc_type)
+            buffer = BytesIO()
+            doc.save(buffer)
+            response = HttpResponse(
+                buffer.getvalue(),
+                content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            )
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+        except Exception as e:
+            return HttpResponse(f'Gagal menghasilkan dokumen: {str(e)}', status=500)

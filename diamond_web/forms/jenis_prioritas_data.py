@@ -1,5 +1,6 @@
 from django import forms
 from ..models.jenis_prioritas_data import JenisPrioritasData
+from ..models.jenis_data_ilap import JenisDataILAP
 from .base import AutoRequiredFormMixin
 
 
@@ -8,9 +9,14 @@ class JenisPrioritasDataForm(AutoRequiredFormMixin, forms.ModelForm):
         model = JenisPrioritasData
         fields = ['id_sub_jenis_data_ilap', 'no_nd', 'tahun', 'start_date', 'end_date']
         widgets = {
-            'start_date': forms.DateInput(attrs={'type': 'date'}),
-            'end_date': forms.DateInput(attrs={'type': 'date'}),
+            'start_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'end_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Order dropdown by id_sub_jenis_data (e.g., AS0010101, AS0010102)
+        self.fields['id_sub_jenis_data_ilap'].queryset = JenisDataILAP.objects.all().order_by('id_sub_jenis_data')
 
     def clean(self):
         cleaned_data = super().clean()

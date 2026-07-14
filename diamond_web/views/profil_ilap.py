@@ -82,7 +82,8 @@ class ProfilILAPListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView
         base_qs = ILAP.objects.all().select_related(
             'id_kategori',
             'id_kategori_wilayah',
-            'id_kpp'
+        ).prefetch_related(
+            'ilap_kpp_relations__id_kpp',
         )
         
         # Total records (without filtering)
@@ -134,7 +135,7 @@ class ProfilILAPListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView
                 'kategori': ilap.id_kategori.nama_kategori if ilap.id_kategori else '---',
                 'nama': ilap.nama_ilap,
                 'wilayah': ilap.id_kategori_wilayah.deskripsi if ilap.id_kategori_wilayah else '---',
-                'actions': f'<a href="/profil-ilap/{ilap.pk}/" class="btn btn-sm btn-info"><i class="feather-eye me-1"></i>View</a>'
+                'actions': f'<a href="/profil-ilap/{ilap.pk}/" class="btn btn-sm btn-primary"><i class="feather-eye me-1"></i>Detail</a>'
             })
         
         return JsonResponse({

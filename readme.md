@@ -753,7 +753,10 @@ Set-ExecutionPolicy Unrestricted -Scope Process; .\.venv\Scripts\Activate.ps1
 git push work-vm main
 
 # Pull & restart di VM production
-git pull origin main & sudo systemctl restart diamond_web_gunicorn
+git pull origin main
+sudo systemctl restart diamond_web_gunicorn
+sudo systemctl restart celery && sudo systemctl restart redis
+
 
 # ─── PIP (offline install untuk VM tanpa internet) ───
 # Di lokal: download packages

@@ -1,13 +1,115 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+    /* Table row compactness */
+    #profil-ilap-table th, 
+    #profil-ilap-table td {
+        padding: 8px 10px !important;
+        font-size: 13px !important;
+        vertical-align: middle !important;
+    }
+
+    /* Table frame: only body scrolls, header stays sticky */
+    .table-frame {
+        max-height: calc(100vh - 290px);
+        overflow: auto;
+        border-top: 1px solid #e2e8f0;
+        position: relative;
+    }
+
+    .table-frame thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #f8fafc !important;
+        box-shadow: inset 0 -1px 0 #dee2e6;
+    }
+
+    /* Premium Card Padding rules */
+    .card.stretch {
+        border-radius: 16px !important;
+        overflow: hidden;
+    }
+    
+    .card.stretch .card-header {
+        padding-top: 20px !important;
+        padding-bottom: 20px !important;
+        padding-left: 28px !important;
+        padding-right: 28px !important;
+        border-bottom: none !important;
+    }
+    
+    .card.stretch .card-body {
+        padding-bottom: 36px !important;
+        padding-left: 28px !important;
+        padding-right: 28px !important;
+    }
+
+    /* Compact column search inputs inside table header */
+    #column-search-row input {
+        height: 28px !important;
+        font-size: 11px !important;
+        padding: 2px 8px !important;
+        border-radius: 6px !important;
+        border: 1px solid #cbd5e1 !important;
+        color: #334155 !important;
+    }
+    
+    #column-search-row input::placeholder {
+        color: #64748b !important;
+        font-style: italic !important;
+    }
+
+    #column-search-row th {
+        background-color: #f8fafc !important;
+        padding-top: 4px !important;
+        padding-bottom: 6px !important;
+    }
+
+    /* Center DataTable info and pagination vertically - Absolute Global */
+    .dt-layout-row {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding-top: 12px !important;
+        padding-bottom: 8px !important;
+    }
+    
+    .dt-layout-cell {
+        display: flex !important;
+        align-items: center !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .dt-info {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        line-height: 1 !important;
+        height: 38px !important; /* Matches height of pagination controls */
+    }
+
+    .dt-paging {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+    }
+
+    .dt-paging .pagination {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+</style>
+
 <div class="page-header">
     <div class="page-header-left d-flex align-items-center">
-        <div class="page-header-title">
-            <h5 class="m-b-10">
-                <i class="feather-file-text me-2"></i>Profil ILAP
-            </h5>
-        </div>
         <ul class="breadcrumb">
             <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
             <li class="breadcrumb-item"><a href="javascript:void(0);">Admin P3DE</a></li>
@@ -17,28 +119,31 @@
 </div>
 
 <div class="main-content">
-    <div class="card stretch stretch-full h-100">
-        <div class="card-header">
-            <h5 class="card-title mb-0"><i class="feather-file-text me-2"></i>Daftar Profil ILAP</h5>
+    <div class="card stretch stretch-full">
+        <div class="card-header border-bottom-0 pb-0 bg-transparent d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0"><i class="feather-file-text me-2 text-primary"></i>Daftar Profil ILAP</h5>
+            <a href="javascript:void(0);" id="btn-reset-pencarian" class="btn border-0 text-primary text-decoration-none p-0 fw-bold align-items-center gap-1" style="display: none; font-size: 13px;">
+                <i class="feather-x" style="width: 16px; height: 16px;"></i> Reset Pencarian
+            </a>
         </div>
-        <div class="card-body custom-card-action p-0">
-            <div class="table-responsive">
-                <table id="profil-ilap-table" class="table table-hover mb-0" style="width:100%">
+        <div class="card-body custom-card-action">
+            <div class="table-frame">
+                <table id="profil-ilap-table" class="table table-hover mb-0 table-compact" style="width:100%">
                     <thead>
                         <tr>
                             <th>ID ILAP</th>
                             <th>Kategori ILAP</th>
                             <th>Nama ILAP</th>
                             <th>Kategori Wilayah</th>
-                            <th>Action</th>
+                            <th class="col-actions text-center">Aksi</th>
                         </tr>
                         <tr id="column-search-row">
-                            <th><input type="text" class="form-control form-control-sm" placeholder="Cari ID" data-column="0" /></th>
-                            <th><input type="text" class="form-control form-control-sm" placeholder="Cari Kategori" data-column="1" /></th>
-                            <th><input type="text" class="form-control form-control-sm" placeholder="Cari Nama" data-column="2" /></th>
-                            <th><input type="text" class="form-control form-control-sm" placeholder="Cari Wilayah" data-column="3" /></th>
-                            <th></th>
-                        </tr>
+                            <th><input type="text" class="form-control form-control-sm" placeholder="Cari ID..." data-column="0" /></th>
+                            <th><input type="text" class="form-control form-control-sm" placeholder="Cari Kategori..." data-column="1" /></th>
+                            <th><input type="text" class="form-control form-control-sm" placeholder="Cari Nama..." data-column="2" /></th>
+                            <th><input type="text" class="form-control form-control-sm" placeholder="Cari Wilayah..." data-column="3" /></th>
+                            <th class="col-actions"></th>
+                    </tr>
                     </thead>
                     <tbody></tbody>
                 </table>
@@ -84,14 +189,40 @@
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [
-                    { targets: 4, render: function (data, type, row, meta) { return data; } }
+                    { targets: 4, className: "col-actions text-center", width: "90px", render: function (data, type, row, meta) { return '<div class="d-flex justify-content-center gap-1">' + data + '</div>'; } }
                 ],
                 order: [[0, 'asc']]
             });
 
+            function toggleResetButton() {
+                let hasValue = false;
+                $('#column-search-row input').each(function () {
+                    if ($(this).val().trim() !== '') {
+                        hasValue = true;
+                    }
+                });
+                if (hasValue) {
+                    $('#btn-reset-pencarian').css('display', 'inline-flex').hide().fadeIn(200);
+                } else {
+                    $('#btn-reset-pencarian').fadeOut(200);
+                }
+            }
+
             // Add individual column search with server-side support
             $('#column-search-row input').on('keyup change', function () {
                 table.column($(this).data('column')).search($(this).val()).draw();
+                toggleResetButton();
+            });
+
+            // Reset search when button clicked
+            $('#btn-reset-pencarian').on('click', function () {
+                $('#column-search-row input').val('');
+                $('#column-search-row input').each(function () {
+                    var colIdx = $(this).data('column');
+                    table.column(colIdx).search('');
+                });
+                table.draw();
+                toggleResetButton();
             });
         });
     })();

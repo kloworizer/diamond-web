@@ -10,34 +10,34 @@ class ProfilForm(forms.ModelForm):
     """Form for updating user profile (first_name, last_name) and password."""
 
     old_password = forms.CharField(
-        label="Old Password",
+        label="Kata Sandi Saat Ini",
         widget=forms.PasswordInput(attrs={'autocomplete': 'current-password'}),
         required=False,
-        help_text="Enter your current password to change it.",
+        help_text="Masukkan kata sandi saat ini untuk melakukan perubahan.",
     )
     new_password1 = forms.CharField(
-        label="New Password",
+        label="Kata Sandi Baru",
         widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}),
         required=False,
         help_text=(
-            "Your password must contain at least 8 characters, "
-            "can't be too similar to your personal info, "
-            "can't be a commonly used password, and can't be entirely numeric."
+            "Kata sandi harus terdiri dari minimal 8 karakter, "
+            "tidak boleh terlalu mirip dengan informasi pribadi Anda, "
+            "tidak boleh merupakan sandi yang umum digunakan, dan tidak boleh hanya berisi angka."
         ),
     )
     new_password2 = forms.CharField(
-        label="Confirm New Password",
+        label="Konfirmasi Kata Sandi Baru",
         widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}),
         required=False,
-        help_text="Enter the same password as above, for verification.",
+        help_text="Masukkan kembali kata sandi baru untuk verifikasi.",
     )
 
     class Meta:
         model = User
         fields = ['first_name', 'last_name']
         labels = {
-            'first_name': 'First Name',
-            'last_name': 'Last Name',
+            'first_name': 'Nama Depan',
+            'last_name': 'Nama Belakang',
         }
 
     def __init__(self, *args, **kwargs):
@@ -55,12 +55,12 @@ class ProfilForm(forms.ModelForm):
 
         if new_password1 and not old_password:
             raise ValidationError(
-                "You must enter your current password to set a new one."
+                "Anda harus memasukkan kata sandi saat ini untuk membuat kata sandi baru."
             )
 
         if old_password and self.user and not self.user.check_password(old_password):
             raise ValidationError(
-                "Your current password is incorrect."
+                "Kata sandi saat ini salah."
             )
         return old_password
 
@@ -78,7 +78,7 @@ class ProfilForm(forms.ModelForm):
 
         if new_password1 or new_password2:
             if new_password1 != new_password2:
-                raise ValidationError("The two password fields didn't match.")
+                raise ValidationError("Kedua kolom kata sandi baru tidak cocok.")
         return new_password2
 
     def save(self, commit=True):

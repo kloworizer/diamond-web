@@ -242,12 +242,12 @@ def tiket_data(request):
         
         if filter_kanwil:
             filtered_qs = filtered_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__id__in=filter_kanwil
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__id__in=filter_kanwil
             )
         
         if filter_kpp:
             filtered_qs = filtered_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id__in=filter_kpp
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id__in=filter_kpp
             )
         
         if filter_kategori_wilayah:
@@ -342,11 +342,11 @@ def tiket_data(request):
             )
         if filter_kanwil:
             tahun_filter_qs = tahun_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__id__in=filter_kanwil
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__id__in=filter_kanwil
             )
         if filter_kpp:
             tahun_filter_qs = tahun_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id__in=filter_kpp
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id__in=filter_kpp
             )
         if filter_kategori_wilayah:
             tahun_filter_qs = tahun_filter_qs.filter(
@@ -436,11 +436,11 @@ def tiket_data(request):
             )
         if filter_kanwil:
             periode_filter_qs = periode_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__id__in=filter_kanwil
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__id__in=filter_kanwil
             )
         if filter_kpp:
             periode_filter_qs = periode_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id__in=filter_kpp
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id__in=filter_kpp
             )
         if filter_kategori_wilayah:
             periode_filter_qs = periode_filter_qs.filter(
@@ -626,11 +626,11 @@ def tiket_data(request):
             )
         if filter_kanwil:
             kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__id__in=filter_kanwil
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__id__in=filter_kanwil
             )
         if filter_kpp:
             kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id__in=filter_kpp
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id__in=filter_kpp
             )
         if filter_kategori_wilayah:
             kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(
@@ -732,11 +732,11 @@ def tiket_data(request):
             )
         if filter_kanwil:
             ilap_filter_qs = ilap_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__id__in=filter_kanwil
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__id__in=filter_kanwil
             )
         if filter_kpp:
             ilap_filter_qs = ilap_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id__in=filter_kpp
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id__in=filter_kpp
             )
         if filter_kategori_wilayah:
             ilap_filter_qs = ilap_filter_qs.filter(
@@ -834,11 +834,11 @@ def tiket_data(request):
             )
         if filter_kanwil:
             jenis_filter_qs = jenis_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__id__in=filter_kanwil
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__id__in=filter_kanwil
             )
         if filter_kpp:
             jenis_filter_qs = jenis_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id__in=filter_kpp
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id__in=filter_kpp
             )
         if filter_kategori_wilayah:
             jenis_filter_qs = jenis_filter_qs.filter(
@@ -901,9 +901,9 @@ def tiket_data(request):
 
         # Get Kanwil from filtered queryset
         kanwil_qs = filtered_qs.values_list(
-            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__id',
-            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__kode_kanwil',
-            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__nama_kanwil'
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__id',
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__kode_kanwil',
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__nama_kanwil'
         ).distinct()
         kanwil_options = []
         seen = set()
@@ -917,9 +917,9 @@ def tiket_data(request):
 
         # Get KPP from filtered queryset
         kpp_qs = filtered_qs.values_list(
-            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id',
-            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__kode_kpp',
-            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__nama_kpp'
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id',
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__kode_kpp',
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__nama_kpp'
         ).distinct()
         kpp_options = []
         seen = set()
@@ -1031,11 +1031,11 @@ def tiket_data(request):
             )
         if filter_kanwil:
             status_filter_qs = status_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__id__in=filter_kanwil
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__id__in=filter_kanwil
             )
         if filter_kpp:
             status_filter_qs = status_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id__in=filter_kpp
+                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id__in=filter_kpp
             )
         if filter_kategori_wilayah:
             status_filter_qs = status_filter_qs.filter(
@@ -1208,10 +1208,10 @@ def tiket_data(request):
         qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_sub_jenis_data__in=filter_sub_jenis_data)
 
     if filter_kanwil:
-        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id_kanwil__id__in=filter_kanwil)
+        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__id__in=filter_kanwil)
 
     if filter_kpp:
-        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kpp__id__in=filter_kpp)
+        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id__in=filter_kpp)
 
     if filter_kategori_wilayah:
         qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah__id__in=filter_kategori_wilayah)

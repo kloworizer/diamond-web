@@ -1,9 +1,51 @@
 {% load crispy_forms_tags %}
-<form method="post" action="{{ form_action }}" class="form-modal">
+{% load static %}
+<form method="post" action="{{ form_action }}" class="w-100" data-modal-size="lg">
     {% csrf_token %}
-    {{ form|crispy }}
-    <div class="modal-footer mt-3 border-top pt-3">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-        <button type="submit" class="btn btn-success">Simpan</button>
+    <div class="modal-header d-flex align-items-center py-3 px-4" style="border-bottom: 1px solid #f1f5f9 !important;">
+        <div class="d-flex align-items-center gap-3">
+            {% if form.instance.pk %}
+            <!-- Yellow circle for edit -->
+            <div class="d-flex align-items-center justify-content-center" 
+                style="width: 38px; height: 38px; border-radius: 50%; background-color: #fef3c7; color: #d97706;">
+                <i class="feather-edit-2" style="font-size: 16px;"></i>
+            </div>
+            <div>
+                <h5 class="modal-title fw-bold mb-0" id="crudModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Ubah</h5>
+                <span class="text-muted text-uppercase fw-semibold" style="font-size: 10px; letter-spacing: 0.5px;">Status Penelitian</span>
+            </div>
+            {% else %}
+            <!-- Blue circle for add -->
+            <div class="d-flex align-items-center justify-content-center" 
+                style="width: 38px; height: 38px; border-radius: 50%; background-color: #e0f2fe; color: #0284c7;">
+                <i class="feather-plus" style="font-size: 18px;"></i>
+            </div>
+            <div>
+                <h5 class="modal-title fw-bold mb-0" id="crudModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Tambah</h5>
+                <span class="text-muted text-uppercase fw-semibold" style="font-size: 10px; letter-spacing: 0.5px;">Status Penelitian</span>
+            </div>
+            {% endif %}
+        </div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+    <div class="modal-body pt-2 px-4 pb-1">
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger mb-3">
+                {% for error in form.non_field_errors %}
+                    <p class="mb-0">{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+        {{ form|crispy }}
+    </div>
+    <div class="modal-footer border-top-0 pt-0 px-4 pb-4" style="border-top: none !important; background: transparent !important;">
+        <button type="button" class="btn btn-figma-outline" data-bs-dismiss="modal">BATAL</button>
+        <button type="submit" class="btn btn-figma-primary">
+            {% if form.instance.pk %}
+            <i class="feather-check"></i> SIMPAN
+            {% else %}
+            <i class="feather-plus"></i> SIMPAN
+            {% endif %}
+        </button>
     </div>
 </form>

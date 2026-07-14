@@ -20,6 +20,7 @@ from ..constants.tiket_action_types import TandaTerimaActionType
 from ..constants.tiket_status import STATUS_DIREKAM, STATUS_DITELITI
 from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, SafeDeleteMixin
 from ..constants.tiket_status import STATUS_DIKIRIM_KE_PIDE
+from ..utils import format_number_with_separator, format_periode
 
 
 class TandaTerimaDataListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView):
@@ -146,29 +147,24 @@ def tanda_terima_data_data(request):
             role=TiketPIC.Role.P3DE
         ).exists()
         
-        actions_html = ''
+        actions_html = "<div class='d-flex align-items-center justify-content-center gap-1'>"
         # Show view button only for active PIC
         if is_active_pic:
-            actions_html = f"<button class='btn btn-sm btn-info me-1' data-action='view' data-url='{reverse('tanda_terima_data_view', args=[obj.pk])}' title='Detail'><i class='feather-eye'></i></button>"
+            actions_html += f"<button class='btn btn-sm btn-info' data-action='view' data-url='{reverse('tanda_terima_data_view', args=[obj.pk])}' title='Detail'><i class='feather-eye'></i></button>"
         
-        # Show download button - get first tiket from this tanda terima
+        # Show direct download buttons - get first tiket from this tanda terima
         tiket_item = obj.detil_items.select_related('id_tiket').first()
         if tiket_item and tiket_item.id_tiket:
             pk = tiket_item.id_tiket.pk
-            actions_html += f"""<div class="btn-group me-1" role="group">
-                <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Download Dokumen">
-                    <i class="feather-file-text me-1"></i>Tanda Terima
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" onclick="downloadTandaTerimaDoc({pk}, 'tanda_terima'); return false;">Tanda Terima</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="downloadTandaTerimaDoc({pk}, 'lampiran'); return false;">Lampiran Tanda Terima</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="downloadTandaTerimaDoc({pk}, 'register'); return false;">Register Penerimaan Data</a></li>
-                </ul>
-            </div>"""
+            # Button 1: Download Tanda Terima & Lampiran (Combined)
+            actions_html += f"<button class='btn btn-sm btn-primary' onclick=\"downloadTandaTerimaDoc({pk}, 'tanda_terima'); return false;\" title='Download Tanda Terima & Lampiran'><i class='feather-file-text'></i></button>"
+            # Button 2: Download Register (Separate)
+            actions_html += f"<button class='btn btn-sm btn-success' onclick=\"downloadTandaTerimaDoc({pk}, 'register'); return false;\" title='Download Register'><i class='feather-list'></i></button>"
         
         # Show delete button only for active PIC when tanda terima is active
         if obj.active and can_edit and is_active_pic:
             actions_html += f"<button class='btn btn-sm btn-warning' data-action='delete' data-url='{reverse('tanda_terima_data_delete', args=[obj.pk])}' title='Batalkan'><i class='feather-x-circle'></i></button>"
+        actions_html += "</div>"
         
         # Get ILAP name and jenis data from first tiket
         jenis_data_list = []
@@ -296,7 +292,7 @@ def tanda_terima_tikets_by_ilap(request):
         id_periode_data__id_sub_jenis_data_ilap__id_ilap_id=ilap_id
     ).exclude(
         id__in=other_assigned_tiket_ids
-    ).order_by('nomor_tiket')
+    ).select_related('id_periode_data__id_periode_pengiriman', 'id_periode_data__id_sub_jenis_data_ilap').order_by('nomor_tiket')
     
     # Filter by user's P3DE PIC assignments for non-admin users
     if not (request.user.is_superuser or request.user.groups.filter(name='admin').exists()):
@@ -306,15 +302,36 @@ def tanda_terima_tikets_by_ilap(request):
             tiketpic__role=TiketPIC.Role.P3DE
         ).distinct()
 
-    data = [
-        {
+    data = []
+    for t in available_tikets:
+        p_desc = '-'
+        if t.id_periode_data and t.id_periode_data.id_periode_pengiriman and t.tahun is not None:
+            p_desc = format_periode(
+                t.id_periode_data.id_periode_pengiriman.periode_penerimaan or '-',
+                t.periode,
+                t.tahun
+            )
+            
+        jenis_data = '-'
+        subjenis_data = '-'
+        if t.id_periode_data and t.id_periode_data.id_sub_jenis_data_ilap:
+            jenis_data = t.id_periode_data.id_sub_jenis_data_ilap.nama_jenis_data or '-'
+            subjenis_data = t.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data or '-'
+
+        baris = format_number_with_separator(t.baris_diterima) if t.baris_diterima is not None else '0'
+        tgl_terima = t.tgl_terima_dip.strftime('%d-%m-%Y') if t.tgl_terima_dip else '-'
+        
+        data.append({
             'id': t.id,
-            'label': t.nomor_tiket or f"Tiket {t.id}",
+            'nomor_tiket': t.nomor_tiket or f'Tiket {t.id}',
+            'jenis_data': jenis_data,
+            'subjenis_data': subjenis_data,
+            'periode': p_desc,
+            'baris': baris,
+            'tgl_terima': tgl_terima,
             'selected': t.id in existing_tiket_ids,
             'disabled': t.id in existing_tiket_ids  # Disable existing tikets
-        }
-        for t in available_tikets
-    ]
+        })
 
     return JsonResponse({'success': True, 'data': data})
 

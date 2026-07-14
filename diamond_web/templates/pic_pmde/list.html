@@ -2,6 +2,8 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
+
+
 <div class="page-header">
         <div class="page-header-left d-flex align-items-center">
             <div class="page-header-title">
@@ -34,13 +36,18 @@
 
     <div class="main-content">
     <div class="card stretch stretch-full h-100">
-        <div class="card-header">
+        <div class="card-header border-bottom-0 pb-0 bg-transparent d-flex justify-content-between align-items-center">
             <h5 class="card-title mb-0"><i class="feather-user-check me-2"></i>Daftar PIC PMDE</h5>
-            {% if is_admin %}<button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>{% endif %}
+            <div class="d-flex align-items-center gap-3">
+                <a href="javascript:void(0);" id="btn-reset-pencarian" class="btn border-0 text-primary text-decoration-none p-0 fw-bold align-items-center gap-1" style="display: none; font-size: 13px;">
+                    <i class="feather-x" style="width: 16px; height: 16px;"></i> Reset Pencarian
+                </a>
+                {% if is_admin %}<button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>{% endif %}
+            </div>
         </div>
-        <div class="card-body custom-card-action p-0">
-            <div class="table-responsive">
-            <table id="pic-pmde-table" class="table table-hover mb-0" style="width:100%">
+        <div class="card-body custom-card-action">
+            <div class="table-frame">
+            <table id="pic-pmde-table" class="table table-hover table-compact mb-0" style="width:100%">
                 <thead>
                     <tr>
                         <th>ILAP</th>
@@ -50,7 +57,7 @@
                         <th>Full Name</th>
                         <th>Start Date</th>
                         <th>End Date</th>
-                        {% if is_admin %}<th>Aksi</th>{% endif %}
+                        {% if is_admin %}<th class="col-actions">Aksi</th>{% endif %}
                     </tr>
                     <tr id="column-search-row">
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search ILAP" data-column="0" /></th>
@@ -60,7 +67,7 @@
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search Full Name" data-column="4" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search Start Date" data-column="5" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Search End Date" data-column="6" /></th>
-                        {% if is_admin %}<th></th>{% endif %}
+                        {% if is_admin %}<th class="col-actions"></th>{% endif %}
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -71,15 +78,9 @@
 
     <!-- Modal for Create/Edit/Delete -->
     <div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="crudModalLabel">Form</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body" id="modalBody">
-                    <!-- Content will be loaded here -->
-                </div>
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" id="modalContent">
+                <!-- Content will be loaded here dynamically via AJAX -->
             </div>
         </div>
     </div>
@@ -90,146 +91,257 @@
 <script>
     (function () {
         const ajaxUrl = "{% url 'pic_pmde_data' %}";
-        const isAdmin = {{ is_admin|yesno:"true,false" }};
+        const isAdmin = "{{ is_admin|yesno:'true,false' }}" === "true";
         let table;
 
-        $(document).ready(function () {
-            var columns = [
-                { data: 'ilap' },
-                { data: 'id_sub_jenis_data' },
-                { data: 'nama_sub_jenis_data' },
-                { data: 'username' },
-                { data: 'full_name' },
-                { data: 'start_date' },
-                { data: 'end_date' }
-            ];
-            var columnDefs = [];
+            $(document).ready(function () {
+                var columns = [
+                    { data: 'ilap' },
+                    { data: 'id_sub_jenis_data' },
+                    { data: 'nama_sub_jenis_data' },
+                    { data: 'username' },
+                    { data: 'full_name' },
+                    { data: 'start_date' },
+                    { data: 'end_date' }
+                ];
+                var columnDefs = [];
 
-            if (isAdmin) {
-                columns.push({ data: 'actions', orderable: false, searchable: false });
-                columnDefs.push({ targets: 7, render: function (data, type, row, meta) { return data; } });
+                if (isAdmin) {
+                    columns.push({ data: 'actions', orderable: false, searchable: false });
+                    columnDefs.push({ targets: 7, className: 'col-actions', render: function (data, type, row, meta) { 
+                        return `<div class="d-flex justify-content-center gap-1">${data}</div>`; 
+                    } });
+                }
+
+                table = $('#pic-pmde-table').DataTable({
+                    serverSide: true,
+                    processing: true,
+                    searching: false,
+                    layout: {
+                        topStart: null,
+                        topEnd: null
+                    },
+                    ajax: {
+                        url: ajaxUrl,
+                        dataSrc: 'data',
+                        data: function (d) {
+                            d.columns_search = [];
+                            $('#column-search-row input').each(function (i) {
+                                d.columns_search[i] = $(this).val();
+                            });
+                            return d;
+                        }
+                    },
+                    pageLength: 10,
+                    columns: columns,
+                    columnDefs: columnDefs,
+                    order: [[0, 'asc']]
+                });
+
+                function toggleResetButton() {
+                let hasValue = false;
+                $('#column-search-row input').each(function () {
+                    if ($(this).val().trim() !== '') {
+                        hasValue = true;
+                    }
+                });
+                if (hasValue) {
+                    $('#btn-reset-pencarian').css('display', 'inline-flex').hide().fadeIn(200);
+                } else {
+                    $('#btn-reset-pencarian').fadeOut(200);
+                }
             }
 
-            table = $('#pic-pmde-table').DataTable({
-                serverSide: true,
-                processing: true,
-                searching: false,
-                layout: {
-                    topStart: null,
-                    topEnd: null
-                },
-                ajax: {
-                    url: ajaxUrl,
-                    dataSrc: 'data',
-                    data: function (d) {
-                        // Add column search values
-                        d.columns_search = [];
-                        $('#column-search-row input').each(function (i) {
-                            d.columns_search[i] = $(this).val();
-                        });
-                        return d;
-                    }
-                },
-                pageLength: 10,
-                columns: columns,
-                columnDefs: columnDefs,
-                order: [[0, 'asc']]
-            });
-
-            // Add individual column search
+            // Add individual column search with support for both client-side and server-side configurations
             $('#column-search-row input').on('keyup change', function () {
-                table.ajax.reload();
-            });
-
-            // Handle modal hide to prevent aria-hidden conflicts
-            const modalElement = document.getElementById('crudModal');
-            modalElement.addEventListener('hidden.bs.modal', function () {
-                // Reset modal body
-                document.getElementById('modalBody').innerHTML = '';
-            });
-
-            modalElement.addEventListener('hide.bs.modal', function () {
-                // Clear focus from form elements
-                const focusedElement = document.activeElement;
-                if (focusedElement && modalElement.contains(focusedElement)) {
-                    focusedElement.blur();
+                if (table && typeof table.column === 'function') {
+                    table.column($(this).data('column')).search($(this).val());
                 }
+                if (table && table.ajax && typeof table.ajax.reload === 'function') {
+                    table.ajax.reload();
+                } else if (table && typeof table.draw === 'function') {
+                    table.draw();
+                }
+                toggleResetButton();
             });
 
-            // Handle create button
-            $('[data-action="create"]').on('click', function () {
-                loadModal('{% url "pic_pmde_create" %}', 'Tambah PIC PMDE');
+            // Reset search when button clicked
+            $('#btn-reset-pencarian').on('click', function () {
+                $('#column-search-row input').val('');
+                $('#column-search-row input').each(function () {
+                    var colIdx = $(this).data('column');
+                    if (colIdx !== undefined && table && typeof table.column === 'function') {
+                        table.column(colIdx).search('');
+                    }
+                });
+                if (table && table.ajax && typeof table.ajax.reload === 'function') {
+                    table.ajax.reload();
+                } else if (table && typeof table.draw === 'function') {
+                    table.draw();
+                }
+                toggleResetButton();
             });
 
-            // Handle edit/delete buttons (delegated event)
-            $(document).on('click', '[data-action="edit"]', function (e) {
-                e.preventDefault();
-                const url = $(this).data('url');
-                loadModal(url, 'Edit PIC PMDE');
+                const modalElement = document.getElementById('crudModal');
+                modalElement.addEventListener('hidden.bs.modal', function () {
+                    document.getElementById('modalContent').innerHTML = '';
+                });
+
+                modalElement.addEventListener('hide.bs.modal', function () {
+                    const focusedElement = document.activeElement;
+                    if (focusedElement && modalElement.contains(focusedElement)) {
+                        focusedElement.blur();
+                    }
+                });
+
+                $('[data-action="create"]').on('click', function () {
+                    loadModal('{% url "pic_pmde_create" %}', 'Tambah PIC PMDE');
+                });
+
+                $(document).on('click', '[data-action="edit"]', function (e) {
+                    e.preventDefault();
+                    const url = $(this).data('url');
+                    loadModal(url, 'Edit PIC PMDE');
+                });
+
+                $(document).on('click', '[data-action="delete"]', function (e) {
+                    e.preventDefault();
+                    const url = $(this).data('url');
+                    loadModal(url, 'Hapus PIC PMDE');
+                });
+
+                $(document).on('submit', '#crudModal form', function (e) {
+                    e.preventDefault();
+                    const form = $(this);
+                    const url = form.attr('action');
+                    const formData = new FormData(form[0]);
+
+                    $.ajax({
+                        url: url,
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        success: function (response) {
+                            if (response.success) {
+                                $('#crudModal').modal('hide');
+                                table.ajax.reload();
+                                showToast(response.message || 'Data berhasil disimpan.', 'success');
+                            } else {
+                                var htmlContent = response.html || response;
+                                
+                                // Gracefully redirect to login if session has expired
+                                if (typeof htmlContent === 'string' && htmlContent.indexOf('Login') !== -1 && htmlContent.indexOf('password') !== -1) {
+                                    window.location.href = '/accounts/login/?next=' + window.location.pathname;
+                                    return;
+                                }
+                                
+                                $('#modalContent').html(htmlContent);
+                                $('#id_id_sub_jenis_data_ilap').trigger('change');
+                            }
+                        },
+                        error: function (xhr) {
+                            try {
+                                const response = JSON.parse(xhr.responseText);
+                                if (response.message) {
+                                    showToast(response.message, 'danger');
+                                } else {
+                                    showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                                }
+                            } catch (e) {
+                                showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                            }
+                        }
+                    });
+                });
+
+                // Delegated Change handler for dynamic ILAP details in modal forms
+                $(document).on('change', '#id_id_sub_jenis_data_ilap', function() {
+                    const subJenisId = $(this).val();
+                    const infoDiv = $('#div_id_ilap_info');
+                    if (!subJenisId) {
+                        infoDiv.hide();
+                        return;
+                    }
+                    
+                    $.ajax({
+                        url: `/jenis-data-ilap/${subJenisId}/info/`,
+                        type: 'GET',
+                        success: function(res) {
+                            if (res.success) {
+                                $('#lbl-ilap-kategori').text(res.kategori_ilap);
+                                $('#lbl-ilap-jenis').text(res.jenis_data);
+                                $('#lbl-ilap-subjenis').text(res.subjenis_data);
+                                const prioritasBadge = res.is_prioritas 
+                                    ? `<span class="badge bg-soft-danger text-danger fw-bold" style="font-size: 11px; padding: 4px 8px;">Tinggi</span>`
+                                    : `<span class="badge bg-soft-secondary text-secondary" style="font-size: 11px; padding: 4px 8px;">Standar</span>`;
+                                $('#lbl-ilap-prioritas').html(prioritasBadge);
+                                $('#lbl-ilap-periode').text(res.periode_data || '-');
+                                infoDiv.show();
+                            } else {
+                                infoDiv.hide();
+                            }
+                        },
+                        error: function(xhr) {
+                            console.error("Failed to load ILAP info:", xhr.responseText);
+                            infoDiv.hide();
+                        }
+                    });
+                });
             });
 
-            $(document).on('click', '[data-action="delete"]', function (e) {
-                e.preventDefault();
-                const url = $(this).data('url');
-                loadModal(url, 'Hapus PIC PMDE');
-            });
-
-            // Handle form submission
-            $(document).on('submit', '#modalBody form', function (e) {
-                e.preventDefault();
-                const form = $(this);
-                const url = form.attr('action');
-                const formData = new FormData(form[0]);
+            function loadModal(url, title) {
+                var dialog = $('#crudModal .modal-dialog');
+                dialog.removeClass('modal-sm modal-lg modal-xl modal-adjustable').addClass('modal-lg');
+                
+                $('#modalContent').html(`
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="crudModalLabel">${title}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body text-center py-4">
+                        <div class="spinner-border text-primary" role="status"></div>
+                    </div>
+                `);
+                $('#crudModal').modal('show');
 
                 $.ajax({
                     url: url,
-                    type: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
+                    type: 'GET',
+                    data: { ajax: '1' },
                     success: function (response) {
-                        if (response.success) {
-                            $('#crudModal').modal('hide');
-                            table.ajax.reload();
-                            showToast(response.message || 'Data berhasil disimpan.', 'success');
-                        } else {
-                            $('#modalBody').html(response.html);
+                        var htmlContent = response.html || response;
+                        
+                        // Gracefully redirect to login if session has expired
+                        if (typeof htmlContent === 'string' && htmlContent.indexOf('Login') !== -1 && htmlContent.indexOf('password') !== -1) {
+                            window.location.href = '/accounts/login/?next=' + window.location.pathname;
+                            return;
                         }
+                        
+                        $('#modalContent').html(htmlContent);
+                        $('#id_id_sub_jenis_data_ilap').trigger('change');
+                        $('#crudModalLabel').text(title);
+                        
+                        var modalSize = $('#modalContent form').data('modal-size') || 'lg';
+                        dialog.removeClass('modal-sm modal-lg modal-xl modal-adjustable');
+                        if (modalSize === 'sm') dialog.addClass('modal-sm');
+                        else if (modalSize === 'lg') dialog.addClass('modal-lg');
+                        else if (modalSize === 'xl') dialog.addClass('modal-xl');
+                        else if (modalSize === 'adjustable') dialog.addClass('modal-adjustable');
                     },
-                    error: function (xhr) {
-                        try {
-                            const response = JSON.parse(xhr.responseText);
-                            if (response.message) {
-                                showToast(response.message, 'danger');
-                            } else {
-                                showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
-                            }
-                        } catch (e) {
-                            showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
-                        }
+                    error: function () {
+                        $('#modalContent').html(`
+                            <div class="modal-header">
+                                <h5 class="modal-title">${title}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="alert alert-danger mb-0">Gagal memuat form.</div>
+                            </div>
+                        `);
                     }
                 });
-            });
-        });
-
-        function loadModal(url, title) {
-            $('#crudModalLabel').text(title);
-            $('#modalBody').html('<div class="text-center"><div class="spinner-border" role="status"></div></div>');
-            $('#crudModal').modal('show');
-
-            $.ajax({
-                url: url,
-                type: 'GET',
-                data: { ajax: '1' },
-                success: function (response) {
-                    $('#modalBody').html(response.html || response);
-                },
-                error: function () {
-                    $('#modalBody').html('<div class="alert alert-danger">Gagal memuat form.</div>');
-                }
-            });
-        }
-
-    })();
-</script>
+            }
+        })();
+    </script>
 {% endblock %}
