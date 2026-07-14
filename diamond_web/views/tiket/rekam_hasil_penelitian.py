@@ -189,6 +189,11 @@ class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, Active
                 self.get_context_data(form=form),
                 request=self.request
             )
-            return JsonResponse({'success': False, 'html': html, 'message': 'Terdapat kesalahan pada form.'})
+            error_messages = []
+            for field, errors in form.errors.items():
+                for err in errors:
+                    error_messages.append(f'{field}: {err}' if field != '__all__' else err)
+            message = '; '.join(error_messages) or 'Terdapat kesalahan pada form.'
+            return JsonResponse({'success': False, 'html': html, 'message': message})
         return super().form_invalid(form)
 

@@ -109,6 +109,7 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
             # Build the base tiket queryset first (without ILAP filter)
             tikets = Tiket.objects.filter(
                 status_tiket__in=[STATUS_DITELITI, STATUS_DIKEMBALIKAN],
+                backup=True,
                 tanda_terima=True,
                 tiketpic__active=True,
                 tiketpic__role=TiketPIC.Role.P3DE,
@@ -283,6 +284,7 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
             if select_all_pages:
                 all_ids_qs = Tiket.objects.filter(
                     status_tiket__in=[STATUS_DITELITI, STATUS_DIKEMBALIKAN],
+                    backup=True,
                     tanda_terima=True,
                     tiketpic__active=True,
                     tiketpic__role=TiketPIC.Role.P3DE,
@@ -302,7 +304,29 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
 
                 all_ids = list(all_ids_qs.distinct().values_list('pk', flat=True))
             else:
-                all_ids = tiket_ids
+                # Filter explicit ticket IDs by the same criteria as the listing
+                all_ids_qs = Tiket.objects.filter(
+                    id__in=tiket_ids,
+                    status_tiket__in=[STATUS_DITELITI, STATUS_DIKEMBALIKAN],
+                    backup=True,
+                    tanda_terima=True,
+                ).exclude(
+                    id_status_penelitian__deskripsi='Tidak Lengkap',
+                )
+                all_ids = list(all_ids_qs.values_list('pk', flat=True))
+                invalid_ids = set(tiket_ids) - set(all_ids)
+                if invalid_ids:
+                    invalid_tikets = Tiket.objects.filter(
+                        id__in=invalid_ids
+                    ).values_list('nomor_tiket', flat=True)
+                    msg = (
+                        'Tiket berikut tidak memenuhi syarat untuk dikirim ke PIDE '
+                        f'(status, backup, atau tanda terima): {", ".join(invalid_tikets)}.'
+                    )
+                    if self.is_ajax_request():
+                        return self.get_json_response(success=False, message=msg)
+                    messages.error(self.request, msg)
+                    return self.form_invalid(form)
 
             tikets = Tiket.objects.filter(id__in=all_ids)
 
@@ -421,7 +445,12 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
             HttpResponse: For non-AJAX requests via parent form_invalid().
         """
         if self.is_ajax_request():
-            return self.get_json_response(success=False, errors=form.errors)
+            error_messages = []
+            for field, errors in form.errors.items():
+                for err in errors:
+                    error_messages.append(f'{field}: {err}' if field != '__all__' else err)
+            message = '; '.join(error_messages) or 'Form tidak valid.'
+            return self.get_json_response(success=False, message=message, errors=form.errors)
         return super().form_invalid(form)
 
 
@@ -512,6 +541,7 @@ class KirimPideTempUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, View):
         )
         return Tiket.objects.filter(
             status_tiket__in=[STATUS_DITELITI, STATUS_DIKEMBALIKAN],
+            backup=True,
             tanda_terima=True,
             tiketpic__active=True,
             tiketpic__role=TiketPIC.Role.P3DE,
@@ -826,11 +856,42 @@ class KirimKePIDEView(LoginRequiredMixin, UserP3DERequiredMixin, View):
         tiket_ids = [r.id_tiket_id for r in temp_records]
         tikets = Tiket.objects.filter(id__in=tiket_ids)
 
-        form = KirimKePideForm(request.POST, tiket_list=list(tikets))
-        if not form.is_valid():
+        # --- Pre-flight guard: reject tickets not ready for PIDE ---
+        invalid_tickets = []
+        for t in tikets:
+            issues = []
+            if t.status_tiket not in (STATUS_DITELITI, STATUS_DIKEMBALIKAN):
+                issues.append(f'status "{t.get_status_tiket_display()}"')
+            if not t.backup:
+                issues.append('belum backup')
+            if not t.tanda_terima:
+                issues.append('belum tanda terima')
+            if not t.tgl_teliti:
+                issues.append('belum diteliti')
+            if t.id_status_penelitian and t.id_status_penelitian.deskripsi == 'Tidak Lengkap':
+                issues.append('status penelitian Tidak Lengkap')
+            if issues:
+                invalid_tickets.append(f'{t.nomor_tiket} ({"; ".join(issues)})')
+
+        if invalid_tickets:
             return JsonResponse({
                 'success': False,
-                'message': 'Form tidak valid.',
+                'message': (
+                    'Tiket berikut tidak memenuhi syarat untuk dikirim ke PIDE: '
+                    f'{"; ".join(invalid_tickets)}. Silakan refresh halaman.'
+                ),
+            }, status=400)
+
+        form = KirimKePideForm(request.POST, tiket_list=list(tikets))
+        if not form.is_valid():
+            error_messages = []
+            for field, errors in form.errors.items():
+                for err in errors:
+                    error_messages.append(f'{field}: {err}' if field != '__all__' else err)
+            message = '; '.join(error_messages) or 'Form tidak valid.'
+            return JsonResponse({
+                'success': False,
+                'message': message,
                 'errors': form.errors,
             }, status=400)
 
