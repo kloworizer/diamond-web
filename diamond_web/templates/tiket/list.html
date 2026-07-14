@@ -326,6 +326,89 @@
         background: #00BDFB;
         border-radius: 9px;
     }
+
+    /* Select2 Diamond Premium Design System */
+    .select2-container--bootstrap-5 .select2-selection {
+        min-height: 44px !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        background-color: #fff !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .select2-container--bootstrap-5.select2-container--focus .select2-selection {
+        border-color: #00BDFB !important;
+        box-shadow: 0 0 0 3px rgba(0, 189, 251, 0.15) !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered {
+        padding: 4px 8px !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+        align-items: center !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+        background-color: #f1f5f9 !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 6px !important;
+        color: #334155 !important;
+        font-size: 12.5px !important;
+        font-weight: 500 !important;
+        margin: 0 !important;
+        padding: 4px 24px 4px 8px !important;
+        position: relative !important;
+        display: inline-flex !important;
+        align-items: center !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
+        position: absolute !important;
+        right: 6px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        color: #94a3b8 !important;
+        border: none !important;
+        background: transparent !important;
+        font-size: 14px !important;
+        line-height: 1 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        cursor: pointer !important;
+        transition: color 0.15s ease !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove:hover {
+        color: #ef4444 !important;
+        background: transparent !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-search__field {
+        height: 28px !important;
+        margin: 0 !important;
+        padding: 0 4px !important;
+        font-size: 13.5px !important;
+        color: #334155 !important;
+    }
+
+    .select2-dropdown {
+        border-color: #cbd5e1 !important;
+        border-radius: 8px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+        z-index: 1060 !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-results__option {
+        font-size: 13px !important;
+        padding: 6px 12px !important;
+        color: #334155 !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-results__option--highlighted {
+        background-color: #0c92ff !important;
+        color: #fff !important;
+    }
 </style>
 
 <div class="page-header">
@@ -362,9 +445,14 @@
 
         <!-- ===== FILTER BAR: 5 combobox ===== -->
         <div class="card-body pb-0">
-            <div class="mb-3">
-                <h5 class="fw-bold text-dark mb-0"><i class="feather-list me-2"></i>Daftar Tiket</h5>
-                <p class="fs-12 text-muted mb-0">Daftar seluruh tiket data yang telah dibuat untuk pemantauan dan pengelolaan berkelanjutan.</p>
+            <div class="mb-3 d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="fw-bold text-dark mb-0"><i class="feather-list me-2"></i>Daftar Tiket</h5>
+                    <p class="fs-12 text-muted mb-0">Daftar seluruh tiket data yang telah dibuat untuk pemantauan dan pengelolaan berkelanjutan.</p>
+                </div>
+                <a href="javascript:void(0);" id="btn-reset-pencarian" class="btn border-0 text-primary text-decoration-none p-0 fw-bold align-items-center gap-1" style="display: none; font-size: 13px;">
+                    <i class="feather-x" style="width: 16px; height: 16px;"></i> Reset Pencarian
+                </a>
             </div>
             <hr class="mt-0 mb-3">
             <form id="filter-form">
@@ -374,54 +462,30 @@
                 <div class="row filter-row">
                     <div class="col-md-3">
                         <div class="mb-2">
-                            <label for="combobox-nomor-tiket-adv" class="form-label">Nomor Tiket</label>
-                            <div class="combobox-wrapper">
-                                <input type="text" class="form-control combobox-input"
-                                    id="combobox-nomor-tiket-adv" placeholder="Ketik atau pilih..."
-                                    autocomplete="off" role="combobox" aria-expanded="false">
-                                <input type="hidden" id="filter-nomor-tiket-adv" name="nomor_tiket" value="">
-                                <i class="feather-chevron-down combobox-chevron"></i>
-                                <div class="combobox-dropdown" id="combobox-dropdown-nomor-tiket-adv"></div>
-                            </div>
+                            <label for="filter-nomor-tiket-adv" class="form-label">Nomor Tiket</label>
+                            <select id="filter-nomor-tiket-adv" name="nomor_tiket" class="form-select select2-multiple" multiple="multiple" style="width: 100%;">
+                            </select>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="mb-2">
-                            <label for="combobox-kategori-ilap" class="form-label">Kategori ILAP</label>
-                            <div class="combobox-wrapper">
-                                <input type="text" class="form-control combobox-input" id="combobox-kategori-ilap"
-                                    placeholder="Ketik atau pilih..." autocomplete="off" role="combobox"
-                                    aria-expanded="false">
-                                <input type="hidden" id="filter-kategori-ilap" name="kategori_ilap" value="">
-                                <i class="feather-chevron-down combobox-chevron"></i>
-                                <div class="combobox-dropdown" id="combobox-dropdown-kategori-ilap"></div>
-                            </div>
+                            <label for="filter-kategori-ilap" class="form-label">Kategori ILAP</label>
+                            <select id="filter-kategori-ilap" name="kategori_ilap" class="form-select select2-multiple" multiple="multiple" style="width: 100%;">
+                            </select>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="mb-2">
-                            <label for="combobox-ilap" class="form-label">ILAP</label>
-                            <div class="combobox-wrapper">
-                                <input type="text" class="form-control combobox-input" id="combobox-ilap"
-                                    placeholder="Ketik atau pilih..." autocomplete="off" role="combobox"
-                                    aria-expanded="false">
-                                <input type="hidden" id="filter-ilap" name="ilap" value="">
-                                <i class="feather-chevron-down combobox-chevron"></i>
-                                <div class="combobox-dropdown" id="combobox-dropdown-ilap"></div>
-                            </div>
+                            <label for="filter-ilap" class="form-label">ILAP</label>
+                            <select id="filter-ilap" name="ilap" class="form-select select2-multiple" multiple="multiple" style="width: 100%;">
+                            </select>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="mb-2">
-                            <label for="combobox-jenis-data" class="form-label">Jenis Data</label>
-                            <div class="combobox-wrapper">
-                                <input type="text" class="form-control combobox-input" id="combobox-jenis-data"
-                                    placeholder="Ketik atau pilih..." autocomplete="off" role="combobox"
-                                    aria-expanded="false">
-                                <input type="hidden" id="filter-jenis-data" name="jenis_data" value="">
-                                <i class="feather-chevron-down combobox-chevron"></i>
-                                <div class="combobox-dropdown" id="combobox-dropdown-jenis-data"></div>
-                            </div>
+                            <label for="filter-jenis-data" class="form-label">Jenis Data</label>
+                            <select id="filter-jenis-data" name="jenis_data" class="form-select select2-multiple" multiple="multiple" style="width: 100%;">
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -431,24 +495,21 @@
                     <div class="col-md-3">
                         <div class="mb-2">
                             <label for="filter-periode-adv" class="form-label">Periode</label>
-                            <select class="form-select filter-select" id="filter-periode-adv" name="periode">
-                                <option value="">Pilih Periode...</option>
+                            <select class="form-select select2-multiple" id="filter-periode-adv" name="periode" multiple="multiple" style="width: 100%;">
                             </select>
                         </div>
                     </div>
                     <div class="col-md-2">
                         <div class="mb-2">
                             <label for="filter-tahun" class="form-label">Tahun</label>
-                            <select class="form-select filter-select" id="filter-tahun" name="tahun">
-                                <option value="">Tahun...</option>
+                            <select class="form-select select2-multiple" id="filter-tahun" name="tahun" multiple="multiple" style="width: 100%;">
                             </select>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="mb-2">
                             <label for="filter-status" class="form-label">Status</label>
-                            <select class="form-select filter-select" id="filter-status" name="status">
-                                <option value="">Pilih Status...</option>
+                            <select class="form-select select2-multiple" id="filter-status" name="status" multiple="multiple" style="width: 100%;">
                             </select>
                         </div>
                     </div>
@@ -459,10 +520,6 @@
                                 <i class="feather-sliders me-1"></i>Filter Lanjutan<span class="filter-badge d-none"
                                     id="filter-adv-badge">0</span>
                             </button>
-                            <a href="#" id="btn-clear-filter"
-                                class="btn border-0 text-primary text-decoration-none p-0 fw-bold me-2" style="display: none; font-size: 13px;">
-                                <i class="feather-x me-1"></i> Hapus Filter
-                            </a>
                             <button type="button" id="btn-search" class="btn btn-primary px-4" style="height: 44px !important;"><i
                                     class="feather-search me-1"></i>Cari</button>
                         </div>
@@ -486,117 +543,68 @@
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label class="form-label fs-12 text-muted" for="filter-status-ketersediaan-data-adv">Status Ketersediaan Data</label>
-                                    <select class="form-select form-select-sm filter-select" id="filter-status-ketersediaan-data-adv" name="status_ketersediaan_data">
-                                        <option value="">Pilih Status...</option>
+                                    <select class="form-select form-select-sm select2-multiple" id="filter-status-ketersediaan-data-adv" name="status_ketersediaan_data" multiple="multiple" style="width: 100%;">
                                     </select>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fs-12 text-muted" for="filter-dasar-hukum-adv">Dasar Hukum</label>
-                                    <select class="form-select form-select-sm filter-select" id="filter-dasar-hukum-adv" name="dasar_hukum">
-                                        <option value="">Pilih Dasar Hukum...</option>
+                                    <select class="form-select form-select-sm select2-multiple" id="filter-dasar-hukum-adv" name="dasar_hukum" multiple="multiple" style="width: 100%;">
                                     </select>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fs-12 text-muted" for="filter-kategori-wilayah-adv">Kategori Wilayah</label>
-                                    <select class="form-select form-select-sm filter-select" id="filter-kategori-wilayah-adv" name="kategori_wilayah">
-                                        <option value="">Pilih Kategori Wilayah...</option>
+                                    <select class="form-select form-select-sm select2-multiple" id="filter-kategori-wilayah-adv" name="kategori_wilayah" multiple="multiple" style="width: 100%;">
                                     </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fs-12 text-muted">Kanwil</label>
-                                    <div class="combobox-wrapper">
-                                        <input type="text" class="form-control combobox-input" id="combobox-kanwil-adv"
-                                            placeholder="Ketik atau pilih..." autocomplete="off" role="combobox"
-                                            aria-expanded="false">
-                                        <input type="hidden" id="filter-kanwil-adv" name="kanwil" value="">
-                                        <i class="feather-chevron-down combobox-chevron"></i>
-                                        <div class="combobox-dropdown" id="combobox-dropdown-kanwil-adv"></div>
-                                    </div>
+                                    <label class="form-label fs-12 text-muted" for="filter-kanwil-adv">Kanwil</label>
+                                    <select class="form-select form-select-sm select2-multiple" id="filter-kanwil-adv" name="kanwil" multiple="multiple" style="width: 100%;">
+                                    </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fs-12 text-muted">KPP</label>
-                                    <div class="combobox-wrapper">
-                                        <input type="text" class="form-control combobox-input" id="combobox-kpp-adv"
-                                            placeholder="Ketik atau pilih..." autocomplete="off" role="combobox"
-                                            aria-expanded="false">
-                                        <input type="hidden" id="filter-kpp-adv" name="kpp" value="">
-                                        <i class="feather-chevron-down combobox-chevron"></i>
-                                        <div class="combobox-dropdown" id="combobox-dropdown-kpp-adv"></div>
-                                    </div>
+                                    <label class="form-label fs-12 text-muted" for="filter-kpp-adv">KPP</label>
+                                    <select class="form-select form-select-sm select2-multiple" id="filter-kpp-adv" name="kpp" multiple="multiple" style="width: 100%;">
+                                    </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fs-12 text-muted">Sub Jenis Data</label>
-                                    <div class="combobox-wrapper">
-                                        <input type="text" class="form-control combobox-input"
-                                            id="combobox-sub-jenis-data-adv" placeholder="Ketik atau pilih..."
-                                            autocomplete="off" role="combobox" aria-expanded="false">
-                                        <input type="hidden" id="filter-sub-jenis-data-adv" name="sub_jenis_data"
-                                            value="">
-                                        <i class="feather-chevron-down combobox-chevron"></i>
-                                        <div class="combobox-dropdown" id="combobox-dropdown-sub-jenis-data-adv"></div>
-                                    </div>
+                                    <label class="form-label fs-12 text-muted" for="filter-sub-jenis-data-adv">Sub Jenis Data</label>
+                                    <select class="form-select form-select-sm select2-multiple" id="filter-sub-jenis-data-adv" name="sub_jenis_data" multiple="multiple" style="width: 100%;">
+                                    </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fs-12 text-muted">Jenis Tabel</label>
-                                    <div class="combobox-wrapper">
-                                        <input type="text" class="form-control combobox-input"
-                                            id="combobox-jenis-tabel-adv" placeholder="Ketik atau pilih..."
-                                            autocomplete="off" role="combobox" aria-expanded="false">
-                                        <input type="hidden" id="filter-jenis-tabel-adv" name="jenis_tabel" value="">
-                                        <i class="feather-chevron-down combobox-chevron"></i>
-                                        <div class="combobox-dropdown" id="combobox-dropdown-jenis-tabel-adv"></div>
-                                    </div>
+                                    <label class="form-label fs-12 text-muted" for="filter-jenis-tabel-adv">Jenis Tabel</label>
+                                    <select class="form-select form-select-sm select2-multiple" id="filter-jenis-tabel-adv" name="jenis_tabel" multiple="multiple" style="width: 100%;">
+                                    </select>
                                 </div>
                                  <div class="col-md-6">
                                     <label class="form-label fs-12 text-muted" for="filter-periode-pengiriman-adv">Periode Pengiriman</label>
-                                    <select class="form-select form-select-sm filter-select" id="filter-periode-pengiriman-adv" name="periode_pengiriman">
-                                        <option value="">Pilih Periode Pengiriman...</option>
+                                    <select class="form-select form-select-sm select2-multiple" id="filter-periode-pengiriman-adv" name="periode_pengiriman" multiple="multiple" style="width: 100%;">
                                     </select>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fs-12 text-muted" for="filter-periode-penerimaan-adv">Periode Penerimaan</label>
-                                    <select class="form-select form-select-sm filter-select" id="filter-periode-penerimaan-adv" name="periode_penerimaan">
-                                        <option value="">Pilih Periode Penerimaan...</option>
+                                    <select class="form-select form-select-sm select2-multiple" id="filter-periode-penerimaan-adv" name="periode_penerimaan" multiple="multiple" style="width: 100%;">
                                     </select>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fs-12 text-muted" for="filter-status-penelitian-adv">Status Penelitian</label>
-                                    <select class="form-select form-select-sm filter-select" id="filter-status-penelitian-adv" name="status_penelitian">
-                                        <option value="">Pilih Status Penelitian...</option>
+                                    <select class="form-select form-select-sm select2-multiple" id="filter-status-penelitian-adv" name="status_penelitian" multiple="multiple" style="width: 100%;">
                                     </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fs-12 text-muted">PIC P3DE</label>
-                                    <div class="combobox-wrapper">
-                                        <input type="text" class="form-control combobox-input"
-                                            id="combobox-pic-p3de-adv" placeholder="Ketik atau pilih..."
-                                            autocomplete="off" role="combobox" aria-expanded="false">
-                                        <input type="hidden" id="filter-pic-p3de-adv" name="pic_p3de" value="">
-                                        <i class="feather-chevron-down combobox-chevron"></i>
-                                        <div class="combobox-dropdown" id="combobox-dropdown-pic-p3de-adv"></div>
-                                    </div>
+                                    <label class="form-label fs-12 text-muted" for="filter-pic-p3de-adv">PIC P3DE</label>
+                                    <select class="form-select form-select-sm select2-multiple" id="filter-pic-p3de-adv" name="pic_p3de" multiple="multiple" style="width: 100%;">
+                                    </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fs-12 text-muted">PIC PIDE</label>
-                                    <div class="combobox-wrapper">
-                                        <input type="text" class="form-control combobox-input"
-                                            id="combobox-pic-pide-adv" placeholder="Ketik atau pilih..."
-                                            autocomplete="off" role="combobox" aria-expanded="false">
-                                        <input type="hidden" id="filter-pic-pide-adv" name="pic_pide" value="">
-                                        <i class="feather-chevron-down combobox-chevron"></i>
-                                        <div class="combobox-dropdown" id="combobox-dropdown-pic-pide-adv"></div>
-                                    </div>
+                                    <label class="form-label fs-12 text-muted" for="filter-pic-pide-adv">PIC PIDE</label>
+                                    <select class="form-select form-select-sm select2-multiple" id="filter-pic-pide-adv" name="pic_pide" multiple="multiple" style="width: 100%;">
+                                    </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fs-12 text-muted">PIC PMDE</label>
-                                    <div class="combobox-wrapper">
-                                        <input type="text" class="form-control combobox-input"
-                                            id="combobox-pic-pmde-adv" placeholder="Ketik atau pilih..."
-                                            autocomplete="off" role="combobox" aria-expanded="false">
-                                        <input type="hidden" id="filter-pic-pmde-adv" name="pic_pmde" value="">
-                                        <i class="feather-chevron-down combobox-chevron"></i>
-                                        <div class="combobox-dropdown" id="combobox-dropdown-pic-pmde-adv"></div>
-                                    </div>
+                                    <label class="form-label fs-12 text-muted" for="filter-pic-pmde-adv">PIC PMDE</label>
+                                    <select class="form-select form-select-sm select2-multiple" id="filter-pic-pmde-adv" name="pic_pmde" multiple="multiple" style="width: 100%;">
+                                    </select>
                                 </div>
                             </div>
                         </form>
@@ -721,394 +729,233 @@
         }
 
         // ============================================================
-        // GENERIC COMBOBOX FACTORY (ketik atau pilih dropdown)
+        // SELECT2 INITIALIZATION
         // ============================================================
-        const comboboxData = {};
-
-        function initCombobox(config) {
-            const input = document.getElementById(config.inputId);
-            const dropdown = document.getElementById(config.dropdownId);
-            const hidden = document.getElementById(config.hiddenId);
-            if (!input || !dropdown) return { clearSelection: function () { }, getValue: function () { return '' }, setOptions: function () { }, refresh: function () { } };
-
-            let selectedValue = '';
-            let activeIndex = -1;
-
-            function fireChange() {
-                if (typeof config.onChange === 'function') {
-                    try { config.onChange(selectedValue); } catch (e) { /* noop */ }
-                }
-            }
-
-            function getOptions() {
-                return comboboxData[config.dataKey] || [];
-            }
-
-            function renderDropdown(filter) {
-                if (!dropdown) return;
-                dropdown.innerHTML = '';
-                activeIndex = -1;
-                const allOpts = getOptions();
-                const filtered = filter && filter.length > 0
-                    ? allOpts.filter(opt => opt.label.toLowerCase().includes(filter.toLowerCase()))
-                    : allOpts;
-                if (filtered.length === 0) {
-                    const noResult = document.createElement('div');
-                    noResult.className = 'combobox-no-result';
-                    noResult.textContent = 'Tidak ditemukan';
-                    dropdown.appendChild(noResult);
-                } else {
-                    filtered.forEach((opt, idx) => {
-                        const div = document.createElement('div');
-                        div.className = 'combobox-option' + (opt.value === selectedValue ? ' selected' : '');
-                        if (config.dataKey === 'combobox-status') {
-                            div.innerHTML = renderStatusBadge(opt.label);
-                        } else {
-                            div.textContent = opt.label;
-                        }
-                        div.dataset.value = opt.value;
-                        div.dataset.index = idx;
-                        div.addEventListener('mousedown', function (e) {
-                            e.preventDefault();
-                            selectOption(opt.value, opt.label);
-                        });
-                        dropdown.appendChild(div);
-                    });
-                }
-            }
-
-            function selectOption(value, label) {
-                selectedValue = value;
-                input.value = label || '';
-                if (hidden) hidden.value = value;
-                input.setAttribute('aria-expanded', 'false');
-                dropdown.classList.remove('show');
-                fireChange();
-            }
-
-            function clearSelection(silent) {
-                selectedValue = '';
-                input.value = '';
-                if (hidden) hidden.value = '';
-                input.setAttribute('aria-expanded', 'false');
-                dropdown.classList.remove('show');
-                if (!silent) fireChange();
-            }
-
-            input.addEventListener('focus', function () {
-                renderDropdown(input.value);
-                dropdown.classList.add('show');
-                input.setAttribute('aria-expanded', 'true');
-            });
-            input.addEventListener('input', function () {
-                renderDropdown(input.value);
-                if (!dropdown.classList.contains('show')) {
-                    dropdown.classList.add('show');
-                    input.setAttribute('aria-expanded', 'true');
-                }
-            });
-            input.addEventListener('blur', function () {
-                const allOpts = getOptions();
-                const match = allOpts.find(opt =>
-                    opt.label.toLowerCase() === (input.value || '').toLowerCase()
-                );
-                if (!match) clearSelection();
-                dropdown.classList.remove('show');
-                input.setAttribute('aria-expanded', 'false');
-            });
-            input.addEventListener('keydown', function (e) {
-                const items = dropdown ? dropdown.querySelectorAll('.combobox-option') : [];
-                if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    activeIndex = Math.min(activeIndex + 1, items.length - 1);
-                    items.forEach(el => el.classList.remove('active'));
-                    if (items[activeIndex]) items[activeIndex].classList.add('active');
-                } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    activeIndex = Math.max(activeIndex - 1, 0);
-                    items.forEach(el => el.classList.remove('active'));
-                    if (items[activeIndex]) items[activeIndex].classList.add('active');
-                } else if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (activeIndex >= 0 && items[activeIndex]) {
-                        items[activeIndex].dispatchEvent(new Event('mousedown'));
-                    }
-                } else if (e.key === 'Escape') {
-                    dropdown.classList.remove('show');
-                    input.setAttribute('aria-expanded', 'false');
-                }
-            });
-
-            return { clearSelection, getValue: () => selectedValue, setOptions: function (opts) { comboboxData[config.dataKey] = opts; }, refresh: function () { renderDropdown(input.value); } };
-        }
-
-        // ============================================================
-        // SELECT TO COMBOBOX COMPATIBILITY ADAPTER
-        // ============================================================
-        function initSelectAsComboboxCompat(selectId, dataKey, placeholder) {
-            const select = $('#' + selectId);
-            
-            function updateStyle() {
-                if (select.val()) {
-                    select.addClass('has-value');
-                } else {
-                    select.removeClass('has-value');
-                }
-            }
-            select.on('change', updateStyle);
-            
-            function getValue() {
-                return select.val() || '';
-            }
-            
-            function clearSelection(silent) {
-                select.val('');
-                updateStyle();
-                if (!silent) {
-                    select.trigger('change');
-                }
-            }
-            
-            function refresh() {
-                const opts = comboboxData[dataKey] || [];
-                select.empty();
-                if (placeholder) {
-                    select.append(`<option value="">${placeholder}</option>`);
-                }
-                opts.forEach(opt => {
-                    select.append(`<option value="${opt.value}">${opt.label}</option>`);
-                });
-                updateStyle();
-            }
-            
-            updateStyle();
-            return { getValue, clearSelection, refresh, setOptions: function (opts) { comboboxData[dataKey] = opts; } };
-        }
-
-        // Initialize main comboboxes & select compatibility wrappers
-        const comboboxTahun = initSelectAsComboboxCompat('filter-tahun', 'combobox-tahun', 'Pilih Tahun...');
-        const comboboxKategoriIlap = initCombobox({ inputId: 'combobox-kategori-ilap', dropdownId: 'combobox-dropdown-kategori-ilap', hiddenId: 'filter-kategori-ilap', dataKey: 'combobox-kategori-ilap' });
-        const comboboxIlap = initCombobox({ inputId: 'combobox-ilap', dropdownId: 'combobox-dropdown-ilap', hiddenId: 'filter-ilap', dataKey: 'combobox-ilap' });
-        const comboboxJenisData = initCombobox({ inputId: 'combobox-jenis-data', dropdownId: 'combobox-dropdown-jenis-data', hiddenId: 'filter-jenis-data', dataKey: 'combobox-jenis-data' });
-        const comboboxStatus = initSelectAsComboboxCompat('filter-status', 'combobox-status', 'Pilih Status...');
-
-        // Initialize advanced filter comboboxes
-        const comboboxNomorTiketAdv = initCombobox({ inputId: 'combobox-nomor-tiket-adv', dropdownId: 'combobox-dropdown-nomor-tiket-adv', hiddenId: 'filter-nomor-tiket-adv', dataKey: 'combobox-nomor-tiket-adv' });
-        const comboboxStatusKetersediaanDataAdv = initSelectAsComboboxCompat('filter-status-ketersediaan-data-adv', 'combobox-status-ketersediaan-data-adv', 'Pilih Status...');
-        const comboboxDasarHukumAdv = initSelectAsComboboxCompat('filter-dasar-hukum-adv', 'combobox-dasar-hukum-adv', 'Pilih Dasar Hukum...');
-        const comboboxKategoriWilayahAdv = initSelectAsComboboxCompat('filter-kategori-wilayah-adv', 'combobox-kategori-wilayah-adv', 'Pilih Kategori Wilayah...');
-        const comboboxKanwilAdv = initCombobox({ inputId: 'combobox-kanwil-adv', dropdownId: 'combobox-dropdown-kanwil-adv', hiddenId: 'filter-kanwil-adv', dataKey: 'combobox-kanwil-adv' });
-        const comboboxKppAdv = initCombobox({ inputId: 'combobox-kpp-adv', dropdownId: 'combobox-dropdown-kpp-adv', hiddenId: 'filter-kpp-adv', dataKey: 'combobox-kpp-adv' });
-        const comboboxSubJenisDataAdv = initCombobox({ inputId: 'combobox-sub-jenis-data-adv', dropdownId: 'combobox-dropdown-sub-jenis-data-adv', hiddenId: 'filter-sub-jenis-data-adv', dataKey: 'combobox-sub-jenis-data-adv' });
-        const comboboxJenisTabelAdv = initCombobox({ inputId: 'combobox-jenis-tabel-adv', dropdownId: 'combobox-dropdown-jenis-tabel-adv', hiddenId: 'filter-jenis-tabel-adv', dataKey: 'combobox-jenis-tabel-adv' });
-        const comboboxPeriodeAdv = initSelectAsComboboxCompat('filter-periode-adv', 'combobox-periode-adv', 'Pilih Periode...');
-        const comboboxPeriodePengirimanAdv = initSelectAsComboboxCompat('filter-periode-pengiriman-adv', 'combobox-periode-pengiriman-adv', 'Pilih Periode Pengiriman...');
-        const comboboxPeriodePenerimaanAdv = initSelectAsComboboxCompat('filter-periode-penerimaan-adv', 'combobox-periode-penerimaan-adv', 'Pilih Periode Penerimaan...');
-        const comboboxStatusPenelitianAdv = initSelectAsComboboxCompat('filter-status-penelitian-adv', 'combobox-status-penelitian-adv', 'Pilih Status Penelitian...');
-        const comboboxPicP3deAdv = initCombobox({ inputId: 'combobox-pic-p3de-adv', dropdownId: 'combobox-dropdown-pic-p3de-adv', hiddenId: 'filter-pic-p3de-adv', dataKey: 'combobox-pic-p3de-adv' });
-        const comboboxPicPideAdv = initCombobox({ inputId: 'combobox-pic-pide-adv', dropdownId: 'combobox-dropdown-pic-pide-adv', hiddenId: 'filter-pic-pide-adv', dataKey: 'combobox-pic-pide-adv' });
-        const comboboxPicPmdeAdv = initCombobox({ inputId: 'combobox-pic-pmde-adv', dropdownId: 'combobox-dropdown-pic-pmde-adv', hiddenId: 'filter-pic-pmde-adv', dataKey: 'combobox-pic-pmde-adv' });
-
-        // Helper: reset all comboboxes
-        function resetAllComboboxes() {
-            comboboxTahun.clearSelection(true);
-            comboboxKategoriIlap.clearSelection(true);
-            comboboxIlap.clearSelection(true);
-            comboboxJenisData.clearSelection(true);
-            comboboxStatus.clearSelection(true);
-            // Reset advanced filter comboboxes
-            comboboxNomorTiketAdv.clearSelection(true);
-            comboboxStatusKetersediaanDataAdv.clearSelection(true);
-            comboboxDasarHukumAdv.clearSelection(true);
-            comboboxKategoriWilayahAdv.clearSelection(true);
-            comboboxKanwilAdv.clearSelection(true);
-            comboboxKppAdv.clearSelection(true);
-            comboboxSubJenisDataAdv.clearSelection(true);
-            comboboxJenisTabelAdv.clearSelection(true);
-            comboboxPeriodeAdv.clearSelection(true);
-            comboboxPeriodePengirimanAdv.clearSelection(true);
-            comboboxPeriodePenerimaanAdv.clearSelection(true);
-            comboboxStatusPenelitianAdv.clearSelection(true);
-            comboboxPicP3deAdv.clearSelection(true);
-            comboboxPicPideAdv.clearSelection(true);
-            comboboxPicPmdeAdv.clearSelection(true);
-            updateAdvFilterBadge();
-        }
-
-        function updateAdvFilterBadge() {
-            let count = 0;
-             if (comboboxStatusKetersediaanDataAdv.getValue()) count++;
-             if (comboboxDasarHukumAdv.getValue()) count++;
-             if (comboboxKategoriWilayahAdv.getValue()) count++;
-             if (comboboxKanwilAdv.getValue()) count++;
-             if (comboboxKppAdv.getValue()) count++;
-             if (comboboxSubJenisDataAdv.getValue()) count++;
-             if (comboboxJenisTabelAdv.getValue()) count++;
-             if (comboboxPeriodePengirimanAdv.getValue()) count++;
-             if (comboboxPeriodePenerimaanAdv.getValue()) count++;
-             if (comboboxStatusPenelitianAdv.getValue()) count++;
-             if (comboboxPicP3deAdv.getValue()) count++;
-             if (comboboxPicPideAdv.getValue()) count++;
-             if (comboboxPicPmdeAdv.getValue()) count++;
-            const badge = document.getElementById('filter-adv-badge');
-            if (badge) {
-                if (count > 0) {
-                    badge.textContent = count;
-                    badge.classList.remove('d-none');
-                } else {
-                    badge.classList.add('d-none');
-                }
-            }
-        }
-
-        // Show/hide Hapus Semua button based on active advanced filters
-        function updateHapusSemuaVisibility() {
-             const hasAdvFilter = comboboxStatusKetersediaanDataAdv.getValue() ||
-                 comboboxDasarHukumAdv.getValue() ||
-                 comboboxKategoriWilayahAdv.getValue() ||
-                 comboboxKanwilAdv.getValue() ||
-                 comboboxKppAdv.getValue() ||
-                 comboboxSubJenisDataAdv.getValue() ||
-                 comboboxJenisTabelAdv.getValue() ||
-                 comboboxPeriodePengirimanAdv.getValue() ||
-                 comboboxPeriodePenerimaanAdv.getValue() ||
-                 comboboxStatusPenelitianAdv.getValue() ||
-                 comboboxPicP3deAdv.getValue() ||
-                 comboboxPicPideAdv.getValue() ||
-                 comboboxPicPmdeAdv.getValue();
-
-            const btnHapusSemua = $('#btn-adv-clear');
-            if (hasAdvFilter) {
-                btnHapusSemua.removeClass('d-none');
-            } else {
-                btnHapusSemua.addClass('d-none');
-            }
-        }
-
-        function loadFilterOptions() {
-            $.ajax({
-                url: ajaxUrl,
-                type: 'GET',
-                data: { get_filter_options: '1' },
-                success: function (response) {
-                    if (!response.filter_options) return;
-                    const opts = response.filter_options;
-
-                    const dropdownMap = {
-                        'tahun': { key: 'combobox-tahun', combobox: comboboxTahun },
-                        'kategori_ilap': { key: 'combobox-kategori-ilap', combobox: comboboxKategoriIlap },
-                        'ilap': { key: 'combobox-ilap', combobox: comboboxIlap },
-                        'jenis_data': { key: 'combobox-jenis-data', combobox: comboboxJenisData },
-                        'status': { key: 'combobox-status', combobox: comboboxStatus }
-                    };
-
-                    Object.entries(dropdownMap).forEach(([optKey, config]) => {
-                        if (opts[optKey]) {
-                            let comboOpts = opts[optKey].map(item => ({ value: String(item.id), label: item.name }));
-                            if (optKey === 'status') {
-                                comboOpts = comboOpts.map(item => {
-                                    let label = item.label;
-                                    if (item.value === '1') label = 'Proses Perekaman';
-                                    else if (item.value === '2') label = 'Diteliti';
-                                    else if (item.value === '3') label = 'Data Dikembalikan';
-                                    else if (item.value === '4') label = 'Belum Diterima';
-                                    else if (item.value === '5') label = 'Proses Identifikasi';
-                                    else if (item.value === '6') label = 'Proses QC';
-                                    else if (item.value === '7') label = 'Tiket Dibatalkan';
-                                    else if (item.value === '8') label = 'Selesai';
-                                    else if (item.value === '9') label = 'Tidak Direkam';
-                                    return { value: item.value, label: label };
-                                });
-                            }
-                            comboboxData[config.key] = comboOpts;
-                            config.combobox.refresh();
-                        }
-                    });
-
-                    // Populate advanced filter comboboxes
-                    if (opts.nomor_tiket) { const comboOpts = opts.nomor_tiket.map(item => ({ value: String(item.id), label: item.name })); comboboxData['combobox-nomor-tiket-adv'] = comboOpts; comboboxNomorTiketAdv.refresh(); }
-                    if (opts.status_ketersediaan_data) { const comboOpts = opts.status_ketersediaan_data.map(item => ({ value: String(item.id), label: item.name })); comboboxData['combobox-status-ketersediaan-data-adv'] = comboOpts; comboboxStatusKetersediaanDataAdv.refresh(); }
-                    if (opts.dasar_hukum) { const comboOpts = opts.dasar_hukum.map(item => ({ value: String(item.id), label: item.name })); comboboxData['combobox-dasar-hukum-adv'] = comboOpts; comboboxDasarHukumAdv.refresh(); }
-                    if (opts.kategori_wilayah) { const comboOpts = opts.kategori_wilayah.map(item => ({ value: String(item.id), label: item.name })); comboboxData['combobox-kategori-wilayah-adv'] = comboOpts; comboboxKategoriWilayahAdv.refresh(); }
-                    if (opts.kanwil) { const comboOpts = opts.kanwil.map(item => ({ value: String(item.id), label: item.name })); comboboxData['combobox-kanwil-adv'] = comboOpts; comboboxKanwilAdv.refresh(); }
-                    if (opts.kpp) { const comboOpts = opts.kpp.map(item => ({ value: String(item.id), label: item.name })); comboboxData['combobox-kpp-adv'] = comboOpts; comboboxKppAdv.refresh(); }
-                    if (opts.sub_jenis_data) { const comboOpts = opts.sub_jenis_data.map(item => ({ value: String(item.id), label: item.name })); comboboxData['combobox-sub-jenis-data-adv'] = comboOpts; comboboxSubJenisDataAdv.refresh(); }
-                    if (opts.jenis_tabel) { const comboOpts = opts.jenis_tabel.map(item => ({ value: String(item.id), label: item.name })); comboboxData['combobox-jenis-tabel-adv'] = comboOpts; comboboxJenisTabelAdv.refresh(); }
-                    if (opts.periode) { const comboOpts = opts.periode.map(item => ({ value: String(item.id), label: item.name })); comboboxData['combobox-periode-adv'] = comboOpts; comboboxPeriodeAdv.refresh(); }
-                    if (opts.periode_pengiriman) { const comboOpts = opts.periode_pengiriman.map(item => ({ value: String(item.id), label: item.name })); comboboxData['combobox-periode-pengiriman-adv'] = comboOpts; comboboxPeriodePengirimanAdv.refresh(); }
-                    if (opts.periode_penerimaan) { const comboOpts = opts.periode_penerimaan.map(item => ({ value: String(item.id), label: item.name })); comboboxData['combobox-periode-penerimaan-adv'] = comboOpts; comboboxPeriodePenerimaanAdv.refresh(); }
-                    if (opts.status_penelitian) { const comboOpts = opts.status_penelitian.map(item => ({ value: String(item.id), label: item.name })); comboboxData['combobox-status-penelitian-adv'] = comboOpts; comboboxStatusPenelitianAdv.refresh(); }
-                    if (opts.pic_p3de) { const comboOpts = opts.pic_p3de.map(item => ({ value: String(item.id), label: item.name })); comboboxData['combobox-pic-p3de-adv'] = comboOpts; comboboxPicP3deAdv.refresh(); }
-                    if (opts.pic_pide) { const comboOpts = opts.pic_pide.map(item => ({ value: String(item.id), label: item.name })); comboboxData['combobox-pic-pide-adv'] = comboOpts; comboboxPicPideAdv.refresh(); }
-                    if (opts.pic_pmde) { const comboOpts = opts.pic_pmde.map(item => ({ value: String(item.id), label: item.name })); comboboxData['combobox-pic-pmde-adv'] = comboOpts; comboboxPicPmdeAdv.refresh(); }
-
-                    if (!initialFiltersApplied) {
-                        initialFiltersApplied = true;
-                        applyInitialFiltersFromUrl();
-                        table.ajax.reload();
-                    }
-                },
-                error: function () {
-                    if (!initialFiltersApplied) {
-                        initialFiltersApplied = true;
-                        applyInitialFiltersFromUrl();
-                        if (table) table.ajax.reload();
-                    }
-                }
-            });
-        }
-
-        function applyInitialFiltersFromUrl() {
-            const paramToComboboxMap = {
-                tahun: comboboxTahun,
-                kategori_ilap: comboboxKategoriIlap,
-                ilap: comboboxIlap,
-                jenis_data: comboboxJenisData,
-                status: comboboxStatus
-            };
-
-            let hasInitialFilter = false;
-
-            Object.entries(paramToComboboxMap).forEach(([param, combobox]) => {
-                const raw = (urlParams.get(param) || '').trim();
-                if (!raw) return;
-                hasInitialFilter = true;
-                const allOpts = comboboxData[combobox.getValue ? Object.keys(comboboxData).find(k => combobox === window[k]) : ''] || [];
-                const match = allOpts.find(opt => opt.value === raw);
-                if (match) {
-                    combobox.selectOption(match.value, match.label);
-                }
-            });
-
-            const periodeValue = normalizePeriodeParam();
-            if (periodeValue) {
-                hasInitialFilter = true;
-                const allOpts = comboboxData['combobox-periode'] || [];
-                const match = allOpts.find(opt => opt.value === periodeValue);
-                if (match) {
-                    comboboxPeriode.selectOption(match.value, match.label);
-                }
-            }
-            return hasInitialFilter;
-        }
-
-        function normalizePeriodeParam() {
-            const periodeValue = (urlParams.get('periode') || '').trim();
-            if (!periodeValue) return '';
-            const normalizedPenerimaan = (urlParams.get('periode_penerimaan') || '').trim().toLowerCase();
-            const map = {
-                'bulanan': 'bulanan',
-                'triwulanan': 'triwulanan',
-                'semester': 'semester',
-                'tahunan': 'tahunan'
-            };
-            if (/^\d+$/.test(periodeValue) && map[normalizedPenerimaan]) {
-                return `${map[normalizedPenerimaan]}:${periodeValue}`;
-            }
-            return periodeValue;
-        }
-
         $(document).ready(function () {
+            // Main Filters
+            $('#filter-nomor-tiket-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Nomor Tiket...', allowClear: true, closeOnSelect: false });
+            $('#filter-kategori-ilap').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Kategori ILAP...', allowClear: true, closeOnSelect: false });
+            $('#filter-ilap').select2({ theme: 'bootstrap-5', placeholder: 'Pilih ILAP...', allowClear: true, closeOnSelect: false });
+            $('#filter-jenis-data').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Jenis Data...', allowClear: true, closeOnSelect: false });
+            $('#filter-periode-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Periode...', allowClear: true, closeOnSelect: false });
+            $('#filter-tahun').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Tahun...', allowClear: true, closeOnSelect: false });
+            $('#filter-status').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Status...', allowClear: true, closeOnSelect: false });
+            
+            // Advanced Filters
+            $('#filter-status-ketersediaan-data-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Status...', allowClear: true, closeOnSelect: false });
+            $('#filter-dasar-hukum-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Dasar Hukum...', allowClear: true, closeOnSelect: false });
+            $('#filter-kategori-wilayah-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Kategori Wilayah...', allowClear: true, closeOnSelect: false });
+            $('#filter-kanwil-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Kanwil...', allowClear: true, closeOnSelect: false });
+            $('#filter-kpp-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih KPP...', allowClear: true, closeOnSelect: false });
+            $('#filter-sub-jenis-data-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Sub Jenis Data...', allowClear: true, closeOnSelect: false });
+            $('#filter-jenis-tabel-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Jenis Tabel...', allowClear: true, closeOnSelect: false });
+            $('#filter-periode-pengiriman-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Periode Pengiriman...', allowClear: true, closeOnSelect: false });
+            $('#filter-periode-penerimaan-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Periode Penerimaan...', allowClear: true, closeOnSelect: false });
+            $('#filter-status-penelitian-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Status Penelitian...', allowClear: true, closeOnSelect: false });
+            $('#filter-pic-p3de-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih PIC...', allowClear: true, closeOnSelect: false });
+            $('#filter-pic-pide-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih PIC...', allowClear: true, closeOnSelect: false });
+            $('#filter-pic-pmde-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih PIC...', allowClear: true, closeOnSelect: false });
+
+            // Helper: reset all filters
+            function resetAllFilters() {
+                $('.select2-multiple').val(null).trigger('change.select2');
+                updateAdvFilterBadge();
+                updateClearFilterVisibility();
+                loadFilterOptions();
+            }
+
+            function updateAdvFilterBadge() {
+                let count = 0;
+                const advFilterIds = [
+                    '#filter-status-ketersediaan-data-adv',
+                    '#filter-dasar-hukum-adv',
+                    '#filter-kategori-wilayah-adv',
+                    '#filter-kanwil-adv',
+                    '#filter-kpp-adv',
+                    '#filter-sub-jenis-data-adv',
+                    '#filter-jenis-tabel-adv',
+                    '#filter-periode-pengiriman-adv',
+                    '#filter-periode-penerimaan-adv',
+                    '#filter-status-penelitian-adv',
+                    '#filter-pic-p3de-adv',
+                    '#filter-pic-pide-adv',
+                    '#filter-pic-pmde-adv'
+                ];
+                advFilterIds.forEach(id => {
+                    const val = $(id).val();
+                    if (val && val.length > 0) count++;
+                });
+
+                const badge = document.getElementById('filter-adv-badge');
+                if (badge) {
+                    if (count > 0) {
+                        badge.textContent = count;
+                        badge.classList.remove('d-none');
+                    } else {
+                        badge.classList.add('d-none');
+                    }
+                }
+            }
+
+            // Show/hide Hapus Semua button based on active advanced filters
+            function updateHapusSemuaVisibility() {
+                let hasAdvFilter = false;
+                const advFilterIds = [
+                    '#filter-status-ketersediaan-data-adv',
+                    '#filter-dasar-hukum-adv',
+                    '#filter-kategori-wilayah-adv',
+                    '#filter-kanwil-adv',
+                    '#filter-kpp-adv',
+                    '#filter-sub-jenis-data-adv',
+                    '#filter-jenis-tabel-adv',
+                    '#filter-periode-pengiriman-adv',
+                    '#filter-periode-penerimaan-adv',
+                    '#filter-status-penelitian-adv',
+                    '#filter-pic-p3de-adv',
+                    '#filter-pic-pide-adv',
+                    '#filter-pic-pmde-adv'
+                ];
+                advFilterIds.forEach(id => {
+                    const val = $(id).val();
+                    if (val && val.length > 0) hasAdvFilter = true;
+                });
+
+                const btnHapusSemua = $('#btn-adv-clear');
+                if (hasAdvFilter) {
+                    btnHapusSemua.removeClass('d-none');
+                } else {
+                    btnHapusSemua.addClass('d-none');
+                }
+            }
+
+            let filterDebounceTimeout;
+            function loadFilterOptions() {
+                const params = {
+                    get_filter_options: '1',
+                    nomor_tiket: ($('#filter-nomor-tiket-adv').val() || []).join(','),
+                    tahun: ($('#filter-tahun').val() || []).join(','),
+                    kategori_ilap: ($('#filter-kategori-ilap').val() || []).join(','),
+                    ilap: ($('#filter-ilap').val() || []).join(','),
+                    jenis_data: ($('#filter-jenis-data').val() || []).join(','),
+                    status: ($('#filter-status').val() || []).join(','),
+                    
+                    status_ketersediaan_data: ($('#filter-status-ketersediaan-data-adv').val() || []).join(','),
+                    dasar_hukum: ($('#filter-dasar-hukum-adv').val() || []).join(','),
+                    kategori_wilayah: ($('#filter-kategori-wilayah-adv').val() || []).join(','),
+                    kanwil: ($('#filter-kanwil-adv').val() || []).join(','),
+                    kpp: ($('#filter-kpp-adv').val() || []).join(','),
+                    sub_jenis_data: ($('#filter-sub-jenis-data-adv').val() || []).join(','),
+                    jenis_tabel: ($('#filter-jenis-tabel-adv').val() || []).join(','),
+                    periode: ($('#filter-periode-adv').val() || []).join(','),
+                    periode_pengiriman: ($('#filter-periode-pengiriman-adv').val() || []).join(','),
+                    periode_penerimaan: ($('#filter-periode-penerimaan-adv').val() || []).join(','),
+                    status_penelitian: ($('#filter-status-penelitian-adv').val() || []).join(','),
+                    pic_p3de: ($('#filter-pic-p3de-adv').val() || []).join(','),
+                    pic_pide: ($('#filter-pic-pide-adv').val() || []).join(','),
+                    pic_pmde: ($('#filter-pic-pmde-adv').val() || []).join(',')
+                };
+
+                $.ajax({
+                    url: ajaxUrl,
+                    type: 'GET',
+                    data: params,
+                    success: function (response) {
+                        if (!response.filter_options) return;
+                        const opts = response.filter_options;
+
+                        const populateSelect = ($el, list, isStatus = false) => {
+                            if (!list) return;
+                            let comboOpts = list.map(item => {
+                                let label = item.name;
+                                if (isStatus) {
+                                    if (item.id === 1 || item.id === '1') label = 'Proses Perekaman';
+                                    else if (item.id === 2 || item.id === '2') label = 'Diteliti';
+                                    else if (item.id === 3 || item.id === '3') label = 'Data Dikembalikan';
+                                    else if (item.id === 4 || item.id === '4') label = 'Belum Diterima';
+                                    else if (item.id === 5 || item.id === '5') label = 'Proses Identifikasi';
+                                    else if (item.id === 6 || item.id === '6') label = 'Proses QC';
+                                    else if (item.id === 7 || item.id === '7') label = 'Tiket Dibatalkan';
+                                    else if (item.id === 8 || item.id === '8') label = 'Selesai';
+                                    else if (item.id === 9 || item.id === '9') label = 'Tidak Direkam';
+                                }
+                                return { value: String(item.id), label: label };
+                            });
+                            
+                            const selectedVal = $el.val() || [];
+                            $el.empty();
+                            comboOpts.forEach(opt => {
+                                const isSelected = selectedVal.includes(opt.value);
+                                $el.append(new Option(opt.label, opt.value, isSelected, isSelected));
+                            });
+                            $el.trigger('change.select2');
+                        };
+
+                        populateSelect($('#filter-tahun'), opts.tahun);
+                        populateSelect($('#filter-kategori-ilap'), opts.kategori_ilap);
+                        populateSelect($('#filter-ilap'), opts.ilap);
+                        populateSelect($('#filter-jenis-data'), opts.jenis_data);
+                        populateSelect($('#filter-status'), opts.status, true);
+                        
+                        populateSelect($('#filter-nomor-tiket-adv'), opts.nomor_tiket);
+                        populateSelect($('#filter-status-ketersediaan-data-adv'), opts.status_ketersediaan_data);
+                        populateSelect($('#filter-dasar-hukum-adv'), opts.dasar_hukum);
+                        populateSelect($('#filter-kategori-wilayah-adv'), opts.kategori_wilayah);
+                        populateSelect($('#filter-kanwil-adv'), opts.kanwil);
+                        populateSelect($('#filter-kpp-adv'), opts.kpp);
+                        populateSelect($('#filter-sub-jenis-data-adv'), opts.sub_jenis_data);
+                        populateSelect($('#filter-jenis-tabel-adv'), opts.jenis_tabel);
+                        populateSelect($('#filter-periode-adv'), opts.periode);
+                        populateSelect($('#filter-periode-pengiriman-adv'), opts.periode_pengiriman);
+                        populateSelect($('#filter-periode-penerimaan-adv'), opts.periode_penerimaan);
+                        populateSelect($('#filter-status-penelitian-adv'), opts.status_penelitian);
+                        populateSelect($('#filter-pic-p3de-adv'), opts.pic_p3de);
+                        populateSelect($('#filter-pic-pide-adv'), opts.pic_pide);
+                        populateSelect($('#filter-pic-pmde-adv'), opts.pic_pmde);
+
+                        if (!initialFiltersApplied) {
+                            initialFiltersApplied = true;
+                            applyInitialFiltersFromUrl();
+                            table.ajax.reload();
+                        }
+                    },
+                    error: function () {
+                        if (!initialFiltersApplied) {
+                            initialFiltersApplied = true;
+                            applyInitialFiltersFromUrl();
+                            if (table) table.ajax.reload();
+                        }
+                    }
+                });
+            }
+
+            function applyInitialFiltersFromUrl() {
+                const params = ['tahun', 'kategori_ilap', 'ilap', 'jenis_data', 'status', 'nomor_tiket', 'periode'];
+                let hasInitialFilter = false;
+                
+                params.forEach(param => {
+                    const val = urlParams.get(param);
+                    if (val) {
+                        hasInitialFilter = true;
+                        const $el = $(`#filter-${param === 'nomor_tiket' ? 'nomor-tiket-adv' : (param === 'periode' ? 'periode-adv' : param)}`);
+                        if ($el.length) {
+                            const vals = val.split(',');
+                            $el.val(vals).trigger('change.select2');
+                        }
+                    }
+                });
+                return hasInitialFilter;
+            }
+
+            // Bind change event to all select2 multiple filters to reload options dynamically
+            $('.select2-multiple').on('change', function (e) {
+                // Throttled update to prevent spamming queries
+                clearTimeout(filterDebounceTimeout);
+                filterDebounceTimeout = setTimeout(() => {
+                    loadFilterOptions();
+                    updateClearFilterVisibility();
+                }, 250);
+            });
+
             table = $('#tiket-table').DataTable({
                 serverSide: true,
                 processing: true,
@@ -1126,27 +973,28 @@
                     url: ajaxUrl,
                     dataSrc: 'data',
                     data: function (d) {
-                        d.tahun = comboboxTahun.getValue();
-                        d.kategori_ilap = comboboxKategoriIlap.getValue();
-                        d.ilap = comboboxIlap.getValue();
-                        d.jenis_data = comboboxJenisData.getValue();
-                        d.status = comboboxStatus.getValue();
+                        d.tahun = ($('#filter-tahun').val() || []).join(',');
+                        d.kategori_ilap = ($('#filter-kategori-ilap').val() || []).join(',');
+                        d.ilap = ($('#filter-ilap').val() || []).join(',');
+                        d.jenis_data = ($('#filter-jenis-data').val() || []).join(',');
+                        d.status = ($('#filter-status').val() || []).join(',');
+                        
                         // Advanced filters
-                        d.nomor_tiket = comboboxNomorTiketAdv.getValue();
-                        d.status_ketersediaan_data = comboboxStatusKetersediaanDataAdv.getValue();
-                        d.dasar_hukum = comboboxDasarHukumAdv.getValue();
-                        d.kategori_wilayah = comboboxKategoriWilayahAdv.getValue();
-                        d.kanwil = comboboxKanwilAdv.getValue();
-                        d.kpp = comboboxKppAdv.getValue();
-                        d.sub_jenis_data = comboboxSubJenisDataAdv.getValue();
-                        d.jenis_tabel = comboboxJenisTabelAdv.getValue();
-                        d.periode = comboboxPeriodeAdv.getValue();
-                        d.periode_pengiriman = comboboxPeriodePengirimanAdv.getValue();
-                        d.periode_penerimaan = comboboxPeriodePenerimaanAdv.getValue();
-                        d.status_penelitian = comboboxStatusPenelitianAdv.getValue();
-                        d.pic_p3de = comboboxPicP3deAdv.getValue();
-                        d.pic_pide = comboboxPicPideAdv.getValue();
-                        d.pic_pmde = comboboxPicPmdeAdv.getValue();
+                        d.nomor_tiket = ($('#filter-nomor-tiket-adv').val() || []).join(',');
+                        d.status_ketersediaan_data = ($('#filter-status-ketersediaan-data-adv').val() || []).join(',');
+                        d.dasar_hukum = ($('#filter-dasar-hukum-adv').val() || []).join(',');
+                        d.kategori_wilayah = ($('#filter-kategori-wilayah-adv').val() || []).join(',');
+                        d.kanwil = ($('#filter-kanwil-adv').val() || []).join(',');
+                        d.kpp = ($('#filter-kpp-adv').val() || []).join(',');
+                        d.sub_jenis_data = ($('#filter-sub-jenis-data-adv').val() || []).join(',');
+                        d.jenis_tabel = ($('#filter-jenis-tabel-adv').val() || []).join(',');
+                        d.periode = ($('#filter-periode-adv').val() || []).join(',');
+                        d.periode_pengiriman = ($('#filter-periode-pengiriman-adv').val() || []).join(',');
+                        d.periode_penerimaan = ($('#filter-periode-penerimaan-adv').val() || []).join(',');
+                        d.status_penelitian = ($('#filter-status-penelitian-adv').val() || []).join(',');
+                        d.pic_p3de = ($('#filter-pic-p3de-adv').val() || []).join(',');
+                        d.pic_pide = ($('#filter-pic-pide-adv').val() || []).join(',');
+                        d.pic_pmde = ($('#filter-pic-pmde-adv').val() || []).join(',');
                         return d;
                     }
                 },
@@ -1190,11 +1038,10 @@
             // Make columns resizable
             makeTableResizable('#tiket-table');
 
-            // Tombol reset filter
-            $('#btn-clear-filter').on('click', function (e) {
+            // Tombol reset filter / Reset Pencarian
+            $('#btn-reset-pencarian').on('click', function (e) {
                 e.preventDefault();
-                resetAllComboboxes();
-                updateClearFilterVisibility();
+                resetAllFilters();
                 table.ajax.reload();
             });
 
@@ -1203,30 +1050,34 @@
                 table.ajax.reload();
             });
 
-            // Advanced filter modal
+            // Advanced filter modal handlers
             $('#btn-adv-apply').on('click', function () {
                 updateAdvFilterBadge();
                 updateHapusSemuaVisibility();
                 if (table) { table.ajax.reload(); }
             });
             $('#btn-adv-clear').on('click', function () {
-                 // Clear only advanced filter comboboxes (excluding main bar filters like Nomor Tiket and Periode)
-                 comboboxStatusKetersediaanDataAdv.clearSelection(true);
-                 comboboxDasarHukumAdv.clearSelection(true);
-                 comboboxKategoriWilayahAdv.clearSelection(true);
-                 comboboxKanwilAdv.clearSelection(true);
-                 comboboxKppAdv.clearSelection(true);
-                 comboboxSubJenisDataAdv.clearSelection(true);
-                 comboboxJenisTabelAdv.clearSelection(true);
-                 comboboxPeriodePengirimanAdv.clearSelection(true);
-                 comboboxPeriodePenerimaanAdv.clearSelection(true);
-                 comboboxStatusPenelitianAdv.clearSelection(true);
-                 comboboxPicP3deAdv.clearSelection(true);
-                 comboboxPicPideAdv.clearSelection(true);
-                 comboboxPicPmdeAdv.clearSelection(true);
-                 updateAdvFilterBadge();
-                 updateHapusSemuaVisibility();
-             });
+                const advFilterIds = [
+                    '#filter-status-ketersediaan-data-adv',
+                    '#filter-dasar-hukum-adv',
+                    '#filter-kategori-wilayah-adv',
+                    '#filter-kanwil-adv',
+                    '#filter-kpp-adv',
+                    '#filter-sub-jenis-data-adv',
+                    '#filter-jenis-tabel-adv',
+                    '#filter-periode-pengiriman-adv',
+                    '#filter-periode-penerimaan-adv',
+                    '#filter-status-penelitian-adv',
+                    '#filter-pic-p3de-adv',
+                    '#filter-pic-pide-adv',
+                    '#filter-pic-pmde-adv'
+                ];
+                advFilterIds.forEach(id => {
+                    $(id).val(null).trigger('change.select2');
+                });
+                updateAdvFilterBadge();
+                updateHapusSemuaVisibility();
+            });
 
             // Update badge on modal hidden
             $('#filterLanjutanModal').on('hidden.bs.modal', function () {
@@ -1238,53 +1089,26 @@
                 updateHapusSemuaVisibility();
             });
 
-            // Load filter dropdown options on page load
+            // Load filter options
             loadFilterOptions();
 
-            // Show/hide Hapus Filter button based on active filters
+            // Show/hide Reset Pencarian button based on active filters
             function updateClearFilterVisibility() {
-                const hasActiveFilter = comboboxTahun.getValue() ||
-                    comboboxKategoriIlap.getValue() ||
-                    comboboxIlap.getValue() ||
-                    comboboxJenisData.getValue() ||
-                    comboboxStatus.getValue() ||
-                    comboboxNomorTiketAdv.getValue() ||
-                    comboboxStatusKetersediaanDataAdv.getValue() ||
-                    comboboxDasarHukumAdv.getValue() ||
-                    comboboxKategoriWilayahAdv.getValue() ||
-                    comboboxKanwilAdv.getValue() ||
-                    comboboxKppAdv.getValue() ||
-                    comboboxSubJenisDataAdv.getValue() ||
-                    comboboxJenisTabelAdv.getValue() ||
-                    comboboxPeriodeAdv.getValue() ||
-                    comboboxPeriodePengirimanAdv.getValue() ||
-                    comboboxPeriodePenerimaanAdv.getValue() ||
-                    comboboxStatusPenelitianAdv.getValue() ||
-                    comboboxPicP3deAdv.getValue() ||
-                    comboboxPicPideAdv.getValue() ||
-                    comboboxPicPmdeAdv.getValue();
+                let hasActiveFilter = false;
+                $('.select2-multiple').each(function () {
+                    const val = $(this).val();
+                    if (val && val.length > 0) {
+                        hasActiveFilter = true;
+                    }
+                });
 
-                const btnClear = $('#btn-clear-filter');
+                const btnReset = $('#btn-reset-pencarian');
                 if (hasActiveFilter) {
-                    btnClear.show();
+                    btnReset.css('display', 'inline-flex').hide().fadeIn(200);
                 } else {
-                    btnClear.hide();
+                    btnReset.fadeOut(200);
                 }
             }
-
-            // Update visibility on filter change
-            $('#btn-search').on('click', function () {
-                setTimeout(updateClearFilterVisibility, 100);
-            });
-            $('#btn-adv-apply').on('click', function () {
-                setTimeout(updateClearFilterVisibility, 100);
-            });
-            $('#btn-adv-clear').on('click', function () {
-                setTimeout(updateClearFilterVisibility, 100);
-            });
-
-            // Initial check
-            updateClearFilterVisibility();
         });
 
         // ============================================================
