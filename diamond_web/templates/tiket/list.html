@@ -2,693 +2,206 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
-<style>
-    /* Combobox styling - matching monitoring penyampaian data */
-    .separator {
-        color: #dee2e6;
-        font-weight: 300;
-        font-size: 18px;
-        margin: 0 4px;
-    }
-
-    /* Compact filter bar — label di atas input */
-    .filter-quick {
-        display: grid;
-        grid-template-columns: repeat(12, 1fr);
-        gap: .6rem .8rem;
-        align-items: end;
-    }
-
-    .filter-quick .filter-field {
-        display: flex;
-        flex-direction: column;
-        gap: .25rem;
-        min-width: 0;
-    }
-
-    .filter-quick .filter-field>label {
-        font-size: .75rem;
-        color: #64748b;
-        margin: 0;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    /* Semua input filter tinggi seragam 44px (WCAG touch target minimum) */
-    .filter-quick .form-control,
-    .filter-quick .form-select,
-    .filter-quick .combobox-input {
-        height: 44px !important;
-        min-height: 44px !important;
-        max-height: 44px !important;
-        padding-top: 10px !important;
-        padding-bottom: 10px !important;
-        line-height: 24px !important;
-        font-size: 14px !important;
-        width: 100% !important;
-        transition: all 0.2s ease !important;
-    }
-
-    /* Focus states for accessibility - WCAG compliant */
-    .filter-quick .form-control:focus,
-    .filter-quick .form-select:focus,
-    .filter-quick .combobox-input:focus {
-        outline: none !important;
-        border-color: #00BDFB !important;
-        box-shadow: 0 0 0 3px rgba(0, 189, 251, 0.15) !important;
-    }
-
-    /* Combobox (ketik + pilih) */
-    .combobox-wrapper {
-        position: relative;
-    }
-
-    .combobox-wrapper .combobox-input {
-        padding-right: 44px !important;
-        cursor: pointer !important;
-        text-overflow: ellipsis;
-        overflow: hidden;
-        white-space: nowrap;
-    }
-
-    .combobox-wrapper .combobox-chevron {
-        position: absolute;
-        right: 10px;
-        top: 50%;
-        transform: translateY(-50%);
-        pointer-events: none;
-        color: #343a40;
-        font-size: 14px;
-    }
-
-    .combobox-wrapper .combobox-dropdown {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        z-index: 1050;
-        background: #fff;
-        border: 1px solid #dee2e6;
-        border-top: none;
-        border-radius: 0 0 6px 6px;
-        max-height: 240px;
-        overflow-y: auto;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, .1);
-        display: none;
-    }
-
-    .combobox-wrapper .combobox-dropdown.show {
-        display: block;
-    }
-
-    .combobox-wrapper .combobox-option {
-        padding: 6px 12px;
-        font-size: 12px;
-        cursor: pointer;
-        color: #212529;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .combobox-wrapper .combobox-option:hover,
-    .combobox-wrapper .combobox-option.active {
-        background-color: #e9ecef;
-    }
-
-    .combobox-wrapper .combobox-option.selected {
-        background-color: #00BDFB;
-        color: #fff;
-    }
-
-    .combobox-wrapper .combobox-no-result {
-        padding: 8px 12px;
-        font-size: 12px;
-        color: #868e96;
-        text-align: center;
-    }
-
-    /* Table frame: only body scrolls, header stays sticky */
-    .table-frame {
-        max-height: calc(100vh - 350px);
-        min-height: 320px;
-        overflow: auto;
-        border-top: 1px solid #e9ecef;
-        position: relative;
-    }
-
-    .table-frame thead th {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        background-color: #f8fafc !important;
-        box-shadow: inset 0 -1px 0 #dee2e6;
-    }
-
-    /* Table cell padding 5px vertical */
-    .table td,
-    .table th {
-        padding-top: 5px !important;
-        padding-bottom: 5px !important;
-        vertical-align: middle !important;
-    }
-
-    /* Toolbar bawah (entri + info + pagination) — sticky dengan shadow */
-    .dt-bottom-toolbar {
-        position: sticky;
-        bottom: 0;
-        z-index: 3;
-        background: #fff;
-        border-top: 1px solid #dee2e6;
-        padding: .75rem .75rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: .5rem;
-        box-shadow: 0 -2px 8px rgba(0, 0, 0, .08);
-    }
-
-    .dt-bottom-toolbar .dt-length,
-    .dt-bottom-toolbar .dataTables_length {
-        display: flex;
-        align-items: center;
-        gap: .4rem;
-        font-size: 12px;
-        color: #64748b;
-    }
-
-    /* Info entri: rata kiri horizontal, tengah vertikal */
-    .dt-bottom-toolbar .dataTables_info {
-        text-align: left !important;
-        display: flex;
-        align-items: center;
-        font-size: 12px;
-        color: #64748b;
-        padding: 0 !important;
-    }
-
-    .dt-bottom-toolbar .dataTables_paginate {
-        margin-left: auto;
-    }
-
-    /* Sticky right Actions column — header AND body cells sticky, rest scrolls horizontally.
-   Safe because no scrollX (single <table> inside .table-frame). */
-    .sticky-actions thead th.col-actions,
-    .sticky-actions tbody td.col-actions {
-        position: sticky;
-        right: 0;
-        border-left: 1px solid #e9ecef;
-        box-shadow: -4px 0 8px -6px rgba(33, 37, 41, .12);
-        background-color: #f8f9fa;
-        z-index: 3;
-    }
-
-    .sticky-actions tbody td.col-actions {
-        background-color: #fff;
-        z-index: 1;
-    }
-
-    .sticky-actions tbody tr:hover td.col-actions {
-        background-color: #f1f3f5;
-    }
-
-    .sticky-actions tbody tr:last-child td.col-actions {
-        box-shadow: none;
-    }
-
-    /* Header styling - same background as monitoring dengan shadow */
-    .sticky-actions thead tr {
-        background-color: #f8f9fa;
-    }
-
-    .sticky-actions thead th {
-        border-bottom: 2px solid #dee2e6;
-        font-weight: 600;
-        color: #495057;
-        font-size: 12px;
-        position: sticky;
-        top: 0;
-        z-index: 2;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, .06);
-    }
-
-    /* Button styles */
-    .btn-sm {
-        height: 28px !important;
-        padding-top: 2px !important;
-        padding-bottom: 2px !important;
-        font-size: 12px !important;
-    }
-
-    /* Label styling */
-    .form-label {
-        font-size: 12px !important;
-        margin-bottom: 4px !important;
-        font-weight: 500 !important;
-    }
-
-    .mb-2 {
-        margin-bottom: 8px !important;
-    }
-
-    /* Row styling */
-    .filter-row {
-        margin-bottom: 12px;
-    }
-
-    /* Sticky filter bar */
-    .filter-bar-sticky {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        background: #fff;
-        padding: 15px;
-        border-bottom: 1px solid #dee2e6;
-    }
-
-    /* Spacing between filter and table */
-    .filter-section {
-        margin-bottom: 0;
-    }
-
-    .table-section {
-        margin-top: 20px;
-    }
-
-    /* Column Resize Handles */
-    #tiket-table {
-        table-layout: fixed !important;
-        width: auto !important;
-        min-width: 100% !important;
-    }
-    .resize-handle {
-        position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        width: 8px;
-        cursor: col-resize;
-        z-index: 100;
-        user-select: none;
-    }
-    .resize-handle:hover, .resizing {
-        border-right: 3px solid #00BDFB !important; /* primary theme color */
-    }
-
-    /* Style form-select to mimic combobox placeholder when value is empty */
-    .filter-select {
-        color: #94a3b8 !important; /* muted gray */
-        font-size: 13px !important;
-    }
-    .filter-select option {
-        color: #334155 !important; /* dark slate options inside the list */
-        font-size: 13px !important;
-    }
-    .filter-select.has-value {
-        color: #334155 !important;
-    }
-
-    /* Style for advanced filter badge chip */
-    .filter-badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 18px;
-        height: 18px;
-        padding: 0 5px;
-        margin-left: 4px;
-        font-size: 11px;
-        font-weight: 600;
-        line-height: 1;
-        color: #fff;
-        background: #00BDFB;
-        border-radius: 9px;
-    }
-
-    /* Hide the original select elements to prevent browser resize handles / double borders */
-    select.select2-multiple {
-        display: none !important;
-    }
-
-    /* Select2 Diamond Premium Design System */
-    .select2-container--bootstrap-5 .select2-selection {
-        min-height: 44px !important;
-        border: 1px solid #cbd5e1 !important;
-        border-radius: 8px !important;
-        background-color: #fff !important;
-        transition: all 0.2s ease !important;
-    }
-    
-    .select2-container--bootstrap-5.select2-container--focus .select2-selection {
-        border-color: #00BDFB !important;
-        box-shadow: 0 0 0 3px rgba(0, 189, 251, 0.15) !important;
-    }
-
-    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered {
-        padding: 4px 8px !important;
-        display: flex !important;
-        flex-wrap: wrap !important;
-        gap: 6px !important;
-        align-items: center !important;
-    }
-
-    /* Target all Select2 multiple choice chips */
-    .select2-selection--multiple .select2-selection__choice {
-        background-color: #f1f5f9 !important;
-        border: 1px solid #e2e8f0 !important;
-        border-radius: 6px !important;
-        color: #334155 !important;
-        font-size: 12.5px !important;
-        font-weight: 500 !important;
-        margin: 0 !important;
-        padding: 4px 24px 4px 8px !important;
-        position: relative !important;
-        display: inline-block !important;
-        max-width: 90% !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        white-space: nowrap !important;
-        vertical-align: middle !important;
-    }
-
-    /* Close button: reset appearance, width/height, and elevate z-index to be on top of text */
-    .select2-selection--multiple .select2-selection__choice__remove {
-        position: absolute !important;
-        right: 6px !important;
-        top: 50% !important;
-        transform: translateY(-50%) !important;
-        border: 0 !important;
-        background: none !important;
-        background-color: transparent !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        cursor: pointer !important;
-        width: 14px !important;
-        height: 14px !important;
-        min-height: 0 !important;
-        min-width: 0 !important;
-        box-shadow: none !important;
-        outline: none !important;
-        appearance: none !important;
-        -webkit-appearance: none !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        z-index: 5 !important; /* Render on top of text node */
-        
-        /* Hide original text to avoid browser font rendering tofu/square issues */
-        color: transparent !important;
-        font-size: 0 !important;
-        line-height: 0 !important;
-    }
-
-    /* Render a clean, standard multiplication cross character using standard sans-serif font */
-    .select2-selection--multiple .select2-selection__choice__remove::before {
-        content: "×" !important;
-        color: #94a3b8 !important;
-        font-size: 15px !important;
-        font-weight: 600 !important;
-        font-family: "Inter", "Outfit", "Segoe UI", Arial, sans-serif !important;
-        line-height: 1 !important;
-        display: inline-block !important;
-        transition: color 0.15s ease !important;
-    }
-
-    .select2-selection--multiple .select2-selection__choice__remove:hover::before {
-        color: #ef4444 !important;
-    }
-
-    .select2-container--bootstrap-5 .select2-search__field {
-        height: 28px !important;
-        margin: 0 !important;
-        padding: 0 4px !important;
-        font-size: 13.5px !important;
-        color: #334155 !important;
-    }
-
-    .select2-dropdown {
-        border-color: #cbd5e1 !important;
-        border-radius: 8px !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
-        z-index: 1060 !important;
-    }
-
-    .select2-container--bootstrap-5 .select2-results__option {
-        font-size: 13px !important;
-        padding: 6px 12px !important;
-        color: #334155 !important;
-    }
-
-    .select2-container--bootstrap-5 .select2-results__option--highlighted {
-        background-color: #0c92ff !important;
-        color: #fff !important;
-    }
-</style>
-
 <div class="page-header">
-    <div class="page-header-left d-flex align-items-center">
-        <div class="page-header-title">
-            <h5 class="m-b-10">
-                <i class="feather-list me-2"></i>Daftar Tiket
-            </h5>
-        </div>
-        <ul class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-            <li class="breadcrumb-item active">Daftar Tiket</li>
-        </ul>
-    </div>
-    <div class="page-header-right ms-auto">
-        <div class="page-header-right-items">
-            <div class="d-flex d-md-none">
-                <a href="javascript:void(0)" class="page-header-right-close-toggle">
-                    <i class="feather-arrow-left me-2"></i>
-                    <span>Kembali</span>
-                </a>
+        <div class="page-header-left d-flex align-items-center">
+            <div class="page-header-title">
+                <h5 class="m-b-10">
+                    <i class="feather-list me-2"></i>Daftar Tiket
+                </h5>
             </div>
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item active">Daftar Tiket</li>
+            </ul>
         </div>
-        <div class="d-md-none d-flex align-items-center">
-            <a href="javascript:void(0)" class="page-header-right-open-toggle">
-                <i class="feather-align-right fs-20"></i>
-            </a>
-        </div>
-    </div>
-</div>
-
-<div class="main-content">
-    <div class="card stretch stretch-full h-100">
-
-        <!-- ===== FILTER BAR: 5 combobox ===== -->
-        <div class="card-body pb-0">
-            <div class="mb-3 d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="fw-bold text-dark mb-0"><i class="feather-list me-2"></i>Daftar Tiket</h5>
-                    <p class="fs-12 text-muted mb-0">Daftar seluruh tiket data yang telah dibuat untuk pemantauan dan pengelolaan berkelanjutan.</p>
+        <div class="page-header-right ms-auto">
+            <div class="page-header-right-items">
+                <div class="d-flex d-md-none">
+                    <a href="javascript:void(0)" class="page-header-right-close-toggle">
+                        <i class="feather-arrow-left me-2"></i>
+                        <span>Kembali</span>
+                    </a>
                 </div>
-                <a href="javascript:void(0);" id="btn-reset-pencarian" class="btn border-0 text-primary text-decoration-none p-0 fw-bold align-items-center gap-1" style="display: none; font-size: 13px;">
-                    <i class="feather-x" style="width: 16px; height: 16px;"></i> Reset Pencarian
+            </div>
+            <div class="d-md-none d-flex align-items-center">
+                <a href="javascript:void(0)" class="page-header-right-open-toggle">
+                    <i class="feather-align-right fs-20"></i>
                 </a>
             </div>
-            <hr class="mt-0 mb-3">
+        </div>
+    </div>
+
+    <div class="main-content">
+    <!-- Filter card above table with 3 internal columns -->
+    <div class="card mb-3">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <h5 class="mb-0"><i class="feather-filter me-2"></i>Filter Data</h5>
+            <button type="reset" class="btn btn-secondary btn-sm" id="btn-reset-filter"><i class="feather-refresh-cw me-1"></i>Atur Ulang</button>
+        </div>
+        <div class="card-body">
             <form id="filter-form">
                 {% csrf_token %}
-
-                <!-- ROW 1: Nomor Tiket (3 col) + Kategori ILAP (3 col) + ILAP (3 col) + Jenis Data (3 col) -->
-                <div class="row filter-row">
-                    <div class="col-md-3">
+                <div class="row g-2">
+                    <div class="col-12">
                         <div class="mb-2">
-                            <label for="filter-nomor-tiket-adv" class="form-label">Nomor Tiket</label>
-                            <select id="filter-nomor-tiket-adv" name="nomor_tiket" class="form-select select2-multiple" multiple="multiple" style="width: 100%;">
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="mb-2">
-                            <label for="filter-kategori-ilap" class="form-label">Kategori ILAP</label>
-                            <select id="filter-kategori-ilap" name="kategori_ilap" class="form-select select2-multiple" multiple="multiple" style="width: 100%;">
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="mb-2">
-                            <label for="filter-ilap" class="form-label">ILAP</label>
-                            <select id="filter-ilap" name="ilap" class="form-select select2-multiple" multiple="multiple" style="width: 100%;">
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="mb-2">
-                            <label for="filter-jenis-data" class="form-label">Jenis Data</label>
-                            <select id="filter-jenis-data" name="jenis_data" class="form-select select2-multiple" multiple="multiple" style="width: 100%;">
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ROW 2: Periode (3 col) + Tahun (2 col) + Status (3 col) + Actions (4 col) -->
-                <div class="row filter-row align-items-end">
-                    <div class="col-md-3">
-                        <div class="mb-2">
-                            <label for="filter-periode-adv" class="form-label">Periode</label>
-                            <select class="form-select select2-multiple" id="filter-periode-adv" name="periode" multiple="multiple" style="width: 100%;">
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="mb-2">
-                            <label for="filter-tahun" class="form-label">Tahun</label>
-                            <select class="form-select select2-multiple" id="filter-tahun" name="tahun" multiple="multiple" style="width: 100%;">
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="mb-2">
-                            <label for="filter-status" class="form-label">Status</label>
-                            <select class="form-select select2-multiple" id="filter-status" name="status" multiple="multiple" style="width: 100%;">
+                            <label for="filter-nomor-tiket" class="form-label">Nomor Tiket</label>
+                            <select class="form-select form-select-sm" id="filter-nomor-tiket" name="nomor_tiket" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
                             </select>
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="d-flex align-items-center justify-content-end gap-2 mb-2">
-                            <button type="button" id="btn-filter-lanjutan" class="btn btn-sm btn-outline-secondary py-2" style="height: 44px !important;"
-                                data-bs-toggle="modal" data-bs-target="#filterLanjutanModal">
-                                <i class="feather-sliders me-1"></i>Filter Lanjutan<span class="filter-badge d-none"
-                                    id="filter-adv-badge">0</span>
-                            </button>
-                            <button type="button" id="btn-search" class="btn btn-primary px-4" style="height: 44px !important;"><i
-                                    class="feather-search me-1"></i>Cari</button>
+                        <div class="mb-2">
+                            <label for="filter-status" class="form-label">Status Tiket</label>
+                            <select class="form-select form-select-sm" id="filter-status" name="status" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-tahun" class="form-label">Tahun</label>
+                            <select class="form-select form-select-sm" id="filter-tahun" name="tahun" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-periode" class="form-label">Periode</label>
+                            <select class="form-select form-select-sm" id="filter-periode" name="periode" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-pic-p3de" class="form-label">PIC P3DE</label>
+                            <select class="form-select form-select-sm" id="filter-pic-p3de" name="pic_p3de" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-pic-pide" class="form-label">PIC PIDE</label>
+                            <select class="form-select form-select-sm" id="filter-pic-pide" name="pic_pide" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-pic-pmde" class="form-label">PIC PMDE</label>
+                            <select class="form-select form-select-sm" id="filter-pic-pmde" name="pic_pmde" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-2">
+                            <label for="filter-kategori-ilap" class="form-label">Kategori ILAP</label>
+                            <select class="form-select form-select-sm" id="filter-kategori-ilap" name="kategori_ilap" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-ilap" class="form-label">ILAP</label>
+                            <select class="form-select form-select-sm" id="filter-ilap" name="ilap" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-jenis-data" class="form-label">Jenis Data</label>
+                            <select class="form-select form-select-sm" id="filter-jenis-data" name="jenis_data" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-sub-jenis-data" class="form-label">Sub Jenis Data</label>
+                            <select class="form-select form-select-sm" id="filter-sub-jenis-data" name="sub_jenis_data" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-kanwil" class="form-label">Kanwil</label>
+                            <select class="form-select form-select-sm" id="filter-kanwil" name="kanwil" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-kpp" class="form-label">KPP</label>
+                            <select class="form-select form-select-sm" id="filter-kpp" name="kpp" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-2">
+                            <label for="filter-kategori-wilayah" class="form-label">Kategori Wilayah</label>
+                            <select class="form-select form-select-sm" id="filter-kategori-wilayah" name="kategori_wilayah" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-jenis-tabel" class="form-label">Jenis Tabel</label>
+                            <select class="form-select form-select-sm" id="filter-jenis-tabel" name="jenis_tabel" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-dasar-hukum" class="form-label">Dasar Hukum</label>
+                            <select class="form-select form-select-sm" id="filter-dasar-hukum" name="dasar_hukum" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-periode-pengiriman" class="form-label">Periode Pengiriman</label>
+                            <select class="form-select form-select-sm" id="filter-periode-pengiriman" name="periode_pengiriman" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-periode-penerimaan" class="form-label">Periode Penerimaan</label>
+                            <select class="form-select form-select-sm" id="filter-periode-penerimaan" name="periode_penerimaan" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-status-penelitian" class="form-label">Status Penelitian</label>
+                            <select class="form-select form-select-sm" id="filter-status-penelitian" name="status_penelitian" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="filter-status-ketersediaan-data" class="form-label">Status Ketersediaan Data</label>
+                            <select class="form-select form-select-sm" id="filter-status-ketersediaan-data" name="status_ketersediaan_data" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
                         </div>
                     </div>
                 </div>
             </form>
         </div>
+    </div>
 
-        <!-- ===== FILTER LANJUTAN (modal) ===== -->
-        <div class="modal fade" id="filterLanjutanModal" tabindex="-1" aria-labelledby="filterLanjutanLabel"
-            aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="filterLanjutanLabel"><i class="feather-sliders me-2"></i>Filter
-                            Lanjutan</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <form id="filter-form-adv">
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label class="form-label fs-12 text-muted" for="filter-status-ketersediaan-data-adv">Status Ketersediaan Data</label>
-                                    <select class="form-select form-select-sm select2-multiple" id="filter-status-ketersediaan-data-adv" name="status_ketersediaan_data" multiple="multiple" style="width: 100%;">
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fs-12 text-muted" for="filter-dasar-hukum-adv">Dasar Hukum</label>
-                                    <select class="form-select form-select-sm select2-multiple" id="filter-dasar-hukum-adv" name="dasar_hukum" multiple="multiple" style="width: 100%;">
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fs-12 text-muted" for="filter-kategori-wilayah-adv">Kategori Wilayah</label>
-                                    <select class="form-select form-select-sm select2-multiple" id="filter-kategori-wilayah-adv" name="kategori_wilayah" multiple="multiple" style="width: 100%;">
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fs-12 text-muted" for="filter-kanwil-adv">Kanwil</label>
-                                    <select class="form-select form-select-sm select2-multiple" id="filter-kanwil-adv" name="kanwil" multiple="multiple" style="width: 100%;">
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fs-12 text-muted" for="filter-kpp-adv">KPP</label>
-                                    <select class="form-select form-select-sm select2-multiple" id="filter-kpp-adv" name="kpp" multiple="multiple" style="width: 100%;">
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fs-12 text-muted" for="filter-sub-jenis-data-adv">Sub Jenis Data</label>
-                                    <select class="form-select form-select-sm select2-multiple" id="filter-sub-jenis-data-adv" name="sub_jenis_data" multiple="multiple" style="width: 100%;">
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fs-12 text-muted" for="filter-jenis-tabel-adv">Jenis Tabel</label>
-                                    <select class="form-select form-select-sm select2-multiple" id="filter-jenis-tabel-adv" name="jenis_tabel" multiple="multiple" style="width: 100%;">
-                                    </select>
-                                </div>
-                                 <div class="col-md-6">
-                                    <label class="form-label fs-12 text-muted" for="filter-periode-pengiriman-adv">Periode Pengiriman</label>
-                                    <select class="form-select form-select-sm select2-multiple" id="filter-periode-pengiriman-adv" name="periode_pengiriman" multiple="multiple" style="width: 100%;">
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fs-12 text-muted" for="filter-periode-penerimaan-adv">Periode Penerimaan</label>
-                                    <select class="form-select form-select-sm select2-multiple" id="filter-periode-penerimaan-adv" name="periode_penerimaan" multiple="multiple" style="width: 100%;">
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fs-12 text-muted" for="filter-status-penelitian-adv">Status Penelitian</label>
-                                    <select class="form-select form-select-sm select2-multiple" id="filter-status-penelitian-adv" name="status_penelitian" multiple="multiple" style="width: 100%;">
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fs-12 text-muted" for="filter-pic-p3de-adv">PIC P3DE</label>
-                                    <select class="form-select form-select-sm select2-multiple" id="filter-pic-p3de-adv" name="pic_p3de" multiple="multiple" style="width: 100%;">
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fs-12 text-muted" for="filter-pic-pide-adv">PIC PIDE</label>
-                                    <select class="form-select form-select-sm select2-multiple" id="filter-pic-pide-adv" name="pic_pide" multiple="multiple" style="width: 100%;">
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fs-12 text-muted" for="filter-pic-pmde-adv">PIC PMDE</label>
-                                    <select class="form-select form-select-sm select2-multiple" id="filter-pic-pmde-adv" name="pic_pmde" multiple="multiple" style="width: 100%;">
-                                    </select>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" id="btn-adv-clear" class="btn btn-sm btn-soft text-primary d-none"><i
-                                class="feather-x me-1"></i>Hapus Semua</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary"
-                            data-bs-dismiss="modal">Batal</button>
-                        <button type="button" id="btn-adv-apply" class="btn btn-sm btn-primary"
-                            data-bs-dismiss="modal"><i class="feather-check me-1"></i>Terapkan</button>
-                    </div>
-                </div>
-            </div>
+    <!-- Table card -->
+    <div class="card">
+        <div class="card-header d-flex align-items-center">
+            <h5 class="card-title mb-0"><i class="feather-list me-2"></i>Daftar Tiket</h5>
         </div>
-
-        <!-- Table Section with spacing -->
-        <div class="table-section">
-            <div class="col-12">
-                <div class="card stretch stretch-full h-100 mb-0 border-0 shadow-none">
-                    <div class="card-body custom-card-action p-0">
-                        <div class="table-frame">
-                            <table id="tiket-table" class="table table-hover mb-0 sticky-actions" style="width:100%">
-                                <thead>
-                                    <tr>
-                                        <th class="d-none">ID</th>
-                                        <th>Nomor Tiket</th>
-                                        <th>ILAP</th>
-                                        <th>Jenis Data</th>
-                                        <th>Periode</th>
-                                        <th>Status</th>
-                                        <th class="col-actions">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                        <!-- Toolbar bawah: entri + info + pagination (diisi DataTables via layout) -->
-                        <div id="dt-table-toolbar" class="dt-bottom-toolbar"></div>
-                    </div>
-                </div>
+        <div class="card-body custom-card-action p-0">
+            <div class="table-responsive">
+                <table id="tiket-table" class="table table-hover mb-0" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th class="d-none">ID</th>
+                            <th>Nomor Tiket</th>
+                            <th>ILAP</th>
+                            <th>Jenis Data</th>
+                            <th>Periode</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
         </div>
     </div>
-</div>
+    </div>
 
 {% endblock %}
-
 {% block scripts %}
 <script>
     (function () {
@@ -697,504 +210,406 @@
         let table;
         let initialFiltersApplied = false;
 
-        // ============================================================
-        // STATUS BADGE RENDER HELPER
-        // ============================================================
-        function renderStatusBadge(statusText) {
-            if (!statusText || statusText === '-') return '-';
-            let displayLabel = statusText;
-            let badgeClass = '';
-            let iconClass = '';
-            switch (statusText) {
-                case 'Direkam':
-                case 'Proses Perekaman':
-                    displayLabel = 'Proses Perekaman';
-                    badgeClass = 'status-perekaman';
-                    iconClass = 'feather-edit-3';
-                    break;
-                case 'Diteliti':
-                    displayLabel = 'Diteliti';
-                    badgeClass = 'status-diteliti';
-                    iconClass = 'feather-search';
-                    break;
-                case 'Dikembalikan':
-                case 'Data Dikembalikan':
-                    displayLabel = 'Data Dikembalikan';
-                    badgeClass = 'status-dikembalikan';
-                    iconClass = 'feather-corner-up-left';
-                    break;
-                case 'Dikirim ke PIDE':
-                case 'Belum Diterima':
-                    displayLabel = 'Belum Diterima';
-                    badgeClass = 'status-belum-diterima';
-                    iconClass = 'feather-clock';
-                    break;
-                case 'Identifikasi':
-                case 'Proses Identifikasi':
-                    displayLabel = 'Proses Identifikasi';
-                    badgeClass = 'status-identifikasi';
-                    iconClass = 'feather-maximize';
-                    break;
-                case 'Pengendalian Mutu':
-                case 'Proses QC':
-                    displayLabel = 'Proses QC';
-                    badgeClass = 'status-qc';
-                    iconClass = 'feather-activity';
-                    break;
-                case 'Dibatalkan':
-                case 'Tiket Dibatalkan':
-                    displayLabel = 'Tiket Dibatalkan';
-                    badgeClass = 'status-dibatalkan';
-                    iconClass = 'feather-x-circle';
-                    break;
-                case 'Selesai':
-                    displayLabel = 'Selesai';
-                    badgeClass = 'status-selesai';
-                    iconClass = 'feather-check-circle';
-                    break;
-                case 'Tidak Direkam':
-                    displayLabel = 'Tidak Direkam';
-                    badgeClass = 'status-tidak-direkam';
-                    iconClass = 'feather-slash';
-                    break;
-                default:
-                    badgeClass = 'bg-secondary';
-                    iconClass = 'feather-info';
-            }
-            return '<span class="badge ' + badgeClass + '"><i class="' + iconClass + ' me-1"></i>' + displayLabel + '</span>';
+        // Helper: get comma-separated string from multi-select (or empty string if none selected)
+        function getMultiSelectValue(selector) {
+            const val = $(selector).val();
+            return (val && val.length > 0) ? val.join(',') : '';
         }
 
-        // ============================================================
-        // SELECT2 INITIALIZATION
-        // ============================================================
-        $(document).ready(function () {
-            // Main Filters
-            $('#filter-nomor-tiket-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Nomor Tiket...', allowClear: true, closeOnSelect: false });
-            $('#filter-kategori-ilap').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Kategori ILAP...', allowClear: true, closeOnSelect: false });
-            $('#filter-ilap').select2({ theme: 'bootstrap-5', placeholder: 'Pilih ILAP...', allowClear: true, closeOnSelect: false });
-            $('#filter-jenis-data').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Jenis Data...', allowClear: true, closeOnSelect: false });
-            $('#filter-periode-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Periode...', allowClear: true, closeOnSelect: false });
-            $('#filter-tahun').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Tahun...', allowClear: true, closeOnSelect: false });
-            $('#filter-status').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Status...', allowClear: true, closeOnSelect: false });
-            
-            // Advanced Filters
-            $('#filter-status-ketersediaan-data-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Status...', allowClear: true, closeOnSelect: false });
-            $('#filter-dasar-hukum-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Dasar Hukum...', allowClear: true, closeOnSelect: false });
-            $('#filter-kategori-wilayah-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Kategori Wilayah...', allowClear: true, closeOnSelect: false });
-            $('#filter-kanwil-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Kanwil...', allowClear: true, closeOnSelect: false });
-            $('#filter-kpp-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih KPP...', allowClear: true, closeOnSelect: false });
-            $('#filter-sub-jenis-data-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Sub Jenis Data...', allowClear: true, closeOnSelect: false });
-            $('#filter-jenis-tabel-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Jenis Tabel...', allowClear: true, closeOnSelect: false });
-            $('#filter-periode-pengiriman-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Periode Pengiriman...', allowClear: true, closeOnSelect: false });
-            $('#filter-periode-penerimaan-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Periode Penerimaan...', allowClear: true, closeOnSelect: false });
-            $('#filter-status-penelitian-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih Status Penelitian...', allowClear: true, closeOnSelect: false });
-            $('#filter-pic-p3de-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih PIC...', allowClear: true, closeOnSelect: false });
-            $('#filter-pic-pide-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih PIC...', allowClear: true, closeOnSelect: false });
-            $('#filter-pic-pmde-adv').select2({ theme: 'bootstrap-5', placeholder: 'Pilih PIC...', allowClear: true, closeOnSelect: false });
+        function normalizePeriodeParam() {
+            const periodeValue = (urlParams.get('periode') || '').trim();
+            if (!periodeValue) return '';
 
-            // Helper: reset all filters
-            function resetAllFilters() {
-                $('.select2-multiple').val(null).trigger('change.select2');
-                updateAdvFilterBadge();
-                updateClearFilterVisibility();
-                loadFilterOptions();
+            const normalizedPenerimaan = (urlParams.get('periode_penerimaan') || '').trim().toLowerCase();
+            const map = {
+                'bulanan': 'bulanan',
+                'triwulanan': 'triwulanan',
+                'semester': 'semester',
+                'tahunan': 'tahunan'
+            };
+
+            if (/^\d+$/.test(periodeValue) && map[normalizedPenerimaan]) {
+                return `${map[normalizedPenerimaan]}:${periodeValue}`;
             }
 
-            function updateAdvFilterBadge() {
-                let count = 0;
-                const advFilterIds = [
-                    '#filter-status-ketersediaan-data-adv',
-                    '#filter-dasar-hukum-adv',
-                    '#filter-kategori-wilayah-adv',
-                    '#filter-kanwil-adv',
-                    '#filter-kpp-adv',
-                    '#filter-sub-jenis-data-adv',
-                    '#filter-jenis-tabel-adv',
-                    '#filter-periode-pengiriman-adv',
-                    '#filter-periode-penerimaan-adv',
-                    '#filter-status-penelitian-adv',
-                    '#filter-pic-p3de-adv',
-                    '#filter-pic-pide-adv',
-                    '#filter-pic-pmde-adv'
-                ];
-                advFilterIds.forEach(id => {
-                    const val = $(id).val();
-                    if (val && val.length > 0) count++;
-                });
+            return periodeValue;
+        }
 
-                const badge = document.getElementById('filter-adv-badge');
-                if (badge) {
-                    if (count > 0) {
-                        badge.textContent = count;
-                        badge.classList.remove('d-none');
-                    } else {
-                        badge.classList.add('d-none');
-                    }
-                }
-            }
+        function applyInitialFiltersFromUrl() {
+            const paramToSelectMap = {
+                nomor_tiket: '#filter-nomor-tiket',
+                tahun: '#filter-tahun',
+                pic_p3de: '#filter-pic-p3de',
+                pic_pide: '#filter-pic-pide',
+                pic_pmde: '#filter-pic-pmde',
+                kategori_ilap: '#filter-kategori-ilap',
+                ilap: '#filter-ilap',
+                jenis_data: '#filter-jenis-data',
+                sub_jenis_data: '#filter-sub-jenis-data',
+                kanwil: '#filter-kanwil',
+                kpp: '#filter-kpp',
+                kategori_wilayah: '#filter-kategori-wilayah',
+                jenis_tabel: '#filter-jenis-tabel',
+                dasar_hukum: '#filter-dasar-hukum',
+                periode_pengiriman: '#filter-periode-pengiriman',
+                periode_penerimaan: '#filter-periode-penerimaan',
+                status: '#filter-status',
+                status_penelitian: '#filter-status-penelitian',
+                status_ketersediaan_data: '#filter-status-ketersediaan-data'
+            };
 
-            // Show/hide Hapus Semua button based on active advanced filters
-            function updateHapusSemuaVisibility() {
-                let hasAdvFilter = false;
-                const advFilterIds = [
-                    '#filter-status-ketersediaan-data-adv',
-                    '#filter-dasar-hukum-adv',
-                    '#filter-kategori-wilayah-adv',
-                    '#filter-kanwil-adv',
-                    '#filter-kpp-adv',
-                    '#filter-sub-jenis-data-adv',
-                    '#filter-jenis-tabel-adv',
-                    '#filter-periode-pengiriman-adv',
-                    '#filter-periode-penerimaan-adv',
-                    '#filter-status-penelitian-adv',
-                    '#filter-pic-p3de-adv',
-                    '#filter-pic-pide-adv',
-                    '#filter-pic-pmde-adv'
-                ];
-                advFilterIds.forEach(id => {
-                    const val = $(id).val();
-                    if (val && val.length > 0) hasAdvFilter = true;
-                });
+            let hasInitialFilter = false;
 
-                const btnHapusSemua = $('#btn-adv-clear');
-                if (hasAdvFilter) {
-                    btnHapusSemua.removeClass('d-none');
-                } else {
-                    btnHapusSemua.addClass('d-none');
-                }
-            }
+            Object.entries(paramToSelectMap).forEach(([param, selector]) => {
+                const raw = (urlParams.get(param) || '').trim();
+                if (!raw) return;
+                // Support comma-separated values in URL params
+                const values = raw.split(',').map(function(v) { return v.trim(); }).filter(function(v) { return v; });
+                if (values.length === 0) return;
+                hasInitialFilter = true;
 
-            let filterDebounceTimeout;
-            function loadFilterOptions() {
-                const params = {
-                    get_filter_options: '1',
-                    nomor_tiket: ($('#filter-nomor-tiket-adv').val() || []).join(','),
-                    tahun: ($('#filter-tahun').val() || []).join(','),
-                    kategori_ilap: ($('#filter-kategori-ilap').val() || []).join(','),
-                    ilap: ($('#filter-ilap').val() || []).join(','),
-                    jenis_data: ($('#filter-jenis-data').val() || []).join(','),
-                    status: ($('#filter-status').val() || []).join(','),
-                    
-                    status_ketersediaan_data: ($('#filter-status-ketersediaan-data-adv').val() || []).join(','),
-                    dasar_hukum: ($('#filter-dasar-hukum-adv').val() || []).join(','),
-                    kategori_wilayah: ($('#filter-kategori-wilayah-adv').val() || []).join(','),
-                    kanwil: ($('#filter-kanwil-adv').val() || []).join(','),
-                    kpp: ($('#filter-kpp-adv').val() || []).join(','),
-                    sub_jenis_data: ($('#filter-sub-jenis-data-adv').val() || []).join(','),
-                    jenis_tabel: ($('#filter-jenis-tabel-adv').val() || []).join(','),
-                    periode: ($('#filter-periode-adv').val() || []).join(','),
-                    periode_pengiriman: ($('#filter-periode-pengiriman-adv').val() || []).join(','),
-                    periode_penerimaan: ($('#filter-periode-penerimaan-adv').val() || []).join(','),
-                    status_penelitian: ($('#filter-status-penelitian-adv').val() || []).join(','),
-                    pic_p3de: ($('#filter-pic-p3de-adv').val() || []).join(','),
-                    pic_pide: ($('#filter-pic-pide-adv').val() || []).join(','),
-                    pic_pmde: ($('#filter-pic-pmde-adv').val() || []).join(',')
-                };
-
-                $.ajax({
-                    url: ajaxUrl,
-                    type: 'GET',
-                    data: params,
-                    success: function (response) {
-                        if (!response.filter_options) return;
-                        const opts = response.filter_options;
-
-                        const populateSelect = ($el, list, isStatus = false) => {
-                            if (!list) return;
-                            let comboOpts = list.map(item => {
-                                let label = item.name;
-                                if (isStatus) {
-                                    if (item.id === 1 || item.id === '1') label = 'Proses Perekaman';
-                                    else if (item.id === 2 || item.id === '2') label = 'Diteliti';
-                                    else if (item.id === 3 || item.id === '3') label = 'Data Dikembalikan';
-                                    else if (item.id === 4 || item.id === '4') label = 'Belum Diterima';
-                                    else if (item.id === 5 || item.id === '5') label = 'Proses Identifikasi';
-                                    else if (item.id === 6 || item.id === '6') label = 'Proses QC';
-                                    else if (item.id === 7 || item.id === '7') label = 'Tiket Dibatalkan';
-                                    else if (item.id === 8 || item.id === '8') label = 'Selesai';
-                                    else if (item.id === 9 || item.id === '9') label = 'Tidak Direkam';
-                                }
-                                return { value: String(item.id), label: label };
-                            });
-                            
-                            const selectedVal = $el.val() || [];
-                            $el.empty();
-                            comboOpts.forEach(opt => {
-                                const isSelected = selectedVal.includes(opt.value);
-                                $el.append(new Option(opt.label, opt.value, isSelected, isSelected));
-                            });
-                            $el.trigger('change.select2');
-                        };
-
-                        populateSelect($('#filter-tahun'), opts.tahun);
-                        populateSelect($('#filter-kategori-ilap'), opts.kategori_ilap);
-                        populateSelect($('#filter-ilap'), opts.ilap);
-                        populateSelect($('#filter-jenis-data'), opts.jenis_data);
-                        populateSelect($('#filter-status'), opts.status, true);
-                        
-                        populateSelect($('#filter-nomor-tiket-adv'), opts.nomor_tiket);
-                        populateSelect($('#filter-status-ketersediaan-data-adv'), opts.status_ketersediaan_data);
-                        populateSelect($('#filter-dasar-hukum-adv'), opts.dasar_hukum);
-                        populateSelect($('#filter-kategori-wilayah-adv'), opts.kategori_wilayah);
-                        populateSelect($('#filter-kanwil-adv'), opts.kanwil);
-                        populateSelect($('#filter-kpp-adv'), opts.kpp);
-                        populateSelect($('#filter-sub-jenis-data-adv'), opts.sub_jenis_data);
-                        populateSelect($('#filter-jenis-tabel-adv'), opts.jenis_tabel);
-                        populateSelect($('#filter-periode-adv'), opts.periode);
-                        populateSelect($('#filter-periode-pengiriman-adv'), opts.periode_pengiriman);
-                        populateSelect($('#filter-periode-penerimaan-adv'), opts.periode_penerimaan);
-                        populateSelect($('#filter-status-penelitian-adv'), opts.status_penelitian);
-                        populateSelect($('#filter-pic-p3de-adv'), opts.pic_p3de);
-                        populateSelect($('#filter-pic-pide-adv'), opts.pic_pide);
-                        populateSelect($('#filter-pic-pmde-adv'), opts.pic_pmde);
-
-                        if (!initialFiltersApplied) {
-                            initialFiltersApplied = true;
-                            applyInitialFiltersFromUrl();
-                            table.ajax.reload();
-                        }
-                    },
-                    error: function () {
-                        if (!initialFiltersApplied) {
-                            initialFiltersApplied = true;
-                            applyInitialFiltersFromUrl();
-                            if (table) table.ajax.reload();
-                        }
+                const $select = $(selector);
+                values.forEach(function(v) {
+                    if ($select.find('option[value="' + v + '"]').length === 0) {
+                        $select.append('<option value="' + v + '">' + v + '</option>');
                     }
                 });
-            }
-
-            function applyInitialFiltersFromUrl() {
-                const params = ['tahun', 'kategori_ilap', 'ilap', 'jenis_data', 'status', 'nomor_tiket', 'periode'];
-                let hasInitialFilter = false;
-                
-                params.forEach(param => {
-                    const val = urlParams.get(param);
-                    if (val) {
-                        hasInitialFilter = true;
-                        const $el = $(`#filter-${param === 'nomor_tiket' ? 'nomor-tiket-adv' : (param === 'periode' ? 'periode-adv' : param)}`);
-                        if ($el.length) {
-                            const vals = val.split(',');
-                            $el.val(vals).trigger('change.select2');
-                        }
-                    }
-                });
-                return hasInitialFilter;
-            }
-
-            // Bind change event to all select2 multiple filters to reload options dynamically
-            $('.select2-multiple').on('change', function (e) {
-                // Throttled update to prevent spamming queries
-                clearTimeout(filterDebounceTimeout);
-                filterDebounceTimeout = setTimeout(() => {
-                    loadFilterOptions();
-                    updateClearFilterVisibility();
-                }, 250);
+                $select.val(values).trigger('change');
             });
+
+            const periodeValue = normalizePeriodeParam();
+            if (periodeValue) {
+                hasInitialFilter = true;
+                const $periode = $('#filter-periode');
+                const pValues = periodeValue.split(',').map(function(v) { return v.trim(); }).filter(function(v) { return v; });
+                pValues.forEach(function(v) {
+                    if ($periode.find('option[value="' + v + '"]').length === 0) {
+                        $periode.append('<option value="' + v + '">' + v + '</option>');
+                    }
+                });
+                $periode.val(pValues).trigger('change');
+            }
+
+            return hasInitialFilter;
+        }
+
+        function getCurrentFilterValues() {
+            return {
+                nomor_tiket: getMultiSelectValue('#filter-nomor-tiket'),
+                tahun: getMultiSelectValue('#filter-tahun'),
+                periode: getMultiSelectValue('#filter-periode'),
+                pic_p3de: getMultiSelectValue('#filter-pic-p3de'),
+                pic_pide: getMultiSelectValue('#filter-pic-pide'),
+                pic_pmde: getMultiSelectValue('#filter-pic-pmde'),
+                kategori_ilap: getMultiSelectValue('#filter-kategori-ilap'),
+                ilap: getMultiSelectValue('#filter-ilap'),
+                jenis_data: getMultiSelectValue('#filter-jenis-data'),
+                sub_jenis_data: getMultiSelectValue('#filter-sub-jenis-data'),
+                kanwil: getMultiSelectValue('#filter-kanwil'),
+                kpp: getMultiSelectValue('#filter-kpp'),
+                kategori_wilayah: getMultiSelectValue('#filter-kategori-wilayah'),
+                jenis_tabel: getMultiSelectValue('#filter-jenis-tabel'),
+                dasar_hukum: getMultiSelectValue('#filter-dasar-hukum'),
+                periode_pengiriman: getMultiSelectValue('#filter-periode-pengiriman'),
+                periode_penerimaan: getMultiSelectValue('#filter-periode-penerimaan'),
+                status: getMultiSelectValue('#filter-status'),
+                status_penelitian: getMultiSelectValue('#filter-status-penelitian'),
+                status_ketersediaan_data: getMultiSelectValue('#filter-status-ketersediaan-data')
+            };
+        }
+
+        function initSelect2() {
+            if (typeof $.fn.select2 !== 'function') return;
+            $('#filter-form select').each(function () {
+                if (!$(this).hasClass('select2-hidden-accessible')) {
+                    $(this).select2({
+                        theme: 'bootstrap-5',
+                        closeOnSelect: false,
+                        placeholder: '-- Pilih --',
+                        allowClear: true
+                    });
+                }
+            });
+        }
+
+        function updateDynamicDropdowns() {
+            const filters = getCurrentFilterValues();
+            
+            $.ajax({
+                url: ajaxUrl,
+                type: 'GET',
+                data: Object.assign({ get_filter_options: '1' }, filters),
+                success: function (response) {
+                    if (!response.filter_options) return;
+                    const opts = response.filter_options;
+
+                    // Store currently selected values
+                    const selectedValues = {};
+                    const dropdownMap = {
+                        'nomor_tiket': '#filter-nomor-tiket',
+                        'tahun': '#filter-tahun',
+                        'periode': '#filter-periode',
+                        'pic_p3de': '#filter-pic-p3de',
+                        'pic_pide': '#filter-pic-pide',
+                        'pic_pmde': '#filter-pic-pmde',
+                        'kategori_ilap': '#filter-kategori-ilap',
+                        'ilap': '#filter-ilap',
+                        'jenis_data': '#filter-jenis-data',
+                        'sub_jenis_data': '#filter-sub-jenis-data',
+                        'kanwil': '#filter-kanwil',
+                        'kpp': '#filter-kpp',
+                        'kategori_wilayah': '#filter-kategori-wilayah',
+                        'jenis_tabel': '#filter-jenis-tabel',
+                        'dasar_hukum': '#filter-dasar-hukum',
+                        'periode_pengiriman': '#filter-periode-pengiriman',
+                        'periode_penerimaan': '#filter-periode-penerimaan',
+                        'status': '#filter-status',
+                        'status_penelitian': '#filter-status-penelitian',
+                        'status_ketersediaan_data': '#filter-status-ketersediaan-data'
+                    };
+
+                    Object.entries(dropdownMap).forEach(([key, selector]) => {
+                        selectedValues[selector] = $(selector).val();
+                    });
+
+                    // Update dropdowns (keep selected values if still valid, preserve periode separately)
+                    const updateDropdown = function(optKey, selector, keepSelected = true) {
+                        if (!opts[optKey]) return;
+                        
+                        const $select = $(selector);
+                        const oldValues = selectedValues[selector] || [];
+                        const oldArray = Array.isArray(oldValues) ? oldValues : (oldValues ? [oldValues] : []);
+                        
+                        // Destroy Select2 instance before modifying options
+                        if (typeof $.fn.select2 === 'function' && $select.hasClass('select2-hidden-accessible')) {
+                            $select.select2('destroy');
+                        }
+                        
+                        // Remove all options except first one
+                        $select.find('option:not(:first)').remove();
+                        
+                        // Add new options
+                        opts[optKey].forEach(item => {
+                            $select.append(`<option value="${item.id}">${item.name}</option>`);
+                        });
+                        
+                        // Restore values if they still exist, otherwise clear
+                        if (keepSelected && oldArray.length > 0) {
+                            const validValues = oldArray.filter(function(v) {
+                                return $select.find('option[value="' + v + '"]').length > 0;
+                            });
+                            if (validValues.length > 0) {
+                                $select.val(validValues);
+                            } else if (selector !== '#filter-tahun' && selector !== '#filter-kategori-ilap' && 
+                                       selector !== '#filter-ilap' && selector !== '#filter-jenis-data') {
+                                // Only clear dependent dropdowns, not main filter
+                                $select.val([]);
+                            }
+                        } else {
+                            $select.val([]);
+                        }
+                        
+                        // Re-initialize Select2
+                        if (typeof $.fn.select2 === 'function') {
+                            $select.select2({ theme: 'bootstrap-5' });
+                        }
+                    };
+
+                    // Update all dropdowns dynamically
+                    updateDropdown('nomor_tiket', '#filter-nomor-tiket');
+                    updateDropdown('tahun', '#filter-tahun');
+                    updateDropdown('periode', '#filter-periode');
+                    updateDropdown('pic_p3de', '#filter-pic-p3de');
+                    updateDropdown('pic_pide', '#filter-pic-pide');
+                    updateDropdown('pic_pmde', '#filter-pic-pmde');
+                    updateDropdown('kategori_ilap', '#filter-kategori-ilap');
+                    updateDropdown('ilap', '#filter-ilap');
+                    updateDropdown('jenis_data', '#filter-jenis-data');
+                    updateDropdown('sub_jenis_data', '#filter-sub-jenis-data');
+                    updateDropdown('kanwil', '#filter-kanwil');
+                    updateDropdown('kpp', '#filter-kpp');
+                    updateDropdown('kategori_wilayah', '#filter-kategori-wilayah');
+                    updateDropdown('jenis_tabel', '#filter-jenis-tabel');
+                    updateDropdown('dasar_hukum', '#filter-dasar-hukum');
+                    updateDropdown('periode_pengiriman', '#filter-periode-pengiriman');
+                    updateDropdown('periode_penerimaan', '#filter-periode-penerimaan');
+                    updateDropdown('status', '#filter-status');
+                    updateDropdown('status_penelitian', '#filter-status-penelitian');
+                    updateDropdown('status_ketersediaan_data', '#filter-status-ketersediaan-data');
+                },
+                error: function () {
+                    // Ensure Select2 is initialized even if AJAX fails
+                    initSelect2();
+                }
+            });
+        }
+
+        $(document).ready(function () {
+            // Ensure Select2 is initialized on all filter selects (select2-active.min.js
+            // may not have run if jQuery wasn't ready yet)
+            initSelect2();
 
             table = $('#tiket-table').DataTable({
                 serverSide: true,
                 processing: true,
-                autoWidth: false,
-                pageLength: 10,
-                lengthMenu: [10, 25, 50, 100],
+                searching: false,
                 layout: {
                     topStart: null,
-                    topEnd: null,
-                    bottomStart: null,
-                    bottomEnd: null,
-                    bottom: '#dt-table-toolbar'
+                    topEnd: null
                 },
                 ajax: {
                     url: ajaxUrl,
                     dataSrc: 'data',
                     data: function (d) {
-                        d.tahun = ($('#filter-tahun').val() || []).join(',');
-                        d.kategori_ilap = ($('#filter-kategori-ilap').val() || []).join(',');
-                        d.ilap = ($('#filter-ilap').val() || []).join(',');
-                        d.jenis_data = ($('#filter-jenis-data').val() || []).join(',');
-                        d.status = ($('#filter-status').val() || []).join(',');
-                        
-                        // Advanced filters
-                        d.nomor_tiket = ($('#filter-nomor-tiket-adv').val() || []).join(',');
-                        d.status_ketersediaan_data = ($('#filter-status-ketersediaan-data-adv').val() || []).join(',');
-                        d.dasar_hukum = ($('#filter-dasar-hukum-adv').val() || []).join(',');
-                        d.kategori_wilayah = ($('#filter-kategori-wilayah-adv').val() || []).join(',');
-                        d.kanwil = ($('#filter-kanwil-adv').val() || []).join(',');
-                        d.kpp = ($('#filter-kpp-adv').val() || []).join(',');
-                        d.sub_jenis_data = ($('#filter-sub-jenis-data-adv').val() || []).join(',');
-                        d.jenis_tabel = ($('#filter-jenis-tabel-adv').val() || []).join(',');
-                        d.periode = ($('#filter-periode-adv').val() || []).join(',');
-                        d.periode_pengiriman = ($('#filter-periode-pengiriman-adv').val() || []).join(',');
-                        d.periode_penerimaan = ($('#filter-periode-penerimaan-adv').val() || []).join(',');
-                        d.status_penelitian = ($('#filter-status-penelitian-adv').val() || []).join(',');
-                        d.pic_p3de = ($('#filter-pic-p3de-adv').val() || []).join(',');
-                        d.pic_pide = ($('#filter-pic-pide-adv').val() || []).join(',');
-                        d.pic_pmde = ($('#filter-pic-pmde-adv').val() || []).join(',');
+                        d.nomor_tiket = getMultiSelectValue('#filter-nomor-tiket');
+                        d.tahun = getMultiSelectValue('#filter-tahun');
+                        d.periode = getMultiSelectValue('#filter-periode');
+                        d.pic_p3de = getMultiSelectValue('#filter-pic-p3de');
+                        d.pic_pide = getMultiSelectValue('#filter-pic-pide');
+                        d.pic_pmde = getMultiSelectValue('#filter-pic-pmde');
+                        d.kategori_ilap = getMultiSelectValue('#filter-kategori-ilap');
+                        d.ilap = getMultiSelectValue('#filter-ilap');
+                        d.jenis_data = getMultiSelectValue('#filter-jenis-data');
+                        d.sub_jenis_data = getMultiSelectValue('#filter-sub-jenis-data');
+                        d.kanwil = getMultiSelectValue('#filter-kanwil');
+                        d.kpp = getMultiSelectValue('#filter-kpp');
+                        d.kategori_wilayah = getMultiSelectValue('#filter-kategori-wilayah');
+                        d.jenis_tabel = getMultiSelectValue('#filter-jenis-tabel');
+                        d.dasar_hukum = getMultiSelectValue('#filter-dasar-hukum');
+                        d.periode_pengiriman = getMultiSelectValue('#filter-periode-pengiriman');
+                        d.periode_penerimaan = getMultiSelectValue('#filter-periode-penerimaan');
+                        d.status = getMultiSelectValue('#filter-status');
+                        d.status_penelitian = getMultiSelectValue('#filter-status-penelitian');
+                        d.status_ketersediaan_data = getMultiSelectValue('#filter-status-ketersediaan-data');
                         return d;
                     }
                 },
-                pageLength: 12,
+                pageLength: 10,
                 columns: [
                     { data: 'id' },
                     { data: 'nomor_tiket' },
                     {
                         data: null,
-                        render: function (data, type, row) {
+                        render: function(data, type, row) {
                             return '<span class="text-muted small">' + (row.kode_ilap || '-') + '</span><br>' + (row.nama_ilap || '-');
                         }
                     },
                     {
                         data: null,
-                        render: function (data, type, row) {
+                        render: function(data, type, row) {
                             return '<span class="text-muted small">' + (row.id_sub_jenis_data || '-') + '</span><br>' + (row.nama_sub_jenis_data || '-');
                         }
                     },
                     { data: 'periode_formatted' },
-                    {
-                        data: 'status',
-                        render: function (data, type, row) {
-                            return renderStatusBadge(data);
-                        }
-                    },
+                    { data: 'status' },
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [
                     { targets: 0, visible: false, searchable: false },
-                    { targets: 1, width: '160px' }, // Nomor Tiket
-                    { targets: 2, width: '250px' }, // ILAP
-                    { targets: 3, width: '250px' }, // Jenis Data
-                    { targets: 4, width: '120px' }, // Periode
-                    { targets: 5, width: '185px' }, // Status
-                    { targets: 6, className: 'col-actions', width: '100px', render: function (data, type, row, meta) { return data; } }
+                    { targets: 6, render: function (data, type, row, meta) { return data; } }
                 ],
                 order: [[0, 'asc']]
             });
 
-            // Make columns resizable
-            makeTableResizable('#tiket-table');
-
-            // Tombol reset filter / Reset Pencarian
-            $('#btn-reset-pencarian').on('click', function (e) {
-                e.preventDefault();
-                resetAllFilters();
+            // Filter dropdowns — dynamic, reload on change
+            $('#filter-form select').on('change', function () {
+                // Update dropdown options dynamically based on filter selections
+                updateDynamicDropdowns();
+                // Reload table with new filters
                 table.ajax.reload();
             });
 
-            // Tombol search
-            $('#btn-search').on('click', function () {
-                table.ajax.reload();
-            });
-
-            // Advanced filter modal handlers
-            $('#btn-adv-apply').on('click', function () {
-                updateAdvFilterBadge();
-                updateHapusSemuaVisibility();
-                if (table) { table.ajax.reload(); }
-            });
-            $('#btn-adv-clear').on('click', function () {
-                const advFilterIds = [
-                    '#filter-status-ketersediaan-data-adv',
-                    '#filter-dasar-hukum-adv',
-                    '#filter-kategori-wilayah-adv',
-                    '#filter-kanwil-adv',
-                    '#filter-kpp-adv',
-                    '#filter-sub-jenis-data-adv',
-                    '#filter-jenis-tabel-adv',
-                    '#filter-periode-pengiriman-adv',
-                    '#filter-periode-penerimaan-adv',
-                    '#filter-status-penelitian-adv',
-                    '#filter-pic-p3de-adv',
-                    '#filter-pic-pide-adv',
-                    '#filter-pic-pmde-adv'
-                ];
-                advFilterIds.forEach(id => {
-                    $(id).val(null).trigger('change.select2');
-                });
-                updateAdvFilterBadge();
-                updateHapusSemuaVisibility();
-            });
-
-            // Update badge on modal hidden
-            $('#filterLanjutanModal').on('hidden.bs.modal', function () {
-                updateAdvFilterBadge();
-            });
-
-            // Update Hapus Semua visibility on modal show
-            $('#filterLanjutanModal').on('show.bs.modal', function () {
-                updateHapusSemuaVisibility();
-            });
-
-            // Load filter options
-            loadFilterOptions();
-
-            // Show/hide Reset Pencarian button based on active filters
-            function updateClearFilterVisibility() {
-                let hasActiveFilter = false;
-                $('.select2-multiple').each(function () {
-                    const val = $(this).val();
-                    if (val && val.length > 0) {
-                        hasActiveFilter = true;
-                    }
-                });
-
-                const btnReset = $('#btn-reset-pencarian');
-                if (hasActiveFilter) {
-                    btnReset.css('display', 'inline-flex').hide().fadeIn(200);
-                } else {
-                    btnReset.fadeOut(200);
+            // Reset button — clear form then reload
+            $('#btn-reset-filter').on('click', function () {
+                // Destroy Select2 on all filter selects before reset
+                if (typeof $.fn.select2 === 'function') {
+                    $('#filter-form select').each(function () {
+                        if ($(this).hasClass('select2-hidden-accessible')) {
+                            $(this).select2('destroy');
+                        }
+                    });
                 }
-            }
+                $('#filter-form')[0].reset();
+                // For multi-select, explicitly set empty array on each select
+                $('#filter-form select').val([]);
+                // Re-initialize Select2 after reset and reload table
+                initSelect2();
+                updateDynamicDropdowns();
+                table.ajax.reload();
+            });
+
+            // Load filter dropdown options on page load
+            loadFilterOptions();
         });
 
-        // ============================================================
-        // LIGHTWEIGHT TABLE COLUMN RESIZER
-        // ============================================================
-        function makeTableResizable(tableSelector) {
-            const table = $(tableSelector);
-            const headers = table.find('thead th');
-            
-            // Capture initial widths on DT draw to set fixed layout sizes
-            table.one('draw.dt', function() {
-                headers.each(function() {
-                    const th = $(this);
-                    if (!th.hasClass('d-none')) {
-                        th.css('width', th.outerWidth() + 'px');
-                    }
-                });
-            });
+        function loadFilterOptions() {
+            $.ajax({
+                url: ajaxUrl,
+                type: 'GET',
+                data: { get_filter_options: '1' },
+                success: function (response) {
+                    if (!response.filter_options) return;
+                    const opts = response.filter_options;
 
-            headers.each(function() {
-                const th = $(this);
-                // Do not resize actions column, hidden columns or last visible column
-                if (th.hasClass('col-actions') || th.hasClass('d-none') || th.is(':last-child')) return;
-                
-                const handle = $('<div class="resize-handle"></div>');
-                th.append(handle);
-                
-                let startX, startWidth;
-                
-                handle.on('mousedown', function(e) {
-                    startX = e.pageX;
-                    startWidth = th.outerWidth();
-                    th.addClass('resizing');
-                    
-                    $(document).on('mousemove', doDrag);
-                    $(document).on('mouseup', stopDrag);
-                    e.preventDefault();
-                });
-                
-                function doDrag(e) {
-                    const newWidth = startWidth + (e.pageX - startX);
-                    if (newWidth > 60) {
-                        th.css('width', newWidth + 'px');
+                    // Destroy Select2 on all filter selects before modifying options
+                    if (typeof $.fn.select2 === 'function') {
+                        $('#filter-form select').each(function () {
+                            if ($(this).hasClass('select2-hidden-accessible')) {
+                                $(this).select2('destroy');
+                            }
+                        });
                     }
-                }
-                
-                function stopDrag() {
-                    th.removeClass('resizing');
-                    $(document).off('mousemove', doDrag);
-                    $(document).off('mouseup', stopDrag);
+
+                    if (opts.nomor_tiket) opts.nomor_tiket.forEach(item => $('#filter-nomor-tiket').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.tahun) opts.tahun.forEach(item => $('#filter-tahun').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.periode) opts.periode.forEach(item => $('#filter-periode').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.pic_p3de) opts.pic_p3de.forEach(item => $('#filter-pic-p3de').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.pic_pide) opts.pic_pide.forEach(item => $('#filter-pic-pide').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.pic_pmde) opts.pic_pmde.forEach(item => $('#filter-pic-pmde').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.kategori_ilap) opts.kategori_ilap.forEach(item => $('#filter-kategori-ilap').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.ilap) opts.ilap.forEach(item => $('#filter-ilap').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.jenis_data) opts.jenis_data.forEach(item => $('#filter-jenis-data').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.sub_jenis_data) opts.sub_jenis_data.forEach(item => $('#filter-sub-jenis-data').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.kanwil) opts.kanwil.forEach(item => $('#filter-kanwil').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.kpp) opts.kpp.forEach(item => $('#filter-kpp').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.kategori_wilayah) opts.kategori_wilayah.forEach(item => $('#filter-kategori-wilayah').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.jenis_tabel) opts.jenis_tabel.forEach(item => $('#filter-jenis-tabel').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.dasar_hukum) opts.dasar_hukum.forEach(item => $('#filter-dasar-hukum').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.periode_pengiriman) opts.periode_pengiriman.forEach(item => $('#filter-periode-pengiriman').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.periode_penerimaan) opts.periode_penerimaan.forEach(item => $('#filter-periode-penerimaan').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.status) opts.status.forEach(item => $('#filter-status').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.status_penelitian) opts.status_penelitian.forEach(item => $('#filter-status-penelitian').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.status_ketersediaan_data) opts.status_ketersediaan_data.forEach(item => $('#filter-status-ketersediaan-data').append(`<option value="${item.id}">${item.name}</option>`));
+
+                    // Re-initialize Select2 on all filter selects
+                    if (typeof $.fn.select2 === 'function') {
+                        $('#filter-form select').each(function () {
+                            $(this).select2({
+                                theme: 'bootstrap-5',
+                                closeOnSelect: false,
+                                placeholder: '-- Pilih --',
+                                allowClear: true
+                            });
+                        });
+                    }
+
+                    if (!initialFiltersApplied) {
+                        initialFiltersApplied = true;
+                        if (applyInitialFiltersFromUrl()) {
+                            updateDynamicDropdowns();
+                            table.ajax.reload();
+                        }
+                    }
+                },
+                error: function () {
+                    // Ensure Select2 is initialized even if AJAX fails
+                    initSelect2();
+                    if (!initialFiltersApplied) {
+                        initialFiltersApplied = true;
+                        if (applyInitialFiltersFromUrl()) {
+                            table.ajax.reload();
+                        }
+                    }
                 }
             });
         }
