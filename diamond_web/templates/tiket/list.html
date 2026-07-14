@@ -354,7 +354,8 @@
         align-items: center !important;
     }
 
-    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+    /* Target all Select2 multiple choice chips */
+    .select2-selection--multiple .select2-selection__choice {
         background-color: #f1f5f9 !important;
         border: 1px solid #e2e8f0 !important;
         border-radius: 6px !important;
@@ -369,24 +370,23 @@
         overflow: hidden !important;
         text-overflow: ellipsis !important;
         white-space: nowrap !important;
+        vertical-align: middle !important;
     }
 
-    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
+    /* Close button: reset appearance, width/height, and elevate z-index to be on top of text */
+    .select2-selection--multiple .select2-selection__choice__remove {
         position: absolute !important;
         right: 6px !important;
         top: 50% !important;
         transform: translateY(-50%) !important;
-        color: #94a3b8 !important;
         border: 0 !important;
         background: none !important;
         background-color: transparent !important;
-        font-size: 14px !important;
-        line-height: 1 !important;
         padding: 0 !important;
         margin: 0 !important;
         cursor: pointer !important;
-        width: auto !important;
-        height: auto !important;
+        width: 14px !important;
+        height: 14px !important;
         min-height: 0 !important;
         min-width: 0 !important;
         box-shadow: none !important;
@@ -396,13 +396,28 @@
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
+        z-index: 5 !important; /* Render on top of text node */
+        
+        /* Hide original text to avoid browser font rendering tofu/square issues */
+        color: transparent !important;
+        font-size: 0 !important;
+        line-height: 0 !important;
+    }
+
+    /* Render a clean, standard multiplication cross character using standard sans-serif font */
+    .select2-selection--multiple .select2-selection__choice__remove::before {
+        content: "×" !important;
+        color: #94a3b8 !important;
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        font-family: "Inter", "Outfit", "Segoe UI", Arial, sans-serif !important;
+        line-height: 1 !important;
+        display: inline-block !important;
         transition: color 0.15s ease !important;
     }
 
-    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove:hover {
+    .select2-selection--multiple .select2-selection__choice__remove:hover::before {
         color: #ef4444 !important;
-        background: transparent !important;
-        border: 0 !important;
     }
 
     .select2-container--bootstrap-5 .select2-search__field {
