@@ -1156,3 +1156,34 @@ def backup_data_export_pdf(request):
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="backup_data.pdf"'
     return response
+
+
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
+@require_GET
+def backup_data_tiket_info(request, tiket_pk):
+    """Retrieve details for a specific ticket to display on the backup form."""
+    try:
+        tiket = Tiket.objects.select_related(
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap'
+        ).get(pk=tiket_pk)
+        
+        subjenis = tiket.id_periode_data.id_sub_jenis_data_ilap if tiket.id_periode_data else None
+        ilap = subjenis.id_ilap if subjenis else None
+        
+        # Get period text
+        periode_text = '-'
+        if tiket.id_periode_data and tiket.id_periode_data.id_periode_pengiriman:
+            periode_text = f"{tiket.id_periode_data.id_periode_pengiriman.periode_penerimaan} {tiket.periode}"
+        else:
+            periode_text = f"{tiket.periode}"
+            
+        return JsonResponse({
+            'success': True,
+            'ilap': ilap.nama_ilap if ilap else '-',
+            'jenis_data': subjenis.nama_jenis_data if subjenis else '-',
+            'periode': periode_text,
+            'jumlah_data': f"{tiket.baris_diterima:,}" if tiket.baris_diterima is not None else '0'
+        })
+    except Tiket.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Tiket tidak ditemukan'}, status=404)
