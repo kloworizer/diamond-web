@@ -122,6 +122,10 @@
                                     <label class="text-muted small mb-1">Jenis Tabel</label>
                                     <p class="fw-semibold mb-0" id="info-jenis-tabel">-</p>
                                 </div>
+                                <div class="info-group mb-2">
+                                    <label class="text-muted small mb-1">Nama Tabel I</label>
+                                    <p class="fw-semibold mb-0 text-primary" id="info-nama-tabel-I">-</p>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="info-group mb-2">
@@ -700,6 +704,7 @@
             document.getElementById('info-kategori-ilap').textContent = selectedData.kategori_ilap || '-';
             document.getElementById('info-kategori-wilayah').textContent = selectedData.kategori_wilayah || '-';
             document.getElementById('info-jenis-tabel').textContent = selectedData.jenis_tabel || '-';
+            document.getElementById('info-nama-tabel-I').textContent = selectedData.nama_tabel_I || '-';
             document.getElementById('info-jenis-prioritas').textContent = selectedData.jenis_prioritas || '-';
             document.getElementById('info-klasifikasi').textContent = selectedData.klasifikasi || '-';
             document.getElementById('info-deskripsi-periode').textContent = selectedData.periode_penyampaian || '-';

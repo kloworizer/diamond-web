@@ -7,7 +7,7 @@ from django.contrib.auth.models import Group
 
 from diamond_web.models import TiketPIC, TandaTerimaData
 from diamond_web.views.task_to_do import (
-    get_tiket_summary_for_user,
+    get_tiket_summary_for_user_p3de,
     get_tiket_summary_for_user_pide,
     get_tiket_summary_for_user_pmde,
 )
@@ -123,10 +123,10 @@ class TestGeneralViews:
 
 @pytest.mark.django_db
 class TestGetTiketSummaryForUser:
-    """get_tiket_summary_for_user — P3DE user task summary."""
+    """get_tiket_summary_for_user_p3de — P3DE user task summary."""
 
     def test_returns_empty_for_anonymous(self):
-        result = get_tiket_summary_for_user(None)
+        result = get_tiket_summary_for_user_p3de(None)
         assert result == {
             'rekam_backup_data': 0,
             'buat_tanda_terima': 0,
@@ -136,11 +136,11 @@ class TestGetTiketSummaryForUser:
 
     def test_returns_empty_for_non_p3de(self, db):
         user = UserFactory()
-        result = get_tiket_summary_for_user(user)
+        result = get_tiket_summary_for_user_p3de(user)
         assert result['rekam_backup_data'] == 0
 
     def test_returns_zero_counts_with_no_assignments(self, authenticated_user):
-        result = get_tiket_summary_for_user(authenticated_user)
+        result = get_tiket_summary_for_user_p3de(authenticated_user)
         assert result['rekam_backup_data'] == 0
         assert result['buat_tanda_terima'] == 0
         assert result['rekam_hasil_penelitian'] == 0
@@ -150,32 +150,32 @@ class TestGetTiketSummaryForUser:
         tiket = TiketFactory(backup=False, tanda_terima=False)
         TiketPICFactory(id_tiket=tiket, id_user=authenticated_user,
                         role=TiketPIC.Role.P3DE, active=True)
-        result = get_tiket_summary_for_user(authenticated_user)
+        result = get_tiket_summary_for_user_p3de(authenticated_user)
         assert result['rekam_backup_data'] >= 1
 
     def test_counts_tanda_terima_missing(self, authenticated_user):
         tiket = TiketFactory(backup=True, tanda_terima=False)
         TiketPICFactory(id_tiket=tiket, id_user=authenticated_user,
                         role=TiketPIC.Role.P3DE, active=True)
-        result = get_tiket_summary_for_user(authenticated_user)
+        result = get_tiket_summary_for_user_p3de(authenticated_user)
         assert result['buat_tanda_terima'] >= 1
 
     def test_counts_tgl_teliti_missing(self, authenticated_user):
         tiket = TiketFactory(tgl_teliti=None)
         TiketPICFactory(id_tiket=tiket, id_user=authenticated_user,
                         role=TiketPIC.Role.P3DE, active=True)
-        result = get_tiket_summary_for_user(authenticated_user)
+        result = get_tiket_summary_for_user_p3de(authenticated_user)
         assert result['rekam_hasil_penelitian'] >= 1
 
     def test_counts_kirim_ke_pide_missing(self, authenticated_user):
         tiket = TiketFactory(tgl_kirim_pide=None)
         TiketPICFactory(id_tiket=tiket, id_user=authenticated_user,
                         role=TiketPIC.Role.P3DE, active=True)
-        result = get_tiket_summary_for_user(authenticated_user)
+        result = get_tiket_summary_for_user_p3de(authenticated_user)
         assert result['kirim_ke_pide'] >= 1
 
     def test_all_keys_present(self, authenticated_user):
-        result = get_tiket_summary_for_user(authenticated_user)
+        result = get_tiket_summary_for_user_p3de(authenticated_user)
         assert set(result.keys()) == {
             'rekam_backup_data',
             'buat_tanda_terima',

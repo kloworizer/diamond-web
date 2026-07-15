@@ -189,6 +189,7 @@
                             <th>Nomor Tiket</th>
                             <th>ILAP</th>
                             <th>Jenis Data</th>
+                            <th>Nama Tabel I</th>
                             <th>Periode</th>
                             <th>Status</th>
                             <th>Aksi</th>
@@ -500,13 +501,14 @@
                             return '<span class="text-muted small">' + (row.id_sub_jenis_data || '-') + '</span><br>' + (row.nama_sub_jenis_data || '-');
                         }
                     },
+                    { data: 'nama_tabel_I' },
                     { data: 'periode_formatted' },
                     { data: 'status' },
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [
                     { targets: 0, visible: false, searchable: false },
-                    { targets: 6, render: function (data, type, row, meta) { return data; } }
+                    { targets: 7, render: function (data, type, row, meta) { return data; } }
                 ],
                 order: [[0, 'asc']]
             });

@@ -181,6 +181,7 @@ class ILAPPeriodeDataAPIView(View):
                     'kategori_ilap': ilap.id_kategori.nama_kategori if ilap.id_kategori else '-',
                     'kategori_wilayah': ilap.id_kategori_wilayah.deskripsi if ilap.id_kategori_wilayah else '-',
                     'jenis_tabel': jenis_data.id_jenis_tabel.deskripsi if jenis_data.id_jenis_tabel else '-',
+                    'nama_tabel_I': jenis_data.nama_tabel_I or '-',
                     'jenis_prioritas': jenis_prioritas_text,
                     'klasifikasi': klasifikasi_text,
                     'periode_penyampaian': pd.id_periode_pengiriman.periode_penyampaian,
