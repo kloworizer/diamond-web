@@ -921,7 +921,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                     if action_user:
                         TiketAction.objects.create(
                             id_tiket=tiket, id_user=action_user,
-                            timestamp=tgl_close_tiket or timezone.now(),
+                            timestamp=tgl_transfer or timezone.now(),
                             action=TiketActionType.PENGENDALIAN_MUTU,
                             catatan='Tiket selesai pengendalian mutu'
                         )
@@ -960,7 +960,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                     if pmde_user:
                         TiketAction.objects.create(
                             id_tiket=tiket, id_user=pmde_user,
-                            timestamp=tgl_close_tiket or timezone.now(),
+                            timestamp=tgl_transfer or timezone.now(),
                             action=TiketActionType.PENGENDALIAN_MUTU,
                             catatan='Tiket selesai pengendalian mutu'
                         )
@@ -1042,7 +1042,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                     if pmde_user:
                         TiketAction.objects.create(
                             id_tiket=tiket, id_user=pmde_user,
-                            timestamp=tgl_close_tiket or timezone.now(),
+                            timestamp=tgl_transfer or timezone.now(),
                             action=TiketActionType.PENGENDALIAN_MUTU,
                             catatan='Tiket selesai pengendalian mutu'
                         )
