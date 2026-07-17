@@ -36,4 +36,12 @@ class PeriodeJenisData(AuditTrailModel):
         ]
 
     def __str__(self):
-        return f"{self.id_sub_jenis_data_ilap} - {self.id_periode_pengiriman}"
+        label = (
+            f"{self.id_sub_jenis_data_ilap.id_sub_jenis_data} - "
+            f"{self.id_sub_jenis_data_ilap.nama_sub_jenis_data} - "
+            f"{self.id_sub_jenis_data_ilap.nama_tabel_I} - "
+            f"{self.id_periode_pengiriman.periode_penerimaan}"
+        )
+        if self.end_date:
+            label += f" ({self.end_date.isoformat()})"
+        return label
