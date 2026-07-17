@@ -370,6 +370,24 @@
     </div>
 </div>
 
+<!-- Validation Error Modal for Tanggal Terima DIP > End Date -->
+<div class="modal fade" id="endDateValidationModal" tabindex="-1" aria-labelledby="endDateValidationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="endDateValidationModalLabel">Validasi Gagal</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="endDateValidationModalBody">
+                Tanggal Terima DIP tidak boleh melebihi end date periode.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Confirmation Modal -->
 <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -409,6 +427,14 @@
                         <tr>
                             <th>Klasifikasi Jenis Data</th>
                             <td id="confirm-klasifikasi">-</td>
+                        </tr>
+                        <tr>
+                            <th>ID Sub Jenis Data</th>
+                            <td id="confirm-id-sub-jenis-data">-</td>
+                        </tr>
+                        <tr>
+                            <th>Nama Sub Jenis Data</th>
+                            <td id="confirm-nama-sub-jenis-data">-</td>
                         </tr>
                         <tr>
                             <th colspan="2"><strong>PIC</strong></th>
@@ -671,7 +697,11 @@
                             periodeDataCache[item.id] = item;
                             const option = document.createElement('option');
                             option.value = item.id;
-                            option.textContent = `${item.id_sub_jenis_data} - ${item.nama_sub_jenis_data}`;
+                            let label = `${item.id_sub_jenis_data} - ${item.nama_sub_jenis_data} - ${item.nama_tabel_I} - ${item.periode_penerimaan}`;
+                            if (item.end_date) {
+                                label += ` (${item.end_date})`;
+                            }
+                            option.textContent = label;
                             periodeDataSelect.appendChild(option);
                         });
                     }
@@ -989,6 +1019,29 @@
                 tahunSelect.addEventListener('change', checkJenisPrioritas);
             }
 
+            // Helper: show validation modal with detail table
+            function showValidationModal(title, rows, message) {
+                const modalBody = document.getElementById('endDateValidationModalBody');
+                if (!modalBody) return;
+                let rowsHtml = '';
+                rows.forEach(r => {
+                    rowsHtml += `<tr><td class="text-muted">${r.label}</td><td class="fw-semibold${r.danger ? ' text-danger' : ''}">${r.value}</td></tr>`;
+                });
+                modalBody.innerHTML = `
+                    <div class="d-flex align-items-start gap-3">
+                        <i class="feather-alert-circle fs-1 text-danger"></i>
+                        <div>
+                            <strong>${title}</strong><br><br>
+                            <table class="table table-sm table-borderless mb-0">${rowsHtml}</table>
+                            <br>
+                            <p class="mb-0">${message}</p>
+                        </div>
+                    </div>
+                `;
+                const modal = new bootstrap.Modal(document.getElementById('endDateValidationModal'));
+                modal.show();
+            }
+
             // Handle confirmation button click
             if (btnConfirm) {
                 btnConfirm.addEventListener('click', function(e) {
@@ -998,6 +1051,79 @@
                     if (!form.checkValidity()) {
                         form.reportValidity();
                         return;
+                    }
+
+                    const now = new Date();
+                    const tglVertikalInput = document.getElementById('id_tgl_terima_vertikal');
+                    const tglDipInput = document.getElementById('id_tgl_terima_dip');
+                    const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+
+                    // 1. Cek future date: tgl_terima_vertikal
+                    if (tglVertikalInput?.value) {
+                        const tglVertikal = new Date(tglVertikalInput.value);
+                        if (tglVertikal > now) {
+                            showValidationModal(
+                                'Tanggal Terima Vertikal melebihi tanggal sekarang!',
+                                [
+                                    { label: 'Tanggal Terima Vertikal', value: tglVertikal.toLocaleDateString('id-ID', options), danger: true },
+                                    { label: 'Tanggal Sekarang', value: now.toLocaleDateString('id-ID', options) },
+                                ],
+                                'Tanggal Terima Vertikal tidak boleh melebihi tanggal sekarang. Silakan periksa kembali tanggal yang diinput.'
+                            );
+                            return;
+                        }
+                    }
+
+                    // 2. Cek future date: tgl_terima_dip
+                    if (tglDipInput?.value) {
+                        const tglDip = new Date(tglDipInput.value);
+                        if (tglDip > now) {
+                            showValidationModal(
+                                'Tanggal Terima DIP melebihi tanggal sekarang!',
+                                [
+                                    { label: 'Tanggal Terima DIP', value: tglDip.toLocaleDateString('id-ID', options), danger: true },
+                                    { label: 'Tanggal Sekarang', value: now.toLocaleDateString('id-ID', options) },
+                                ],
+                                'Tanggal Terima DIP tidak boleh melebihi tanggal sekarang. Silakan periksa kembali tanggal yang diinput.'
+                            );
+                            return;
+                        }
+                    }
+
+                    // 3. Cek tgl_terima_dip < tgl_terima_vertikal
+                    if (tglVertikalInput?.value && tglDipInput?.value) {
+                        const tglVertikal = new Date(tglVertikalInput.value);
+                        const tglDip = new Date(tglDipInput.value);
+                        if (tglDip < tglVertikal) {
+                            showValidationModal(
+                                'Tanggal Terima DIP sebelum Tanggal Terima Vertikal!',
+                                [
+                                    { label: 'Tanggal Terima DIP', value: tglDip.toLocaleDateString('id-ID', options), danger: true },
+                                    { label: 'Tanggal Terima Vertikal', value: tglVertikal.toLocaleDateString('id-ID', options) },
+                                ],
+                                'Tanggal Terima DIP tidak boleh sebelum Tanggal Terima Vertikal. Silakan periksa kembali tanggal yang diinput.'
+                            );
+                            return;
+                        }
+                    }
+
+                    // 4. Cek tgl_terima_dip > end_date periode
+                    const periodeDataId = periodeDataSelect?.value;
+                    const selectedPeriodeData = periodeDataCache[periodeDataId];
+                    if (selectedPeriodeData?.end_date && tglDipInput?.value) {
+                        const endDate = new Date(selectedPeriodeData.end_date + 'T23:59:59');
+                        const tglDip = new Date(tglDipInput.value);
+                        if (tglDip > endDate) {
+                            showValidationModal(
+                                'Tanggal Terima DIP melebihi end date periode!',
+                                [
+                                    { label: 'Tanggal Terima DIP', value: tglDip.toLocaleDateString('id-ID', options), danger: true },
+                                    { label: 'End Date Periode', value: endDate.toLocaleDateString('id-ID', options) },
+                                ],
+                                'Tanggal Terima DIP tidak boleh melebihi end date periode yang dipilih. Silakan periksa kembali tanggal yang diinput.'
+                            );
+                            return;
+                        }
                     }
 
                     // Populate confirmation modal with form data
@@ -1112,6 +1238,13 @@
             
             document.getElementById('confirm-klasifikasi').textContent = 
                 document.getElementById('info-klasifikasi').textContent || '-';
+            
+            // Get selected periode data for id/nama sub jenis
+            const selectedPeriodeData = periodeDataCache[periodeDataSelect?.value];
+            document.getElementById('confirm-id-sub-jenis-data').textContent = 
+                selectedPeriodeData?.id_sub_jenis_data || '-';
+            document.getElementById('confirm-nama-sub-jenis-data').textContent = 
+                selectedPeriodeData?.nama_sub_jenis_data || '-';
             
             document.getElementById('confirm-pic-p3de').textContent = 
                 document.getElementById('info-pic-p3de').textContent || '-';
