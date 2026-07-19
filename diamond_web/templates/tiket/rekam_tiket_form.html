@@ -1240,7 +1240,7 @@
             }
         }
 
-        function updateAlasanKetidaktersediaanVisibility() {
+        window.updateAlasanKetidaktersediaanVisibility = function updateAlasanKetidaktersediaanVisibility() {
             try {
                 const statusTidakTersedia = document.getElementById('status_tidak_tersedia');
                 const alasanWrapper = document.getElementById('alasan-ketidaktersediaan-wrapper');
@@ -1535,18 +1535,12 @@
             updateAlasanKetidaktersediaanVisibility();
 
             // Event listeners for radio buttons
-            if (statusTersedia) {
-                statusTersedia.addEventListener('change', function () {
-                    updateAlasanKetidaktersediaanVisibility();
+            document.querySelectorAll('input[name="status_ketersediaan_data"]').forEach(radio => {
+                radio.addEventListener('change', function () {
+                    window.updateAlasanKetidaktersediaanVisibility();
                     updateKetersediaanDependents();
                 });
-            }
-            if (statusTidakTersedia) {
-                statusTidakTersedia.addEventListener('change', function () {
-                    updateAlasanKetidaktersediaanVisibility();
-                    updateKetersediaanDependents();
-                });
-            }
+            });
 
             function toggleTidakTersediaOptions(show) {
                 // Store removed options for restoration
