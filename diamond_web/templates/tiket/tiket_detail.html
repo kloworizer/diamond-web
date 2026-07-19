@@ -98,190 +98,8 @@
     <div class="row">
         <!-- Main Content -->
         <div class="col-lg-8">
-            <!-- Tiket Information Card -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0"><i class="feather-tag me-2"></i>Informasi Tiket</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Nomor Tiket</label>
-                                <p class="fw-bold mb-0 fs-5">{{ tiket.nomor_tiket }}</p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Status Tiket</label>
-                                <p class="fw-semibold mb-0">
-                                    <span class="badge {{ status_badge_class }}">{{ status_label }}</span>
-                                </p>
-                            </div>
-                        </div>
-                        {% if periode_formatted %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Periode</label>
-                                <p class="fw-semibold mb-0">
-                                    <span class="badge bg-dark">{{ periode_formatted }}</span>
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Data Prioritas</label>
-                                <p class="fw-semibold mb-0">
-                                    {% if tiket.id_jenis_prioritas_data %}
-                                    <span class="badge bg-success">Ya</span>
-                                    {% else %}
-                                    <span class="badge bg-secondary">Tidak</span>
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Terima DIP</label>
-                                <p class="fw-semibold mb-0">
-                                    {% if tiket.tgl_terima_dip %}
-                                        <i class="feather-calendar me-1"></i>{{ tiket.tgl_terima_dip|date:"d/m/Y" }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-                        {% if tiket.tgl_terima_vertikal %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Terima Vertikal</label>
-                                <p class="fw-semibold mb-0">
-                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_terima_vertikal|date:"d/m/Y" }}
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.nomor_surat_pengantar %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Nomor Surat Pengantar</label>
-                                <p class="fw-semibold mb-0">{{ tiket.nomor_surat_pengantar }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Surat Pengantar</label>
-                                <p class="fw-semibold mb-0">
-                                    {% if tiket.tanggal_surat_pengantar %}
-                                        <i class="feather-calendar me-1"></i>{{ tiket.tanggal_surat_pengantar|date:"d/m/Y" }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-                        {% if tiket.nama_pengirim %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Nama Pengirim</label>
-                                <p class="fw-semibold mb-0">{{ tiket.nama_pengirim }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.id_bentuk_data %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Bentuk Data</label>
-                                <p class="fw-semibold mb-0">{{ tiket.id_bentuk_data.nama_bentuk_data }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.id_media_pengiriman %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Media Pengiriman</label>
-                                <p class="fw-semibold mb-0">{{ tiket.id_media_pengiriman.nama_media_pengiriman }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.keterangan %}
-                        <div class="col-12">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Keterangan</label>
-                                <p class="fw-semibold mb-0 text-wrap">{{ tiket.keterangan }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.id_status_penelitian %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Status Penelitian</label>
-                                <p class="fw-semibold mb-0">{{ tiket.id_status_penelitian.nama_status_penelitian }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.tgl_teliti %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Teliti</label>
-                                <p class="fw-semibold mb-0">
-                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_teliti|date:"d/m/Y" }}
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.nomor_nadine %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Nomor Nadine</label>
-                                <p class="fw-semibold mb-0">{{ tiket.nomor_nadine }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.tgl_nadine %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Nadine</label>
-                                <p class="fw-semibold mb-0">
-                                    {% if tiket.tgl_nadine %}
-                                        <i class="feather-calendar me-1"></i>{{ tiket.tgl_nadine|date:"d/m/Y" }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.tgl_kirim_pide %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Kirim PIDE</label>
-                                <p class="fw-semibold mb-0">
-                                    {% if tiket.tgl_kirim_pide %}
-                                        <i class="feather-calendar me-1"></i>{{ tiket.tgl_kirim_pide|date:"d/m/Y" }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.tgl_transfer %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Transfer</label>
-                                <p class="fw-semibold mb-0">
-                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_transfer|date:"d/m/Y" }}
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
+            <!-- Placeholder for sticky card -->
+            <div id="sticky-card-placeholder" style="height: 0px; margin-bottom: 0; overflow: hidden;"></div>
 
             <!-- Info Utama: Tiket Identity Bar (sticky, full width, premium horizontal layout) -->
             <div class="card border-0 shadow-sm mb-4" id="sticky-identity-card"
@@ -473,7 +291,7 @@
                                         <span class="meta-label">Tanggal Terima DIP</span>
                                         <span class="meta-value">
                                             {% if tiket.tgl_terima_dip %}
-                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_terima_dip|date:"d/m/Y H:i" }}
+                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_terima_dip|date:"d/m/Y" }}
                                             {% else %}
                                             -
                                             {% endif %}
@@ -483,7 +301,7 @@
                                     <div class="meta-item">
                                         <span class="meta-label">Tanggal Terima Vertikal</span>
                                         <span class="meta-value">
-                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_terima_vertikal|date:"d/m/Y H:i" }}
+                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_terima_vertikal|date:"d/m/Y" }}
                                         </span>
                                     </div>
                                     {% endif %}
@@ -508,7 +326,7 @@
                                         <span class="meta-label">Tanggal Surat Pengantar</span>
                                         <span class="meta-value">
                                             {% if tiket.tanggal_surat_pengantar %}
-                                            <i class="feather-calendar me-1"></i>{{ tiket.tanggal_surat_pengantar|date:"d/m/Y H:i" }}
+                                            <i class="feather-calendar me-1"></i>{{ tiket.tanggal_surat_pengantar|date:"d/m/Y" }}
                                             {% else %}
                                             -
                                             {% endif %}
@@ -534,7 +352,7 @@
                                     {% if tiket.id_bentuk_data %}
                                     <div class="meta-item">
                                         <span class="meta-label">Bentuk Data</span>
-                                        <span class="meta-value">{{ tiket.id_bentuk_data.deskripsi }}</span>
+                                        <span class="meta-value">{{ tiket.id_bentuk_data.nama_bentuk_data|default:tiket.id_bentuk_data.deskripsi }}</span>
                                     </div>
                                     {% endif %}
                                     {% if tiket.id_cara_penyampaian %}
@@ -564,7 +382,7 @@
                                 </div>
                             </div>
 
-                            {% if tiket_details.status_penelitian or tiket.tgl_teliti %}
+                            {% if tiket_details.status_penelitian or tiket.id_status_penelitian or tiket.tgl_teliti %}
                             <!-- Cluster 4: Verifikasi & Penelitian Data -->
                             <div class="mb-3 p-3 rounded"
                                 style="border: 1px solid #e2e8f0 !important; background-color: rgba(248, 250, 252, 0.45); border-radius: 12px !important;">
@@ -573,19 +391,21 @@
                                     Verifikasi & Penelitian Data
                                 </div>
                                 <div class="meta-list">
-                                    {% if tiket_details.status_penelitian %}
+                                    {% if tiket_details.status_penelitian or tiket.id_status_penelitian %}
                                     <div class="meta-item">
                                         <span class="meta-label">Status Penelitian</span>
                                         <span class="meta-value">
-                                            {% if tiket_details.status_penelitian == 'Lengkap' %}
-                                            <span class="badge bg-success px-2.5 py-1 fw-bold" style="font-size: 11px; border-radius: 6px;">{{ tiket_details.status_penelitian }}</span>
-                                            {% elif tiket_details.status_penelitian == 'Lengkap Sebagian' %}
-                                            <span class="badge bg-warning text-dark px-2.5 py-1 fw-bold" style="font-size: 11px; border-radius: 6px;">{{ tiket_details.status_penelitian }}</span>
-                                            {% elif tiket_details.status_penelitian == 'Tidak Lengkap' %}
-                                            <span class="badge bg-danger px-2.5 py-1 fw-bold" style="font-size: 11px; border-radius: 6px;">{{ tiket_details.status_penelitian }}</span>
+                                            {% with status_penelitian_text=tiket.id_status_penelitian.nama_status_penelitian|default:tiket_details.status_penelitian %}
+                                            {% if status_penelitian_text == 'Lengkap' %}
+                                            <span class="badge bg-success px-2.5 py-1 fw-bold" style="font-size: 11px; border-radius: 6px;">{{ status_penelitian_text }}</span>
+                                            {% elif status_penelitian_text == 'Lengkap Sebagian' %}
+                                            <span class="badge bg-warning text-dark px-2.5 py-1 fw-bold" style="font-size: 11px; border-radius: 6px;">{{ status_penelitian_text }}</span>
+                                            {% elif status_penelitian_text == 'Tidak Lengkap' %}
+                                            <span class="badge bg-danger px-2.5 py-1 fw-bold" style="font-size: 11px; border-radius: 6px;">{{ status_penelitian_text }}</span>
                                             {% else %}
-                                            <span class="badge bg-secondary px-2.5 py-1 fw-bold" style="font-size: 11px; border-radius: 6px;">{{ tiket_details.status_penelitian }}</span>
+                                            <span class="badge bg-secondary px-2.5 py-1 fw-bold" style="font-size: 11px; border-radius: 6px;">{{ status_penelitian_text }}</span>
                                             {% endif %}
+                                            {% endwith %}
                                         </span>
                                     </div>
                                     {% endif %}
@@ -593,7 +413,7 @@
                                     <div class="meta-item">
                                         <span class="meta-label">Tanggal Teliti</span>
                                         <span class="meta-value">
-                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_teliti|date:"d/m/Y H:i" }}
+                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_teliti|date:"d/m/Y" }}
                                         </span>
                                     </div>
                                     {% endif %}
@@ -619,7 +439,7 @@
                                         <span class="meta-label">Tanggal Nadine</span>
                                         <span class="meta-value">
                                             {% if tiket.tgl_nadine %}
-                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_nadine|date:"d/m/Y H:i" }}
+                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_nadine|date:"d/m/Y" }}
                                             {% else %}
                                             -
                                             {% endif %}
@@ -629,7 +449,7 @@
                                         <span class="meta-label">Tanggal Kirim PIDE</span>
                                         <span class="meta-value">
                                             {% if tiket.tgl_kirim_pide %}
-                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_kirim_pide|date:"d/m/Y H:i" }}
+                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_kirim_pide|date:"d/m/Y" }}
                                             {% else %}
                                             -
                                             {% endif %}
@@ -640,7 +460,7 @@
                                     <div class="meta-item">
                                         <span class="meta-label">Tanggal Dibatalkan</span>
                                         <span class="meta-value">
-                                            <span class="badge bg-danger"><i class="feather-calendar me-1"></i>{{ tiket.tgl_dibatalkan|date:"d/m/Y H:i" }}</span>
+                                            <span class="badge bg-danger"><i class="feather-calendar me-1"></i>{{ tiket.tgl_dibatalkan|date:"d/m/Y" }}</span>
                                         </span>
                                     </div>
                                     {% endif %}
@@ -648,7 +468,7 @@
                                     <div class="meta-item">
                                         <span class="meta-label">Tanggal Dikembalikan</span>
                                         <span class="meta-value">
-                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_dikembalikan|date:"d/m/Y H:i" }}
+                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_dikembalikan|date:"d/m/Y" }}
                                         </span>
                                     </div>
                                     {% endif %}
@@ -656,7 +476,7 @@
                                     <div class="meta-item">
                                         <span class="meta-label">Tanggal Rekam PIDE</span>
                                         <span class="meta-value">
-                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_rekam_pide|date:"d/m/Y H:i" }}
+                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_rekam_pide|date:"d/m/Y" }}
                                         </span>
                                     </div>
                                     {% endif %}
@@ -664,7 +484,7 @@
                                     <div class="meta-item">
                                         <span class="meta-label">Tanggal Transfer</span>
                                         <span class="meta-value">
-                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_transfer|date:"d/m/Y H:i" }}
+                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_transfer|date:"d/m/Y" }}
                                         </span>
                                     </div>
                                     {% endif %}
