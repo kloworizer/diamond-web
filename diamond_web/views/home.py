@@ -1,6 +1,8 @@
 from django.shortcuts import render
 from django.conf import settings
 from django.db.models import F, Q, Exists, OuterRef, Max, Subquery, Value
+from django.utils import timezone
+from datetime import timedelta
 from django.db.models.functions import Concat
 from django.contrib.auth.models import Group
 from django.contrib.auth.decorators import login_required
@@ -444,6 +446,64 @@ def home_data(request):
 
     records_total = qs.count()
 
+    # Calculate summary metrics (Total Tiket, Jumlah ILAP, Jenis Data) on base category QS
+    total_tiket = records_total
+    total_ilap = 0
+    total_jenis_data = 0
+    
+    # Age group breakdown summary
+    critical_count = 0
+    warning_count = 0
+    new_count = 0
+    
+    if is_tiket_category:
+        total_ilap = qs.values('id_periode_data__id_sub_jenis_data_ilap__id_ilap').distinct().count()
+        total_jenis_data = qs.values('id_periode_data__id_sub_jenis_data_ilap__id_jenis_data').distinct().count()
+        
+        # Determine the correct date field for age tracking
+        is_pide_category = category in ('belum_mulai_proses_identifikasi', 'dalam_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic')
+        is_pmde_category = category in ('dalam_proses_pengendalian_mutu', 'tiket_pengendalian_mutu_tanpa_pic')
+        is_sla_45_category = is_pide_category or is_pmde_category
+
+        if is_pide_category:
+            date_field = 'tgl_kirim_pide'
+        elif is_pmde_category:
+            date_field = 'tgl_transfer'
+        else:
+            date_field = 'tgl_terima_dip'
+            
+        now = timezone.now()
+        if is_sla_45_category:
+            # SLA: 45 working days = 9 weeks = 63 calendar days
+            cutoff_critical = now - timedelta(days=63)
+            critical_count = qs.filter(**{f"{date_field}__lt": cutoff_critical}).count()
+            warning_count = 0
+            new_count = qs.filter(**{f"{date_field}__gte": cutoff_critical}).count()
+            
+            # Apply age_group filter
+            age_group = request.GET.get('age_group')
+            if age_group == 'critical':
+                qs = qs.filter(**{f"{date_field}__lt": cutoff_critical})
+            elif age_group == 'new':
+                qs = qs.filter(**{f"{date_field}__gte": cutoff_critical})
+        else:
+            # Default P3DE limits (critical: >7 days, warning: 3-7 days, new: <3 days)
+            cutoff_critical = now - timedelta(days=7)
+            cutoff_warning = now - timedelta(days=3)
+            
+            critical_count = qs.filter(**{f"{date_field}__lt": cutoff_critical}).count()
+            warning_count = qs.filter(**{f"{date_field}__range": (cutoff_critical, cutoff_warning)}).count()
+            new_count = qs.filter(**{f"{date_field}__gte": cutoff_warning}).count()
+            
+            # Apply age_group filter
+            age_group = request.GET.get('age_group')
+            if age_group == 'critical':
+                qs = qs.filter(**{f"{date_field}__lt": cutoff_critical})
+            elif age_group == 'warning':
+                qs = qs.filter(**{f"{date_field}__range": (cutoff_critical, cutoff_warning)})
+            elif age_group == 'new':
+                qs = qs.filter(**{f"{date_field}__gte": cutoff_warning})
+
     # Global search for tiket categories
     if search_value and is_tiket_category:
         qs = qs.filter(
@@ -570,4 +630,12 @@ def home_data(request):
         'recordsTotal': records_total,
         'recordsFiltered': records_filtered,
         'data': data,
+        'summary': {
+            'total_tiket': total_tiket,
+            'total_ilap': total_ilap,
+            'total_jenis_data': total_jenis_data,
+            'critical_count': critical_count,
+            'warning_count': warning_count,
+            'new_count': new_count,
+        }
     })

@@ -965,56 +965,8 @@
 
         <!-- Sidebar -->
         <div class="col-lg-4">
-            <!-- Aksi (dipindah ke atas, sebelum PIC) -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0"><i class="feather-users me-2"></i>PIC (Penanggung Jawab)</h5>
-                </div>
-                <div class="card-body">
-                    {% if tiket_pics %}
-                    <div class="list-group list-group-flush">
-                        {% comment %}Group by role: show role header once, then list users under it{% endcomment %}
-                        {% for pic in tiket_pics %}
-                        {% ifchanged pic.badge_label %}
-                        <div class="list-group-item px-0 py-2 bg-light">
-                            <div class="fw-semibold text-uppercase small">
-                                <span class="badge pic-role-badge-{{ pic.badge_label|lower }}">{{ pic.badge_label }}</span>
-                            </div>
-                        </div>
-                        {% endifchanged %}
-
-                        <div class="list-group-item px-0 py-2">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div class="small text-muted">
-                                    {% if pic.timestamp %}
-                                    <i class="feather-clock me-1"></i>{{ pic.timestamp|date:"d/m/Y H:i" }}
-                                    {% else %}
-                                    &nbsp;
-                                    {% endif %}
-                                </div>
-                                <div class="small">
-                                    {% if pic.is_pic_active %}
-                                    <span class="badge bg-success">Aktif</span>
-                                    {% else %}
-                                    <span class="badge bg-danger">Tidak Aktif</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="fw-semibold mt-1"> <i class="feather-user me-1"></i>{{ pic.user_display }}</div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="text-center py-4 text-muted">
-                        <i class="feather-user-x fs-1"></i>
-                        <p class="mb-0 small">Tidak ada PIC yang ditugaskan.</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-
             <!-- Action Buttons -->
-            <div class="card shadow-sm">
+            <div class="card shadow-sm mb-4">
                 <div class="card-header bg-secondary text-white">
                     <h5 class="mb-0"><i class="feather-settings me-2"></i>Aksi</h5>
                 </div>
@@ -1182,6 +1134,55 @@
                     </div>
                     {% endif %}
                     {% endif %}
+                </div>
+            </div>
+
+            <!-- PIC (Penanggung Jawab) Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="feather-users me-2"></i>PIC (Penanggung Jawab)</h5>
+                </div>
+                <div class="card-body">
+                    {% if tiket_pics %}
+                    <div class="list-group list-group-flush">
+                        {% comment %}Group by role: show role header once, then list users under it{% endcomment %}
+                        {% for pic in tiket_pics %}
+                        {% ifchanged pic.badge_label %}
+                        <div class="list-group-item px-0 py-2 bg-light">
+                            <div class="fw-semibold text-uppercase small">
+                                <span class="badge pic-role-badge-{{ pic.badge_label|lower }}">{{ pic.badge_label }}</span>
+                            </div>
+                        </div>
+                        {% endifchanged %}
+
+                        <div class="list-group-item px-0 py-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="small text-muted">
+                                    {% if pic.timestamp %}
+                                    <i class="feather-clock me-1"></i>{{ pic.timestamp|date:"d/m/Y H:i" }}
+                                    {% else %}
+                                    &nbsp;
+                                    {% endif %}
+                                </div>
+                                <div class="small">
+                                    {% if pic.is_pic_active %}
+                                    <span class="badge bg-success">Aktif</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Tidak Aktif</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="fw-semibold mt-1"> <i class="feather-user me-1"></i>{{ pic.user_display }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="feather-user-x fs-1"></i>
+                        <p class="mb-0 small">Tidak ada PIC yang ditugaskan.</p>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
