@@ -1241,16 +1241,20 @@
         }
 
         function updateAlasanKetidaktersediaanVisibility() {
-            const statusTidakTersedia = document.getElementById('status_tidak_tersedia');
-            const alasanWrapper = document.getElementById('alasan-ketidaktersediaan-wrapper');
-            if (!statusTidakTersedia || !alasanWrapper) return;
+            try {
+                const statusTidakTersedia = document.getElementById('status_tidak_tersedia');
+                const alasanWrapper = document.getElementById('alasan-ketidaktersediaan-wrapper');
+                if (!statusTidakTersedia || !alasanWrapper) return;
 
-            if (statusTidakTersedia.checked) {
-                alasanWrapper.style.display = 'block';
-            } else {
-                alasanWrapper.style.display = 'none';
-                const alasanInput = document.getElementById('id_alasan_ketidaktersediaan');
-                if (alasanInput) alasanInput.value = '';
+                if (statusTidakTersedia.checked) {
+                    alasanWrapper.style.display = 'block';
+                } else {
+                    alasanWrapper.style.display = 'none';
+                    const alasanInput = document.getElementById('id_alasan_ketidaktersediaan');
+                    if (alasanInput) alasanInput.value = '';
+                }
+            } catch (error) {
+                console.error('Error in updateAlasanKetidaktersediaanVisibility:', error);
             }
         }
 
@@ -1533,14 +1537,14 @@
             // Event listeners for radio buttons
             if (statusTersedia) {
                 statusTersedia.addEventListener('change', function () {
-                    updateKetersediaanDependents();
                     updateAlasanKetidaktersediaanVisibility();
+                    updateKetersediaanDependents();
                 });
             }
             if (statusTidakTersedia) {
                 statusTidakTersedia.addEventListener('change', function () {
-                    updateKetersediaanDependents();
                     updateAlasanKetidaktersediaanVisibility();
+                    updateKetersediaanDependents();
                 });
             }
 
@@ -1592,68 +1596,72 @@
             }
 
             function updateKetersediaanDependents() {
-                if (statusTidakTersedia && statusTidakTersedia.checked) {
-                    if (alasanKetidaktersedianInput) {
-                        alasanKetidaktersedianInput.disabled = false;
-                        alasanKetidaktersedianInput.style.opacity = '1';
+                try {
+                    if (statusTidakTersedia && statusTidakTersedia.checked) {
+                        if (alasanKetidaktersedianInput) {
+                            alasanKetidaktersedianInput.disabled = false;
+                            alasanKetidaktersedianInput.style.opacity = '1';
+                        }
+                        // Show "tidak tersedia" options and auto-select them
+                        toggleTidakTersediaOptions(true);
+                        if (bentukDataSelect) {
+                            const tidakTersediaOption = Array.from(bentukDataSelect.options).find(
+                                opt => opt.text.toLowerCase().includes('tidak tersedia')
+                            );
+                            if (tidakTersediaOption) bentukDataSelect.value = tidakTersediaOption.value;
+                            bentukDataSelect.disabled = true;
+                            bentukDataSelect.style.opacity = '0.6';
+                        }
+                        if (caraPenyampaianSelect) {
+                            const tidakTersediaOption = Array.from(caraPenyampaianSelect.options).find(
+                                opt => opt.text.toLowerCase().includes('tidak tersedia')
+                            );
+                            if (tidakTersediaOption) caraPenyampaianSelect.value = tidakTersediaOption.value;
+                            caraPenyampaianSelect.disabled = true;
+                            caraPenyampaianSelect.style.opacity = '0.6';
+                        }
+                        if (barisDiterimaInput) {
+                            barisDiterimaInput.value = '';
+                            barisDiterimaInput.disabled = true;
+                            barisDiterimaInput.style.opacity = '0.6';
+                        }
+                        if (backupCheckbox) {
+                            backupCheckbox.checked = false;
+                            backupCheckbox.disabled = true;
+                            const backupSection = document.getElementById('backup-data-section');
+                            if (backupSection) backupSection.style.display = 'none';
+                        }
+                    } else {
+                        if (alasanKetidaktersedianInput) {
+                            alasanKetidaktersedianInput.disabled = true;
+                            alasanKetidaktersedianInput.value = '';
+                            alasanKetidaktersedianInput.style.opacity = '0.6';
+                        }
+                        // Remove "tidak tersedia" options when data is "Tersedia"
+                        toggleTidakTersediaOptions(false);
+                        if (bentukDataSelect) {
+                            bentukDataSelect.value = '';
+                            bentukDataSelect.disabled = false;
+                            bentukDataSelect.style.opacity = '1';
+                        }
+                        if (caraPenyampaianSelect) {
+                            caraPenyampaianSelect.value = '';
+                            caraPenyampaianSelect.disabled = false;
+                            caraPenyampaianSelect.style.opacity = '1';
+                        }
+                        if (barisDiterimaInput) {
+                            barisDiterimaInput.disabled = false;
+                            barisDiterimaInput.style.opacity = '1';
+                        }
+                        if (backupCheckbox) {
+                            backupCheckbox.disabled = false;
+                            backupCheckbox.checked = true;
+                            const backupSection = document.getElementById('backup-data-section');
+                            if (backupSection) backupSection.style.display = '';
+                        }
                     }
-                    // Show "tidak tersedia" options and auto-select them
-                    toggleTidakTersediaOptions(true);
-                    if (bentukDataSelect) {
-                        const tidakTersediaOption = Array.from(bentukDataSelect.options).find(
-                            opt => opt.text.toLowerCase().includes('tidak tersedia')
-                        );
-                        if (tidakTersediaOption) bentukDataSelect.value = tidakTersediaOption.value;
-                        bentukDataSelect.disabled = true;
-                        bentukDataSelect.style.opacity = '0.6';
-                    }
-                    if (caraPenyampaianSelect) {
-                        const tidakTersediaOption = Array.from(caraPenyampaianSelect.options).find(
-                            opt => opt.text.toLowerCase().includes('tidak tersedia')
-                        );
-                        if (tidakTersediaOption) caraPenyampaianSelect.value = tidakTersediaOption.value;
-                        caraPenyampaianSelect.disabled = true;
-                        caraPenyampaianSelect.style.opacity = '0.6';
-                    }
-                    if (barisDiterimaInput) {
-                        barisDiterimaInput.value = '';
-                        barisDiterimaInput.disabled = true;
-                        barisDiterimaInput.style.opacity = '0.6';
-                    }
-                    if (backupCheckbox) {
-                        backupCheckbox.checked = false;
-                        backupCheckbox.disabled = true;
-                        const backupSection = document.getElementById('backup-data-section');
-                        if (backupSection) backupSection.style.display = 'none';
-                    }
-                } else {
-                    if (alasanKetidaktersedianInput) {
-                        alasanKetidaktersedianInput.disabled = true;
-                        alasanKetidaktersedianInput.value = '';
-                        alasanKetidaktersedianInput.style.opacity = '0.6';
-                    }
-                    // Remove "tidak tersedia" options when data is "Tersedia"
-                    toggleTidakTersediaOptions(false);
-                    if (bentukDataSelect) {
-                        bentukDataSelect.value = '';
-                        bentukDataSelect.disabled = false;
-                        bentukDataSelect.style.opacity = '1';
-                    }
-                    if (caraPenyampaianSelect) {
-                        caraPenyampaianSelect.value = '';
-                        caraPenyampaianSelect.disabled = false;
-                        caraPenyampaianSelect.style.opacity = '1';
-                    }
-                    if (barisDiterimaInput) {
-                        barisDiterimaInput.disabled = false;
-                        barisDiterimaInput.style.opacity = '1';
-                    }
-                    if (backupCheckbox) {
-                        backupCheckbox.disabled = false;
-                        backupCheckbox.checked = true;
-                        const backupSection = document.getElementById('backup-data-section');
-                        if (backupSection) backupSection.style.display = '';
-                    }
+                } catch (error) {
+                    console.error('Error in updateKetersediaanDependents:', error);
                 }
             }
 
