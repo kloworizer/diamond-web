@@ -27,15 +27,9 @@
                 <button id="btn-test" class="btn btn-secondary" type="button">
                     <i class="feather-wifi me-1"></i>Test Koneksi
                 </button>
-                {% if environment == 'production' %}
-                <button id="btn-truncate" class="btn btn-secondary" type="button" disabled title="Tidak tersedia di production">
+                <button id="btn-truncate" class="btn btn-secondary" type="button" disabled title="Truncate dinonaktifkan">
                     <i class="feather-trash-2 me-1"></i>Truncate Tabel Referensi
                 </button>
-                {% else %}
-                <button id="btn-truncate" class="btn btn-danger" type="button">
-                    <i class="feather-trash-2 me-1"></i>Truncate Tabel Referensi
-                </button>
-                {% endif %}
                 <button id="btn-check" class="btn btn-primary" type="button">
                     <i class="feather-search me-1"></i>Cek Data
                 </button>

@@ -120,7 +120,7 @@ class IdentifikasiTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
         TiketAction.objects.create(
             id_tiket=tiket,
             id_user=self.request.user,
-            timestamp=now,
+            timestamp=tgl_rekam_pide,
             action=TiketActionType.IDENTIFIKASI,
             catatan='Mulai proses identifikasi'
         )

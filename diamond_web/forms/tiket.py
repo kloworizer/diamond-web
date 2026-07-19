@@ -97,6 +97,8 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
         # Initialize id_periode_data with empty queryset
         self.fields['id_periode_data'].queryset = PeriodeJenisData.objects.none()
         self.fields['id_periode_data'].label = 'Jenis Data ILAP'
+        # Override label_from_instance to show rich format in the dropdown
+        self.fields['id_periode_data'].label_from_instance = self._format_periode_data_label
         # Django automatically sets required=True for non-nullable fields and required=False for nullable fields
         # No need to manually set required status - it's inherited from the model
 
@@ -127,8 +129,8 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
             periode_queryset = PeriodeJenisData.objects.filter(
                 id__in=valid_periode_ids,
                 id_sub_jenis_data_ilap__id_ilap_id=ilap_id
-            ).select_related('id_sub_jenis_data_ilap').distinct()
-
+            ).select_related('id_sub_jenis_data_ilap', 'id_periode_pengiriman').distinct()
+            
             # For non-admin users, further filter to only show PeriodeJenisData where they are an active P3DE PIC
             if self.user and not (self.user.is_superuser or self.user.groups.filter(name='admin').exists()):
                 from ..models.pic import PIC
@@ -142,6 +144,19 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
                 ).distinct()
 
             self.fields['id_periode_data'].queryset = periode_queryset
+
+    def _format_periode_data_label(self, obj):
+        """Format PeriodeJenisData label for the dropdown."""
+        label = (
+            f"{obj.id_sub_jenis_data_ilap.id_sub_jenis_data} - "
+            f"{obj.id_sub_jenis_data_ilap.nama_sub_jenis_data} - "
+            f"{obj.id_sub_jenis_data_ilap.nama_tabel_I} - "
+            f"{obj.id_periode_pengiriman.periode_penerimaan}"
+        )
+        if obj.end_date:
+            label += f" ({obj.end_date.isoformat()})"
+        return label
+
 
     def clean_tgl_terima_vertikal(self):
         value = self.cleaned_data.get('tgl_terima_vertikal')
@@ -162,6 +177,15 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
                 raise forms.ValidationError(
                     'Tanggal Terima DIP tidak boleh sebelum Tanggal Terima Vertikal '
                     f'({tgl_vertikal.strftime("%d/%m/%Y %H:%M")}).'
+                )
+        # Validasi: tgl_terima_dip tidak boleh melebihi end_date periode
+        id_periode_data = cleaned_data.get('id_periode_data')
+        if id_periode_data and id_periode_data.end_date and tgl_dip:
+            tgl_dip = normalize_server_datetime(tgl_dip)
+            if tgl_dip.date() > id_periode_data.end_date:
+                raise forms.ValidationError(
+                    f'Tanggal Terima DIP ({tgl_dip.strftime("%d/%m/%Y %H:%M")}) tidak boleh '
+                    f'melebihi end date periode ({id_periode_data.end_date.isoformat()}).'
                 )
         return cleaned_data
 

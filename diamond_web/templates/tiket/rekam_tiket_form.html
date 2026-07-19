@@ -687,6 +687,24 @@
         </div>
     </div>
 </div>
+
+<!-- Validation Error Modal for Tanggal Terima DIP > End Date -->
+<div class="modal fade" id="endDateValidationModal" tabindex="-1" aria-labelledby="endDateValidationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="endDateValidationModalLabel">Validasi Gagal</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="endDateValidationModalBody">
+                Tanggal Terima DIP tidak boleh melebihi end date periode.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
 <!-- Confirmation Modal -->
 <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -695,137 +713,140 @@
                 <h5 class="modal-title" id="confirmModalLabel"><i class="feather-check-square me-2 text-primary"></i>Konfirmasi Data Perekaman</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4" style="max-height: 80vh; overflow-y: auto;">
-                <p class="text-muted mb-4 fs-13"><i class="feather-info me-1 text-primary"></i>Silakan tinjau kembali data di bawah ini untuk memastikan seluruh informasi perekaman tiket sudah sesuai.</p>
-                
-                <div class="row g-3">
-                    <!-- Column 1: Identitas & PIC -->
-                    <div class="col-md-6">
-                        <div class="card shadow-none border rounded-3 p-3 bg-light-gradient h-100">
-                            <h6 class="text-primary mb-3 small fw-bold text-uppercase tracking-wider"><i class="feather-info me-1"></i>Identitas Tiket</h6>
-                            <div class="d-flex flex-column gap-2 fs-12">
-                                <div class="row">
-                                    <span class="col-sm-5 text-muted">Nomor Tiket:</span>
-                                    <strong class="col-sm-7 text-primary" id="confirm-nomor-tiket">-</strong>
-                                </div>
-                                <div class="row">
-                                    <span class="col-sm-5 text-muted">ILAP:</span>
-                                    <span class="col-sm-7 fw-semibold text-wrap" id="confirm-nama-ilap">-</span>
-                                </div>
-                                <div class="row">
-                                    <span class="col-sm-5 text-muted">Kategori ILAP:</span>
-                                    <span class="col-sm-7" id="confirm-kategori-ilap">-</span>
-                                </div>
-                                <div class="row">
-                                    <span class="col-sm-5 text-muted">Wilayah:</span>
-                                    <span class="col-sm-7" id="confirm-kategori-wilayah">-</span>
-                                </div>
-                                <div class="row">
-                                    <span class="col-sm-5 text-muted">Tabel:</span>
-                                    <span class="col-sm-7 text-wrap" id="confirm-jenis-tabel">-</span>
-                                </div>
-                                <div class="row">
-                                    <span class="col-sm-5 text-muted">Prioritas:</span>
-                                    <span class="col-sm-7" id="confirm-jenis-prioritas">-</span>
-                                </div>
-                                <div class="row">
-                                    <span class="col-sm-5 text-muted">Dasar Hukum:</span>
-                                    <span class="col-sm-7" id="confirm-klasifikasi">-</span>
-                                </div>
-                            </div>
-                            
-                            <hr class="my-3">
-                            
-                            <h6 class="text-primary mb-3 small fw-bold text-uppercase tracking-wider"><i class="feather-users me-1"></i>PIC Data</h6>
-                            <div class="d-flex flex-column gap-2">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <span class="confirm-pic-chip confirm-pic-chip-p3de w-100"><span class="confirm-pic-label">P3DE:</span> <span id="confirm-pic-p3de">-</span></span>
-                                </div>
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <span class="confirm-pic-chip confirm-pic-chip-pide w-100"><span class="confirm-pic-label">PIDE:</span> <span id="confirm-pic-pide">-</span></span>
-                                </div>
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <span class="confirm-pic-chip confirm-pic-chip-pmde w-100"><span class="confirm-pic-label">PMDE:</span> <span id="confirm-pic-pmde">-</span></span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Column 2: Pengiriman & Surat Pengantar -->
-                    <div class="col-md-6">
-                        <div class="card shadow-none border rounded-3 p-3 bg-light-gradient h-100">
-                            <h6 class="text-primary mb-3 small fw-bold text-uppercase tracking-wider"><i class="feather-calendar me-1"></i>Periode & Penerimaan</h6>
-                            <div class="d-flex flex-column gap-2 fs-12 mb-3">
-                                <div class="row">
-                                    <span class="col-sm-5 text-muted">Deskripsi Periode:</span>
-                                    <span class="col-sm-7 fw-semibold" id="confirm-deskripsi-periode">-</span>
-                                </div>
-                                <div class="row">
-                                    <span class="col-sm-5 text-muted">Periode / Tahun:</span>
-                                    <span class="col-sm-7"><span id="confirm-periode">-</span> / <span id="confirm-tahun">-</span></span>
-                                </div>
-                                <div class="row">
-                                    <span class="col-sm-5 text-muted">Tgl Vertikal:</span>
-                                    <span class="col-sm-7" id="confirm-tgl-vertikal">-</span>
-                                </div>
-                                <div class="row">
-                                    <span class="col-sm-5 text-muted">Tgl Terima DIP:</span>
-                                    <span class="col-sm-7" id="confirm-tgl-dip">-</span>
-                                </div>
-                            </div>
-                            
-                            <hr class="my-3 mt-1">
-                            
-                            <h6 class="text-primary mb-3 small fw-bold text-uppercase tracking-wider"><i class="feather-mail me-1"></i>Surat Pengantar & File</h6>
-                            <div class="d-flex flex-column gap-2 fs-12">
-                                <div class="row">
-                                    <span class="col-sm-5 text-muted">No Surat:</span>
-                                    <span class="col-sm-7 fw-semibold text-wrap" id="confirm-nomor-surat-pengantar">-</span>
-                                </div>
-                                <div class="row">
-                                    <span class="col-sm-5 text-muted">Tgl Surat:</span>
-                                    <span class="col-sm-7" id="confirm-tanggal-surat-pengantar">-</span>
-                                </div>
-                                <div class="row">
-                                    <span class="col-sm-5 text-muted">Nama Pengirim:</span>
-                                    <span class="col-sm-7 text-wrap" id="confirm-nama-pengirim">-</span>
-                                </div>
-                                <div class="row">
-                                    <span class="col-sm-5 text-muted">Bentuk / Cara:</span>
-                                    <span class="col-sm-7"><span id="confirm-bentuk-data">-</span> / <span id="confirm-cara-penyampaian">-</span></span>
-                                </div>
-                                <div class="row">
-                                    <span class="col-sm-5 text-muted">Penyampaian Ke-:</span>
-                                    <span class="col-sm-7" id="confirm-penyampaian">-</span>
-                                </div>
-                                <div class="row">
-                                    <span class="col-sm-5 text-muted">Volume Data:</span>
-                                    <span class="col-sm-7 fw-semibold"><span id="confirm-baris-diterima">-</span> <span id="confirm-satuan-data">-</span></span>
-                                </div>
-                            </div>
-                            
-                            <!-- Dynamic Backup Section -->
-                            <div id="confirm-row-backup" style="display: none;">
-                                <hr class="my-3">
-                                <h6 class="text-primary mb-3 small fw-bold text-uppercase tracking-wider"><i class="feather-database me-1"></i>Rekam Backup Data</h6>
-                                <div class="d-flex flex-column gap-2 fs-12">
-                                    <div class="row" id="confirm-row-lokasi-backup">
-                                        <span class="col-sm-5 text-muted">Lokasi Backup:</span>
-                                        <span class="col-sm-7 text-wrap" id="confirm-lokasi-backup">-</span>
-                                    </div>
-                                    <div class="row" id="confirm-row-nama-file">
-                                        <span class="col-sm-5 text-muted">Nama File:</span>
-                                        <span class="col-sm-7 text-wrap text-break" id="confirm-nama-file">-</span>
-                                    </div>
-                                    <div class="row" id="confirm-row-media-backup">
-                                        <span class="col-sm-5 text-muted">Media Backup:</span>
-                                        <span class="col-sm-7" id="confirm-media-backup">-</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="modal-body" style="max-height: 500px; overflow-y: auto;">
+                <p class="mb-3">Pastikan data berikut sudah benar sebelum disimpan:</p>
+                <table class="table table-sm">
+                    <tbody>
+                        <tr>
+                            <th style="width: 40%;">Nomor Tiket</th>
+                            <td id="confirm-nomor-tiket">-</td>
+                        </tr>
+                        <tr>
+                            <th style="width: 40%;">ILAP</th>
+                            <td id="confirm-nama-ilap">-</td>
+                        </tr>
+                        <tr>
+                            <th>Kategori ILAP</th>
+                            <td id="confirm-kategori-ilap">-</td>
+                        </tr>
+                        <tr>
+                            <th>Kategori Wilayah</th>
+                            <td id="confirm-kategori-wilayah">-</td>
+                        </tr>
+                        <tr>
+                            <th>Jenis Tabel</th>
+                            <td id="confirm-jenis-tabel">-</td>
+                        </tr>
+                        <tr>
+                            <th>Jenis Prioritas Data</th>
+                            <td id="confirm-jenis-prioritas">-</td>
+                        </tr>
+                        <tr>
+                            <th>Klasifikasi Jenis Data</th>
+                            <td id="confirm-klasifikasi">-</td>
+                        </tr>
+                        <tr>
+                            <th>ID Sub Jenis Data</th>
+                            <td id="confirm-id-sub-jenis-data">-</td>
+                        </tr>
+                        <tr>
+                            <th>Nama Sub Jenis Data</th>
+                            <td id="confirm-nama-sub-jenis-data">-</td>
+                        </tr>
+                        <tr>
+                            <th colspan="2"><strong>PIC</strong></th>
+                        </tr>
+                        <tr>
+                            <th>PIC P3DE</th>
+                            <td id="confirm-pic-p3de">-</td>
+                        </tr>
+                        <tr>
+                            <th>PIC PIDE</th>
+                            <td id="confirm-pic-pide">-</td>
+                        </tr>
+                        <tr>
+                            <th>PIC PMDE</th>
+                            <td id="confirm-pic-pmde">-</td>
+                        </tr>
+                        <tr>
+                            <th colspan="2"><strong>Periode</strong></th>
+                        </tr>
+                        <tr>
+                            <th>Deskripsi Periode</th>
+                            <td id="confirm-deskripsi-periode">-</td>
+                        </tr>
+                        <tr>
+                            <th>Periode</th>
+                            <td id="confirm-periode">-</td>
+                        </tr>
+                        <tr>
+                            <th>Tahun</th>
+                            <td id="confirm-tahun">-</td>
+                        </tr>
+                        <tr>
+                            <th colspan="2"><strong>Tanggal Penerimaan</strong></th>
+                        </tr>
+                        <tr>
+                            <th>Tanggal Terima Vertikal</th>
+                            <td id="confirm-tgl-vertikal">-</td>
+                        </tr>
+                        <tr>
+                            <th>Tanggal Terima DIP</th>
+                            <td id="confirm-tgl-dip">-</td>
+                        </tr>
+                        <tr>
+                            <th colspan="2"><strong>Surat Pengantar</strong></th>
+                        </tr>
+                        <tr>
+                            <th>Nomor Surat Pengantar</th>
+                            <td id="confirm-nomor-surat-pengantar">-</td>
+                        </tr>
+                        <tr>
+                            <th>Tanggal Surat Pengantar</th>
+                            <td id="confirm-tanggal-surat-pengantar">-</td>
+                        </tr>
+                        <tr>
+                            <th>Nama Pengirim</th>
+                            <td id="confirm-nama-pengirim">-</td>
+                        </tr>
+                        <tr>
+                            <th>Bentuk Data</th>
+                            <td id="confirm-bentuk-data">-</td>
+                        </tr>
+                        <tr>
+                            <th>Cara Penyampaian</th>
+                            <td id="confirm-cara-penyampaian">-</td>
+                        </tr>
+                        <tr>
+                            <th>Penyampaian</th>
+                            <td id="confirm-penyampaian">-</td>
+                        </tr>
+                        <tr>
+                            <th>Baris Diterima</th>
+                            <td id="confirm-baris-diterima">-</td>
+                        </tr>
+                        <tr>
+                            <th>Satuan Data</th>
+                            <td id="confirm-satuan-data">-</td>
+                        </tr>
+                        <!-- Status Penelitian removed from create form confirmation -->
+                        <tr id="confirm-row-backup" style="display: none;">
+                            <th colspan="2">Backup Data</th>
+                        </tr>
+                        <tr id="confirm-row-lokasi-backup" style="display: none;">
+                            <th>Lokasi Backup</th>
+                            <td id="confirm-lokasi-backup">-</td>
+                        </tr>
+                        <tr id="confirm-row-nama-file" style="display: none;">
+                            <th>Nama File</th>
+                            <td id="confirm-nama-file">-</td>
+                        </tr>
+                        <tr id="confirm-row-media-backup" style="display: none;">
+                            <th>Media Backup</th>
+                            <td id="confirm-media-backup">-</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
@@ -1077,8 +1098,11 @@
                             periodeDataCache[item.id] = item;
                             const option = document.createElement('option');
                             option.value = item.id;
-                            option.textContent =
-                                `${item.id_sub_jenis_data} - ${item.nama_sub_jenis_data}`;
+                            let label = `${item.id_sub_jenis_data} - ${item.nama_sub_jenis_data} - ${item.nama_tabel_I} - ${item.periode_penerimaan}`;
+                            if (item.end_date) {
+                                label += ` (${item.end_date})`;
+                            }
+                            option.textContent = label;
                             periodeDataSelect.appendChild(option);
                         });
                     }
@@ -1664,6 +1688,34 @@
             }
             if (tahunSelect) tahunSelect.addEventListener('change', checkJenisPrioritas);
 
+            if (tahunSelect) {
+                tahunSelect.addEventListener('change', checkJenisPrioritas);
+            }
+
+            // Helper: show validation modal with detail table
+            function showValidationModal(title, rows, message) {
+                const modalBody = document.getElementById('endDateValidationModalBody');
+                if (!modalBody) return;
+                let rowsHtml = '';
+                rows.forEach(r => {
+                    rowsHtml += `<tr><td class="text-muted">${r.label}</td><td class="fw-semibold${r.danger ? ' text-danger' : ''}">${r.value}</td></tr>`;
+                });
+                modalBody.innerHTML = `
+                    <div class="d-flex align-items-start gap-3">
+                        <i class="feather-alert-circle fs-1 text-danger"></i>
+                        <div>
+                            <strong>${title}</strong><br><br>
+                            <table class="table table-sm table-borderless mb-0">${rowsHtml}</table>
+                            <br>
+                            <p class="mb-0">${message}</p>
+                        </div>
+                    </div>
+                `;
+                const modal = new bootstrap.Modal(document.getElementById('endDateValidationModal'));
+                modal.show();
+            }
+
+            // Handle confirmation button click
             if (btnConfirm) {
                 btnConfirm.addEventListener('click', function (e) {
                     e.preventDefault();
@@ -1740,6 +1792,80 @@
                         return;
                     }
 
+                    const now = new Date();
+                    const tglVertikalInput = document.getElementById('id_tgl_terima_vertikal');
+                    const tglDipInput = document.getElementById('id_tgl_terima_dip');
+                    const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+
+                    // 1. Cek future date: tgl_terima_vertikal
+                    if (tglVertikalInput?.value) {
+                        const tglVertikal = new Date(tglVertikalInput.value);
+                        if (tglVertikal > now) {
+                            showValidationModal(
+                                'Tanggal Terima Vertikal melebihi tanggal sekarang!',
+                                [
+                                    { label: 'Tanggal Terima Vertikal', value: tglVertikal.toLocaleDateString('id-ID', options), danger: true },
+                                    { label: 'Tanggal Sekarang', value: now.toLocaleDateString('id-ID', options) },
+                                ],
+                                'Tanggal Terima Vertikal tidak boleh melebihi tanggal sekarang. Silakan periksa kembali tanggal yang diinput.'
+                            );
+                            return;
+                        }
+                    }
+
+                    // 2. Cek future date: tgl_terima_dip
+                    if (tglDipInput?.value) {
+                        const tglDip = new Date(tglDipInput.value);
+                        if (tglDip > now) {
+                            showValidationModal(
+                                'Tanggal Terima DIP melebihi tanggal sekarang!',
+                                [
+                                    { label: 'Tanggal Terima DIP', value: tglDip.toLocaleDateString('id-ID', options), danger: true },
+                                    { label: 'Tanggal Sekarang', value: now.toLocaleDateString('id-ID', options) },
+                                ],
+                                'Tanggal Terima DIP tidak boleh melebihi tanggal sekarang. Silakan periksa kembali tanggal yang diinput.'
+                            );
+                            return;
+                        }
+                    }
+
+                    // 3. Cek tgl_terima_dip < tgl_terima_vertikal
+                    if (tglVertikalInput?.value && tglDipInput?.value) {
+                        const tglVertikal = new Date(tglVertikalInput.value);
+                        const tglDip = new Date(tglDipInput.value);
+                        if (tglDip < tglVertikal) {
+                            showValidationModal(
+                                'Tanggal Terima DIP sebelum Tanggal Terima Vertikal!',
+                                [
+                                    { label: 'Tanggal Terima DIP', value: tglDip.toLocaleDateString('id-ID', options), danger: true },
+                                    { label: 'Tanggal Terima Vertikal', value: tglVertikal.toLocaleDateString('id-ID', options) },
+                                ],
+                                'Tanggal Terima DIP tidak boleh sebelum Tanggal Terima Vertikal. Silakan periksa kembali tanggal yang diinput.'
+                            );
+                            return;
+                        }
+                    }
+
+                    // 4. Cek tgl_terima_dip > end_date periode
+                    const periodeDataId = periodeDataSelect?.value;
+                    const selectedPeriodeData = periodeDataCache[periodeDataId];
+                    if (selectedPeriodeData?.end_date && tglDipInput?.value) {
+                        const endDate = new Date(selectedPeriodeData.end_date + 'T23:59:59');
+                        const tglDip = new Date(tglDipInput.value);
+                        if (tglDip > endDate) {
+                            showValidationModal(
+                                'Tanggal Terima DIP melebihi end date periode!',
+                                [
+                                    { label: 'Tanggal Terima DIP', value: tglDip.toLocaleDateString('id-ID', options), danger: true },
+                                    { label: 'End Date Periode', value: endDate.toLocaleDateString('id-ID', options) },
+                                ],
+                                'Tanggal Terima DIP tidak boleh melebihi end date periode yang dipilih. Silakan periksa kembali tanggal yang diinput.'
+                            );
+                            return;
+                        }
+                    }
+
+                    // Populate confirmation modal with form data
                     populateConfirmationModal();
                     confirmModal.show();
                 });
@@ -1960,47 +2086,55 @@
             const tglDipInput = document.getElementById('id_tgl_terima_dip');
             const nomorTiketCell = document.getElementById('confirm-nomor-tiket');
 
-            document.getElementById('confirm-nama-ilap').textContent = document.getElementById('info-nama-ilap')
-                .textContent || '-';
-            document.getElementById('confirm-kategori-ilap').textContent = document.getElementById(
-                'info-kategori-ilap').textContent || '-';
-            document.getElementById('confirm-kategori-wilayah').textContent = document.getElementById(
-                'info-kategori-wilayah').textContent || '-';
-            document.getElementById('confirm-jenis-tabel').textContent = document.getElementById('info-jenis-tabel')
-                .textContent || '-';
-            document.getElementById('confirm-jenis-prioritas').textContent = document.getElementById(
-                'info-jenis-prioritas').textContent || '-';
-            document.getElementById('confirm-klasifikasi').textContent = document.getElementById('info-klasifikasi')
-                .textContent || '-';
-            document.getElementById('confirm-pic-p3de').textContent = document.getElementById('info-pic-p3de')
-                .textContent || '-';
-            document.getElementById('confirm-pic-pide').textContent = document.getElementById('info-pic-pide')
-                .textContent || '-';
-            document.getElementById('confirm-pic-pmde').textContent = document.getElementById('info-pic-pmde')
-                .textContent || '-';
-            document.getElementById('confirm-deskripsi-periode').textContent = document.getElementById(
-                'info-deskripsi-periode').textContent || '-';
-            document.getElementById('confirm-periode').textContent = periodeSelect ?.options[periodeSelect
-                .selectedIndex] ?.text || '-';
-            document.getElementById('confirm-tahun').textContent = tahunSelect ?.options[tahunSelect
-                .selectedIndex] ?.text || '-';
-            document.getElementById('confirm-tgl-vertikal').textContent = formatDate(tglVertikalInput ?.value) ||
-                '-';
-            document.getElementById('confirm-tgl-dip').textContent = formatDate(tglDipInput ?.value) || '-';
-            document.getElementById('confirm-nomor-surat-pengantar').textContent = document.getElementById(
-                'id_nomor_surat_pengantar') ?.value || '-';
-            document.getElementById('confirm-tanggal-surat-pengantar').textContent = formatDate(document
-                .getElementById('id_tanggal_surat_pengantar') ?.value) || '-';
-            document.getElementById('confirm-nama-pengirim').textContent = document.getElementById(
-                'id_nama_pengirim') ?.value || '-';
-            document.getElementById('confirm-bentuk-data').textContent = document.getElementById(
-                    'id_id_bentuk_data') ?.options[document.getElementById('id_id_bentuk_data') ?.selectedIndex] ?.text || '-';
-            document.getElementById('confirm-cara-penyampaian').textContent = document.getElementById(
-                'id_id_cara_penyampaian') ?.options[document.getElementById('id_id_cara_penyampaian') ?.selectedIndex] ?.text || '-';
-            document.getElementById('confirm-penyampaian').textContent = document.getElementById('id_penyampaian') ?.value || '-';
-            document.getElementById('confirm-baris-diterima').textContent = document.getElementById(
-                'id_baris_diterima') ?.value || '-';
-            document.getElementById('confirm-satuan-data').textContent = document.getElementById('id_satuan_data') ?.options[document.getElementById('id_satuan_data') ?.selectedIndex] ?.text || '-';
+            // Set all confirmation values from info section and form
+            document.getElementById('confirm-nama-ilap').textContent = 
+                document.getElementById('info-nama-ilap').textContent || '-';
+            
+            document.getElementById('confirm-kategori-ilap').textContent = 
+                document.getElementById('info-kategori-ilap').textContent || '-';
+            
+            document.getElementById('confirm-kategori-wilayah').textContent = 
+                document.getElementById('info-kategori-wilayah').textContent || '-';
+            
+            document.getElementById('confirm-jenis-tabel').textContent = 
+                document.getElementById('info-jenis-tabel').textContent || '-';
+            
+            document.getElementById('confirm-jenis-prioritas').textContent = 
+                document.getElementById('info-jenis-prioritas').textContent || '-';
+            
+            document.getElementById('confirm-klasifikasi').textContent = 
+                document.getElementById('info-klasifikasi').textContent || '-';
+            
+            // Get selected periode data for id/nama sub jenis
+            const selectedPeriodeData = periodeDataCache[periodeDataSelect?.value];
+            document.getElementById('confirm-id-sub-jenis-data').textContent = 
+                selectedPeriodeData?.id_sub_jenis_data || '-';
+            document.getElementById('confirm-nama-sub-jenis-data').textContent = 
+                selectedPeriodeData?.nama_sub_jenis_data || '-';
+            
+            document.getElementById('confirm-pic-p3de').textContent = 
+                document.getElementById('info-pic-p3de').textContent || '-';
+            
+            document.getElementById('confirm-pic-pide').textContent = 
+                document.getElementById('info-pic-pide').textContent || '-';
+            
+            document.getElementById('confirm-pic-pmde').textContent = 
+                document.getElementById('info-pic-pmde').textContent || '-';
+            
+            document.getElementById('confirm-deskripsi-periode').textContent = 
+                document.getElementById('info-deskripsi-periode').textContent || '-';
+            
+            document.getElementById('confirm-periode').textContent = 
+                periodeSelect.options[periodeSelect.selectedIndex]?.text || '-';
+            
+            document.getElementById('confirm-tahun').textContent = 
+                tahunSelect.options[tahunSelect.selectedIndex]?.text || '-';
+            
+            document.getElementById('confirm-tgl-vertikal').textContent = 
+                formatDateTime(tglVertikalInput.value) || '-';
+            
+            document.getElementById('confirm-tgl-dip').textContent = 
+                formatDateTime(tglDipInput.value) || '-';
 
             const backupChecked = document.getElementById('rekam-backup-checkbox') ?.checked;
             const backupRows = ['confirm-row-backup', 'confirm-row-lokasi-backup', 'confirm-row-nama-file',
