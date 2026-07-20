@@ -516,23 +516,41 @@ def _generate_single_document(request, pk, doc_type):
     return doc, filename
 
 
+@login_required
+@user_passes_test(lambda u: _is_p3de_user(u))
+@require_GET
 def tiket_documents_download(request, pk):
     """Generate and download DOCX documents for a tiket.
-    
+
+    Performs explicit pre-flight checks before document generation:
+    - Non-PIC P3DE users → 403
+    - tiket.tanda_terima is False → 400
+
     If doc_type is 'tanda_terima', automatically combines the Tanda Terima
     and its associated Lampiran into a single document with a page break.
     Otherwise, returns the single requested document.
     """
+    # Pre-flight: verify tiket exists and check permissions explicitly
+    tiket = get_object_or_404(Tiket, pk=pk)
+
+    if not request.user.groups.filter(name='admin').exists() and not request.user.is_superuser:
+        has_access = TiketPIC.objects.filter(id_tiket=tiket, id_user=request.user, active=True).exists()
+        if not has_access:
+            return HttpResponse('Tidak memiliki akses ke tiket ini.', status=403)
+
+    if not tiket.tanda_terima:
+        return HttpResponse('Tiket ini belum memiliki tanda terima.', status=400)
+
     doc_type = request.GET.get('doc_type', 'tanda_terima')
-    
+
     if doc_type == 'tanda_terima':
         try:
             # Generate Tanda Terima (only) and Lampiran, then merge them
             doc_tanda, filename_tanda = _generate_single_document(request, pk, 'tanda_terima_only')
             doc_lampiran, _ = _generate_single_document(request, pk, 'lampiran')
-            
+
             merged_doc = _merge_docx(doc_tanda, doc_lampiran)
-            
+
             buffer = BytesIO()
             merged_doc.save(buffer)
             response = HttpResponse(
