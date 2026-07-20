@@ -903,7 +903,7 @@ class TandaTerimaDataViewOnly(LoginRequiredMixin, ActiveTiketP3DERequiredForEdit
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de']).exists())
 def tidak_terbit_tanda_terima(request, pk):
     """Set tanda_terima=True on tiket without creating TandaTerimaData record.
 
@@ -937,7 +937,7 @@ def tidak_terbit_tanda_terima(request, pk):
     ).exists()
 
     if not (request.user.is_superuser or request.user.groups.filter(name='admin').exists() or is_active_pic):
-        return JsonResponse({'success': False, 'message': 'Anda bukan PIC aktif P3DE untuk tiket ini.'})
+        return JsonResponse({'success': False, 'message': 'Anda bukan PIC aktif P3DE untuk tiket ini.'}, status=403)
 
     if tiket.tanda_terima:
         return JsonResponse({'success': False, 'message': 'Tiket ini sudah memiliki Tanda Terima.'}, status=400)
