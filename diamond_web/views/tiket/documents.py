@@ -118,9 +118,6 @@ def _build_table_doc(title, headers, rows_data):
     return doc
 
 
-@login_required
-@user_passes_test(lambda u: _is_p3de_user(u))
-@require_GET
 def _merge_docx(doc1, doc2):
     """Combine two docx Documents by adding a page break and appending elements."""
     doc1.add_page_break()
