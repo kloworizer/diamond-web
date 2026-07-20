@@ -1062,8 +1062,7 @@
                         {% endif %}
                         {% endif %}
                 </div>
-                {% elif tiket.status_tiket >= STATUS_DIKIRIM_KE_PIDE or tiket.status_tiket == STATUS_DIBATALKAN or
-                tiket.status_tiket == STATUS_SELESAI %}
+                {% elif tiket.status_tiket >= STATUS_DIKIRIM_KE_PIDE or tiket.status_tiket == STATUS_DIBATALKAN or tiket.status_tiket == STATUS_SELESAI %}
                 <div class="text-center text-muted py-2">
                     <i class="feather-info me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
                 </div>
