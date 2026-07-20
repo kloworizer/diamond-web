@@ -1132,43 +1132,120 @@
                     {% if tiket.tanda_terima or tiket.id_status_penelitian.deskripsi == 'Lengkap' or tiket.id_status_penelitian.deskripsi == 'Lengkap Sebagian' or tiket.id_status_penelitian.deskripsi == 'Tidak Lengkap' or tiket.backup and tiket.tanda_terima and tiket.tgl_teliti %}
                     <div class="mt-4">
                         <h6 class="text-muted mb-3"><i class="feather-download me-2"></i>Download Dokumen</h6>
-                        <div class="d-grid gap-2">
+                        <div class="list-group list-group-flush mb-2" style="font-size: 12px;">
+                            <!-- Item 1: Tanda Terima & Lampiran -->
                             {% if tiket.tanda_terima %}
-                            <button type="button" class="btn btn-sm btn-primary btn-download-doc"
-                                data-id="{{ tiket.pk }}" data-type="tanda_terima">
-                                <i class="feather-file-text me-1"></i>Tanda Terima & Lampiran
-                            </button>
+                            <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-0 bg-transparent">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-2 text-primary" style="font-size: 16px;">
+                                        <i class="feather-file-text"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold text-dark">Tanda Terima & Lampiran</div>
+                                        <div class="text-muted" style="font-size: 10px;">Format: DOCX</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-download-doc py-1 px-2"
+                                    data-id="{{ tiket.pk }}" data-type="tanda_terima" style="font-size: 11px;">
+                                    <i class="feather-download me-1"></i>Unduh
+                                </button>
+                            </div>
                             {% endif %}
+                            
+                            <!-- Item 2: Surat PKDI (Lengkap) -->
                             {% if tiket.id_status_penelitian.deskripsi == 'Lengkap' %}
-                            <button type="button" class="btn btn-sm btn-success btn-download-pkdi-lengkap"
-                                data-id="{{ tiket.pk }}">
-                                <i class="feather-file-text me-1"></i>Surat PKDI (Lengkap)
-                            </button>
+                            <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-0 bg-transparent">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-2 text-success" style="font-size: 16px;">
+                                        <i class="feather-check-square"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold text-dark">Surat PKDI (Lengkap)</div>
+                                        <div class="text-muted" style="font-size: 10px;">Format: DOCX</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-success btn-download-pkdi-lengkap py-1 px-2"
+                                    data-id="{{ tiket.pk }}" style="font-size: 11px;">
+                                    <i class="feather-download me-1"></i>Unduh
+                                </button>
+                            </div>
                             {% endif %}
+
+                            <!-- Item 3: Surat PKDI (Sebagian) -->
                             {% if tiket.id_status_penelitian.deskripsi == 'Lengkap Sebagian' %}
-                            <button type="button" class="btn btn-sm btn-warning btn-download-pkdi-sebagian"
-                                data-id="{{ tiket.pk }}">
-                                <i class="feather-file-text me-1"></i>Surat PKDI (Sebagian)
-                            </button>
+                            <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-0 bg-transparent">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-2 text-warning" style="font-size: 16px;">
+                                        <i class="feather-minus-square"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold text-dark">Surat PKDI (Sebagian)</div>
+                                        <div class="text-muted" style="font-size: 10px;">Format: DOCX</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-warning btn-download-pkdi-sebagian py-1 px-2"
+                                    data-id="{{ tiket.pk }}" style="font-size: 11px;">
+                                    <i class="feather-download me-1"></i>Unduh
+                                </button>
+                            </div>
                             {% endif %}
+
+                            <!-- Item 4: Surat Klarifikasi (Lengkap Sebagian) -->
                             {% if tiket.id_status_penelitian.deskripsi == 'Lengkap Sebagian' %}
-                            <button type="button" class="btn btn-sm btn-warning btn-download-klarifikasi"
-                                data-id="{{ tiket.pk }}">
-                                <i class="feather-file-text me-1"></i>Surat Klarifikasi
-                            </button>
+                            <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-0 bg-transparent">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-2 text-warning" style="font-size: 16px;">
+                                        <i class="feather-alert-triangle"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold text-dark">Surat Klarifikasi</div>
+                                        <div class="text-muted" style="font-size: 10px;">Format: DOCX</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-warning btn-download-klarifikasi py-1 px-2"
+                                    data-id="{{ tiket.pk }}" style="font-size: 11px;">
+                                    <i class="feather-download me-1"></i>Unduh
+                                </button>
+                            </div>
                             {% endif %}
+
+                            <!-- Item 5: Surat Klarifikasi (Tidak Lengkap) -->
                             {% if tiket.id_status_penelitian.deskripsi == 'Tidak Lengkap' %}
-                            <button type="button" class="btn btn-sm btn-danger btn-download-klarifikasi"
-                                data-id="{{ tiket.pk }}">
-                                <i class="feather-file-text me-1"></i>Surat Klarifikasi
-                            </button>
+                            <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-0 bg-transparent">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-2 text-danger" style="font-size: 16px;">
+                                        <i class="feather-x-octagon"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold text-dark">Surat Klarifikasi</div>
+                                        <div class="text-muted" style="font-size: 10px;">Format: DOCX</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-danger btn-download-klarifikasi py-1 px-2"
+                                    data-id="{{ tiket.pk }}" style="font-size: 11px;">
+                                    <i class="feather-download me-1"></i>Unduh
+                                </button>
+                            </div>
                             {% endif %}
+
+                            <!-- Item 6: ND Pengantar ke PIDE -->
                             {% if tiket.status_tiket == 3 or tiket.status_tiket == 4 or tiket.status_tiket == 5 or tiket.status_tiket == 6 or tiket.status_tiket == 8 %}
                             {% if tiket.id_status_penelitian.deskripsi != 'Tidak Lengkap' %}
-                            <button type="button" class="btn btn-sm btn-info btn-download-doc" data-id="{{ tiket.pk }}"
-                                data-type="nd_pengantar">
-                                <i class="feather-file-text me-1"></i>ND Pengantar ke PIDE
-                            </button>
+                            <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-0 bg-transparent">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-2 text-info" style="font-size: 16px;">
+                                        <i class="feather-send"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold text-dark">ND Pengantar ke PIDE</div>
+                                        <div class="text-muted" style="font-size: 10px;">Format: DOCX</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-info btn-download-doc py-1 px-2"
+                                    data-id="{{ tiket.pk }}" data-type="nd_pengantar" style="font-size: 11px;">
+                                    <i class="feather-download me-1"></i>Unduh
+                                </button>
+                            </div>
                             {% endif %}
                             {% endif %}
                         </div>
