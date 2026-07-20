@@ -1136,11 +1136,7 @@
                             {% if tiket.tanda_terima %}
                             <button type="button" class="btn btn-sm btn-primary btn-download-doc"
                                 data-id="{{ tiket.pk }}" data-type="tanda_terima">
-                                <i class="feather-file-text me-1"></i>Tanda Terima
-                            </button>
-                            <button type="button" class="btn btn-sm btn-primary btn-download-doc"
-                                data-id="{{ tiket.pk }}" data-type="lampiran">
-                                <i class="feather-file-text me-1"></i>Lampiran Tanda Terima
+                                <i class="feather-file-text me-1"></i>Tanda Terima & Lampiran
                             </button>
                             {% endif %}
                             {% if tiket.id_status_penelitian.deskripsi == 'Lengkap' %}
