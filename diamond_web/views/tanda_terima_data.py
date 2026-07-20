@@ -903,7 +903,7 @@ class TandaTerimaDataViewOnly(LoginRequiredMixin, ActiveTiketP3DERequiredForEdit
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de']).exists())
+@user_passes_test(lambda u: u.is_superuser or u.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de']).exists())
 def tidak_terbit_tanda_terima(request, pk):
     """Set tanda_terima=True on tiket without creating TandaTerimaData record.
 
