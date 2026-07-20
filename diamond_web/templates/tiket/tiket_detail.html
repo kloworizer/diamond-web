@@ -1035,7 +1035,7 @@
                         {% endif %}
 
                         {% if not tiket.tanda_terima %}
-                        <button type="button" class="btn btn-info" data-bs-toggle="modal"
+                        <button type="button" class="btn btn-info text-white" data-bs-toggle="modal"
                             data-bs-target="#createTandaTerimaModal">
                             <i class="feather-file-text me-1"></i>Buat Tanda Terima
                         </button>
@@ -1069,7 +1069,7 @@
                 {% endif %}
 
                 {% if tiket.status_tiket < STATUS_DIKIRIM_KE_PIDE %} <button type="button"
-                    class="btn btn-danger mt-2 w-100" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
+                    class="btn btn-outline-danger mt-2 w-100" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
                     <i class="feather-x-circle me-1"></i>Batalkan Tiket
                     </button>
                     {% endif %}
@@ -1081,7 +1081,7 @@
                     <div class="d-grid gap-2 mt-2">
                         <!-- Dikembalikan button: show if status 4 or 5 -->
                         {% if tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE or tiket.status_tiket == STATUS_IDENTIFIKASI %}
-                        <button type="button" class="btn btn-warning" data-bs-toggle="modal"
+                        <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal"
                             data-bs-target="#dikembalikanTiketModal">
                             <i class="feather-corner-up-left me-1"></i>Kembalikan ke P3DE
                         </button>
@@ -1089,7 +1089,7 @@
 
                         <!-- Identifikasi button: show if status 4 (Dikirim ke PIDE) -->
                         {% if tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE %}
-                        <button type="button" class="btn btn-info" data-bs-toggle="modal"
+                        <button type="button" class="btn btn-info text-white" data-bs-toggle="modal"
                             data-bs-target="#identifikasiTiketModal">
                             <i class="feather-check-circle me-1"></i>Proses Identifikasi
                         </button>
@@ -2053,6 +2053,22 @@
         .modal-footer {
             border-top: 1px solid #f1f5f9 !important;
             padding: 1.1rem 1.5rem !important;
+        }
+
+        /* Action buttons premium styles */
+        .card-body .btn {
+            text-transform: none !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.3px !important;
+            padding: 0.55rem 1rem !important;
+            font-size: 13px !important;
+            border-radius: 8px !important;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        
+        .card-body .btn:hover {
+            transform: translateY(-1px) !important;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08) !important;
         }
     </style>
 
