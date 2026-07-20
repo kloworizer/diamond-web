@@ -937,7 +937,7 @@ def tidak_terbit_tanda_terima(request, pk):
     ).exists()
 
     if not (request.user.is_superuser or request.user.groups.filter(name='admin').exists() or is_active_pic):
-        return JsonResponse({'success': False, 'message': 'Anda bukan PIC aktif P3DE untuk tiket ini.'}, status=403)
+        return JsonResponse({'success': False, 'message': 'Anda bukan PIC aktif P3DE untuk tiket ini.'})
 
     if tiket.tanda_terima:
         return JsonResponse({'success': False, 'message': 'Tiket ini sudah memiliki Tanda Terima.'}, status=400)
