@@ -15,15 +15,21 @@ class TestHomeView:
     """Tests for the home view."""
 
     def test_home_view_unauthenticated(self, client):
-        """Test home view redirects unauthenticated user to login."""
+        """Test home view returns correct template for unauthenticated user."""
         response = client.get(reverse('home'))
-        assert response.status_code == 302
+        assert response.status_code == 200
+        assert 'is_p3de' in response.context
+        assert 'is_pide' in response.context
+        assert 'is_pmde' in response.context
+        assert response.context['is_p3de'] is False
+        assert response.context['is_pide'] is False
+        assert response.context['is_pmde'] is False
 
     def test_home_view_p3de_user(self, client, authenticated_user):
         """Test home view identifies P3DE user and computes tiket summary."""
         client.force_login(authenticated_user)
         home_module = importlib.import_module('diamond_web.views.home')
-        with patch.object(home_module, 'get_tiket_summary_for_user_p3de') as mock_summary:
+        with patch.object(home_module, 'get_tiket_summary_for_user') as mock_summary:
             mock_summary.return_value = {'test': 'data'}
             response = client.get(reverse('home'))
             assert response.status_code == 200
@@ -63,7 +69,7 @@ class TestHomeView:
         
         client.force_login(user)
         home_module = importlib.import_module('diamond_web.views.home')
-        with patch.object(home_module, 'get_tiket_summary_for_user_p3de') as mock_p3de, \
+        with patch.object(home_module, 'get_tiket_summary_for_user') as mock_p3de, \
             patch.object(home_module, 'get_tiket_summary_for_user_pide') as mock_pide, \
             patch.object(home_module, 'get_tiket_summary_for_user_pmde') as mock_pmde:
             mock_p3de.return_value = {'p3de': 'data'}
@@ -107,4 +113,4 @@ class TestDashboardView:
         """Test dashboard uses correct template."""
         client.force_login(authenticated_user)
         response = client.get(reverse('dashboard_monitoring'))
-        assert 'dashboard/monitoring.html' in [t.name for t in response.templates]
+        assert 'dashboard/index.html' in [t.name for t in response.templates]
