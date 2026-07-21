@@ -2139,10 +2139,10 @@
                 tahunSelect.options[tahunSelect.selectedIndex]?.text || '-';
             
             document.getElementById('confirm-tgl-vertikal').textContent = 
-                formatDateTime(tglVertikalInput.value) || '-';
+                formatDate(tglVertikalInput.value) || '-';
             
             document.getElementById('confirm-tgl-dip').textContent = 
-                formatDateTime(tglDipInput.value) || '-';
+                formatDate(tglDipInput.value) || '-';
 
             const backupChecked = document.getElementById('rekam-backup-checkbox') ?.checked;
             const backupRows = ['confirm-row-backup', 'confirm-row-lokasi-backup', 'confirm-row-nama-file',
