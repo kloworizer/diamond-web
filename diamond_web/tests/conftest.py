@@ -174,7 +174,7 @@ class KlasifikasiJenisDataFactory(DjangoModelFactory):
     class Meta:
         model = KlasifikasiJenisData
 
-    id_jenis_data_ilap = factory.SubFactory(JenisDataILAPFactory)
+    id_sub_jenis_data = factory.SubFactory(JenisDataILAPFactory)
     id_klasifikasi_tabel = factory.SubFactory(DasarHukumFactory)
 
 

@@ -189,7 +189,7 @@ class TestDasarHukumCRUDPOST:
         client.force_login(p3de_admin_user)
         resp = client.post(
             reverse('dasar_hukum_create'),
-            {'deskripsi': 'New DasarHukum 999'},
+            {'deskripsi': 'New DasarHukum 999', 'kategori': 'MOU'},
             HTTP_X_REQUESTED_WITH='XMLHttpRequest',
         )
         assert resp.status_code == 200
@@ -198,11 +198,11 @@ class TestDasarHukumCRUDPOST:
 
     def test_update_post_valid(self, client, p3de_admin_user):
         from diamond_web.models.dasar_hukum import DasarHukum
-        obj = DasarHukum.objects.create(deskripsi='Old DasarHukum')
+        obj = DasarHukum.objects.create(deskripsi='Old DasarHukum', kategori='MOU')
         client.force_login(p3de_admin_user)
         resp = client.post(
             reverse('dasar_hukum_update', args=[obj.pk]),
-            {'deskripsi': 'Updated DasarHukum'},
+            {'deskripsi': 'Updated DasarHukum', 'kategori': 'MOU'},
             HTTP_X_REQUESTED_WITH='XMLHttpRequest',
         )
         assert resp.status_code == 200
@@ -603,7 +603,7 @@ class TestKlasifikasiJenisDataCRUDPOST:
         jenis_data = JenisDataILAPFactory()
         tabel = DasarHukum.objects.create(deskripsi='TestTabel_KJD')
         return KlasifikasiJenisData.objects.create(
-            id_jenis_data_ilap=jenis_data,
+            id_sub_jenis_data=jenis_data,
             id_klasifikasi_tabel=tabel,
         )
 
@@ -622,7 +622,7 @@ class TestKlasifikasiJenisDataCRUDPOST:
         client.force_login(p3de_admin_user)
         resp = client.post(
             reverse('klasifikasi_jenis_data_create'),
-            {'id_jenis_data_ilap': jenis_data.pk, 'id_klasifikasi_tabel': tabel.pk},
+            {'id_sub_jenis_data': jenis_data.pk, 'id_klasifikasi_tabel': tabel.pk},
             HTTP_X_REQUESTED_WITH='XMLHttpRequest',
         )
         assert resp.status_code == 200
@@ -638,7 +638,7 @@ class TestKlasifikasiJenisDataCRUDPOST:
         client.force_login(p3de_admin_user)
         resp = client.post(
             reverse('klasifikasi_jenis_data_update', args=[obj.pk]),
-            {'id_jenis_data_ilap': jenis_data2.pk, 'id_klasifikasi_tabel': tabel2.pk},
+            {'id_sub_jenis_data': jenis_data2.pk, 'id_klasifikasi_tabel': tabel2.pk},
             HTTP_X_REQUESTED_WITH='XMLHttpRequest',
         )
         assert resp.status_code == 200
