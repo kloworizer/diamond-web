@@ -29,7 +29,7 @@ class TestHomeView:
         """Test home view identifies P3DE user and computes tiket summary."""
         client.force_login(authenticated_user)
         home_module = importlib.import_module('diamond_web.views.home')
-        with patch.object(home_module, 'get_tiket_summary_for_user') as mock_summary:
+        with patch.object(home_module, 'get_tiket_summary_for_user_p3de') as mock_summary:
             mock_summary.return_value = {'test': 'data'}
             response = client.get(reverse('home'))
             assert response.status_code == 200
@@ -69,7 +69,7 @@ class TestHomeView:
         
         client.force_login(user)
         home_module = importlib.import_module('diamond_web.views.home')
-        with patch.object(home_module, 'get_tiket_summary_for_user') as mock_p3de, \
+        with patch.object(home_module, 'get_tiket_summary_for_user_p3de') as mock_p3de, \
             patch.object(home_module, 'get_tiket_summary_for_user_pide') as mock_pide, \
             patch.object(home_module, 'get_tiket_summary_for_user_pmde') as mock_pmde:
             mock_p3de.return_value = {'p3de': 'data'}
