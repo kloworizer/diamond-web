@@ -57,3 +57,5 @@ CLAUDE.md
 # Local-only directories (agent config, personal notes)
 .agents/
 catatan_penting/
+coverage.xml
+walkthrough.md

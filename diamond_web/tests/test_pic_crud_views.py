@@ -70,8 +70,8 @@ class TestPICP3DEListView:
         resp = client.get(reverse('pic_p3de_list'))
         assert resp.status_code in (302, 403)
 
-    def test_non_admin_denied(self, client, authenticated_user):
-        client.force_login(authenticated_user)
+    def test_non_admin_denied(self, client, pide_user):
+        client.force_login(pide_user)
         resp = client.get(reverse('pic_p3de_list'))
         assert resp.status_code in (302, 403)
 
@@ -344,8 +344,8 @@ class TestPICP3DEDataEndpoint:
         resp = client.get(reverse('pic_p3de_data'))
         assert resp.status_code in (302, 403)
 
-    def test_non_admin_denied(self, client, authenticated_user):
-        client.force_login(authenticated_user)
+    def test_non_admin_denied(self, client, pide_user):
+        client.force_login(pide_user)
         resp = client.get(reverse('pic_p3de_data'))
         assert resp.status_code in (302, 403)
 

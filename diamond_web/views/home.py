@@ -4,7 +4,7 @@ from django.db.models import F, Q, Exists, OuterRef, Max, Subquery, Value
 from django.utils import timezone
 from datetime import timedelta
 from django.db.models.functions import Concat
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, User
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.urls import reverse
@@ -456,14 +456,19 @@ def home_data(request):
     warning_count = 0
     new_count = 0
     
+    ilap_list = []
+    jenis_data_list = []
+
     if is_tiket_category:
         total_ilap = qs.values('id_periode_data__id_sub_jenis_data_ilap__id_ilap').distinct().count()
         total_jenis_data = qs.values('id_periode_data__id_sub_jenis_data_ilap__id_jenis_data').distinct().count()
         
-        # Determine the correct date field for age tracking
+        # Get actual distinct names
+        ilap_list = list(qs.values_list('id_periode_data__id_sub_jenis_data_ilap__id_ilap__nama_ilap', flat=True).distinct())
+        jenis_data_list = list(qs.values_list('id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data', flat=True).distinct())
+                # Determine the correct date field for age tracking
         is_pide_category = category in ('belum_mulai_proses_identifikasi', 'dalam_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic')
         is_pmde_category = category in ('dalam_proses_pengendalian_mutu', 'tiket_pengendalian_mutu_tanpa_pic')
-        is_sla_45_category = is_pide_category or is_pmde_category
 
         if is_pide_category:
             date_field = 'tgl_kirim_pide'
@@ -473,9 +478,22 @@ def home_data(request):
             date_field = 'tgl_terima_dip'
             
         now = timezone.now()
-        if is_sla_45_category:
-            # SLA: 45 working days = 9 weeks = 63 calendar days
+        if is_pide_category:
+            # PIDE SLA: 45 working days = 9 weeks = 63 calendar days
             cutoff_critical = now - timedelta(days=63)
+            critical_count = qs.filter(**{f"{date_field}__lt": cutoff_critical}).count()
+            warning_count = 0
+            new_count = qs.filter(**{f"{date_field}__gte": cutoff_critical}).count()
+            
+            # Apply age_group filter
+            age_group = request.GET.get('age_group')
+            if age_group == 'critical':
+                qs = qs.filter(**{f"{date_field}__lt": cutoff_critical})
+            elif age_group == 'new':
+                qs = qs.filter(**{f"{date_field}__gte": cutoff_critical})
+        elif is_pmde_category:
+            # PMDE SLA: 90 calendar days
+            cutoff_critical = now - timedelta(days=90)
             critical_count = qs.filter(**{f"{date_field}__lt": cutoff_critical}).count()
             warning_count = 0
             new_count = qs.filter(**{f"{date_field}__gte": cutoff_critical}).count()
@@ -503,6 +521,16 @@ def home_data(request):
                 qs = qs.filter(**{f"{date_field}__range": (cutoff_critical, cutoff_warning)})
             elif age_group == 'new':
                 qs = qs.filter(**{f"{date_field}__gte": cutoff_warning})
+
+    elif is_jenis_data_category:
+        total_ilap = qs.values('id_ilap').distinct().count()
+        total_jenis_data = records_total
+        
+        ilap_list = list(qs.values_list('id_ilap__nama_ilap', flat=True).distinct())
+        jenis_data_list = list(qs.values_list('nama_sub_jenis_data', flat=True).distinct())
+
+    ilap_list = sorted(list(set(n for n in ilap_list if n)))
+    jenis_data_list = sorted(list(set(n for n in jenis_data_list if n)))
 
     # Global search for tiket categories
     if search_value and is_tiket_category:
@@ -583,7 +611,45 @@ def home_data(request):
             nama_sub_jenis = obj.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data
             nama_tabel_I = obj.id_periode_data.id_sub_jenis_data_ilap.nama_tabel_I or '-'
             view_url = reverse('tiket_detail', args=[obj.id])
-            action_html = f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>'
+            # Build action HTML — add quick-assign button for admin tiket_dikirim_ke_pide_tanpa_pic
+            if category == 'tiket_dikirim_ke_pide_tan_pic' or category == 'tiket_dikirim_ke_pide_tanpa_pic':
+                sub_jenis_id = obj.id_periode_data.id_sub_jenis_data_ilap_id
+                sub_jenis_kode = obj.id_periode_data.id_sub_jenis_data_ilap.id_sub_jenis_data
+                sub_jenis_nama_esc = nama_sub_jenis.replace('"', '&quot;').replace("'", '&#39;')
+                nama_ilap_esc = nama_ilap.replace('"', '&quot;').replace("'", '&#39;')
+                action_html = (
+                    f'<div class="d-flex justify-content-center gap-1">'
+                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat">'
+                    f'<i class="feather-eye"></i></a> '
+                    f'<button type="button" class="btn btn-sm btn-success btn-quick-assign-pide" '
+                    f'data-subjenis-id="{sub_jenis_id}" '
+                    f'data-subjenis-kode="{sub_jenis_kode}" '
+                    f'data-subjenis-nama="{sub_jenis_nama_esc}" '
+                    f'data-ilap="{nama_ilap_esc}" '
+                    f'title="Assign PIC PIDE">'
+                    f'<i class="feather-user-plus"></i></button>'
+                    f'</div>'
+                )
+            elif category == 'tiket_pengendalian_mutu_tanpa_pic' or category == 'tiket_pengendalian_mutu_tan_pic':
+                sub_jenis_id = obj.id_periode_data.id_sub_jenis_data_ilap_id
+                sub_jenis_kode = obj.id_periode_data.id_sub_jenis_data_ilap.id_sub_jenis_data
+                sub_jenis_nama_esc = nama_sub_jenis.replace('"', '&quot;').replace("'", '&#39;')
+                nama_ilap_esc = nama_ilap.replace('"', '&quot;').replace("'", '&#39;')
+                action_html = (
+                    f'<div class="d-flex justify-content-center gap-1">'
+                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat">'
+                    f'<i class="feather-eye"></i></a> '
+                    f'<button type="button" class="btn btn-sm btn-success btn-quick-assign-pmde" '
+                    f'data-subjenis-id="{sub_jenis_id}" '
+                    f'data-subjenis-kode="{sub_jenis_kode}" '
+                    f'data-subjenis-nama="{sub_jenis_nama_esc}" '
+                    f'data-ilap="{nama_ilap_esc}" '
+                    f'title="Assign PIC PMDE">'
+                    f'<i class="feather-user-plus"></i></button>'
+                    f'</div>'
+                )
+            else:
+                action_html = f'<div class="d-flex justify-content-center gap-1"><a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a></div>'
 
             if category in ('belum_mulai_proses_identifikasi', 'dalam_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic'):
                 date_val = obj.tgl_kirim_pide.strftime('%d-%m-%Y') if obj.tgl_kirim_pide else ''
@@ -617,12 +683,63 @@ def home_data(request):
                     'actions': action_html,
                 })
         elif is_jenis_data_category:
+            action_html = ''
+            if category == 'jenis_data_tanpa_pic_p3de':
+                sub_jenis_id = obj.pk
+                sub_jenis_kode = obj.id_sub_jenis_data
+                sub_jenis_nama_esc = obj.nama_sub_jenis_data.replace('"', '&quot;').replace("'", '&#39;')
+                nama_ilap_esc = obj.id_ilap.nama_ilap.replace('"', '&quot;').replace("'", '&#39;')
+                action_html = (
+                    f'<div class="d-flex justify-content-center gap-1">'
+                    f'<button type="button" class="btn btn-sm btn-success btn-quick-assign-p3de" '
+                    f'data-subjenis-id="{sub_jenis_id}" '
+                    f'data-subjenis-kode="{sub_jenis_kode}" '
+                    f'data-subjenis-nama="{sub_jenis_nama_esc}" '
+                    f'data-ilap="{nama_ilap_esc}" '
+                    f'title="Assign PIC P3DE">'
+                    f'<i class="feather-user-plus"></i></button>'
+                    f'</div>'
+                )
+            elif category == 'jenis_data_tanpa_pic_pide':
+                sub_jenis_id = obj.pk
+                sub_jenis_kode = obj.id_sub_jenis_data
+                sub_jenis_nama_esc = obj.nama_sub_jenis_data.replace('"', '&quot;').replace("'", '&#39;')
+                nama_ilap_esc = obj.id_ilap.nama_ilap.replace('"', '&quot;').replace("'", '&#39;')
+                action_html = (
+                    f'<div class="d-flex justify-content-center gap-1">'
+                    f'<button type="button" class="btn btn-sm btn-success btn-quick-assign-pide" '
+                    f'data-subjenis-id="{sub_jenis_id}" '
+                    f'data-subjenis-kode="{sub_jenis_kode}" '
+                    f'data-subjenis-nama="{sub_jenis_nama_esc}" '
+                    f'data-ilap="{nama_ilap_esc}" '
+                    f'title="Assign PIC PIDE">'
+                    f'<i class="feather-user-plus"></i></button>'
+                    f'</div>'
+                )
+            elif category == 'jenis_data_tanpa_pic_pmde':
+                sub_jenis_id = obj.pk
+                sub_jenis_kode = obj.id_sub_jenis_data
+                sub_jenis_nama_esc = obj.nama_sub_jenis_data.replace('"', '&quot;').replace("'", '&#39;')
+                nama_ilap_esc = obj.id_ilap.nama_ilap.replace('"', '&quot;').replace("'", '&#39;')
+                action_html = (
+                    f'<div class="d-flex justify-content-center gap-1">'
+                    f'<button type="button" class="btn btn-sm btn-success btn-quick-assign-pmde" '
+                    f'data-subjenis-id="{sub_jenis_id}" '
+                    f'data-subjenis-kode="{sub_jenis_kode}" '
+                    f'data-subjenis-nama="{sub_jenis_nama_esc}" '
+                    f'data-ilap="{nama_ilap_esc}" '
+                    f'title="Assign PIC PMDE">'
+                    f'<i class="feather-user-plus"></i></button>'
+                    f'</div>'
+                )
+
             data.append({
                 'id_sub_jenis_data': obj.id_sub_jenis_data,
                 'nama_ilap': obj.id_ilap.nama_ilap,
                 'nama_jenis_data': obj.nama_jenis_data,
                 'nama_sub_jenis_data': obj.nama_sub_jenis_data,
                 'nama_tabel_I': obj.nama_tabel_I or '-',
+                'actions': action_html,
             })
 
     return JsonResponse({
@@ -634,8 +751,70 @@ def home_data(request):
             'total_tiket': total_tiket,
             'total_ilap': total_ilap,
             'total_jenis_data': total_jenis_data,
+            'ilap_list': ilap_list,
+            'jenis_data_list': jenis_data_list,
             'critical_count': critical_count,
             'warning_count': warning_count,
             'new_count': new_count,
         }
     })
+
+
+@login_required
+@require_GET
+def home_pic_pide_users(request):
+    """Return JSON list of user_pide members for the quick-assign PIC PIDE modal.
+
+    Only accessible to admin_pide group members.
+    """
+    if not request.user.groups.filter(name='admin_pide').exists():
+        return JsonResponse({'error': 'Forbidden'}, status=403)
+    users = User.objects.filter(groups__name='user_pide').order_by('first_name', 'last_name')
+    data = [
+        {
+            'id': u.id,
+            'label': f"{u.first_name} {u.last_name} ({u.username})".strip() or u.username
+        }
+        for u in users
+    ]
+    return JsonResponse({'users': data})
+
+
+@login_required
+@require_GET
+def home_pic_p3de_users(request):
+    """Return JSON list of user_p3de members for the quick-assign PIC P3DE modal.
+
+    Only accessible to admin_p3de group members.
+    """
+    if not request.user.groups.filter(name='admin_p3de').exists():
+        return JsonResponse({'error': 'Forbidden'}, status=403)
+    users = User.objects.filter(groups__name='user_p3de').order_by('first_name', 'last_name')
+    data = [
+        {
+            'id': u.id,
+            'label': f"{u.first_name} {u.last_name} ({u.username})".strip() or u.username
+        }
+        for u in users
+    ]
+    return JsonResponse({'users': data})
+
+
+@login_required
+@require_GET
+def home_pic_pmde_users(request):
+    """Return JSON list of user_pmde members for the quick-assign PIC PMDE modal.
+
+    Only accessible to admin_pmde group members.
+    """
+    if not request.user.groups.filter(name='admin_pmde').exists():
+        return JsonResponse({'error': 'Forbidden'}, status=403)
+    users = User.objects.filter(groups__name='user_pmde').order_by('first_name', 'last_name')
+    data = [
+        {
+            'id': u.id,
+            'label': f"{u.first_name} {u.last_name} ({u.username})".strip() or u.username
+        }
+        for u in users
+    ]
+    return JsonResponse({'users': data})

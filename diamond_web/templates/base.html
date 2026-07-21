@@ -324,6 +324,16 @@
             backdrop-filter: none !important;
         }
 
+        /* Custom backdrop for critical session warning/timeout modals to darken the background */
+        #sessionWarningModal, #sessionTimeoutModal {
+            z-index: 100000 !important;
+        }
+        #sessionWarningModal ~ .modal-backdrop, #sessionTimeoutModal ~ .modal-backdrop {
+            z-index: 99990 !important;
+            background-color: #0f172a !important;
+            opacity: 0.75 !important;
+        }
+
         body.modal-open .nxl-navigation,
         body.modal-open .nxl-header,
         body.modal-open .nxl-content,
@@ -1527,6 +1537,13 @@
 
             function onShowWarning() {
                 if (warningModalShown || timeoutModalShown) return;
+
+                // Close any active modals to prevent stacking/overlap clashes
+                document.querySelectorAll('.modal.show').forEach(m => {
+                    const inst = bootstrap.Modal.getInstance(m);
+                    if (inst) inst.hide();
+                });
+
                 warningModalShown = true;
 
                 // remove existing modal if any
@@ -1622,6 +1639,13 @@
 
             function showTimeoutModal() {
                 if (timeoutModalShown) return;
+
+                // Close any active modals to prevent stacking/overlap clashes
+                document.querySelectorAll('.modal.show').forEach(m => {
+                    const inst = bootstrap.Modal.getInstance(m);
+                    if (inst) inst.hide();
+                });
+
                 timeoutModalShown = true;
 
                 // remove existing timeout modal if any
