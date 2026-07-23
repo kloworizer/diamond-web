@@ -1488,14 +1488,28 @@
                     if (dropdownIlap) dropdownIlap.classList.add('show');
                 });
                 comboboxIlap.addEventListener('blur', function() {
-                    // If text doesn't match any option, clear selection
-                    const match = ilapOptions.find(opt =>
-                        opt.label.toLowerCase() === (comboboxIlap.value || '').toLowerCase()
-                    );
-                    if (!match) {
-                        clearIlapSelection();
-                    }
-                    if (dropdownIlap) dropdownIlap.classList.remove('show');
+                    setTimeout(function() {
+                        if (dropdownIlap) dropdownIlap.classList.remove('show');
+                        if (!comboboxIlap) return;
+                        const typed = (comboboxIlap.value || '').trim();
+                        if (!typed) {
+                            clearIlapSelection();
+                            return;
+                        }
+                        const selectedOpt = ilapOptions.find(opt => opt.value === ilapSelectedValue);
+                        if (selectedOpt) {
+                            comboboxIlap.value = selectedOpt.label;
+                        } else {
+                            const match = ilapOptions.find(opt =>
+                                opt.label.toLowerCase().includes(typed.toLowerCase())
+                            );
+                            if (match) {
+                                selectIlapOption(match.value, match.label);
+                            } else {
+                                clearIlapSelection();
+                            }
+                        }
+                    }, 200);
                 });
                 comboboxIlap.addEventListener('keydown', function(e) {
                     const items = dropdownIlap ? dropdownIlap.querySelectorAll('.combobox-option') : [];
@@ -1583,7 +1597,11 @@
             if (comboboxPeriodeData) {
                 comboboxPeriodeData.addEventListener('focus', function() {
                     if (comboboxPeriodeData.disabled) return;
-                    // Show all options on focus (don't filter by current input text).
+                    renderPeriodeDataDropdown('');
+                    if (dropdownPeriodeData) dropdownPeriodeData.classList.add('show');
+                });
+                comboboxPeriodeData.addEventListener('click', function() {
+                    if (comboboxPeriodeData.disabled) return;
                     renderPeriodeDataDropdown('');
                     if (dropdownPeriodeData) dropdownPeriodeData.classList.add('show');
                 });
@@ -1592,13 +1610,28 @@
                     if (dropdownPeriodeData) dropdownPeriodeData.classList.add('show');
                 });
                 comboboxPeriodeData.addEventListener('blur', function() {
-                    const match = periodeDataOptions.find(opt =>
-                        opt.label.toLowerCase() === (comboboxPeriodeData.value || '').toLowerCase()
-                    );
-                    if (!match) {
-                        clearPeriodeDataSelection();
-                    }
-                    if (dropdownPeriodeData) dropdownPeriodeData.classList.remove('show');
+                    setTimeout(function() {
+                        if (dropdownPeriodeData) dropdownPeriodeData.classList.remove('show');
+                        if (!comboboxPeriodeData) return;
+                        const typed = (comboboxPeriodeData.value || '').trim();
+                        if (!typed) {
+                            clearPeriodeDataSelection();
+                            return;
+                        }
+                        const selectedOpt = periodeDataOptions.find(opt => opt.value === periodeDataSelectedValue);
+                        if (selectedOpt) {
+                            comboboxPeriodeData.value = selectedOpt.label;
+                        } else {
+                            const match = periodeDataOptions.find(opt =>
+                                opt.label.toLowerCase().includes(typed.toLowerCase())
+                            );
+                            if (match) {
+                                selectPeriodeDataOption(match.value, match.label);
+                            } else {
+                                clearPeriodeDataSelection();
+                            }
+                        }
+                    }, 200);
                 });
                 comboboxPeriodeData.addEventListener('keydown', function(e) {
                     const items = dropdownPeriodeData ? dropdownPeriodeData.querySelectorAll('.combobox-option') : [];
