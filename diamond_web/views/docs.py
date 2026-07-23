@@ -49,10 +49,8 @@ DOC_GROUPS = {
         'PRODUCTION_SETUP.md',
         'ORACLE_SETUP.md',
         'TEMPLATES_SETUP.md',
-        'HANDOVER_DOCUMENT.md',
-    ],
-    'Panduan Pengguna': [
         'ADMIN_MENU_GUIDE.md',
+        'HANDOVER_DOCUMENT.md',
     ],
 }
 
