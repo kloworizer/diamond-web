@@ -3,7 +3,7 @@ from django.conf import settings
 from django.db.models import F, Q, Exists, OuterRef, Max, Subquery, Value
 from django.utils import timezone
 from datetime import timedelta
-from django.db.models.functions import Concat
+from django.db.models.functions import Concat, Coalesce
 from django.contrib.auth.models import Group, User
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -467,20 +467,15 @@ def home_data(request):
         ilap_list = list(qs.values_list('id_periode_data__id_sub_jenis_data_ilap__id_ilap__nama_ilap', flat=True).distinct())
         jenis_data_list = list(qs.values_list('id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data', flat=True).distinct())
                 # Determine the correct date field for age tracking
-        is_pide_category = category in ('belum_mulai_proses_identifikasi', 'dalam_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic')
+        is_pide_belum_mulai = category in ('belum_mulai_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic')
+        is_pide_dalam_proses = category == 'dalam_proses_identifikasi'
         is_pmde_category = category in ('dalam_proses_pengendalian_mutu', 'tiket_pengendalian_mutu_tanpa_pic')
 
-        if is_pide_category:
-            date_field = 'tgl_kirim_pide'
-        elif is_pmde_category:
-            date_field = 'tgl_transfer'
-        else:
-            date_field = 'tgl_terima_dip'
-            
         now = timezone.now()
-        if is_pide_category:
-            # PIDE SLA: 45 working days = 9 weeks = 63 calendar days
-            cutoff_critical = now - timedelta(days=63)
+        if is_pide_belum_mulai:
+            date_field = 'tgl_kirim_pide'
+            # PIDE Belum Mulai SLA: 30 working days = 6 weeks = 42 calendar days
+            cutoff_critical = now - timedelta(days=42)
             critical_count = qs.filter(**{f"{date_field}__lt": cutoff_critical}).count()
             warning_count = 0
             new_count = qs.filter(**{f"{date_field}__gte": cutoff_critical}).count()
@@ -491,9 +486,26 @@ def home_data(request):
                 qs = qs.filter(**{f"{date_field}__lt": cutoff_critical})
             elif age_group == 'new':
                 qs = qs.filter(**{f"{date_field}__gte": cutoff_critical})
+
+        elif is_pide_dalam_proses:
+            # PIDE Dalam Proses SLA: 30 working days = 42 calendar days from Tanggal Rekam PIDE (fallback to tgl_kirim_pide)
+            qs = qs.annotate(effective_pide_date=Coalesce('tgl_rekam_pide', 'tgl_kirim_pide'))
+            cutoff_critical = now - timedelta(days=42)
+            critical_count = qs.filter(effective_pide_date__lt=cutoff_critical).count()
+            warning_count = 0
+            new_count = qs.filter(effective_pide_date__gte=cutoff_critical).count()
+            
+            # Apply age_group filter
+            age_group = request.GET.get('age_group')
+            if age_group == 'critical':
+                qs = qs.filter(effective_pide_date__lt=cutoff_critical)
+            elif age_group == 'new':
+                qs = qs.filter(effective_pide_date__gte=cutoff_critical)
+
         elif is_pmde_category:
-            # PMDE SLA: 90 calendar days
-            cutoff_critical = now - timedelta(days=90)
+            date_field = 'tgl_transfer'
+            # PMDE SLA: 85 working days = 17 weeks = 119 calendar days
+            cutoff_critical = now - timedelta(days=119)
             critical_count = qs.filter(**{f"{date_field}__lt": cutoff_critical}).count()
             warning_count = 0
             new_count = qs.filter(**{f"{date_field}__gte": cutoff_critical}).count()
@@ -506,6 +518,7 @@ def home_data(request):
                 qs = qs.filter(**{f"{date_field}__gte": cutoff_critical})
         else:
             # Default P3DE limits (critical: >7 days, warning: 3-7 days, new: <3 days)
+            date_field = 'tgl_terima_dip'
             cutoff_critical = now - timedelta(days=7)
             cutoff_warning = now - timedelta(days=3)
             
@@ -521,6 +534,7 @@ def home_data(request):
                 qs = qs.filter(**{f"{date_field}__range": (cutoff_critical, cutoff_warning)})
             elif age_group == 'new':
                 qs = qs.filter(**{f"{date_field}__gte": cutoff_warning})
+
 
     elif is_jenis_data_category:
         total_ilap = qs.values('id_ilap').distinct().count()
@@ -557,8 +571,10 @@ def home_data(request):
 
     if is_tiket_category:
         columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'tgl_terima_dip']
-        if category in ('belum_mulai_proses_identifikasi', 'dalam_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic'):
+        if category in ('belum_mulai_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic'):
             columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'tgl_kirim_pide']
+        elif category == 'dalam_proses_identifikasi':
+            columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'tgl_rekam_pide']
         elif category in ('dalam_proses_pengendalian_mutu', 'tiket_pengendalian_mutu_tanpa_pic'):
             columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'tgl_transfer']
         elif category == 'periode_tiket_null_p3de':
@@ -576,6 +592,8 @@ def home_data(request):
                     col = 'tgl_terima_dip'
                 elif col == 'tgl_kirim_pide':
                     col = 'tgl_kirim_pide'
+                elif col == 'tgl_rekam_pide':
+                    col = 'tgl_rekam_pide'
                 elif col == 'tgl_transfer':
                     col = 'tgl_transfer'
                 if order_dir == 'desc':
@@ -651,9 +669,13 @@ def home_data(request):
             else:
                 action_html = f'<div class="d-flex justify-content-center gap-1"><a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a></div>'
 
-            if category in ('belum_mulai_proses_identifikasi', 'dalam_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic'):
+            if category in ('belum_mulai_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic'):
                 date_val = obj.tgl_kirim_pide.strftime('%d-%m-%Y') if obj.tgl_kirim_pide else ''
                 date_order = obj.tgl_kirim_pide.strftime('%Y-%m-%d') if obj.tgl_kirim_pide else ''
+            elif category == 'dalam_proses_identifikasi':
+                pide_dt = obj.tgl_rekam_pide or obj.tgl_kirim_pide
+                date_val = pide_dt.strftime('%d-%m-%Y') if pide_dt else ''
+                date_order = pide_dt.strftime('%Y-%m-%d') if pide_dt else ''
             elif category in ('dalam_proses_pengendalian_mutu', 'tiket_pengendalian_mutu_tanpa_pic'):
                 date_val = obj.tgl_transfer.strftime('%d-%m-%Y') if obj.tgl_transfer else ''
                 date_order = obj.tgl_transfer.strftime('%Y-%m-%d') if obj.tgl_transfer else ''
