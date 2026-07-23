@@ -824,142 +824,6 @@
                         </div>
                     </div>
                 </div>
-=======
-            <div class="modal-body" style="max-height: 500px; overflow-y: auto;">
-                <p class="mb-3">Pastikan data berikut sudah benar sebelum disimpan:</p>
-                <table class="table table-sm">
-                    <tbody>
-                        <tr>
-                            <th style="width: 40%;">Nomor Tiket</th>
-                            <td id="confirm-nomor-tiket">-</td>
-                        </tr>
-                        <tr>
-                            <th style="width: 40%;">ILAP</th>
-                            <td id="confirm-nama-ilap">-</td>
-                        </tr>
-                        <tr>
-                            <th>Kategori ILAP</th>
-                            <td id="confirm-kategori-ilap">-</td>
-                        </tr>
-                        <tr>
-                            <th>Kategori Wilayah</th>
-                            <td id="confirm-kategori-wilayah">-</td>
-                        </tr>
-                        <tr>
-                            <th>Jenis Tabel</th>
-                            <td id="confirm-jenis-tabel">-</td>
-                        </tr>
-                        <tr>
-                            <th>Jenis Prioritas Data</th>
-                            <td id="confirm-jenis-prioritas">-</td>
-                        </tr>
-                        <tr>
-                            <th>Klasifikasi Jenis Data</th>
-                            <td id="confirm-klasifikasi">-</td>
-                        </tr>
-                        <tr>
-                            <th>ID Sub Jenis Data</th>
-                            <td id="confirm-id-sub-jenis-data">-</td>
-                        </tr>
-                        <tr>
-                            <th>Nama Sub Jenis Data</th>
-                            <td id="confirm-nama-sub-jenis-data">-</td>
-                        </tr>
-                        <tr>
-                            <th colspan="2"><strong>PIC</strong></th>
-                        </tr>
-                        <tr>
-                            <th>PIC P3DE</th>
-                            <td id="confirm-pic-p3de">-</td>
-                        </tr>
-                        <tr>
-                            <th>PIC PIDE</th>
-                            <td id="confirm-pic-pide">-</td>
-                        </tr>
-                        <tr>
-                            <th>PIC PMDE</th>
-                            <td id="confirm-pic-pmde">-</td>
-                        </tr>
-                        <tr>
-                            <th colspan="2"><strong>Periode</strong></th>
-                        </tr>
-                        <tr>
-                            <th>Deskripsi Periode</th>
-                            <td id="confirm-deskripsi-periode">-</td>
-                        </tr>
-                        <tr>
-                            <th>Periode</th>
-                            <td id="confirm-periode">-</td>
-                        </tr>
-                        <tr>
-                            <th>Tahun</th>
-                            <td id="confirm-tahun">-</td>
-                        </tr>
-                        <tr>
-                            <th colspan="2"><strong>Tanggal Penerimaan</strong></th>
-                        </tr>
-                        <tr>
-                            <th>Tanggal Terima Vertikal</th>
-                            <td id="confirm-tgl-vertikal">-</td>
-                        </tr>
-                        <tr>
-                            <th>Tanggal Terima DIP</th>
-                            <td id="confirm-tgl-dip">-</td>
-                        </tr>
-                        <tr>
-                            <th colspan="2"><strong>Surat Pengantar</strong></th>
-                        </tr>
-                        <tr>
-                            <th>Nomor Surat Pengantar</th>
-                            <td id="confirm-nomor-surat-pengantar">-</td>
-                        </tr>
-                        <tr>
-                            <th>Tanggal Surat Pengantar</th>
-                            <td id="confirm-tanggal-surat-pengantar">-</td>
-                        </tr>
-                        <tr>
-                            <th>Nama Pengirim</th>
-                            <td id="confirm-nama-pengirim">-</td>
-                        </tr>
-                        <tr>
-                            <th>Bentuk Data</th>
-                            <td id="confirm-bentuk-data">-</td>
-                        </tr>
-                        <tr>
-                            <th>Cara Penyampaian</th>
-                            <td id="confirm-cara-penyampaian">-</td>
-                        </tr>
-                        <tr>
-                            <th>Penyampaian</th>
-                            <td id="confirm-penyampaian">-</td>
-                        </tr>
-                        <tr>
-                            <th>Baris Diterima</th>
-                            <td id="confirm-baris-diterima">-</td>
-                        </tr>
-                        <tr>
-                            <th>Satuan Data</th>
-                            <td id="confirm-satuan-data">-</td>
-                        </tr>
-                        <!-- Status Penelitian removed from create form confirmation -->
-                        <tr id="confirm-row-backup" style="display: none;">
-                            <th colspan="2">Backup Data</th>
-                        </tr>
-                        <tr id="confirm-row-lokasi-backup" style="display: none;">
-                            <th>Lokasi Backup</th>
-                            <td id="confirm-lokasi-backup">-</td>
-                        </tr>
-                        <tr id="confirm-row-nama-file" style="display: none;">
-                            <th>Nama File</th>
-                            <td id="confirm-nama-file">-</td>
-                        </tr>
-                        <tr id="confirm-row-media-backup" style="display: none;">
-                            <th>Media Backup</th>
-                            <td id="confirm-media-backup">-</td>
-                        </tr>
-                    </tbody>
-                </table>
->>>>>>> upstream/main
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
@@ -1190,53 +1054,8 @@
 
         let periodeDataCache = {};
 
-        function updatePeriodeDataDropdown(onLoaded) {
-            const ilapSelect = document.getElementById('id_ilap');
-            const periodeDataSelect = document.getElementById('id_periode_data');
-            if (!ilapSelect || !periodeDataSelect) return;
 
-            const ilapId = ilapSelect.value;
-            if (typeof $ !== 'undefined' && typeof $.fn.select2 === 'function' && $(periodeDataSelect).hasClass('select2-hidden-accessible')) {
-                $(periodeDataSelect).select2('destroy');
-            }
-            periodeDataSelect.innerHTML = '<option value="">Pilih Jenis Data ILAP...</option>';
-            document.getElementById('jenis-data-info').style.display = 'none';
-            periodeDataCache = {};
-            updateSelectColor(periodeDataSelect);
 
-            if (typeof $ !== 'undefined' && typeof $.fn.select2 === 'function') {
-                $(periodeDataSelect).select2({ theme: 'bootstrap-5', width: '100%', placeholder: 'Pilih Jenis Data ILAP...' });
-            }
-
-            if (!ilapId) return;
-
-            fetch(`/api/ilap/${ilapId}/periode-jenis-data/`)
-                .then(response => response.json())
-                .then(data => {
-                    if (typeof $ !== 'undefined' && typeof $.fn.select2 === 'function' && $(periodeDataSelect).hasClass('select2-hidden-accessible')) {
-                        $(periodeDataSelect).select2('destroy');
-                    }
-                    if (data.success && data.data.length > 0) {
-                        data.data.forEach(item => {
-                            periodeDataCache[item.id] = item;
-                            const option = document.createElement('option');
-                            option.value = item.id;
-                            let label = `${item.id_sub_jenis_data} - ${item.nama_sub_jenis_data} - ${item.nama_tabel_I} - ${item.periode_penerimaan}`;
-                            if (item.end_date) {
-                                label += ` (${item.end_date})`;
-                            }
-                            option.textContent = label;
-                            periodeDataSelect.appendChild(option);
-                        });
-                    }
-                    updateSelectColor(periodeDataSelect);
-                    if (typeof $ !== 'undefined' && typeof $.fn.select2 === 'function') {
-                        $(periodeDataSelect).select2({ theme: 'bootstrap-5', width: '100%', placeholder: 'Ketik atau pilih Jenis Data ILAP...' });
-                    }
-                    if (typeof onLoaded === 'function') onLoaded();
-                })
-                .catch(error => console.error('Error fetching periode data:', error));
-        }
 
         function formatIdNama(id, nama) {
             const idStr = id ? String(id).trim() : '';
@@ -1386,326 +1205,93 @@
                 $('#id_ilap').select2({
                     theme: 'bootstrap-5',
                     width: '100%',
-                    placeholder: 'Ketik atau pilih ILAP...'
+                    placeholder: 'Ketik atau pilih ILAP...',
+                    allowClear: true
                 });
                 $('#id_periode_data').select2({
                     theme: 'bootstrap-5',
                     width: '100%',
-                    placeholder: 'Pilih ILAP terlebih dahulu...'
+                    placeholder: 'Pilih ILAP terlebih dahulu...',
+                    allowClear: true
                 });
-                $('#id_ilap').on('change select2:select', function() {
+                $('#id_ilap').on('change', function() {
                     updatePeriodeDataDropdown();
                     updateTanggalTerimaVertikal();
                 });
-                $('#id_periode_data').on('change select2:select', function() {
+                $('#id_periode_data').on('change', function() {
                     updateJenisDataInfo();
                     checkJenisPrioritas();
                 });
             }
 
-            // ============================================================
-            // COMBOBOX: ILAP
-            // ============================================================
-            const comboboxIlap = document.getElementById('combobox-ilap');
-            const dropdownIlap = document.getElementById('combobox-dropdown-ilap');
-            let ilapOptions = [];
-            let ilapSelectedValue = '';
-            let ilapActiveIndex = -1;
-
-            // Populate ILAP combobox options from hidden select
-            function loadIlapOptions() {
-                ilapOptions = [];
-                if (ilapSelect) {
-                    Array.from(ilapSelect.options).forEach(opt => {
-                        if (opt.value) {
-                            ilapOptions.push({ value: opt.value, label: opt.textContent });
-                        }
-                    });
-                }
-            }
-            loadIlapOptions();
-
-            function renderIlapDropdown(filter) {
-                if (!dropdownIlap) return;
-                dropdownIlap.innerHTML = '';
-                ilapActiveIndex = -1;
-                const filtered = ilapOptions.filter(opt =>
-                    opt.label.toLowerCase().includes((filter || '').toLowerCase())
-                );
-                if (filtered.length === 0) {
-                    const noResult = document.createElement('div');
-                    noResult.className = 'combobox-no-result';
-                    noResult.textContent = 'Tidak ditemukan';
-                    dropdownIlap.appendChild(noResult);
-                } else {
-                    filtered.forEach((opt, idx) => {
-                        const div = document.createElement('div');
-                        div.className = 'combobox-option' + (opt.value === ilapSelectedValue ? ' selected' : '');
-                        div.textContent = opt.label;
-                        div.dataset.value = opt.value;
-                        div.dataset.index = idx;
-                        div.addEventListener('mousedown', function(e) {
-                            e.preventDefault();
-                            selectIlapOption(opt.value, opt.label);
-                        });
-                        dropdownIlap.appendChild(div);
-                    });
-                }
-            }
-
-            function selectIlapOption(value, label) {
-                ilapSelectedValue = value;
-                if (comboboxIlap) comboboxIlap.value = label;
-                if (ilapSelect) ilapSelect.value = value;
-                if (dropdownIlap) dropdownIlap.classList.remove('show');
-                // Trigger change event on hidden select
-                if (ilapSelect) {
-                    ilapSelect.dispatchEvent(new Event('change'));
-                }
-            }
-
-            function clearIlapSelection() {
-                ilapSelectedValue = '';
-                if (comboboxIlap) comboboxIlap.value = '';
-                if (ilapSelect) ilapSelect.value = '';
-                if (dropdownIlap) dropdownIlap.classList.remove('show');
-            }
-
-            const comboboxWrapperIlap = document.getElementById('combobox-wrapper-ilap');
-            if (comboboxWrapperIlap) {
-                comboboxWrapperIlap.addEventListener('click', function(e) {
-                    if (comboboxIlap && e.target !== comboboxIlap) {
-                        comboboxIlap.focus();
-                    }
-                });
-            }
-
-            if (comboboxIlap) {
-                comboboxIlap.addEventListener('focus', function() {
-                    // Refresh options from select and show all options on focus
-                    loadIlapOptions();
-                    renderIlapDropdown('');
-                    if (dropdownIlap) dropdownIlap.classList.add('show');
-                });
-                comboboxIlap.addEventListener('click', function() {
-                    loadIlapOptions();
-                    renderIlapDropdown('');
-                    if (dropdownIlap) dropdownIlap.classList.add('show');
-                });
-                comboboxIlap.addEventListener('input', function() {
-                    loadIlapOptions();
-                    renderIlapDropdown(comboboxIlap.value);
-                    if (dropdownIlap) dropdownIlap.classList.add('show');
-                });
-                comboboxIlap.addEventListener('blur', function() {
-                    setTimeout(function() {
-                        if (dropdownIlap) dropdownIlap.classList.remove('show');
-                        if (!comboboxIlap) return;
-                        const typed = (comboboxIlap.value || '').trim();
-                        if (!typed) {
-                            clearIlapSelection();
-                            return;
-                        }
-                        const selectedOpt = ilapOptions.find(opt => opt.value === ilapSelectedValue);
-                        if (selectedOpt) {
-                            comboboxIlap.value = selectedOpt.label;
-                        } else {
-                            const match = ilapOptions.find(opt =>
-                                opt.label.toLowerCase().includes(typed.toLowerCase())
-                            );
-                            if (match) {
-                                selectIlapOption(match.value, match.label);
-                            } else {
-                                clearIlapSelection();
-                            }
-                        }
-                    }, 200);
-                });
-                comboboxIlap.addEventListener('keydown', function(e) {
-                    const items = dropdownIlap ? dropdownIlap.querySelectorAll('.combobox-option') : [];
-                    if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        ilapActiveIndex = Math.min(ilapActiveIndex + 1, items.length - 1);
-                        updateActiveItem(items);
-                    } else if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        ilapActiveIndex = Math.max(ilapActiveIndex - 1, 0);
-                        updateActiveItem(items);
-                    } else if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (ilapActiveIndex >= 0 && items[ilapActiveIndex]) {
-                            items[ilapActiveIndex].dispatchEvent(new Event('mousedown'));
-                        }
-                    } else if (e.key === 'Escape') {
-                        if (dropdownIlap) dropdownIlap.classList.remove('show');
-                    }
-                });
-            }
-
-            // ============================================================
-            // COMBOBOX: Jenis Data ILAP
-            // ============================================================
-            const comboboxPeriodeData = document.getElementById('combobox-periode-data');
-            const dropdownPeriodeData = document.getElementById('combobox-dropdown-periode-data');
-            let periodeDataOptions = [];
-            let periodeDataSelectedValue = '';
-            let periodeDataActiveIndex = -1;
-
-            function renderPeriodeDataDropdown(filter) {
-                if (!dropdownPeriodeData) return;
-                dropdownPeriodeData.innerHTML = '';
-                periodeDataActiveIndex = -1;
-                const filtered = periodeDataOptions.filter(opt =>
-                    opt.label.toLowerCase().includes((filter || '').toLowerCase())
-                );
-                if (filtered.length === 0) {
-                    const noResult = document.createElement('div');
-                    noResult.className = 'combobox-no-result';
-                    noResult.textContent = 'Tidak ditemukan';
-                    dropdownPeriodeData.appendChild(noResult);
-                } else {
-                    filtered.forEach((opt, idx) => {
-                        const div = document.createElement('div');
-                        div.className = 'combobox-option' + (opt.value === periodeDataSelectedValue ? ' selected' : '');
-                        div.textContent = opt.label;
-                        div.dataset.value = opt.value;
-                        div.dataset.index = idx;
-                        div.addEventListener('mousedown', function(e) {
-                            e.preventDefault();
-                            selectPeriodeDataOption(opt.value, opt.label);
-                        });
-                        dropdownPeriodeData.appendChild(div);
-                    });
-                }
-            }
-
-            function selectPeriodeDataOption(value, label) {
-                periodeDataSelectedValue = value;
-                if (comboboxPeriodeData) comboboxPeriodeData.value = label;
-                if (periodeDataSelect) periodeDataSelect.value = value;
-                if (dropdownPeriodeData) dropdownPeriodeData.classList.remove('show');
-                if (periodeDataSelect) {
-                    periodeDataSelect.dispatchEvent(new Event('change'));
-                }
-            }
-
-            function clearPeriodeDataSelection() {
-                periodeDataSelectedValue = '';
-                if (comboboxPeriodeData) comboboxPeriodeData.value = '';
-                if (periodeDataSelect) periodeDataSelect.value = '';
-                if (dropdownPeriodeData) dropdownPeriodeData.classList.remove('show');
-            }
-
-            function enablePeriodeDataCombobox(enabled) {
-                if (comboboxPeriodeData) {
-                    comboboxPeriodeData.disabled = !enabled;
-                    comboboxPeriodeData.placeholder = enabled ? 'Ketik atau pilih Jenis Data ILAP...' : 'Pilih ILAP terlebih dahulu...';
-                }
-            }
-            enablePeriodeDataCombobox(false);
-
-            if (comboboxPeriodeData) {
-                comboboxPeriodeData.addEventListener('focus', function() {
-                    if (comboboxPeriodeData.disabled) return;
-                    renderPeriodeDataDropdown('');
-                    if (dropdownPeriodeData) dropdownPeriodeData.classList.add('show');
-                });
-                comboboxPeriodeData.addEventListener('click', function() {
-                    if (comboboxPeriodeData.disabled) return;
-                    renderPeriodeDataDropdown('');
-                    if (dropdownPeriodeData) dropdownPeriodeData.classList.add('show');
-                });
-                comboboxPeriodeData.addEventListener('input', function() {
-                    renderPeriodeDataDropdown(comboboxPeriodeData.value);
-                    if (dropdownPeriodeData) dropdownPeriodeData.classList.add('show');
-                });
-                comboboxPeriodeData.addEventListener('blur', function() {
-                    setTimeout(function() {
-                        if (dropdownPeriodeData) dropdownPeriodeData.classList.remove('show');
-                        if (!comboboxPeriodeData) return;
-                        const typed = (comboboxPeriodeData.value || '').trim();
-                        if (!typed) {
-                            clearPeriodeDataSelection();
-                            return;
-                        }
-                        const selectedOpt = periodeDataOptions.find(opt => opt.value === periodeDataSelectedValue);
-                        if (selectedOpt) {
-                            comboboxPeriodeData.value = selectedOpt.label;
-                        } else {
-                            const match = periodeDataOptions.find(opt =>
-                                opt.label.toLowerCase().includes(typed.toLowerCase())
-                            );
-                            if (match) {
-                                selectPeriodeDataOption(match.value, match.label);
-                            } else {
-                                clearPeriodeDataSelection();
-                            }
-                        }
-                    }, 200);
-                });
-                comboboxPeriodeData.addEventListener('keydown', function(e) {
-                    const items = dropdownPeriodeData ? dropdownPeriodeData.querySelectorAll('.combobox-option') : [];
-                    if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        periodeDataActiveIndex = Math.min(periodeDataActiveIndex + 1, items.length - 1);
-                        updateActiveItem(items);
-                    } else if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        periodeDataActiveIndex = Math.max(periodeDataActiveIndex - 1, 0);
-                        updateActiveItem(items);
-                    } else if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (periodeDataActiveIndex >= 0 && items[periodeDataActiveIndex]) {
-                            items[periodeDataActiveIndex].dispatchEvent(new Event('mousedown'));
-                        }
-                    } else if (e.key === 'Escape') {
-                        if (dropdownPeriodeData) dropdownPeriodeData.classList.remove('show');
-                    }
-                });
-            }
-
-            // Shared helper for keyboard navigation
-            function updateActiveItem(items) {
-                items.forEach((item, i) => {
-                    item.classList.toggle('active', i === ilapActiveIndex || i === periodeDataActiveIndex);
-                });
-            }
-
-            // Override updatePeriodeDataDropdown to populate combobox options
-            const _origUpdatePeriodeDataDropdown = updatePeriodeDataDropdown;
-            updatePeriodeDataDropdown = function(onLoaded) {
+            // updatePeriodeDataDropdown: fetch jenis data for selected ILAP and populate Select2
+            function updatePeriodeDataDropdown(onLoaded) {
                 const ilapId = ilapSelect ? ilapSelect.value : '';
-                periodeDataOptions = [];
-                periodeDataSelectedValue = '';
-                if (comboboxPeriodeData) {
-                    comboboxPeriodeData.value = '';
-                    enablePeriodeDataCombobox(false);
+
+                // Destroy existing Select2 on periode_data before mutating options
+                if (typeof $ !== 'undefined' && typeof $.fn.select2 === 'function'
+                        && $(periodeDataSelect).hasClass('select2-hidden-accessible')) {
+                    $(periodeDataSelect).select2('destroy');
                 }
-                if (periodeDataSelect) periodeDataSelect.innerHTML = '<option value="">Pilih Jenis Data ILAP...</option>';
-                document.getElementById('jenis-data-info').style.display = 'none';
+
+                if (periodeDataSelect) {
+                    periodeDataSelect.innerHTML = '<option value="">Pilih Jenis Data ILAP...</option>';
+                    periodeDataSelect.disabled = true;
+                }
+                const infoSection = document.getElementById('jenis-data-info');
+                if (infoSection) infoSection.style.display = 'none';
                 periodeDataCache = {};
+
+                // Re-init Select2 in disabled/placeholder state
+                if (typeof $ !== 'undefined' && typeof $.fn.select2 === 'function') {
+                    $(periodeDataSelect).select2({
+                        theme: 'bootstrap-5',
+                        width: '100%',
+                        placeholder: 'Pilih ILAP terlebih dahulu...',
+                        allowClear: true
+                    });
+                }
 
                 if (!ilapId) return;
 
                 fetch(`/api/ilap/${ilapId}/periode-jenis-data/`)
                     .then(response => response.json())
                     .then(data => {
+                        // Destroy again before repopulating
+                        if (typeof $ !== 'undefined' && typeof $.fn.select2 === 'function'
+                                && $(periodeDataSelect).hasClass('select2-hidden-accessible')) {
+                            $(periodeDataSelect).select2('destroy');
+                        }
+                        if (periodeDataSelect) periodeDataSelect.disabled = false;
                         if (data.success && data.data.length > 0) {
                             data.data.forEach(item => {
                                 periodeDataCache[item.id] = item;
                                 const label = `${item.id_sub_jenis_data} - ${item.nama_sub_jenis_data}`;
-                                periodeDataOptions.push({ value: item.id, label: label });
                                 const option = document.createElement('option');
                                 option.value = item.id;
                                 option.textContent = label;
                                 if (periodeDataSelect) periodeDataSelect.appendChild(option);
                             });
                         }
-                        enablePeriodeDataCombobox(true);
+                        // Re-init Select2 with populated options
+                        if (typeof $ !== 'undefined' && typeof $.fn.select2 === 'function') {
+                            $(periodeDataSelect).select2({
+                                theme: 'bootstrap-5',
+                                width: '100%',
+                                placeholder: 'Ketik atau pilih Jenis Data ILAP...',
+                                allowClear: true
+                            });
+                            $(periodeDataSelect).on('change', function() {
+                                updateJenisDataInfo();
+                                checkJenisPrioritas();
+                            });
+                        }
+                        updateSelectColor(periodeDataSelect);
                         if (typeof onLoaded === 'function') onLoaded();
                     })
                     .catch(error => console.error('Error fetching periode data:', error));
-            };
+            }
+
 
             const statusTersedia = document.getElementById('status_tersedia');
             const statusTidakTersedia = document.getElementById('status_tidak_tersedia');
@@ -1867,10 +1453,6 @@
 
             if (ilapSelect) {
                 ilapSelect.addEventListener('change', function () {
-                    // Clear periode data combobox when ILAP changes
-                    periodeDataOptions = [];
-                    periodeDataSelectedValue = '';
-                    if (comboboxPeriodeData) comboboxPeriodeData.value = '';
                     updatePeriodeDataDropdown();
                     updateTanggalTerimaVertikal();
                 });
@@ -1882,12 +1464,8 @@
                 });
                 if (periodeDataSelect.value) updateJenisDataInfo();
             }
-            if (tahunSelect) tahunSelect.addEventListener('change', checkJenisPrioritas);
 
-<<<<<<< HEAD
-            if (tahunSelect) {
-                tahunSelect.addEventListener('change', checkJenisPrioritas);
-            }
+            if (tahunSelect) tahunSelect.addEventListener('change', checkJenisPrioritas);
 
             // Helper: show validation modal with detail table
             function showValidationModal(title, rows, message) {
@@ -2060,15 +1638,11 @@
                         }
                     }
 
-                    // Populate confirmation modal with form data
                     populateConfirmationModal();
                     confirmModal.show();
                 });
             }
-                    populateConfirmationModal();
-                    confirmModal.show();
-                });
-            }
+
 
             function clearValidationHighlights() {
                 document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
@@ -2079,11 +1653,12 @@
                 let targetEl = item.el;
                 if (!targetEl) return;
                 
-                // For comboboxes, highlight the visible text inputs
-                if (targetEl.id === 'id_ilap') {
-                    targetEl = document.getElementById('combobox-ilap');
-                } else if (targetEl.id === 'id_periode_data') {
-                    targetEl = document.getElementById('combobox-periode-data');
+                // For Select2 dropdowns, highlight the Select2 selection container
+                if (targetEl.id === 'id_ilap' || targetEl.id === 'id_periode_data') {
+                    const s2Container = targetEl.nextElementSibling;
+                    if (s2Container && s2Container.classList.contains('select2-container')) {
+                        s2Container.classList.add('is-invalid');
+                    }
                 }
                 
                 targetEl.classList.add('is-invalid');
@@ -2152,16 +1727,14 @@
             }
 
             // Real-time listener to remove invalid status and tooltips on user interaction
-            $(document).on('input change focus click', '.is-invalid, #combobox-ilap, #combobox-periode-data', function () {
+            $(document).on('input change focus click', '.is-invalid, #id_ilap, #id_periode_data', function () {
                 const $el = $(this);
                 $el.removeClass('is-invalid');
-                const wrapper = $el.closest('.combobox-wrapper');
-                if (wrapper.length) {
-                    wrapper.parent().find('.validation-tooltip-suggestion').fadeOut(200, function() { $(this).remove(); });
-                } else {
-                    $el.parent().find('.validation-tooltip-suggestion').fadeOut(200, function() { $(this).remove(); });
-                }
+                const s2Container = $el.next('.select2-container');
+                if (s2Container.length) s2Container.removeClass('is-invalid');
+                $el.parent().find('.validation-tooltip-suggestion').fadeOut(200, function() { $(this).remove(); });
             });
+
 
             // Real-time inline validation for Baris Diterima (must be a number)
             const barisInputEl = document.getElementById('id_baris_diterima');
@@ -2207,37 +1780,28 @@
                 toggleBackupSection();
             }
 
-            // Prefill combobox from POST data (when server re-renders after validation error)
+            // Prefill from POST data (when server re-renders after validation error)
             (function prefillFromPost() {
-                if (!ilapSelect) return;
-                const ilapValue = ilapSelect.value;
-                if (!ilapValue) return;
+                if (!ilapSelect || !ilapSelect.value) return;
+                const savedPdValue = periodeDataSelect ? periodeDataSelect.value : null;
 
-                // Save periode data selected value + label BEFORE updatePeriodeDataDropdown clears them
-                let savedPdValue = null;
-                let savedPdLabel = null;
-                if (periodeDataSelect && periodeDataSelect.value) {
-                    savedPdValue = periodeDataSelect.value;
-                    const pdOpt = Array.from(periodeDataSelect.options).find(o => o.value === savedPdValue);
-                    if (pdOpt) savedPdLabel = pdOpt.textContent;
-                }
-
-                // Find the label for the selected ILAP option
-                const ilapOpt = Array.from(ilapSelect.options).find(o => o.value === ilapValue);
-                if (ilapOpt) {
-                    selectIlapOption(ilapValue, ilapOpt.textContent);
-                }
-
-                // Trigger change to load periode data options
-                ilapSelect.dispatchEvent(new Event('change'));
+                // Directly call updatePeriodeDataDropdown (do NOT trigger Select2 change here
+                // to avoid double-calling updatePeriodeDataDropdown via the Select2 handler)
                 updatePeriodeDataDropdown(function () {
-                    if (savedPdValue && savedPdLabel) {
-                        selectPeriodeDataOption(savedPdValue, savedPdLabel);
-                        periodeDataSelect.dispatchEvent(new Event('change'));
+                    if (savedPdValue && periodeDataSelect) {
+                        periodeDataSelect.value = savedPdValue;
+                        // Notify Select2 of the restored value
+                        if (typeof $ !== 'undefined' && typeof $.fn.select2 === 'function') {
+                            $('#id_periode_data').trigger('change');
+                        }
+                        updateJenisDataInfo();
+                        checkJenisPrioritas();
                     }
                 });
             })();
 
+
+            // Prefill from URL query params (e.g. ?ilap_id=X&periode_data_id=Y)
             (function prefillFromUrl() {
                 const urlParams = new URLSearchParams(window.location.search);
                 const prefillIlapId = urlParams.get('ilap_id');
@@ -2246,24 +1810,23 @@
                 const prefillTahun = urlParams.get('tahun');
                 if (!prefillIlapId || !ilapSelect) return;
 
-                // Find the label for the ILAP option
-                const ilapOpt = Array.from(ilapSelect.options).find(o => o.value === prefillIlapId);
-                if (ilapOpt) {
-                    selectIlapOption(prefillIlapId, ilapOpt.textContent);
-                } else {
-                    ilapSelect.value = prefillIlapId;
+                // Set ILAP value in native select and notify Select2 UI only (no change handler)
+                ilapSelect.value = prefillIlapId;
+                if (typeof $ !== 'undefined' && typeof $.fn.select2 === 'function') {
+                    // Use 'select2:updating' trick: just refresh display without firing change
+                    $('#id_ilap').trigger('change.select2');
                 }
-                ilapSelect.dispatchEvent(new Event('change'));
+                updateTanggalTerimaVertikal();
+
+                // Directly load periode data (do NOT trigger ILAP change to avoid double fetch)
                 updatePeriodeDataDropdown(function () {
                     if (prefillPeriodeDataId && periodeDataSelect) {
-                        // Find the label for the periode data option
-                        const pdOpt = periodeDataOptions.find(o => o.value === prefillPeriodeDataId);
-                        if (pdOpt) {
-                            selectPeriodeDataOption(prefillPeriodeDataId, pdOpt.label);
-                        } else {
-                            periodeDataSelect.value = prefillPeriodeDataId;
+                        periodeDataSelect.value = prefillPeriodeDataId;
+                        if (typeof $ !== 'undefined' && typeof $.fn.select2 === 'function') {
+                            $('#id_periode_data').trigger('change.select2');
                         }
-                        periodeDataSelect.dispatchEvent(new Event('change'));
+                        updateJenisDataInfo();
+                        checkJenisPrioritas();
                         if (prefillPeriode) {
                             const periodeSelect = document.getElementById('id_periode');
                             if (periodeSelect) periodeSelect.value = prefillPeriode;
@@ -2275,6 +1838,7 @@
                     }
                 });
             })();
+
         });
 
         function populateConfirmationModal() {
@@ -2285,7 +1849,6 @@
             const tglDipInput = document.getElementById('id_tgl_terima_dip');
             const nomorTiketCell = document.getElementById('confirm-nomor-tiket');
 
-<<<<<<< HEAD
             document.getElementById('confirm-nama-ilap').textContent = document.getElementById('info-nama-ilap')
                 .textContent || '-';
             document.getElementById('confirm-kategori-ilap').textContent = document.getElementById(

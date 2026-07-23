@@ -100,50 +100,6 @@
         <div class="col-lg-8">
             <!-- Placeholder for sticky card -->
             <div id="sticky-card-placeholder" style="height: 0px; margin-bottom: 0; overflow: hidden;"></div>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.tgl_dibatalkan %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Dibatalkan</label>
-                                <p class="fw-semibold mb-0">
-                                    <i class="feather-calendar me-1"></i><span class="badge bg-danger">{{ tiket.tgl_dibatalkan|date:"d/m/Y" }}</span>
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.tgl_dikembalikan %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Dikembalikan</label>
-                                <p class="fw-semibold mb-0">
-                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_dikembalikan|date:"d/m/Y" }}
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.tgl_rekam_pide %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Rekam PIDE</label>
-                                <p class="fw-semibold mb-0">
-                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_rekam_pide|date:"d/m/Y" }}
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if tiket.tgl_transfer %}
-                        <div class="col-md-6">
-                            <div class="info-group">
-                                <label class="text-muted small mb-1">Tanggal Transfer</label>
-                                <p class="fw-semibold mb-0">
-                                    <i class="feather-calendar me-1"></i>{{ tiket.tgl_transfer|date:"d/m/Y" }}
-                                </p>
-                            </div>
-                        </div>
-                        {% endif %}
->>>>>>> upstream/main
 
             <!-- Info Utama: Tiket Identity Bar (sticky, full width, premium horizontal layout) -->
             <div class="card border-0 shadow-sm mb-4" id="sticky-identity-card"
