@@ -159,9 +159,14 @@ class SelesaikanTiketView(LoginRequiredMixin, UserPMDERequiredMixin, UpdateView)
         non-AJAX requests (returns parent form_invalid response).
         """
         if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            error_messages = []
+            for field, errors in form.errors.items():
+                for err in errors:
+                    error_messages.append(f'{field}: {err}' if field != '__all__' else err)
+            message = '; '.join(error_messages) or 'Form tidak valid'
             return JsonResponse({
                 'success': False,
-                'message': 'Form tidak valid',
+                'message': message,
                 'errors': form.errors
             }, status=400)
         return super().form_invalid(form)

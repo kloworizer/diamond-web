@@ -192,7 +192,9 @@ class ILAPPeriodeDataAPIView(View):
                     'periode_penerimaan': pd.id_periode_pengiriman.periode_penerimaan,
                     'pic_p3de': pic_p3de,
                     'pic_pide': pic_pide,
-                    'pic_pmde': pic_pmde
+                    'pic_pmde': pic_pmde,
+                    'end_date': pd.end_date.isoformat() if pd.end_date else None,
+                    'nama_tabel_I': jenis_data.nama_tabel_I,
                 })
             
             return JsonResponse({

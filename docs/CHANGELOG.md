@@ -1,5 +1,13 @@
 # Catatan Rilis & Perubahan
 
+## [1.1.1] — 2026-07-17
+
+### Ditambahkan
+- **Penyempurnaan Workflow Tiket P3DE (Backend)** — Kelanjutan pengembangan alur kerja backend untuk tiket P3DE dengan penanganan transisi status tambahan dan integrasi yang lebih baik.
+
+### Diubah
+- **Enhancement TiketForm & PeriodeJenisData** — Peningkatan tampilan *dropdown* dan validasi pada `TiketForm` dan model `PeriodeJenisData` untuk pengalaman pengguna yang lebih baik dan konsistensi data.
+
 ## [1.1.0] — 2026-07-13
 
 ### Ditambahkan

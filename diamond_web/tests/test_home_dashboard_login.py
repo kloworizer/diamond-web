@@ -15,15 +15,10 @@ class TestHomeView:
     """Tests for the home view."""
 
     def test_home_view_unauthenticated(self, client):
-        """Test home view returns correct template for unauthenticated user."""
+        """Test home view redirects unauthenticated user to login."""
         response = client.get(reverse('home'))
-        assert response.status_code == 200
-        assert 'is_p3de' in response.context
-        assert 'is_pide' in response.context
-        assert 'is_pmde' in response.context
-        assert response.context['is_p3de'] is False
-        assert response.context['is_pide'] is False
-        assert response.context['is_pmde'] is False
+        assert response.status_code == 302
+        assert '/accounts/login/' in response.url
 
     def test_home_view_p3de_user(self, client, authenticated_user):
         """Test home view identifies P3DE user and computes tiket summary."""
@@ -113,4 +108,4 @@ class TestDashboardView:
         """Test dashboard uses correct template."""
         client.force_login(authenticated_user)
         response = client.get(reverse('dashboard_monitoring'))
-        assert 'dashboard/index.html' in [t.name for t in response.templates]
+        assert 'dashboard/monitoring.html' in [t.name for t in response.templates]
