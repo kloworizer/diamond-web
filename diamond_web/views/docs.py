@@ -24,6 +24,7 @@ DOC_TITLES = {
     'RBAC_MATRIX.md': 'Matriks RBAC & Hak Akses Menu',
     'DATA_MIGRATION_DEV_PHASE.md': 'Panduan Migrasi Data',
     'SYNC_TIKET_UPDATE_RULES.md': 'Aturan Sinkronisasi Status Tiket (Oracle Sync)',
+    'ADMIN_MENU_GUIDE.md': 'Panduan Menu Admin (P3DE, PIDE, PMDE)',
 }
 
 # Phase grouping for documentation (Bahasa Indonesia)
@@ -48,6 +49,7 @@ DOC_GROUPS = {
         'PRODUCTION_SETUP.md',
         'ORACLE_SETUP.md',
         'TEMPLATES_SETUP.md',
+        'ADMIN_MENU_GUIDE.md',
         'HANDOVER_DOCUMENT.md',
     ],
 }
