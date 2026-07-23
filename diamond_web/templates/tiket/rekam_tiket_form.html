@@ -260,22 +260,10 @@
                             <div class="col-md-6">
                                 {% if form.id_ilap %}
                                 <div class="mb-3">
-                                    <label for="combobox-ilap"
+                                    <label for="id_ilap"
                                         class="form-label">{{ form.id_ilap.label }}{% if form.id_ilap.field.required %}<span
                                             class="text-danger">*</span>{% endif %}</label>
-                                    <!-- Django-rendered select, hidden via CSS; options populated by Django -->
-                                    <div style="display:none !important; height:0; overflow:hidden;">
-                                        {{ form.id_ilap }}
-                                    </div>
-                                    <!-- Combobox UI -->
-                                    <div class="combobox-wrapper" id="combobox-wrapper-ilap">
-                                        <input type="text" class="form-control combobox-input" id="combobox-ilap"
-                                            placeholder="Ketik atau pilih ILAP..." autocomplete="off">
-                                        <svg class="combobox-chevron" width="12" height="12" viewBox="0 0 16 16" fill="none">
-                                            <path d="M2 5l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                        </svg>
-                                        <div class="combobox-dropdown" id="combobox-dropdown-ilap"></div>
-                                    </div>
+                                    {{ form.id_ilap }}
                                     {% if form.id_ilap.errors %}
                                     <div class="invalid-feedback d-block">{{ form.id_ilap.errors }}</div>
                                     {% endif %}
@@ -285,22 +273,10 @@
                             <div class="col-md-6">
                                 {% if form.id_periode_data %}
                                 <div class="mb-3">
-                                    <label for="combobox-periode-data" class="form-label">Jenis Data
+                                    <label for="id_periode_data" class="form-label">Jenis Data
                                         ILAP{% if form.id_periode_data.field.required %}<span
                                             class="text-danger">*</span>{% endif %}</label>
-                                    <!-- Django-rendered select, hidden via CSS; options populated dynamically via JS -->
-                                    <div style="display:none !important; height:0; overflow:hidden;">
-                                        {{ form.id_periode_data }}
-                                    </div>
-                                    <!-- Combobox UI -->
-                                    <div class="combobox-wrapper" id="combobox-wrapper-periode-data">
-                                        <input type="text" class="form-control combobox-input" id="combobox-periode-data"
-                                            placeholder="Ketik atau pilih Jenis Data ILAP..." autocomplete="off" disabled>
-                                        <svg class="combobox-chevron" width="12" height="12" viewBox="0 0 16 16" fill="none">
-                                            <path d="M2 5l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                        </svg>
-                                        <div class="combobox-dropdown" id="combobox-dropdown-periode-data"></div>
-                                    </div>
+                                    {{ form.id_periode_data }}
                                     {% if form.id_periode_data.errors %}
                                     <div class="invalid-feedback d-block">{{ form.id_periode_data.errors }}</div>
                                     {% endif %}
@@ -1220,16 +1196,26 @@
             if (!ilapSelect || !periodeDataSelect) return;
 
             const ilapId = ilapSelect.value;
+            if (typeof $ !== 'undefined' && typeof $.fn.select2 === 'function' && $(periodeDataSelect).hasClass('select2-hidden-accessible')) {
+                $(periodeDataSelect).select2('destroy');
+            }
             periodeDataSelect.innerHTML = '<option value="">Pilih Jenis Data ILAP...</option>';
             document.getElementById('jenis-data-info').style.display = 'none';
             periodeDataCache = {};
             updateSelectColor(periodeDataSelect);
+
+            if (typeof $ !== 'undefined' && typeof $.fn.select2 === 'function') {
+                $(periodeDataSelect).select2({ theme: 'bootstrap-5', width: '100%', placeholder: 'Pilih Jenis Data ILAP...' });
+            }
 
             if (!ilapId) return;
 
             fetch(`/api/ilap/${ilapId}/periode-jenis-data/`)
                 .then(response => response.json())
                 .then(data => {
+                    if (typeof $ !== 'undefined' && typeof $.fn.select2 === 'function' && $(periodeDataSelect).hasClass('select2-hidden-accessible')) {
+                        $(periodeDataSelect).select2('destroy');
+                    }
                     if (data.success && data.data.length > 0) {
                         data.data.forEach(item => {
                             periodeDataCache[item.id] = item;
@@ -1244,6 +1230,9 @@
                         });
                     }
                     updateSelectColor(periodeDataSelect);
+                    if (typeof $ !== 'undefined' && typeof $.fn.select2 === 'function') {
+                        $(periodeDataSelect).select2({ theme: 'bootstrap-5', width: '100%', placeholder: 'Ketik atau pilih Jenis Data ILAP...' });
+                    }
                     if (typeof onLoaded === 'function') onLoaded();
                 })
                 .catch(error => console.error('Error fetching periode data:', error));
@@ -1392,6 +1381,27 @@
             const btnConfirm = document.getElementById('btn-confirm-save');
             const btnSubmit = document.getElementById('btn-submit-form');
             const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
+
+            if (typeof $ !== 'undefined' && typeof $.fn.select2 === 'function') {
+                $('#id_ilap').select2({
+                    theme: 'bootstrap-5',
+                    width: '100%',
+                    placeholder: 'Ketik atau pilih ILAP...'
+                });
+                $('#id_periode_data').select2({
+                    theme: 'bootstrap-5',
+                    width: '100%',
+                    placeholder: 'Pilih ILAP terlebih dahulu...'
+                });
+                $('#id_ilap').on('change select2:select', function() {
+                    updatePeriodeDataDropdown();
+                    updateTanggalTerimaVertikal();
+                });
+                $('#id_periode_data').on('change select2:select', function() {
+                    updateJenisDataInfo();
+                    checkJenisPrioritas();
+                });
+            }
 
             // ============================================================
             // COMBOBOX: ILAP
