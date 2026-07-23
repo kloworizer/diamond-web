@@ -65,7 +65,7 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
         from ..models.jenis_data_ilap import JenisDataILAP
 
         # JenisData with active P3DE PIC assignments (restricted to current user if not admin)
-        if self.user and (self.user.is_superuser or self.user.groups.filter(name='admin').exists()):
+        if self.user and (self.user.is_superuser or self.user.groups.filter(name__in=['admin', 'admin_p3de', 'kasi_p3de']).exists()):
             jenis_data_with_pic = JenisDataILAP.objects.values_list(
                 'id_sub_jenis_data', flat=True
             ).distinct()

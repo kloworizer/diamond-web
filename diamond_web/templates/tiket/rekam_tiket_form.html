@@ -1461,14 +1461,29 @@
                 if (dropdownIlap) dropdownIlap.classList.remove('show');
             }
 
+            const comboboxWrapperIlap = document.getElementById('combobox-wrapper-ilap');
+            if (comboboxWrapperIlap) {
+                comboboxWrapperIlap.addEventListener('click', function(e) {
+                    if (comboboxIlap && e.target !== comboboxIlap) {
+                        comboboxIlap.focus();
+                    }
+                });
+            }
+
             if (comboboxIlap) {
                 comboboxIlap.addEventListener('focus', function() {
-                    // Show all options on focus (don't filter by current input text,
-                    // otherwise a previously-selected value hides every other option).
+                    // Refresh options from select and show all options on focus
+                    loadIlapOptions();
+                    renderIlapDropdown('');
+                    if (dropdownIlap) dropdownIlap.classList.add('show');
+                });
+                comboboxIlap.addEventListener('click', function() {
+                    loadIlapOptions();
                     renderIlapDropdown('');
                     if (dropdownIlap) dropdownIlap.classList.add('show');
                 });
                 comboboxIlap.addEventListener('input', function() {
+                    loadIlapOptions();
                     renderIlapDropdown(comboboxIlap.value);
                     if (dropdownIlap) dropdownIlap.classList.add('show');
                 });
