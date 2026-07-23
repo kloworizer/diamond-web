@@ -163,6 +163,8 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
         if obj.end_date:
             label += f" ({obj.end_date.isoformat()})"
         return label
+
+
     def clean_tgl_terima_vertikal(self):
         value = self.cleaned_data.get('tgl_terima_vertikal')
         return validate_not_future_datetime(value, "Tanggal Terima Vertikal")
