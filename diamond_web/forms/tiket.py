@@ -65,16 +65,23 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
         from ..models.jenis_data_ilap import JenisDataILAP
 
         # JenisData with active P3DE PIC assignments (restricted to current user if not admin)
-        if self.user and (self.user.is_superuser or self.user.groups.filter(name='admin').exists()):
+        from ..views.mixins import get_active_p3de_ilap_ids
+        allowed_ilap_ids = set(get_active_p3de_ilap_ids(self.user)) if self.user and self.user.is_authenticated else set()
+
+        if self.user and (self.user.is_superuser or self.user.groups.filter(name__in=['admin', 'admin_p3de', 'kasi_p3de']).exists()):
             jenis_data_with_pic = JenisDataILAP.objects.values_list(
                 'id_sub_jenis_data', flat=True
             ).distinct()
-        else:
-            from ..views.mixins import get_active_p3de_ilap_ids
-            allowed_ilap_ids = set(get_active_p3de_ilap_ids(self.user))
+        elif allowed_ilap_ids:
             jenis_data_with_pic = JenisDataILAP.objects.filter(
                 id_ilap_id__in=allowed_ilap_ids
             ).values_list('id_sub_jenis_data', flat=True).distinct()
+        else:
+            # Fallback when user has no specific PIC filter or form instantiated without user kwarg:
+            # Show all JenisDataILAP so ILAP select dropdown is never empty
+            jenis_data_with_pic = JenisDataILAP.objects.values_list(
+                'id_sub_jenis_data', flat=True
+            ).distinct()
 
         # Previously we required active PIDE/PMDE durasi here which hid ILAPs when
         # durasi entries were missing. Keep only the P3DE PIC requirement so ILAPs
@@ -156,6 +163,8 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
         if obj.end_date:
             label += f" ({obj.end_date.isoformat()})"
         return label
+
+
     def clean_tgl_terima_vertikal(self):
         value = self.cleaned_data.get('tgl_terima_vertikal')
         return validate_not_future_datetime(value, "Tanggal Terima Vertikal")
