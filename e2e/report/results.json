@@ -1,0 +1,315 @@
+{
+  "results": [
+    [
+      "happy_path",
+      "rekam tiket",
+      "PASS",
+      "AS001010126072402 -> Direkam"
+    ],
+    [
+      "happy_path",
+      "status after rekam",
+      "PASS",
+      "Direkam"
+    ],
+    [
+      "happy_path",
+      "buat tanda terima",
+      "PASS",
+      "reloaded"
+    ],
+    [
+      "happy_path",
+      "rekam hasil penelitian",
+      "PASS",
+      "lengkap=1000 -> Diteliti (btn_was_disabled=False)"
+    ],
+    [
+      "happy_path",
+      "status after penelitian (Lengkap)",
+      "PASS",
+      "Diteliti"
+    ],
+    [
+      "happy_path",
+      "generate ND pengantar",
+      "PASS",
+      "reloaded"
+    ],
+    [
+      "happy_path",
+      "kirim ke PIDE",
+      "PASS",
+      "-> Dikirim ke PIDE"
+    ],
+    [
+      "happy_path",
+      "status after kirim ke PIDE",
+      "PASS",
+      "Dikirim ke PIDE"
+    ],
+    [
+      "happy_path",
+      "identifikasi",
+      "PASS",
+      "-> Identifikasi"
+    ],
+    [
+      "happy_path",
+      "status after identifikasi",
+      "PASS",
+      "Identifikasi"
+    ],
+    [
+      "happy_path",
+      "transfer ke PMDE",
+      "PASS",
+      "-> Pengendalian Mutu (open_btn_was_disabled=True)"
+    ],
+    [
+      "happy_path",
+      "status after transfer ke PMDE",
+      "PASS",
+      "Pengendalian Mutu"
+    ],
+    [
+      "happy_path",
+      "selesaikan tiket",
+      "PASS",
+      "-> Selesai (open_btn_was_disabled=True)"
+    ],
+    [
+      "happy_path",
+      "status after selesaikan",
+      "PASS",
+      "Selesai"
+    ],
+    [
+      "langsung_selesai",
+      "rekam tiket",
+      "PASS",
+      "AS001010126072403 -> Selesai"
+    ],
+    [
+      "langsung_selesai",
+      "status after rekam (data tidak tersedia)",
+      "PASS",
+      "Selesai"
+    ],
+    [
+      "penelitian_tidak_lengkap",
+      "rekam tiket",
+      "PASS",
+      "AS001010126072404 -> Direkam"
+    ],
+    [
+      "penelitian_tidak_lengkap",
+      "buat tanda terima",
+      "PASS",
+      "reloaded"
+    ],
+    [
+      "penelitian_tidak_lengkap",
+      "rekam hasil penelitian",
+      "PASS",
+      "lengkap=0 -> Selesai (btn_was_disabled=False)"
+    ],
+    [
+      "penelitian_tidak_lengkap",
+      "status after penelitian (baris_lengkap==0)",
+      "PASS",
+      "Selesai"
+    ],
+    [
+      "batalkan",
+      "rekam tiket",
+      "PASS",
+      "AS001010126072405 -> Direkam"
+    ],
+    [
+      "batalkan",
+      "status after rekam",
+      "PASS",
+      "Direkam"
+    ],
+    [
+      "batalkan",
+      "batalkan tiket",
+      "PASS",
+      "-> Dibatalkan"
+    ],
+    [
+      "batalkan",
+      "status after batalkan",
+      "PASS",
+      "Dibatalkan"
+    ],
+    [
+      "dikembalikan",
+      "rekam tiket",
+      "PASS",
+      "AS001010126072406 -> Direkam"
+    ],
+    [
+      "dikembalikan",
+      "buat tanda terima",
+      "PASS",
+      "reloaded"
+    ],
+    [
+      "dikembalikan",
+      "rekam hasil penelitian",
+      "PASS",
+      "lengkap=800 -> Diteliti (btn_was_disabled=False)"
+    ],
+    [
+      "dikembalikan",
+      "generate ND pengantar",
+      "PASS",
+      "reloaded"
+    ],
+    [
+      "dikembalikan",
+      "kirim ke PIDE",
+      "PASS",
+      "-> Dikirim ke PIDE"
+    ],
+    [
+      "dikembalikan",
+      "status after kirim ke PIDE",
+      "PASS",
+      "Dikirim ke PIDE"
+    ],
+    [
+      "dikembalikan",
+      "dikembalikan ke P3DE",
+      "PASS",
+      "-> Dibatalkan"
+    ],
+    [
+      "dikembalikan",
+      "status after dikembalikan (expected Dibatalkan per design)",
+      "PASS",
+      "Dibatalkan"
+    ],
+    [
+      "val_rekam_future_date",
+      "future DIP blocked by client guard",
+      "PASS",
+      "endDateValidationModal shown"
+    ],
+    [
+      "val_rekam_missing_required",
+      "missing required blocked",
+      "PASS",
+      "confirmModal not shown (HTML5 validation)"
+    ],
+    [
+      "val_penelitian_negative",
+      "rekam tiket",
+      "PASS",
+      "AS001010126072407 -> Direkam"
+    ],
+    [
+      "val_penelitian_negative",
+      "buat tanda terima",
+      "PASS",
+      "reloaded"
+    ],
+    [
+      "val_penelitian_negative",
+      "mismatched total disables submit",
+      "PASS",
+      "client validation works"
+    ],
+    [
+      "val_penelitian_negative",
+      "negative baris_lengkap rejected",
+      "PASS",
+      "status stayed Direkam"
+    ],
+    [
+      "val_pide_pmde_gaps",
+      "rekam tiket",
+      "PASS",
+      "AS001010126072408 -> Direkam"
+    ],
+    [
+      "val_pide_pmde_gaps",
+      "buat tanda terima",
+      "PASS",
+      "reloaded"
+    ],
+    [
+      "val_pide_pmde_gaps",
+      "rekam hasil penelitian",
+      "PASS",
+      "lengkap=1000 -> Diteliti (btn_was_disabled=False)"
+    ],
+    [
+      "val_pide_pmde_gaps",
+      "generate ND pengantar",
+      "PASS",
+      "reloaded"
+    ],
+    [
+      "val_pide_pmde_gaps",
+      "kirim ke PIDE",
+      "PASS",
+      "-> Dikirim ke PIDE"
+    ],
+    [
+      "val_pide_pmde_gaps",
+      "identifikasi",
+      "PASS",
+      "-> Identifikasi"
+    ],
+    [
+      "val_pide_pmde_gaps",
+      "transfer ke PMDE",
+      "PASS",
+      "-> Identifikasi (open_btn_was_disabled=True)"
+    ],
+    [
+      "val_pide_pmde_gaps",
+      "negative transfer rejected (model-level protection)",
+      "PASS",
+      "status stayed Identifikasi"
+    ],
+    [
+      "val_pide_pmde_gaps",
+      "transfer ke PMDE",
+      "PASS",
+      "-> Pengendalian Mutu (open_btn_was_disabled=True)"
+    ],
+    [
+      "val_pide_pmde_gaps",
+      "selesaikan tiket",
+      "PASS",
+      "-> Selesai (open_btn_was_disabled=True)"
+    ],
+    [
+      "val_pide_pmde_gaps",
+      "invalid QC accepted",
+      "FAIL",
+      "status -> Selesai"
+    ]
+  ],
+  "bugs": [
+    [
+      "Sidebar 'Transfer ke PMDE' button is permanently disabled",
+      "HIGH",
+      "On the tiket detail page (status Identifikasi), the button that opens the Transfer ke PMDE modal is rendered with a hardcoded `disabled` attribute (tiket_detail.html ~L750) and no JS ever enables it. A PIDE PIC therefore cannot open the modal or transfer the tiket to PMDE through the intended UI. (E2E forced-enabled it to verify the underlying flow still works.)"
+    ],
+    [
+      "Sidebar 'Selesaikan Tiket' button is permanently disabled",
+      "HIGH",
+      "On the tiket detail page (status Pengendalian Mutu), the button that opens the Selesaikan Tiket modal is rendered with a hardcoded `disabled` attribute (tiket_detail.html ~L766) and no JS enables it. A PMDE PIC cannot complete the tiket through the intended UI. (E2E forced-enabled it to verify the underlying flow still works.)"
+    ],
+    [
+      "Selesaikan Tiket has NO server-side validation of QC totals",
+      "HIGH",
+      "The Selesaikan modal promises 'Lolos QC + Tidak Lolos QC harus sama dengan Baris I', but SelesaikanTiketForm defines no clean() and the view saves whatever is posted. Submitting lolos_qc=1, tidak_lolos_qc=1 (sum 2, unrelated to Baris I) completed the tiket to 'Selesai'. The check is client-side only and is trivially bypassed."
+    ]
+  ]
+}
