@@ -86,9 +86,24 @@ class TestGetFilterOptionsNomorTiket:
         """Two tikets with same nomor_tiket; second iteration triggers `n in nomor_seen: continue`."""
         nomor = 'DUP-001-2025-0001'
         TiketFactory(nomor_tiket=nomor)
-        TiketFactory(nomor_tiket=nomor)  # duplicate
 
-        resp = _call_tiket_data(admin_user, {'get_filter_options': '1'})
+        from django.db.models.query import QuerySet
+        from unittest.mock import patch
+
+        original_vl = QuerySet.values_list
+        def mock_vl(self_qs, *args, **kwargs):
+            if 'nomor_tiket' in args:
+                class WithNullAndDuplicate:
+                    def order_by(self, *a):
+                        return self
+                    def __iter__(self):
+                        return iter([None, nomor, nomor])
+                return WithNullAndDuplicate()
+            return original_vl(self_qs, *args, **kwargs)
+
+        with patch.object(QuerySet, 'values_list', mock_vl):
+            resp = _call_tiket_data(admin_user, {'get_filter_options': '1'})
+
         assert resp.status_code == 200
         data = json.loads(resp.content)
         opts = data['filter_options']['nomor_tiket']
@@ -121,9 +136,9 @@ class TestGetFilterOptionsTahunNull:
                 class WithNullAndDuplicate:
                     def distinct(self):
                         return self
-
                     def order_by(self, *a):
-                        # Return [None, 2025, 2025] to trigger both line 147 and 150
+                        return self
+                    def __iter__(self):
                         return iter([None, 2025, 2025])
 
                 return WithNullAndDuplicate()
@@ -302,7 +317,7 @@ class TestGetFilterOptionsKanwilKppDasarHukum:
         _, _, _, jenis_data = self._setup_tiket_with_kpp_kanwil()
         dasar_hukum = DasarHukumFactory()
         KlasifikasiJenisDataFactory(
-            id_jenis_data_ilap=jenis_data,
+            id_sub_jenis_data=jenis_data,
             id_klasifikasi_tabel=dasar_hukum,
         )
 
@@ -378,56 +393,7 @@ class TestTiketDataFilterParams:
 # Line 540: late_ids.append when is_late = True
 # ===========================================================================
 
-@pytest.mark.django_db
-class TestTiketDataTerlambatWithDurasi:
-    """Lines 537-538, 540: terlambat logic when tiket has id_durasi_jatuh_tempo_pide."""
-
-    def _setup_late_tiket(self):
-        """Create a tiket whose deadline is in the past (late)."""
-        pide_group, _ = Group.objects.get_or_create(name='user_pide')
-        jenis_data = JenisDataILAPFactory()
-        durasi = DurasiJatuhTempoFactory(
-            id_sub_jenis_data=jenis_data,
-            seksi=pide_group,
-            durasi=1,           # 1-day deadline
-            start_date=date.today() - timedelta(days=60),
-            end_date=None,
-        )
-        # tgl_terima_dip = 30 days ago, durasi = 1 day → deadline = 29 days ago (past)
-        import datetime
-        tgl_terima = timezone.now() - timedelta(days=30)
-        pd = PeriodeJenisDataFactory(id_sub_jenis_data_ilap=jenis_data)
-        tiket = TiketFactory(
-            id_periode_data=pd,
-            id_durasi_jatuh_tempo_pide=durasi,
-            tgl_terima_dip=tgl_terima,
-        )
-        return tiket
-
-    def test_terlambat_ya_with_past_deadline_covers_537_538_540(self, admin_user, db):
-        """Tiket with past deadline + terlambat=Ya → lines 537-538 execute (deadline computed),
-        line 540 executes (late_ids.append)."""
-        tiket = self._setup_late_tiket()
-
-        resp = _call_tiket_data(admin_user, {
-            'draw': '1', 'start': '0', 'length': '1000',
-            'terlambat': 'Ya',
-        })
-        assert resp.status_code == 200
-        data = json.loads(resp.content)
-        assert data['recordsFiltered'] >= 1
-
-    def test_terlambat_tidak_with_past_deadline_covers_537_538(self, admin_user, db):
-        """Same setup but terlambat=Tidak → lines 537-538 execute, tiket excluded."""
-        tiket = self._setup_late_tiket()
-
-        resp = _call_tiket_data(admin_user, {
-            'draw': '1', 'start': '0', 'length': '1000',
-            'terlambat': 'Tidak',
-        })
-        assert resp.status_code == 200
-        data = json.loads(resp.content)
-        assert all(r.get('id') != tiket.id for r in data['data'])
+# TestTiketDataTerlambatWithDurasi was removed because the 'terlambat' filter was removed from ticket views.
 
 
 # ===========================================================================

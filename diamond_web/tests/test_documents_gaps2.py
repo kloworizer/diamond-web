@@ -200,7 +200,7 @@ class TestDocumentsRemainingGaps:
         tiket, jd = _make_tiket_with_tanda_terima_and_jenis_data()
 
         # Create KlasifikasiJenisData linking to the tiket's jenis_data → triggers line 156
-        KlasifikasiJenisDataFactory(id_jenis_data_ilap=jd)
+        KlasifikasiJenisDataFactory(id_sub_jenis_data=jd)
 
         resp = client.get(
             reverse('tiket_documents_download', args=[tiket.pk]),

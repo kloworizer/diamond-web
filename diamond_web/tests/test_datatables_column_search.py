@@ -416,7 +416,7 @@ class TestKlasifikasiJenisDataTableColumnSearch:
         client.force_login(p3de_admin_user)
         response = client.get(
             reverse('klasifikasi_jenis_data_data'),
-            {'draw': '1', 'start': '0', 'length': '10', 'columns_search[]': [str(obj.id_jenis_data_ilap.id_sub_jenis_data)[:3], '', '']}
+            {'draw': '1', 'start': '0', 'length': '10', 'columns_search[]': [str(obj.id_sub_jenis_data.id_sub_jenis_data)[:3], '', '']}
         )
         assert response.status_code == 200
 
