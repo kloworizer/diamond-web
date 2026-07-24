@@ -375,6 +375,33 @@ def pmde_admin_user(db):
 
 
 @pytest.fixture
+def kasi_p3de_user(db):
+    """Create a P3DE kasi (supervisor) user."""
+    user = UserFactory()
+    group, _ = Group.objects.get_or_create(name='kasi_p3de')
+    user.groups.add(group)
+    return user
+
+
+@pytest.fixture
+def kasi_pide_user(db):
+    """Create a PIDE kasi (supervisor) user."""
+    user = UserFactory()
+    group, _ = Group.objects.get_or_create(name='kasi_pide')
+    user.groups.add(group)
+    return user
+
+
+@pytest.fixture
+def kasi_pmde_user(db):
+    """Create a PMDE kasi (supervisor) user."""
+    user = UserFactory()
+    group, _ = Group.objects.get_or_create(name='kasi_pmde')
+    user.groups.add(group)
+    return user
+
+
+@pytest.fixture
 def kategori_ilap(db):
     """Create a test KategoriILAP."""
     return KategoriILAPFactory()

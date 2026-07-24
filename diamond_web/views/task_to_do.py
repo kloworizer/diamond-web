@@ -5,6 +5,7 @@ from diamond_web.constants.tiket_status import (
     STATUS_IDENTIFIKASI,
     STATUS_PENGENDALIAN_MUTU,
 )
+from diamond_web.views.mixins import is_kasi_p3de, is_kasi_pide, is_kasi_pmde
 
 
 def get_tiket_summary_for_user_p3de(user):
@@ -14,10 +15,13 @@ def get_tiket_summary_for_user_p3de(user):
     determine the relevant set of ticket IDs, then executes simple
     ``Tiket.objects.filter(...).count()`` queries for each metric.
 
+    Members of ``kasi_p3de`` supervise the whole unit, so their summary covers
+    every tiket instead of only their own PIC assignments.
+
     Args:
         user: A Django ``User`` instance (or falsy).  If the user is not
-            authenticated or is not a member of the ``user_p3de`` group the
-            function returns a zeroed summary.
+            authenticated or is not a member of the ``user_p3de`` or
+            ``kasi_p3de`` group the function returns a zeroed summary.
 
     Returns:
         dict: A dictionary with the following integer counts:
@@ -40,11 +44,14 @@ def get_tiket_summary_for_user_p3de(user):
 
     if not user or not getattr(user, 'is_authenticated', False):
         return empty
-    if not user.groups.filter(name='user_p3de').exists():
+    if is_kasi_p3de(user):
+        tiket_ids = Tiket.objects.values_list('id', flat=True)
+    elif user.groups.filter(name='user_p3de').exists():
+        tiket_ids = TiketPIC.objects.filter(
+            id_user=user, role=TiketPIC.Role.P3DE, active=True
+        ).values_list('id_tiket', flat=True)
+    else:
         return empty
-
-    p3de_pic = TiketPIC.objects.filter(id_user=user, role=TiketPIC.Role.P3DE, active=True)
-    tiket_ids = p3de_pic.values_list('id_tiket', flat=True)
 
     return {
         'rekam_backup_data': Tiket.objects.filter(id__in=tiket_ids, backup=False).count(),
@@ -61,10 +68,13 @@ def get_tiket_summary_for_user_pide(user):
     determine the relevant set of ticket IDs, then executes simple
     ``Tiket.objects.filter(...).count()`` queries for each metric.
 
+    Members of ``kasi_pide`` supervise the whole unit, so their summary covers
+    every tiket instead of only their own PIC assignments.
+
     Args:
         user: A Django ``User`` instance (or falsy).  If the user is not
-            authenticated or is not a member of the ``user_pide`` group the
-            function returns a zeroed summary.
+            authenticated or is not a member of the ``user_pide`` or
+            ``kasi_pide`` group the function returns a zeroed summary.
 
     Returns:
         dict: A dictionary with the following integer counts:
@@ -81,11 +91,14 @@ def get_tiket_summary_for_user_pide(user):
 
     if not user or not getattr(user, 'is_authenticated', False):
         return empty
-    if not user.groups.filter(name='user_pide').exists():
+    if is_kasi_pide(user):
+        tiket_ids = Tiket.objects.values_list('id', flat=True)
+    elif user.groups.filter(name='user_pide').exists():
+        tiket_ids = TiketPIC.objects.filter(
+            id_user=user, role=TiketPIC.Role.PIDE, active=True
+        ).values_list('id_tiket', flat=True)
+    else:
         return empty
-
-    pide_pic = TiketPIC.objects.filter(id_user=user, role=TiketPIC.Role.PIDE, active=True)
-    tiket_ids = pide_pic.values_list('id_tiket', flat=True)
 
     return {
         'identifikasi_data': Tiket.objects.filter(id__in=tiket_ids, status_tiket=STATUS_DIKIRIM_KE_PIDE).count(),
@@ -100,10 +113,13 @@ def get_tiket_summary_for_user_pmde(user):
     determine the relevant set of ticket IDs, then executes simple
     ``Tiket.objects.filter(...).count()`` queries for each metric.
 
+    Members of ``kasi_pmde`` supervise the whole unit, so their summary covers
+    every tiket instead of only their own PIC assignments.
+
     Args:
         user: A Django ``User`` instance (or falsy).  If the user is not
-            authenticated or is not a member of the ``user_pmde`` group the
-            function returns a zeroed summary.
+            authenticated or is not a member of the ``user_pmde`` or
+            ``kasi_pmde`` group the function returns a zeroed summary.
 
     Returns:
         dict: A dictionary with the following integer counts:
@@ -117,11 +133,14 @@ def get_tiket_summary_for_user_pmde(user):
 
     if not user or not getattr(user, 'is_authenticated', False):
         return empty
-    if not user.groups.filter(name='user_pmde').exists():
+    if is_kasi_pmde(user):
+        tiket_ids = Tiket.objects.values_list('id', flat=True)
+    elif user.groups.filter(name='user_pmde').exists():
+        tiket_ids = TiketPIC.objects.filter(
+            id_user=user, role=TiketPIC.Role.PMDE, active=True
+        ).values_list('id_tiket', flat=True)
+    else:
         return empty
-
-    pmde_pic = TiketPIC.objects.filter(id_user=user, role=TiketPIC.Role.PMDE, active=True)
-    tiket_ids = pmde_pic.values_list('id_tiket', flat=True)
 
     return {
         'pengendalian_mutu': Tiket.objects.filter(id__in=tiket_ids, status_tiket=STATUS_PENGENDALIAN_MUTU).count(),

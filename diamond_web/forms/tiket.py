@@ -16,6 +16,13 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
         label='Satuan Data',
         required=True
     )
+    # Declared explicitly so AutoRequiredFormMixin leaves required=False alone:
+    # an unchecked checkbox must remain a valid submission.
+    special_request = forms.BooleanField(
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input', 'role': 'switch'}),
+        label='Special Request',
+        required=False
+    )
     id_ilap = forms.ModelChoiceField(
         queryset=ILAP.objects.all(),
         empty_label="Pilih ILAP",
@@ -29,7 +36,7 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
     
     class Meta:
         model = Tiket
-        fields = ['id_ilap', 'id_periode_data', 'periode', 'tahun', 'penyampaian', 'tgl_terima_vertikal', 'tgl_terima_dip', 'nomor_surat_pengantar', 'tanggal_surat_pengantar', 'nama_pengirim', 'id_bentuk_data', 'id_cara_penyampaian', 'baris_diterima', 'satuan_data', 'status_ketersediaan_data', 'alasan_ketidaktersediaan']
+        fields = ['id_ilap', 'id_periode_data', 'periode', 'tahun', 'penyampaian', 'tgl_terima_vertikal', 'tgl_terima_dip', 'nomor_surat_pengantar', 'tanggal_surat_pengantar', 'nama_pengirim', 'id_bentuk_data', 'id_cara_penyampaian', 'baris_diterima', 'satuan_data', 'status_ketersediaan_data', 'alasan_ketidaktersediaan', 'special_request']
         widgets = {
             'id_periode_data': forms.Select(attrs={'class': 'form-control', 'id': 'id_periode_data'}),
             'periode': forms.Select(attrs={'class': 'form-control', 'id': 'id_periode'}),
