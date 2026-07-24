@@ -169,6 +169,12 @@
                                 <option value="">-- Semua --</option>
                             </select>
                         </div>
+                        <div class="mb-2">
+                            <label for="filter-special-request" class="form-label">Special Request</label>
+                            <select class="form-select form-select-sm" id="filter-special-request" name="special_request" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </form>
@@ -255,7 +261,8 @@
                 periode_penerimaan: '#filter-periode-penerimaan',
                 status: '#filter-status',
                 status_penelitian: '#filter-status-penelitian',
-                status_ketersediaan_data: '#filter-status-ketersediaan-data'
+                status_ketersediaan_data: '#filter-status-ketersediaan-data',
+                special_request: '#filter-special-request'
             };
 
             let hasInitialFilter = false;
@@ -314,7 +321,8 @@
                 periode_penerimaan: getMultiSelectValue('#filter-periode-penerimaan'),
                 status: getMultiSelectValue('#filter-status'),
                 status_penelitian: getMultiSelectValue('#filter-status-penelitian'),
-                status_ketersediaan_data: getMultiSelectValue('#filter-status-ketersediaan-data')
+                status_ketersediaan_data: getMultiSelectValue('#filter-status-ketersediaan-data'),
+                special_request: getMultiSelectValue('#filter-special-request')
             };
         }
 
@@ -365,7 +373,8 @@
                         'periode_penerimaan': '#filter-periode-penerimaan',
                         'status': '#filter-status',
                         'status_penelitian': '#filter-status-penelitian',
-                        'status_ketersediaan_data': '#filter-status-ketersediaan-data'
+                        'status_ketersediaan_data': '#filter-status-ketersediaan-data',
+                        'special_request': '#filter-special-request'
                     };
 
                     Object.entries(dropdownMap).forEach(([key, selector]) => {
@@ -436,6 +445,7 @@
                     updateDropdown('status', '#filter-status');
                     updateDropdown('status_penelitian', '#filter-status-penelitian');
                     updateDropdown('status_ketersediaan_data', '#filter-status-ketersediaan-data');
+                    updateDropdown('special_request', '#filter-special-request');
                 },
                 error: function () {
                     // Ensure Select2 is initialized even if AJAX fails
@@ -481,6 +491,7 @@
                         d.status = getMultiSelectValue('#filter-status');
                         d.status_penelitian = getMultiSelectValue('#filter-status-penelitian');
                         d.status_ketersediaan_data = getMultiSelectValue('#filter-status-ketersediaan-data');
+                        d.special_request = getMultiSelectValue('#filter-special-request');
                         return d;
                     }
                 },
@@ -580,6 +591,7 @@
                     if (opts.status) opts.status.forEach(item => $('#filter-status').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.status_penelitian) opts.status_penelitian.forEach(item => $('#filter-status-penelitian').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.status_ketersediaan_data) opts.status_ketersediaan_data.forEach(item => $('#filter-status-ketersediaan-data').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.special_request) opts.special_request.forEach(item => $('#filter-special-request').append(`<option value="${item.id}">${item.name}</option>`));
 
                     // Re-initialize Select2 on all filter selects
                     if (typeof $.fn.select2 === 'function') {

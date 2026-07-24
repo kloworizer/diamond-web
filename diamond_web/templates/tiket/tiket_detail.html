@@ -157,6 +157,18 @@
                                 </p>
                             </div>
                         </div>
+                        <div class="col-md-6">
+                            <div class="info-group">
+                                <label class="text-muted small mb-1">Special Request</label>
+                                <p class="fw-semibold mb-0" id="special-request-value">
+                                    {% if tiket.special_request %}
+                                        <span class="badge bg-primary"><i class="feather-star me-1"></i>Ya</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary"><i class="feather-minus me-1"></i>Tidak</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
                         {% if not tiket.status_ketersediaan_data %}
                         <div class="col-md-6">
                             <div class="info-group">
@@ -684,6 +696,12 @@
                         {% if user_is_active_pic_p3de %}
                             {% if tiket.status_tiket < STATUS_DIKIRIM_KE_PIDE and tiket.status_tiket != STATUS_DIBATALKAN and tiket.status_tiket != STATUS_SELESAI and tiket.status_tiket != STATUS_DIKEMBALIKAN %}
                                 <div class="d-grid gap-2">
+                                    {% if user_can_edit_tiket %}
+                                        <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#editTiketModal">
+                                            <i class="feather-edit-3 me-1"></i>Ubah Isian Tiket
+                                        </button>
+                                    {% endif %}
+
                                     {% if not tiket.backup %}
                                         <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#rekamBackupDataModal">
                                             <i class="feather-save me-1"></i>Rekam Backup Data
@@ -772,6 +790,15 @@
                                     <i class="feather-info me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
                                 </div>
                             {% endif %}
+                        {% endif %}
+
+                        <!-- Special Request (P3DE / PIDE) -->
+                        {% if user_can_edit_special_request %}
+                            <div class="d-grid gap-2 mt-2">
+                                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#specialRequestModal">
+                                    <i class="feather-star me-1"></i>Ubah Special Request
+                                </button>
+                            </div>
                         {% endif %}
                     {% endif %}
 
@@ -981,6 +1008,40 @@
         </div>
     </div>
 </div>
+
+<!-- Special Request Modal (P3DE / PIDE) -->
+{% if user_can_edit_special_request %}
+<div class="modal fade" id="specialRequestModal" tabindex="-1" aria-labelledby="specialRequestModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="specialRequestModalLabel">Ubah Special Request {{ tiket.nomor_tiket }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div id="special-request-form-container">
+                <!-- Form will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Edit Isian Tiket Modal (P3DE) -->
+{% if user_can_edit_tiket %}
+<div class="modal fade" id="editTiketModal" tabindex="-1" aria-labelledby="editTiketModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title" id="editTiketModalLabel">Ubah Isian Tiket {{ tiket.nomor_tiket }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div id="edit-tiket-form-container">
+                <!-- Form will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <style>
     .info-group {
@@ -1613,6 +1674,247 @@
                         formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
                     });
             });
+        }
+
+        // Special Request Modal Handler (P3DE / PIDE)
+        const specialRequestModal = document.getElementById('specialRequestModal');
+        if (specialRequestModal) {
+            setupModalAria(specialRequestModal);
+            specialRequestModal.addEventListener('show.bs.modal', function () {
+                const formContainer = document.getElementById('special-request-form-container');
+                formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                fetch('{% url "special_request_tiket" tiket.pk %}', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => response.text())
+                    .then(html => {
+                        formContainer.innerHTML = html;
+
+                        const form = formContainer.querySelector('form');
+                        if (form) {
+                            form.addEventListener('submit', function (e) {
+                                e.preventDefault();
+                                const formData = new FormData(form);
+                                const submitBtn = form.querySelector('button[type="submit"]');
+                                if (submitBtn) {
+                                    submitBtn.disabled = true;
+                                }
+
+                                fetch(form.action, {
+                                    method: 'POST',
+                                    body: formData,
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
+                                })
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            bootstrap.Modal.getInstance(specialRequestModal).hide();
+                                            showToast(data.message || 'Special Request berhasil diperbarui.', 'success');
+                                            setTimeout(() => location.reload(), 800);
+                                        } else {
+                                            if (submitBtn) {
+                                                submitBtn.disabled = false;
+                                            }
+                                            showToast(data.message || 'Gagal memperbarui Special Request.', 'danger');
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error:', error);
+                                        if (submitBtn) {
+                                            submitBtn.disabled = false;
+                                        }
+                                        showToast('Terjadi kesalahan saat memperbarui Special Request.', 'danger');
+                                    });
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading form:', error);
+                        showToast('Gagal memuat form.', 'danger');
+                        formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
+                    });
+            });
+        }
+
+        // Edit Isian Tiket Modal Handler (P3DE)
+        const editTiketModal = document.getElementById('editTiketModal');
+        if (editTiketModal) {
+            setupModalAria(editTiketModal);
+            editTiketModal.addEventListener('show.bs.modal', function () {
+                const formContainer = document.getElementById('edit-tiket-form-container');
+                formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-secondary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                fetch('{% url "edit_tiket" tiket.pk %}', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => response.text())
+                    .then(html => {
+                        formContainer.innerHTML = html;
+                        initEditTiketForm(formContainer);
+
+                        const form = formContainer.querySelector('form');
+                        if (form) {
+                            form.addEventListener('submit', function (e) {
+                                e.preventDefault();
+                                const formData = new FormData(form);
+                                const submitBtn = form.querySelector('button[type="submit"]');
+                                if (submitBtn) {
+                                    submitBtn.disabled = true;
+                                }
+
+                                fetch(form.action, {
+                                    method: 'POST',
+                                    body: formData,
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
+                                })
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            bootstrap.Modal.getInstance(editTiketModal).hide();
+                                            showToast(data.message || 'Isian tiket berhasil diperbarui.', 'success');
+                                            setTimeout(() => location.reload(), 800);
+                                        } else {
+                                            if (submitBtn) {
+                                                submitBtn.disabled = false;
+                                            }
+                                            showToast(data.message || 'Gagal memperbarui isian tiket.', 'danger');
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error:', error);
+                                        if (submitBtn) {
+                                            submitBtn.disabled = false;
+                                        }
+                                        showToast('Terjadi kesalahan saat memperbarui isian tiket.', 'danger');
+                                    });
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading form:', error);
+                        showToast('Gagal memuat form.', 'danger');
+                        formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
+                    });
+            });
+        }
+
+        function initEditTiketForm(container) {
+            const form = container.querySelector('#editTiketForm');
+            if (!form) return;
+
+            const periodeSelect = container.querySelector('#id_edit_periode');
+            const tahunSelect = container.querySelector('#id_edit_tahun');
+            const penyampaianInput = container.querySelector('#id_edit_penyampaian');
+            const tglVertikalInput = container.querySelector('#id_edit_tgl_terima_vertikal');
+            const vertikalRequired = container.querySelector('#edit-tgl-vertikal-required');
+            const vertikalHint = container.querySelector('#edit-tgl-vertikal-hint');
+
+            const periodeDataId = form.dataset.periodeDataId;
+            const tiketId = form.dataset.tiketId;
+            const deskripsi = form.dataset.periodePenerimaan;
+            const currentPeriode = form.dataset.currentPeriode;
+            const currentTahun = form.dataset.currentTahun;
+            const currentPenyampaian = form.dataset.currentPenyampaian;
+            const isRegional = form.dataset.isRegional === '1';
+
+            // Same periode mapping used by the rekam tiket form.
+            const periodeMapping = {
+                'Harian': Array.from({length: 31}, (_, i) => ({value: i + 1, label: `Hari ${i + 1}`})),
+                'Mingguan': Array.from({length: 52}, (_, i) => ({value: i + 1, label: `Minggu ${i + 1}`})),
+                '2 Mingguan': Array.from({length: 26}, (_, i) => ({value: i + 1, label: `2 Minggu ${i + 1}`})),
+                'Bulanan': [
+                    {value: 1, label: 'Januari'}, {value: 2, label: 'Februari'},
+                    {value: 3, label: 'Maret'}, {value: 4, label: 'April'},
+                    {value: 5, label: 'Mei'}, {value: 6, label: 'Juni'},
+                    {value: 7, label: 'Juli'}, {value: 8, label: 'Agustus'},
+                    {value: 9, label: 'September'}, {value: 10, label: 'Oktober'},
+                    {value: 11, label: 'November'}, {value: 12, label: 'Desember'}
+                ],
+                'Triwulanan': [
+                    {value: 1, label: 'Triwulan 1'}, {value: 2, label: 'Triwulan 2'},
+                    {value: 3, label: 'Triwulan 3'}, {value: 4, label: 'Triwulan 4'}
+                ],
+                'Kuartal': [
+                    {value: 1, label: 'Kuartal 1'}, {value: 2, label: 'Kuartal 2'},
+                    {value: 3, label: 'Kuartal 3'}, {value: 4, label: 'Kuartal 4'}
+                ],
+                'Semesteran': [
+                    {value: 1, label: 'Semester 1'}, {value: 2, label: 'Semester 2'}
+                ],
+                'Tahunan': [{value: 1, label: '1'}]
+            };
+
+            // Populate periode options, preserving the tiket's current periode.
+            if (periodeSelect) {
+                const options = periodeMapping[deskripsi] || [];
+                if (options.length) {
+                    periodeSelect.innerHTML = '';
+                    options.forEach(opt => {
+                        const o = document.createElement('option');
+                        o.value = opt.value;
+                        o.textContent = opt.label;
+                        if (String(opt.value) === String(currentPeriode)) {
+                            o.selected = true;
+                        }
+                        periodeSelect.appendChild(o);
+                    });
+                }
+            }
+
+            // Tanggal Terima Vertikal only applies to Regional ILAPs (same as rekam).
+            if (tglVertikalInput) {
+                if (isRegional) {
+                    tglVertikalInput.disabled = false;
+                    tglVertikalInput.required = true;
+                    tglVertikalInput.style.opacity = '1';
+                    if (vertikalRequired) vertikalRequired.style.display = 'inline';
+                    if (vertikalHint) vertikalHint.style.display = 'none';
+                } else {
+                    tglVertikalInput.required = false;
+                    tglVertikalInput.disabled = true;
+                    tglVertikalInput.value = '';
+                    tglVertikalInput.style.opacity = '0.6';
+                    if (vertikalRequired) vertikalRequired.style.display = 'none';
+                    if (vertikalHint) vertikalHint.style.display = 'block';
+                }
+            }
+
+            // Penyampaian auto-calc: keep the original value while periode/tahun are
+            // unchanged; recompute (excluding this tiket) when either changes.
+            const updatePenyampaian = () => {
+                if (!penyampaianInput || !periodeSelect || !tahunSelect) return;
+                const periode = periodeSelect.value;
+                const tahun = tahunSelect.value;
+                if (!periodeDataId || !periode || !tahun) return;
+                if (String(periode) === String(currentPeriode) && String(tahun) === String(currentTahun)) {
+                    penyampaianInput.value = currentPenyampaian;
+                    return;
+                }
+                fetch(`{% url "check_tiket_exists" %}?periode_data_id=${encodeURIComponent(periodeDataId)}&periode=${encodeURIComponent(periode)}&tahun=${encodeURIComponent(tahun)}&exclude_id=${encodeURIComponent(tiketId)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && data.success && data.tiket_count !== undefined && data.tiket_count !== null) {
+                            penyampaianInput.value = data.tiket_count + 1;
+                        } else {
+                            penyampaianInput.value = 1;
+                        }
+                    })
+                    .catch(() => {
+                        penyampaianInput.value = currentPenyampaian;
+                    });
+            };
+
+            if (periodeSelect) periodeSelect.addEventListener('change', updatePenyampaian);
+            if (tahunSelect) tahunSelect.addEventListener('change', updatePenyampaian);
         }
 
         function attachSelesaikanTiketHandlers(container) {

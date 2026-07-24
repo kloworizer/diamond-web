@@ -60,6 +60,16 @@
                             <input class="form-check-input" type="radio" name="status_ketersediaan_data" id="status_tidak_tersedia" value="0">
                             <label class="form-check-label" for="status_tidak_tersedia">Data Tidak Tersedia</label>
                         </div>
+                        <div class="form-check form-switch mt-3">
+                            {{ form.special_request }}
+                            <label class="form-check-label" for="{{ form.special_request.id_for_label }}">{{ form.special_request.label }}</label>
+                            {% if form.special_request.errors %}
+                                <div class="invalid-feedback d-block">{{ form.special_request.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted d-block">
+                                <i class="feather-info me-1"></i>Opsi ini untuk menandai tiket sebagai tiket permintaan khusus dengan prioritas pengolahan lebih tinggi dari tiket biasa.
+                            </small>
+                        </div>
                     </div>
                     <div class="col-md-6">
                         <div class="mb-3">
@@ -511,6 +521,10 @@
                         <tr>
                             <th>Satuan Data</th>
                             <td id="confirm-satuan-data">-</td>
+                        </tr>
+                        <tr>
+                            <th>Special Request</th>
+                            <td id="confirm-special-request">-</td>
                         </tr>
                         <!-- Status Penelitian removed from create form confirmation -->
                         <tr id="confirm-row-backup" style="display: none;">
@@ -1291,8 +1305,11 @@
             document.getElementById('confirm-baris-diterima').textContent = 
                 document.getElementById('id_baris_diterima')?.value || '-';
             
-            document.getElementById('confirm-satuan-data').textContent = 
+            document.getElementById('confirm-satuan-data').textContent =
                 document.getElementById('id_satuan_data')?.options[document.getElementById('id_satuan_data')?.selectedIndex]?.text || '-';
+
+            document.getElementById('confirm-special-request').textContent =
+                document.getElementById('id_special_request')?.checked ? 'Ya' : 'Tidak';
 
             // Backup Data (Bagian C)
             const backupChecked = document.getElementById('rekam-backup-checkbox')?.checked;
