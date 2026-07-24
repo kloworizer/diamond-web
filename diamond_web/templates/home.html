@@ -1421,10 +1421,10 @@
                                     <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
                                         <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-belum_mulai_proses_identifikasi">0</span>)
                                     </button>
-                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 45 Hari Kerja">
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 30 Hari Kerja">
                                         <i class="feather-clock me-1 align-middle" style="color: #10b981;"></i>Baru (<span id="count-new-belum_mulai_proses_identifikasi">0</span>)
                                     </button>
-                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 45 Hari Kerja">
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 30 Hari Kerja">
                                         <i class="feather-alert-triangle me-1 align-middle" style="color: #ef4444;"></i>Perlu Segera (<span id="count-critical-belum_mulai_proses_identifikasi">0</span>)
                                     </button>
                                 </div>
@@ -1496,14 +1496,14 @@
 
                                 <!-- Right Section: Urgency Filter Badges -->
                                 <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-dalam_proses_identifikasi">
-                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kerja dari Tanggal Kirim PIDE" style="cursor: pointer;"></i>:</span>
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kerja dari Tanggal Rekam PIDE" style="cursor: pointer;"></i>:</span>
                                     <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
                                         <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-dalam_proses_identifikasi">0</span>)
                                     </button>
-                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 45 Hari Kerja">
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 30 Hari Kerja">
                                         <i class="feather-clock me-1 align-middle" style="color: #10b981;"></i>Baru (<span id="count-new-dalam_proses_identifikasi">0</span>)
                                     </button>
-                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 45 Hari Kerja">
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 30 Hari Kerja">
                                         <i class="feather-alert-triangle me-1 align-middle" style="color: #ef4444;"></i>Perlu Segera (<span id="count-critical-dalam_proses_identifikasi">0</span>)
                                     </button>
                                 </div>
@@ -1518,7 +1518,7 @@
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
                                         <th>Nama Tabel I</th>
-                                        <th>Tgl Kirim PIDE</th>
+                                        <th>Tgl Rekam PIDE</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
@@ -1600,10 +1600,10 @@
                                     <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
                                         <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-tiket_dikirim_ke_pide_tanpa_pic">0</span>)
                                     </button>
-                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 45 Hari Kerja">
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 30 Hari Kerja">
                                         <i class="feather-clock me-1 align-middle" style="color: #10b981;"></i>Baru (<span id="count-new-tiket_dikirim_ke_pide_tanpa_pic">0</span>)
                                     </button>
-                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 45 Hari Kerja">
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 30 Hari Kerja">
                                         <i class="feather-alert-triangle me-1 align-middle" style="color: #ef4444;"></i>Perlu Segera (<span id="count-critical-tiket_dikirim_ke_pide_tanpa_pic">0</span>)
                                     </button>
                                 </div>
@@ -1678,14 +1678,14 @@
 
                                 <!-- Right Section: Urgency Filter Badges -->
                                 <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-dalam_proses_pengendalian_mutu">
-                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kalender dari Tanggal Transfer" style="cursor: pointer;"></i>:</span>
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kerja dari Tanggal Transfer" style="cursor: pointer;"></i>:</span>
                                     <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
                                         <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-dalam_proses_pengendalian_mutu">0</span>)
                                     </button>
-                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 90 Hari Kalender">
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 85 Hari Kerja">
                                         <i class="feather-clock me-1 align-middle" style="color: #10b981;"></i>Baru (<span id="count-new-dalam_proses_pengendalian_mutu">0</span>)
                                     </button>
-                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 90 Hari Kalender">
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 85 Hari Kerja">
                                         <i class="feather-alert-triangle me-1 align-middle" style="color: #ef4444;"></i>Perlu Segera (<span id="count-critical-dalam_proses_pengendalian_mutu">0</span>)
                                     </button>
                                 </div>
@@ -1778,14 +1778,14 @@
 
                                 <!-- Right Section: Urgency Filter Badges -->
                                 <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-tiket_pengendalian_mutu_tanpa_pic">
-                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kalender dari Tanggal Transfer" style="cursor: pointer;"></i>:</span>
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kerja dari Tanggal Transfer" style="cursor: pointer;"></i>:</span>
                                     <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
                                         <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-tiket_pengendalian_mutu_tanpa_pic">0</span>)
                                     </button>
-                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 90 Hari Kalender">
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 85 Hari Kerja">
                                         <i class="feather-clock me-1 align-middle" style="color: #10b981;"></i>Baru (<span id="count-new-tiket_pengendalian_mutu_tanpa_pic">0</span>)
                                     </button>
-                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 90 Hari Kalender">
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 85 Hari Kerja">
                                         <i class="feather-alert-triangle me-1 align-middle" style="color: #ef4444;"></i>Perlu Segera (<span id="count-critical-tiket_pengendalian_mutu_tanpa_pic">0</span>)
                                     </button>
                                 </div>
