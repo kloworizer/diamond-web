@@ -115,6 +115,17 @@
             border-color: #00BDFB !important;
             box-shadow: 0 0 0 3px rgba(0, 189, 251, 0.15) !important;
         }
+
+        .input-icon-wrapper .form-control:disabled,
+        .input-icon-wrapper .form-select:disabled,
+        .input-icon-wrapper .form-control[readonly] {
+            background-color: #f1f5f9 !important;
+            color: #64748b !important;
+            cursor: not-allowed !important;
+            border-style: dashed !important;
+            border-color: #cbd5e1 !important;
+            opacity: 1 !important;
+        }
         
         /* Custom scrollbar for checkboxes */
         .checkbox-container-premium::-webkit-scrollbar {
@@ -164,7 +175,7 @@
             <div class="col-md-6">
                 <label for="id_nomor_tanda_terima" class="form-label-premium">Nomor Tanda Terima (Otomatis)</label>
                 <div class="input-icon-wrapper">
-                    <i class="feather-file-text"></i>
+                    <i class="feather-lock"></i>
                     {{ form.nomor_tanda_terima }}
                 </div>
                 {% if form.nomor_tanda_terima.errors %}

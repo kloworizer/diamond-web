@@ -104,7 +104,7 @@ class TestDasarHukumViews:
     def test_dasar_hukum_create(self, client, p3de_admin_user):
         """Test DasarHukum create view."""
         client.force_login(p3de_admin_user)
-        data = {'deskripsi': 'Test Dasar Hukum'}
+        data = {'deskripsi': 'Test Dasar Hukum', 'kategori': 'MOU'}
         response = client.post(reverse('dasar_hukum_create'), data, follow=True)
         assert response.status_code == 200
         assert DasarHukum.objects.filter(deskripsi='Test Dasar Hukum').exists()
@@ -114,7 +114,7 @@ class TestDasarHukumViews:
         from diamond_web.tests.conftest import DasarHukumFactory
         obj = DasarHukumFactory()
         client.force_login(p3de_admin_user)
-        data = {'deskripsi': 'Updated Dasar Hukum'}
+        data = {'deskripsi': 'Updated Dasar Hukum', 'kategori': 'MOU'}
         response = client.post(reverse('dasar_hukum_update', args=[obj.pk]), data, follow=True)
         assert response.status_code == 200
         obj.refresh_from_db()
@@ -347,10 +347,10 @@ class TestKlasifikasiJenisDataViews:
         jenis_data = JenisDataILAPFactory()
         dasar_hukum = DasarHukumFactory()
         client.force_login(p3de_admin_user)
-        data = {'id_jenis_data_ilap': jenis_data.pk, 'id_klasifikasi_tabel': dasar_hukum.pk}
+        data = {'id_sub_jenis_data': jenis_data.pk, 'id_klasifikasi_tabel': dasar_hukum.pk}
         response = client.post(reverse('klasifikasi_jenis_data_create'), data, follow=True)
         assert response.status_code == 200
-        assert KlasifikasiJenisData.objects.filter(id_jenis_data_ilap=jenis_data).exists()
+        assert KlasifikasiJenisData.objects.filter(id_sub_jenis_data=jenis_data).exists()
 
     def test_klasifikasi_jenis_data_update(self, client, p3de_admin_user, db):
         """Test KlasifikasiJenisData update view."""
@@ -359,11 +359,11 @@ class TestKlasifikasiJenisDataViews:
         new_jenis_data = JenisDataILAPFactory()
         new_dasar_hukum = DasarHukumFactory()
         client.force_login(p3de_admin_user)
-        data = {'id_jenis_data_ilap': new_jenis_data.pk, 'id_klasifikasi_tabel': new_dasar_hukum.pk}
+        data = {'id_sub_jenis_data': new_jenis_data.pk, 'id_klasifikasi_tabel': new_dasar_hukum.pk}
         response = client.post(reverse('klasifikasi_jenis_data_update', args=[obj.pk]), data, follow=True)
         assert response.status_code == 200
         obj.refresh_from_db()
-        assert obj.id_jenis_data_ilap == new_jenis_data
+        assert obj.id_sub_jenis_data == new_jenis_data
 
     def test_klasifikasi_jenis_data_delete(self, client, p3de_admin_user, db):
         """Test KlasifikasiJenisData delete view."""
