@@ -136,8 +136,8 @@ class TestGeneralViews:
 # ============================================================
 
 @pytest.mark.django_db
-class TestGetTiketSummaryForUser:
-    """get_tiket_summary_for_user — P3DE user task summary."""
+class TestGetTiketSummaryForUserP3de:
+    """get_tiket_summary_for_user_p3de — P3DE user task summary."""
 
     def test_returns_empty_for_anonymous(self):
         result = get_tiket_summary_for_user_p3de(None)

@@ -2,7 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from .base import AutoRequiredFormMixin
 from django.utils import timezone
-from django.utils.dateparse import parse_datetime
+from django.utils.dateparse import parse_datetime, parse_date
 from ..models.tanda_terima_data import TandaTerimaData
 from ..utils import validate_not_future_datetime
 from ..models.tiket import Tiket
@@ -46,7 +46,7 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
         model = TandaTerimaData
         fields = ['tanggal_tanda_terima', 'tahun_terima', 'id_ilap']
         widgets = {
-            'tanggal_tanda_terima': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'tanggal_tanda_terima': forms.DateInput(attrs={'type': 'date'}),
             'tahun_terima': forms.NumberInput(attrs={'readonly': True}),
         }
 
@@ -73,9 +73,15 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
             self.fields['nomor_tanda_terima'].required = False
             self.fields['tahun_terima'].required = False
             tanggal_input = self.data.get('tanggal_tanda_terima') if self.is_bound else None
-            tanggal = parse_datetime(tanggal_input) if tanggal_input else None
-            if tanggal is None and tanggal_input:
+            tanggal = None
+            if tanggal_input:
                 tanggal = parse_datetime(tanggal_input)
+                if tanggal is None:
+                    parsed_d = parse_date(tanggal_input)
+                    if parsed_d:
+                        import datetime
+                        # Combine date with midnight and make timezone aware
+                        tanggal = timezone.make_aware(datetime.datetime.combine(parsed_d, datetime.time.min))
             if tanggal is None:
                 tanggal = timezone.now()
             

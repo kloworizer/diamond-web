@@ -14,6 +14,9 @@ urlpatterns = [
     path('tanda-terima-data/<int:pk>/view/', views.TandaTerimaDataViewOnly.as_view(), name='tanda_terima_data_view'),
     path('', views.home, name='home'),
     path('home/data/', views.home_data, name='home_data'),
+    path('home/pic-pide-users/', views.home_pic_pide_users, name='home_pic_pide_users'),
+    path('home/pic-pmde-users/', views.home_pic_pmde_users, name='home_pic_pmde_users'),
+    path('home/pic-p3de-users/', views.home_pic_p3de_users, name='home_pic_p3de_users'),
         path('docs/', views.docs_index, name='docs_index'),
     path('docs/<slug:slug>/', views.docs_detail, name='docs_detail'),
     path('keep-alive/', keep_alive, name='keep_alive'),
@@ -156,6 +159,7 @@ urlpatterns = [
     path('jenis-data-ilap/create/', views.JenisDataILAPCreateView.as_view(), name='jenis_data_ilap_create'),
     path('jenis-data-ilap/<int:pk>/update/', views.JenisDataILAPUpdateView.as_view(), name='jenis_data_ilap_update'),
     path('jenis-data-ilap/<int:pk>/delete/', views.JenisDataILAPDeleteView.as_view(), name='jenis_data_ilap_delete'),
+    path('jenis-data-ilap/<int:pk>/info/', views.jenis_data_ilap_info_ajax, name='jenis_data_ilap_info_ajax'),
     # Klasifikasi Jenis Data URLs
     path('klasifikasi-jenis-data/', views.KlasifikasiJenisDataListView.as_view(), name='klasifikasi_jenis_data_list'),
     path('klasifikasi-jenis-data/data/', views.klasifikasi_jenis_data_data, name='klasifikasi_jenis_data_data'),

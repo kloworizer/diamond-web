@@ -1,8 +1,10 @@
 from django.shortcuts import render
 from django.conf import settings
 from django.db.models import F, Q, Exists, OuterRef, Max, Subquery, Value
-from django.db.models.functions import Concat
-from django.contrib.auth.models import Group
+from django.utils import timezone
+from datetime import timedelta
+from django.db.models.functions import Concat, Coalesce
+from django.contrib.auth.models import Group, User
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.urls import reverse
@@ -28,6 +30,18 @@ from diamond_web.constants.tiket_status import (
 )
 from diamond_web.constants.tiket_action_types import TiketActionType
 from diamond_web.views.mixins import is_kasi, is_kasi_p3de, is_kasi_pide, is_kasi_pmde
+
+def _get_category_metrics(qs):
+    if qs is None:
+        return {'tickets': 0, 'ilaps': 0, 'jenis_datas': 0}
+    tickets = qs.count()
+    ilaps = qs.values('id_periode_data__id_sub_jenis_data_ilap__id_ilap').distinct().count() if tickets > 0 else 0
+    jenis_datas = qs.values('id_periode_data__id_sub_jenis_data_ilap').distinct().count() if tickets > 0 else 0
+    return {
+        'tickets': tickets,
+        'ilaps': ilaps,
+        'jenis_datas': jenis_datas,
+    }
 
 @login_required
 def home(request):
@@ -78,45 +92,48 @@ def home(request):
         context['tiket_summary'] = get_tiket_summary_for_user_p3de(request.user)
         p3de_tiket_ids = _get_p3de_tiket_ids(request.user)
 
-        context['p3de_category_counts'] = {
-            'belum_rekam_backup_data': Tiket.objects.filter(
-                id__in=p3de_tiket_ids, status_tiket=STATUS_DIREKAM, backup=False
-            ).count(),
-            'belum_dibuat_tanda_terima': Tiket.objects.filter(
-                id__in=p3de_tiket_ids, status_tiket=STATUS_DIREKAM, tanda_terima=False
-            ).count(),
-            'belum_diteliti': Tiket.objects.filter(
-                id__in=p3de_tiket_ids, status_tiket=STATUS_DIREKAM, backup=True, tanda_terima=True
-            ).count(),
-            'belum_dikirim_ke_pide': Tiket.objects.filter(
-                id__in=p3de_tiket_ids, status_tiket=STATUS_DITELITI, baris_lengkap__gt=0
-            ).count(),
-            'pengembalian_seluruhnya_dari_pide': Tiket.objects.filter(
-                id__in=p3de_tiket_ids
-            ).filter(
-                Exists(TiketAction.objects.filter(
-                    id_tiket=OuterRef('pk'),
-                    action=TiketActionType.DIKEMBALIKAN
-                ))
-            ).count(),
-            'pengembalian_sebagian_dari_pide': Tiket.objects.filter(
-                id__in=p3de_tiket_ids, baris_cde__gt=0
-            ).exclude(baris_cde=F('baris_lengkap')).count(),
-            'diklarifikasi': Tiket.objects.filter(
-                id__in=p3de_tiket_ids,
-                penyampaian=Subquery(
-                    Tiket.objects.filter(
-                        id_periode_data=OuterRef('id_periode_data'),
-                        periode=OuterRef('periode'),
-                        tahun=OuterRef('tahun'),
-                        id__in=p3de_tiket_ids,
-                    ).values('id_periode_data', 'periode', 'tahun')
-                    .annotate(max_penyampaian=Max('penyampaian'))
-                    .values('max_penyampaian')[:1]
-                ),
-                status_tiket__gt=STATUS_DITELITI
-            ).filter(~Q(id_status_penelitian=1) | Q(baris_cde__gt=0)).count(),
+        p3de_qs = Tiket.objects.filter(id__in=p3de_tiket_ids)
+
+        belum_rekam_backup_data_qs = p3de_qs.filter(status_tiket=STATUS_DIREKAM, backup=False)
+        belum_dibuat_tanda_terima_qs = p3de_qs.filter(status_tiket=STATUS_DIREKAM, tanda_terima=False)
+        belum_diteliti_qs = p3de_qs.filter(status_tiket=STATUS_DIREKAM, backup=True, tanda_terima=True)
+        belum_dikirim_ke_pide_qs = p3de_qs.filter(status_tiket=STATUS_DITELITI, baris_lengkap__gt=0)
+        pengembalian_seluruhnya_dari_pide_qs = p3de_qs.filter(
+            Exists(TiketAction.objects.filter(
+                id_tiket=OuterRef('pk'),
+                action=TiketActionType.DIKEMBALIKAN
+            ))
+        )
+        pengembalian_sebagian_dari_pide_qs = p3de_qs.filter(baris_cde__gt=0).exclude(baris_cde=F('baris_lengkap'))
+        
+        diklarifikasi_qs = p3de_qs.filter(
+            penyampaian=Subquery(
+                Tiket.objects.filter(
+                    id_periode_data=OuterRef('id_periode_data'),
+                    periode=OuterRef('periode'),
+                    tahun=OuterRef('tahun'),
+                    id__in=p3de_tiket_ids,
+                ).values('id_periode_data', 'periode', 'tahun')
+                .annotate(max_penyampaian=Max('penyampaian'))
+                .values('max_penyampaian')[:1]
+            ),
+            status_tiket__gt=STATUS_DITELITI
+        ).filter(~Q(id_status_penelitian=1) | Q(baris_cde__gt=0))
+
+        context['p3de_category_metrics'] = {
+            'belum_rekam_backup_data': _get_category_metrics(belum_rekam_backup_data_qs),
+            'belum_dibuat_tanda_terima': _get_category_metrics(belum_dibuat_tanda_terima_qs),
+            'belum_diteliti': _get_category_metrics(belum_diteliti_qs),
+            'belum_dikirim_ke_pide': _get_category_metrics(belum_dikirim_ke_pide_qs),
+            'pengembalian_seluruhnya_dari_pide': _get_category_metrics(pengembalian_seluruhnya_dari_pide_qs),
+            'pengembalian_sebagian_dari_pide': _get_category_metrics(pengembalian_sebagian_dari_pide_qs),
+            'diklarifikasi': _get_category_metrics(diklarifikasi_qs),
         }
+
+        context['p3de_category_counts'] = {
+            k: v['tickets'] for k, v in context['p3de_category_metrics'].items()
+        }
+
         # Admin: Jenis Data ILAP without active P3DE PIC
         if is_admin_p3de:
             context['p3de_jenis_data_tanpa_pic_count'] = JenisDataILAP.objects.filter(
@@ -133,14 +150,19 @@ def home(request):
         context['tiket_summary_pide'] = get_tiket_summary_for_user_pide(request.user)
         pide_tiket_ids = _get_pide_tiket_ids(request.user)
 
-        context['pide_category_counts'] = {
-            'belum_mulai_proses_identifikasi': Tiket.objects.filter(
-                id__in=pide_tiket_ids, status_tiket=STATUS_DIKIRIM_KE_PIDE
-            ).count(),
-            'dalam_proses_identifikasi': Tiket.objects.filter(
-                id__in=pide_tiket_ids, status_tiket=STATUS_IDENTIFIKASI
-            ).count(),
+        pide_qs = Tiket.objects.filter(id__in=pide_tiket_ids)
+        belum_mulai_proses_identifikasi_qs = pide_qs.filter(status_tiket=STATUS_DIKIRIM_KE_PIDE)
+        dalam_proses_identifikasi_qs = pide_qs.filter(status_tiket=STATUS_IDENTIFIKASI)
+
+        context['pide_category_metrics'] = {
+            'belum_mulai_proses_identifikasi': _get_category_metrics(belum_mulai_proses_identifikasi_qs),
+            'dalam_proses_identifikasi': _get_category_metrics(dalam_proses_identifikasi_qs),
         }
+
+        context['pide_category_counts'] = {
+            k: v['tickets'] for k, v in context['pide_category_metrics'].items()
+        }
+
         # Admin: Jenis Data ILAP without active PIDE PIC
         if is_admin_pide:
             context['pide_jenis_data_tanpa_pic_count'] = JenisDataILAP.objects.filter(
@@ -164,11 +186,17 @@ def home(request):
         context['tiket_summary_pmde'] = get_tiket_summary_for_user_pmde(request.user)
         pmde_tiket_ids = _get_pmde_tiket_ids(request.user)
 
-        context['pmde_category_counts'] = {
-            'dalam_proses_pengendalian_mutu': Tiket.objects.filter(
-                id__in=pmde_tiket_ids, status_tiket=STATUS_PENGENDALIAN_MUTU
-            ).count(),
+        pmde_qs = Tiket.objects.filter(id__in=pmde_tiket_ids)
+        dalam_proses_pengendalian_mutu_qs = pmde_qs.filter(status_tiket=STATUS_PENGENDALIAN_MUTU)
+
+        context['pmde_category_metrics'] = {
+            'dalam_proses_pengendalian_mutu': _get_category_metrics(dalam_proses_pengendalian_mutu_qs),
         }
+
+        context['pmde_category_counts'] = {
+            k: v['tickets'] for k, v in context['pmde_category_metrics'].items()
+        }
+
         # Admin: Jenis Data ILAP without active PMDE PIC
         if is_admin_pmde:
             context['pmde_jenis_data_tanpa_pic_count'] = JenisDataILAP.objects.filter(
@@ -466,6 +494,106 @@ def home_data(request):
 
     records_total = qs.count()
 
+    # Calculate summary metrics (Total Tiket, Jumlah ILAP, Jenis Data) on base category QS
+    total_tiket = records_total
+    total_ilap = 0
+    total_jenis_data = 0
+    
+    # Age group breakdown summary
+    critical_count = 0
+    warning_count = 0
+    new_count = 0
+    
+    ilap_list = []
+    jenis_data_list = []
+
+    if is_tiket_category:
+        total_ilap = qs.values('id_periode_data__id_sub_jenis_data_ilap__id_ilap').distinct().count()
+        total_jenis_data = qs.values('id_periode_data__id_sub_jenis_data_ilap__id_jenis_data').distinct().count()
+        
+        # Get actual distinct names
+        ilap_list = list(qs.values_list('id_periode_data__id_sub_jenis_data_ilap__id_ilap__nama_ilap', flat=True).distinct())
+        jenis_data_list = list(qs.values_list('id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data', flat=True).distinct())
+                # Determine the correct date field for age tracking
+        is_pide_belum_mulai = category in ('belum_mulai_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic')
+        is_pide_dalam_proses = category == 'dalam_proses_identifikasi'
+        is_pmde_category = category in ('dalam_proses_pengendalian_mutu', 'tiket_pengendalian_mutu_tanpa_pic')
+
+        now = timezone.now()
+        if is_pide_belum_mulai:
+            date_field = 'tgl_kirim_pide'
+            # PIDE Belum Mulai SLA: 30 working days = 6 weeks = 42 calendar days
+            cutoff_critical = now - timedelta(days=42)
+            critical_count = qs.filter(**{f"{date_field}__lt": cutoff_critical}).count()
+            warning_count = 0
+            new_count = qs.filter(**{f"{date_field}__gte": cutoff_critical}).count()
+            
+            # Apply age_group filter
+            age_group = request.GET.get('age_group')
+            if age_group == 'critical':
+                qs = qs.filter(**{f"{date_field}__lt": cutoff_critical})
+            elif age_group == 'new':
+                qs = qs.filter(**{f"{date_field}__gte": cutoff_critical})
+
+        elif is_pide_dalam_proses:
+            # PIDE Dalam Proses SLA: 30 working days = 42 calendar days from Tanggal Rekam PIDE (fallback to tgl_kirim_pide)
+            qs = qs.annotate(effective_pide_date=Coalesce('tgl_rekam_pide', 'tgl_kirim_pide'))
+            cutoff_critical = now - timedelta(days=42)
+            critical_count = qs.filter(effective_pide_date__lt=cutoff_critical).count()
+            warning_count = 0
+            new_count = qs.filter(effective_pide_date__gte=cutoff_critical).count()
+            
+            # Apply age_group filter
+            age_group = request.GET.get('age_group')
+            if age_group == 'critical':
+                qs = qs.filter(effective_pide_date__lt=cutoff_critical)
+            elif age_group == 'new':
+                qs = qs.filter(effective_pide_date__gte=cutoff_critical)
+
+        elif is_pmde_category:
+            date_field = 'tgl_transfer'
+            # PMDE SLA: 85 working days = 17 weeks = 119 calendar days
+            cutoff_critical = now - timedelta(days=119)
+            critical_count = qs.filter(**{f"{date_field}__lt": cutoff_critical}).count()
+            warning_count = 0
+            new_count = qs.filter(**{f"{date_field}__gte": cutoff_critical}).count()
+            
+            # Apply age_group filter
+            age_group = request.GET.get('age_group')
+            if age_group == 'critical':
+                qs = qs.filter(**{f"{date_field}__lt": cutoff_critical})
+            elif age_group == 'new':
+                qs = qs.filter(**{f"{date_field}__gte": cutoff_critical})
+        else:
+            # Default P3DE limits (critical: >7 days, warning: 3-7 days, new: <3 days)
+            date_field = 'tgl_terima_dip'
+            cutoff_critical = now - timedelta(days=7)
+            cutoff_warning = now - timedelta(days=3)
+            
+            critical_count = qs.filter(**{f"{date_field}__lt": cutoff_critical}).count()
+            warning_count = qs.filter(**{f"{date_field}__range": (cutoff_critical, cutoff_warning)}).count()
+            new_count = qs.filter(**{f"{date_field}__gte": cutoff_warning}).count()
+            
+            # Apply age_group filter
+            age_group = request.GET.get('age_group')
+            if age_group == 'critical':
+                qs = qs.filter(**{f"{date_field}__lt": cutoff_critical})
+            elif age_group == 'warning':
+                qs = qs.filter(**{f"{date_field}__range": (cutoff_critical, cutoff_warning)})
+            elif age_group == 'new':
+                qs = qs.filter(**{f"{date_field}__gte": cutoff_warning})
+
+
+    elif is_jenis_data_category:
+        total_ilap = qs.values('id_ilap').distinct().count()
+        total_jenis_data = records_total
+        
+        ilap_list = list(qs.values_list('id_ilap__nama_ilap', flat=True).distinct())
+        jenis_data_list = list(qs.values_list('nama_sub_jenis_data', flat=True).distinct())
+
+    ilap_list = sorted(list(set(n for n in ilap_list if n)))
+    jenis_data_list = sorted(list(set(n for n in jenis_data_list if n)))
+
     # Global search for tiket categories
     if search_value and is_tiket_category:
         qs = qs.filter(
@@ -491,8 +619,10 @@ def home_data(request):
 
     if is_tiket_category:
         columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'tgl_terima_dip']
-        if category in ('belum_mulai_proses_identifikasi', 'dalam_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic'):
+        if category in ('belum_mulai_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic'):
             columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'tgl_kirim_pide']
+        elif category == 'dalam_proses_identifikasi':
+            columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'tgl_rekam_pide']
         elif category in ('dalam_proses_pengendalian_mutu', 'tiket_pengendalian_mutu_tanpa_pic'):
             columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'tgl_transfer']
         elif category == 'periode_tiket_null_p3de':
@@ -512,6 +642,8 @@ def home_data(request):
                     col = 'tgl_terima_dip'
                 elif col == 'tgl_kirim_pide':
                     col = 'tgl_kirim_pide'
+                elif col == 'tgl_rekam_pide':
+                    col = 'tgl_rekam_pide'
                 elif col == 'tgl_transfer':
                     col = 'tgl_transfer'
                 if order_dir == 'desc':
@@ -545,12 +677,55 @@ def home_data(request):
         if is_tiket_category:
             nama_ilap = obj.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap
             nama_sub_jenis = obj.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data
+            nama_tabel_I = obj.id_periode_data.id_sub_jenis_data_ilap.nama_tabel_I or '-'
             view_url = reverse('tiket_detail', args=[obj.id])
-            action_html = f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a>'
+            # Build action HTML — add quick-assign button for admin tiket_dikirim_ke_pide_tanpa_pic
+            if category == 'tiket_dikirim_ke_pide_tan_pic' or category == 'tiket_dikirim_ke_pide_tanpa_pic':
+                sub_jenis_id = obj.id_periode_data.id_sub_jenis_data_ilap_id
+                sub_jenis_kode = obj.id_periode_data.id_sub_jenis_data_ilap.id_sub_jenis_data
+                sub_jenis_nama_esc = nama_sub_jenis.replace('"', '&quot;').replace("'", '&#39;')
+                nama_ilap_esc = nama_ilap.replace('"', '&quot;').replace("'", '&#39;')
+                action_html = (
+                    f'<div class="d-flex justify-content-center gap-1">'
+                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat">'
+                    f'<i class="feather-eye"></i></a> '
+                    f'<button type="button" class="btn btn-sm btn-success btn-quick-assign-pide" '
+                    f'data-subjenis-id="{sub_jenis_id}" '
+                    f'data-subjenis-kode="{sub_jenis_kode}" '
+                    f'data-subjenis-nama="{sub_jenis_nama_esc}" '
+                    f'data-ilap="{nama_ilap_esc}" '
+                    f'title="Assign PIC PIDE">'
+                    f'<i class="feather-user-plus"></i></button>'
+                    f'</div>'
+                )
+            elif category == 'tiket_pengendalian_mutu_tanpa_pic' or category == 'tiket_pengendalian_mutu_tan_pic':
+                sub_jenis_id = obj.id_periode_data.id_sub_jenis_data_ilap_id
+                sub_jenis_kode = obj.id_periode_data.id_sub_jenis_data_ilap.id_sub_jenis_data
+                sub_jenis_nama_esc = nama_sub_jenis.replace('"', '&quot;').replace("'", '&#39;')
+                nama_ilap_esc = nama_ilap.replace('"', '&quot;').replace("'", '&#39;')
+                action_html = (
+                    f'<div class="d-flex justify-content-center gap-1">'
+                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat">'
+                    f'<i class="feather-eye"></i></a> '
+                    f'<button type="button" class="btn btn-sm btn-success btn-quick-assign-pmde" '
+                    f'data-subjenis-id="{sub_jenis_id}" '
+                    f'data-subjenis-kode="{sub_jenis_kode}" '
+                    f'data-subjenis-nama="{sub_jenis_nama_esc}" '
+                    f'data-ilap="{nama_ilap_esc}" '
+                    f'title="Assign PIC PMDE">'
+                    f'<i class="feather-user-plus"></i></button>'
+                    f'</div>'
+                )
+            else:
+                action_html = f'<div class="d-flex justify-content-center gap-1"><a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a></div>'
 
-            if category in ('belum_mulai_proses_identifikasi', 'dalam_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic'):
+            if category in ('belum_mulai_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic'):
                 date_val = obj.tgl_kirim_pide.strftime('%d-%m-%Y') if obj.tgl_kirim_pide else ''
                 date_order = obj.tgl_kirim_pide.strftime('%Y-%m-%d') if obj.tgl_kirim_pide else ''
+            elif category == 'dalam_proses_identifikasi':
+                pide_dt = obj.tgl_rekam_pide or obj.tgl_kirim_pide
+                date_val = pide_dt.strftime('%d-%m-%Y') if pide_dt else ''
+                date_order = pide_dt.strftime('%Y-%m-%d') if pide_dt else ''
             elif category in ('dalam_proses_pengendalian_mutu', 'tiket_pengendalian_mutu_tanpa_pic'):
                 date_val = obj.tgl_transfer.strftime('%d-%m-%Y') if obj.tgl_transfer else ''
                 date_order = obj.tgl_transfer.strftime('%Y-%m-%d') if obj.tgl_transfer else ''
@@ -563,6 +738,7 @@ def home_data(request):
                     'nomor_tiket': obj.nomor_tiket,
                     'nama_ilap': nama_ilap,
                     'nama_sub_jenis_data': nama_sub_jenis,
+                    'nama_tabel_I': nama_tabel_I,
                     'periode': obj.periode,
                     'tahun': obj.tahun,
                     'status_tiket': STATUS_LABELS.get(obj.status_tiket, ''),
@@ -581,16 +757,69 @@ def home_data(request):
                     'nomor_tiket': obj.nomor_tiket,
                     'nama_ilap': nama_ilap,
                     'nama_sub_jenis_data': nama_sub_jenis,
+                    'nama_tabel_I': nama_tabel_I,
                     'tanggal': date_val,
                     'tanggal_order': date_order,
                     'actions': action_html,
                 })
         elif is_jenis_data_category:
+            action_html = ''
+            if category == 'jenis_data_tanpa_pic_p3de':
+                sub_jenis_id = obj.pk
+                sub_jenis_kode = obj.id_sub_jenis_data
+                sub_jenis_nama_esc = obj.nama_sub_jenis_data.replace('"', '&quot;').replace("'", '&#39;')
+                nama_ilap_esc = obj.id_ilap.nama_ilap.replace('"', '&quot;').replace("'", '&#39;')
+                action_html = (
+                    f'<div class="d-flex justify-content-center gap-1">'
+                    f'<button type="button" class="btn btn-sm btn-success btn-quick-assign-p3de" '
+                    f'data-subjenis-id="{sub_jenis_id}" '
+                    f'data-subjenis-kode="{sub_jenis_kode}" '
+                    f'data-subjenis-nama="{sub_jenis_nama_esc}" '
+                    f'data-ilap="{nama_ilap_esc}" '
+                    f'title="Assign PIC P3DE">'
+                    f'<i class="feather-user-plus"></i></button>'
+                    f'</div>'
+                )
+            elif category == 'jenis_data_tanpa_pic_pide':
+                sub_jenis_id = obj.pk
+                sub_jenis_kode = obj.id_sub_jenis_data
+                sub_jenis_nama_esc = obj.nama_sub_jenis_data.replace('"', '&quot;').replace("'", '&#39;')
+                nama_ilap_esc = obj.id_ilap.nama_ilap.replace('"', '&quot;').replace("'", '&#39;')
+                action_html = (
+                    f'<div class="d-flex justify-content-center gap-1">'
+                    f'<button type="button" class="btn btn-sm btn-success btn-quick-assign-pide" '
+                    f'data-subjenis-id="{sub_jenis_id}" '
+                    f'data-subjenis-kode="{sub_jenis_kode}" '
+                    f'data-subjenis-nama="{sub_jenis_nama_esc}" '
+                    f'data-ilap="{nama_ilap_esc}" '
+                    f'title="Assign PIC PIDE">'
+                    f'<i class="feather-user-plus"></i></button>'
+                    f'</div>'
+                )
+            elif category == 'jenis_data_tanpa_pic_pmde':
+                sub_jenis_id = obj.pk
+                sub_jenis_kode = obj.id_sub_jenis_data
+                sub_jenis_nama_esc = obj.nama_sub_jenis_data.replace('"', '&quot;').replace("'", '&#39;')
+                nama_ilap_esc = obj.id_ilap.nama_ilap.replace('"', '&quot;').replace("'", '&#39;')
+                action_html = (
+                    f'<div class="d-flex justify-content-center gap-1">'
+                    f'<button type="button" class="btn btn-sm btn-success btn-quick-assign-pmde" '
+                    f'data-subjenis-id="{sub_jenis_id}" '
+                    f'data-subjenis-kode="{sub_jenis_kode}" '
+                    f'data-subjenis-nama="{sub_jenis_nama_esc}" '
+                    f'data-ilap="{nama_ilap_esc}" '
+                    f'title="Assign PIC PMDE">'
+                    f'<i class="feather-user-plus"></i></button>'
+                    f'</div>'
+                )
+
             data.append({
                 'id_sub_jenis_data': obj.id_sub_jenis_data,
                 'nama_ilap': obj.id_ilap.nama_ilap,
                 'nama_jenis_data': obj.nama_jenis_data,
                 'nama_sub_jenis_data': obj.nama_sub_jenis_data,
+                'nama_tabel_I': obj.nama_tabel_I or '-',
+                'actions': action_html,
             })
 
     return JsonResponse({
@@ -598,4 +827,74 @@ def home_data(request):
         'recordsTotal': records_total,
         'recordsFiltered': records_filtered,
         'data': data,
+        'summary': {
+            'total_tiket': total_tiket,
+            'total_ilap': total_ilap,
+            'total_jenis_data': total_jenis_data,
+            'ilap_list': ilap_list,
+            'jenis_data_list': jenis_data_list,
+            'critical_count': critical_count,
+            'warning_count': warning_count,
+            'new_count': new_count,
+        }
     })
+
+
+@login_required
+@require_GET
+def home_pic_pide_users(request):
+    """Return JSON list of user_pide members for the quick-assign PIC PIDE modal.
+
+    Only accessible to admin_pide group members.
+    """
+    if not request.user.groups.filter(name='admin_pide').exists():
+        return JsonResponse({'error': 'Forbidden'}, status=403)
+    users = User.objects.filter(groups__name='user_pide').order_by('first_name', 'last_name')
+    data = [
+        {
+            'id': u.id,
+            'label': f"{u.first_name} {u.last_name} ({u.username})".strip() or u.username
+        }
+        for u in users
+    ]
+    return JsonResponse({'users': data})
+
+
+@login_required
+@require_GET
+def home_pic_p3de_users(request):
+    """Return JSON list of user_p3de members for the quick-assign PIC P3DE modal.
+
+    Only accessible to admin_p3de group members.
+    """
+    if not request.user.groups.filter(name='admin_p3de').exists():
+        return JsonResponse({'error': 'Forbidden'}, status=403)
+    users = User.objects.filter(groups__name='user_p3de').order_by('first_name', 'last_name')
+    data = [
+        {
+            'id': u.id,
+            'label': f"{u.first_name} {u.last_name} ({u.username})".strip() or u.username
+        }
+        for u in users
+    ]
+    return JsonResponse({'users': data})
+
+
+@login_required
+@require_GET
+def home_pic_pmde_users(request):
+    """Return JSON list of user_pmde members for the quick-assign PIC PMDE modal.
+
+    Only accessible to admin_pmde group members.
+    """
+    if not request.user.groups.filter(name='admin_pmde').exists():
+        return JsonResponse({'error': 'Forbidden'}, status=403)
+    users = User.objects.filter(groups__name='user_pmde').order_by('first_name', 'last_name')
+    data = [
+        {
+            'id': u.id,
+            'label': f"{u.first_name} {u.last_name} ({u.username})".strip() or u.username
+        }
+        for u in users
+    ]
+    return JsonResponse({'users': data})

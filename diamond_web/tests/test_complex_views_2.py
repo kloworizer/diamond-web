@@ -1120,7 +1120,7 @@ class TestPICDatatables:
         assert resp.status_code == 200
         data = resp.json()
         assert data['recordsTotal'] >= 1
-        all_users = [row['user'] for row in data['data']]
+        all_users = [row['full_name'] for row in data['data']]
         # 'Dedi Kurniawan' should be in at least one row
         assert any('Dedi' in u or user_for_pic.username in u for u in all_users)
 
@@ -1199,7 +1199,7 @@ class TestPICDatatables:
         assert resp.status_code == 200
         data = resp.json()
         assert data['recordsFiltered'] >= 1
-        users_in_data = [row['user'] for row in data['data']]
+        users_in_data = [row['full_name'] for row in data['data']]
         # Row should show the username since no first/last name
         assert any(user_for_pic.username in u for u in users_in_data)
 
@@ -1360,7 +1360,7 @@ class TestMonitoringAdditionalCoverage:
         dh = DasarHukumFactory()
         jdi = JenisDataILAPFactory()
         # Create KlasifikasiJenisData linking jdi to dh
-        KlasifikasiJenisDataFactory(id_jenis_data_ilap=jdi, id_klasifikasi_tabel=dh)
+        KlasifikasiJenisDataFactory(id_sub_jenis_data=jdi, id_klasifikasi_tabel=dh)
         pp = self._get_or_create_pp('BulananDasarHukum', 'Bulanan')
         PeriodeJenisDataFactory(
             id_sub_jenis_data_ilap=jdi, id_periode_pengiriman=pp,

@@ -85,11 +85,20 @@
         min-height: auto !important;
         overflow: hidden !important;
         padding-bottom: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
     
     .nxl-content {
-        height: 100% !important;
+        flex: 1 !important;
+        height: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
         overflow: hidden !important;
+    }
+    
+    .footer {
+        flex: none !important;
     }
     
     .main-content {
@@ -148,8 +157,315 @@
         margin-bottom: 24px !important;
     }
     
-    /* Hide the footer on home page to maximize workspace */
-    .nxl-container .footer {
+
+
+    #sidebar-toggle-btn {
+        position: relative !important;
+        top: auto !important;
+        right: auto !important;
+        width: 32px !important;
+        height: 32px !important;
+        border-radius: 8px !important;
+        background: #f1f5f9 !important;
+        border: none !important;
+        box-shadow: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 1060 !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease-in-out !important;
+        padding: 0 !important;
+        color: #64748b !important;
+    }
+
+    #sidebar-toggle-btn:hover {
+        background: #e2e8f0 !important;
+        color: #0f172a !important;
+    }
+    
+    #sidebar-toggle-btn i {
+        font-size: 16px !important;
+        transition: transform 0.3s ease !important;
+    }
+
+    .content-sidebar-header {
+        padding: 16px 20px !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        min-height: 70px;
+    }
+
+    .sidebar-header-text {
+        transition: opacity 0.2s ease, width 0.2s ease !important;
+        opacity: 1;
+        width: auto;
+    }
+
+    /* Collapsible Sidebar Styles */
+    .content-sidebar {
+        width: 300px !important;
+        transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease !important;
+        position: relative !important;
+        z-index: 100 !important;
+        border-right: 1px solid #e2e8f0 !important;
+    }
+
+    .content-sidebar.collapsed {
+        width: 76px !important;
+    }
+
+    .content-sidebar.collapsed.hover-expanded {
+        width: 300px !important;
+        box-shadow: 10px 0 15px -3px rgba(0, 0, 0, 0.05), 4px 0 6px -2px rgba(0, 0, 0, 0.05) !important;
+    }
+
+    /* Hide text when collapsed and not expanded on hover */
+    .content-sidebar.collapsed:not(.hover-expanded) .sidebar-header-text {
+        opacity: 0 !important;
+        width: 0 !important;
+        overflow: hidden !important;
+        display: block !important;
+    }
+
+    .content-sidebar.collapsed:not(.hover-expanded) .content-sidebar-header {
+        padding: 16px 0 !important;
+        justify-content: center !important;
+    }
+
+    .content-sidebar.collapsed:not(.hover-expanded) #sidebar-toggle-btn {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    .content-sidebar.collapsed:not(.hover-expanded) .role-section-header small,
+    .content-sidebar.collapsed:not(.hover-expanded) .nav-link span:not(.icon-bg-soft),
+    .content-sidebar.collapsed:not(.hover-expanded) .nav-link .badge {
+        display: none !important;
+    }
+
+    /* Center icons when collapsed */
+    .content-sidebar.collapsed:not(.hover-expanded) .nav-link {
+        justify-content: center !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    .content-sidebar.collapsed:not(.hover-expanded) .role-section-header {
+        justify-content: center !important;
+        padding-left: 0 !important;
+    }
+
+    /* Compact Summary Card (shared, semua submenu) */
+    .summary-card-container {
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 10px !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .summary-card-divider {
+        border-left: none;
+    }
+
+    @media (min-width: 768px) {
+        .summary-card-divider {
+            border-left: 1.5px solid #e2e8f0 !important;
+        }
+    }
+
+    /* Sticky Actions column in DataTable */
+    .col-actions {
+        position: sticky !important;
+        right: 0 !important;
+        z-index: 5 !important;
+        background-color: #ffffff !important;
+        border-left: 1px solid #e2e8f0 !important;
+        box-shadow: -4px 0 8px rgba(0, 0, 0, 0.02) !important;
+        white-space: nowrap !important;
+        text-align: center !important;
+    }
+    
+    th.col-actions {
+        z-index: 12 !important;
+        background-color: #f8fafc !important;
+        box-shadow: -4px 0 8px rgba(0, 0, 0, 0.02), inset 0 -1px 0 #dee2e6 !important;
+    }
+
+
+    /* Disable uppercase on tooltips for readability */
+    .tooltip, .tooltip-inner {
+        text-transform: none !important;
+    }
+
+    /* Custom Soft Urgency Chips */
+    .btn-urgency-custom {
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important; /* Soft gray border */
+        color: #64748b !important; /* Muted text */
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 500;
+        padding: 4px 10px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-urgency-custom:hover {
+        background-color: #f8fafc !important;
+        border-color: #cbd5e1 !important;
+        color: #334155 !important;
+    }
+
+    /* Active States */
+    .btn-urgency-custom[data-urgency="all"].active {
+        background-color: #f1f5f9 !important;
+        border-color: #94a3b8 !important;
+        color: #1e293b !important;
+        font-weight: 600;
+    }
+
+    .btn-urgency-custom[data-urgency="new"].active {
+        background-color: #ecfdf5 !important;
+        border-color: #10b981 !important;
+        color: #047857 !important;
+        font-weight: 600;
+    }
+
+    .btn-urgency-custom[data-urgency="warning"].active {
+        background-color: #fffbeb !important;
+        border-color: #f59e0b !important;
+        color: #b45309 !important;
+        font-weight: 600;
+    }
+
+    .btn-urgency-custom[data-urgency="critical"].active {
+        background-color: #fef2f2 !important;
+        border-color: #ef4444 !important;
+        color: #b91c1c !important;
+        font-weight: 600;
+    }
+
+    .summary-value {
+        font-size: 20px !important;
+        font-weight: 800 !important;
+        line-height: 1.1 !important;
+    }
+
+    .summary-card-container .summary-icon {
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px !important;
+        flex-shrink: 0;
+    }
+
+    /* ── Table Toolbar Strip (pattern: metrics-left, actions-right) ── */
+    .table-toolbar-strip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 8px 12px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        margin-bottom: 12px;
+    }
+    .toolbar-metrics {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    .toolbar-metric-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #374151;
+        white-space: nowrap;
+        transition: box-shadow 0.15s;
+    }
+    .toolbar-metric-pill .pill-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .toolbar-metric-pill .pill-val {
+        font-size: 13px;
+        font-weight: 800;
+        min-width: 14px;
+        text-align: right;
+    }
+    .toolbar-metric-pill .pill-lbl {
+        font-size: 11px;
+        font-weight: 500;
+        color: #6b7280;
+    }
+    .toolbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .toolbar-search-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+    .toolbar-search-wrap .search-icon {
+        position: absolute;
+        left: 9px;
+        color: #9ca3af;
+        font-size: 13px;
+        pointer-events: none;
+        display: flex;
+        align-items: center;
+    }
+    .toolbar-search-wrap input.toolbar-search-input {
+        height: 32px !important;
+        padding: 0 30px 0 30px !important;
+        font-size: 12px !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 6px !important;
+        background: #fff !important;
+        color: #111827 !important;
+        min-width: 200px;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .toolbar-search-wrap input.toolbar-search-input:focus {
+        border-color: #00BDFB !important;
+        box-shadow: 0 0 0 2px rgba(0, 189, 251, 0.12) !important;
+        outline: none !important;
+    }
+    .toolbar-search-wrap .clear-search-btn {
+        position: absolute;
+        right: 7px;
+        background: none;
+        border: none;
+        padding: 0;
+        color: #9ca3af;
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        font-size: 12px;
+        line-height: 1;
+    }
+    .toolbar-search-wrap input.toolbar-search-input:not(:placeholder-shown) ~ .clear-search-btn {
+        display: flex;
+    }
+    /* Hide browser native round search cancel button */
+    .dt-search input[type="search"]::-webkit-search-cancel-button {
+        -webkit-appearance: none !important;
         display: none !important;
     }
 </style>
@@ -159,11 +475,14 @@
 
         <!-- [ Sidebar ] start -->
         <div class="content-sidebar content-sidebar-md">
-            <div class="content-sidebar-header bg-white hstack justify-content-between">
-                <div>
-                    <h4 class="fw-bolder mb-0">Tugas Saya</h4>
-                    <small class="text-muted">{{ user.get_full_name|default:user.username }}</small>
+            <div class="content-sidebar-header bg-white hstack justify-content-between position-relative">
+                <div class="sidebar-header-text">
+                    <h4 class="fw-bolder mb-0 text-truncate" style="max-width: 180px;">Tugas Saya</h4>
+                    <small class="text-muted text-truncate d-block" style="max-width: 180px;">{{ user.get_full_name|default:user.username }}</small>
                 </div>
+                <button type="button" id="sidebar-toggle-btn" class="btn btn-sm btn-icon btn-light-brand border-0 ms-auto" data-bs-toggle="tooltip" data-bs-placement="right" title="Sembunyikan Sidebar">
+                    <i class="feather-chevrons-left fs-16"></i>
+                </button>
             </div>
             <div class="content-sidebar-scrollable-wrapper" data-scrollbar-target="#psScrollbarInit">
                 {% if is_p3de %}
@@ -457,7 +776,67 @@
                 <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">P3DE - Tugas</h6> -->
                 <!-- Belum Rekam Backup Data -->
                 <div class="card stretch stretch-full" data-category="belum_rekam_backup_data">
-                    <div class="card-body custom-card-action p-0">
+                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                        <!-- Unified Dashboard Toolbar -->
+                        <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <!-- Left Section: Metrics -->
+                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                    <!-- Total Tiket -->
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-file-text fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Tiket</small>
+                                            <h5 class="fw-bolder mb-0 text-primary" id="summary-total-tiket-belum_rekam_backup_data" style="color: #00BDFB !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jumlah ILAP -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-ilap-wrapper-belum_rekam_backup_data" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data ILAP">
+                                        <div class="avatar avatar-xs bg-soft-warning text-warning" style="background-color: rgba(239, 186, 34, 0.1) !important; color: #EFBA22 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-home fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">ILAP</small>
+                                            <h5 class="fw-bolder mb-0 text-warning" id="summary-total-ilap-belum_rekam_backup_data" style="color: #EFBA22 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jenis Data -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-jenis-wrapper-belum_rekam_backup_data" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data Jenis">
+                                        <div class="avatar avatar-xs bg-soft-success text-success" style="background-color: rgba(22, 192, 152, 0.1) !important; color: #16C098 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-database fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Jenis Data</small>
+                                            <h5 class="fw-bolder mb-0 text-success" id="summary-total-jenis-data-belum_rekam_backup_data" style="color: #16C098 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Section: Urgency Filter Badges -->
+                                <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-belum_rekam_backup_data">
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i>:</span>
+                                    <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
+                                        <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-belum_rekam_backup_data">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 3 Hari">
+                                        <i class="feather-clock me-1 align-middle" style="color: #10b981;"></i>Baru (<span id="count-new-belum_rekam_backup_data">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="warning" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Perhatian: Tiket mengendap 3 s.d. 7 Hari">
+                                        <i class="feather-alert-circle me-1 align-middle" style="color: #f59e0b;"></i>Perlu Perhatian (<span id="count-warning-belum_rekam_backup_data">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 7 Hari">
+                                        <i class="feather-alert-triangle me-1 align-middle" style="color: #ef4444;"></i>Perlu Segera (<span id="count-critical-belum_rekam_backup_data">0</span>)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-belum_rekam_backup_data" style="width:100%">
                                 <thead>
@@ -466,7 +845,7 @@
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
                                         <th>Tgl Terima DIP</th>
-                                        <th>Aksi</th>
+                                        <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -478,7 +857,68 @@
 
                 <!-- Belum Dibuat Tanda Terima -->
                 <div class="card stretch stretch-full" data-category="belum_dibuat_tanda_terima" style="display:none;">
-                    <div class="card-body custom-card-action p-0">
+                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+
+                        <!-- Unified Dashboard Toolbar -->
+                        <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <!-- Left Section: Metrics -->
+                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                    <!-- Total Tiket -->
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-file-text fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Tiket</small>
+                                            <h5 class="fw-bolder mb-0 text-primary" id="summary-total-tiket-belum_dibuat_tanda_terima" style="color: #00BDFB !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jumlah ILAP -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-ilap-wrapper-belum_dibuat_tanda_terima" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data ILAP">
+                                        <div class="avatar avatar-xs bg-soft-warning text-warning" style="background-color: rgba(239, 186, 34, 0.1) !important; color: #EFBA22 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-home fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">ILAP</small>
+                                            <h5 class="fw-bolder mb-0 text-warning" id="summary-total-ilap-belum_dibuat_tanda_terima" style="color: #EFBA22 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jenis Data -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-jenis-wrapper-belum_dibuat_tanda_terima" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data Jenis">
+                                        <div class="avatar avatar-xs bg-soft-success text-success" style="background-color: rgba(22, 192, 152, 0.1) !important; color: #16C098 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-database fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Jenis Data</small>
+                                            <h5 class="fw-bolder mb-0 text-success" id="summary-total-jenis-data-belum_dibuat_tanda_terima" style="color: #16C098 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Section: Urgency Filter Badges -->
+                                <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-belum_dibuat_tanda_terima">
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i>:</span>
+                                    <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
+                                        <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-belum_dibuat_tanda_terima">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 3 Hari">
+                                        <i class="feather-clock me-1 align-middle" style="color: #10b981;"></i>Baru (<span id="count-new-belum_dibuat_tanda_terima">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="warning" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Perhatian: Tiket mengendap 3 s.d. 7 Hari">
+                                        <i class="feather-alert-circle me-1 align-middle" style="color: #f59e0b;"></i>Perlu Perhatian (<span id="count-warning-belum_dibuat_tanda_terima">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 7 Hari">
+                                        <i class="feather-alert-triangle me-1 align-middle" style="color: #ef4444;"></i>Perlu Segera (<span id="count-critical-belum_dibuat_tanda_terima">0</span>)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-belum_dibuat_tanda_terima" style="width:100%">
                                 <thead>
@@ -486,8 +926,9 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
+                                        <th>Nama Tabel I</th>
                                         <th>Tgl Terima DIP</th>
-                                        <th>Aksi</th>
+                                        <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -499,7 +940,67 @@
 
                 <!-- Belum Diteliti -->
                 <div class="card stretch stretch-full" data-category="belum_diteliti" style="display:none;">
-                    <div class="card-body custom-card-action p-0">
+                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                        <!-- Unified Dashboard Toolbar -->
+                        <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <!-- Left Section: Metrics -->
+                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                    <!-- Total Tiket -->
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-file-text fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Tiket</small>
+                                            <h5 class="fw-bolder mb-0 text-primary" id="summary-total-tiket-belum_diteliti" style="color: #00BDFB !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jumlah ILAP -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-ilap-wrapper-belum_diteliti" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data ILAP">
+                                        <div class="avatar avatar-xs bg-soft-warning text-warning" style="background-color: rgba(239, 186, 34, 0.1) !important; color: #EFBA22 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-home fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">ILAP</small>
+                                            <h5 class="fw-bolder mb-0 text-warning" id="summary-total-ilap-belum_diteliti" style="color: #EFBA22 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jenis Data -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-jenis-wrapper-belum_diteliti" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data Jenis">
+                                        <div class="avatar avatar-xs bg-soft-success text-success" style="background-color: rgba(22, 192, 152, 0.1) !important; color: #16C098 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-database fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Jenis Data</small>
+                                            <h5 class="fw-bolder mb-0 text-success" id="summary-total-jenis-data-belum_diteliti" style="color: #16C098 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Section: Urgency Filter Badges -->
+                                <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-belum_diteliti">
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i>:</span>
+                                    <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
+                                        <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-belum_diteliti">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 3 Hari">
+                                        <i class="feather-clock me-1 align-middle" style="color: #10b981;"></i>Baru (<span id="count-new-belum_diteliti">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="warning" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Perhatian: Tiket mengendap 3 s.d. 7 Hari">
+                                        <i class="feather-alert-circle me-1 align-middle" style="color: #f59e0b;"></i>Perlu Perhatian (<span id="count-warning-belum_diteliti">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 7 Hari">
+                                        <i class="feather-alert-triangle me-1 align-middle" style="color: #ef4444;"></i>Perlu Segera (<span id="count-critical-belum_diteliti">0</span>)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-belum_diteliti" style="width:100%">
                                 <thead>
@@ -507,8 +1008,9 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
+                                        <th>Nama Tabel I</th>
                                         <th>Tgl Terima DIP</th>
-                                        <th>Aksi</th>
+                                        <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -520,7 +1022,67 @@
 
                 <!-- Belum Dikirim ke PIDE -->
                 <div class="card stretch stretch-full" data-category="belum_dikirim_ke_pide" style="display:none;">
-                    <div class="card-body custom-card-action p-0">
+                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                        <!-- Unified Dashboard Toolbar -->
+                        <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <!-- Left Section: Metrics -->
+                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                    <!-- Total Tiket -->
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-file-text fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Tiket</small>
+                                            <h5 class="fw-bolder mb-0 text-primary" id="summary-total-tiket-belum_dikirim_ke_pide" style="color: #00BDFB !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jumlah ILAP -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-ilap-wrapper-belum_dikirim_ke_pide" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data ILAP">
+                                        <div class="avatar avatar-xs bg-soft-warning text-warning" style="background-color: rgba(239, 186, 34, 0.1) !important; color: #EFBA22 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-home fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">ILAP</small>
+                                            <h5 class="fw-bolder mb-0 text-warning" id="summary-total-ilap-belum_dikirim_ke_pide" style="color: #EFBA22 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jenis Data -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-jenis-wrapper-belum_dikirim_ke_pide" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data Jenis">
+                                        <div class="avatar avatar-xs bg-soft-success text-success" style="background-color: rgba(22, 192, 152, 0.1) !important; color: #16C098 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-database fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Jenis Data</small>
+                                            <h5 class="fw-bolder mb-0 text-success" id="summary-total-jenis-data-belum_dikirim_ke_pide" style="color: #16C098 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Section: Urgency Filter Badges -->
+                                <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-belum_dikirim_ke_pide">
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i>:</span>
+                                    <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
+                                        <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-belum_dikirim_ke_pide">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 3 Hari">
+                                        <i class="feather-clock me-1 align-middle" style="color: #10b981;"></i>Baru (<span id="count-new-belum_dikirim_ke_pide">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="warning" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Perhatian: Tiket mengendap 3 s.d. 7 Hari">
+                                        <i class="feather-alert-circle me-1 align-middle" style="color: #f59e0b;"></i>Perlu Perhatian (<span id="count-warning-belum_dikirim_ke_pide">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 7 Hari">
+                                        <i class="feather-alert-triangle me-1 align-middle" style="color: #ef4444;"></i>Perlu Segera (<span id="count-critical-belum_dikirim_ke_pide">0</span>)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-belum_dikirim_ke_pide" style="width:100%">
                                 <thead>
@@ -528,8 +1090,9 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
+                                        <th>Nama Tabel I</th>
                                         <th>Tgl Terima DIP</th>
-                                        <th>Aksi</th>
+                                        <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -541,7 +1104,67 @@
 
                 <!-- Pengembalian Seluruhnya dari PIDE -->
                 <div class="card stretch stretch-full" data-category="pengembalian_seluruhnya_dari_pide" style="display:none;">
-                    <div class="card-body custom-card-action p-0">
+                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                        <!-- Unified Dashboard Toolbar -->
+                        <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <!-- Left Section: Metrics -->
+                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                    <!-- Total Tiket -->
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-file-text fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Tiket</small>
+                                            <h5 class="fw-bolder mb-0 text-primary" id="summary-total-tiket-pengembalian_seluruhnya_dari_pide" style="color: #00BDFB !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jumlah ILAP -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-ilap-wrapper-pengembalian_seluruhnya_dari_pide" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data ILAP">
+                                        <div class="avatar avatar-xs bg-soft-warning text-warning" style="background-color: rgba(239, 186, 34, 0.1) !important; color: #EFBA22 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-home fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">ILAP</small>
+                                            <h5 class="fw-bolder mb-0 text-warning" id="summary-total-ilap-pengembalian_seluruhnya_dari_pide" style="color: #EFBA22 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jenis Data -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-jenis-wrapper-pengembalian_seluruhnya_dari_pide" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data Jenis">
+                                        <div class="avatar avatar-xs bg-soft-success text-success" style="background-color: rgba(22, 192, 152, 0.1) !important; color: #16C098 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-database fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Jenis Data</small>
+                                            <h5 class="fw-bolder mb-0 text-success" id="summary-total-jenis-data-pengembalian_seluruhnya_dari_pide" style="color: #16C098 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Section: Urgency Filter Badges -->
+                                <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-pengembalian_seluruhnya_dari_pide">
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i>:</span>
+                                    <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
+                                        <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-pengembalian_seluruhnya_dari_pide">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 3 Hari">
+                                        <i class="feather-clock me-1 align-middle" style="color: #10b981;"></i>Baru (<span id="count-new-pengembalian_seluruhnya_dari_pide">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="warning" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Perhatian: Tiket mengendap 3 s.d. 7 Hari">
+                                        <i class="feather-alert-circle me-1 align-middle" style="color: #f59e0b;"></i>Perlu Perhatian (<span id="count-warning-pengembalian_seluruhnya_dari_pide">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 7 Hari">
+                                        <i class="feather-alert-triangle me-1 align-middle" style="color: #ef4444;"></i>Perlu Segera (<span id="count-critical-pengembalian_seluruhnya_dari_pide">0</span>)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-pengembalian_seluruhnya_dari_pide" style="width:100%">
                                 <thead>
@@ -549,8 +1172,9 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
+                                        <th>Nama Tabel I</th>
                                         <th>Tgl Terima DIP</th>
-                                        <th>Aksi</th>
+                                        <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -559,9 +1183,70 @@
                         </div>
                     </div>
                 </div>
+
                 <!-- Pengembalian Sebagian dari PIDE -->
                 <div class="card stretch stretch-full" data-category="pengembalian_sebagian_dari_pide" style="display:none;">
-                    <div class="card-body custom-card-action p-0">
+                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                        <!-- Unified Dashboard Toolbar -->
+                        <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <!-- Left Section: Metrics -->
+                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                    <!-- Total Tiket -->
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-file-text fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Tiket</small>
+                                            <h5 class="fw-bolder mb-0 text-primary" id="summary-total-tiket-pengembalian_sebagian_dari_pide" style="color: #00BDFB !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jumlah ILAP -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-ilap-wrapper-pengembalian_sebagian_dari_pide" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data ILAP">
+                                        <div class="avatar avatar-xs bg-soft-warning text-warning" style="background-color: rgba(239, 186, 34, 0.1) !important; color: #EFBA22 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-home fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">ILAP</small>
+                                            <h5 class="fw-bolder mb-0 text-warning" id="summary-total-ilap-pengembalian_sebagian_dari_pide" style="color: #EFBA22 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jenis Data -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-jenis-wrapper-pengembalian_sebagian_dari_pide" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data Jenis">
+                                        <div class="avatar avatar-xs bg-soft-success text-success" style="background-color: rgba(22, 192, 152, 0.1) !important; color: #16C098 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-database fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Jenis Data</small>
+                                            <h5 class="fw-bolder mb-0 text-success" id="summary-total-jenis-data-pengembalian_sebagian_dari_pide" style="color: #16C098 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Section: Urgency Filter Badges -->
+                                <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-pengembalian_sebagian_dari_pide">
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i>:</span>
+                                    <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
+                                        <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-pengembalian_sebagian_dari_pide">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 3 Hari">
+                                        <i class="feather-clock me-1 align-middle" style="color: #10b981;"></i>Baru (<span id="count-new-pengembalian_sebagian_dari_pide">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="warning" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Perhatian: Tiket mengendap 3 s.d. 7 Hari">
+                                        <i class="feather-alert-circle me-1 align-middle" style="color: #f59e0b;"></i>Perlu Perhatian (<span id="count-warning-pengembalian_sebagian_dari_pide">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 7 Hari">
+                                        <i class="feather-alert-triangle me-1 align-middle" style="color: #ef4444;"></i>Perlu Segera (<span id="count-critical-pengembalian_sebagian_dari_pide">0</span>)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-pengembalian_sebagian_dari_pide" style="width:100%">
                                 <thead>
@@ -569,8 +1254,9 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
+                                        <th>Nama Tabel I</th>
                                         <th>Tgl Terima DIP</th>
-                                        <th>Aksi</th>
+                                        <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -579,9 +1265,70 @@
                         </div>
                     </div>
                 </div>
-                    <!-- Diklarifikasi -->  
+
+                <!-- Diklarifikasi -->
                 <div class="card stretch stretch-full" data-category="diklarifikasi" style="display:none;">
-                    <div class="card-body custom-card-action p-0">
+                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                        <!-- Unified Dashboard Toolbar -->
+                        <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <!-- Left Section: Metrics -->
+                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                    <!-- Total Tiket -->
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-file-text fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Tiket</small>
+                                            <h5 class="fw-bolder mb-0 text-primary" id="summary-total-tiket-diklarifikasi" style="color: #00BDFB !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jumlah ILAP -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-ilap-wrapper-diklarifikasi" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data ILAP">
+                                        <div class="avatar avatar-xs bg-soft-warning text-warning" style="background-color: rgba(239, 186, 34, 0.1) !important; color: #EFBA22 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-home fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">ILAP</small>
+                                            <h5 class="fw-bolder mb-0 text-warning" id="summary-total-ilap-diklarifikasi" style="color: #EFBA22 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jenis Data -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-jenis-wrapper-diklarifikasi" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data Jenis">
+                                        <div class="avatar avatar-xs bg-soft-success text-success" style="background-color: rgba(22, 192, 152, 0.1) !important; color: #16C098 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-database fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Jenis Data</small>
+                                            <h5 class="fw-bolder mb-0 text-success" id="summary-total-jenis-data-diklarifikasi" style="color: #16C098 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Section: Urgency Filter Badges -->
+                                <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-diklarifikasi">
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i>:</span>
+                                    <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
+                                        <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-diklarifikasi">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 3 Hari">
+                                        <i class="feather-clock me-1 align-middle" style="color: #10b981;"></i>Baru (<span id="count-new-diklarifikasi">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="warning" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Perhatian: Tiket mengendap 3 s.d. 7 Hari">
+                                        <i class="feather-alert-circle me-1 align-middle" style="color: #f59e0b;"></i>Perlu Perhatian (<span id="count-warning-diklarifikasi">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 7 Hari">
+                                        <i class="feather-alert-triangle me-1 align-middle" style="color: #ef4444;"></i>Perlu Segera (<span id="count-critical-diklarifikasi">0</span>)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-diklarifikasi" style="width:100%">
                                 <thead>
@@ -589,8 +1336,9 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
+                                        <th>Nama Tabel I</th>
                                         <th>Tgl Terima DIP</th>
-                                        <th>Aksi</th>
+                                        <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -607,10 +1355,12 @@
                             <table class="table table-hover mb-0 tiket-datatable" id="table-jenis_data_tanpa_pic_p3de" style="width:100%">
                                 <thead>
                                     <tr>
-                                        <th>Sub Jenis Data</th>
+                                        <th>ID Sub Jenis Data</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
                                         <th>Sub Jenis Data</th>
+                                        <th>Nama Tabel I</th>
+                                        <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -632,10 +1382,9 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
-                                        <th>Periode</th>
                                         <th>Tahun</th>
                                         <th>Status</th>
-                                        <th>Aksi</th>
+                                        <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -655,7 +1404,64 @@
                 <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">PIDE - Identifikasi</h6> -->
                 <!-- Belum Mulai Proses Identifikasi -->
                 <div class="card stretch stretch-full" data-category="belum_mulai_proses_identifikasi">
-                    <div class="card-body custom-card-action p-0">
+                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                        <!-- Unified Dashboard Toolbar -->
+                        <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <!-- Left Section: Metrics -->
+                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                    <!-- Total Tiket -->
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-file-text fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Tiket</small>
+                                            <h5 class="fw-bolder mb-0 text-primary" id="summary-total-tiket-belum_mulai_proses_identifikasi" style="color: #00BDFB !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jumlah ILAP -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-ilap-wrapper-belum_mulai_proses_identifikasi" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data ILAP">
+                                        <div class="avatar avatar-xs bg-soft-warning text-warning" style="background-color: rgba(239, 186, 34, 0.1) !important; color: #EFBA22 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-home fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">ILAP</small>
+                                            <h5 class="fw-bolder mb-0 text-warning" id="summary-total-ilap-belum_mulai_proses_identifikasi" style="color: #EFBA22 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jenis Data -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-jenis-wrapper-belum_mulai_proses_identifikasi" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data Jenis">
+                                        <div class="avatar avatar-xs bg-soft-success text-success" style="background-color: rgba(22, 192, 152, 0.1) !important; color: #16C098 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-database fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Jenis Data</small>
+                                            <h5 class="fw-bolder mb-0 text-success" id="summary-total-jenis-data-belum_mulai_proses_identifikasi" style="color: #16C098 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Section: Urgency Filter Badges -->
+                                <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-belum_mulai_proses_identifikasi">
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kerja dari Tanggal Kirim PIDE" style="cursor: pointer;"></i>:</span>
+                                    <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
+                                        <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-belum_mulai_proses_identifikasi">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 30 Hari Kerja">
+                                        <i class="feather-clock me-1 align-middle" style="color: #10b981;"></i>Baru (<span id="count-new-belum_mulai_proses_identifikasi">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 30 Hari Kerja">
+                                        <i class="feather-alert-triangle me-1 align-middle" style="color: #ef4444;"></i>Perlu Segera (<span id="count-critical-belum_mulai_proses_identifikasi">0</span>)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-belum_mulai_proses_identifikasi" style="width:100%">
                                 <thead>
@@ -663,8 +1469,9 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
+                                        <th>Nama Tabel I</th>
                                         <th>Tgl Kirim PIDE</th>
-                                        <th>Aksi</th>
+                                        <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -676,7 +1483,64 @@
 
                 <!-- Dalam Proses Identifikasi -->
                 <div class="card stretch stretch-full" data-category="dalam_proses_identifikasi" style="display:none;">
-                    <div class="card-body custom-card-action p-0">
+                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                        <!-- Unified Dashboard Toolbar -->
+                        <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <!-- Left Section: Metrics -->
+                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                    <!-- Total Tiket -->
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-file-text fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Tiket</small>
+                                            <h5 class="fw-bolder mb-0 text-primary" id="summary-total-tiket-dalam_proses_identifikasi" style="color: #00BDFB !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jumlah ILAP -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-ilap-wrapper-dalam_proses_identifikasi" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data ILAP">
+                                         <div class="avatar avatar-xs bg-soft-warning text-warning" style="background-color: rgba(239, 186, 34, 0.1) !important; color: #EFBA22 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                             <i class="feather-home fs-16"></i>
+                                         </div>
+                                         <div>
+                                             <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">ILAP</small>
+                                             <h5 class="fw-bolder mb-0 text-warning" id="summary-total-ilap-dalam_proses_identifikasi" style="color: #EFBA22 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                         </div>
+                                     </div>
+                                     <!-- Divider -->
+                                     <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                     <!-- Jenis Data -->
+                                     <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-jenis-wrapper-dalam_proses_identifikasi" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data Jenis">
+                                         <div class="avatar avatar-xs bg-soft-success text-success" style="background-color: rgba(22, 192, 152, 0.1) !important; color: #16C098 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                             <i class="feather-database fs-16"></i>
+                                         </div>
+                                         <div>
+                                             <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Jenis Data</small>
+                                             <h5 class="fw-bolder mb-0 text-success" id="summary-total-jenis-data-dalam_proses_identifikasi" style="color: #16C098 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                         </div>
+                                     </div>
+                                </div>
+
+                                <!-- Right Section: Urgency Filter Badges -->
+                                <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-dalam_proses_identifikasi">
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kerja dari Tanggal Rekam PIDE" style="cursor: pointer;"></i>:</span>
+                                    <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
+                                        <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-dalam_proses_identifikasi">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 30 Hari Kerja">
+                                        <i class="feather-clock me-1 align-middle" style="color: #10b981;"></i>Baru (<span id="count-new-dalam_proses_identifikasi">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 30 Hari Kerja">
+                                        <i class="feather-alert-triangle me-1 align-middle" style="color: #ef4444;"></i>Perlu Segera (<span id="count-critical-dalam_proses_identifikasi">0</span>)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-dalam_proses_identifikasi" style="width:100%">
                                 <thead>
@@ -684,8 +1548,9 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
-                                        <th>Tgl Kirim PIDE</th>
-                                        <th>Aksi</th>
+                                        <th>Nama Tabel I</th>
+                                        <th>Tgl Rekam PIDE</th>
+                                        <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -702,10 +1567,12 @@
                             <table class="table table-hover mb-0 tiket-datatable" id="table-jenis_data_tanpa_pic_pide" style="width:100%">
                                 <thead>
                                     <tr>
-                                        <th>Sub Jenis Data</th>
+                                        <th>ID Sub Jenis Data</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
                                         <th>Sub Jenis Data</th>
+                                        <th>Nama Tabel I</th>
+                                        <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -716,7 +1583,64 @@
                 </div>
                 <!-- Admin: Tiket Status Dikirim Ke PIDE Belum Punya PIC - PIDE -->
                 <div class="card stretch stretch-full" data-category="tiket_dikirim_ke_pide_tanpa_pic" style="display:none;">
-                    <div class="card-body custom-card-action p-0">
+                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                        <!-- Unified Dashboard Toolbar -->
+                        <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <!-- Left Section: Metrics -->
+                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                    <!-- Total Tiket -->
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-file-text fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Tiket</small>
+                                            <h5 class="fw-bolder mb-0 text-primary" id="summary-total-tiket-tiket_dikirim_ke_pide_tanpa_pic" style="color: #00BDFB !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jumlah ILAP -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-ilap-wrapper-tiket_dikirim_ke_pide_tanpa_pic" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data ILAP">
+                                        <div class="avatar avatar-xs bg-soft-warning text-warning" style="background-color: rgba(239, 186, 34, 0.1) !important; color: #EFBA22 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-home fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">ILAP</small>
+                                            <h5 class="fw-bolder mb-0 text-warning" id="summary-total-ilap-tiket_dikirim_ke_pide_tanpa_pic" style="color: #EFBA22 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jenis Data -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-jenis-wrapper-tiket_dikirim_ke_pide_tanpa_pic" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data Jenis">
+                                        <div class="avatar avatar-xs bg-soft-success text-success" style="background-color: rgba(22, 192, 152, 0.1) !important; color: #16C098 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-database fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Jenis Data</small>
+                                            <h5 class="fw-bolder mb-0 text-success" id="summary-total-jenis-data-tiket_dikirim_ke_pide_tanpa_pic" style="color: #16C098 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Section: Urgency Filter Badges -->
+                                <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-tiket_dikirim_ke_pide_tanpa_pic">
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kerja dari Tanggal Kirim PIDE" style="cursor: pointer;"></i>:</span>
+                                    <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
+                                        <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-tiket_dikirim_ke_pide_tanpa_pic">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 30 Hari Kerja">
+                                        <i class="feather-clock me-1 align-middle" style="color: #10b981;"></i>Baru (<span id="count-new-tiket_dikirim_ke_pide_tanpa_pic">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 30 Hari Kerja">
+                                        <i class="feather-alert-triangle me-1 align-middle" style="color: #ef4444;"></i>Perlu Segera (<span id="count-critical-tiket_dikirim_ke_pide_tanpa_pic">0</span>)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-tiket_dikirim_ke_pide_tanpa_pic" style="width:100%">
                                 <thead>
@@ -724,8 +1648,9 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
+                                        <th>Nama Tabel I</th>
                                         <th>Tgl Kirim PIDE</th>
-                                        <th>Aksi</th>
+                                        <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -762,7 +1687,64 @@
                 <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">PMDE - Pengendalian Mutu</h6> -->
                 <!-- Dalam Proses Pengendalian Mutu -->
                 <div class="card stretch stretch-full" data-category="dalam_proses_pengendalian_mutu">
-                    <div class="card-body custom-card-action p-0">
+                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                        <!-- Unified Dashboard Toolbar -->
+                        <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <!-- Left Section: Metrics -->
+                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                    <!-- Total Tiket -->
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-file-text fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Tiket</small>
+                                            <h5 class="fw-bolder mb-0 text-primary" id="summary-total-tiket-dalam_proses_pengendalian_mutu" style="color: #00BDFB !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jumlah ILAP -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-ilap-wrapper-dalam_proses_pengendalian_mutu" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data ILAP">
+                                        <div class="avatar avatar-xs bg-soft-warning text-warning" style="background-color: rgba(239, 186, 34, 0.1) !important; color: #EFBA22 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-home fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">ILAP</small>
+                                            <h5 class="fw-bolder mb-0 text-warning" id="summary-total-ilap-dalam_proses_pengendalian_mutu" style="color: #EFBA22 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jenis Data -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-jenis-wrapper-dalam_proses_pengendalian_mutu" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data Jenis">
+                                        <div class="avatar avatar-xs bg-soft-success text-success" style="background-color: rgba(22, 192, 152, 0.1) !important; color: #16C098 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-database fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Jenis Data</small>
+                                            <h5 class="fw-bolder mb-0 text-success" id="summary-total-jenis-data-dalam_proses_pengendalian_mutu" style="color: #16C098 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Section: Urgency Filter Badges -->
+                                <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-dalam_proses_pengendalian_mutu">
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kerja dari Tanggal Transfer" style="cursor: pointer;"></i>:</span>
+                                    <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
+                                        <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-dalam_proses_pengendalian_mutu">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 85 Hari Kerja">
+                                        <i class="feather-clock me-1 align-middle" style="color: #10b981;"></i>Baru (<span id="count-new-dalam_proses_pengendalian_mutu">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 85 Hari Kerja">
+                                        <i class="feather-alert-triangle me-1 align-middle" style="color: #ef4444;"></i>Perlu Segera (<span id="count-critical-dalam_proses_pengendalian_mutu">0</span>)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-dalam_proses_pengendalian_mutu" style="width:100%">
                                 <thead>
@@ -770,8 +1752,9 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
+                                        <th>Nama Tabel I</th>
                                         <th>Tgl Transfer</th>
-                                        <th>Aksi</th>
+                                        <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -792,6 +1775,8 @@
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
                                         <th>Sub Jenis Data</th>
+                                        <th>Nama Tabel I</th>
+                                        <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -802,7 +1787,64 @@
                 </div>
                 <!-- Admin: Tiket Status Pengendalian Mutu Belum Punya PIC - PMDE -->
                 <div class="card stretch stretch-full" data-category="tiket_pengendalian_mutu_tanpa_pic" style="display:none;">
-                    <div class="card-body custom-card-action p-0">
+                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                        <!-- Unified Dashboard Toolbar -->
+                        <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <!-- Left Section: Metrics -->
+                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                    <!-- Total Tiket -->
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-file-text fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Tiket</small>
+                                            <h5 class="fw-bolder mb-0 text-primary" id="summary-total-tiket-tiket_pengendalian_mutu_tanpa_pic" style="color: #00BDFB !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jumlah ILAP -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-ilap-wrapper-tiket_pengendalian_mutu_tanpa_pic" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data ILAP">
+                                        <div class="avatar avatar-xs bg-soft-warning text-warning" style="background-color: rgba(239, 186, 34, 0.1) !important; color: #EFBA22 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-home fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">ILAP</small>
+                                            <h5 class="fw-bolder mb-0 text-warning" id="summary-total-ilap-tiket_pengendalian_mutu_tan_pic" style="color: #EFBA22 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jenis Data -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-jenis-wrapper-tiket_pengendalian_mutu_tanpa_pic" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data Jenis">
+                                        <div class="avatar avatar-xs bg-soft-success text-success" style="background-color: rgba(22, 192, 152, 0.1) !important; color: #16C098 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-database fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Jenis Data</small>
+                                            <h5 class="fw-bolder mb-0 text-success" id="summary-total-jenis-data-tiket_pengendalian_mutu_tan_pic" style="color: #16C098 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Section: Urgency Filter Badges -->
+                                <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-tiket_pengendalian_mutu_tanpa_pic">
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kerja dari Tanggal Transfer" style="cursor: pointer;"></i>:</span>
+                                    <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
+                                        <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-tiket_pengendalian_mutu_tanpa_pic">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 85 Hari Kerja">
+                                        <i class="feather-clock me-1 align-middle" style="color: #10b981;"></i>Baru (<span id="count-new-tiket_pengendalian_mutu_tanpa_pic">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 85 Hari Kerja">
+                                        <i class="feather-alert-triangle me-1 align-middle" style="color: #ef4444;"></i>Perlu Segera (<span id="count-critical-tiket_pengendalian_mutu_tanpa_pic">0</span>)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-tiket_pengendalian_mutu_tanpa_pic" style="width:100%">
                                 <thead>
@@ -810,8 +1852,9 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
+                                        <th>Nama Tabel I</th>
                                         <th>Tgl Transfer</th>
-                                        <th>Aksi</th>
+                                        <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -821,8 +1864,8 @@
                     </div>
                 </div>
                 {% endif %}
-            </div>
-            {% endif %}
+                {% endif %}
+
         </div>
         <!-- [ Content Area ] end -->
 
@@ -830,8 +1873,301 @@
 </div>
 {% endif %}
 
+<!-- Modal Detail Summary -->
+<div class="modal fade" id="summaryDetailModal" tabindex="-1" aria-labelledby="summaryDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12); background-color: #ffffff;">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar avatar-xs bg-soft-warning text-warning" id="summary-modal-icon-container" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                        <i class="feather-info fs-16" id="summary-modal-icon"></i>
+                    </div>
+                    <h5 class="modal-title fw-bold text-dark mb-0" id="summaryDetailModalLabel" style="font-size: 15px;">Detail</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="font-size: 12px;"></button>
+            </div>
+            <div class="modal-body px-4 pt-3 pb-4">
+                <!-- Search bar inside modal -->
+                <div class="input-group mb-3" style="box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); border-radius: 8px; overflow: hidden; border: 1px solid #cbd5e1;">
+                    <span class="input-group-text bg-white border-0" style="height: 38px;"><i class="feather-search text-muted"></i></span>
+                    <input type="text" id="summary-modal-search" class="form-control border-0 ps-1" placeholder="Cari..." style="height: 38px; font-size: 12.5px; outline: none !important; box-shadow: none !important;">
+                </div>
+                <div class="list-group list-group-flush border rounded" id="summary-modal-list" style="max-height: 250px; overflow-y: auto;">
+                    <!-- items will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Quick-Assign PIC PIDE -->
+<div class="modal fade" id="quickAssignPicPideModal" tabindex="-1" aria-labelledby="quickAssignPicPideModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+            <!-- Header -->
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #e0f2fe; color: #0284c7; flex-shrink: 0;">
+                        <i class="feather-user-plus" style="font-size: 16px;"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="quickAssignPicPideModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Assign PIC PIDE</h5>
+                        <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Tiket Dikirim ke PIDE</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <!-- Body -->
+            <div class="modal-body px-4 pt-3 pb-2">
+                <!-- Info card Sub Jenis Data (read-only) -->
+                <div class="p-3 rounded mb-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div class="row g-2" style="font-size: 12.5px;">
+                        <div class="col-12">
+                            <span class="text-muted d-block mb-1" style="font-size: 11px;">Nama ILAP</span>
+                            <span id="qa-ilap-nama" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted d-block mb-1" style="font-size: 11px;">Kode Sub Jenis Data</span>
+                            <span id="qa-subjenis-kode" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted d-block mb-1" style="font-size: 11px;">Nama Sub Jenis Data</span>
+                            <span id="qa-subjenis-nama" class="fw-semibold text-dark">-</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Error message area -->
+                <div id="qa-error-box" class="alert alert-danger py-2 px-3 mb-3" style="display:none; font-size: 12.5px;"></div>
+                <!-- User select -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="font-size: 12px;">PIC PIDE <span class="text-danger">*</span></label>
+                    <select id="qa-user-select" class="form-select" style="height: 40px; border-radius: 8px; font-size: 13px;">
+                        <option value="">-- Pilih User PIC PIDE --</option>
+                    </select>
+                </div>
+                <!-- Date inputs -->
+                <div class="row g-2 mb-1">
+                    <div class="col-6">
+                        <label class="form-label fw-semibold" style="font-size: 12px;">Tanggal Mulai <span class="text-danger">*</span></label>
+                        <input type="date" id="qa-start-date" class="form-control" style="height: 40px; border-radius: 8px; font-size: 13px;">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-semibold" style="font-size: 12px;">Tanggal Akhir</label>
+                        <input type="date" id="qa-end-date" class="form-control" style="height: 40px; border-radius: 8px; font-size: 13px;">
+                    </div>
+                </div>
+            </div>
+            <!-- Footer -->
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4" style="background: transparent !important;">
+                <button type="button" class="btn btn-figma-outline" data-bs-dismiss="modal">BATAL</button>
+                <button type="button" class="btn btn-figma-primary" id="qa-submit-btn">
+                    <i class="feather-user-plus me-1"></i> ASSIGN
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Quick-Assign PIC PMDE -->
+<div class="modal fade" id="quickAssignPicPmdeModal" tabindex="-1" aria-labelledby="quickAssignPicPmdeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+            <!-- Header -->
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #e0f2fe; color: #0284c7; flex-shrink: 0;">
+                        <i class="feather-user-plus" style="font-size: 16px;"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="quickAssignPicPmdeModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Assign PIC PMDE</h5>
+                        <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Tiket Pengendalian Mutu</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <!-- Body -->
+            <div class="modal-body px-4 pt-3 pb-2">
+                <!-- Info card Sub Jenis Data (read-only) -->
+                <div class="p-3 rounded mb-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div class="row g-2" style="font-size: 12.5px;">
+                        <div class="col-12">
+                            <span class="text-muted d-block mb-1" style="font-size: 11px;">Nama ILAP</span>
+                            <span id="qa-pmde-ilap-nama" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted d-block mb-1" style="font-size: 11px;">Kode Sub Jenis Data</span>
+                            <span id="qa-pmde-subjenis-kode" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted d-block mb-1" style="font-size: 11px;">Nama Sub Jenis Data</span>
+                            <span id="qa-pmde-subjenis-nama" class="fw-semibold text-dark">-</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Error message area -->
+                <div id="qa-pmde-error-box" class="alert alert-danger py-2 px-3 mb-3" style="display:none; font-size: 12.5px;"></div>
+                <!-- User select -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="font-size: 12px;">PIC PMDE <span class="text-danger">*</span></label>
+                    <select id="qa-pmde-user-select" class="form-select" style="height: 40px; border-radius: 8px; font-size: 13px;">
+                        <option value="">-- Pilih User PIC PMDE --</option>
+                    </select>
+                </div>
+                <!-- Date inputs -->
+                <div class="row g-2 mb-1">
+                    <div class="col-6">
+                        <label class="form-label fw-semibold" style="font-size: 12px;">Tanggal Mulai <span class="text-danger">*</span></label>
+                        <input type="date" id="qa-pmde-start-date" class="form-control" style="height: 40px; border-radius: 8px; font-size: 13px;">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-semibold" style="font-size: 12px;">Tanggal Akhir</label>
+                        <input type="date" id="qa-pmde-end-date" class="form-control" style="height: 40px; border-radius: 8px; font-size: 13px;">
+                    </div>
+                </div>
+            </div>
+            <!-- Footer -->
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4" style="background: transparent !important;">
+                <button type="button" class="btn btn-figma-outline" data-bs-dismiss="modal">BATAL</button>
+                <button type="button" class="btn btn-figma-primary" id="qa-pmde-submit-btn">
+                    <i class="feather-user-plus me-1"></i> ASSIGN
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Quick-Assign PIC P3DE -->
+<div class="modal fade" id="quickAssignPicP3deModal" tabindex="-1" aria-labelledby="quickAssignPicP3deModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+            <!-- Header -->
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #e0f2fe; color: #0284c7; flex-shrink: 0;">
+                        <i class="feather-user-plus" style="font-size: 16px;"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="quickAssignPicP3deModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Assign PIC P3DE</h5>
+                        <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Konfigurasi Jenis Data</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <!-- Body -->
+            <div class="modal-body px-4 pt-3 pb-2">
+                <!-- Info card Sub Jenis Data (read-only) -->
+                <div class="p-3 rounded mb-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div class="row g-2" style="font-size: 12.5px;">
+                        <div class="col-12">
+                            <span class="text-muted d-block mb-1" style="font-size: 11px;">Nama ILAP</span>
+                            <span id="qa-p3de-ilap-nama" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted d-block mb-1" style="font-size: 11px;">Kode Sub Jenis Data</span>
+                            <span id="qa-p3de-subjenis-kode" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted d-block mb-1" style="font-size: 11px;">Nama Sub Jenis Data</span>
+                            <span id="qa-p3de-subjenis-nama" class="fw-semibold text-dark">-</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Error message area -->
+                <div id="qa-p3de-error-box" class="alert alert-danger py-2 px-3 mb-3" style="display:none; font-size: 12.5px;"></div>
+                <!-- User select -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="font-size: 12px;">PIC P3DE <span class="text-danger">*</span></label>
+                    <select id="qa-p3de-user-select" class="form-select" style="height: 40px; border-radius: 8px; font-size: 13px;">
+                        <option value="">-- Pilih User PIC P3DE --</option>
+                    </select>
+                </div>
+                <!-- Date inputs -->
+                <div class="row g-2 mb-1">
+                    <div class="col-6">
+                        <label class="form-label fw-semibold" style="font-size: 12px;">Tanggal Mulai <span class="text-danger">*</span></label>
+                        <input type="date" id="qa-p3de-start-date" class="form-control" style="height: 40px; border-radius: 8px; font-size: 13px;">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-semibold" style="font-size: 12px;">Tanggal Akhir</label>
+                        <input type="date" id="qa-p3de-end-date" class="form-control" style="height: 40px; border-radius: 8px; font-size: 13px;">
+                    </div>
+                </div>
+            </div>
+            <!-- Footer -->
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4" style="background: transparent !important;">
+                <button type="button" class="btn btn-figma-outline" data-bs-dismiss="modal">BATAL</button>
+                <button type="button" class="btn btn-figma-primary" id="qa-p3de-submit-btn">
+                    <i class="feather-user-plus me-1"></i> ASSIGN
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+
+        // Collapsible Sidebar handling
+        const sidebar = document.querySelector('.content-sidebar');
+        const toggleBtn = document.getElementById('sidebar-toggle-btn');
+        const toggleIcon = toggleBtn ? toggleBtn.querySelector('i') : null;
+
+        function updateToggleTooltip(collapsed) {
+            if (!toggleBtn) return;
+            const newTitle = collapsed ? 'Tampilkan Sidebar' : 'Sembunyikan Sidebar';
+            toggleBtn.setAttribute('title', newTitle);
+            toggleBtn.setAttribute('data-bs-original-title', newTitle);
+            const tooltipInstance = bootstrap.Tooltip.getInstance(toggleBtn);
+            if (tooltipInstance) {
+                tooltipInstance.dispose();
+            }
+            new bootstrap.Tooltip(toggleBtn);
+        }
+
+        // Apply initial state from localStorage
+        const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+        if (isCollapsed && sidebar) {
+            sidebar.classList.add('collapsed');
+            if (toggleIcon) {
+                toggleIcon.className = 'feather-chevrons-right fs-16';
+            }
+            updateToggleTooltip(true);
+        } else {
+            updateToggleTooltip(false);
+        }
+
+        // Toggle button click handler (Permanent Toggle)
+        if (toggleBtn && sidebar) {
+            toggleBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const currentlyCollapsed = sidebar.classList.contains('collapsed');
+                if (currentlyCollapsed) {
+                    sidebar.classList.remove('collapsed');
+                    localStorage.setItem('sidebar-collapsed', 'false');
+                    if (toggleIcon) toggleIcon.className = 'feather-chevrons-left fs-16';
+                    updateToggleTooltip(false);
+                } else {
+                    sidebar.classList.add('collapsed');
+                    localStorage.setItem('sidebar-collapsed', 'true');
+                    if (toggleIcon) toggleIcon.className = 'feather-chevrons-right fs-16';
+                    updateToggleTooltip(true);
+                }
+            });
+        }
+
+        // Hover expand handlers
+        if (sidebar) {
+            sidebar.addEventListener('mouseenter', function() {
+                if (sidebar.classList.contains('collapsed')) {
+                    sidebar.classList.add('hover-expanded');
+                }
+            });
+
+            sidebar.addEventListener('mouseleave', function() {
+                sidebar.classList.remove('hover-expanded');
+            });
+        }
+
         // Suppress DataTables default error alert and handle redirect to login on expired session
         if (typeof $ !== 'undefined' && $.fn && $.fn.dataTable) {
             $.fn.dataTable.ext.errMode = 'none';
@@ -860,6 +2196,7 @@
             { data: 'nomor_tiket', title: 'Nomor Tiket' },
             { data: 'nama_ilap', title: 'Nama ILAP' },
             { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
+            { data: 'nama_tabel_I', title: 'Nama Tabel I' },
             { 
                 data: 'tanggal', 
                 title: 'Tanggal',
@@ -870,24 +2207,27 @@
                     return data || '';
                 }
             },
-            { data: 'actions', title: 'Aksi', orderable: false, searchable: false }
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false, className: 'col-actions' }
         ];
 
         const jenisDataTanpaPicColumns = [
             { data: 'id_sub_jenis_data', title: 'ID Sub Jenis Data' },
             { data: 'nama_ilap', title: 'Nama ILAP' },
             { data: 'nama_jenis_data', title: 'Jenis Data' },
-            { data: 'nama_sub_jenis_data', title: 'Sub Jenis Data' }
+            { data: 'nama_sub_jenis_data', title: 'Sub Jenis Data' },
+            { data: 'nama_tabel_I', title: 'Nama Tabel I' },
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false, className: 'col-actions' }
         ];
 
         const periodeTiketNullColumns = [
             { data: 'nomor_tiket', title: 'Nomor Tiket' },
             { data: 'nama_ilap', title: 'Nama ILAP' },
             { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
+            { data: 'nama_tabel_I', title: 'Nama Tabel I' },
             { data: 'periode', title: 'Periode' },
             { data: 'tahun', title: 'Tahun' },
             { data: 'status_tiket', title: 'Status' },
-            { data: 'actions', title: 'Aksi', orderable: false, searchable: false }
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false, className: 'col-actions' }
         ];
 
         const specialRequestColumns = [
@@ -902,6 +2242,7 @@
             { data: 'nomor_tiket', title: 'Nomor Tiket' },
             { data: 'nama_ilap', title: 'Nama ILAP' },
             { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
+            { data: 'nama_tabel_I', title: 'Nama Tabel I' },
             { 
                 data: 'tanggal', 
                 title: 'Tanggal Transfer',
@@ -912,13 +2253,14 @@
                     return data || '';
                 }
             },
-            { data: 'actions', title: 'Aksi', orderable: false, searchable: false }
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false, className: 'col-actions' }
         ];
 
         const tiketDikirimKePideTanpaPicColumns = [
             { data: 'nomor_tiket', title: 'Nomor Tiket' },
             { data: 'nama_ilap', title: 'Nama ILAP' },
             { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
+            { data: 'nama_tabel_I', title: 'Nama Tabel I' },
             { 
                 data: 'tanggal', 
                 title: 'Tanggal Kirim PIDE',
@@ -929,7 +2271,7 @@
                     return data || '';
                 }
             },
-            { data: 'actions', title: 'Aksi', orderable: false, searchable: false }
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false, className: 'col-actions' }
         ];
 
         // Map category to column config
@@ -952,10 +2294,172 @@
             return tiketCategoryColumns;
         }
 
+        const activeAgeGroups = {};
+        const categorySummaryData = {};
+
+        // Helper functions for smart tooltips and scrollable detail modals
+        function generateTooltipTitle(list, typeName) {
+            if (!list || list.length === 0) return `Belum ada data ${typeName}`;
+            let html = `<div class="text-start" style="font-size: 11.5px; padding: 2px;">`;
+            html += `<strong class="d-block mb-1 border-bottom pb-1" style="color: #f8fafc;">Daftar ${typeName}:</strong>`;
+            const maxVisible = 5;
+            const visibleItems = list.slice(0, maxVisible);
+            visibleItems.forEach((item, idx) => {
+                html += `<div class="text-truncate" style="max-width: 200px;">${idx + 1}. ${item}</div>`;
+            });
+            if (list.length > maxVisible) {
+                html += `<div class="mt-1 fw-bold text-warning" style="font-size: 10.5px;">... dan ${list.length - maxVisible} lainnya. Klik untuk detail.</div>`;
+            } else {
+                html += `<div class="mt-1 text-muted" style="font-size: 10px;">Klik untuk detail.</div>`;
+            }
+            html += `</div>`;
+            return html;
+        }
+
+        function updateSummaryTooltip(wrapperId, list, typeName) {
+            const el = document.getElementById(wrapperId);
+            if (!el) return;
+            const newTitle = generateTooltipTitle(list, typeName);
+            el.setAttribute('data-bs-original-title', newTitle);
+            
+            const existingTooltip = bootstrap.Tooltip.getInstance(el);
+            if (existingTooltip) {
+                existingTooltip.dispose();
+            }
+            new bootstrap.Tooltip(el);
+        }
+
+        const summaryDetailModal = new bootstrap.Modal(document.getElementById('summaryDetailModal'));
+        let currentModalList = [];
+        let currentModalCategory = '';
+        
+        function openSummaryModal(title, list, iconClass, softBgClass, textClass, category) {
+            document.getElementById('summaryDetailModalLabel').textContent = title;
+            currentModalList = list;
+            currentModalCategory = category;
+            
+            const iconContainer = document.getElementById('summary-modal-icon-container');
+            const iconEl = document.getElementById('summary-modal-icon');
+            
+            iconContainer.className = `avatar avatar-xs ${softBgClass} ${textClass}`;
+            iconContainer.style.width = '32px';
+            iconContainer.style.height = '32px';
+            iconContainer.style.display = 'inline-flex';
+            iconContainer.style.alignItems = 'center';
+            iconContainer.style.justifyContent = 'center';
+            iconContainer.style.borderRadius = '50%';
+            
+            iconEl.className = `${iconClass} fs-16`;
+            
+            const searchInput = document.getElementById('summary-modal-search');
+            searchInput.value = '';
+            
+            renderModalList(list);
+            summaryDetailModal.show();
+        }
+        
+        function renderModalList(list, filterText = '') {
+            const listContainer = document.getElementById('summary-modal-list');
+            listContainer.innerHTML = '';
+            
+            const filtered = list.filter(item => 
+                item.toLowerCase().includes(filterText.toLowerCase())
+            );
+            
+            if (filtered.length === 0) {
+                listContainer.innerHTML = `<div class="list-group-item text-center text-muted py-3" style="font-size: 12.5px;">Data tidak ditemukan</div>`;
+                return;
+            }
+            
+            filtered.forEach((item, idx) => {
+                const itemEl = document.createElement('a');
+                itemEl.href = 'javascript:void(0);';
+                itemEl.className = 'list-group-item list-group-item-action py-2 px-3 d-flex align-items-center justify-content-between';
+                itemEl.style.fontSize = '12.5px';
+                itemEl.style.color = '#334155';
+                itemEl.style.borderLeft = '3px solid #0c92ff';
+                itemEl.innerHTML = `
+                    <span><span class="fw-semibold text-muted me-1">${idx + 1}.</span> ${item}</span>
+                    <i class="feather-chevron-right text-muted fs-12"></i>
+                `;
+                
+                // Add click event to filter datatable
+                itemEl.addEventListener('click', function() {
+                    const cat = currentModalCategory;
+                    const dt = datatableTables[cat];
+                    if (dt) {
+                        // Filter the datatable
+                        dt.search(item).draw();
+                        
+                        // Sync with default Datatable search input if it exists
+                        const card = document.querySelector(`[data-category="${cat}"]`);
+                        if (card) {
+                            const nativeSearchInput = card.querySelector('.dt-search input[type="search"]') || card.querySelector('input[type="search"]');
+                            if (nativeSearchInput) {
+                                nativeSearchInput.value = item;
+                            }
+                        }
+                    }
+                    // Hide the modal
+                    summaryDetailModal.hide();
+                });
+                
+                listContainer.appendChild(itemEl);
+            });
+        }
+        
+        document.getElementById('summary-modal-search').addEventListener('input', function() {
+            renderModalList(currentModalList, this.value);
+        });
+
         // Initialize server-side datatables for each category
         document.querySelectorAll('.tiket-datatable').forEach(table => {
             const category = table.closest('[data-category]').getAttribute('data-category');
             const columns = getColumnsForCategory(category);
+
+            $(table).on('xhr.dt', function (e, settings, json, xhr) {
+                if (json && json.summary) {
+                    const totalTiketEl = document.getElementById(`summary-total-tiket-${category}`);
+                    const totalIlapEl = document.getElementById(`summary-total-ilap-${category}`);
+                    let totalIlapEl2 = totalIlapEl;
+                    if (category === 'tiket_pengendalian_mutu_tanpa_pic') {
+                        totalIlapEl2 = document.getElementById('summary-total-ilap-tiket_pengendalian_mutu_tan_pic');
+                    }
+                    const totalJenisDataEl = document.getElementById(`summary-total-jenis-data-${category}`);
+                    let totalJenisDataEl2 = totalJenisDataEl;
+                    if (category === 'tiket_pengendalian_mutu_tanpa_pic') {
+                        totalJenisDataEl2 = document.getElementById('summary-total-jenis-data-tiket_pengendalian_mutu_tan_pic');
+                    }
+
+                    if (totalTiketEl) totalTiketEl.textContent = json.summary.total_tiket || 0;
+                    if (totalIlapEl2) totalIlapEl2.textContent = json.summary.total_ilap || 0;
+                    if (totalJenisDataEl2) totalJenisDataEl2.textContent = json.summary.total_jenis_data || 0;
+
+                    // Save lists for tooltips/modal
+                    categorySummaryData[category] = {
+                        ilap_list: json.summary.ilap_list || [],
+                        jenis_data_list: json.summary.jenis_data_list || []
+                    };
+
+                    // Dynamically update tooltips for this category if interactive wrappers exist
+                    updateSummaryTooltip(`summary-ilap-wrapper-${category}`, json.summary.ilap_list || [], 'ILAP');
+                    updateSummaryTooltip(`summary-jenis-wrapper-${category}`, json.summary.jenis_data_list || [], 'Jenis Data');
+
+                    // Update urgency count elements if they exist
+                    if (json.summary.critical_count !== undefined) {
+                        const countAllEl = document.getElementById(`count-all-${category}`);
+                        const countCriticalEl = document.getElementById(`count-critical-${category}`);
+                        const countWarningEl = document.getElementById(`count-warning-${category}`);
+                        const countNewEl = document.getElementById(`count-new-${category}`);
+                        
+                        if (countAllEl) countAllEl.textContent = json.summary.total_tiket || 0;
+                        if (countCriticalEl) countCriticalEl.textContent = json.summary.critical_count || 0;
+                        if (countWarningEl) countWarningEl.textContent = json.summary.warning_count || 0;
+                        if (countNewEl) countNewEl.textContent = json.summary.new_count || 0;
+                    }
+                }
+            });
+
 
             datatableTables[category] = $(table).DataTable({
                 serverSide: true,
@@ -964,9 +2468,21 @@
                     url: '{% url "home_data" %}',
                     data: function(d) {
                         d.category = category;
+                        if (activeAgeGroups[category]) {
+                            d.age_group = activeAgeGroups[category];
+                        }
                     }
                 },
                 columns: columns,
+                drawCallback: function(settings) {
+                    const json = settings.json;
+                    if (json && json.recordsTotal !== undefined) {
+                        const badgeEl = document.querySelector(`.tiket-filter-link[data-filter="${category}"] .badge`);
+                        if (badgeEl) {
+                            badgeEl.textContent = json.recordsTotal;
+                        }
+                    }
+                },
                 paging: true,
                 pageLength: 10,
                 searching: true,
@@ -996,8 +2512,569 @@
                     },
                 }
             });
+
+            // Custom flat clear button (X) injection for default DataTables search input
+            const categoryCard = table.closest('[data-category]');
+            if (categoryCard) {
+                // We use setTimeout to ensure DataTables has fully rendered the search DOM
+                setTimeout(() => {
+                    const searchDiv = categoryCard.querySelector('.dt-search');
+                    if (searchDiv) {
+                        const input = searchDiv.querySelector('input[type="search"]');
+                        if (input && !searchDiv.querySelector('.btn-clear-dt-search')) {
+                            // Style container and input
+                            searchDiv.style.position = 'relative';
+                            input.style.paddingRight = '26px';
+
+                            // Create a custom clear button (flat X)
+                            const clearBtn = document.createElement('button');
+                            clearBtn.type = 'button';
+                            clearBtn.className = 'btn-clear-dt-search';
+                            clearBtn.style.cssText = 'position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 0; color: #9ca3af; cursor: pointer; display: none; align-items: center; justify-content: center; font-size: 13px; z-index: 5; transition: color 0.15s;';
+                            clearBtn.innerHTML = '<i class="feather-x"></i>';
+                            
+                            // Hover effect
+                            clearBtn.addEventListener('mouseenter', () => clearBtn.style.color = '#ef4444');
+                            clearBtn.addEventListener('mouseleave', () => clearBtn.style.color = '#9ca3af');
+
+                            // Append directly into the search div (since input is inside it)
+                            searchDiv.appendChild(clearBtn);
+
+                            function toggleClearBtn() {
+                                clearBtn.style.display = input.value ? 'flex' : 'none';
+                            }
+
+                            // Event Listeners
+                            input.addEventListener('input', toggleClearBtn);
+                            
+                            clearBtn.addEventListener('click', function() {
+                                input.value = '';
+                                datatableTables[category].search('').draw();
+                                toggleClearBtn();
+                                input.focus();
+                            });
+
+                            $(categoryCard).on('keydown', '.dt-search input[type="search"]', function(e) {
+                                if (e.key === 'Escape') {
+                                    this.value = '';
+                                    datatableTables[category].search('').draw();
+                                    toggleClearBtn();
+                                }
+                            });
+
+                            // Sync state on every DataTable redraw
+                            $(table).on('draw.dt', function() {
+                                toggleClearBtn();
+                            });
+                        }
+                    }
+                }, 50);
+            }
+        });
+
+        // Bind urgency filter buttons click handler
+        document.querySelectorAll('.btn-urgency').forEach(button => {
+            button.addEventListener('click', function() {
+                const filterGroup = this.closest('[id^="filter-group-"]');
+                if (!filterGroup) return;
+                
+                const category = filterGroup.id.replace('filter-group-', '');
+                const urgency = this.getAttribute('data-urgency');
+                
+                // Toggle active state in UI
+                filterGroup.querySelectorAll('.btn-urgency').forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Set active age group and reload table
+                activeAgeGroups[category] = urgency === 'all' ? null : urgency;
+                if (datatableTables[category]) {
+                    datatableTables[category].ajax.reload();
+                }
+            });
         });
         
+        // Initialize Bootstrap tooltips
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+            new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        // Generic click listener for all interactive summary indicators across all categories
+        document.addEventListener('click', function(e) {
+            const indicator = e.target.closest('.summary-interactive-indicator');
+            if (!indicator) return;
+
+            const id = indicator.id;
+            let category, type, title, icon, badgeClass, textClass;
+            
+            if (id.startsWith('summary-ilap-wrapper-')) {
+                category = id.replace('summary-ilap-wrapper-', '');
+                type = 'ilap';
+                title = 'Daftar ILAP';
+                icon = 'feather-home';
+                badgeClass = 'bg-soft-warning';
+                textClass = 'text-warning';
+            } else if (id.startsWith('summary-jenis-wrapper-')) {
+                category = id.replace('summary-jenis-wrapper-', '');
+                type = 'jenis';
+                title = 'Daftar Jenis Data';
+                icon = 'feather-database';
+                badgeClass = 'bg-soft-success';
+                textClass = 'text-success';
+            }
+            
+            if (category) {
+                const data = categorySummaryData[category];
+                if (data) {
+                    const list = (type === 'ilap') ? data.ilap_list : data.jenis_data_list;
+                    if (list && list.length > 0) {
+                        let friendlyCategory = category.split('_').map(word => {
+                            if (word === 'pide' || word === 'pic') return word.toUpperCase();
+                            return word.charAt(0).toUpperCase() + word.slice(1);
+                        }).join(' ');
+                        
+                        openSummaryModal(`${title} (${friendlyCategory})`, list, icon, badgeClass, textClass, category);
+                    }
+                }
+            }
+        });
+
+        // ============================================================
+        // Quick-Assign PIC PIDE Modal
+        // ============================================================
+        function showSuccessToast(title, message) {
+            const toastId = 'success-toast-' + Date.now();
+            const toastHtml = `
+                <div id="${toastId}" class="toast custom-toast download-toast-animate" role="alert" aria-live="assertive" aria-atomic="true" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 16px -8px rgba(0, 0, 0, 0.05); min-width: 350px; position: relative; overflow: hidden;">
+                    <div class="d-flex align-items-center p-3" style="padding-bottom: 20px !important;">
+                        <div class="d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px; background-color: rgba(16, 185, 129, 0.1); border-radius: 50%; color: #10b981; flex-shrink: 0;">
+                            <i class="feather-user-check" style="font-size: 22px;"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1 fw-bold text-dark" style="font-size: 13px; letter-spacing: 0.5px; text-transform: uppercase;">\${title}</h6>
+                            <p class="mb-0 text-muted" style="font-size: 12px;">\${message}</p>
+                        </div>
+                        <button type="button" class="btn-close ms-2" aria-label="Close" style="margin-top: -15px;" onclick="const t = document.getElementById('\${toastId}'); if (t) { t.classList.add('download-toast-fade-out'); t.addEventListener('animationend', () => t.remove()); }"></button>
+                    </div>
+                    <!-- Shrinking Progress Bar -->
+                    <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background-color: #f1f5f9; overflow: hidden;">
+                        <div class="toast-progress-bar" style="height: 100%; width: 100%; background-color: #10b981; transition: width 4000ms linear;"></div>
+                    </div>
+                </div>
+            `;
+            const container = document.querySelector('.toast-container');
+            if (container) {
+                container.insertAdjacentHTML('beforeend', toastHtml);
+                const toastElement = document.getElementById(toastId);
+                const toast = new bootstrap.Toast(toastElement, { autohide: false });
+                toast.show();
+                
+                setTimeout(() => {
+                    const progressBar = toastElement.querySelector('.toast-progress-bar');
+                    if (progressBar) progressBar.style.width = '0%';
+                }, 50);
+
+                setTimeout(() => {
+                    if (toastElement) {
+                        toastElement.classList.add('download-toast-fade-out');
+                        toastElement.addEventListener('animationend', function(e) {
+                            if (e.animationName === 'slideOutToRight') {
+                                toast.hide();
+                                toastElement.remove();
+                            }
+                        });
+                    }
+                }, 4000);
+            }
+        }
+
+        const quickAssignModal = new bootstrap.Modal(document.getElementById('quickAssignPicPideModal'));
+        const quickAssignPmdeModal = new bootstrap.Modal(document.getElementById('quickAssignPicPmdeModal'));
+        const quickAssignP3deModal = new bootstrap.Modal(document.getElementById('quickAssignPicP3deModal'));
+        let qaCurrentSubjenisId = null;
+        let qaPmdeCurrentSubjenisId = null;
+        let qaP3deCurrentSubjenisId = null;
+        const qaUsersUrl = "{% url 'home_pic_pide_users' %}";
+        const qaPmdeUsersUrl = "{% url 'home_pic_pmde_users' %}";
+        const qaP3deUsersUrl = "{% url 'home_pic_p3de_users' %}";
+        const qaPicCreateUrl = "{% url 'pic_pide_create' %}";
+        const qaPmdePicCreateUrl = "{% url 'pic_pmde_create' %}";
+        const qaP3dePicCreateUrl = "{% url 'pic_p3de_create' %}";
+        const qaCsrf = document.cookie.match(/csrftoken=([^;]+)/);
+        const qaCsrfToken = qaCsrf ? qaCsrf[1] : '';
+
+        // Open modal when Assign PIC PIDE button is clicked (delegated)
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.btn-quick-assign-pide');
+            if (!btn) return;
+
+            qaCurrentSubjenisId = btn.getAttribute('data-subjenis-id');
+            const kode = btn.getAttribute('data-subjenis-kode');
+            const nama = btn.getAttribute('data-subjenis-nama');
+            const ilap = btn.getAttribute('data-ilap');
+
+            // Fill info card
+            document.getElementById('qa-ilap-nama').textContent = ilap || '-';
+            document.getElementById('qa-subjenis-kode').textContent = kode || '-';
+            document.getElementById('qa-subjenis-nama').textContent = nama || '-';
+
+            // Reset form state
+            document.getElementById('qa-error-box').style.display = 'none';
+            document.getElementById('qa-error-box').textContent = '';
+            document.getElementById('qa-start-date').value = '';
+            document.getElementById('qa-end-date').value = '';
+
+            // Load users
+            const select = document.getElementById('qa-user-select');
+            select.innerHTML = '<option value="">Memuat...</option>';
+            select.disabled = true;
+
+            fetch(qaUsersUrl)
+                .then(r => r.json())
+                .then(data => {
+                    select.innerHTML = '<option value="">-- Pilih User PIC PIDE --</option>';
+                    (data.users || []).forEach(u => {
+                        const opt = document.createElement('option');
+                        opt.value = u.id;
+                        opt.textContent = u.label;
+                        select.appendChild(opt);
+                    });
+                    select.disabled = false;
+                })
+                .catch(() => {
+                    select.innerHTML = '<option value="">Gagal memuat user</option>';
+                });
+
+            quickAssignModal.show();
+        });
+
+        // Submit handler for PIDE
+        document.getElementById('qa-submit-btn').addEventListener('click', function() {
+            const userId = document.getElementById('qa-user-select').value;
+            const startDate = document.getElementById('qa-start-date').value;
+            const endDate = document.getElementById('qa-end-date').value;
+            const errorBox = document.getElementById('qa-error-box');
+
+            errorBox.style.display = 'none';
+            errorBox.textContent = '';
+
+            if (!qaCurrentSubjenisId || !userId || !startDate) {
+                errorBox.textContent = 'Harap lengkapi semua field: User PIC PIDE dan Tanggal Mulai.';
+                errorBox.style.display = 'block';
+                return;
+            }
+
+            const submitBtn = this;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...';
+
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', qaCsrfToken);
+            formData.append('tipe', 'PIDE');
+            formData.append('id_sub_jenis_data_ilap', qaCurrentSubjenisId);
+            formData.append('id_user', userId);
+            formData.append('start_date', startDate);
+            if (endDate) {
+                formData.append('end_date', endDate);
+            }
+            formData.append('ajax', '1');
+
+            fetch(qaPicCreateUrl, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': qaCsrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(r => {
+                if (!r.ok && r.status !== 200) throw new Error('Server error');
+                return r.json();
+            })
+            .then(data => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="feather-user-plus me-1"></i> ASSIGN';
+
+                if (data.success || data.redirect) {
+                    quickAssignModal.hide();
+                    // Reload the table
+                    if (datatableTables['tiket_dikirim_ke_pide_tanpa_pic']) {
+                        datatableTables['tiket_dikirim_ke_pide_tanpa_pic'].ajax.reload();
+                    }
+                    if (datatableTables['jenis_data_tanpa_pic_pide']) {
+                        datatableTables['jenis_data_tanpa_pic_pide'].ajax.reload();
+                    }
+                    // Show success toast
+                    showSuccessToast('Penugasan Berhasil', 'PIC PIDE berhasil di-assign!');
+                } else if (data.html) {
+                    // form_invalid: parse error text from the rendered form HTML
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(data.html, 'text/html');
+                    const errEls = doc.querySelectorAll('.invalid-feedback, .alert-danger, .errorlist li');
+                    let msgs = Array.from(errEls).map(el => el.textContent.trim()).filter(Boolean);
+                    errorBox.textContent = msgs.length ? msgs.join(' | ') : 'Data tidak valid. Periksa kembali isian Anda.';
+                    errorBox.style.display = 'block';
+                } else {
+                    errorBox.textContent = 'Terjadi kesalahan. Silakan coba lagi.';
+                    errorBox.style.display = 'block';
+                }
+            })
+            .catch(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="feather-user-plus me-1"></i> ASSIGN';
+                errorBox.textContent = 'Gagal menghubungi server. Periksa koneksi Anda.';
+                errorBox.style.display = 'block';
+            });
+        });
+
+        // Open modal when Assign PIC PMDE button is clicked (delegated)
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.btn-quick-assign-pmde');
+            if (!btn) return;
+
+            qaPmdeCurrentSubjenisId = btn.getAttribute('data-subjenis-id');
+            const kode = btn.getAttribute('data-subjenis-kode');
+            const nama = btn.getAttribute('data-subjenis-nama');
+            const ilap = btn.getAttribute('data-ilap');
+
+            // Fill info card
+            document.getElementById('qa-pmde-ilap-nama').textContent = ilap || '-';
+            document.getElementById('qa-pmde-subjenis-kode').textContent = kode || '-';
+            document.getElementById('qa-pmde-subjenis-nama').textContent = nama || '-';
+
+            // Reset form state
+            document.getElementById('qa-pmde-error-box').style.display = 'none';
+            document.getElementById('qa-pmde-error-box').textContent = '';
+            document.getElementById('qa-pmde-start-date').value = '';
+            document.getElementById('qa-pmde-end-date').value = '';
+
+            // Load users
+            const select = document.getElementById('qa-pmde-user-select');
+            select.innerHTML = '<option value="">Memuat...</option>';
+            select.disabled = true;
+
+            fetch(qaPmdeUsersUrl)
+                .then(r => r.json())
+                .then(data => {
+                    select.innerHTML = '<option value="">-- Pilih User PIC PMDE --</option>';
+                    (data.users || []).forEach(u => {
+                        const opt = document.createElement('option');
+                        opt.value = u.id;
+                        opt.textContent = u.label;
+                        select.appendChild(opt);
+                    });
+                    select.disabled = false;
+                })
+                .catch(() => {
+                    select.innerHTML = '<option value="">Gagal memuat user</option>';
+                });
+
+            quickAssignPmdeModal.show();
+        });
+
+        // Submit handler for PMDE
+        document.getElementById('qa-pmde-submit-btn').addEventListener('click', function() {
+            const userId = document.getElementById('qa-pmde-user-select').value;
+            const startDate = document.getElementById('qa-pmde-start-date').value;
+            const endDate = document.getElementById('qa-pmde-end-date').value;
+            const errorBox = document.getElementById('qa-pmde-error-box');
+
+            errorBox.style.display = 'none';
+            errorBox.textContent = '';
+
+            if (!qaPmdeCurrentSubjenisId || !userId || !startDate) {
+                errorBox.textContent = 'Harap lengkapi semua field: User PIC PMDE dan Tanggal Mulai.';
+                errorBox.style.display = 'block';
+                return;
+            }
+
+            const submitBtn = this;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...';
+
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', qaCsrfToken);
+            formData.append('tipe', 'PMDE');
+            formData.append('id_sub_jenis_data_ilap', qaPmdeCurrentSubjenisId);
+            formData.append('id_user', userId);
+            formData.append('start_date', startDate);
+            if (endDate) {
+                formData.append('end_date', endDate);
+            }
+            formData.append('ajax', '1');
+
+            fetch(qaPmdePicCreateUrl, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': qaCsrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(r => {
+                if (!r.ok && r.status !== 200) throw new Error('Server error');
+                return r.json();
+            })
+            .then(data => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="feather-user-plus me-1"></i> ASSIGN';
+
+                if (data.success || data.redirect) {
+                    quickAssignPmdeModal.hide();
+                    // Reload the table
+                    if (datatableTables['tiket_pengendalian_mutu_tanpa_pic']) {
+                        datatableTables['tiket_pengendalian_mutu_tanpa_pic'].ajax.reload();
+                    }
+                    if (datatableTables['jenis_data_tanpa_pic_pmde']) {
+                        datatableTables['jenis_data_tanpa_pic_pmde'].ajax.reload();
+                    }
+                    // Show success toast
+                    showSuccessToast('Penugasan Berhasil', 'PIC PMDE berhasil di-assign!');
+                } else if (data.html) {
+                    // form_invalid: parse error text from the rendered form HTML
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(data.html, 'text/html');
+                    const errEls = doc.querySelectorAll('.invalid-feedback, .alert-danger, .errorlist li');
+                    let msgs = Array.from(errEls).map(el => el.textContent.trim()).filter(Boolean);
+                    errorBox.textContent = msgs.length ? msgs.join(' | ') : 'Data tidak valid. Periksa kembali isian Anda.';
+                    errorBox.style.display = 'block';
+                } else {
+                    errorBox.textContent = 'Terjadi kesalahan. Silakan coba lagi.';
+                    errorBox.style.display = 'block';
+                }
+            })
+            .catch(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="feather-user-plus me-1"></i> ASSIGN';
+                errorBox.textContent = 'Gagal menghubungi server. Periksa koneksi Anda.';
+                errorBox.style.display = 'block';
+            });
+        });
+
+        // Open modal when Assign PIC P3DE button is clicked (delegated)
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.btn-quick-assign-p3de');
+            if (!btn) return;
+
+            qaP3deCurrentSubjenisId = btn.getAttribute('data-subjenis-id');
+            const kode = btn.getAttribute('data-subjenis-kode');
+            const nama = btn.getAttribute('data-subjenis-nama');
+            const ilap = btn.getAttribute('data-ilap');
+
+            // Fill info card
+            document.getElementById('qa-p3de-ilap-nama').textContent = ilap || '-';
+            document.getElementById('qa-p3de-subjenis-kode').textContent = kode || '-';
+            document.getElementById('qa-p3de-subjenis-nama').textContent = nama || '-';
+
+            // Reset form state
+            document.getElementById('qa-p3de-error-box').style.display = 'none';
+            document.getElementById('qa-p3de-error-box').textContent = '';
+            document.getElementById('qa-p3de-start-date').value = '';
+            document.getElementById('qa-p3de-end-date').value = '';
+
+            // Load users
+            const select = document.getElementById('qa-p3de-user-select');
+            select.innerHTML = '<option value="">Memuat...</option>';
+            select.disabled = true;
+
+            fetch(qaP3deUsersUrl)
+                .then(r => r.json())
+                .then(data => {
+                    select.innerHTML = '<option value="">-- Pilih User PIC P3DE --</option>';
+                    (data.users || []).forEach(u => {
+                        const opt = document.createElement('option');
+                        opt.value = u.id;
+                        opt.textContent = u.label;
+                        select.appendChild(opt);
+                    });
+                    select.disabled = false;
+                })
+                .catch(() => {
+                    select.innerHTML = '<option value="">Gagal memuat user</option>';
+                });
+
+            quickAssignP3deModal.show();
+        });
+
+        // Submit handler for P3DE
+        document.getElementById('qa-p3de-submit-btn').addEventListener('click', function() {
+            const userId = document.getElementById('qa-p3de-user-select').value;
+            const startDate = document.getElementById('qa-p3de-start-date').value;
+            const endDate = document.getElementById('qa-p3de-end-date').value;
+            const errorBox = document.getElementById('qa-p3de-error-box');
+
+            errorBox.style.display = 'none';
+            errorBox.textContent = '';
+
+            if (!qaP3deCurrentSubjenisId || !userId || !startDate) {
+                errorBox.textContent = 'Harap lengkapi semua field: User PIC P3DE dan Tanggal Mulai.';
+                errorBox.style.display = 'block';
+                return;
+            }
+
+            const submitBtn = this;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...';
+
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', qaCsrfToken);
+            formData.append('tipe', 'P3DE');
+            formData.append('id_sub_jenis_data_ilap', qaP3deCurrentSubjenisId);
+            formData.append('id_user', userId);
+            formData.append('start_date', startDate);
+            if (endDate) {
+                formData.append('end_date', endDate);
+            }
+            formData.append('ajax', '1');
+
+            fetch(qaP3dePicCreateUrl, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': qaCsrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(r => {
+                if (!r.ok && r.status !== 200) throw new Error('Server error');
+                return r.json();
+            })
+            .then(data => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="feather-user-plus me-1"></i> ASSIGN';
+
+                if (data.success || data.redirect) {
+                    quickAssignP3deModal.hide();
+                    // Reload the tables
+                    if (datatableTables['jenis_data_tanpa_pic_p3de']) {
+                        datatableTables['jenis_data_tanpa_pic_p3de'].ajax.reload();
+                    }
+                    if (datatableTables['periode_tiket_null_p3de']) {
+                        datatableTables['periode_tiket_null_p3de'].ajax.reload();
+                    }
+                    // Show success toast
+                    showSuccessToast('Penugasan Berhasil', 'PIC P3DE berhasil di-assign!');
+                } else if (data.html) {
+                    // form_invalid: parse error text from the rendered form HTML
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(data.html, 'text/html');
+                    const errEls = doc.querySelectorAll('.invalid-feedback, .alert-danger, .errorlist li');
+                    let msgs = Array.from(errEls).map(el => el.textContent.trim()).filter(Boolean);
+                    errorBox.textContent = msgs.length ? msgs.join(' | ') : 'Data tidak valid. Periksa kembali isian Anda.';
+                    errorBox.style.display = 'block';
+                } else {
+                    errorBox.textContent = 'Terjadi kesalahan. Silakan coba lagi.';
+                    errorBox.style.display = 'block';
+                }
+            })
+            .catch(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="feather-user-plus me-1"></i> ASSIGN';
+                errorBox.textContent = 'Gagal menghubungi server. Periksa koneksi Anda.';
+                errorBox.style.display = 'block';
+            });
+        });
+
         // Set first category as default visible
         if (cards.length > 0) {
             cards.forEach(card => card.style.display = 'none');
@@ -1040,6 +3117,8 @@
                 });
             });
         });
+
+        // Reverted to use native DataTables search box per user request
     });
 </script>
 {% endblock %}
