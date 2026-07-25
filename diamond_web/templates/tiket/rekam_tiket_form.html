@@ -1151,6 +1151,9 @@
             // Handle actual form submission
             if (btnSubmit) {
                 btnSubmit.addEventListener('click', function() {
+                    if (document.activeElement) {
+                        document.activeElement.blur();
+                    }
                     confirmModal.hide();
                     // Re-enable disabled fields before submit so their values are included in POST data
                     [bentukDataSelect, caraPenyampaianSelect, barisDiterimaInput].forEach(el => {

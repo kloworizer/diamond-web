@@ -1,4 +1,59 @@
 {% load crispy_forms_tags %}
+<style>
+    .modal-body {
+        padding-top: 0.5rem !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+        padding-bottom: 0.25rem !important;
+    }
+    .modal-body label {
+        font-weight: 600 !important;
+        font-size: 12px !important;
+        color: #334155 !important;
+        margin-bottom: 6px !important;
+    }
+    .modal-body .form-control,
+    .modal-body .form-select {
+        height: 40px !important;
+        border-radius: 8px !important;
+        font-size: 13px !important;
+        border: 1px solid #cbd5e1 !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        line-height: normal !important;
+    }
+    .modal-body .asteriskField {
+        color: #ef4444 !important;
+    }
+    .modal-body .invalid-feedback {
+        font-size: 11px !important;
+        margin-top: 4px !important;
+    }
+    .modal-body .alert-danger {
+        border-radius: 8px !important;
+        padding: 8px 12px !important;
+        font-size: 12.5px !important;
+    }
+    #crudModal .modal-dialog {
+        max-width: 480px !important;
+    }
+    /* Select2 bootstrap-5 custom premium theme overrides */
+    .select2-container--bootstrap-5 .select2-selection {
+        height: 40px !important;
+        border-radius: 8px !important;
+        border: 1px solid #cbd5e1 !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    .select2-container--bootstrap-5 .select2-selection__rendered {
+        padding-left: 12px !important;
+        font-size: 13px !important;
+        color: #334155 !important;
+    }
+    .select2-container--bootstrap-5 .select2-selection__arrow {
+        height: 38px !important;
+    }
+</style>
 <form method="post" action="{{ form_action }}" class="w-100" data-modal-size="lg">
     {% csrf_token %}
     <div class="modal-header d-flex align-items-center py-3 px-4" style="border-bottom: 1px solid #f1f5f9 !important;">
@@ -37,33 +92,28 @@
         {% endif %}
         {{ form|crispy }}
         
-        <!-- Integrated ILAP Info Block -->
-        <div id="div_id_ilap_info" class="mt-3 p-3 rounded" style="display: none; background-color: #f8fafc; border: 1px solid #e2e8f0;">
-            <h6 class="fw-bold text-dark mb-2" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
-                <i class="feather-info me-1 text-primary"></i>Detail Informasi ILAP
-            </h6>
-            <div class="row g-3" style="font-size: 12.5px;">
-                <div class="col-6">
-                    <span class="text-muted d-block mb-1" style="font-size: 11px;">Kategori ILAP</span>
-                    <span id="lbl-ilap-kategori" class="fw-semibold text-dark">-</span>
+        <!-- Integrated ILAP Info Block (styled to match home assign modal) -->
+        <div id="div_id_ilap_info" class="p-3 rounded mb-3" style="display: none; background-color: #f8fafc; border: 1px solid #e2e8f0;">
+            <div class="row g-2" style="font-size: 12.5px;">
+                <div class="col-12">
+                    <span class="text-muted d-block mb-1" style="font-size: 11px;">Nama ILAP</span>
+                    <span id="lbl-ilap-nama" class="fw-semibold text-dark">-</span>
                 </div>
                 <div class="col-6">
-                    <span class="text-muted d-block mb-1" style="font-size: 11px;">Jenis Data</span>
-                    <span id="lbl-ilap-jenis" class="fw-semibold text-dark">-</span>
+                    <span class="text-muted d-block mb-1" style="font-size: 11px;">Kode Sub Jenis Data</span>
+                    <span id="lbl-ilap-kode" class="fw-semibold text-dark">-</span>
                 </div>
                 <div class="col-6">
-                    <span class="text-muted d-block mb-1" style="font-size: 11px;">Subjenis Data</span>
+                    <span class="text-muted d-block mb-1" style="font-size: 11px;">Nama Sub Jenis Data</span>
                     <span id="lbl-ilap-subjenis" class="fw-semibold text-dark">-</span>
                 </div>
-                <div class="col-6">
-                    <span class="text-muted d-block mb-1" style="font-size: 11px;">Tingkat Prioritas</span>
-                    <span id="lbl-ilap-prioritas">-</span>
-                </div>
-                <div class="col-12 mt-2">
-                    <span class="text-muted d-block mb-1" style="font-size: 11px;">Periode Data</span>
-                    <span id="lbl-ilap-periode" class="fw-semibold text-dark">-</span>
-                </div>
             </div>
+            
+            <!-- Hidden compatibility labels for existing scripts -->
+            <span id="lbl-ilap-kategori" style="display:none;"></span>
+            <span id="lbl-ilap-jenis" style="display:none;"></span>
+            <span id="lbl-ilap-prioritas" style="display:none;"></span>
+            <span id="lbl-ilap-periode" style="display:none;"></span>
         </div>
     </div>
     <div class="modal-footer border-top-0 pt-0 pb-4" style="border-top: none !important;">
@@ -76,4 +126,106 @@
             {% endif %}
         </button>
     </div>
+    <script>
+        (function() {
+            // Move info box to the top of modal body (before dropdown)
+            const ilapInfoDiv = document.getElementById('div_id_ilap_info');
+            if (ilapInfoDiv && ilapInfoDiv.parentNode) {
+                const parent = ilapInfoDiv.parentNode;
+                parent.insertBefore(ilapInfoDiv, parent.firstChild);
+            }
+
+            // Re-layout start_date and end_date to be side-by-side (placed at the bottom)
+            const startDateDiv = document.getElementById('div_id_start_date');
+            const endDateDiv = document.getElementById('div_id_end_date');
+            if (startDateDiv && endDateDiv) {
+                const originalParent = startDateDiv.parentNode;
+                const row = document.createElement('div');
+                row.className = 'row g-2 mb-3';
+                
+                const colStart = document.createElement('div');
+                colStart.className = 'col-6';
+                colStart.appendChild(startDateDiv);
+                
+                const colEnd = document.createElement('div');
+                colEnd.className = 'col-6';
+                colEnd.appendChild(endDateDiv);
+                
+                row.appendChild(colStart);
+                row.appendChild(colEnd);
+                
+                if (originalParent) {
+                    originalParent.appendChild(row);
+                }
+                
+                startDateDiv.classList.remove('mb-3');
+                endDateDiv.classList.remove('mb-3');
+            }
+
+            // Initialize Flatpickr on the date fields inside this modal
+            if (typeof flatpickr !== 'undefined') {
+                flatpickr('#div_id_start_date input, #div_id_end_date input', {
+                    locale: 'id',
+                    dateFormat: 'Y-m-d',
+                    altInput: true,
+                    altFormat: 'd F Y',
+                    allowInput: true
+                });
+            }
+
+            // Local dynamic info-box updater when Sub Jenis Data is changed or pre-filled
+            function updateLocalIlapInfo() {
+                const selectEl = $('#id_id_sub_jenis_data_ilap');
+                if (!selectEl.length) return;
+                const subJenisId = selectEl.val();
+                const infoDiv = document.getElementById('div_id_ilap_info');
+                if (!infoDiv) return;
+
+                if (!subJenisId) {
+                    infoDiv.style.display = 'none';
+                    return;
+                }
+
+                const selectedOption = selectEl.find('option:selected')[0];
+                const optionText = selectedOption ? selectedOption.text : '';
+                const parts = optionText.split(" - ");
+                const subjenisCode = parts[0] ? parts[0].trim() : '';
+
+                fetch(`/jenis-data-ilap/${subJenisId}/info/`)
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.success) {
+                            document.getElementById('lbl-ilap-nama').textContent = res.kategori_ilap || '-';
+                            document.getElementById('lbl-ilap-kode').textContent = subjenisCode || '-';
+                            document.getElementById('lbl-ilap-subjenis').textContent = res.subjenis_data || '-';
+                            infoDiv.style.display = 'block';
+                        } else {
+                            infoDiv.style.display = 'none';
+                        }
+                    })
+                    .catch(() => {
+                        infoDiv.style.display = 'none';
+                    });
+            }
+
+            // Initialize Select2 search dropdown (combobox)
+            if (typeof $.fn.select2 === 'function') {
+                $('#id_id_sub_jenis_data_ilap, #id_id_user').select2({
+                    dropdownParent: $('#crudModal'),
+                    theme: 'bootstrap-5',
+                    width: '100%'
+                });
+            }
+
+            // Attach listeners (works for both native change and Select2 events)
+            const selectEl = $('#id_id_sub_jenis_data_ilap');
+            if (selectEl.length) {
+                selectEl.on('change', updateLocalIlapInfo);
+                // Trigger initially if edit mode (already selected)
+                if (selectEl.val()) {
+                    setTimeout(updateLocalIlapInfo, 200);
+                }
+            }
+        })();
+    </script>
 </form>

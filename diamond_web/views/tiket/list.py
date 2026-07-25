@@ -1356,6 +1356,7 @@ def tiket_data(request):
         kode_ilap = '-'
         nama_sub_jenis_data = '-'
         id_sub_jenis_data = '-'
+        nama_tabel_I = '-'
         if obj.id_periode_data and obj.id_periode_data.id_sub_jenis_data_ilap:
             jenis_data_ilap = obj.id_periode_data.id_sub_jenis_data_ilap
             if jenis_data_ilap.id_ilap:
@@ -1363,6 +1364,7 @@ def tiket_data(request):
                 nama_ilap = jenis_data_ilap.id_ilap.nama_ilap
             id_sub_jenis_data = jenis_data_ilap.id_sub_jenis_data
             nama_sub_jenis_data = jenis_data_ilap.nama_sub_jenis_data
+            nama_tabel_I = jenis_data_ilap.nama_tabel_I or '-'
 
         periode_formatted = _format_periode_tiket(obj)
 
@@ -1377,6 +1379,7 @@ def tiket_data(request):
             'nama_ilap': nama_ilap,
             'id_sub_jenis_data': id_sub_jenis_data,
             'nama_sub_jenis_data': nama_sub_jenis_data,
+            'nama_tabel_I': nama_tabel_I,
             'periode_formatted': periode_formatted,
             'status': STATUS_LABELS.get(obj.status_tiket, '-'),
             'status_ketersediaan_data': 'Ya' if obj.status_ketersediaan_data else 'Tidak',

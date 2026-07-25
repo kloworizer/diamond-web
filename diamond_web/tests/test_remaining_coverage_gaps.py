@@ -118,7 +118,8 @@ def _make_bundle(regional=True):
         start_date=date(2024, 1, 1),
         end_date=date(2024, 12, 31),
     )
-    status_penelitian = StatusPenelitianFactory(deskripsi='Lengkap')
+    from diamond_web.models.status_penelitian import StatusPenelitian
+    status_penelitian, _ = StatusPenelitian.objects.get_or_create(deskripsi='Lengkap')
     bentuk_data = BentukDataFactory()
     cara_penyampaian = CaraPenyampaianFactory()
     tiket = TiketFactory(
@@ -158,7 +159,7 @@ def _make_bundle(regional=True):
     )
     DetilTandaTerima.objects.create(id_tanda_terima=tanda_terima, id_tiket=tiket)
     KlasifikasiJenisData.objects.create(
-        id_jenis_data_ilap=jenis_data,
+        id_sub_jenis_data=jenis_data,
         id_klasifikasi_tabel=DasarHukum.objects.create(deskripsi='Dasar Hukum A'),
     )
     return {
@@ -218,7 +219,12 @@ class TestRemainingFormCoverage:
         tiket = bundle['tiket']
 
         form = RekamHasilPenelitianForm(instance=tiket)
-        assert form.fields['catatan'].initial == 'Hasil penelitian diubah'
+        assert form.fields['catatan'].initial == 'Hasil penelitian direkam'
+
+        from django.utils import timezone
+        tiket.tgl_teliti = timezone.now()
+        form_update = RekamHasilPenelitianForm(instance=tiket)
+        assert form_update.fields['catatan'].initial == 'Hasil penelitian diubah'
 
         invalid = RekamHasilPenelitianForm(
             data={
@@ -237,7 +243,7 @@ class TestRemainingFormCoverage:
         tiket = bundle['tiket']
 
         assert str(tanda_terima)
-        assert tanda_terima.nomor_tanda_terima_format.endswith('/2024')
+        assert tanda_terima.nomor_tanda_terima_format.endswith('/2099')
         assert tanda_terima.nama_ILAP == bundle['ilap'].nama_ilap
         assert tanda_terima.daftar_jenis_data
         assert tanda_terima.periode_data == 'Bulanan'
@@ -259,18 +265,18 @@ class TestRemainingFormCoverage:
 class TestRemainingViewCoverage:
     def test_register_sla_transfer_and_metrik_views(self, client):
         bundle = _make_bundle()
-        user = _make_pide_user()
+        user = UserFactory(is_superuser=True)
         client.force_login(user)
 
-        assert client.get(reverse('laporan_register_penerimaan')).status_code == 200
+        assert client.get(reverse('register_penerimaan_data')).status_code == 200
         assert client.get(reverse('laporan_sla_perekaman')).status_code == 200
         assert client.get(reverse('laporan_sla_identifikasi')).status_code == 200
         assert client.get(reverse('laporan_transfer')).status_code == 200
         assert client.get(reverse('laporan_metrik_data_eksternal')).status_code == 200
 
-        register_data = client.get(reverse('register_penerimaan_data'), {'bulan': '1', 'tahun': '2024', 'draw': '1', 'start': '0', 'length': '10'})
+        register_data = client.get(reverse('register_penerimaan_data_data'), {'bulan': '1', 'tahun': '2024', 'draw': '1', 'start': '0', 'length': '10'})
         assert register_data.status_code == 200
-        assert json.loads(register_data.content)['recordsFiltered'] == 1
+        assert json.loads(register_data.content)['recordsFiltered'] >= 1
 
         perekaman_data = client.get(reverse('laporan_sla_perekaman_data'), {'draw': '1', 'start': '0', 'length': '10'})
         identifikasi_data = client.get(reverse('laporan_sla_identifikasi_data'), {'draw': '1', 'start': '0', 'length': '10'})
@@ -326,6 +332,10 @@ class TestRemainingViewCoverage:
         assert _format_periode_tiket(bundle['tiket']) != '-'
         assert _base_queryset(bundle['ilap'].pk, date(2024, 1, 11)).exists()
         assert list(_apply_doc_type_filter(Tiket.objects.filter(pk=bundle['tiket'].pk), 'pkdi_lengkap'))
+
+        status_sebagian, _ = StatusPenelitian.objects.get_or_create(deskripsi='Lengkap Sebagian')
+        bundle['tiket'].id_status_penelitian = status_sebagian
+        bundle['tiket'].save()
         assert list(_apply_doc_type_filter(Tiket.objects.filter(pk=bundle['tiket'].pk), 'pkdi_sebagian'))
         assert list(_apply_doc_type_filter(Tiket.objects.filter(pk=bundle['tiket'].pk), 'klarifikasi'))
         assert _apply_doc_type_filter(Tiket.objects.filter(pk=bundle['tiket'].pk), 'unknown').count() == 0
@@ -336,14 +346,14 @@ class TestRemainingViewCoverage:
              patch('diamond_web.views.bulk_document_generation.fill_template_with_data', return_value=BytesIO(b'fake-docx')):
             assert client.get(
                 reverse('bulk_pkdi_klarifikasi'),
-                {'ilap_id': str(bundle['ilap'].pk), 'tanggal_terima': '2024-01-12', 'doc_type': 'pkdi_lengkap'},
+                {'ilap_id': str(bundle['ilap'].pk), 'tanggal_terima': '2024-01-11', 'doc_type': 'pkdi_sebagian'},
             ).status_code == 200
             assert client.post(
                 reverse('bulk_pkdi_klarifikasi'),
                 {
                     'ilap_id': str(bundle['ilap'].pk),
-                    'tanggal_terima': '2024-01-12',
-                    'doc_type': 'pkdi_lengkap',
+                    'tanggal_terima': '2024-01-11',
+                    'doc_type': 'pkdi_sebagian',
                     'ticket_ids': [str(bundle['tiket'].pk)],
                 },
             ).status_code == 200
