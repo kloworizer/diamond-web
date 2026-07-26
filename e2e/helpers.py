@@ -95,7 +95,12 @@ class Reporter:
 @contextmanager
 def browser_page(headless=True):
     with sync_playwright() as p:
-        b = p.chromium.launch(channel="chrome", headless=headless)
+        try:
+            b = p.chromium.launch(channel="chrome", headless=headless)
+        except Exception:
+            # System Chrome isn't installed on this machine; fall back to the
+            # Playwright-managed Chromium build.
+            b = p.chromium.launch(headless=headless)
         ctx = b.new_context(viewport={"width": 1500, "height": 1000},
                             accept_downloads=True)
         ctx.set_default_timeout(15000)
@@ -135,6 +140,33 @@ def shot(page, name):
     return path
 
 
+def fill_date(page, selector, value):
+    """Set a date-only field's value (YYYY-MM-DD), flatpickr-aware.
+
+    base.html globally enhances every <input type="date"> with flatpickr
+    (altInput: true), which hides the real form field (type="hidden") and
+    shows a separate friendly-format text input (with its own cloned
+    `required` attribute) in its place. Playwright's actionability-gated
+    .fill() can't reach the hidden element, and just poking the hidden
+    input's raw .value leaves the visible altInput empty (still "required",
+    still invalid). Go through flatpickr's own setDate() so both stay in
+    sync, exactly like a real user interaction would.
+    """
+    page.eval_on_selector(
+        selector,
+        """(el, v) => {
+            if (el._flatpickr) {
+                el._flatpickr.setDate(v, true);
+            } else {
+                el.value = v;
+                el.dispatchEvent(new Event('input', {bubbles: true}));
+                el.dispatchEvent(new Event('change', {bubbles: true}));
+            }
+        }""",
+        value,
+    )
+
+
 # --------------------------------------------------------------------------- #
 # Small utils
 # --------------------------------------------------------------------------- #
@@ -153,16 +185,26 @@ def hours_ago(h):
     return d.strftime("%Y-%m-%dT%H:%M")
 
 
+def date_ago(h):
+    """Date-only (YYYY-MM-DD) string `h` hours before now, for <input type="date">."""
+    return hours_ago(h)[:10]
+
+
 def future_dt(days_ahead=3, hour=9, minute=0):
     d = dt.datetime.now() + dt.timedelta(days=days_ahead)
     d = d.replace(hour=hour, minute=minute, second=0, microsecond=0)
     return d.strftime("%Y-%m-%dT%H:%M")
 
 
+def future_date(days_ahead=3):
+    """Date-only (YYYY-MM-DD) string `days_ahead` days in the future, for <input type="date">."""
+    return future_dt(days_ahead)[:10]
+
+
 def status_label(page):
     """Read the top status badge text on the tiket detail page."""
     try:
-        el = page.locator("span.badge.fs-6").first
+        el = page.locator(".breadcrumb-status-badge").first
         return el.inner_text().strip()
     except Exception:
         return ""
@@ -289,8 +331,8 @@ def rekam_tiket(page, rep, scenario, *, tersedia=True, baris_diterima=1000,
         page.select_option("#id_satuan_data", "1")
         # tgl terima vertikal only if enabled (regional ILAP)
         if not page.is_disabled("#id_tgl_terima_vertikal"):
-            page.fill("#id_tgl_terima_vertikal", hours_ago(52))
-        page.fill("#id_tgl_terima_dip", hours_ago(48))
+            fill_date(page, "#id_tgl_terima_vertikal", date_ago(52))
+        fill_date(page, "#id_tgl_terima_dip", date_ago(48))
         if backup:
             page.check("#rekam-backup-checkbox")
             page.fill("#backup_lokasi_backup", r"D:\\Backup\\E2E")
@@ -301,7 +343,7 @@ def rekam_tiket(page, rep, scenario, *, tersedia=True, baris_diterima=1000,
         page.wait_for_timeout(300)  # JS disables/sets fields
         page.fill("#id_alasan_ketidaktersediaan", "Data tidak tersedia (E2E test)")
         # tgl_terima_dip still required
-        page.fill("#id_tgl_terima_dip", hours_ago(48))
+        fill_date(page, "#id_tgl_terima_dip", date_ago(48))
 
     dismiss_duplicate_modal(page)
 
@@ -370,7 +412,7 @@ def open_modal(page, trigger_selector, container_selector, *, force_enable=False
 def do_tanda_terima(page, rep, scenario):
     open_modal(page, '[data-bs-target="#createTandaTerimaModal"]',
                "#tanda-terima-form-container")
-    page.fill("#tanda-terima-form-container #id_tanggal_tanda_terima", hours_ago(44))
+    fill_date(page, "#tanda-terima-form-container #id_tanggal_tanda_terima", date_ago(44))
     ok = _wait_reload_after(
         page, lambda: page.click('#tanda-terima-form-container button[type="submit"]'))
     rep.ok(scenario, "buat tanda terima", "reloaded" if ok else "no-reload")
@@ -379,7 +421,7 @@ def do_tanda_terima(page, rep, scenario):
 def do_rekam_penelitian(page, rep, scenario, baris_lengkap, baris_tidak_lengkap):
     open_modal(page, '[data-bs-target="#rekamHasilPenelitianModal"]',
                "#rekam-hasil-penelitian-form-container")
-    page.fill("#rekam-hasil-penelitian-form-container #id_tgl_teliti", hours_ago(40))
+    fill_date(page, "#rekam-hasil-penelitian-form-container #id_tgl_teliti", date_ago(40))
     page.fill("#id_baris_lengkap", str(baris_lengkap))
     page.fill("#id_baris_tidak_lengkap", str(baris_tidak_lengkap))
     page.wait_for_timeout(300)
@@ -405,9 +447,9 @@ def do_kirim_ke_pide(page, rep, scenario):
     page.wait_for_selector(trigger, timeout=8000)
     page.click(trigger)
     page.wait_for_selector("#kirim-tiket-ke-pide-form-container form", timeout=12000)
-    page.fill('#kirim-tiket-ke-pide-form-container [name="tgl_nadine"]', hours_ago(36))
+    fill_date(page, '#kirim-tiket-ke-pide-form-container [name="tgl_nadine"]', date_ago(36))
     page.fill('#kirim-tiket-ke-pide-form-container [name="nomor_nd_nadine"]', "ND-E2E-001")
-    page.fill('#kirim-tiket-ke-pide-form-container [name="tgl_kirim_pide"]', hours_ago(32))
+    fill_date(page, '#kirim-tiket-ke-pide-form-container [name="tgl_kirim_pide"]', date_ago(32))
     ok = _wait_reload_after(
         page, lambda: page.click('#kirim-tiket-ke-pide-form-container button[type="submit"]'))
     rep.ok(scenario, "kirim ke PIDE", f"-> {status_label(page)}" if ok else "no-reload")
@@ -416,7 +458,7 @@ def do_kirim_ke_pide(page, rep, scenario):
 def do_identifikasi(page, rep, scenario):
     open_modal(page, '[data-bs-target="#identifikasiTiketModal"]',
                "#identifikasi-tiket-form-container")
-    page.fill('#identifikasi-tiket-form-container [name="tgl_rekam_pide"]', hours_ago(24))
+    fill_date(page, '#identifikasi-tiket-form-container [name="tgl_rekam_pide"]', date_ago(24))
     ok = _wait_reload_after(
         page, lambda: page.click('#identifikasi-tiket-form-container button[type="submit"]'))
     rep.ok(scenario, "identifikasi", f"-> {status_label(page)}" if ok else "no-reload")
@@ -430,7 +472,7 @@ def do_transfer_pmde(page, rep, scenario, i, u, res, cde):
     page.fill('#transfer-ke-pmde-form-container [name="baris_u"]', str(u))
     page.fill('#transfer-ke-pmde-form-container [name="baris_res"]', str(res))
     page.fill('#transfer-ke-pmde-form-container [name="baris_cde"]', str(cde))
-    page.fill('#transfer-ke-pmde-form-container [name="tgl_transfer"]', hours_ago(12))
+    fill_date(page, '#transfer-ke-pmde-form-container [name="tgl_transfer"]', date_ago(12))
     page.wait_for_timeout(300)
     page.eval_on_selector("#transfer-submit-btn", "el => el.removeAttribute('disabled')")
     ok = _wait_reload_after(

@@ -2,7 +2,7 @@ from django import forms
 from django.utils import timezone
 from ..models.tiket import Tiket
 from .base import AutoRequiredFormMixin
-from ..utils import validate_not_future_datetime, normalize_server_datetime
+from ..utils import validate_not_future_datetime, normalize_server_datetime, combine_date_with_current_time
 
 
 class KirimKePideForm(AutoRequiredFormMixin, forms.ModelForm):
@@ -14,13 +14,13 @@ class KirimKePideForm(AutoRequiredFormMixin, forms.ModelForm):
 
     tgl_nadine = forms.DateTimeField(
         required=True,
-        widget=forms.DateTimeInput(
+        widget=forms.DateInput(
             attrs={
                 'class': 'form-control',
-                'type': 'datetime-local',
-                'placeholder': 'DD/MM/YYYY HH:MM',
+                'type': 'date',
+                'placeholder': 'DD/MM/YYYY',
             },
-            format='%Y-%m-%dT%H:%M',
+            format='%Y-%m-%d',
         ),
     )
     nomor_nd_nadine = forms.CharField(
@@ -34,13 +34,13 @@ class KirimKePideForm(AutoRequiredFormMixin, forms.ModelForm):
     )
     tgl_kirim_pide = forms.DateTimeField(
         required=True,
-        widget=forms.DateTimeInput(
+        widget=forms.DateInput(
             attrs={
                 'class': 'form-control',
-                'type': 'datetime-local',
-                'placeholder': 'DD/MM/YYYY HH:MM',
+                'type': 'date',
+                'placeholder': 'DD/MM/YYYY',
             },
-            format='%Y-%m-%dT%H:%M',
+            format='%Y-%m-%d',
         ),
     )
 
@@ -55,15 +55,17 @@ class KirimKePideForm(AutoRequiredFormMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.tiket_list = kwargs.pop('tiket_list', None)
         super().__init__(*args, **kwargs)
-        self.fields['tgl_nadine'].input_formats = ['%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M']
-        self.fields['tgl_kirim_pide'].input_formats = ['%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M']
+        self.fields['tgl_nadine'].input_formats = ['%Y-%m-%d', '%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M']
+        self.fields['tgl_kirim_pide'].input_formats = ['%Y-%m-%d', '%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M']
 
     def clean_tgl_nadine(self):
         value = self.cleaned_data.get('tgl_nadine')
+        value = combine_date_with_current_time(value)
         return validate_not_future_datetime(value, "Tanggal Nadine")
 
     def clean_tgl_kirim_pide(self):
         value = self.cleaned_data.get('tgl_kirim_pide')
+        value = combine_date_with_current_time(value)
         return validate_not_future_datetime(value, "Tanggal Kirim PIDE")
 
     def clean(self):

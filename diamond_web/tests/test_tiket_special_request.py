@@ -371,7 +371,7 @@ class TestSpecialRequestOnDetailPage:
         resp = client.get(reverse('tiket_detail', args=[tiket.pk]))
         assert resp.status_code == 200
         assert resp.context['tiket_details']['special_request'] == 'Ya'
-        assert b'Special Request' in resp.content
+        assert b'Permintaan Khusus' in resp.content
 
     def test_button_visible_for_active_p3de(self, client, authenticated_user):
         tiket = self._active_p3de_tiket(authenticated_user)
@@ -386,7 +386,7 @@ class TestSpecialRequestOnDetailPage:
         resp = client.get(reverse('tiket_detail', args=[tiket.pk]))
         assert resp.status_code == 200
         assert resp.context['user_can_edit_special_request'] is False
-        assert b'Ubah Special Request' not in resp.content
+        assert b'Ubah Permintaan Khusus' not in resp.content
 
     def test_button_visible_for_active_pide_at_pide_status(self, client, pide_user):
         tiket = self._active_pic_tiket(pide_user, 'PIDE', TiketPIC.Role.PIDE, status=4)
@@ -407,7 +407,7 @@ class TestSpecialRequestOnDetailPage:
         client.force_login(authenticated_user)
         resp = client.get(reverse('tiket_detail', args=[tiket.pk]))
         assert resp.context['user_can_edit_special_request'] is False
-        assert b'Ubah Special Request' not in resp.content
+        assert b'Ubah Permintaan Khusus' not in resp.content
 
     def test_button_hidden_for_final_status(self, client, authenticated_user):
         # Active P3DE PIC but tiket is Selesai (status 8) -> no one may edit
@@ -415,7 +415,7 @@ class TestSpecialRequestOnDetailPage:
         client.force_login(authenticated_user)
         resp = client.get(reverse('tiket_detail', args=[tiket.pk]))
         assert resp.context['user_can_edit_special_request'] is False
-        assert b'Ubah Special Request' not in resp.content
+        assert b'Ubah Permintaan Khusus' not in resp.content
 
 
 # ============================================================

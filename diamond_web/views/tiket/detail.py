@@ -25,6 +25,7 @@ from ...constants.tiket_status import (
 )
 from ...constants.tiket_action_types import (
     ROLE_BADGES,
+    TiketActionType,
     get_action_label,
     get_action_badge_class,
 )
@@ -271,6 +272,20 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         ).first()
         context['has_kirim_pide_temp'] = kirim_pide_temp is not None
         context['kirim_pide_id_temp'] = kirim_pide_temp.id_temp if kirim_pide_temp else None
+
+        # Whether the ND Pengantar has ever been generated for this tiket, by any user.
+        # KirimPideTemp rows are deleted once the tiket is actually sent to PIDE, so
+        # once that happens we fall back to the (permanent) audit trail to know the
+        # document was generated. This keeps the download visible after "Kirim ke PIDE"
+        # and even if the tiket is later returned (Dikembalikan) to P3DE.
+        has_pending_kirim_pide_temp = KirimPideTemp.objects.filter(
+            id_tiket=self.object,
+        ).exists()
+        has_been_sent_to_pide = TiketAction.objects.filter(
+            id_tiket=self.object,
+            action=TiketActionType.DIKIRIM_KE_PIDE,
+        ).exists()
+        context['has_generated_nd_pengantar'] = has_pending_kirim_pide_temp or has_been_sent_to_pide
 
         # Determine the sub_jenis_data_ilap for PIC validity check
         sub_jenis_data_ilap = self.object.id_periode_data.id_sub_jenis_data_ilap

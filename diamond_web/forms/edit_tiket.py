@@ -3,7 +3,7 @@ from datetime import datetime
 from ..models.tiket import Tiket
 from ..models.bentuk_data import BentukData
 from .base import AutoRequiredFormMixin
-from ..utils import validate_not_future_datetime, normalize_server_datetime
+from ..utils import validate_not_future_datetime, normalize_server_datetime, combine_date_with_current_time
 
 
 class EditTiketForm(AutoRequiredFormMixin, forms.ModelForm):
@@ -35,21 +35,21 @@ class EditTiketForm(AutoRequiredFormMixin, forms.ModelForm):
                 'readonly': True, 'style': 'background-color: #e9ecef;', 'min': '0',
             }),
             'nomor_surat_pengantar': forms.TextInput(attrs={'class': 'form-control'}),
-            'tanggal_surat_pengantar': forms.DateTimeInput(
-                attrs={'type': 'datetime-local', 'class': 'form-control'},
-                format='%Y-%m-%dT%H:%M',
+            'tanggal_surat_pengantar': forms.DateInput(
+                attrs={'type': 'date', 'class': 'form-control'},
+                format='%Y-%m-%d',
             ),
             'nama_pengirim': forms.TextInput(attrs={'class': 'form-control'}),
             'id_bentuk_data': forms.Select(attrs={'class': 'form-control'}),
             'id_cara_penyampaian': forms.Select(attrs={'class': 'form-control'}),
             'baris_diterima': forms.NumberInput(attrs={'class': 'form-control', 'id': 'id_edit_baris_diterima', 'min': '0'}),
-            'tgl_terima_vertikal': forms.DateTimeInput(
-                attrs={'type': 'datetime-local', 'class': 'form-control', 'id': 'id_edit_tgl_terima_vertikal'},
-                format='%Y-%m-%dT%H:%M',
+            'tgl_terima_vertikal': forms.DateInput(
+                attrs={'type': 'date', 'class': 'form-control', 'id': 'id_edit_tgl_terima_vertikal'},
+                format='%Y-%m-%d',
             ),
-            'tgl_terima_dip': forms.DateTimeInput(
-                attrs={'type': 'datetime-local', 'class': 'form-control', 'id': 'id_edit_tgl_terima_dip'},
-                format='%Y-%m-%dT%H:%M',
+            'tgl_terima_dip': forms.DateInput(
+                attrs={'type': 'date', 'class': 'form-control', 'id': 'id_edit_tgl_terima_dip'},
+                format='%Y-%m-%d',
             ),
         }
 
@@ -83,14 +83,17 @@ class EditTiketForm(AutoRequiredFormMixin, forms.ModelForm):
 
     def clean_tgl_terima_vertikal(self):
         value = self.cleaned_data.get('tgl_terima_vertikal')
+        value = combine_date_with_current_time(value)
         return validate_not_future_datetime(value, "Tanggal Terima Vertikal")
 
     def clean_tgl_terima_dip(self):
         value = self.cleaned_data.get('tgl_terima_dip')
+        value = combine_date_with_current_time(value)
         return validate_not_future_datetime(value, "Tanggal Terima DIP")
 
     def clean_tanggal_surat_pengantar(self):
         value = self.cleaned_data.get('tanggal_surat_pengantar')
+        value = combine_date_with_current_time(value)
         return validate_not_future_datetime(value, "Tanggal Surat Pengantar")
 
     def clean(self):
