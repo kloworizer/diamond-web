@@ -48,16 +48,8 @@ class ProfilForm(forms.ModelForm):
             self.fields['last_name'].initial = self.user.last_name
 
     def clean_old_password(self):
-        """Validate that old_password matches the current user's password
-        only if a new password is being set."""
+        """Validate that old_password matches the current user's password."""
         old_password = self.cleaned_data.get('old_password')
-        new_password1 = self.cleaned_data.get('new_password1')
-
-        if new_password1 and not old_password:
-            raise ValidationError(
-                "Anda harus memasukkan kata sandi saat ini untuk membuat kata sandi baru."
-            )
-
         if old_password and self.user and not self.user.check_password(old_password):
             raise ValidationError(
                 "Kata sandi saat ini salah."
@@ -80,6 +72,23 @@ class ProfilForm(forms.ModelForm):
             if new_password1 != new_password2:
                 raise ValidationError("Kedua kolom kata sandi baru tidak cocok.")
         return new_password2
+
+    def clean(self):
+        """Cross-field check: a new password requires the current password.
+
+        Must run in clean() (not clean_old_password) since old_password is
+        cleaned before new_password1 in field order, so new_password1's
+        cleaned value isn't available yet at that point.
+        """
+        cleaned_data = super().clean()
+        old_password = cleaned_data.get('old_password')
+        new_password1 = cleaned_data.get('new_password1')
+
+        if new_password1 and not old_password:
+            raise ValidationError(
+                "Anda harus memasukkan kata sandi saat ini untuk membuat kata sandi baru."
+            )
+        return cleaned_data
 
     def save(self, commit=True):
         """Save profile changes and password if provided."""

@@ -286,13 +286,13 @@
       "val_pide_pmde_gaps",
       "selesaikan tiket",
       "PASS",
-      "-> Selesai (open_btn_was_disabled=True)"
+      "-> Pengendalian Mutu (open_btn_was_disabled=True)"
     ],
     [
       "val_pide_pmde_gaps",
-      "invalid QC accepted",
-      "FAIL",
-      "status -> Selesai"
+      "invalid QC rejected",
+      "PASS",
+      "status stayed Pengendalian Mutu"
     ],
     [
       "val_tanda_terima_before_dip",
@@ -418,7 +418,7 @@
       "crud_kategori_wilayah",
       "valid create",
       "PASS",
-      "E2E kategori-wil 28535"
+      "E2E kategori-wil 87305"
     ],
     [
       "crud_kategori_wilayah",
@@ -430,7 +430,7 @@
       "crud_kategori_wilayah",
       "edit",
       "PASS",
-      "E2E kategori-wil 28535 (edited)"
+      "E2E kategori-wil 87305 (edited)"
     ],
     [
       "crud_kategori_wilayah",
@@ -448,7 +448,7 @@
       "crud_jenis_tabel",
       "valid create",
       "PASS",
-      "E2E jenis-tabel 37732"
+      "E2E jenis-tabel 96825"
     ],
     [
       "crud_jenis_tabel",
@@ -460,7 +460,7 @@
       "crud_jenis_tabel",
       "edit",
       "PASS",
-      "E2E jenis-tabel 37732 (edited)"
+      "E2E jenis-tabel 96825 (edited)"
     ],
     [
       "crud_jenis_tabel",
@@ -478,7 +478,7 @@
       "crud_status_data",
       "valid create",
       "PASS",
-      "E2E status-data 46882"
+      "E2E status-data 5966"
     ],
     [
       "crud_status_data",
@@ -490,7 +490,7 @@
       "crud_status_data",
       "edit",
       "PASS",
-      "E2E status-data 46882 (ed"
+      "E2E status-data 5966 (edi"
     ],
     [
       "crud_status_data",
@@ -508,7 +508,7 @@
       "crud_status_penelitian",
       "valid create",
       "PASS",
-      "E2E status-penel 56043"
+      "E2E status-penel 15494"
     ],
     [
       "crud_status_penelitian",
@@ -520,7 +520,7 @@
       "crud_status_penelitian",
       "edit",
       "PASS",
-      "E2E status-penel 56043 (e"
+      "E2E status-penel 15494 (e"
     ],
     [
       "crud_status_penelitian",
@@ -538,7 +538,7 @@
       "crud_bentuk_data",
       "valid create",
       "PASS",
-      "E2E bentuk-data 65090"
+      "E2E bentuk-data 24839"
     ],
     [
       "crud_bentuk_data",
@@ -550,7 +550,7 @@
       "crud_bentuk_data",
       "edit",
       "PASS",
-      "E2E bentuk-data 65090 (ed"
+      "E2E bentuk-data 24839 (ed"
     ],
     [
       "crud_bentuk_data",
@@ -568,7 +568,7 @@
       "crud_cara_penyampaian",
       "valid create",
       "PASS",
-      "E2E cara-penyamp 74223"
+      "E2E cara-penyamp 33980"
     ],
     [
       "crud_cara_penyampaian",
@@ -580,7 +580,7 @@
       "crud_cara_penyampaian",
       "edit",
       "PASS",
-      "E2E cara-penyamp 74223 (e"
+      "E2E cara-penyamp 33980 (e"
     ],
     [
       "crud_cara_penyampaian",
@@ -598,7 +598,7 @@
       "crud_media_backup",
       "valid create",
       "PASS",
-      "E2E media-backup 83460"
+      "E2E media-backup 43214"
     ],
     [
       "crud_media_backup",
@@ -610,7 +610,7 @@
       "crud_media_backup",
       "edit",
       "PASS",
-      "E2E media-backup 83460 (e"
+      "E2E media-backup 43214 (e"
     ],
     [
       "crud_media_backup",
@@ -628,7 +628,7 @@
       "crud_kanwil",
       "valid create",
       "PASS",
-      "E61/E2E Kanwil 613"
+      "E47/E2E Kanwil 477"
     ],
     [
       "crud_kanwil",
@@ -658,7 +658,7 @@
       "crud_kategori_ilap",
       "valid create",
       "PASS",
-      "E6/E2E Kategori ILAP 65"
+      "E8/E2E Kategori ILAP 83"
     ],
     [
       "crud_kategori_ilap",
@@ -688,7 +688,7 @@
       "crud_periode_pengiriman",
       "valid create",
       "PASS",
-      "E2E Penyampaian 9214"
+      "E2E Penyampaian 69399"
     ],
     [
       "crud_periode_pengiriman",
@@ -712,7 +712,7 @@
       "crud_dasar_hukum",
       "valid create",
       "PASS",
-      "E2E Dasar Hukum 16896"
+      "E2E Dasar Hukum 76991"
     ],
     [
       "crud_dasar_hukum",
@@ -742,7 +742,7 @@
       "crud_kpp",
       "valid create",
       "PASS",
-      "Q13/E2E KPP 134 kanwil=1"
+      "Q28/E2E KPP 283 kanwil=1"
     ],
     [
       "crud_kpp",
@@ -773,11 +773,6 @@
       "Sidebar 'Selesaikan Tiket' button is permanently disabled",
       "HIGH",
       "On the tiket detail page (status Pengendalian Mutu), the button that opens the Selesaikan Tiket modal is rendered with a hardcoded `disabled` attribute (tiket_detail.html ~L766) and no JS enables it. A PMDE PIC cannot complete the tiket through the intended UI. (E2E forced-enabled it to verify the underlying flow still works.)"
-    ],
-    [
-      "Selesaikan Tiket has NO server-side validation of QC totals",
-      "HIGH",
-      "The Selesaikan modal promises 'Lolos QC + Tidak Lolos QC harus sama dengan Baris I', but SelesaikanTiketForm defines no clean() and the view saves whatever is posted. Submitting lolos_qc=1, tidak_lolos_qc=1 (sum 2, unrelated to Baris I) completed the tiket to 'Selesai'. The check is client-side only and is trivially bypassed."
     ]
   ]
 }
