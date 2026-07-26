@@ -315,6 +315,7 @@ class CheckTiketExistsAPIView(View):
             periode_data_id = request.GET.get('periode_data_id')
             periode = request.GET.get('periode')
             tahun = request.GET.get('tahun')
+            exclude_id = request.GET.get('exclude_id')
 
             if not (periode_data_id and periode and tahun):
                 return JsonResponse({'success': False, 'error': 'Missing parameters'}, status=400)
@@ -326,7 +327,12 @@ class CheckTiketExistsAPIView(View):
                 id_periode_data__id_sub_jenis_data_ilap__id_sub_jenis_data=id_sub_jenis_data,
                 periode=int(periode),
                 tahun=int(tahun)
-            ).order_by('tgl_terima_dip')
+            )
+            # When editing an existing tiket, exclude it from the duplicate /
+            # penyampaian calculation so a tiket is never counted against itself.
+            if exclude_id:
+                existing_qs = existing_qs.exclude(pk=exclude_id)
+            existing_qs = existing_qs.order_by('tgl_terima_dip')
             existing_tikets = list(existing_qs.values('id', 'nomor_tiket', 'tgl_terima_dip'))
             existing_numbers = [t['nomor_tiket'] for t in existing_tikets]
             tiket_ids = [t['id'] for t in existing_tikets]

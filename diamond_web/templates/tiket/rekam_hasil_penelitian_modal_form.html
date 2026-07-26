@@ -1,14 +1,6 @@
 <form method="post" action="{{ form_action }}" id="rekamHasilPenelitianForm" data-baris-diterima="{{ tiket.baris_diterima }}" data-tgl-terima-dip="{{ tiket.tgl_terima_dip|date:'Y-m-d\TH:i' }}">
     {% csrf_token %}
     <div class="modal-body">
-        {% if form.non_field_errors %}
-            <div class="alert alert-danger mb-3">
-                {% for error in form.non_field_errors %}
-                    <p class="mb-0">{{ error }}</p>
-                {% endfor %}
-            </div>
-        {% endif %}
-
         <!-- Tanggal Teliti -->
         <div class="mb-3">
             <label for="{{ form.tgl_teliti.id_for_label }}" class="form-label fw-semibold">

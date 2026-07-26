@@ -49,7 +49,7 @@ htmlcov/
 packages/
 
 # Playwright E2E tests (local only, not committed)
-e2e/
+# e2e/
 
 # Backup dumps created by django-dbbackup
 backups/

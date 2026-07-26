@@ -60,6 +60,16 @@
                             <input class="form-check-input" type="radio" name="status_ketersediaan_data" id="status_tidak_tersedia" value="0">
                             <label class="form-check-label" for="status_tidak_tersedia">Data Tidak Tersedia</label>
                         </div>
+                        <div class="form-check form-switch mt-3">
+                            {{ form.special_request }}
+                            <label class="form-check-label" for="{{ form.special_request.id_for_label }}">{{ form.special_request.label }}</label>
+                            {% if form.special_request.errors %}
+                                <div class="invalid-feedback d-block">{{ form.special_request.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted d-block">
+                                <i class="feather-info me-1"></i>Opsi ini untuk menandai tiket sebagai tiket permintaan khusus dengan prioritas pengolahan lebih tinggi dari tiket biasa.
+                            </small>
+                        </div>
                     </div>
                     <div class="col-md-6">
                         <div class="mb-3">
@@ -390,146 +400,160 @@
 
 <!-- Confirmation Modal -->
 <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="confirmModalLabel">Konfirmasi Data</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" style="max-height: 500px; overflow-y: auto;">
+            <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
                 <p class="mb-3">Pastikan data berikut sudah benar sebelum disimpan:</p>
-                <table class="table table-sm">
-                    <tbody>
-                        <tr>
-                            <th style="width: 40%;">Nomor Tiket</th>
-                            <td id="confirm-nomor-tiket">-</td>
-                        </tr>
-                        <tr>
-                            <th style="width: 40%;">ILAP</th>
-                            <td id="confirm-nama-ilap">-</td>
-                        </tr>
-                        <tr>
-                            <th>Kategori ILAP</th>
-                            <td id="confirm-kategori-ilap">-</td>
-                        </tr>
-                        <tr>
-                            <th>Kategori Wilayah</th>
-                            <td id="confirm-kategori-wilayah">-</td>
-                        </tr>
-                        <tr>
-                            <th>Jenis Tabel</th>
-                            <td id="confirm-jenis-tabel">-</td>
-                        </tr>
-                        <tr>
-                            <th>Jenis Prioritas Data</th>
-                            <td id="confirm-jenis-prioritas">-</td>
-                        </tr>
-                        <tr>
-                            <th>Klasifikasi Jenis Data</th>
-                            <td id="confirm-klasifikasi">-</td>
-                        </tr>
-                        <tr>
-                            <th>ID Sub Jenis Data</th>
-                            <td id="confirm-id-sub-jenis-data">-</td>
-                        </tr>
-                        <tr>
-                            <th>Nama Sub Jenis Data</th>
-                            <td id="confirm-nama-sub-jenis-data">-</td>
-                        </tr>
-                        <tr>
-                            <th colspan="2"><strong>PIC</strong></th>
-                        </tr>
-                        <tr>
-                            <th>PIC P3DE</th>
-                            <td id="confirm-pic-p3de">-</td>
-                        </tr>
-                        <tr>
-                            <th>PIC PIDE</th>
-                            <td id="confirm-pic-pide">-</td>
-                        </tr>
-                        <tr>
-                            <th>PIC PMDE</th>
-                            <td id="confirm-pic-pmde">-</td>
-                        </tr>
-                        <tr>
-                            <th colspan="2"><strong>Periode</strong></th>
-                        </tr>
-                        <tr>
-                            <th>Deskripsi Periode</th>
-                            <td id="confirm-deskripsi-periode">-</td>
-                        </tr>
-                        <tr>
-                            <th>Periode</th>
-                            <td id="confirm-periode">-</td>
-                        </tr>
-                        <tr>
-                            <th>Tahun</th>
-                            <td id="confirm-tahun">-</td>
-                        </tr>
-                        <tr>
-                            <th colspan="2"><strong>Tanggal Penerimaan</strong></th>
-                        </tr>
-                        <tr>
-                            <th>Tanggal Terima Vertikal</th>
-                            <td id="confirm-tgl-vertikal">-</td>
-                        </tr>
-                        <tr>
-                            <th>Tanggal Terima DIP</th>
-                            <td id="confirm-tgl-dip">-</td>
-                        </tr>
-                        <tr>
-                            <th colspan="2"><strong>Surat Pengantar</strong></th>
-                        </tr>
-                        <tr>
-                            <th>Nomor Surat Pengantar</th>
-                            <td id="confirm-nomor-surat-pengantar">-</td>
-                        </tr>
-                        <tr>
-                            <th>Tanggal Surat Pengantar</th>
-                            <td id="confirm-tanggal-surat-pengantar">-</td>
-                        </tr>
-                        <tr>
-                            <th>Nama Pengirim</th>
-                            <td id="confirm-nama-pengirim">-</td>
-                        </tr>
-                        <tr>
-                            <th>Bentuk Data</th>
-                            <td id="confirm-bentuk-data">-</td>
-                        </tr>
-                        <tr>
-                            <th>Cara Penyampaian</th>
-                            <td id="confirm-cara-penyampaian">-</td>
-                        </tr>
-                        <tr>
-                            <th>Penyampaian</th>
-                            <td id="confirm-penyampaian">-</td>
-                        </tr>
-                        <tr>
-                            <th>Baris Diterima</th>
-                            <td id="confirm-baris-diterima">-</td>
-                        </tr>
-                        <tr>
-                            <th>Satuan Data</th>
-                            <td id="confirm-satuan-data">-</td>
-                        </tr>
-                        <!-- Status Penelitian removed from create form confirmation -->
-                        <tr id="confirm-row-backup" style="display: none;">
-                            <th colspan="2">Backup Data</th>
-                        </tr>
-                        <tr id="confirm-row-lokasi-backup" style="display: none;">
-                            <th>Lokasi Backup</th>
-                            <td id="confirm-lokasi-backup">-</td>
-                        </tr>
-                        <tr id="confirm-row-nama-file" style="display: none;">
-                            <th>Nama File</th>
-                            <td id="confirm-nama-file">-</td>
-                        </tr>
-                        <tr id="confirm-row-media-backup" style="display: none;">
-                            <th>Media Backup</th>
-                            <td id="confirm-media-backup">-</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-sm mb-0">
+                            <tbody>
+                                <tr>
+                                    <th style="width: 50%;">Nomor Tiket</th>
+                                    <td id="confirm-nomor-tiket">-</td>
+                                </tr>
+                                <tr>
+                                    <th>ILAP</th>
+                                    <td id="confirm-nama-ilap">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Kategori ILAP</th>
+                                    <td id="confirm-kategori-ilap">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Kategori Wilayah</th>
+                                    <td id="confirm-kategori-wilayah">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Jenis Tabel</th>
+                                    <td id="confirm-jenis-tabel">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Jenis Prioritas Data</th>
+                                    <td id="confirm-jenis-prioritas">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Klasifikasi Jenis Data</th>
+                                    <td id="confirm-klasifikasi">-</td>
+                                </tr>
+                                <tr>
+                                    <th>ID Sub Jenis Data</th>
+                                    <td id="confirm-id-sub-jenis-data">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Nama Sub Jenis Data</th>
+                                    <td id="confirm-nama-sub-jenis-data">-</td>
+                                </tr>
+                                <tr>
+                                    <th colspan="2"><strong>PIC</strong></th>
+                                </tr>
+                                <tr>
+                                    <th>PIC P3DE</th>
+                                    <td id="confirm-pic-p3de">-</td>
+                                </tr>
+                                <tr>
+                                    <th>PIC PIDE</th>
+                                    <td id="confirm-pic-pide">-</td>
+                                </tr>
+                                <tr>
+                                    <th>PIC PMDE</th>
+                                    <td id="confirm-pic-pmde">-</td>
+                                </tr>
+                                <tr>
+                                    <th colspan="2"><strong>Periode</strong></th>
+                                </tr>
+                                <tr>
+                                    <th>Deskripsi Periode</th>
+                                    <td id="confirm-deskripsi-periode">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Periode</th>
+                                    <td id="confirm-periode">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Tahun</th>
+                                    <td id="confirm-tahun">-</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-sm mb-0">
+                            <tbody>
+                                <tr>
+                                    <th style="width: 50%;" colspan="2"><strong>Tanggal Penerimaan</strong></th>
+                                </tr>
+                                <tr>
+                                    <th>Tanggal Terima Vertikal</th>
+                                    <td id="confirm-tgl-vertikal">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Tanggal Terima DIP</th>
+                                    <td id="confirm-tgl-dip">-</td>
+                                </tr>
+                                <tr>
+                                    <th colspan="2"><strong>Surat Pengantar</strong></th>
+                                </tr>
+                                <tr>
+                                    <th>Nomor Surat Pengantar</th>
+                                    <td id="confirm-nomor-surat-pengantar">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Tanggal Surat Pengantar</th>
+                                    <td id="confirm-tanggal-surat-pengantar">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Nama Pengirim</th>
+                                    <td id="confirm-nama-pengirim">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Bentuk Data</th>
+                                    <td id="confirm-bentuk-data">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Cara Penyampaian</th>
+                                    <td id="confirm-cara-penyampaian">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Penyampaian</th>
+                                    <td id="confirm-penyampaian">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Baris Diterima</th>
+                                    <td id="confirm-baris-diterima">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Satuan Data</th>
+                                    <td id="confirm-satuan-data">-</td>
+                                </tr>
+                                <tr>
+                                    <th>Permintaan Khusus</th>
+                                    <td id="confirm-special-request">-</td>
+                                </tr>
+                                <!-- Status Penelitian removed from create form confirmation -->
+                                <tr id="confirm-row-backup" style="display: none;">
+                                    <th colspan="2">Backup Data</th>
+                                </tr>
+                                <tr id="confirm-row-lokasi-backup" style="display: none;">
+                                    <th>Lokasi Backup</th>
+                                    <td id="confirm-lokasi-backup">-</td>
+                                </tr>
+                                <tr id="confirm-row-nama-file" style="display: none;">
+                                    <th>Nama File</th>
+                                    <td id="confirm-nama-file">-</td>
+                                </tr>
+                                <tr id="confirm-row-media-backup" style="display: none;">
+                                    <th>Media Backup</th>
+                                    <td id="confirm-media-backup">-</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
@@ -609,7 +633,16 @@
         };
 
         if (periodeDataSelect) {
-            periodeDataSelect.addEventListener('change', checkTiketExists);
+            // Deferred to DOMContentLoaded (jQuery/Select2 load after this inline
+            // script) and bound via jQuery: Select2 notifies selection changes with
+            // $element.trigger('change'), which a plain addEventListener misses.
+            document.addEventListener('DOMContentLoaded', function () {
+                if (typeof $ !== 'undefined') {
+                    $(periodeDataSelect).on('change', checkTiketExists);
+                } else {
+                    periodeDataSelect.addEventListener('change', checkTiketExists);
+                }
+            });
         }
         if (periodeSelect) {
             periodeSelect.addEventListener('change', checkTiketExists);
@@ -673,18 +706,46 @@
 
         let periodeDataCache = {};
 
+        // Initialize the ILAP and Jenis Data ILAP dropdowns as searchable (typeable)
+        // single-select comboboxes, matching the Select2 combobox used elsewhere
+        // (e.g. Daftar Tiket filters, PIC forms) but without multi-select.
+        function initIlapSearchableSelects() {
+            if (typeof $ === 'undefined' || typeof $.fn.select2 !== 'function') return;
+            $('#id_ilap, #id_periode_data').each(function () {
+                if (!$(this).hasClass('select2-hidden-accessible')) {
+                    $(this).select2({
+                        theme: 'bootstrap-5',
+                        width: '100%'
+                    });
+                }
+            });
+        }
+
+        // Select2 caches its own rendered selection text and only re-syncs it on a
+        // 'change' event. Since the options below are rebuilt via raw DOM APIs,
+        // trigger a jQuery change so the widget's displayed value stays in sync
+        // (it is otherwise a no-op here since the resulting value is unchanged).
+        function syncPeriodeDataSelect2() {
+            if (typeof $ === 'undefined' || typeof $.fn.select2 !== 'function') return;
+            const $select = $('#id_periode_data');
+            if ($select.data('select2')) {
+                $select.trigger('change');
+            }
+        }
+
         function updatePeriodeDataDropdown(onLoaded) {
             const ilapSelect = document.getElementById('id_ilap');
             const periodeDataSelect = document.getElementById('id_periode_data');
-            
+
             if (!ilapSelect || !periodeDataSelect) return;
 
             const ilapId = ilapSelect.value;
-            
+
             // Clear periode data dropdown
             periodeDataSelect.innerHTML = '<option value="">---------</option>';
             document.getElementById('jenis-data-info').style.display = 'none';
             periodeDataCache = {};
+            syncPeriodeDataSelect2();
 
             if (!ilapId) return;
 
@@ -841,6 +902,8 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            initIlapSearchableSelects();
+
             const ilapSelect = document.getElementById('id_ilap');
             const periodeDataSelect = document.getElementById('id_periode_data');
             const tahunSelect = document.getElementById('id_tahun');
@@ -996,19 +1059,24 @@
             updateKetersediaanDependents();
             updateTanggalTerimaVertikal();
             
-            if (ilapSelect) {
-                ilapSelect.addEventListener('change', function() {
+            // Bound via jQuery (not addEventListener) because Select2 notifies
+            // selection changes with $element.trigger('change'), which only
+            // reaches jQuery-registered handlers, not native DOM listeners.
+            // jQuery's handler still fires for plain native 'change' events too,
+            // so this covers both Select2 picks and programmatic dispatches.
+            if (ilapSelect && typeof $ !== 'undefined') {
+                $(ilapSelect).on('change', function() {
                     updatePeriodeDataDropdown();
                     updateTanggalTerimaVertikal();
                 });
             }
 
-            if (periodeDataSelect) {
-                periodeDataSelect.addEventListener('change', function() {
+            if (periodeDataSelect && typeof $ !== 'undefined') {
+                $(periodeDataSelect).on('change', function() {
                     updateJenisDataInfo();
                     checkJenisPrioritas();
                 });
-                
+
                 // Trigger on page load if there's a selected value
                 if (periodeDataSelect.value) {
                     updateJenisDataInfo();
@@ -1294,8 +1362,11 @@
             document.getElementById('confirm-baris-diterima').textContent = 
                 document.getElementById('id_baris_diterima')?.value || '-';
             
-            document.getElementById('confirm-satuan-data').textContent = 
+            document.getElementById('confirm-satuan-data').textContent =
                 document.getElementById('id_satuan_data')?.options[document.getElementById('id_satuan_data')?.selectedIndex]?.text || '-';
+
+            document.getElementById('confirm-special-request').textContent =
+                document.getElementById('id_special_request')?.checked ? 'Ya' : 'Tidak';
 
             // Backup Data (Bagian C)
             const backupChecked = document.getElementById('rekam-backup-checkbox')?.checked;

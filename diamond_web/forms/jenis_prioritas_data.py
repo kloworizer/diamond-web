@@ -25,6 +25,12 @@ class JenisPrioritasDataForm(AutoRequiredFormMixin, forms.ModelForm):
         end_date = cleaned_data.get('end_date')
         tahun = cleaned_data.get('tahun')
 
+        if start_date and end_date and end_date < start_date:
+            self.add_error('end_date', (
+                f"Tanggal Berakhir ({end_date}) tidak boleh sebelum Tanggal Mulai ({start_date})."
+            ))
+            return cleaned_data
+
         if id_sub and start_date:
             # Check duplicate id_sub + tahun to avoid DB UniqueConstraint triggering
             if tahun:

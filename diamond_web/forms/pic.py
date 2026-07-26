@@ -51,7 +51,14 @@ class PICForm(AutoRequiredFormMixin, forms.ModelForm):
         id_sub_jenis_data_ilap = cleaned_data.get('id_sub_jenis_data_ilap')
         id_user = cleaned_data.get('id_user')
         start_date = cleaned_data.get('start_date')
-        
+        end_date = cleaned_data.get('end_date')
+
+        if start_date and end_date and end_date < start_date:
+            self.add_error('end_date', (
+                f"Tanggal Berakhir ({end_date}) tidak boleh sebelum Tanggal Mulai ({start_date})."
+            ))
+            return cleaned_data
+
         if tipe and id_sub_jenis_data_ilap and id_user and start_date:
             # Check for existing PIC with same user, sub_jenis_data, and start_date
             existing_pic = PIC.objects.filter(

@@ -364,6 +364,40 @@ class ActiveTiketP3DERequiredForEditMixin(UserPassesTestMixin):
         return HttpResponseForbidden("Anda bukan PIC P3DE aktif untuk tiket ini.")
 
 
+KASI_GROUPS = ['kasi_p3de', 'kasi_pide', 'kasi_pmde']
+
+
+def _in_group(user, *names):
+    """Return True when `user` is authenticated and belongs to any of `names`."""
+    if not user or not getattr(user, 'is_authenticated', False):
+        return False
+    return user.groups.filter(name__in=names).exists()
+
+
+def is_kasi_p3de(user):
+    """Return True when `user` belongs to the `kasi_p3de` supervisor group."""
+    return _in_group(user, 'kasi_p3de')
+
+
+def is_kasi_pide(user):
+    """Return True when `user` belongs to the `kasi_pide` supervisor group."""
+    return _in_group(user, 'kasi_pide')
+
+
+def is_kasi_pmde(user):
+    """Return True when `user` belongs to the `kasi_pmde` supervisor group."""
+    return _in_group(user, 'kasi_pmde')
+
+
+def is_kasi(user):
+    """Return True when `user` belongs to any kasi (supervisor) group.
+
+    Kasi are not admins, but they supervise their unit and are therefore not
+    limited to the tikets where they are the active PIC.
+    """
+    return _in_group(user, *KASI_GROUPS)
+
+
 def has_active_tiket_pic(user):
     """Return True if `user` has any active `TiketPIC` assignments.
 
@@ -435,6 +469,7 @@ def can_access_tiket_list(user):
 
     Rules applied:
     - Superusers and any admin group members (admin, admin_p3de, admin_pide, admin_pmde) are always allowed.
+    - Members of any kasi group (kasi_p3de, kasi_pide, kasi_pmde) are allowed.
     - Members of `user_p3de`, `user_pide`, or `user_pmde` groups are
       allowed.
     - Otherwise, the user must have at least one `TiketPIC` record.
@@ -442,6 +477,8 @@ def can_access_tiket_list(user):
     if not user or not user.is_authenticated:
         return False
     if user.is_superuser or user.groups.filter(name__in=['admin', 'admin_p3de', 'admin_pide', 'admin_pmde']).exists():
+        return True
+    if is_kasi(user):
         return True
     if user.groups.filter(name__in=['user_p3de', 'user_pide', 'user_pmde']).exists():
         return True
