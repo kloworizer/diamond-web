@@ -6,7 +6,7 @@ from .base import AutoRequiredFormMixin
 class SpecialRequestForm(AutoRequiredFormMixin, forms.ModelForm):
     """Form for toggling the Special Request flag of a tiket by P3DE/PIDE."""
     special_request = forms.BooleanField(
-        label='Special Request',
+        label='Permintaan Khusus',
         widget=forms.CheckboxInput(attrs={
             'class': 'form-check-input',
             'role': 'switch',
@@ -17,7 +17,7 @@ class SpecialRequestForm(AutoRequiredFormMixin, forms.ModelForm):
         label='Catatan',
         widget=forms.Textarea(attrs={
             'class': 'form-control',
-            'placeholder': 'Masukkan catatan perubahan special request (opsional)',
+            'placeholder': 'Masukkan catatan perubahan permintaan khusus (opsional)',
             'rows': 3
         }),
         required=False

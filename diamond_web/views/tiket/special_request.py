@@ -83,7 +83,7 @@ class SpecialRequestView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         """Build context with tiket information for the special request form."""
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('special_request_tiket', kwargs={'pk': self.object.pk})
-        context['page_title'] = f'Ubah Special Request - {self.object.nomor_tiket}'
+        context['page_title'] = f'Ubah Permintaan Khusus - {self.object.nomor_tiket}'
         context['tiket'] = self.object
         return context
 
@@ -113,10 +113,10 @@ class SpecialRequestView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
                     catatan = (form.cleaned_data.get('catatan') or '').strip()
                     if new_value:
                         action = SpecialRequestActionType.DIAKTIFKAN
-                        default_catatan = 'special request diaktifkan'
+                        default_catatan = 'permintaan khusus diaktifkan'
                     else:
                         action = SpecialRequestActionType.DINONAKTIFKAN
-                        default_catatan = 'special request dinonaktifkan'
+                        default_catatan = 'permintaan khusus dinonaktifkan'
 
                     TiketAction.objects.create(
                         id_tiket=self.object,
@@ -127,9 +127,9 @@ class SpecialRequestView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
                     )
 
                     status_text = 'diaktifkan' if new_value else 'dinonaktifkan'
-                    message = f'Special Request tiket "{self.object.nomor_tiket}" telah {status_text}.'
+                    message = f'Permintaan Khusus tiket "{self.object.nomor_tiket}" telah {status_text}.'
                 else:
-                    message = f'Special Request tiket "{self.object.nomor_tiket}" tidak berubah.'
+                    message = f'Permintaan Khusus tiket "{self.object.nomor_tiket}" tidak berubah.'
 
                 if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return JsonResponse({
@@ -142,7 +142,7 @@ class SpecialRequestView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
                 return super().form_valid(form)
 
         except Exception as e:
-            error_message = f'Gagal memperbarui special request: {str(e)}'
+            error_message = f'Gagal memperbarui permintaan khusus: {str(e)}'
             if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
                     'success': False,

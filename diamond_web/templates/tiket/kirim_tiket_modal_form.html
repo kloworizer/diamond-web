@@ -1,14 +1,6 @@
 <form method="post" action="{{ form_action }}" id="kirim-tiket-modal-form">
     {% csrf_token %}
     <div class="modal-body">
-        {% if form.non_field_errors %}
-            <div class="alert alert-danger mb-3">
-                {% for error in form.non_field_errors %}
-                    <p class="mb-0">{{ error }}</p>
-                {% endfor %}
-            </div>
-        {% endif %}
-
         {% if single_tiket %}
         <div class="mb-3">
             <table class="table table-bordered table-sm mb-0">

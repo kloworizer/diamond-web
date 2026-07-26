@@ -879,6 +879,28 @@
             justify-content: center;
             gap: 6px;
         }
+
+        /* Global date-input icon wrapper. Every <input type="date"> in the app
+           gets wrapped in this (see the flatpickr init script below) so a
+           calendar icon and flatpickr's altInput line up consistently,
+           regardless of whether the input was in the initial page HTML or
+           injected later via an AJAX-loaded modal form. */
+        .input-icon-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .input-icon-wrapper i.feather-calendar {
+            position: absolute;
+            left: 12px;
+            color: #94a3b8;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 5;
+        }
+        .input-icon-wrapper input {
+            padding-left: 32px !important;
+        }
     </style>
 
     {# Select2 multi-select: prevent close button from overlapping text #}
@@ -959,18 +981,56 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
     <script>
-        // Initialize Flatpickr on all date inputs globally
-        document.addEventListener('DOMContentLoaded', function () {
-            if (typeof flatpickr !== 'undefined') {
-                flatpickr('input[type="date"]', {
-                    locale: 'id',
-                    dateFormat: 'Y-m-d',
-                    altInput: true,
-                    altFormat: 'd F Y',
-                    allowInput: true
+        // Initialize Flatpickr + a calendar icon on every date input, globally.
+        //
+        // This runs for the initial page load AND for every <input type="date">
+        // injected later (tiket-detail action modals, master-data CRUD modals,
+        // PIC forms, etc. all load their form HTML via AJAX after
+        // DOMContentLoaded already fired) via a MutationObserver, so every
+        // datepicker in the app behaves identically -- there is exactly one
+        // place that wires this up.
+        (function () {
+            function enhanceDateInputs(root) {
+                if (typeof flatpickr === 'undefined' || !root || !root.querySelectorAll) return;
+                root.querySelectorAll('input[type="date"]').forEach(function (input) {
+                    // Wrap first (before flatpickr runs) so the altInput flatpickr
+                    // creates lands inside the wrapper too, next to the icon.
+                    if (!input.closest('.input-icon-wrapper')) {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'input-icon-wrapper';
+                        input.parentNode.insertBefore(wrapper, input);
+                        wrapper.appendChild(input);
+                        const icon = document.createElement('i');
+                        icon.className = 'feather-calendar';
+                        wrapper.insertBefore(icon, input);
+                    }
+                    if (input._flatpickr) return; // already initialized
+                    flatpickr(input, {
+                        locale: 'id',
+                        dateFormat: 'Y-m-d',
+                        altInput: true,
+                        altFormat: 'd F Y',
+                        allowInput: true
+                    });
                 });
             }
-        });
+
+            document.addEventListener('DOMContentLoaded', function () {
+                enhanceDateInputs(document);
+                const observer = new MutationObserver(function (mutations) {
+                    mutations.forEach(function (mutation) {
+                        mutation.addedNodes.forEach(function (node) {
+                            if (node.nodeType !== 1) return;
+                            if (node.matches && node.matches('input[type="date"]')) {
+                                enhanceDateInputs(node.parentNode || document);
+                            }
+                            enhanceDateInputs(node);
+                        });
+                    });
+                });
+                observer.observe(document.body, { childList: true, subtree: true });
+            });
+        })();
 
         // Cleanup stale modal backdrops that can block interaction on AJAX-heavy pages.
         document.addEventListener('hidden.bs.modal', function () {
@@ -1381,51 +1441,13 @@
         }, true);
 
         // Display Django messages as toasts
-        // Reusable Success Modal Dialog for Workflow Completions
-        function showSuccessModal(message, title = 'Berhasil') {
-            const modalId = 'success-modal-' + Date.now();
-            const modalHtml = `
-                <div class="modal fade" id="${modalId}" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-                    <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
-                        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden; background: #ffffff;">
-                            <div class="modal-body text-center p-5">
-                                <div class="mb-4 d-inline-flex align-items-center justify-content-center" style="width: 76px; height: 76px; background: rgba(16, 185, 129, 0.08); color: #10b981; border-radius: 50%; font-size: 2.5rem; animation: scaleUpToast 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
-                                    <i class="feather-check-circle"></i>
-                                </div>
-                                <h4 class="fw-bold mb-2 text-dark">${title}</h4>
-                                <p class="text-muted fs-13 mb-4" style="line-height: 1.5;">${message}</p>
-                                <div class="d-grid gap-2">
-                                    <button type="button" class="btn btn-primary btn-lg fs-14 py-2" data-bs-dismiss="modal" style="border-radius: 10px; font-weight: 600;">
-                                        <i class="feather-check me-1"></i>Selesai
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-            const modalElement = document.getElementById(modalId);
-            const modal = new bootstrap.Modal(modalElement);
-            modal.show();
-            modalElement.addEventListener('hidden.bs.modal', () => modalElement.remove());
-        }
-
         document.addEventListener('DOMContentLoaded', function () {
             const messagesJson = document.querySelector('[data-messages]');
             if (messagesJson) {
                 try {
                     const messages = JSON.parse(messagesJson.dataset.messages);
                     messages.forEach(msg => {
-                        const lowercaseMsg = (msg.message || '').toLowerCase();
-                        // Intercept major completion events for a rich visual feedback modal
-                        if (lowercaseMsg.includes('berhasil dibuat') || 
-                            lowercaseMsg.includes('berhasil diselesaikan') || 
-                            lowercaseMsg.includes('berhasil dikirim ke pide')) {
-                            showSuccessModal(msg.message, 'Transaksi Berhasil');
-                        } else {
-                            showToast(msg.message, msg.tags || 'info');
-                        }
+                        showToast(msg.message, msg.tags || 'info');
                     });
                 } catch (e) {
                     console.error('Error parsing messages:', e);

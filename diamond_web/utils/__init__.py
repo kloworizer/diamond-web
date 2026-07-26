@@ -51,6 +51,30 @@ def validate_not_future_datetime(value, field_label="Tanggal/waktu"):
     return value
 
 
+def combine_date_with_current_time(value):
+    """Replace the time-of-day of *value* with the current server time.
+
+    Several tiket workflow fields use a date-only picker (no time input)
+    while the underlying database column remains a DateTimeField. Rather
+    than silently saving midnight for every submission, the actual capture
+    time is stamped in so chronological ordering against other timestamped
+    fields stays meaningful.
+
+    Args:
+        value: A :class:`datetime` object (already parsed from the
+            date-only widget). ``None`` is returned unchanged.
+
+    Returns:
+        *value* with its hour/minute/second/microsecond set to right now.
+    """
+    if value is None:
+        return value
+    now = datetime.now()
+    return value.replace(
+        hour=now.hour, minute=now.minute, second=now.second, microsecond=now.microsecond
+    )
+
+
 def format_number_with_separator(value):
     """Format a number with thousand separator using dot as per Indonesian convention.
     

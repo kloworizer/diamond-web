@@ -30,9 +30,9 @@ def rekam_future_date_guard(page, rep):
     page.fill("#id_baris_diterima", str(BARIS))
     page.select_option("#id_satuan_data", "1")
     if not page.is_disabled("#id_tgl_terima_vertikal"):
-        page.fill("#id_tgl_terima_vertikal", H.hours_ago(52))
+        H.fill_date(page, "#id_tgl_terima_vertikal", H.date_ago(52))
     # FUTURE dip
-    page.fill("#id_tgl_terima_dip", H.future_dt(3))
+    H.fill_date(page, "#id_tgl_terima_dip", H.future_date(3))
     H.clear_overlays(page)
     page.click("#btn-confirm-save")
     page.wait_for_timeout(600)
@@ -78,7 +78,7 @@ def penelitian_negative(page, rep):
     # First: mismatched total keeps the button disabled (client validation OK)
     H.open_modal(page, '[data-bs-target="#rekamHasilPenelitianModal"]',
                  "#rekam-hasil-penelitian-form-container")
-    page.fill("#rekam-hasil-penelitian-form-container #id_tgl_teliti", H.hours_ago(40))
+    H.fill_date(page, "#rekam-hasil-penelitian-form-container #id_tgl_teliti", H.date_ago(40))
     page.fill("#id_baris_lengkap", "600")
     page.fill("#id_baris_tidak_lengkap", "100")   # total 700 != 1000
     page.wait_for_timeout(300)
@@ -159,10 +159,154 @@ def transfer_and_selesaikan_gaps(page, rep):
             rep.ok(sc, "invalid QC rejected", f"status stayed {status}")
 
 
+# --------------------------------------------------------------------------- #
+# Chronological chain: Tanda Terima must not be before Tanggal Terima DIP.
+# --------------------------------------------------------------------------- #
+def tanda_terima_before_dip_rejected(page, rep):
+    sc = "val_tanda_terima_before_dip"
+    H.rekam_tiket(page, rep, sc, tahun="2017", baris_diterima=BARIS, backup=False)
+    # tgl_terima_dip was set to date_ago(48) (= today-2, a clean 24h multiple
+    # so it isn't ambiguous vs. the current clock time) by rekam_tiket().
+    # Try a tanda terima date a full day further back (date_ago(72) = today-3)
+    # -- must be rejected. (Offsets here are always exact multiples of 24h so
+    # the resulting calendar date is deterministic regardless of what time of
+    # day the test happens to run.)
+    H.open_modal(page, '[data-bs-target="#createTandaTerimaModal"]',
+                 "#tanda-terima-form-container")
+    H.fill_date(page, "#tanda-terima-form-container #id_tanggal_tanda_terima", H.date_ago(72))
+    page.click('#tanda-terima-form-container button[type="submit"]')
+    page.wait_for_timeout(1200)
+    rejected = (
+        page.locator("#tanda-terima-form-container .alert-danger").count() > 0
+        or page.locator(".toast-danger").count() > 0
+    )
+    if rejected:
+        rep.ok(sc, "tanda terima before tgl_terima_dip rejected")
+    else:
+        rep.fail(sc, "tanda terima before tgl_terima_dip NOT rejected")
+        rep.bug("Tanda Terima accepts a date before the tiket's Tanggal Terima DIP",
+                "MEDIUM", "Submitting a Tanggal Tanda Terima earlier than the tiket's "
+                "tgl_terima_dip was not rejected.")
+        H.shot(page, f"{sc}_rejected")
+        return
+    H.shot(page, f"{sc}_rejected")
+    H.clear_overlays(page)
+
+    # Now a valid date (after tgl_terima_dip = today-2) must succeed.
+    H.fill_date(page, "#tanda-terima-form-container #id_tanggal_tanda_terima", H.date_ago(24))
+    ok = H._wait_reload_after(
+        page, lambda: page.click('#tanda-terima-form-container button[type="submit"]'))
+    status = H.status_label(page)
+    rep.ok(sc, "valid tanda terima accepted", status) if ok else rep.fail(sc, "valid tanda terima rejected")
+    H.shot(page, f"{sc}_accepted")
+
+
+# --------------------------------------------------------------------------- #
+# Chronological chain: Tanggal Teliti must not be before Tanggal Tanda Terima
+# (the step immediately before Rekam Hasil Penelitian).
+# --------------------------------------------------------------------------- #
+def teliti_before_tanda_terima_rejected(page, rep):
+    sc = "val_teliti_before_tanda_terima"
+    # backup=True is required: the "Rekam Hasil Penelitian" button on the
+    # detail page only renders when `tiket.backup and tiket.tanda_terima`.
+    H.rekam_tiket(page, rep, sc, tahun="2016", baris_diterima=BARIS, backup=True)
+    # tgl_terima_dip = date_ago(48) (= today-2). Set tanda terima at
+    # date_ago(24) (= today-1). All offsets are exact 24h multiples so the
+    # resulting calendar date is deterministic regardless of current clock time.
+    H.open_modal(page, '[data-bs-target="#createTandaTerimaModal"]',
+                 "#tanda-terima-form-container")
+    H.fill_date(page, "#tanda-terima-form-container #id_tanggal_tanda_terima", H.date_ago(24))
+    ok = H._wait_reload_after(
+        page, lambda: page.click('#tanda-terima-form-container button[type="submit"]'))
+    if not ok:
+        rep.fail(sc, "setup: buat tanda terima failed")
+        return
+    rep.ok(sc, "setup: buat tanda terima", H.date_ago(24))
+
+    # tgl_teliti at the SAME date as tgl_terima_dip (today-2) is before the
+    # tanda terima date (today-1) -- must be rejected.
+    H.open_modal(page, '[data-bs-target="#rekamHasilPenelitianModal"]',
+                 "#rekam-hasil-penelitian-form-container")
+    H.fill_date(page, "#rekam-hasil-penelitian-form-container #id_tgl_teliti", H.date_ago(48))
+    page.fill("#id_baris_lengkap", str(BARIS))
+    page.fill("#id_baris_tidak_lengkap", "0")
+    page.wait_for_timeout(300)
+    btn = page.locator("#rekam-hasil-penelitian-simpan-btn")
+    # Client-side date guard (min attribute) may already disable the button;
+    # force the submit through to prove the SERVER also rejects it.
+    btn.click(force=True)
+    page.wait_for_timeout(1200)
+    rejected = (
+        page.locator("#rekam-hasil-penelitian-form-container .text-danger").count() > 0
+        or page.locator(".toast-danger").count() > 0
+    )
+    if rejected and "diteliti" not in H.status_label(page).lower():
+        rep.ok(sc, "tgl_teliti before tanda terima rejected", H.status_label(page))
+    else:
+        rep.fail(sc, "tgl_teliti before tanda terima NOT rejected", H.status_label(page))
+        rep.bug("Rekam Hasil Penelitian accepts a Tanggal Teliti before Tanggal Tanda Terima",
+                "MEDIUM", "Submitting tgl_teliti earlier than the tiket's own tanda terima "
+                "date was not rejected server-side.")
+        H.shot(page, f"{sc}_rejected")
+        return
+    H.shot(page, f"{sc}_rejected")
+    H.clear_overlays(page)
+    page.reload(wait_until="networkidle")
+    H.clear_overlays(page)
+
+    # A valid tgl_teliti (today, clearly on/after the tanda terima date) must succeed.
+    H.open_modal(page, '[data-bs-target="#rekamHasilPenelitianModal"]',
+                 "#rekam-hasil-penelitian-form-container")
+    H.fill_date(page, "#rekam-hasil-penelitian-form-container #id_tgl_teliti", H.date_ago(0))
+    page.fill("#id_baris_lengkap", str(BARIS))
+    page.fill("#id_baris_tidak_lengkap", "0")
+    page.wait_for_timeout(300)
+    btn = page.locator("#rekam-hasil-penelitian-simpan-btn")
+    H._wait_reload_after(page, lambda: btn.click(force=True))
+    status = H.status_label(page)
+    rep.ok(sc, "valid tgl_teliti accepted", status) if "diteliti" in status.lower() else rep.fail(
+        sc, "valid tgl_teliti rejected", status)
+    H.shot(page, f"{sc}_accepted")
+
+
+# --------------------------------------------------------------------------- #
+# Every datepicker must render the calendar icon and be flatpickr-enhanced,
+# whether it's on a full page (rekam tiket) or loaded via an AJAX modal
+# (edit tiket) -- guards against the icon/flatpickr regressing per-page.
+# --------------------------------------------------------------------------- #
+def datepicker_icon_and_flatpickr_consistency(page, rep):
+    sc = "val_datepicker_consistency"
+
+    def check(selector, label):
+        page.wait_for_selector(selector, state="attached", timeout=8000)
+        wrapped = page.eval_on_selector(selector, "el => !!el.closest('.input-icon-wrapper')")
+        icon = page.locator(selector).locator(
+            "xpath=ancestor::div[contains(@class,'input-icon-wrapper')]"
+            "//i[contains(@class,'feather-calendar')]"
+        ).count()
+        flatpickr_on = page.eval_on_selector(selector, "el => !!el._flatpickr")
+        ok = wrapped and icon == 1 and flatpickr_on
+        if ok:
+            rep.ok(sc, f"{label} has icon + flatpickr")
+        else:
+            rep.fail(sc, f"{label} missing icon/flatpickr",
+                     f"wrapped={wrapped} icon_count={icon} flatpickr={flatpickr_on}")
+
+    page.goto(f"{H.BASE_URL}/tiket/rekam/")
+    check("#id_tgl_terima_dip", "rekam tiket page")
+
+    detail_url, _ = H.rekam_tiket(page, rep, sc, tahun="2019", baris_diterima=BARIS, backup=False)
+    H.open_modal(page, '[data-bs-target="#editTiketModal"]', "#edit-tiket-form-container")
+    check("#id_edit_tgl_terima_dip", "edit tiket AJAX modal")
+    H.shot(page, sc)
+
+
 def run(page, rep):
     H.login(page)
     for fn in (rekam_future_date_guard, rekam_missing_required,
-               penelitian_negative, transfer_and_selesaikan_gaps):
+               penelitian_negative, transfer_and_selesaikan_gaps,
+               tanda_terima_before_dip_rejected, teliti_before_tanda_terima_rejected,
+               datepicker_icon_and_flatpickr_consistency):
         try:
             fn(page, rep)
         except Exception as e:

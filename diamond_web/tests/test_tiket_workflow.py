@@ -519,7 +519,7 @@ class TestKirimTiketView:
 
     def test_post_form_valid_generates_docx(self, client, authenticated_user):
         """form_valid saves to KirimPideTemp and returns DOCX when user is active P3DE PIC."""
-        from ...models.kirim_pide_temp import KirimPideTemp
+        from diamond_web.models.kirim_pide_temp import KirimPideTemp
 
         tiket = TiketFactory(status_tiket=2, tanda_terima=True)
         TiketPICFactory(id_tiket=tiket, id_user=authenticated_user,
@@ -540,7 +540,7 @@ class TestKirimTiketView:
 
     def test_post_ajax_form_valid(self, client, authenticated_user):
         """AJAX POST saves to KirimPideTemp and returns JSON success with redirect."""
-        from ...models.kirim_pide_temp import KirimPideTemp
+        from diamond_web.models.kirim_pide_temp import KirimPideTemp
 
         tiket = TiketFactory(status_tiket=2, tanda_terima=True)
         TiketPICFactory(id_tiket=tiket, id_user=authenticated_user,

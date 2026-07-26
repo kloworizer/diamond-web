@@ -1,17 +1,17 @@
 from django import forms
 from ..models.tiket import Tiket
-from ..utils import validate_not_future_datetime, normalize_server_datetime
+from ..utils import validate_not_future_datetime, normalize_server_datetime, combine_date_with_current_time
 
 
 class IdentifikasiTiketForm(forms.ModelForm):
     """Form for PIDE to mark tiket as identified and record tgl_rekam_pide."""
-    
+
     class Meta:
         model = Tiket
         fields = ['tgl_rekam_pide']
         widgets = {
-            'tgl_rekam_pide': forms.DateTimeInput(attrs={
-                'type': 'datetime-local',
+            'tgl_rekam_pide': forms.DateInput(attrs={
+                'type': 'date',
                 'class': 'form-control',
                 'required': 'required',
             }),
@@ -19,19 +19,20 @@ class IdentifikasiTiketForm(forms.ModelForm):
         labels = {
             'tgl_rekam_pide': 'Tanggal Rekam PIDE',
         }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Set tgl_rekam_pide as required
         self.fields['tgl_rekam_pide'].required = True
-        self.fields['tgl_rekam_pide'].input_formats = ['%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M']
+        self.fields['tgl_rekam_pide'].input_formats = ['%Y-%m-%d', '%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M']
 
-        # Pre-format tgl_rekam_pide for datetime-local input
+        # Pre-format tgl_rekam_pide for the date-only input
         if self.instance and self.instance.tgl_rekam_pide:
-            self.initial['tgl_rekam_pide'] = self.instance.tgl_rekam_pide.strftime('%Y-%m-%dT%H:%M')
+            self.initial['tgl_rekam_pide'] = self.instance.tgl_rekam_pide.strftime('%Y-%m-%d')
 
     def clean_tgl_rekam_pide(self):
         value = self.cleaned_data.get('tgl_rekam_pide')
+        value = combine_date_with_current_time(value)
         return validate_not_future_datetime(value, "Tanggal Rekam PIDE")
 
     def clean(self):

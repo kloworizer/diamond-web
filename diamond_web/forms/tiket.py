@@ -7,7 +7,7 @@ from ..models.ilap import ILAP
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from datetime import datetime
 from .base import AutoRequiredFormMixin
-from ..utils import validate_not_future_datetime, normalize_server_datetime
+from ..utils import validate_not_future_datetime, normalize_server_datetime, combine_date_with_current_time
 
 class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
     satuan_data = forms.ChoiceField(
@@ -20,7 +20,7 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
     # an unchecked checkbox must remain a valid submission.
     special_request = forms.BooleanField(
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input', 'role': 'switch'}),
-        label='Special Request',
+        label='Permintaan Khusus',
         required=False
     )
     id_ilap = forms.ModelChoiceField(
@@ -41,10 +41,10 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
             'id_periode_data': forms.Select(attrs={'class': 'form-select', 'id': 'id_periode_data'}),
             'periode': forms.Select(attrs={'class': 'form-select', 'id': 'id_periode'}),
             'tahun': forms.Select(attrs={'class': 'form-select'}),
-            'tgl_terima_vertikal': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
-            'tgl_terima_dip': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
+            'tgl_terima_vertikal': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'tgl_terima_dip': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'nomor_surat_pengantar': forms.TextInput(attrs={'class': 'form-control'}),
-            'tanggal_surat_pengantar': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
+            'tanggal_surat_pengantar': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'nama_pengirim': forms.TextInput(attrs={'class': 'form-control'}),
             'id_bentuk_data': forms.Select(attrs={'class': 'form-select'}),
             'id_cara_penyampaian': forms.Select(attrs={'class': 'form-select'}),
@@ -174,10 +174,12 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
 
     def clean_tgl_terima_vertikal(self):
         value = self.cleaned_data.get('tgl_terima_vertikal')
+        value = combine_date_with_current_time(value)
         return validate_not_future_datetime(value, "Tanggal Terima Vertikal")
 
     def clean_tgl_terima_dip(self):
         value = self.cleaned_data.get('tgl_terima_dip')
+        value = combine_date_with_current_time(value)
         return validate_not_future_datetime(value, "Tanggal Terima DIP")
 
     def clean(self):
@@ -205,6 +207,7 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
 
     def clean_tanggal_surat_pengantar(self):
         value = self.cleaned_data.get('tanggal_surat_pengantar')
+        value = combine_date_with_current_time(value)
         return validate_not_future_datetime(value, "Tanggal Surat Pengantar")
 
     def clean_status_ketersediaan_data(self):

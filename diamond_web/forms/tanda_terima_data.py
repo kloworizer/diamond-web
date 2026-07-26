@@ -4,7 +4,7 @@ from .base import AutoRequiredFormMixin
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime, parse_date
 from ..models.tanda_terima_data import TandaTerimaData
-from ..utils import validate_not_future_datetime
+from ..utils import validate_not_future_datetime, combine_date_with_current_time, normalize_server_datetime
 from ..models.tiket import Tiket
 from ..models.tiket_pic import TiketPIC
 from ..models.ilap import ILAP
@@ -52,11 +52,17 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
 
     def clean_tanggal_tanda_terima(self):
         value = self.cleaned_data.get('tanggal_tanda_terima')
+        # Disabled on edit: value is the instance's existing datetime (real
+        # capture time already recorded), so leave it untouched. Only a
+        # freshly-submitted date (create flow) gets stamped with "now".
+        if not self.fields['tanggal_tanda_terima'].disabled:
+            value = combine_date_with_current_time(value)
         return validate_not_future_datetime(value, "Tanggal Tanda Terima")
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         tiket_pk = kwargs.pop('tiket_pk', None)
+        self.tiket_pk = tiket_pk
         super().__init__(*args, **kwargs)
         for field_name, field in self.fields.items():
             if field_name != 'tiket_ids':
@@ -213,6 +219,26 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
         if self.fields['id_ilap'].disabled:
             return self.fields['id_ilap'].initial
         return self.cleaned_data.get('id_ilap')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        tanggal = cleaned_data.get('tanggal_tanda_terima')
+        if tanggal:
+            if self.tiket_pk:
+                tikets = Tiket.objects.filter(pk=self.tiket_pk)
+            else:
+                tikets = cleaned_data.get('tiket_ids') or Tiket.objects.none()
+            tanggal = normalize_server_datetime(tanggal)
+            for tiket in tikets:
+                if tiket.tgl_terima_dip:
+                    tgl_terima_dip = normalize_server_datetime(tiket.tgl_terima_dip)
+                    if tanggal < tgl_terima_dip:
+                        raise ValidationError(
+                            f'Tanggal Tanda Terima tidak boleh sebelum Tanggal Terima DIP '
+                            f'({tgl_terima_dip.strftime("%d/%m/%Y %H:%M")}) '
+                            f'untuk tiket {tiket.nomor_tiket}.'
+                        )
+        return cleaned_data
 
     def clean_tiket_ids(self):
         if 'tiket_ids' not in self.fields:
