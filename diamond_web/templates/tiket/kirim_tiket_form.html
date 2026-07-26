@@ -167,7 +167,9 @@
                                             <th>No</th>
                                             <th>Nomor Tiket</th>
                                             <th>Nama ILAP</th>
-                                            <th>Sub Jenis Data</th>
+                                            <th>Jenis/Subjenis Data</th>
+                                            <th>Periode Data</th>
+                                            <th class="text-end">Jumlah Rows Lengkap</th>
                                             <th>Status Tiket</th>
                                         </tr>
                                     </thead>
@@ -186,7 +188,9 @@
                                                 </label>
                                             </td>
                                             <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap|default:'-' }}</td>
-                                            <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data|default:'-' }}</td>
+                                            <td>{{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_jenis_data|default:'-' }} / {{ tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data|default:'-' }}</td>
+                                            <td>{{ tiket.periode }} / {{ tiket.tahun }}</td>
+                                            <td class="text-end fw-semibold">{{ tiket.baris_lengkap|default:0 }}</td>
                                             <td>
                                                 {% with tiket.status_tiket as st %}
                                                     {% if st == 2 %}
@@ -201,7 +205,7 @@
                                         </tr>
                                         {% empty %}
                                         <tr>
-                                            <td colspan="6" class="text-center text-muted py-4">
+                                            <td colspan="8" class="text-center text-muted py-4">
                                                 <i class="feather-info me-1"></i>Tidak ada tiket tersedia.
                                             </td>
                                         </tr>
