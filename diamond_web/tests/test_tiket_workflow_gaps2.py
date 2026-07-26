@@ -179,7 +179,14 @@ class TestTransferKePMDENonAjaxPaths:
 
 @pytest.mark.django_db
 class TestKirimTiketNonAjaxPaths:
-    """Cover lines 191-192 (non-AJAX success) and 204-206 (non-AJAX exception)."""
+    """Non-AJAX POST paths of KirimTiketView.form_valid.
+
+    Note: KirimTiketView only saves KirimPideTemp records and returns the
+    generated DOCX (or a fallback redirect) - it no longer transitions
+    status_tiket or sends the ND Nadine fields; that now happens in the
+    separate KirimKePIDEView step. nomor_nd_nadine/tgl_nadine/tgl_kirim_pide
+    posted below are accepted but ignored by KirimTiketForm.
+    """
 
     def _setup_p3de(self):
         """Create tiket ready for kirim + P3DE user + PIDE PIC."""
@@ -195,7 +202,9 @@ class TestKirimTiketNonAjaxPaths:
         return tiket, p3de_user
 
     def test_non_ajax_success_lines_191_192(self, client):
-        """Non-AJAX valid POST → messages.success + super().form_valid."""
+        """Non-AJAX valid POST -> DOCX response + KirimPideTemp saved."""
+        from diamond_web.models.kirim_pide_temp import KirimPideTemp
+
         tiket, p3de_user = self._setup_p3de()
         client.force_login(p3de_user)
 
@@ -210,8 +219,10 @@ class TestKirimTiketNonAjaxPaths:
                 },
             )
         assert resp.status_code in (200, 302)
+        assert KirimPideTemp.objects.filter(id_tiket=tiket, id_user=p3de_user).exists()
         tiket.refresh_from_db()
-        assert tiket.status_tiket == 4  # STATUS_DIKIRIM_KE_PIDE
+        # KirimTiketView never transitions status; that happens in KirimKePIDEView.
+        assert tiket.status_tiket == 2  # STATUS_DITELITI (unchanged)
 
     def test_build_absolute_uri_exception_lines_191_192(self, client):
         """build_absolute_uri raises → fallback reverse() (lines 191-192)."""

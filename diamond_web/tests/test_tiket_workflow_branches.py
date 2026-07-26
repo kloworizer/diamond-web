@@ -549,7 +549,7 @@ class TestKirimTiketViewBranches:
 
     def test_get_form_kwargs_with_tiket_select(self, client, authenticated_user):
         """POST with tiket-select checkboxes (no tiket_ids) uses list (lines 191-192)."""
-        tiket = TiketFactory(status_tiket=1)
+        tiket = TiketFactory(status_tiket=2, backup=True, tanda_terima=True)
         TiketPICFactory(id_tiket=tiket, id_user=authenticated_user, role=TiketPIC.Role.P3DE, active=True)
         client.force_login(authenticated_user)
         resp = client.post(

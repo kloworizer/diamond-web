@@ -41,3 +41,19 @@ class SelesaikanTiketForm(AutoRequiredFormMixin, forms.ModelForm):
     class Meta:
         model = Tiket
         fields = ['sudah_qc', 'lolos_qc', 'tidak_lolos_qc', 'qc_c']
+
+    def clean(self):
+        cleaned_data = super().clean()
+        lolos_qc = cleaned_data.get('lolos_qc')
+        tidak_lolos_qc = cleaned_data.get('tidak_lolos_qc')
+
+        if lolos_qc is not None and tidak_lolos_qc is not None:
+            if self.instance and self.instance.baris_i is not None:
+                total = lolos_qc + tidak_lolos_qc
+                if total != self.instance.baris_i:
+                    raise forms.ValidationError(
+                        f'Lolos QC + tidak lolos QC ({total}) '
+                        f'harus sama dengan baris I ({self.instance.baris_i}).'
+                    )
+
+        return cleaned_data
