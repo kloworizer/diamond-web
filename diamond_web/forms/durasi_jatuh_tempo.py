@@ -48,3 +48,13 @@ class DurasiJatuhTempoForm(AutoRequiredFormMixin, forms.ModelForm):
                 return obj.name
             
             self.fields['seksi'].label_from_instance = label_from_instance
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get('start_date')
+        end_date = cleaned_data.get('end_date')
+        if start_date and end_date and end_date < start_date:
+            self.add_error('end_date', (
+                f"Tanggal Berakhir ({end_date}) tidak boleh sebelum Tanggal Mulai ({start_date})."
+            ))
+        return cleaned_data

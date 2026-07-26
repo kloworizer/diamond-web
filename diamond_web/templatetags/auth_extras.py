@@ -5,7 +5,7 @@ register = template.Library()
 
 @register.filter(name='has_group')
 def has_group(user, group_name):
-    if user.is_authenticated:
+    if user is not None and user.is_authenticated:
         return user.groups.filter(name=group_name).exists()
     return False
 @register.filter(name='get_item')

@@ -162,16 +162,8 @@
                 endDateDiv.classList.remove('mb-3');
             }
 
-            // Initialize Flatpickr on the date fields inside this modal
-            if (typeof flatpickr !== 'undefined') {
-                flatpickr('#div_id_start_date input, #div_id_end_date input', {
-                    locale: 'id',
-                    dateFormat: 'Y-m-d',
-                    altInput: true,
-                    altFormat: 'd F Y',
-                    allowInput: true
-                });
-            }
+            // Date-input flatpickr + icon enhancement is handled globally by
+            // base.html's MutationObserver-based enhancer -- no local init needed.
 
             // Local dynamic info-box updater when Sub Jenis Data is changed or pre-filled
             function updateLocalIlapInfo() {

@@ -489,7 +489,7 @@
             <div class="content-sidebar-body p3de-tasks" style="margin-top:0;">
                 <div class="role-section-header">
                     <span class="role-dot role-dot-p3de"></span>
-                    <small>Pelaksana P3DE</small>
+                    <small>{% if is_kasi_p3de %}Kepala Seksi P3DE{% else %}Pelaksana P3DE{% endif %}</small>
                 </div>
                 <ul class="nav flex-column nxl-content-sidebar-item">
                     <li class="nav-item">
@@ -555,6 +555,15 @@
                             {% endif %}
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="special_request">
+                            <span class="icon-bg-soft icon-bg-soft-orange"><i class="feather-star" style="color:#FF8D28"></i></span>
+                            <span>Permintaan Khusus</span>
+                            {% if special_request_count %}
+                            <span class="badge bg-warning ms-auto">{{ special_request_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
                 </ul>
                 {% if is_admin_p3de %}
                 <div class="role-section-header" style="border-top:1px solid #eee; padding-top:10px;">
@@ -588,7 +597,7 @@
             <div class="content-sidebar-body pide-tasks" style="margin-top:0;">
                 <div class="role-section-header">
                     <span class="role-dot role-dot-pide"></span>
-                    <small>Pelaksana PIDE</small>
+                    <small>{% if is_kasi_pide %}Kepala Seksi PIDE{% else %}Pelaksana PIDE{% endif %}</small>
                 </div>
                 <ul class="nav flex-column nxl-content-sidebar-item">
                     <li class="nav-item">
@@ -609,6 +618,17 @@
                             {% endif %}
                         </a>
                     </li>
+                    {% if not is_p3de %}
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="special_request">
+                            <span class="icon-bg-soft icon-bg-soft-orange"><i class="feather-star" style="color:#FF8D28"></i></span>
+                            <span>Permintaan Khusus</span>
+                            {% if special_request_count %}
+                            <span class="badge bg-warning ms-auto">{{ special_request_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    {% endif %}
                 </ul>
                 {% if is_admin_pide %}
                 <div class="role-section-header" style="border-top:1px solid #eee; padding-top:10px;">
@@ -642,7 +662,7 @@
             <div class="content-sidebar-body pmde-tasks" style="margin-top:0;">
                 <div class="role-section-header">
                     <span class="role-dot role-dot-pmde"></span>
-                    <small>Pelaksana PMDE</small>
+                    <small>{% if is_kasi_pmde %}Kepala Seksi PMDE{% else %}Pelaksana PMDE{% endif %}</small>
                 </div>
                 <ul class="nav flex-column nxl-content-sidebar-item">
                     <li class="nav-item">
@@ -654,6 +674,17 @@
                             {% endif %}
                         </a>
                     </li>
+                    {% if not is_p3de and not is_pide %}
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="special_request">
+                            <span class="icon-bg-soft icon-bg-soft-orange"><i class="feather-star" style="color:#FF8D28"></i></span>
+                            <span>Permintaan Khusus</span>
+                            {% if special_request_count %}
+                            <span class="badge bg-warning ms-auto">{{ special_request_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    {% endif %}
                 </ul>
                 {% if is_admin_pmde %}
                 <div class="role-section-header" style="border-top:1px solid #eee; padding-top:10px;">
@@ -1630,6 +1661,28 @@
                 </div>
                 {% endif %}
                 {% endif %}
+                {% if is_p3de or is_pide or is_pmde %}
+                <!-- Permintaan Khusus (Special Request) -->
+                <div class="card stretch stretch-full" data-category="special_request" style="display:none;">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-special_request" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Nomor Tiket</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
+                                        <th>Status Tiket</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
                 {% if is_pmde %}
                 <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">PMDE - Pengendalian Mutu</h6> -->
                 <!-- Dalam Proses Pengendalian Mutu -->
@@ -2177,6 +2230,14 @@
             { data: 'actions', title: 'Aksi', orderable: false, searchable: false, className: 'col-actions' }
         ];
 
+        const specialRequestColumns = [
+            { data: 'nomor_tiket', title: 'Nomor Tiket' },
+            { data: 'nama_ilap', title: 'Nama ILAP' },
+            { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
+            { data: 'status_tiket', title: 'Status Tiket' },
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false }
+        ];
+
         const tiketPengendalianMutuTanpaPicColumns = [
             { data: 'nomor_tiket', title: 'Nomor Tiket' },
             { data: 'nama_ilap', title: 'Nama ILAP' },
@@ -2217,6 +2278,9 @@
         function getColumnsForCategory(category) {
             if (category === 'periode_tiket_null_p3de') {
                 return periodeTiketNullColumns;
+            }
+            if (category === 'special_request') {
+                return specialRequestColumns;
             }
             if (category === 'tiket_pengendalian_mutu_tanpa_pic') {
                 return tiketPengendalianMutuTanpaPicColumns;

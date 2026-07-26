@@ -29,6 +29,7 @@ from diamond_web.constants.tiket_status import (
     STATUS_LABELS,
 )
 from diamond_web.constants.tiket_action_types import TiketActionType
+from diamond_web.views.mixins import is_kasi, is_kasi_p3de, is_kasi_pide, is_kasi_pmde
 
 def _get_category_metrics(qs):
     if qs is None:
@@ -48,7 +49,8 @@ def home(request):
 
     Context provided to template:
     - `is_p3de` (bool): whether the current authenticated user belongs to
-      `user_p3de` group. Used to show P3DE-specific UI.
+      `user_p3de` or `kasi_p3de` group. Used to show P3DE-specific UI.
+      `is_pide`/`is_pmde` work the same way for their units.
     - `tiket_summary` (dict): when `is_p3de` is True, contains counts of
       actionable tiket items for the logged-in P3DE (uses
       `get_tiket_summary_for_user`). Example keys: `rekam_backup_data`,
@@ -67,12 +69,17 @@ def home(request):
     is_pide = False
     is_pmde = False
     if request.user.is_authenticated:
-        is_p3de = request.user.groups.filter(name='user_p3de').exists()
-        is_pide = request.user.groups.filter(name='user_pide').exists()
-        is_pmde = request.user.groups.filter(name='user_pmde').exists()
+        # Kasi supervise their unit, so they get the same home view as the
+        # unit's users — but scoped to every tiket, not just their own.
+        is_p3de = request.user.groups.filter(name__in=['user_p3de', 'kasi_p3de']).exists()
+        is_pide = request.user.groups.filter(name__in=['user_pide', 'kasi_pide']).exists()
+        is_pmde = request.user.groups.filter(name__in=['user_pmde', 'kasi_pmde']).exists()
     context['is_p3de'] = is_p3de
     context['is_pide'] = is_pide
     context['is_pmde'] = is_pmde
+    context['is_kasi_p3de'] = is_kasi_p3de(request.user)
+    context['is_kasi_pide'] = is_kasi_pide(request.user)
+    context['is_kasi_pmde'] = is_kasi_pmde(request.user)
     # check admin group membership
     is_admin_p3de = request.user.groups.filter(name='admin_p3de').exists()
     is_admin_pide = request.user.groups.filter(name='admin_pide').exists()
@@ -83,9 +90,7 @@ def home(request):
     # compute task summary and category counts based on user role
     if is_p3de:
         context['tiket_summary'] = get_tiket_summary_for_user_p3de(request.user)
-        p3de_tiket_ids = TiketPIC.objects.filter(
-            id_user=request.user, role=TiketPIC.Role.P3DE, active=True
-        ).values_list('id_tiket', flat=True)
+        p3de_tiket_ids = _get_p3de_tiket_ids(request.user)
 
         p3de_qs = Tiket.objects.filter(id__in=p3de_tiket_ids)
 
@@ -143,9 +148,7 @@ def home(request):
             ).count()
     if is_pide:
         context['tiket_summary_pide'] = get_tiket_summary_for_user_pide(request.user)
-        pide_tiket_ids = TiketPIC.objects.filter(
-            id_user=request.user, role=TiketPIC.Role.PIDE, active=True
-        ).values_list('id_tiket', flat=True)
+        pide_tiket_ids = _get_pide_tiket_ids(request.user)
 
         pide_qs = Tiket.objects.filter(id__in=pide_tiket_ids)
         belum_mulai_proses_identifikasi_qs = pide_qs.filter(status_tiket=STATUS_DIKIRIM_KE_PIDE)
@@ -181,9 +184,7 @@ def home(request):
             ).count()
     if is_pmde:
         context['tiket_summary_pmde'] = get_tiket_summary_for_user_pmde(request.user)
-        pmde_tiket_ids = TiketPIC.objects.filter(
-            id_user=request.user, role=TiketPIC.Role.PMDE, active=True
-        ).values_list('id_tiket', flat=True)
+        pmde_tiket_ids = _get_pmde_tiket_ids(request.user)
 
         pmde_qs = Tiket.objects.filter(id__in=pmde_tiket_ids)
         dalam_proses_pengendalian_mutu_qs = pmde_qs.filter(status_tiket=STATUS_PENGENDALIAN_MUTU)
@@ -215,6 +216,12 @@ def home(request):
                     active=True
                 ))
             ).count()
+    # Special Request (Permintaan Khusus) — available to any user/kasi role.
+    if is_p3de or is_pide or is_pmde:
+        context['special_request_count'] = Tiket.objects.filter(
+            id__in=_get_special_request_tiket_ids(request.user),
+            special_request=True,
+        ).count()
     if settings.DEBUG:
         groups = Group.objects.filter(name__in=['user_p3de', 'user_pide', 'user_pmde']).prefetch_related('user_set')
         debug_groups = {}
@@ -232,23 +239,55 @@ def home(request):
 
 
 def _get_p3de_tiket_ids(user):
-    """Get the set of tiket IDs for which the user is an active P3DE PIC."""
+    """Get the set of tiket IDs in the user's P3DE scope.
+
+    Kasi P3DE supervise the whole unit, so they get every tiket; other users
+    get only the tikets for which they are an active P3DE PIC.
+    """
+    if is_kasi_p3de(user):
+        return Tiket.objects.values_list('id', flat=True)
     return TiketPIC.objects.filter(
         id_user=user, role=TiketPIC.Role.P3DE, active=True
     ).values_list('id_tiket', flat=True)
 
 
 def _get_pide_tiket_ids(user):
-    """Get the set of tiket IDs for which the user is an active PIDE PIC."""
+    """Get the set of tiket IDs in the user's PIDE scope.
+
+    Kasi PIDE supervise the whole unit, so they get every tiket; other users
+    get only the tikets for which they are an active PIDE PIC.
+    """
+    if is_kasi_pide(user):
+        return Tiket.objects.values_list('id', flat=True)
     return TiketPIC.objects.filter(
         id_user=user, role=TiketPIC.Role.PIDE, active=True
     ).values_list('id_tiket', flat=True)
 
 
 def _get_pmde_tiket_ids(user):
-    """Get the set of tiket IDs for which the user is an active PMDE PIC."""
+    """Get the set of tiket IDs in the user's PMDE scope.
+
+    Kasi PMDE supervise the whole unit, so they get every tiket; other users
+    get only the tikets for which they are an active PMDE PIC.
+    """
+    if is_kasi_pmde(user):
+        return Tiket.objects.values_list('id', flat=True)
     return TiketPIC.objects.filter(
         id_user=user, role=TiketPIC.Role.PMDE, active=True
+    ).values_list('id_tiket', flat=True)
+
+
+def _get_special_request_tiket_ids(user):
+    """Get the tiket IDs visible to the user for the Special Request category.
+
+    Any kasi supervises the whole unit and therefore sees every tiket; other
+    users see only the tikets for which they hold an active PIC assignment
+    (regardless of role).
+    """
+    if is_kasi(user):
+        return Tiket.objects.values_list('id', flat=True)
+    return TiketPIC.objects.filter(
+        id_user=user, active=True
     ).values_list('id_tiket', flat=True)
 
 
@@ -264,6 +303,14 @@ def _build_tiket_base_qs(category, user):
         'id_cara_penyampaian',
         'id_status_penelitian',
     )
+
+    # Special Request category: tikets flagged special_request within the
+    # user's visibility scope (kasi see all, others see their PIC tikets).
+    if category == 'special_request':
+        return tiket_qs.filter(
+            id__in=_get_special_request_tiket_ids(user),
+            special_request=True,
+        )
 
     # Admin category: periode_tiket_null_p3de - no user-specific PIC filter
     if category == 'periode_tiket_null_p3de':
@@ -426,6 +473,7 @@ def home_data(request):
         'dalam_proses_pengendalian_mutu', 'periode_tiket_null_p3de',
         'tiket_pengendalian_mutu_tanpa_pic',
         'tiket_dikirim_ke_pide_tanpa_pic',
+        'special_request',
     }
     jenis_data_categories = {
         'jenis_data_tanpa_pic_p3de', 'jenis_data_tanpa_pic_pide', 'jenis_data_tanpa_pic_pmde',
@@ -579,6 +627,8 @@ def home_data(request):
             columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'tgl_transfer']
         elif category == 'periode_tiket_null_p3de':
             columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode', 'tahun', 'status_tiket']
+        elif category == 'special_request':
+            columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'status_tiket']
 
         if order_col_index is not None:
             try:
@@ -691,6 +741,14 @@ def home_data(request):
                     'nama_tabel_I': nama_tabel_I,
                     'periode': obj.periode,
                     'tahun': obj.tahun,
+                    'status_tiket': STATUS_LABELS.get(obj.status_tiket, ''),
+                    'actions': action_html,
+                })
+            elif category == 'special_request':
+                data.append({
+                    'nomor_tiket': obj.nomor_tiket,
+                    'nama_ilap': nama_ilap,
+                    'nama_sub_jenis_data': nama_sub_jenis,
                     'status_tiket': STATUS_LABELS.get(obj.status_tiket, ''),
                     'actions': action_html,
                 })

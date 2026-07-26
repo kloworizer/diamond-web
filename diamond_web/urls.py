@@ -351,11 +351,14 @@ urlpatterns = [
     # - Identifikasi Tiket: identifikasi_tiket endpoint for AJAX modal
     # - Transfer ke PMDE: transfer_ke_pmde endpoint for AJAX modal
     # - Selesaikan Tiket: selesaikan_tiket endpoint for AJAX modal
+    # - Special Request: special_request_tiket endpoint for AJAX modal (P3DE/PIDE)
     path('tiket/<int:pk>/batalkan/', views.BatalkanTiketView.as_view(), name='batalkan_tiket'),
     path('tiket/<int:pk>/rekam-hasil-penelitian/', views.RekamHasilPenelitianView.as_view(), name='rekam_hasil_penelitian'),
     path('tiket/<int:pk>/dikembalikan/', views.DikembalikanTiketView.as_view(), name='dikembalikan_tiket'),
     path('tiket/<int:pk>/identifikasi/', views.IdentifikasiTiketView.as_view(), name='identifikasi_tiket'),
     path('tiket/<int:pk>/transfer-ke-pmde/', views.TransferKePMDEView.as_view(), name='transfer_ke_pmde'),
     path('tiket/<int:pk>/selesaikan/', views.SelesaikanTiketView.as_view(), name='selesaikan_tiket'),
+    path('tiket/<int:pk>/special-request/', views.SpecialRequestView.as_view(), name='special_request_tiket'),
+    path('tiket/<int:pk>/edit/', views.EditTiketView.as_view(), name='edit_tiket'),
 
 ]

@@ -443,7 +443,7 @@ class TestRekamHasilPenelitianForm:
 
         # Line 69: self.initial['tgl_teliti'] should be set to formatted string
         assert 'tgl_teliti' in form.initial
-        assert 'T' in form.initial['tgl_teliti']  # '%Y-%m-%dT%H:%M' format
+        assert 'T' not in form.initial['tgl_teliti']  # '%Y-%m-%d' format (date-only picker)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -747,7 +747,7 @@ class TestIdentifikasiTiketFormGaps:
         form = IdentifikasiTiketForm(instance=tiket)
 
         assert 'tgl_rekam_pide' in form.initial
-        assert 'T' in form.initial['tgl_rekam_pide']
+        assert 'T' not in form.initial['tgl_rekam_pide']  # '%Y-%m-%d' format (date-only picker)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

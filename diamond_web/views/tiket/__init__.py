@@ -16,6 +16,8 @@ from .dikembalikan_tiket import DikembalikanTiketView
 from .identifikasi_tiket import IdentifikasiTiketView
 from .transfer_ke_pmde import TransferKePMDEView
 from .selesaikan_tiket import SelesaikanTiketView
+from .special_request import SpecialRequestView
+from .edit_tiket import EditTiketView
 
 __all__ = [
     'TiketListView',
@@ -38,4 +40,6 @@ __all__ = [
     'IdentifikasiTiketView',
     'TransferKePMDEView',
     'SelesaikanTiketView',
+    'SpecialRequestView',
+    'EditTiketView',
 ]

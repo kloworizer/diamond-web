@@ -1,7 +1,7 @@
 from django import forms
 from ..models.tiket import Tiket
 from .base import AutoRequiredFormMixin
-from ..utils import validate_not_future_datetime, normalize_server_datetime
+from ..utils import validate_not_future_datetime, normalize_server_datetime, combine_date_with_current_time
 
 
 class TransferKePMDEForm(AutoRequiredFormMixin, forms.ModelForm):
@@ -44,9 +44,9 @@ class TransferKePMDEForm(AutoRequiredFormMixin, forms.ModelForm):
     )
     tgl_transfer = forms.DateTimeField(
         label='Tanggal Transfer',
-        widget=forms.DateTimeInput(attrs={
+        widget=forms.DateInput(attrs={
             'class': 'form-control',
-            'type': 'datetime-local'
+            'type': 'date'
         }),
         required=True
     )
@@ -57,6 +57,7 @@ class TransferKePMDEForm(AutoRequiredFormMixin, forms.ModelForm):
 
     def clean_tgl_transfer(self):
         value = self.cleaned_data.get('tgl_transfer')
+        value = combine_date_with_current_time(value)
         return validate_not_future_datetime(value, "Tanggal Transfer")
 
     def clean(self):

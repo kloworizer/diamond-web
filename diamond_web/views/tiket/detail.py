@@ -25,10 +25,12 @@ from ...constants.tiket_status import (
 )
 from ...constants.tiket_action_types import (
     ROLE_BADGES,
+    TiketActionType,
     get_action_label,
     get_action_badge_class,
 )
 from ...utils import format_number_with_separator, format_periode
+from ..mixins import is_kasi
 
 
 class TiketDetailView(LoginRequiredMixin, DetailView):
@@ -58,15 +60,19 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         Permission Logic:
         - Superuser: Always allowed
         - Admin group member: Always allowed
+        - Kasi (supervisor) group member: Always allowed, read-only — the
+          action buttons stay gated behind `user_is_active_pic_*`
         - Other users: Must have a TiketPIC record (active or inactive) for this tiket
 
         Raises:
-        - PermissionDenied: If user is not superuser/admin and has no TiketPIC
+        - PermissionDenied: If user is not superuser/admin/kasi and has no TiketPIC
         - Http404: If tiket PK not found (via parent get_object)
         """
         obj = super().get_object(queryset)
-        # Allow access if user is superuser or admin
+        # Allow access if user is superuser, admin or kasi
         if self.request.user.is_superuser or self.request.user.groups.filter(name='admin').exists():
+            return obj
+        if is_kasi(self.request.user):
             return obj
         # Allow access if user is any kind of PIC for this tiket (active or inactive)
         if not TiketPIC.objects.filter(id_tiket=obj, id_user=self.request.user).exists():
@@ -254,6 +260,7 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
             'tgl_rekam_pide': self.object.tgl_rekam_pide,
             'backup': 'Ya' if self.object.backup else 'Tidak',
             'tanda_terima': 'Ya' if self.object.tanda_terima else 'Tidak',
+            'special_request': 'Ya' if self.object.special_request else 'Tidak',
         }
         
         # NOTE: workflow_step mapping removed — templates do not use it.
@@ -265,6 +272,20 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         ).first()
         context['has_kirim_pide_temp'] = kirim_pide_temp is not None
         context['kirim_pide_id_temp'] = kirim_pide_temp.id_temp if kirim_pide_temp else None
+
+        # Whether the ND Pengantar has ever been generated for this tiket, by any user.
+        # KirimPideTemp rows are deleted once the tiket is actually sent to PIDE, so
+        # once that happens we fall back to the (permanent) audit trail to know the
+        # document was generated. This keeps the download visible after "Kirim ke PIDE"
+        # and even if the tiket is later returned (Dikembalikan) to P3DE.
+        has_pending_kirim_pide_temp = KirimPideTemp.objects.filter(
+            id_tiket=self.object,
+        ).exists()
+        has_been_sent_to_pide = TiketAction.objects.filter(
+            id_tiket=self.object,
+            action=TiketActionType.DIKIRIM_KE_PIDE,
+        ).exists()
+        context['has_generated_nd_pengantar'] = has_pending_kirim_pide_temp or has_been_sent_to_pide
 
         # Determine the sub_jenis_data_ilap for PIC validity check
         sub_jenis_data_ilap = self.object.id_periode_data.id_sub_jenis_data_ilap
@@ -326,7 +347,30 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         context['user_is_active_pic_p3de'] = user_is_active_pic_p3de
         context['user_is_active_pic_pide'] = user_is_active_pic_pide
         context['user_is_active_pic_pmde'] = user_is_active_pic_pmde
-        
+        # Special Request may be toggled by the active PIC that currently owns
+        # the tiket for its status:
+        #   status 1-3 (Direkam/Diteliti/Dikembalikan) -> active P3DE PIC
+        #   status 4-5 (Dikirim ke PIDE/Identifikasi)  -> active PIDE PIC
+        #   status 6   (Pengendalian Mutu)             -> active PMDE PIC
+        #   status 7-8 (Dibatalkan/Selesai)            -> nobody (final states)
+        status = self.object.status_tiket
+        if status in (STATUS_DIREKAM, STATUS_DITELITI, STATUS_DIKEMBALIKAN):
+            context['user_can_edit_special_request'] = user_is_active_pic_p3de
+        elif status in (STATUS_DIKIRIM_KE_PIDE, STATUS_IDENTIFIKASI):
+            context['user_can_edit_special_request'] = user_is_active_pic_pide
+        elif status == STATUS_PENGENDALIAN_MUTU:
+            context['user_can_edit_special_request'] = user_is_active_pic_pmde
+        else:  # STATUS_DIBATALKAN, STATUS_SELESAI
+            context['user_can_edit_special_request'] = False
+
+        # The isian tiket may be edited by the active P3DE PIC only while the
+        # tiket is still Direkam and no tanda terima has been created yet.
+        context['user_can_edit_tiket'] = (
+            self.object.status_tiket == STATUS_DIREKAM
+            and not self.object.tanda_terima
+            and user_is_active_pic_p3de
+        )
+
         # Add status constants for template use
         context['STATUS_DIREKAM'] = STATUS_DIREKAM
         context['STATUS_DITELITI'] = STATUS_DITELITI

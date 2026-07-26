@@ -12,6 +12,7 @@ class TiketActionType:
     DIBATALKAN = 7
     SELESAI = 8
     DITRANSFER_KE_PMDE = 9
+    DIUBAH = 10
 
 # Action types for Backup workflow
 class BackupActionType:
@@ -33,6 +34,12 @@ class PICActionType:
     TIDAK_AKTIF = 302
     DIAKTIFKAN_KEMBALI = 303
 
+# Action types for Special Request workflow
+class SpecialRequestActionType:
+    """Action types for special request operations"""
+    DIAKTIFKAN = 401
+    DINONAKTIFKAN = 402
+
 # Map action types to display labels
 ACTION_TYPE_LABELS = {
     # Tiket actions
@@ -45,6 +52,7 @@ ACTION_TYPE_LABELS = {
     7: 'Dibatalkan',
     8: 'Selesai',
     9: 'Ditransfer ke PMDE',
+    10: 'Isian Tiket Diubah',
     # Backup actions
     101: 'Backup Direkam',
     102: 'Backup Dihapus',
@@ -56,6 +64,9 @@ ACTION_TYPE_LABELS = {
     301: 'PIC Ditambahkan',
     302: 'PIC Tidak Aktif',
     303: 'PIC Diaktifkan Kembali',
+    # Special request actions
+    401: 'Special Request Diaktifkan',
+    402: 'Special Request Dinonaktifkan',
 }
 
 # Map action types to badge classes
@@ -70,6 +81,7 @@ ACTION_TYPE_BADGE_CLASSES = {
     7: 'bg-danger',
     8: 'bg-success',
     9: 'bg-success',
+    10: 'bg-warning text-dark',
     # Backup actions
     101: 'bg-primary',
     102: 'bg-danger',
@@ -81,6 +93,9 @@ ACTION_TYPE_BADGE_CLASSES = {
     301: 'bg-success',
     302: 'bg-warning',
     303: 'bg-info',
+    # Special request actions
+    401: 'bg-primary',
+    402: 'bg-secondary',
 }
 
 

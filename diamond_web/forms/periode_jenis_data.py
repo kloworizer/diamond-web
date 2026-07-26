@@ -24,6 +24,13 @@ class PeriodeJenisDataForm(AutoRequiredFormMixin, forms.ModelForm):
         id_sub = cleaned_data.get('id_sub_jenis_data_ilap')
         start_date = cleaned_data.get('start_date')
         end_date = cleaned_data.get('end_date')
+
+        if start_date and end_date and end_date < start_date:
+            self.add_error('end_date', (
+                f"Tanggal Berakhir ({end_date}) tidak boleh sebelum Tanggal Mulai ({start_date})."
+            ))
+            return cleaned_data
+
         if id_sub and start_date:
             # Duplicate start_date check
             qs = PeriodeJenisData.objects.filter(
