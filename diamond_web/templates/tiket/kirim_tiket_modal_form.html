@@ -13,8 +13,16 @@
                     <td>{{ single_tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap|default:'-' }}</td>
                 </tr>
                 <tr>
-                    <th>Sub Jenis Data</th>
-                    <td>{{ single_tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data|default:'-' }}</td>
+                    <th>Jenis/Subjenis Data</th>
+                    <td>{{ single_tiket.id_periode_data.id_sub_jenis_data_ilap.nama_jenis_data|default:'-' }} / {{ single_tiket.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data|default:'-' }}</td>
+                </tr>
+                <tr>
+                    <th>Periode Data</th>
+                    <td>{{ single_tiket.periode }} / {{ single_tiket.tahun }}</td>
+                </tr>
+                <tr>
+                    <th>Jumlah Rows Lengkap</th>
+                    <td>{{ single_tiket.baris_lengkap|default:0 }}</td>
                 </tr>
                 <tr>
                     <th>Status Tiket</th>

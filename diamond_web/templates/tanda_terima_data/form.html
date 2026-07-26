@@ -191,12 +191,17 @@
 
         {% if form.tiket_ids %}
         <div class="mb-2">
-            <label class="form-label-premium">{{ form.tiket_ids.label }}</label>
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <label class="form-label-premium mb-0">{{ form.tiket_ids.label }}</label>
+                <span id="tiket-selected-count-badge" class="badge rounded-pill" style="display:none; background-color:#e0f2fe; color:#0284c7; font-size:11px; font-weight:600; padding:5px 10px;">0 tiket dipilih</span>
+            </div>
             <div id="tiket-checkbox-container" class="checkbox-container-premium p-0" style="overflow-x: hidden;">
                 <table class="table table-sm table-hover mb-0" style="font-size: 12.5px; width: 100%; border-collapse: collapse;">
                     <thead style="position: sticky; top: 0; z-index: 10; background-color: #f8fafc; box-shadow: inset 0 -1px 0 #e2e8f0;">
                         <tr>
-                            <th style="width: 45px;" class="text-center py-2 border-0">Pilih</th>
+                            <th style="width: 45px;" class="text-center py-2 border-0">
+                                <input type="checkbox" id="tiket-select-all" title="Pilih Semua Tiket" style="width: 15px; height: 15px; cursor: pointer; accent-color: #0c92ff;">
+                            </th>
                             <th class="py-2 border-0">Nomor Tiket</th>
                             <th class="py-2 border-0">Jenis Data</th>
                             <th class="py-2 border-0">Subjenis Data</th>
