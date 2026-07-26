@@ -398,6 +398,17 @@
             $(document).on('submit', '#modalBody form', function (e) {
                 e.preventDefault();
                 const form = $(this);
+
+                // If the tiket selection table is present, require at least one selected tiket
+                const tiketContainer = form.find('#tiket-checkbox-container');
+                if (tiketContainer.length && tiketContainer.find('input[name="tiket_ids"]').length > 0) {
+                    const hasSelection = tiketContainer.find('input[name="tiket_ids"]:checked').length > 0;
+                    if (!hasSelection) {
+                        showToast('Minimal satu tiket harus dipilih.', 'danger');
+                        return;
+                    }
+                }
+
                 const url = form.attr('action');
                 const formData = new FormData(form[0]);
 
@@ -538,6 +549,54 @@
             }
 
             if (ilapInput && tiketContainer) {
+                const selectAllCheckbox = container.querySelector('#tiket-select-all');
+                const selectedCountBadge = container.querySelector('#tiket-selected-count-badge');
+
+                const updateTiketSelectionUI = () => {
+                    const tbody = container.querySelector('#tiket-table-body');
+                    if (!tbody) return;
+
+                    const allBoxes = tbody.querySelectorAll('input[name="tiket_ids"]');
+                    const checkedBoxes = tbody.querySelectorAll('input[name="tiket_ids"]:checked');
+
+                    if (selectedCountBadge) {
+                        selectedCountBadge.textContent = `${checkedBoxes.length} tiket dipilih`;
+                        selectedCountBadge.style.display = allBoxes.length > 0 ? 'inline-flex' : 'none';
+                    }
+
+                    if (selectAllCheckbox) {
+                        const selectableBoxes = tbody.querySelectorAll('input[name="tiket_ids"]:not(:disabled)');
+                        const selectableChecked = tbody.querySelectorAll('input[name="tiket_ids"]:not(:disabled):checked');
+                        if (selectableBoxes.length === 0) {
+                            selectAllCheckbox.checked = false;
+                            selectAllCheckbox.indeterminate = false;
+                            selectAllCheckbox.disabled = true;
+                        } else {
+                            selectAllCheckbox.disabled = false;
+                            selectAllCheckbox.checked = selectableChecked.length === selectableBoxes.length;
+                            selectAllCheckbox.indeterminate = selectableChecked.length > 0 && selectableChecked.length < selectableBoxes.length;
+                        }
+                    }
+                };
+
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.addEventListener('change', function () {
+                        const tbody = container.querySelector('#tiket-table-body');
+                        if (!tbody) return;
+                        tbody.querySelectorAll('input[name="tiket_ids"]:not(:disabled)').forEach((box) => {
+                            box.checked = selectAllCheckbox.checked;
+                        });
+                        updateTiketSelectionUI();
+                    });
+                }
+
+                // Delegated listener: checkboxes are re-rendered on every ILAP change
+                tiketContainer.addEventListener('change', function (e) {
+                    if (e.target && e.target.name === 'tiket_ids') {
+                        updateTiketSelectionUI();
+                    }
+                });
+
                 const renderTikets = (items) => {
                     const tbody = container.querySelector('#tiket-table-body');
                     if (!tbody) return;
@@ -551,6 +610,7 @@
                                 </td>
                             </tr>
                         `;
+                        updateTiketSelectionUI();
                         return;
                     }
                     tbody.innerHTML = items.map((item) => {
@@ -573,6 +633,7 @@
                             </tr>
                         `;
                     }).join('');
+                    updateTiketSelectionUI();
                 };
 
                 const loadTiketsByIlap = () => {
