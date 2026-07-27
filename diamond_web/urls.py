@@ -82,7 +82,7 @@ urlpatterns = [
     path('ilap/<str:pk>/delete/', views.ILAPDeleteView.as_view(), name='ilap_delete'),
     # Profil ILAP URLs
     path('profil-ilap/', views.ProfilILAPListView.as_view(), name='profil_ilap_list'),
-    path('profil-ilap/<int:pk>/', views.ProfilILAPDetailView.as_view(), name='profil_ilap_detail'),
+    path('profil-ilap/<str:id_ilap>/', views.ProfilILAPDetailView.as_view(), name='profil_ilap_detail'),
     # Jenis Tabel URLs
     path('jenis-tabel/', views.JenisTabelListView.as_view(), name='jenis_tabel_list'),
     path('jenis-tabel/data/', views.jenis_tabel_data, name='jenis_tabel_data'),
@@ -160,6 +160,9 @@ urlpatterns = [
     path('jenis-data-ilap/<int:pk>/update/', views.JenisDataILAPUpdateView.as_view(), name='jenis_data_ilap_update'),
     path('jenis-data-ilap/<int:pk>/delete/', views.JenisDataILAPDeleteView.as_view(), name='jenis_data_ilap_delete'),
     path('jenis-data-ilap/<int:pk>/info/', views.jenis_data_ilap_info_ajax, name='jenis_data_ilap_info_ajax'),
+    path('jenis-data-ilap/<str:id_sub_jenis_data>/tikets/', views.jenis_data_ilap_tiket_data, name='jenis_data_ilap_tiket_data'),
+    # Keep last: matches any remaining single-segment id_sub_jenis_data code.
+    path('jenis-data-ilap/<str:id_sub_jenis_data>/', views.JenisDataILAPProfilView.as_view(), name='jenis_data_ilap_profil'),
     # Klasifikasi Jenis Data URLs
     path('klasifikasi-jenis-data/', views.KlasifikasiJenisDataListView.as_view(), name='klasifikasi_jenis_data_list'),
     path('klasifikasi-jenis-data/data/', views.klasifikasi_jenis_data_data, name='klasifikasi_jenis_data_data'),
@@ -326,6 +329,7 @@ urlpatterns = [
     # API endpoints
     path('api/ilap/<int:ilap_id>/periode-jenis-data/', views.ILAPPeriodeDataAPIView.as_view(), name='api_ilap_periode_jenis_data'),
     path('api/check-jenis-prioritas/<str:jenis_data_id>/<int:tahun>/', views.CheckJenisPrioritasAPIView.as_view(), name='check_jenis_prioritas'),
+    path('api/navbar-search/', views.navbar_search, name='navbar_search'),
     path('api/check-tiket-exists/', views.CheckTiketExistsAPIView.as_view(), name='check_tiket_exists'),
     path('api/preview-nomor-tiket/', views.PreviewNomorTiketAPIView.as_view(), name='preview_nomor_tiket'),
     
