@@ -72,6 +72,9 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Must sit after AuthenticationMiddleware (reads request.user) and inside
+    # SessionMiddleware (which saves the session on the way out).
+    "diamond_web.middleware.SlidingSessionMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -225,7 +228,10 @@ MESSAGE_TAGS = {
 
 # Session settings: 30 minutes
 SESSION_COOKIE_AGE = 30 * 60  # 30 minutes (in seconds)
-SESSION_SAVE_EVERY_REQUEST = False  # avoid write-on-every-request (reduces SQLite lock contention)
+# Left False to avoid a session write on every request (SQLite lock contention).
+# SlidingSessionMiddleware refreshes the expiry for active users instead, at
+# most once per SESSION_COOKIE_AGE * REFRESH_RATIO.
+SESSION_SAVE_EVERY_REQUEST = False
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
 # Email configuration

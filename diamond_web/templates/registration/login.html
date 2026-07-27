@@ -14,6 +14,41 @@
         border-color: #00a5dd !important;
         color: #ffffff !important;
     }
+
+    /* Password peek — the button is overlaid on the field rather than put in
+       an input-group so the input keeps its full width and border radius. */
+    .password-field {
+        position: relative;
+    }
+
+    .password-field .form-control {
+        padding-right: 44px;
+    }
+
+    .password-toggle {
+        position: absolute;
+        top: 50%;
+        right: 6px;
+        transform: translateY(-50%);
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border: 0;
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+        background-color: transparent;
+        cursor: pointer;
+        transition: color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .password-toggle:hover,
+    .password-toggle:focus-visible {
+        color: #00BDFB;
+        background-color: rgba(0, 189, 251, 0.08);
+    }
 </style>
 
 <head>
@@ -50,7 +85,13 @@
                                         <input type="text" class="form-control" name="username" placeholder="NIP9 SIKKA" required>
                                     </div>
                                     <div class="mb-3">
-                                        <input type="password" class="form-control" name="password" placeholder="Kata Sandi" required>
+                                        <div class="password-field">
+                                            <input type="password" class="form-control" name="password" id="id_password" placeholder="Kata Sandi" required>
+                                            <button type="button" class="password-toggle" id="toggle-password"
+                                                aria-label="Tampilkan kata sandi" aria-pressed="false" title="Tampilkan kata sandi" tabindex="-1">
+                                                <i class="feather-eye" aria-hidden="true"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                     {% if form.non_field_errors %}
                                         <div class="alert alert-danger" role="alert">
@@ -87,6 +128,38 @@
 
     <script src="{% static 'assets/vendors/js/vendors.min.js' %}"></script>
     <script src="{% static 'assets/js/common-init.min.js' %}"></script>
+    <script>
+        // Password peek. The field is switched back to type="password" on submit
+        // so a revealed password is never left visible behind the redirect.
+        (function () {
+            var input = document.getElementById('id_password');
+            var toggle = document.getElementById('toggle-password');
+            if (!input || !toggle) return;
+
+            var icon = toggle.querySelector('i');
+
+            function setRevealed(revealed) {
+                input.type = revealed ? 'text' : 'password';
+                icon.className = revealed ? 'feather-eye-off' : 'feather-eye';
+                var label = revealed ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi';
+                toggle.setAttribute('aria-label', label);
+                toggle.setAttribute('title', label);
+                toggle.setAttribute('aria-pressed', revealed ? 'true' : 'false');
+            }
+
+            toggle.addEventListener('click', function () {
+                var revealed = input.type === 'password';
+                setRevealed(revealed);
+                // Keep the caret where the user left it.
+                var end = input.value.length;
+                input.focus();
+                try { input.setSelectionRange(end, end); } catch (e) { /* type change race */ }
+            });
+
+            var form = input.closest('form');
+            if (form) form.addEventListener('submit', function () { setRevealed(false); });
+        })();
+    </script>
 </body>
 
 </html>

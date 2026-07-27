@@ -307,15 +307,74 @@
     }
 
     /* Custom Soft Urgency Chips */
+    /* Dashboard toolbar — the metrics and the urgensi chips share one row in
+       every card. Previously the row was flex-wrap, so whenever the two groups
+       together exceeded the card width the urgensi group dropped onto a second
+       line; whether that happened depended on the card, which made the layout
+       inconsistent from card to card. Now the row never wraps: the chips are
+       held intact and the metrics group absorbs the pressure, stacking its own
+       items (it keeps its inner flex-wrap) before anything else gives. */
+    /* nowrap lives here rather than on Bootstrap's .flex-nowrap utility, whose
+       !important would block the narrow-screen override further down. */
+    .dashboard-toolbar-row {
+        min-width: 0;
+        flex-wrap: nowrap;
+    }
+
+    /* Metrics: one line too — never wrap, never shrink. The gap is tightened
+       from 24px to 12px because the three gaps were costing ~96px of the
+       group's 263px, which is what pushed the row over the edge. */
+    .dashboard-metrics {
+        flex-wrap: nowrap;
+        flex-shrink: 0;
+        gap: 12px;
+        white-space: nowrap;
+    }
+
+    /* Urgensi chips: never squeezed — they are the actionable control here. */
+    .dashboard-toolbar-row > [id^="filter-group-"] {
+        flex-shrink: 0;
+        flex-wrap: nowrap;
+    }
+
+    /* Reclaim the last of the width on smaller screens: the funnel icon alone
+       still reads as "filter", so the "Urgensi :" wording steps aside before
+       the row would ever be forced to break. */
+    @media (max-width: 1399.98px) {
+        .dashboard-toolbar-row .urgensi-label-text {
+            display: none;
+        }
+    }
+
+    /* Below this the metrics and four chips genuinely cannot share a row
+       without spilling out of the card, so the row is allowed to wrap again.
+       Wrapping is the graceful failure here; overflowing would clip the chips. */
+    @media (max-width: 1279.98px) {
+        .dashboard-toolbar-row {
+            flex-wrap: wrap;
+        }
+    }
+
     .btn-urgency-custom {
         background-color: #ffffff !important;
         border: 1px solid #e2e8f0 !important; /* Soft gray border */
         color: #64748b !important; /* Muted text */
-        border-radius: 6px;
+        border-radius: 4px;
         font-size: 11px;
         font-weight: 500;
-        padding: 4px 10px;
+        padding: 4px 8px;
+        white-space: nowrap;
         transition: all 0.2s ease;
+    }
+
+    /* Tighter than the Bootstrap gap-2 the group carries, to buy back the
+       width the row needs to stay on one line. */
+    .dashboard-toolbar-row > [id^="filter-group-"] {
+        gap: 6px !important;
+    }
+
+    .dashboard-toolbar-row > [id^="filter-group-"] .btn-urgency-custom i {
+        margin-right: 3px !important;
     }
 
     .btn-urgency-custom:hover {
@@ -787,9 +846,9 @@
                     <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
-                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-center justify-content-between gap-3 dashboard-toolbar-row">
                                 <!-- Left Section: Metrics -->
-                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                <div class="d-flex align-items-center dashboard-metrics">
                                     <!-- Total Tiket -->
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
@@ -828,7 +887,7 @@
 
                                 <!-- Right Section: Urgency Filter Badges -->
                                 <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-belum_rekam_backup_data">
-                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i>:</span>
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i><span class="urgensi-label-text">Urgensi</span><i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i><span class="urgensi-label-text">:</span></span>
                                     <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
                                         <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-belum_rekam_backup_data">0</span>)
                                     </button>
@@ -871,9 +930,9 @@
 
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
-                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-center justify-content-between gap-3 dashboard-toolbar-row">
                                 <!-- Left Section: Metrics -->
-                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                <div class="d-flex align-items-center dashboard-metrics">
                                     <!-- Total Tiket -->
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
@@ -912,7 +971,7 @@
 
                                 <!-- Right Section: Urgency Filter Badges -->
                                 <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-belum_dibuat_tanda_terima">
-                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i>:</span>
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i><span class="urgensi-label-text">Urgensi</span><i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i><span class="urgensi-label-text">:</span></span>
                                     <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
                                         <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-belum_dibuat_tanda_terima">0</span>)
                                     </button>
@@ -955,9 +1014,9 @@
                     <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
-                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-center justify-content-between gap-3 dashboard-toolbar-row">
                                 <!-- Left Section: Metrics -->
-                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                <div class="d-flex align-items-center dashboard-metrics">
                                     <!-- Total Tiket -->
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
@@ -996,7 +1055,7 @@
 
                                 <!-- Right Section: Urgency Filter Badges -->
                                 <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-belum_diteliti">
-                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i>:</span>
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i><span class="urgensi-label-text">Urgensi</span><i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i><span class="urgensi-label-text">:</span></span>
                                     <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
                                         <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-belum_diteliti">0</span>)
                                     </button>
@@ -1039,9 +1098,9 @@
                     <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
-                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-center justify-content-between gap-3 dashboard-toolbar-row">
                                 <!-- Left Section: Metrics -->
-                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                <div class="d-flex align-items-center dashboard-metrics">
                                     <!-- Total Tiket -->
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
@@ -1080,7 +1139,7 @@
 
                                 <!-- Right Section: Urgency Filter Badges -->
                                 <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-belum_dikirim_ke_pide">
-                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i>:</span>
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i><span class="urgensi-label-text">Urgensi</span><i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i><span class="urgensi-label-text">:</span></span>
                                     <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
                                         <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-belum_dikirim_ke_pide">0</span>)
                                     </button>
@@ -1123,9 +1182,9 @@
                     <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
-                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-center justify-content-between gap-3 dashboard-toolbar-row">
                                 <!-- Left Section: Metrics -->
-                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                <div class="d-flex align-items-center dashboard-metrics">
                                     <!-- Total Tiket -->
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
@@ -1164,7 +1223,7 @@
 
                                 <!-- Right Section: Urgency Filter Badges -->
                                 <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-pengembalian_seluruhnya_dari_pide">
-                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i>:</span>
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i><span class="urgensi-label-text">Urgensi</span><i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i><span class="urgensi-label-text">:</span></span>
                                     <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
                                         <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-pengembalian_seluruhnya_dari_pide">0</span>)
                                     </button>
@@ -1207,9 +1266,9 @@
                     <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
-                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-center justify-content-between gap-3 dashboard-toolbar-row">
                                 <!-- Left Section: Metrics -->
-                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                <div class="d-flex align-items-center dashboard-metrics">
                                     <!-- Total Tiket -->
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
@@ -1248,7 +1307,7 @@
 
                                 <!-- Right Section: Urgency Filter Badges -->
                                 <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-pengembalian_sebagian_dari_pide">
-                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i>:</span>
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i><span class="urgensi-label-text">Urgensi</span><i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i><span class="urgensi-label-text">:</span></span>
                                     <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
                                         <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-pengembalian_sebagian_dari_pide">0</span>)
                                     </button>
@@ -1291,9 +1350,9 @@
                     <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
-                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-center justify-content-between gap-3 dashboard-toolbar-row">
                                 <!-- Left Section: Metrics -->
-                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                <div class="d-flex align-items-center dashboard-metrics">
                                     <!-- Total Tiket -->
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
@@ -1332,7 +1391,7 @@
 
                                 <!-- Right Section: Urgency Filter Badges -->
                                 <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-diklarifikasi">
-                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i>:</span>
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i><span class="urgensi-label-text">Urgensi</span><i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i><span class="urgensi-label-text">:</span></span>
                                     <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
                                         <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-diklarifikasi">0</span>)
                                     </button>
@@ -1429,9 +1488,9 @@
                     <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
-                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-center justify-content-between gap-3 dashboard-toolbar-row">
                                 <!-- Left Section: Metrics -->
-                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                <div class="d-flex align-items-center dashboard-metrics">
                                     <!-- Total Tiket -->
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
@@ -1470,7 +1529,7 @@
 
                                 <!-- Right Section: Urgency Filter Badges -->
                                 <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-belum_mulai_proses_identifikasi">
-                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kerja dari Tanggal Kirim PIDE" style="cursor: pointer;"></i>:</span>
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i><span class="urgensi-label-text">Urgensi</span><i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kerja dari Tanggal Kirim PIDE" style="cursor: pointer;"></i><span class="urgensi-label-text">:</span></span>
                                     <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
                                         <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-belum_mulai_proses_identifikasi">0</span>)
                                     </button>
@@ -1510,9 +1569,9 @@
                     <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
-                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-center justify-content-between gap-3 dashboard-toolbar-row">
                                 <!-- Left Section: Metrics -->
-                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                <div class="d-flex align-items-center dashboard-metrics">
                                     <!-- Total Tiket -->
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
@@ -1551,7 +1610,7 @@
 
                                 <!-- Right Section: Urgency Filter Badges -->
                                 <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-dalam_proses_identifikasi">
-                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kerja dari Tanggal Rekam PIDE" style="cursor: pointer;"></i>:</span>
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i><span class="urgensi-label-text">Urgensi</span><i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kerja dari Tanggal Rekam PIDE" style="cursor: pointer;"></i><span class="urgensi-label-text">:</span></span>
                                     <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
                                         <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-dalam_proses_identifikasi">0</span>)
                                     </button>
@@ -1612,9 +1671,9 @@
                     <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
-                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-center justify-content-between gap-3 dashboard-toolbar-row">
                                 <!-- Left Section: Metrics -->
-                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                <div class="d-flex align-items-center dashboard-metrics">
                                     <!-- Total Tiket -->
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
@@ -1653,7 +1712,7 @@
 
                                 <!-- Right Section: Urgency Filter Badges -->
                                 <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-tiket_dikirim_ke_pide_tanpa_pic">
-                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kerja dari Tanggal Kirim PIDE" style="cursor: pointer;"></i>:</span>
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i><span class="urgensi-label-text">Urgensi</span><i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kerja dari Tanggal Kirim PIDE" style="cursor: pointer;"></i><span class="urgensi-label-text">:</span></span>
                                     <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
                                         <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-tiket_dikirim_ke_pide_tanpa_pic">0</span>)
                                     </button>
@@ -1692,6 +1751,68 @@
                 {% if is_p3de or is_pide or is_pmde %}
                 <!-- Permintaan Khusus (Special Request) -->
                 <div class="card stretch stretch-full datatable-card" data-category="special_request" style="display:none;">
+                    <div class="card-header" style="display: block;">
+                        <!-- Unified Dashboard Toolbar -->
+                        <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
+                            <div class="d-flex align-items-center justify-content-between gap-3 dashboard-toolbar-row">
+                                <!-- Left Section: Metrics -->
+                                <div class="d-flex align-items-center dashboard-metrics">
+                                    <!-- Total Tiket -->
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-file-text fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Tiket</small>
+                                            <h5 class="fw-bolder mb-0 text-primary" id="summary-total-tiket-special_request" style="color: #00BDFB !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jumlah ILAP -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-ilap-wrapper-special_request" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data ILAP">
+                                        <div class="avatar avatar-xs bg-soft-warning text-warning" style="background-color: rgba(239, 186, 34, 0.1) !important; color: #EFBA22 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-home fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">ILAP</small>
+                                            <h5 class="fw-bolder mb-0 text-warning" id="summary-total-ilap-special_request" style="color: #EFBA22 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <!-- Divider -->
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <!-- Jenis Data -->
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-jenis-wrapper-special_request" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data Jenis">
+                                        <div class="avatar avatar-xs bg-soft-success text-success" style="background-color: rgba(22, 192, 152, 0.1) !important; color: #16C098 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-database fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Jenis Data</small>
+                                            <h5 class="fw-bolder mb-0 text-success" id="summary-total-jenis-data-special_request" style="color: #16C098 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Section: Urgency Filter Badges -->
+                                <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-special_request">
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i><span class="urgensi-label-text">Urgensi</span><i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari dari Tanggal Terima DIP" style="cursor: pointer;"></i><span class="urgensi-label-text">:</span></span>
+                                    <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
+                                        <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-special_request">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 3 Hari">
+                                        <i class="feather-clock me-1 align-middle" style="color: #10b981;"></i>Baru (<span id="count-new-special_request">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="warning" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Perhatian: Tiket mengendap 3 s.d. 7 Hari">
+                                        <i class="feather-alert-circle me-1 align-middle" style="color: #f59e0b;"></i>Perlu Perhatian (<span id="count-warning-special_request">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 7 Hari">
+                                        <i class="feather-alert-triangle me-1 align-middle" style="color: #ef4444;"></i>Perlu Segera (<span id="count-critical-special_request">0</span>)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-special_request" style="width:100%">
@@ -1718,9 +1839,9 @@
                     <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
-                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-center justify-content-between gap-3 dashboard-toolbar-row">
                                 <!-- Left Section: Metrics -->
-                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                <div class="d-flex align-items-center dashboard-metrics">
                                     <!-- Total Tiket -->
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
@@ -1759,7 +1880,7 @@
 
                                 <!-- Right Section: Urgency Filter Badges -->
                                 <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-dalam_proses_pengendalian_mutu">
-                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kerja dari Tanggal Transfer" style="cursor: pointer;"></i>:</span>
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i><span class="urgensi-label-text">Urgensi</span><i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kerja dari Tanggal Transfer" style="cursor: pointer;"></i><span class="urgensi-label-text">:</span></span>
                                     <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
                                         <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-dalam_proses_pengendalian_mutu">0</span>)
                                     </button>
@@ -1820,9 +1941,9 @@
                     <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
-                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-center justify-content-between gap-3 dashboard-toolbar-row">
                                 <!-- Left Section: Metrics -->
-                                <div class="d-flex align-items-center gap-4 flex-wrap">
+                                <div class="d-flex align-items-center dashboard-metrics">
                                     <!-- Total Tiket -->
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
@@ -1861,7 +1982,7 @@
 
                                 <!-- Right Section: Urgency Filter Badges -->
                                 <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-tiket_pengendalian_mutu_tanpa_pic">
-                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i>Urgensi <i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kerja dari Tanggal Transfer" style="cursor: pointer;"></i>:</span>
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i><span class="urgensi-label-text">Urgensi</span><i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kerja dari Tanggal Transfer" style="cursor: pointer;"></i><span class="urgensi-label-text">:</span></span>
                                     <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
                                         <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-tiket_pengendalian_mutu_tanpa_pic">0</span>)
                                     </button>
