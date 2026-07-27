@@ -35,15 +35,37 @@
     /* Custom Left-Accent Active State on Nav Links */
     .nxl-content-sidebar-item .nav-item {
         position: relative;
+        /* Flex, so the row is exactly as tall as its link: as a plain
+           list-item the row picked up an extra phantom line box (up to
+           41px of dead space per row on sub-FHD screens). */
+        display: flex;
+        margin-bottom: 3px !important;
     }
     .nxl-content-sidebar-item .nav-link {
+        flex: 1 1 auto;
         border-radius: 0 6px 6px 0 !important;
         margin-left: 0 !important;
         border-left: 3px solid transparent !important;
         transition: all 0.2s ease-in-out !important;
-        padding: 8px 16px 8px 20px !important;
+        padding: 6px 12px 6px 14px !important;
+        gap: 10px !important;
     }
-    
+
+    /* The count badge's `ms-auto` was absorbing every spare pixel in the
+       row, squeezing the label down to its min-content width — which wrapped
+       short labels over 3-4 lines and made the rows (and so the gaps between
+       menu items) balloon on anything narrower than full HD. Give the label
+       the leftover space instead. */
+    .nxl-content-sidebar-item .nav-link > span:not(.icon-bg-soft):not(.badge) {
+        flex: 1 1 auto;
+        min-width: 0;
+        line-height: 1.35;
+    }
+    .nxl-content-sidebar-item .icon-bg-soft {
+        width: 30px;
+        height: 30px;
+    }
+
     /* Hover and Active border highlights depending on PIC type */
     /* P3DE links hover/active */
     .p3de-tasks .nav-link:hover,
@@ -157,7 +179,6 @@
         margin-bottom: 24px !important;
     }
     
-
 
     #sidebar-toggle-btn {
         position: relative !important;
@@ -273,25 +294,12 @@
             border-left: 1.5px solid #e2e8f0 !important;
         }
     }
-
-    /* Sticky Actions column in DataTable */
-    .col-actions {
-        position: sticky !important;
-        right: 0 !important;
-        z-index: 5 !important;
-        background-color: #ffffff !important;
-        border-left: 1px solid #e2e8f0 !important;
-        box-shadow: -4px 0 8px rgba(0, 0, 0, 0.02) !important;
-        white-space: nowrap !important;
-        text-align: center !important;
-    }
     
     th.col-actions {
         z-index: 12 !important;
         background-color: #f8fafc !important;
         box-shadow: -4px 0 8px rgba(0, 0, 0, 0.02), inset 0 -1px 0 #dee2e6 !important;
     }
-
 
     /* Disable uppercase on tooltips for readability */
     .tooltip, .tooltip-inner {
@@ -775,8 +783,8 @@
                 {% if is_p3de %}
                 <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">P3DE - Tugas</h6> -->
                 <!-- Belum Rekam Backup Data -->
-                <div class="card stretch stretch-full" data-category="belum_rekam_backup_data">
-                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                <div class="card stretch stretch-full datatable-card" data-category="belum_rekam_backup_data">
+                    <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -837,6 +845,8 @@
                             </div>
                         </div>
 
+                    </div>
+                    <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-belum_rekam_backup_data" style="width:100%">
                                 <thead>
@@ -856,8 +866,8 @@
                 </div>
 
                 <!-- Belum Dibuat Tanda Terima -->
-                <div class="card stretch stretch-full" data-category="belum_dibuat_tanda_terima" style="display:none;">
-                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                <div class="card stretch stretch-full datatable-card" data-category="belum_dibuat_tanda_terima" style="display:none;">
+                    <div class="card-header" style="display: block;">
 
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
@@ -919,6 +929,8 @@
                             </div>
                         </div>
 
+                    </div>
+                    <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-belum_dibuat_tanda_terima" style="width:100%">
                                 <thead>
@@ -939,8 +951,8 @@
                 </div>
 
                 <!-- Belum Diteliti -->
-                <div class="card stretch stretch-full" data-category="belum_diteliti" style="display:none;">
-                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                <div class="card stretch stretch-full datatable-card" data-category="belum_diteliti" style="display:none;">
+                    <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -1001,6 +1013,8 @@
                             </div>
                         </div>
 
+                    </div>
+                    <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-belum_diteliti" style="width:100%">
                                 <thead>
@@ -1021,8 +1035,8 @@
                 </div>
 
                 <!-- Belum Dikirim ke PIDE -->
-                <div class="card stretch stretch-full" data-category="belum_dikirim_ke_pide" style="display:none;">
-                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                <div class="card stretch stretch-full datatable-card" data-category="belum_dikirim_ke_pide" style="display:none;">
+                    <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -1083,6 +1097,8 @@
                             </div>
                         </div>
 
+                    </div>
+                    <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-belum_dikirim_ke_pide" style="width:100%">
                                 <thead>
@@ -1103,8 +1119,8 @@
                 </div>
 
                 <!-- Pengembalian Seluruhnya dari PIDE -->
-                <div class="card stretch stretch-full" data-category="pengembalian_seluruhnya_dari_pide" style="display:none;">
-                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                <div class="card stretch stretch-full datatable-card" data-category="pengembalian_seluruhnya_dari_pide" style="display:none;">
+                    <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -1165,6 +1181,8 @@
                             </div>
                         </div>
 
+                    </div>
+                    <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-pengembalian_seluruhnya_dari_pide" style="width:100%">
                                 <thead>
@@ -1185,8 +1203,8 @@
                 </div>
 
                 <!-- Pengembalian Sebagian dari PIDE -->
-                <div class="card stretch stretch-full" data-category="pengembalian_sebagian_dari_pide" style="display:none;">
-                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                <div class="card stretch stretch-full datatable-card" data-category="pengembalian_sebagian_dari_pide" style="display:none;">
+                    <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -1247,6 +1265,8 @@
                             </div>
                         </div>
 
+                    </div>
+                    <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-pengembalian_sebagian_dari_pide" style="width:100%">
                                 <thead>
@@ -1267,8 +1287,8 @@
                 </div>
 
                 <!-- Diklarifikasi -->
-                <div class="card stretch stretch-full" data-category="diklarifikasi" style="display:none;">
-                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                <div class="card stretch stretch-full datatable-card" data-category="diklarifikasi" style="display:none;">
+                    <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -1329,6 +1349,8 @@
                             </div>
                         </div>
 
+                    </div>
+                    <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-diklarifikasi" style="width:100%">
                                 <thead>
@@ -1349,7 +1371,7 @@
                 </div>
                 {% if is_admin_p3de %}
                 <!-- Admin: Jenis Data Tidak Punya PIC Aktif - P3DE -->
-                <div class="card stretch stretch-full" data-category="jenis_data_tanpa_pic_p3de" style="display:none;">
+                <div class="card stretch stretch-full datatable-card" data-category="jenis_data_tanpa_pic_p3de" style="display:none;">
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-jenis_data_tanpa_pic_p3de" style="width:100%">
@@ -1373,7 +1395,7 @@
                 {% endif %}
                 {% if is_admin_p3de %}
                 <!-- Admin: Periode Tiket Null - P3DE -->
-                <div class="card stretch stretch-full" data-category="periode_tiket_null_p3de" style="display:none;">
+                <div class="card stretch stretch-full datatable-card" data-category="periode_tiket_null_p3de" style="display:none;">
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-periode_tiket_null_p3de" style="width:100%">
@@ -1403,8 +1425,8 @@
                 {% if is_pide %}
                 <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">PIDE - Identifikasi</h6> -->
                 <!-- Belum Mulai Proses Identifikasi -->
-                <div class="card stretch stretch-full" data-category="belum_mulai_proses_identifikasi">
-                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                <div class="card stretch stretch-full datatable-card" data-category="belum_mulai_proses_identifikasi">
+                    <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -1462,6 +1484,8 @@
                             </div>
                         </div>
 
+                    </div>
+                    <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-belum_mulai_proses_identifikasi" style="width:100%">
                                 <thead>
@@ -1482,8 +1506,8 @@
                 </div>
 
                 <!-- Dalam Proses Identifikasi -->
-                <div class="card stretch stretch-full" data-category="dalam_proses_identifikasi" style="display:none;">
-                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                <div class="card stretch stretch-full datatable-card" data-category="dalam_proses_identifikasi" style="display:none;">
+                    <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -1541,6 +1565,8 @@
                             </div>
                         </div>
 
+                    </div>
+                    <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-dalam_proses_identifikasi" style="width:100%">
                                 <thead>
@@ -1561,7 +1587,7 @@
                 </div>
                 {% if is_admin_pide %}
                 <!-- Admin: Jenis Data Tidak Punya PIC Aktif - PIDE -->
-                <div class="card stretch stretch-full" data-category="jenis_data_tanpa_pic_pide" style="display:none;">
+                <div class="card stretch stretch-full datatable-card" data-category="jenis_data_tanpa_pic_pide" style="display:none;">
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-jenis_data_tanpa_pic_pide" style="width:100%">
@@ -1582,8 +1608,8 @@
                     </div>
                 </div>
                 <!-- Admin: Tiket Status Dikirim Ke PIDE Belum Punya PIC - PIDE -->
-                <div class="card stretch stretch-full" data-category="tiket_dikirim_ke_pide_tanpa_pic" style="display:none;">
-                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                <div class="card stretch stretch-full datatable-card" data-category="tiket_dikirim_ke_pide_tanpa_pic" style="display:none;">
+                    <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -1641,6 +1667,8 @@
                             </div>
                         </div>
 
+                    </div>
+                    <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-tiket_dikirim_ke_pide_tanpa_pic" style="width:100%">
                                 <thead>
@@ -1663,7 +1691,7 @@
                 {% endif %}
                 {% if is_p3de or is_pide or is_pmde %}
                 <!-- Permintaan Khusus (Special Request) -->
-                <div class="card stretch stretch-full" data-category="special_request" style="display:none;">
+                <div class="card stretch stretch-full datatable-card" data-category="special_request" style="display:none;">
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-special_request" style="width:100%">
@@ -1686,8 +1714,8 @@
                 {% if is_pmde %}
                 <!-- <h6 class="px-3 py-2 text-muted text-uppercase small fw-bold border-bottom">PMDE - Pengendalian Mutu</h6> -->
                 <!-- Dalam Proses Pengendalian Mutu -->
-                <div class="card stretch stretch-full" data-category="dalam_proses_pengendalian_mutu">
-                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                <div class="card stretch stretch-full datatable-card" data-category="dalam_proses_pengendalian_mutu">
+                    <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -1745,6 +1773,8 @@
                             </div>
                         </div>
 
+                    </div>
+                    <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-dalam_proses_pengendalian_mutu" style="width:100%">
                                 <thead>
@@ -1765,7 +1795,7 @@
                 </div>
                 {% if is_admin_pmde %}
                 <!-- Admin: Jenis Data Tidak Punya PIC Aktif - PMDE -->
-                <div class="card stretch stretch-full" data-category="jenis_data_tanpa_pic_pmde" style="display:none;">
+                <div class="card stretch stretch-full datatable-card" data-category="jenis_data_tanpa_pic_pmde" style="display:none;">
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-jenis_data_tanpa_pic_pmde" style="width:100%">
@@ -1786,8 +1816,8 @@
                     </div>
                 </div>
                 <!-- Admin: Tiket Status Pengendalian Mutu Belum Punya PIC - PMDE -->
-                <div class="card stretch stretch-full" data-category="tiket_pengendalian_mutu_tanpa_pic" style="display:none;">
-                    <div class="card-body custom-card-action" style="padding: 24px 28px 36px 28px !important;">
+                <div class="card stretch stretch-full datatable-card" data-category="tiket_pengendalian_mutu_tanpa_pic" style="display:none;">
+                    <div class="card-header" style="display: block;">
                         <!-- Unified Dashboard Toolbar -->
                         <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -1845,6 +1875,8 @@
                             </div>
                         </div>
 
+                    </div>
+                    <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-tiket_pengendalian_mutu_tanpa_pic" style="width:100%">
                                 <thead>
