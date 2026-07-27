@@ -13,9 +13,8 @@
 
     /* Table frame: only body scrolls, header stays sticky */
     .table-frame {
-        max-height: calc(100vh - 350px);
         min-height: 250px;
-        overflow: auto;
+        overflow-x: auto;
         border-top: 1px solid #e2e8f0;
         position: relative;
     }
@@ -337,10 +336,10 @@
 
                 <!-- Right side: Export buttons -->
                 <div class="d-flex gap-2 ms-auto">
-                    <button type="button" id="btn-export-excel" class="btn btn-sm btn-outline-success d-flex align-items-center gap-2 px-3 fw-bold" style="height: 36px !important; border-radius: 6px !important;">
+                    <button type="button" id="btn-export-excel" class="btn btn-sm btn-success d-flex align-items-center gap-2 px-3 fw-bold" style="height: 36px !important; border-radius: 6px !important;">
                         <i class="feather-file-text"></i> EKSPOR EXCEL
                     </button>
-                    <button type="button" id="btn-export-pdf" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-2 px-3 fw-bold" style="height: 36px !important; border-radius: 6px !important;">
+                    <button type="button" id="btn-export-pdf" class="btn btn-sm btn-danger d-flex align-items-center gap-2 px-3 fw-bold" style="height: 36px !important; border-radius: 6px !important;">
                         <i class="feather-file-text"></i> EKSPOR PDF
                     </button>
                 </div>

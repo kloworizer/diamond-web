@@ -311,7 +311,7 @@
             <form class="d-flex align-items-center ms-2" id="navbar-tiket-search">
                 {% csrf_token %}
                 <div class="input-group input-group-sm">
-                    <input type="text" class="form-control" id="navbar-search-nomor-tiket" placeholder="Cari Nomor Tiket..." aria-label="Cari Nomor Tiket" style="min-width: 180px;">
+                    <input type="text" class="form-control" id="navbar-search-nomor-tiket" placeholder="Cari Nomor Tiket / ID ILAP / ID Sub Jenis Data..." aria-label="Cari Nomor Tiket, ID ILAP atau ID Sub Jenis Data" style="min-width: 300px;">
                     <button class="btn btn-outline-secondary" type="submit" title="Cari">
                         <i class="feather-search"></i>
                     </button>
@@ -321,28 +321,43 @@
                 document.getElementById('navbar-tiket-search').addEventListener('submit', function (e) {
                     e.preventDefault();
                     var input = document.getElementById('navbar-search-nomor-tiket');
-                    var nomorTiket = input.value.trim();
-                    if (!nomorTiket) return;
+                    var term = input.value.trim();
+                    if (!term) return;
 
                     var searchBtn = this.querySelector('button[type="submit"]');
                     searchBtn.disabled = true;
                     searchBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
-                    fetch('{% url "tiket_data" %}?nomor_tiket=' + encodeURIComponent(nomorTiket) + '&length=5', {
+                    function searchNomorTiket() {
+                        return fetch('{% url "tiket_data" %}?nomor_tiket=' + encodeURIComponent(term) + '&length=5', {
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                        })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            if (data.data && data.data.length === 1) {
+                                window.location.href = '{% url "tiket_detail" 0 %}'.replace('/0/', '/' + data.data[0].id + '/');
+                            } else if (data.data && data.data.length > 1) {
+                                window.location.href = '{% url "tiket_list" %}?nomor_tiket=' + encodeURIComponent(term);
+                            } else {
+                                showToast('"' + term + '" tidak cocok dengan nomor tiket, ID ILAP, atau ID sub jenis data mana pun', 'warning', 'Pencarian');
+                            }
+                        });
+                    }
+
+                    // Try ID ILAP / ID sub jenis data first, then fall back to nomor tiket.
+                    fetch('{% url "navbar_search" %}?q=' + encodeURIComponent(term), {
                         headers: { 'X-Requested-With': 'XMLHttpRequest' }
                     })
                     .then(function (r) { return r.json(); })
-                    .then(function (data) {
-                        if (data.data && data.data.length === 1) {
-                            window.location.href = '{% url "tiket_detail" 0 %}'.replace('/0/', '/' + data.data[0].id + '/');
-                        } else if (data.data && data.data.length > 1) {
-                            window.location.href = '{% url "tiket_list" %}?nomor_tiket=' + encodeURIComponent(nomorTiket);
-                        } else {
-                            showToast('Tiket dengan nomor "' + nomorTiket + '" tidak ditemukan', 'warning', 'Pencarian');
+                    .then(function (res) {
+                        if (res && res.url) {
+                            window.location.href = res.url;
+                            return;
                         }
+                        return searchNomorTiket();
                     })
                     .catch(function () {
-                        showToast('Gagal mencari tiket', 'danger', 'Kesalahan');
+                        showToast('Gagal melakukan pencarian', 'danger', 'Kesalahan');
                     })
                     .finally(function () {
                         searchBtn.disabled = false;

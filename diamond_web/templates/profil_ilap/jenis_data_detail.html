@@ -1,0 +1,484 @@
+{% extends "base.html" %}
+{% load auth_extras %}
+
+{% block content %}
+<style>
+    .main-content {
+        background-color: #f8fafc;
+        color: #1e293b;
+    }
+
+    .table th,
+    .table td {
+        padding: 12px 16px !important;
+        font-size: 13px !important;
+        vertical-align: middle !important;
+        white-space: nowrap;
+    }
+
+    .table-frame,
+    .table-responsive {
+        overflow-x: auto;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .table-frame thead th,
+    .table-responsive thead th {
+        background-color: #f8fafc !important;
+        box-shadow: inset 0 -1px 0 #dee2e6;
+    }
+
+    /* Card styling - matches the tiket detail page */
+    .card.shadow-sm {
+        border-radius: 12px !important;
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.02) !important;
+        overflow: hidden !important;
+        background-color: #ffffff !important;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    .card.shadow-sm:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02) !important;
+    }
+
+    .card-body h6 {
+        font-size: 0.875rem !important;
+        font-weight: 700 !important;
+        color: #475569 !important;
+        letter-spacing: 0.05em !important;
+        margin-bottom: 1.15rem !important;
+    }
+
+    /* Card Headers - Soft Tint bg + left bar + matching icon color */
+    .card-header.bg-success,
+    .card-header.bg-primary,
+    .card-header.bg-info,
+    .card-header.bg-warning,
+    .card-header.bg-secondary {
+        color: #0f172a !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        padding: 1.1rem 1.35rem !important;
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .card-header.bg-success {
+        background: rgba(16, 185, 129, 0.035) !important;
+    }
+
+    .card-header.bg-primary {
+        background: rgba(59, 130, 246, 0.035) !important;
+    }
+
+    .card-header.bg-info {
+        background: rgba(6, 182, 212, 0.035) !important;
+    }
+
+    .card-header.bg-warning {
+        background: rgba(245, 158, 11, 0.035) !important;
+    }
+
+    .card-header.bg-secondary {
+        background: rgba(100, 116, 139, 0.035) !important;
+    }
+
+    .card-header.bg-success h5,
+    .card-header.bg-primary h5,
+    .card-header.bg-info h5,
+    .card-header.bg-warning h5,
+    .card-header.bg-secondary h5 {
+        color: #0f172a !important;
+        font-weight: 600 !important;
+        font-size: 1.05rem !important;
+        display: flex;
+        align-items: center;
+        margin: 0 !important;
+        gap: 0.5rem;
+    }
+
+    /* Left bar accent indicators */
+    .card-header.bg-success::after,
+    .card-header.bg-primary::after,
+    .card-header.bg-info::after,
+    .card-header.bg-warning::after,
+    .card-header.bg-secondary::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 4px;
+        border-radius: 0;
+    }
+
+    .card-header.bg-success::after {
+        background-color: #10b981 !important;
+    }
+
+    .card-header.bg-primary::after {
+        background-color: #3b82f6 !important;
+    }
+
+    .card-header.bg-info::after {
+        background-color: #06b6d4 !important;
+    }
+
+    .card-header.bg-warning::after {
+        background-color: #f59e0b !important;
+    }
+
+    .card-header.bg-secondary::after {
+        background-color: #64748b !important;
+    }
+
+    /* Header Icons colored states */
+    .card-header.bg-success h5 i {
+        color: #10b981 !important;
+    }
+
+    .card-header.bg-primary h5 i {
+        color: #3b82f6 !important;
+    }
+
+    .card-header.bg-info h5 i {
+        color: #06b6d4 !important;
+    }
+
+    .card-header.bg-warning h5 i {
+        color: #f59e0b !important;
+    }
+
+    .card-header.bg-secondary h5 i {
+        color: #64748b !important;
+    }
+
+    /* Info card key-value presentation */
+    .info-item {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 20px;
+    }
+
+    .info-item-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+
+    .info-item-content {
+        margin-left: 15px;
+    }
+
+    .info-item-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 700;
+    }
+
+    .info-item-value {
+        font-size: 13.5px;
+        font-weight: 500;
+        color: #1e293b;
+        margin-bottom: 0;
+    }
+</style>
+
+<div class="page-header">
+    <div class="page-header-left d-flex align-items-center">
+        <a href="{% url 'profil_ilap_detail' jenis_data.id_ilap.id_ilap %}" class="btn btn-icon btn-light me-3" style="width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid #e2e8f0;" title="Kembali ke Profil ILAP">
+            <i class="feather-arrow-left text-secondary fs-16"></i>
+        </a>
+        <ul class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="javascript:void(0);">Admin P3DE</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'profil_ilap_list' %}">Profil ILAP</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'profil_ilap_detail' jenis_data.id_ilap.id_ilap %}">{{ jenis_data.id_ilap.nama_ilap }}</a></li>
+            <li class="breadcrumb-item active">{{ jenis_data.id_sub_jenis_data }}</li>
+        </ul>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="row">
+        <!-- Left column: Informasi Sub Jenis Data -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="feather-info me-2"></i>Informasi Sub Jenis Data</h5>
+                </div>
+                <div class="card-body">
+                    <div class="info-item">
+                        <div class="info-item-icon bg-soft-primary text-primary">
+                            <i class="feather-hash"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">ID Sub Jenis Data</span>
+                            <p class="info-item-value">{{ jenis_data.id_sub_jenis_data }}</p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-icon bg-soft-primary text-primary">
+                            <i class="feather-file-text"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">Nama Sub Jenis Data</span>
+                            <p class="info-item-value">{{ jenis_data.nama_sub_jenis_data }}</p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-icon bg-soft-primary text-primary">
+                            <i class="feather-folder"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">Jenis Data</span>
+                            <p class="info-item-value">{{ jenis_data.id_jenis_data }} &ndash; {{ jenis_data.nama_jenis_data }}</p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-icon bg-soft-primary text-primary">
+                            <i class="feather-briefcase"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">ILAP</span>
+                            <p class="info-item-value">
+                                <a href="{% url 'profil_ilap_detail' jenis_data.id_ilap.id_ilap %}" class="text-primary text-decoration-none">
+                                    {{ jenis_data.id_ilap.id_ilap }} &ndash; {{ jenis_data.id_ilap.nama_ilap }}
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-icon bg-soft-primary text-primary">
+                            <i class="feather-grid"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">Jenis Tabel</span>
+                            <p class="info-item-value">{{ jenis_data.id_jenis_tabel.deskripsi|default:jenis_data.id_jenis_tabel }}</p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-icon bg-soft-primary text-primary">
+                            <i class="feather-database"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">Nama Tabel I / U</span>
+                            <p class="info-item-value">{{ jenis_data.nama_tabel_I|default:"---" }} / {{ jenis_data.nama_tabel_U|default:"---" }}</p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-icon bg-soft-primary text-primary">
+                            <i class="feather-activity"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">Status Data</span>
+                            <p class="info-item-value">{{ jenis_data.id_status_data|default:"---" }}</p>
+                        </div>
+                    </div>
+                    <div class="info-item mb-0">
+                        <div class="info-item-icon bg-soft-primary text-primary">
+                            <i class="feather-book-open"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">Dasar Hukum</span>
+                            <p class="info-item-value">
+                                {% for dasar_hukum in dasar_hukum_list %}
+                                    <span class="badge bg-soft-secondary text-secondary me-1">{% if dasar_hukum.kategori %}{{ dasar_hukum.kategori }} &ndash; {% endif %}{{ dasar_hukum.deskripsi }}</span>
+                                {% empty %}
+                                    ---
+                                {% endfor %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right column: PIC -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="feather-users me-2"></i>PIC Sub Jenis Data</h5>
+                </div>
+                <div class="card-body">
+                    {% for group in pic_groups %}
+                    <h6 class="text-muted text-uppercase fw-bold">{{ group.label }}</h6>
+                    {% for pic in group.pics %}
+                    <div class="info-item">
+                        <div class="info-item-icon bg-soft-success text-success">
+                            <i class="feather-user"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">
+                                {{ pic.start_date|date:"d M Y" }} &ndash; {{ pic.end_date|date:"d M Y"|default:"sekarang" }}
+                            </span>
+                            <p class="info-item-value">
+                                {{ pic.id_user.get_full_name|default:pic.id_user.username }}
+                                {% if not pic.end_date %}
+                                <span class="badge bg-soft-success text-success ms-1" style="font-size: 10px;">Aktif</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted" style="font-size: 13px;">Belum ada PIC {{ group.tipe }}.</p>
+                    {% endfor %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Periode Penyampaian -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="feather-calendar me-2"></i>Periode Penyampaian</h5>
+        </div>
+        <div class="card-body">
+            {% if periode_list %}
+            <div class="table-frame mb-4">
+                <table class="table table-hover mb-0" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>Periode Penyampaian</th>
+                            <th>Periode Penerimaan</th>
+                            <th>Tanggal Mulai</th>
+                            <th>Tanggal Berakhir</th>
+                            <th class="text-center">Akhir Penyampaian</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for periode in periode_list %}
+                        <tr>
+                            <td class="fw-semibold text-dark">{{ periode.id_periode_pengiriman.periode_penyampaian }}</td>
+                            <td>{{ periode.id_periode_pengiriman.periode_penerimaan }}</td>
+                            <td>{{ periode.start_date|date:"d M Y" }}</td>
+                            <td>{{ periode.end_date|date:"d M Y"|default:"---" }}</td>
+                            <td class="text-center">{{ periode.akhir_penyampaian }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <h6 class="text-muted text-uppercase fw-bold">Rekap Tiket per Tahun</h6>
+            <div class="table-frame">
+                <table class="table table-hover mb-0" style="width:100%">
+                    <thead>
+                        <tr>
+                            {% for year in years %}
+                            <th class="text-center">{{ year }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            {% for year in years %}
+                            <td class="text-center">
+                                {% with cell=summary.year_data|get_item:year %}
+                                <span class="badge fw-bold {% if cell.complete %}bg-soft-success text-success{% else %}bg-soft-primary text-primary{% endif %}"
+                                      style="font-size: 11px; padding: 4px 8px;"
+                                      title="{{ cell.count }} tiket dari {{ cell.total }} periode">
+                                    {{ cell.label }}
+                                </span>
+                                {% endwith %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted mb-0">Belum ada periode jenis data untuk sub jenis data ini.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Daftar Tiket -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">
+                <i class="feather-file me-2"></i>Daftar Tiket
+                <span class="badge bg-soft-secondary text-secondary ms-2">{{ tiket_total }}</span>
+            </h5>
+        </div>
+        <div class="card-body custom-card-action">
+            <div class="table-responsive">
+                <table id="tiket-table" class="table table-hover mb-0" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>Nomor Tiket</th>
+                            <th>Periode</th>
+                            <th class="text-center">Tahun</th>
+                            <th>Status</th>
+                            <th>Tanggal Terima DIP</th>
+                            <th class="col-actions text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function () {
+        $('#tiket-table').DataTable({
+            serverSide: true,
+            processing: true,
+            ajax: {
+                url: "{% url 'jenis_data_ilap_tiket_data' jenis_data.id_sub_jenis_data %}",
+                type: 'GET'
+            },
+            columns: [
+                { data: 'nomor_tiket' },
+                { data: 'periode' },
+                { data: 'tahun', className: 'text-center' },
+                { data: 'status' },
+                { data: 'tgl_terima_dip' },
+                { data: 'actions', orderable: false, searchable: false, className: 'col-actions text-center' }
+            ],
+            order: [[0, 'asc']],
+            paging: true,
+            pageLength: 10,
+            searching: true,
+            ordering: true,
+            info: true,
+            lengthChange: true,
+            layout: {
+                topStart: 'pageLength',
+                topEnd: 'search',
+                bottomStart: 'info',
+                bottomEnd: 'paging'
+            },
+            language: {
+                search: 'Cari:',
+                searchPlaceholder: 'Cari...',
+                lengthMenu: 'Tampilkan _MENU_ entri',
+                info: 'Menampilkan _START_ hingga _END_ dari _TOTAL_ entri',
+                infoEmpty: 'Menampilkan 0 hingga 0 dari 0 entri',
+                infoFiltered: '(disaring dari _MAX_ entri total)',
+                emptyTable: 'Belum ada tiket untuk sub jenis data ini.',
+                zeroRecords: 'Tidak ada data yang cocok',
+                loadingRecords: 'Memuat...',
+                processing: 'Memproses...',
+                aria: {
+                    sortAscending: ': aktifkan untuk mengurutkan kolom naik',
+                    sortDescending: ': aktifkan untuk mengurutkan kolom turun'
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
