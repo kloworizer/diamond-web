@@ -35,9 +35,9 @@
     <div class="main-content">
 
     <!-- Data Table Card -->
-    <div class="card stretch stretch-full h-100">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0">
+    <div class="card stretch stretch-full datatable-card">
+        <div class="card-header">
+            <h5 class="card-title">
                 <i class="feather-grid me-2"></i>Daftar Tiket Pengendalian Mutu
             </h5>
         </div>
@@ -171,7 +171,11 @@
                 ],
                 pageLength: 10,
                 order: [[10, 'asc']],
-                dom: 'lrtip',
+                // Same feature set as 'lrtip' (no global search box), but laid
+                // out in the wrapper rows the Duralux table skin styles.
+                dom: "<'row'<'col-sm-12'l>>" +
+                     "<'row'<'col-sm-12'tr>>" +
+                     "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
                 language: {
                     search: 'Cari:',
                     searchPlaceholder: 'Cari...',

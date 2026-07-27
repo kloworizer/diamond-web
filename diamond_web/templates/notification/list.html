@@ -120,19 +120,11 @@
                     <ul class="pagination pagination-sm mb-0">
                         {% if page_obj.has_previous %}
                         <li class="page-item">
-                            <a class="page-link" href="?page=1" aria-label="First">
-                                <i class="bi bi-chevron-bar-left"></i>
-                            </a>
-                        </li>
-                        <li class="page-item">
                             <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
                                 <i class="bi bi-arrow-left"></i>
                             </a>
                         </li>
                         {% else %}
-                        <li class="page-item disabled">
-                            <span class="page-link"><i class="bi bi-chevron-bar-left"></i></span>
-                        </li>
                         <li class="page-item disabled">
                             <span class="page-link"><i class="bi bi-arrow-left"></i></span>
                         </li>
@@ -143,9 +135,14 @@
                             <li class="page-item active">
                                 <span class="page-link">{{ num }}</span>
                             </li>
-                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            {% elif num == 1 or num == page_obj.paginator.num_pages or num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
                             <li class="page-item">
                                 <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                            </li>
+                            {% elif num == page_obj.number|add:'-3' or num == page_obj.number|add:'3' %}
+                            {# gap marker, drawn as a dot like Duralux #}
+                            <li class="page-item disabled">
+                                <span class="page-link"><i class="bi bi-dot"></i></span>
                             </li>
                             {% endif %}
                         {% endfor %}
@@ -156,17 +153,9 @@
                                 <i class="bi bi-arrow-right"></i>
                             </a>
                         </li>
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last">
-                                <i class="bi bi-chevron-bar-right"></i>
-                            </a>
-                        </li>
                         {% else %}
                         <li class="page-item disabled">
                             <span class="page-link"><i class="bi bi-arrow-right"></i></span>
-                        </li>
-                        <li class="page-item disabled">
-                            <span class="page-link"><i class="bi bi-chevron-bar-right"></i></span>
                         </li>
                         {% endif %}
                     </ul>

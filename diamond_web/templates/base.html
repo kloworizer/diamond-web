@@ -348,40 +348,122 @@
             pointer-events: none !important;
         }
 
-        /* Duralux-style DataTables skin (global for all list pages) */
+        /* ============================================================
+           Duralux "Project Tracker" table skin — the single source of
+           truth for every DataTable in the app (see the Project Tracker
+           card on Duralux widgets-tables.html). Markup contract:
 
-        /* DataTables layout rows — no negative Bootstrap margins */
+             .card.stretch.stretch-full.datatable-card
+                 > .card-header  → h5.card-title [+ .card-header-action]
+                 > .card-body.custom-card-action.p-0
+                     > .table-responsive
+                         > table.table.table-hover.mb-0
+
+           Cell styling (10px uppercase headings, 30px edge gutters,
+           colours, hover) comes from theme.min.css
+           `.table-responsive .table`; the only intentional deviation is
+           the compact row height set under "Compact density" below. */
+
+        /* Card frame — Duralux .card defaults, not the app's rounder card */
+        .card.datatable-card {
+            border-radius: 10px !important;
+            overflow: hidden;
+        }
+
+        /* `.stretch` is repeated so this outweighs the "Premium Card
+           Spacers" header padding further down. */
+        .card.stretch.datatable-card > .card-header {
+            padding: 25px !important;
+            border-bottom: 1px solid #e5e7eb !important;
+        }
+
+        .card.stretch.datatable-card > .card-header .card-title {
+            margin-bottom: 0 !important;
+            color: #283c50;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        /* The body holding a table stays flush — the table's own 30px
+           edge padding is the gutter, exactly like the Project Tracker.
+           Beats the "Premium Card Spacers" padding further down. */
+        .card .card-body.p-0,
+        .card.stretch .card-body.p-0,
+        .card.datatable-card .card-body.p-0 {
+            padding: 0 !important;
+        }
+
+        .table-responsive .table thead th {
+            white-space: nowrap;
+        }
+
+        /* Compact density — Duralux cell metrics with the vertical
+           padding dialled down (rows 15px → 8px, headings 8px → 6px).
+           The 30px first/last-child gutters are kept so the table still
+           lines up with the card header. */
+        .datatable-card .table-responsive .table tfoot th,
+        .datatable-card .table-responsive .table thead th {
+            padding: 6px 15px;
+        }
+
+        .datatable-card .table-responsive .table tr td {
+            padding: 8px 15px;
+        }
+
+        .datatable-card .table-responsive .table tfoot th:first-child,
+        .datatable-card .table-responsive .table thead th:first-child,
+        .datatable-card .table-responsive .table tr td:first-child {
+            padding-left: 30px;
+        }
+
+        .datatable-card .table-responsive .table tfoot th:last-child,
+        .datatable-card .table-responsive .table thead th:last-child,
+        .datatable-card .table-responsive .table tr td:last-child {
+            padding-right: 30px;
+        }
+
+        /* DataTables control rows — Duralux `.dataTables_wrapper .row`.
+           `dt-controls-row` / `dt-table-row` are tagged by
+           enhanceDataTableUI() below, because the wrapper markup differs
+           between the `layout` (dt-layout-row) and `dom` (row) options. */
         .dt-container .dt-layout-row,
-        .dataTables_wrapper .row {
+        .dt-container > .row,
+        .dataTables_wrapper > .row {
             margin-left: 0;
             margin-right: 0;
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
         }
 
-        /* First row: search + length menu */
-        .dt-container .dt-layout-row:first-child,
-        .dataTables_wrapper .row:first-child {
-            padding: .85rem 1rem;
-            border-bottom: 1px solid #e9ecef;
+        /* Rows holding controls (search, length menu, info, paging).
+           Horizontal padding matches the card header; vertical padding
+           follows the compact row density. */
+        .dt-container .dt-controls-row,
+        .dataTables_wrapper .dt-controls-row {
+            padding: 15px 25px !important;
             background: #fff;
         }
 
-        /* Middle row: the actual table — add horizontal padding */
-        .dt-container .dt-layout-row:not(:first-child):not(:last-child),
-        .dataTables_wrapper .row:not(:first-child):not(:last-child) {
-            padding: 0 1rem;
+        .dt-container .dt-controls-row.dt-controls-top,
+        .dataTables_wrapper .dt-controls-row.dt-controls-top {
+            border-bottom: 1px solid #dcdee4;
         }
 
-        /* Last row: info + pagination */
-        .dt-container .dt-layout-row:last-child,
-        .dataTables_wrapper .row:last-child {
-            padding: .85rem 1rem;
-            border-top: 1px solid #e9ecef;
-            background: #fff;
+        .dt-container .dt-controls-row.dt-controls-bottom,
+        .dataTables_wrapper .dt-controls-row.dt-controls-bottom {
+            border-top: 1px solid #dcdee4;
         }
 
-        /* Remove double table-responsive nesting padding */
-        .dt-container .dt-layout-row .table-responsive {
-            padding: 0;
+        /* The row holding the table itself is flush with the card */
+        .dt-container .dt-table-row,
+        .dt-container .dt-table-row > div,
+        .dataTables_wrapper .dt-table-row,
+        .dataTables_wrapper .dt-table-row > div,
+        .dt-container .table-responsive,
+        .dataTables_wrapper .table-responsive {
+            padding: 0 !important;
         }
 
         table.dataTable {
@@ -564,10 +646,6 @@
             cursor: not-allowed !important;
         }
 
-        .dt-paging {
-            margin-top: 16px !important;
-        }
-
         .dt-paging__list,
         .dt-container .dt-paging nav ul {
             list-style: none !important;
@@ -589,16 +667,6 @@
         table.table.dataTable {
             margin-top: 0 !important;
             margin-bottom: 0 !important;
-        }
-
-        table.dataTable>thead>tr>th,
-        table.table.dataTable>thead>tr>th {
-            white-space: nowrap;
-            font-size: .75rem;
-            text-transform: uppercase;
-            letter-spacing: .04em;
-            color: #6b7280;
-            border-bottom: 1px solid #e9ecef !important;
         }
 
         /* Empty state placeholder styling */
@@ -784,15 +852,8 @@
             padding-right: 28px !important;
         }
 
-        /* DataTables Centering & Alignment */
-        .dt-layout-row {
-            display: flex !important;
-            flex-direction: row !important;
-            align-items: center !important;
-            justify-content: space-between !important;
-            padding-top: 12px !important;
-            padding-bottom: 8px !important;
-        }
+        /* DataTables Centering & Alignment
+           (row padding lives in the Duralux table skin above) */
         .dt-layout-cell {
             display: flex !important;
             align-items: center !important;
@@ -843,6 +904,39 @@
         .form-control:focus, .form-select:focus {
             border-color: #00BDFB !important;
             box-shadow: 0 0 0 2px rgba(0, 189, 251, 0.1) !important;
+        }
+
+        /* Navbar search — one field with the magnifier sitting inside it
+           on the right, instead of a separate button glued to the input. */
+        .navbar-search-field {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .navbar-search-field .form-control {
+            padding-right: 42px !important;
+        }
+        .navbar-search-field .btn {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border: 0;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            background-color: transparent;
+            box-shadow: none;
+        }
+        .navbar-search-field .btn:hover:not(:disabled),
+        .navbar-search-field .btn:focus:not(:disabled) {
+            color: #00BDFB;
+            background-color: rgba(0, 189, 251, 0.08);
         }
 
         /* Native Webkit Date & DateTime Alignment & Color */
@@ -1065,8 +1159,25 @@
                 if (!$container.length && !$tableWrapper.length) return;
 
                 if ($container.length) {
-                    // Add margin to dt-container for spacing
-                    $container.addClass('m-3');
+                    // The wrapper sits flush inside `.card-body.p-0` and the
+                    // Duralux control rows supply their own 25px padding, so
+                    // tag each wrapper row to tell the table apart from the
+                    // control rows above/below it. The markup differs per
+                    // DataTables layout option, hence deciding from content
+                    // rather than child position.
+                    let tableRowSeen = false;
+                    $container.children('.dt-layout-row, .row').each(function () {
+                        const $row = $(this);
+                        if ($row.find('table').length) {
+                            tableRowSeen = true;
+                            $row.addClass('dt-table-row')
+                                .removeClass('dt-controls-row dt-controls-top dt-controls-bottom');
+                        } else {
+                            $row.addClass('dt-controls-row')
+                                .toggleClass('dt-controls-top', !tableRowSeen)
+                                .toggleClass('dt-controls-bottom', tableRowSeen);
+                        }
+                    });
 
                     $container.find('.dt-search input, .dataTables_filter input')
                         .attr('placeholder', 'Cari...')
@@ -1087,11 +1198,16 @@
                             const $button = $(this).find('button');
                             if ($button.length) {
                                 $button.addClass('page-link');
-                                // Add icon classes for prev/next buttons
+                                // One icon family for every control, as Duralux
+                                // does it: bi arrows, and a dot for the ellipsis.
                                 if ($button.hasClass('dt-paging__button--previous')) {
                                     $button.html('<i class="bi bi-arrow-left"></i>');
                                 } else if ($button.hasClass('dt-paging__button--next')) {
                                     $button.html('<i class="bi bi-arrow-right"></i>');
+                                } else if ($button.hasClass('dt-paging__button--first')) {
+                                    $button.html('<i class="bi bi-chevron-bar-left"></i>');
+                                } else if ($button.hasClass('dt-paging__button--last')) {
+                                    $button.html('<i class="bi bi-chevron-bar-right"></i>');
                                 }
                             }
                         });
@@ -1139,6 +1255,10 @@
                             $button.html('<i class="bi bi-chevron-bar-right"></i>');
                         }
                     });
+
+                    // Duralux renders the paging ellipsis as a dot.
+                    $container.find('.dt-paging .ellipsis, .dataTables_paginate .ellipsis')
+                        .html('<i class="bi bi-dot"></i>');
 
                     const $infoText = $container.find('.dataTables_info');
                     if ($infoText.length) {
@@ -1232,6 +1352,10 @@
 
                 $.extend(true, $.fn.dataTable.defaults, {
                     pageLength: 10,
+                    // Duralux pagination: one arrow back, the page numbers with
+                    // a dot ellipsis, one arrow forward — no first/last buttons
+                    // (the last page number is always in the list anyway).
+                    pagingType: 'simple_numbers',
                     language: {
                         search: 'Cari:',
                         searchPlaceholder: 'Cari...',
@@ -1248,6 +1372,10 @@
                             sortDescending: ': aktifkan untuk mengurutkan kolom turun'
                         },
                         paginate: {
+                            // Only rendered if a page opts out of
+                            // pagingType 'simple_numbers'. bi-arrow-bar-* draw
+                            // their bar on the wrong side in this icon build,
+                            // so the chevron-bar pair is used for those.
                             first: '<i class="bi bi-chevron-bar-left"></i>',
                             last: '<i class="bi bi-chevron-bar-right"></i>',
                             next: '<i class="bi bi-arrow-right"></i>',

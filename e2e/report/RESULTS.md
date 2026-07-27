@@ -1,6 +1,6 @@
 # DIAMOND Tiket Workflow — Playwright E2E Results
 
-_Generated: 2026-07-26 19:38:28_
+_Generated: 2026-07-27 12:55:55_
 
 **Steps:** 126 passed, 0 failed. **Bugs found:** 2.
 
@@ -71,7 +71,7 @@ On the tiket detail page (status Pengendalian Mutu), the button that opens the S
 | val_tanda_terima_before_dip | tanda terima before tgl_terima_dip rejected | PASS |  |
 | val_tanda_terima_before_dip | valid tanda terima accepted | PASS | Direkam |
 | val_teliti_before_tanda_terima | rekam tiket | PASS |  -> Direkam |
-| val_teliti_before_tanda_terima | setup: buat tanda terima | PASS | 2026-07-25 |
+| val_teliti_before_tanda_terima | setup: buat tanda terima | PASS | 2026-07-26 |
 | val_teliti_before_tanda_terima | tgl_teliti before tanda terima rejected | PASS | Direkam |
 | val_teliti_before_tanda_terima | valid tgl_teliti accepted | PASS | Diteliti |
 | val_datepicker_consistency | rekam tiket page has icon + flatpickr | PASS |  |
@@ -87,61 +87,61 @@ On the tiket detail page (status Pengendalian Mutu), the button that opens the S
 | special_request | toggle ON persisted | PASS | ya |
 | special_request | toggle OFF persisted | PASS | tidak |
 | crud_kategori_wilayah | empty submit blocked | PASS |  |
-| crud_kategori_wilayah | valid create | PASS | E2E kategori-wil 87305 |
+| crud_kategori_wilayah | valid create | PASS | E2E kategori-wil 26295 |
 | crud_kategori_wilayah | duplicate rejected | PASS | modal stayed open with validation error |
-| crud_kategori_wilayah | edit | PASS | E2E kategori-wil 87305 (edited) |
+| crud_kategori_wilayah | edit | PASS | E2E kategori-wil 26295 (edited) |
 | crud_kategori_wilayah | delete | PASS |  |
 | crud_jenis_tabel | empty submit blocked | PASS |  |
-| crud_jenis_tabel | valid create | PASS | E2E jenis-tabel 96825 |
+| crud_jenis_tabel | valid create | PASS | E2E jenis-tabel 35951 |
 | crud_jenis_tabel | duplicate rejected | PASS | modal stayed open with validation error |
-| crud_jenis_tabel | edit | PASS | E2E jenis-tabel 96825 (edited) |
+| crud_jenis_tabel | edit | PASS | E2E jenis-tabel 35951 (edited) |
 | crud_jenis_tabel | delete | PASS |  |
 | crud_status_data | empty submit blocked | PASS |  |
-| crud_status_data | valid create | PASS | E2E status-data 5966 |
+| crud_status_data | valid create | PASS | E2E status-data 45546 |
 | crud_status_data | duplicate rejected | PASS | modal stayed open with validation error |
-| crud_status_data | edit | PASS | E2E status-data 5966 (edi |
+| crud_status_data | edit | PASS | E2E status-data 45546 (ed |
 | crud_status_data | delete | PASS |  |
 | crud_status_penelitian | empty submit blocked | PASS |  |
-| crud_status_penelitian | valid create | PASS | E2E status-penel 15494 |
+| crud_status_penelitian | valid create | PASS | E2E status-penel 55205 |
 | crud_status_penelitian | duplicate rejected | PASS | modal stayed open with validation error |
-| crud_status_penelitian | edit | PASS | E2E status-penel 15494 (e |
+| crud_status_penelitian | edit | PASS | E2E status-penel 55205 (e |
 | crud_status_penelitian | delete | PASS |  |
 | crud_bentuk_data | empty submit blocked | PASS |  |
-| crud_bentuk_data | valid create | PASS | E2E bentuk-data 24839 |
+| crud_bentuk_data | valid create | PASS | E2E bentuk-data 64782 |
 | crud_bentuk_data | duplicate rejected | PASS | modal stayed open with validation error |
-| crud_bentuk_data | edit | PASS | E2E bentuk-data 24839 (ed |
+| crud_bentuk_data | edit | PASS | E2E bentuk-data 64782 (ed |
 | crud_bentuk_data | delete | PASS |  |
 | crud_cara_penyampaian | empty submit blocked | PASS |  |
-| crud_cara_penyampaian | valid create | PASS | E2E cara-penyamp 33980 |
+| crud_cara_penyampaian | valid create | PASS | E2E cara-penyamp 74936 |
 | crud_cara_penyampaian | duplicate rejected | PASS | modal stayed open with validation error |
-| crud_cara_penyampaian | edit | PASS | E2E cara-penyamp 33980 (e |
+| crud_cara_penyampaian | edit | PASS | E2E cara-penyamp 74936 (e |
 | crud_cara_penyampaian | delete | PASS |  |
 | crud_media_backup | empty submit blocked | PASS |  |
-| crud_media_backup | valid create | PASS | E2E media-backup 43214 |
+| crud_media_backup | valid create | PASS | E2E media-backup 84586 |
 | crud_media_backup | duplicate rejected | PASS | modal stayed open with validation error |
-| crud_media_backup | edit | PASS | E2E media-backup 43214 (e |
+| crud_media_backup | edit | PASS | E2E media-backup 84586 (e |
 | crud_media_backup | delete | PASS |  |
 | crud_kanwil | empty submit blocked | PASS |  |
-| crud_kanwil | valid create | PASS | E47/E2E Kanwil 477 |
+| crud_kanwil | valid create | PASS | E17/E2E Kanwil 177 |
 | crud_kanwil | duplicate kode_kanwil rejected | PASS |  |
 | crud_kanwil | edit | PASS |  |
 | crud_kanwil | delete | PASS |  |
 | crud_kategori_ilap | empty submit blocked | PASS |  |
-| crud_kategori_ilap | valid create | PASS | E8/E2E Kategori ILAP 83 |
+| crud_kategori_ilap | valid create | PASS | E3/E2E Kategori ILAP 33 |
 | crud_kategori_ilap | id_kategori locked on edit | PASS |  |
 | crud_kategori_ilap | edit | PASS |  |
 | crud_kategori_ilap | delete | PASS |  |
 | crud_periode_pengiriman | empty submit blocked | PASS |  |
-| crud_periode_pengiriman | valid create | PASS | E2E Penyampaian 69399 |
+| crud_periode_pengiriman | valid create | PASS | E2E Penyampaian 12362 |
 | crud_periode_pengiriman | edit | PASS |  |
 | crud_periode_pengiriman | delete | PASS |  |
 | crud_dasar_hukum | empty submit blocked | PASS |  |
-| crud_dasar_hukum | valid create | PASS | E2E Dasar Hukum 76991 |
+| crud_dasar_hukum | valid create | PASS | E2E Dasar Hukum 20389 |
 | crud_dasar_hukum | end_date < start_date rejected | PASS |  |
 | crud_dasar_hukum | edit | PASS |  |
 | crud_dasar_hukum | delete | PASS |  |
 | crud_kpp | empty submit blocked | PASS |  |
-| crud_kpp | valid create | PASS | Q28/E2E KPP 283 kanwil=1 |
+| crud_kpp | valid create | PASS | Q07/E2E KPP 075 kanwil=1 |
 | crud_kpp | edit | PASS |  |
 | crud_kpp | delete | PASS |  |
 | crud_protected_delete | protected delete handled gracefully (no hard 500) | PASS |  |

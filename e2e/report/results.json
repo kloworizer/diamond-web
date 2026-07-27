@@ -322,7 +322,7 @@
       "val_teliti_before_tanda_terima",
       "setup: buat tanda terima",
       "PASS",
-      "2026-07-25"
+      "2026-07-26"
     ],
     [
       "val_teliti_before_tanda_terima",
@@ -418,7 +418,7 @@
       "crud_kategori_wilayah",
       "valid create",
       "PASS",
-      "E2E kategori-wil 87305"
+      "E2E kategori-wil 26295"
     ],
     [
       "crud_kategori_wilayah",
@@ -430,7 +430,7 @@
       "crud_kategori_wilayah",
       "edit",
       "PASS",
-      "E2E kategori-wil 87305 (edited)"
+      "E2E kategori-wil 26295 (edited)"
     ],
     [
       "crud_kategori_wilayah",
@@ -448,7 +448,7 @@
       "crud_jenis_tabel",
       "valid create",
       "PASS",
-      "E2E jenis-tabel 96825"
+      "E2E jenis-tabel 35951"
     ],
     [
       "crud_jenis_tabel",
@@ -460,7 +460,7 @@
       "crud_jenis_tabel",
       "edit",
       "PASS",
-      "E2E jenis-tabel 96825 (edited)"
+      "E2E jenis-tabel 35951 (edited)"
     ],
     [
       "crud_jenis_tabel",
@@ -478,7 +478,7 @@
       "crud_status_data",
       "valid create",
       "PASS",
-      "E2E status-data 5966"
+      "E2E status-data 45546"
     ],
     [
       "crud_status_data",
@@ -490,7 +490,7 @@
       "crud_status_data",
       "edit",
       "PASS",
-      "E2E status-data 5966 (edi"
+      "E2E status-data 45546 (ed"
     ],
     [
       "crud_status_data",
@@ -508,7 +508,7 @@
       "crud_status_penelitian",
       "valid create",
       "PASS",
-      "E2E status-penel 15494"
+      "E2E status-penel 55205"
     ],
     [
       "crud_status_penelitian",
@@ -520,7 +520,7 @@
       "crud_status_penelitian",
       "edit",
       "PASS",
-      "E2E status-penel 15494 (e"
+      "E2E status-penel 55205 (e"
     ],
     [
       "crud_status_penelitian",
@@ -538,7 +538,7 @@
       "crud_bentuk_data",
       "valid create",
       "PASS",
-      "E2E bentuk-data 24839"
+      "E2E bentuk-data 64782"
     ],
     [
       "crud_bentuk_data",
@@ -550,7 +550,7 @@
       "crud_bentuk_data",
       "edit",
       "PASS",
-      "E2E bentuk-data 24839 (ed"
+      "E2E bentuk-data 64782 (ed"
     ],
     [
       "crud_bentuk_data",
@@ -568,7 +568,7 @@
       "crud_cara_penyampaian",
       "valid create",
       "PASS",
-      "E2E cara-penyamp 33980"
+      "E2E cara-penyamp 74936"
     ],
     [
       "crud_cara_penyampaian",
@@ -580,7 +580,7 @@
       "crud_cara_penyampaian",
       "edit",
       "PASS",
-      "E2E cara-penyamp 33980 (e"
+      "E2E cara-penyamp 74936 (e"
     ],
     [
       "crud_cara_penyampaian",
@@ -598,7 +598,7 @@
       "crud_media_backup",
       "valid create",
       "PASS",
-      "E2E media-backup 43214"
+      "E2E media-backup 84586"
     ],
     [
       "crud_media_backup",
@@ -610,7 +610,7 @@
       "crud_media_backup",
       "edit",
       "PASS",
-      "E2E media-backup 43214 (e"
+      "E2E media-backup 84586 (e"
     ],
     [
       "crud_media_backup",
@@ -628,7 +628,7 @@
       "crud_kanwil",
       "valid create",
       "PASS",
-      "E47/E2E Kanwil 477"
+      "E17/E2E Kanwil 177"
     ],
     [
       "crud_kanwil",
@@ -658,7 +658,7 @@
       "crud_kategori_ilap",
       "valid create",
       "PASS",
-      "E8/E2E Kategori ILAP 83"
+      "E3/E2E Kategori ILAP 33"
     ],
     [
       "crud_kategori_ilap",
@@ -688,7 +688,7 @@
       "crud_periode_pengiriman",
       "valid create",
       "PASS",
-      "E2E Penyampaian 69399"
+      "E2E Penyampaian 12362"
     ],
     [
       "crud_periode_pengiriman",
@@ -712,7 +712,7 @@
       "crud_dasar_hukum",
       "valid create",
       "PASS",
-      "E2E Dasar Hukum 76991"
+      "E2E Dasar Hukum 20389"
     ],
     [
       "crud_dasar_hukum",
@@ -742,7 +742,7 @@
       "crud_kpp",
       "valid create",
       "PASS",
-      "Q28/E2E KPP 283 kanwil=1"
+      "Q07/E2E KPP 075 kanwil=1"
     ],
     [
       "crud_kpp",

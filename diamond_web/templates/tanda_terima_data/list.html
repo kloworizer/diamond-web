@@ -3,13 +3,6 @@
 
 {% block content %}
 <style>
-    /* Table row compactness: matching monitoring page */
-    #tanda-terima-data-table th, 
-    #tanda-terima-data-table td {
-        padding: 8px 10px !important;
-        font-size: 13px !important;
-        vertical-align: middle !important;
-    }
 
     #column-search-row th {
         padding-top: 4px !important;
@@ -20,22 +13,6 @@
         height: 28px !important;
         font-size: 12px !important;
         padding: 2px 6px !important;
-    }
-
-    /* Table frame: only body scrolls, header stays sticky */
-    .table-frame {
-        min-height: 320px;
-        overflow-x: auto;
-        border-top: 1px solid #e9ecef;
-        position: relative;
-    }
-
-    .table-frame thead th {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        background-color: #f8fafc !important;
-        box-shadow: inset 0 -1px 0 #dee2e6;
     }
 
     /* Column search row sticky below the headers */
@@ -71,65 +48,6 @@
     .sticky-actions tbody tr:last-child td.col-actions {
         box-shadow: none;
     }
-
-    /* Premium Card Padding rules */
-    .card.stretch {
-        border-radius: 16px !important;
-        overflow: hidden;
-    }
-    
-    .card.stretch .card-header {
-        padding-bottom: 16px !important;
-        padding-left: 28px !important;
-        padding-right: 28px !important;
-        border-bottom: none !important;
-    }
-    
-    .card.stretch .card-body {
-        padding-bottom: 36px !important;
-        padding-left: 28px !important;
-        padding-right: 28px !important;
-    }
-
-    /* Center DataTable info and pagination vertically - Absolute Global */
-    .dt-layout-row {
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        padding-top: 12px !important;
-        padding-bottom: 8px !important;
-    }
-    
-    .dt-layout-cell {
-        display: flex !important;
-        align-items: center !important;
-        padding: 0 !important;
-        margin: 0 !important;
-    }
-
-    .dt-info {
-        margin: 0 !important;
-        padding: 0 !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        line-height: 1 !important;
-        height: 38px !important; /* Matches height of pagination controls */
-    }
-
-    .dt-paging {
-        margin: 0 !important;
-        padding: 0 !important;
-        display: inline-flex !important;
-        align-items: center !important;
-    }
-
-    .dt-paging .pagination {
-        margin: 0 !important;
-        padding: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-    }
 </style>
 
 <div class="page-header">
@@ -163,9 +81,9 @@
     </div>
 
     <div class="main-content">
-    <div class="card stretch stretch-full h-100">
-        <div class="card-header border-bottom-0 pb-0 bg-transparent d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0"><i class="feather-archive me-2"></i>Daftar Tanda Terima Data</h5>
+    <div class="card stretch stretch-full datatable-card">
+        <div class="card-header">
+            <h5 class="card-title"><i class="feather-archive me-2"></i>Daftar Tanda Terima Data</h5>
             <div class="d-flex align-items-center gap-3">
                 <a href="javascript:void(0);" id="btn-reset-pencarian" class="btn border-0 text-primary text-decoration-none p-0 fw-bold align-items-center gap-1" style="display: none; font-size: 13px;">
                     <i class="feather-x" style="width: 16px; height: 16px;"></i> Reset Pencarian
@@ -178,8 +96,8 @@
             </div>
         </div>
         </div>
-        <div class="card-body custom-card-action">
-            <div class="table-frame sticky-actions">
+        <div class="card-body custom-card-action p-0">
+            <div class="table-responsive sticky-actions">
             <table id="tanda-terima-data-table" class="table table-hover mb-0" style="width:100%">
                 <thead>
                     <tr>

@@ -310,9 +310,9 @@
             {% if user.is_authenticated %}
             <form class="d-flex align-items-center ms-2" id="navbar-tiket-search">
                 {% csrf_token %}
-                <div class="input-group input-group-sm">
-                    <input type="text" class="form-control" id="navbar-search-nomor-tiket" placeholder="Cari Nomor Tiket / ID ILAP / ID Sub Jenis Data..." aria-label="Cari Nomor Tiket, ID ILAP atau ID Sub Jenis Data" style="min-width: 300px;">
-                    <button class="btn btn-outline-secondary" type="submit" title="Cari">
+                <div class="navbar-search-field">
+                    <input type="text" class="form-control" id="navbar-search-nomor-tiket" placeholder="Cari Nomor Tiket / ID ILAP / ID Sub Jenis Data..." aria-label="Cari Nomor Tiket, ID ILAP atau ID Sub Jenis Data" style="min-width: 340px;">
+                    <button class="btn" type="submit" title="Cari">
                         <i class="feather-search"></i>
                     </button>
                 </div>
