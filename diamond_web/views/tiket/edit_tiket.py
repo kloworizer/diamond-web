@@ -1,8 +1,12 @@
 """Edit Tiket View - P3DE action to change the isian of a tiket via modal.
 
-A tiket may be edited only while it is in status Direkam and no tanda terima
-has been created yet. Once a tanda terima exists the isian is locked and the
-only remaining action is cancelling the tiket.
+For the PIC that owns a tiket, it may be edited only while it is in status
+Direkam and no tanda terima has been created yet. Once a tanda terima exists
+the isian is locked and the only remaining action is cancelling the tiket.
+
+P3DE administrators (`admin`, `admin_p3de`, superusers) are exempt from that
+lock so they can correct a tiket at any point in the workflow. Their edits are
+recorded in the audit trail exactly like a PIC edit.
 """
 
 from datetime import datetime
@@ -20,10 +24,11 @@ from ...models.pic import PIC
 from ...forms.edit_tiket import EditTiketForm
 from ...constants.tiket_action_types import TiketActionType
 from ...constants.tiket_status import STATUS_DIREKAM
+from ..mixins import is_admin_p3de
 
 
 class EditTiketView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
-    """Allow the active P3DE PIC to edit a tiket's isian while it is editable.
+    """Allow the active P3DE PIC (or a P3DE admin) to edit a tiket's isian.
 
     Model: Tiket
     Form: EditTiketForm
@@ -31,30 +36,35 @@ class EditTiketView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 
     Access Control:
     - Requires @login_required
-    - test_func() requires ALL of:
-        * tiket.status_tiket == STATUS_DIREKAM
-        * tiket.tanda_terima is False
-        * user is superuser/admin OR the active P3DE PIC that owns the tiket
+    - test_func() allows either:
+        * a P3DE administrator (superuser, `admin` or `admin_p3de`), at any
+          status and regardless of the tanda terima, or
+        * the active P3DE PIC that owns the tiket, but only while
+          tiket.status_tiket == STATUS_DIREKAM and tiket.tanda_terima is False
 
     Side Effects on Form Submission:
     - Tiket editable fields are updated
-    - A TiketAction (TiketActionType.DIUBAH) is recorded for the audit trail
+    - A TiketAction (TiketActionType.DIUBAH) is recorded for the audit trail,
+      for admin and PIC edits alike
     """
     model = Tiket
     form_class = EditTiketForm
     template_name = 'tiket/edit_tiket_modal_form.html'
 
     def _is_editable(self, tiket):
-        """A tiket is editable only while Direkam and without a tanda terima."""
+        """For a PIC, a tiket is editable only while Direkam and without a
+        tanda terima. P3DE admins bypass this check entirely."""
         return tiket.status_tiket == STATUS_DIREKAM and not tiket.tanda_terima
 
     def test_func(self):
+        user = self.request.user
+        # P3DE administrators may correct a tiket whenever needed, so the
+        # Direkam / tanda terima lock does not apply to them.
+        if is_admin_p3de(user):
+            return True
         tiket = self.get_object()
         if not self._is_editable(tiket):
             return False
-        user = self.request.user
-        if user.is_superuser or user.groups.filter(name='admin').exists():
-            return True
         sub_jenis_data_ilap = tiket.id_periode_data.id_sub_jenis_data_ilap
         is_tiket_pic = TiketPIC.objects.filter(
             id_tiket=tiket,

@@ -16,8 +16,9 @@ from ..models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ..models.periode_jenis_data import PeriodeJenisData
 from ..models.pic import PIC
 from ..models.tiket import Tiket
+from ..models.tiket_pic import TiketPIC
 from ..utils import format_periode
-from .mixins import UserP3DERequiredMixin
+from .mixins import UserP3DERequiredMixin, is_admin_p3de, is_kasi
 
 __all__ = [
     'ProfilILAPListView',
@@ -437,15 +438,35 @@ def _can_view_profil_ilap(user):
     return user.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de']).exists()
 
 
+def _can_open_tiket(user, tiket):
+    """Return True when `user` may open `tiket`'s detail page.
+
+    Mirrors the rule enforced by `TiketDetailView.get_object`: admins (global
+    and P3DE) and kasi may open any tiket, everyone else needs a TiketPIC
+    assignment on it.
+    """
+    if is_admin_p3de(user) or is_kasi(user):
+        return True
+    return TiketPIC.objects.filter(id_tiket=tiket, id_user=user).exists()
+
+
 @login_required
 def navbar_search(request):
-    """Resolve a header search term to an ILAP or sub jenis data profile.
+    """Resolve a header search term to an ILAP, sub jenis data or tiket page.
 
     Used by the navbar search box before it falls back to looking the term up
-    as a nomor tiket. Matching is exact but case-insensitive, so ``BI001``
-    resolves to the ILAP profile and ``BI0010101`` to the sub jenis data page.
-    Users without access to the profil ILAP pages always get no match, which
-    leaves them on the nomor tiket search path.
+    as a nomor tiket through the tiket list endpoint. Matching is exact but
+    case-insensitive, so ``BI001`` resolves to the ILAP profile, ``BI0010101``
+    to the sub jenis data page and a full nomor tiket to the tiket detail page.
+    Users without access to the profil ILAP pages get no ILAP/jenis data match,
+    which leaves them on the nomor tiket path.
+
+    The nomor tiket branch exists for Admin P3DE: they may correct the isian of
+    any tiket but the tiket list endpoint only ever shows them the tikets they
+    are a PIC for, so an exact nomor tiket is their way in. It is scoped to the
+    tikets the user may actually open, so it never widens anyone else's reach —
+    for other roles it simply short-circuits the lookup they would otherwise do
+    against the tiket list endpoint.
 
     Args:
         request (HttpRequest): The current request; the term is read from the
@@ -453,28 +474,38 @@ def navbar_search(request):
 
     Returns:
         JsonResponse: ``{'match': None}`` when nothing matched, otherwise
-        ``{'match': 'ilap'|'jenis_data', 'url': str, 'label': str}``.
+        ``{'match': 'ilap'|'jenis_data'|'tiket', 'url': str, 'label': str}``.
     """
     term = request.GET.get('q', '').strip()
-    if not term or not _can_view_profil_ilap(request.user):
+    if not term:
         return JsonResponse({'match': None})
 
-    # Sub jenis data codes are the more specific of the two, so check them
-    # first even though the ID lengths make a collision unlikely.
-    jenis_data = JenisDataILAP.objects.filter(id_sub_jenis_data__iexact=term).first()
-    if jenis_data is not None:
-        return JsonResponse({
-            'match': 'jenis_data',
-            'url': reverse('jenis_data_ilap_profil', args=[jenis_data.id_sub_jenis_data]),
-            'label': f'{jenis_data.id_sub_jenis_data} - {jenis_data.nama_sub_jenis_data}',
-        })
+    if _can_view_profil_ilap(request.user):
+        # Sub jenis data codes are the more specific of the two, so check them
+        # first even though the ID lengths make a collision unlikely.
+        jenis_data = JenisDataILAP.objects.filter(id_sub_jenis_data__iexact=term).first()
+        if jenis_data is not None:
+            return JsonResponse({
+                'match': 'jenis_data',
+                'url': reverse('jenis_data_ilap_profil', args=[jenis_data.id_sub_jenis_data]),
+                'label': f'{jenis_data.id_sub_jenis_data} - {jenis_data.nama_sub_jenis_data}',
+            })
 
-    ilap = ILAP.objects.filter(id_ilap__iexact=term).first()
-    if ilap is not None:
+        ilap = ILAP.objects.filter(id_ilap__iexact=term).first()
+        if ilap is not None:
+            return JsonResponse({
+                'match': 'ilap',
+                'url': reverse('profil_ilap_detail', args=[ilap.id_ilap]),
+                'label': f'{ilap.id_ilap} - {ilap.nama_ilap}',
+            })
+
+    # nomor_tiket is unique, so an exact match identifies a single tiket.
+    tiket = Tiket.objects.filter(nomor_tiket__iexact=term).first()
+    if tiket is not None and _can_open_tiket(request.user, tiket):
         return JsonResponse({
-            'match': 'ilap',
-            'url': reverse('profil_ilap_detail', args=[ilap.id_ilap]),
-            'label': f'{ilap.id_ilap} - {ilap.nama_ilap}',
+            'match': 'tiket',
+            'url': reverse('tiket_detail', args=[tiket.pk]),
+            'label': tiket.nomor_tiket,
         })
 
     return JsonResponse({'match': None})
