@@ -647,23 +647,27 @@
                     <h5 class="mb-0"><i class="feather-settings me-2"></i>Aksi</h5>
                 </div>
                 <div class="card-body">
+                    {# Edit button sits outside the PIC blocks: an Admin P3DE may edit without being a PIC. #}
+                    {% if user_can_edit_tiket %}
+                    <div class="d-grid gap-2 mb-2">
+                        <button type="button" class="btn btn-secondary" data-bs-toggle="modal"
+                            data-bs-target="#editTiketModal">
+                            <i class="feather-edit-3 me-1"></i>Ubah Isian Tiket
+                        </button>
+                    </div>
+                    {% endif %}
+
                     {% if not user_is_active_pic %}
                     <div class="alert alert-info mb-0">
-                        <i class="feather-info me-2"></i>Anda bukan PIC aktif untuk tiket ini. Anda hanya dapat melihat,
-                        tidak dapat melakukan perubahan.
+                        <i class="feather-info me-2"></i>Anda bukan PIC aktif untuk tiket ini.
+                        {% if user_is_admin_p3de %}Sebagai Admin P3DE Anda hanya dapat mengubah isian
+                        tiket.{% else %}Anda hanya dapat melihat, tidak dapat melakukan perubahan.{% endif %}
                     </div>
                     {% else %}
                     <!-- P3DE actions (existing) -->
                     {% if user_is_active_pic_p3de %}
                     {% if tiket.status_tiket < STATUS_DIKIRIM_KE_PIDE and tiket.status_tiket != STATUS_DIBATALKAN and tiket.status_tiket != STATUS_SELESAI and tiket.status_tiket != STATUS_DIKEMBALIKAN %} <div
                         class="d-grid gap-2">
-                        {% if user_can_edit_tiket %}
-                        <button type="button" class="btn btn-secondary" data-bs-toggle="modal"
-                            data-bs-target="#editTiketModal">
-                            <i class="feather-edit-3 me-1"></i>Ubah Isian Tiket
-                        </button>
-                        {% endif %}
-
                         {% if not tiket.backup %}
                         <button type="button" class="btn btn-warning" data-bs-toggle="modal"
                             data-bs-target="#rekamBackupDataModal">

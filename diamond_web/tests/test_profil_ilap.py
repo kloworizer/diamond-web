@@ -5,7 +5,7 @@ import pytest
 from django.contrib.auth.models import Group
 from django.urls import reverse
 
-from diamond_web.models import DasarHukum, KlasifikasiJenisData, PeriodePengiriman
+from diamond_web.models import DasarHukum, KlasifikasiJenisData, PeriodePengiriman, TiketPIC
 from diamond_web.tests.conftest import (
     ILAPFactory,
     JenisDataILAPFactory,
@@ -14,6 +14,7 @@ from diamond_web.tests.conftest import (
     PeriodeJenisDataFactory,
     PICFactory,
     TiketFactory,
+    TiketPICFactory,
     UserFactory,
 )
 
@@ -408,3 +409,76 @@ class TestNavbarSearch:
         ilap = ILAPFactory()
         client.force_login(UserFactory())
         assert client.get(reverse('navbar_search'), {'q': ilap.id_ilap}).json() == {'match': None}
+
+
+@pytest.mark.django_db
+class TestNavbarSearchNomorTiket:
+    """Exact nomor tiket lookups, scoped to the tikets a user may open.
+
+    This is how an Admin P3DE reaches a tiket they are not a PIC for: the
+    tiket list endpoint stays scoped to their own assignments.
+    """
+
+    def _tiket_of_another_pic(self):
+        tiket = TiketFactory()
+        TiketPICFactory(id_tiket=tiket, id_user=UserFactory(),
+                        role=TiketPIC.Role.P3DE, active=True)
+        return tiket
+
+    def test_admin_p3de_resolves_tiket_without_pic_assignment(self, client, p3de_admin_user):
+        tiket = self._tiket_of_another_pic()
+        client.force_login(p3de_admin_user)
+        payload = client.get(reverse('navbar_search'), {'q': tiket.nomor_tiket}).json()
+        assert payload['match'] == 'tiket'
+        assert payload['url'] == reverse('tiket_detail', args=[tiket.pk])
+
+    def test_resolved_url_opens_the_detail_page(self, client, p3de_admin_user):
+        """The whole point of the match: the admin lands on an editable detail page."""
+        tiket = self._tiket_of_another_pic()
+        client.force_login(p3de_admin_user)
+        payload = client.get(reverse('navbar_search'), {'q': tiket.nomor_tiket}).json()
+        resp = client.get(payload['url'])
+        assert resp.status_code == 200
+        assert resp.context['user_can_edit_tiket'] is True
+
+    def test_match_is_case_insensitive(self, client, p3de_admin_user):
+        tiket = TiketFactory(nomor_tiket='pd0010101250001')
+        client.force_login(p3de_admin_user)
+        payload = client.get(reverse('navbar_search'), {'q': 'PD0010101250001'}).json()
+        assert payload['url'] == reverse('tiket_detail', args=[tiket.pk])
+
+    def test_pic_resolves_own_tiket(self, client):
+        """Existing behaviour for a PIC is unchanged, just resolved earlier."""
+        user = _p3de_user()
+        tiket = TiketFactory()
+        TiketPICFactory(id_tiket=tiket, id_user=user, role=TiketPIC.Role.P3DE, active=True)
+        client.force_login(user)
+        payload = client.get(reverse('navbar_search'), {'q': tiket.nomor_tiket}).json()
+        assert payload['url'] == reverse('tiket_detail', args=[tiket.pk])
+
+    def test_non_pic_user_gets_no_match(self, client):
+        """A plain user_p3de still cannot reach another PIC's tiket."""
+        tiket = self._tiket_of_another_pic()
+        client.force_login(_p3de_user())
+        assert client.get(
+            reverse('navbar_search'), {'q': tiket.nomor_tiket}
+        ).json() == {'match': None}
+
+    def test_other_admin_role_gets_no_match(self, client):
+        """admin_pide/admin_pmde are not P3DE administrators."""
+        user = UserFactory()
+        group, _ = Group.objects.get_or_create(name='admin_pide')
+        user.groups.add(group)
+        tiket = self._tiket_of_another_pic()
+        client.force_login(user)
+        assert client.get(
+            reverse('navbar_search'), {'q': tiket.nomor_tiket}
+        ).json() == {'match': None}
+
+    def test_partial_nomor_tiket_is_not_matched(self, client, p3de_admin_user):
+        """Only exact matches resolve; partial terms fall through as before."""
+        tiket = self._tiket_of_another_pic()
+        client.force_login(p3de_admin_user)
+        assert client.get(
+            reverse('navbar_search'), {'q': tiket.nomor_tiket[:6]}
+        ).json() == {'match': None}

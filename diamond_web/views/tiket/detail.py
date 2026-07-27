@@ -30,7 +30,7 @@ from ...constants.tiket_action_types import (
     get_action_badge_class,
 )
 from ...utils import format_number_with_separator, format_periode
-from ..mixins import is_kasi
+from ..mixins import is_admin_p3de, is_kasi
 
 
 class TiketDetailView(LoginRequiredMixin, DetailView):
@@ -60,17 +60,20 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         Permission Logic:
         - Superuser: Always allowed
         - Admin group member: Always allowed
+        - Admin P3DE group member: Always allowed — they may correct the isian
+          of any tiket, so they must be able to open it
         - Kasi (supervisor) group member: Always allowed, read-only — the
           action buttons stay gated behind `user_is_active_pic_*`
         - Other users: Must have a TiketPIC record (active or inactive) for this tiket
 
         Raises:
-        - PermissionDenied: If user is not superuser/admin/kasi and has no TiketPIC
+        - PermissionDenied: If user is not superuser/admin/admin_p3de/kasi and
+          has no TiketPIC
         - Http404: If tiket PK not found (via parent get_object)
         """
         obj = super().get_object(queryset)
-        # Allow access if user is superuser, admin or kasi
-        if self.request.user.is_superuser or self.request.user.groups.filter(name='admin').exists():
+        # Allow access if user is superuser, admin, admin P3DE or kasi
+        if is_admin_p3de(self.request.user):
             return obj
         if is_kasi(self.request.user):
             return obj
@@ -365,7 +368,12 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
 
         # The isian tiket may be edited by the active P3DE PIC only while the
         # tiket is still Direkam and no tanda terima has been created yet.
-        context['user_can_edit_tiket'] = (
+        # P3DE administrators are not bound by that lock: they may correct a
+        # tiket at any point in the workflow. Either way the change is recorded
+        # as a DIUBAH action in the audit trail.
+        user_is_admin_p3de = is_admin_p3de(self.request.user)
+        context['user_is_admin_p3de'] = user_is_admin_p3de
+        context['user_can_edit_tiket'] = user_is_admin_p3de or (
             self.object.status_tiket == STATUS_DIREKAM
             and not self.object.tanda_terima
             and user_is_active_pic_p3de
