@@ -5,8 +5,14 @@
         <dd class="col-sm-8">{{ tanda_terima.nomor_tanda_terima_format }}</dd>
         <dt class="col-sm-4">Tanggal</dt>
         <dd class="col-sm-8">{{ tanda_terima.tanggal_tanda_terima|date:"d/m/Y H:i" }}</dd>
-        <dt class="col-sm-4">ILAP</dt>
-        <dd class="col-sm-8">{{ tanda_terima.id_ilap }}</dd>
+        <dt class="col-sm-4">Lingkup</dt>
+        <dd class="col-sm-8">
+            {% if tanda_terima.is_regional %}Regional{% else %}Nasional/Internasional{% endif %}
+        </dd>
+        <dt class="col-sm-4">{% if tanda_terima.is_regional %}Kanwil{% else %}ILAP{% endif %}</dt>
+        <dd class="col-sm-8">{{ tanda_terima.nama_sumber }}</dd>
+        <dt class="col-sm-4">ND Pengantar</dt>
+        <dd class="col-sm-8">{{ tanda_terima.nomor_nd_pengantar|default:"Semua ND Pengantar" }}</dd>
         <dt class="col-sm-4">Status</dt>
         <dd class="col-sm-8">
             {% if not tanda_terima.active %}

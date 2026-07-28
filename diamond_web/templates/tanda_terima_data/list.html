@@ -104,8 +104,7 @@
                         <th class="d-none">ID</th>
                         <th>Nomor Tanda Terima</th>
                         <th>Tanggal</th>
-                        <th>ILAP</th>
-                        <th>Jenis Data</th>
+                        <th>Kanwil / ILAP</th>
                         <th>Perekam</th>
                         <th>Status</th>
                         <th class="col-actions text-center">Aksi</th>
@@ -114,10 +113,9 @@
                         <th class="d-none"></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari Nomor" data-column="0" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari Tanggal" data-column="1" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari ILAP" data-column="2" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Jenis" data-column="3" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Perekam" data-column="4" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Status" data-column="5" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Kanwil/ILAP" data-column="2" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Perekam" data-column="3" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Status" data-column="4" /></th>
                         <th class="col-actions"></th>
                     </tr>
                 </thead>
@@ -184,8 +182,15 @@
                     { data: 'id' },
                     { data: 'nomor_tanda_terima' },
                     { data: 'tanggal_tanda_terima' },
-                    { data: 'id_ilap' },
-                    { data: 'jenis_data' },
+                    {
+                        data: 'sumber',
+                        render: function (data, type, row) {
+                            if (type !== 'display') {
+                                return data;
+                            }
+                            return `${data}<div class="text-muted" style="font-size: 11px;">${row.lingkup}</div>`;
+                        }
+                    },
                     { data: 'id_perekam' },
                     { data: 'status' },
                     { data: 'actions', orderable: false, searchable: false, className: 'col-actions text-center' }
@@ -367,7 +372,11 @@
                             table.ajax.reload();
                             showToast(response.message || 'Data berhasil disimpan.', 'success');
                         } else {
+                            // Re-rendering the form throws away every listener
+                            // bound to the old markup, so it has to be wired up
+                            // again or the scope dropdowns go dead.
                             $('#modalBody').html(response.html);
+                            initTandaTerimaForm(document.getElementById('modalBody'));
                         }
                     },
                     error: function (xhr) {
@@ -440,8 +449,13 @@
             }
             const tanggalInput = container.querySelector('#id_tanggal_tanda_terima');
             const nomorInput = container.querySelector('#id_nomor_tanda_terima');
+            const lingkupInput = container.querySelector('#id_lingkup');
+            const kanwilInput = container.querySelector('#id_id_kanwil');
             const ilapInput = container.querySelector('#id_id_ilap');
+            const ndInput = container.querySelector('#id_nomor_nd_pengantar');
             const tiketContainer = container.querySelector('#tiket-checkbox-container');
+
+            initFormGating(container);
 
             if (tanggalInput && nomorInput) {
                 const updateNomor = () => {
@@ -465,6 +479,54 @@
                 tanggalInput.addEventListener('change', updateNomor);
             }
 
+            // Scope selector: regional receipts are per Kanwil, nasional /
+            // internasional ones per ILAP. Only the relevant dropdown is shown.
+            const kanwilWrapper = container.querySelector('#scope-kanwil-wrapper');
+            const ilapWrapper = container.querySelector('#scope-ilap-wrapper');
+            const lingkupHint = container.querySelector('#lingkup-hint');
+
+            const currentLingkup = () => (lingkupInput ? lingkupInput.value : 'nasional');
+            const isRegional = () => currentLingkup() === 'regional';
+
+            const applyLingkup = () => {
+                if (!lingkupInput) {
+                    return;
+                }
+                const regional = isRegional();
+                if (kanwilWrapper) {
+                    kanwilWrapper.style.display = regional ? '' : 'none';
+                }
+                if (ilapWrapper) {
+                    ilapWrapper.style.display = regional ? 'none' : '';
+                }
+                if (lingkupHint) {
+                    lingkupHint.textContent = regional
+                        ? 'ILAP regional (Provinsi/Pemda) direkam per Kanwil.'
+                        : 'ILAP nasional/internasional direkam per ILAP.';
+                }
+            };
+
+            const scopeParams = () => {
+                const params = new URLSearchParams();
+                if (isRegional()) {
+                    if (!kanwilInput || !kanwilInput.value) {
+                        return null;
+                    }
+                    params.set('kanwil_id', kanwilInput.value);
+                } else {
+                    if (!ilapInput || !ilapInput.value) {
+                        return null;
+                    }
+                    params.set('ilap_id', ilapInput.value);
+                }
+                const form = container.querySelector('form');
+                const tandaTerimaId = form && form.dataset.tandaTerimaId ? form.dataset.tandaTerimaId : '';
+                if (tandaTerimaId) {
+                    params.set('tanda_terima_id', tandaTerimaId);
+                }
+                return params;
+            };
+
             if (ilapInput && tiketContainer) {
                 const selectAllCheckbox = container.querySelector('#tiket-select-all');
                 const selectedCountBadge = container.querySelector('#tiket-selected-count-badge');
@@ -472,6 +534,10 @@
                 const updateTiketSelectionUI = () => {
                     const tbody = container.querySelector('#tiket-table-body');
                     if (!tbody) return;
+
+                    if (container.refreshSubmitState) {
+                        container.refreshSubmitState();
+                    }
 
                     const allBoxes = tbody.querySelectorAll('input[name="tiket_ids"]');
                     const checkedBoxes = tbody.querySelectorAll('input[name="tiket_ids"]:checked');
@@ -521,9 +587,9 @@
                     if (!items || items.length === 0) {
                         tbody.innerHTML = `
                             <tr>
-                                <td colspan="7" class="text-muted text-center py-4 fs-12">
+                                <td colspan="9" class="text-muted text-center py-4 fs-12">
                                     <i class="feather-alert-circle fs-16 d-block mb-1 text-slate-400"></i>
-                                    Tidak ada tiket tersedia untuk ILAP ini.
+                                    Tidak ada tiket tersedia untuk lingkup ini.
                                 </td>
                             </tr>
                         `;
@@ -542,6 +608,8 @@
                                 <td class="py-2">
                                     <label for="tiket-${item.id}" class="mb-0 fw-semibold text-dark" style="cursor: pointer; display: block;">${item.nomor_tiket}</label>
                                 </td>
+                                <td class="py-2 text-muted">${item.nama_ilap}</td>
+                                <td class="py-2 text-muted">${item.nd_pengantar}</td>
                                 <td class="py-2 text-muted">${item.jenis_data}</td>
                                 <td class="py-2 text-muted">${item.subjenis_data}</td>
                                 <td class="py-2 text-muted">${item.periode}</td>
@@ -553,38 +621,34 @@
                     updateTiketSelectionUI();
                 };
 
-                const loadTiketsByIlap = () => {
-                    const ilapId = ilapInput.value;
+                const loadTikets = () => {
                     const tbody = container.querySelector('#tiket-table-body');
-                    if (!ilapId) {
+                    const params = scopeParams();
+                    if (!params) {
                         if (tbody) {
                             tbody.innerHTML = `
                                 <tr>
-                                    <td colspan="7" class="text-muted text-center py-4 fs-12">
-                                        Pilih ILAP terlebih dahulu untuk memuat tiket tersedia.
+                                    <td colspan="9" class="text-muted text-center py-4 fs-12">
+                                        Pilih ${isRegional() ? 'Kanwil' : 'ILAP'} terlebih dahulu untuk memuat tiket tersedia.
                                     </td>
                                 </tr>
                             `;
                         }
+                        updateTiketSelectionUI();
                         return;
+                    }
+                    if (ndInput && ndInput.value) {
+                        params.set('nd_pengantar', ndInput.value);
                     }
                     if (tbody) {
                         tbody.innerHTML = `
                             <tr>
-                                <td colspan="7" class="text-center py-4">
+                                <td colspan="9" class="text-center py-4">
                                     <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
                                 </td>
                             </tr>
                         `;
                     }
-                    // Get tanda_terima_id from form data attribute
-                    const form = container.querySelector('form');
-                    const tandaTerimaId = form && form.dataset.tandaTerimaId ? form.dataset.tandaTerimaId : '';
-                    
-                    const params = new URLSearchParams({
-                        ilap_id: ilapId,
-                        ...(tandaTerimaId && { tanda_terima_id: tandaTerimaId })
-                    });
                     fetch(`{% url "tanda_terima_tikets_by_ilap" %}?${params}`)
                         .then(response => response.json())
                         .then(data => {
@@ -597,14 +661,216 @@
                         });
                 };
 
-                // For edit mode: if ILAP is disabled, load tikets on init
-                if (ilapInput.disabled && ilapInput.value) {
-                    loadTiketsByIlap();
-                } else if (!ilapInput.disabled) {
-                    // For create mode: listen to ILAP changes
-                    ilapInput.addEventListener('change', loadTiketsByIlap);
+                // ND Pengantar options depend on the chosen Kanwil/ILAP, so they
+                // are refreshed every time the scope changes.
+                const loadNdOptions = (keepSelection) => {
+                    if (!ndInput || ndInput.disabled) {
+                        return Promise.resolve();
+                    }
+                    const previous = keepSelection ? ndInput.value : '';
+                    const params = scopeParams();
+                    ndInput.innerHTML = '<option value="">Semua ND Pengantar</option>';
+                    if (!params) {
+                        return Promise.resolve();
+                    }
+                    return fetch(`{% url "tanda_terima_nd_pengantar_options" %}?${params}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (!data || !data.success) {
+                                return;
+                            }
+                            (data.data || []).forEach((nomor) => {
+                                const option = document.createElement('option');
+                                option.value = nomor;
+                                option.textContent = nomor;
+                                ndInput.appendChild(option);
+                            });
+                            if (previous) {
+                                ndInput.value = previous;
+                            }
+                        })
+                        .catch(() => {
+                            // ignore
+                        });
+                };
+
+                const onScopeChange = () => {
+                    loadNdOptions(false).then(loadTikets);
+                };
+
+                applyLingkup();
+
+                if (lingkupInput && !lingkupInput.disabled) {
+                    lingkupInput.addEventListener('change', function () {
+                        applyLingkup();
+                        // Drop the value of the dropdown that is now hidden so
+                        // only one scope is ever submitted.
+                        if (isRegional() && ilapInput) {
+                            ilapInput.value = '';
+                        } else if (!isRegional() && kanwilInput) {
+                            kanwilInput.value = '';
+                        }
+                        onScopeChange();
+                    });
                 }
+                if (kanwilInput && !kanwilInput.disabled) {
+                    kanwilInput.addEventListener('change', onScopeChange);
+                }
+                if (!ilapInput.disabled) {
+                    ilapInput.addEventListener('change', onScopeChange);
+                }
+                if (ndInput && !ndInput.disabled) {
+                    ndInput.addEventListener('change', loadTikets);
+                }
+
+                // Edit mode: the scope is fixed, so load its tikets right away.
+                if (scopeParams()) {
+                    loadNdOptions(true).then(loadTikets);
+                }
+
+                // Lets other handlers re-pull the list after they change it.
+                container.reloadTiketList = loadTikets;
             }
+
+            initTidakDiterbitkan(container);
+        }
+
+        // Keep Simpan / Tidak Diterbitkan disabled until the form can actually
+        // succeed, so an incomplete scope is caught before a round trip.
+        function initFormGating(container) {
+            const form = container.querySelector('form');
+            if (!form) {
+                return;
+            }
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (!submitBtn) {
+                return;
+            }
+            const tidakTerbitBtn = form.querySelector('#tidak-terbit-tt-btn');
+            const lingkupInput = container.querySelector('#id_lingkup');
+            const kanwilInput = container.querySelector('#id_id_kanwil');
+            const ilapInput = container.querySelector('#id_id_ilap');
+            const tanggalInput = container.querySelector('#id_tanggal_tanda_terima');
+            // The single-tiket flow has no picker — its tiket is implicit.
+            const hasTiketPicker = !!container.querySelector('#tiket-table-body');
+
+            const scopeChosen = () => {
+                if (!lingkupInput) {
+                    return true;
+                }
+                return lingkupInput.value === 'regional'
+                    ? !!(kanwilInput && kanwilInput.value)
+                    : !!(ilapInput && ilapInput.value);
+            };
+
+            const selectedTiketCount = () => hasTiketPicker
+                ? container.querySelectorAll('#tiket-table-body input[name="tiket_ids"]:checked').length
+                : 1;
+
+            // Errors come back from the server render; drop each one once the
+            // user has actually fixed that field, so the form does not keep
+            // claiming a Kanwil is missing while one is selected.
+            const clearStaleErrors = () => {
+                const kanwilErr = container.querySelector('#scope-kanwil-wrapper .text-danger');
+                if (kanwilErr && kanwilInput && kanwilInput.value) {
+                    kanwilErr.remove();
+                }
+                const ilapErr = container.querySelector('#scope-ilap-wrapper .text-danger');
+                if (ilapErr && ilapInput && ilapInput.value) {
+                    ilapErr.remove();
+                }
+                const tiketErr = container.querySelector('#tiket-error');
+                if (tiketErr && selectedTiketCount() > 0) {
+                    tiketErr.remove();
+                }
+            };
+
+            const update = () => {
+                const hasTiket = selectedTiketCount() > 0;
+                const ready = (!tanggalInput || !!tanggalInput.value) && scopeChosen() && hasTiket;
+                clearStaleErrors();
+                submitBtn.disabled = !ready;
+                submitBtn.title = ready
+                    ? ''
+                    : 'Lengkapi tanggal dan lingkup, lalu pilih minimal satu tiket.';
+                if (tidakTerbitBtn) {
+                    tidakTerbitBtn.disabled = !hasTiket;
+                    tidakTerbitBtn.title = hasTiket ? '' : 'Pilih minimal satu tiket.';
+                }
+            };
+
+            container.addEventListener('change', update);
+            container.addEventListener('input', update);
+            // Tikets arrive asynchronously, which fires no change event.
+            container.refreshSubmitState = update;
+            update();
+        }
+
+        // "Tidak Diterbitkan": mark the selected tikets as processed without
+        // issuing a Tanda Terima. The endpoint works per tiket, so each ticked
+        // tiket is posted separately and the results are reported together.
+        function initTidakDiterbitkan(container) {
+            const button = container.querySelector('#tidak-terbit-tt-btn');
+            if (!button) {
+                return;
+            }
+
+            const tidakTerbitUrlFor = (pk) =>
+                `{% url "tidak_terbit_tanda_terima" 0 %}`.replace('/0/', '/' + pk + '/');
+
+            button.addEventListener('click', function () {
+                const checked = Array.from(
+                    container.querySelectorAll('#tiket-table-body input[name="tiket_ids"]:checked')
+                );
+                if (checked.length === 0) {
+                    showToast('Pilih minimal satu tiket yang tidak diterbitkan tanda terimanya.', 'danger');
+                    return;
+                }
+
+                if (!confirm(`Tandai ${checked.length} tiket sebagai "Tidak Diterbitkan Tanda Terima"? Tanda Terima tidak akan dibuat untuk tiket tersebut.`)) {
+                    return;
+                }
+
+                const csrfToken = container.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+                if (!csrfToken) {
+                    showToast('CSRF token tidak ditemukan.', 'danger');
+                    return;
+                }
+
+                button.disabled = true;
+                Promise.all(checked.map((box) =>
+                    fetch(tidakTerbitUrlFor(box.value), {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRFToken': csrfToken
+                        }
+                    })
+                        .then(response => response.json().catch(() => ({ success: false })))
+                        .catch(() => ({ success: false }))
+                )).then((results) => {
+                    button.disabled = false;
+                    const failed = results.filter(r => !r || !r.success);
+                    if (failed.length === 0) {
+                        $('#crudModal').modal('hide');
+                        table.ajax.reload();
+                        showToast(`${results.length} tiket ditandai sebagai Tidak Diterbitkan Tanda Terima.`, 'success');
+                        return;
+                    }
+                    // Partial failure: re-pull the list so whatever did succeed
+                    // drops out and the stale rows cannot be resubmitted.
+                    if (container.reloadTiketList) {
+                        container.reloadTiketList();
+                    }
+                    if (failed.length < results.length) {
+                        table.ajax.reload();
+                    }
+                    const message = failed[0] && failed[0].message
+                        ? failed[0].message
+                        : 'Sebagian tiket gagal ditandai.';
+                    showToast(`${failed.length} dari ${results.length} tiket gagal: ${message}`, 'danger');
+                });
+            });
         }
     })();
 

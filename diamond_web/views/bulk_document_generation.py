@@ -155,11 +155,8 @@ def _generate_docx_for_tickets(selected_tickets, doc_type, title_prefix):
 
     # Header-level variables (aligned with documents.py)
     if ilap:
-        first_kpp_rel = ilap.ilap_kpp_relations.select_related('id_kpp__id_kanwil').first()
-        if first_kpp_rel and first_kpp_rel.id_kpp and first_kpp_rel.id_kpp.id_kanwil:
-            diterima_dari = first_kpp_rel.id_kpp.id_kanwil.nama_kanwil
-        else:
-            diterima_dari = ilap.nama_ilap
+        header_kanwil = ilap.kanwil
+        diterima_dari = header_kanwil.nama_kanwil if header_kanwil else ilap.nama_ilap
     else:
         diterima_dari = '-'
 
@@ -184,9 +181,9 @@ def _generate_docx_for_tickets(selected_tickets, doc_type, title_prefix):
 
         nama_kanwil = '-'
         if ilap_obj:
-            first_kpp_rel = ilap_obj.ilap_kpp_relations.select_related('id_kpp__id_kanwil').first()
-            if first_kpp_rel and first_kpp_rel.id_kpp and first_kpp_rel.id_kpp.id_kanwil:
-                nama_kanwil = first_kpp_rel.id_kpp.id_kanwil.nama_kanwil
+            row_kanwil = ilap_obj.kanwil
+            if row_kanwil:
+                nama_kanwil = row_kanwil.nama_kanwil
 
         periode_label = _format_periode_tiket(t)
         if periode_label not in seen_periode:
