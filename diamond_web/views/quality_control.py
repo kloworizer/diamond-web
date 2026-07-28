@@ -31,12 +31,13 @@ from ..models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from ..models.jenis_prioritas_data import JenisPrioritasData
 from ..constants.tiket_status import STATUS_PENGENDALIAN_MUTU
+from .mixins import is_kasi_pmde
 
 
 def _is_pmde_user(user):
-    """Check if user is PMDE user or admin."""
+    """Check if user is PMDE user, admin or the PMDE supervisor (kasi)."""
     return user.is_superuser or user.is_staff or user.groups.filter(
-        name__in=['user_pmde', 'admin', 'admin_pmde']
+        name__in=['user_pmde', 'admin', 'admin_pmde', 'kasi_pmde']
     ).exists()
 
 
@@ -71,11 +72,14 @@ def quality_control_data(request):
     start = int(params.get('start', '0'))
     length = int(params.get('length', '10'))
 
-    # Get the PMDE-assigned ticket IDs for the current user
-    pmde_pic = TiketPIC.objects.filter(
-        id_user=request.user, role=TiketPIC.Role.PMDE, active=True
-    )
-    pmde_tiket_ids = pmde_pic.values_list('id_tiket', flat=True)
+    # Kasi PMDE supervise the whole seksi, so they see every tiket in QC rather
+    # than only the ones they are the active PIC for (same rule the tiket list
+    # applies to kasi). Everyone else stays scoped to their own assignments.
+    scope_to_own_pic = not is_kasi_pmde(request.user)
+    if scope_to_own_pic:
+        pmde_tiket_ids = TiketPIC.objects.filter(
+            id_user=request.user, role=TiketPIC.Role.PMDE, active=True
+        ).values_list('id_tiket', flat=True)
 
     # Subquery: active durasi for each ticket's sub_jenis_data & tgl_transfer range
     durasi_subq = DurasiJatuhTempo.objects.filter(
@@ -87,10 +91,10 @@ def quality_control_data(request):
     ).order_by('-start_date').values('durasi')[:1]
 
     # Base query with date annotations for sorting
-    tikets = Tiket.objects.filter(
-        id__in=pmde_tiket_ids,
-        status_tiket=STATUS_PENGENDALIAN_MUTU
-    ).select_related(
+    tikets = Tiket.objects.filter(status_tiket=STATUS_PENGENDALIAN_MUTU)
+    if scope_to_own_pic:
+        tikets = tikets.filter(id__in=pmde_tiket_ids)
+    tikets = tikets.select_related(
         'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
         'id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel',
     ).prefetch_related(

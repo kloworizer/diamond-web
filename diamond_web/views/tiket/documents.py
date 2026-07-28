@@ -146,6 +146,7 @@ def _generate_single_document(request, pk, doc_type):
             'id_cara_penyampaian',
         ).prefetch_related(
             'id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil',
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kanwil',
         ),
         pk=pk,
     )
@@ -200,15 +201,15 @@ def _generate_single_document(request, pk, doc_type):
         if tiket.id_periode_data and tiket.id_periode_data.id_sub_jenis_data_ilap
         else None
     )
-    # For regional ILAPs (those with KPP), use nama_kanwil; otherwise use nama_ilap
-    if ilap:
-        first_kpp_rel = ilap.ilap_kpp_relations.select_related('id_kpp__id_kanwil').first()
-        if first_kpp_rel and first_kpp_rel.id_kpp and first_kpp_rel.id_kpp.id_kanwil:
-            diterima_dari = first_kpp_rel.id_kpp.id_kanwil.nama_kanwil
-        else:
-            diterima_dari = ilap.nama_ilap
-    else:
-        diterima_dari = '-'
+    # Regional ILAP are received per Kanwil (reached through a KPP for
+    # kategori PD, or mapped directly for kategori PV); the rest per ILAP.
+    # A Kanwil-scoped tanda terima always wins, since it is what was recorded.
+    diterima_dari = '-'
+    if tanda_terima and tanda_terima.id_kanwil:
+        diterima_dari = tanda_terima.id_kanwil.nama_kanwil
+    elif ilap:
+        kanwil = ilap.kanwil
+        diterima_dari = kanwil.nama_kanwil if kanwil else ilap.nama_ilap
 
     # Collect multi-value fields from tiket_rows (deduplicated)
     periode_list, nomor_surat_list, tanggal_surat_list = [], [], []
@@ -317,10 +318,10 @@ def _generate_single_document(request, pk, doc_type):
                     
                     nama_kanwil = '-'
                     if ilap_obj:
-                        first_kpp_rel = ilap_obj.ilap_kpp_relations.select_related('id_kpp__id_kanwil').first()
-                        if first_kpp_rel and first_kpp_rel.id_kpp and first_kpp_rel.id_kpp.id_kanwil:
-                            nama_kanwil = first_kpp_rel.id_kpp.id_kanwil.nama_kanwil
-                    
+                        row_kanwil = ilap_obj.kanwil
+                        if row_kanwil:
+                            nama_kanwil = row_kanwil.nama_kanwil
+
                     status_data = '-'
                     if sub and sub.id_status_data:
                         status_data = sub.id_status_data.deskripsi

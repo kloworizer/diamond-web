@@ -106,13 +106,18 @@
                 <div class="card-body py-3 px-4">
                     <div class="d-flex align-items-stretch gap-0">
 
-                        <!-- SECTION 1: Nomor Tiket + Prioritas chip -->
+                        <!-- SECTION 1: Nomor Tiket + Prioritas chip
+                             flex-shrink:0 — the nomor tiket cannot wrap or ellipsise, so if
+                             this column is allowed to shrink (it grows to 18px text when the
+                             card is stuck) the number spills over the separator onto the
+                             "Nama ILAP" label. All the slack goes to SECTION 2 instead, which
+                             ellipsises. min-width keeps short nomor tiket columns aligned. -->
                         <div class="d-flex flex-column justify-content-center"
-                            style="min-width: 180px; padding-right: 16px; gap: 5px;">
+                            style="min-width: 180px; flex-shrink: 0; padding-right: 16px; gap: 5px;">
                             <div class="d-flex align-items-center gap-2">
-                                <i class="feather-tag text-primary" style="font-size: 15px;"></i>
+                                <i class="feather-tag text-primary" style="font-size: 15px; flex-shrink: 0;"></i>
                                 <span class="fw-bold text-primary ticket-number"
-                                     style="letter-spacing: 0.4px; line-height: 1.2;">{{ tiket.nomor_tiket }}</span>
+                                     style="letter-spacing: 0.4px; line-height: 1.2; white-space: nowrap;">{{ tiket.nomor_tiket }}</span>
                             </div>
                             <!-- Priority chip kecil di bawah nomor tiket -->
                             {% if tiket.id_jenis_prioritas_data %}
@@ -130,12 +135,16 @@
 
                         <!-- Thin Blue Separator -->
                         <div
-                            style="width: 1px; background: linear-gradient(180deg, #00BDFB 0%, #0c92ff 100%); margin: 2px 18px 2px 0; opacity: 0.5;">
+                            style="width: 1px; flex-shrink: 0; background: linear-gradient(180deg, #00BDFB 0%, #0c92ff 100%); margin: 2px 18px 2px 0; opacity: 0.5;">
                         </div>
 
-                        <!-- SECTION 2: Info — 2 explicit flex rows (horizontal label-value layout) -->
+                        <!-- SECTION 2: Info — 2 explicit flex rows (horizontal label-value layout)
+                             min-width:0 — without it this column's automatic minimum is its
+                             min-content width (~570px), so it stops absorbing slack and the row
+                             overflows the card, pushing the status badge out past the right edge.
+                             Zeroing it lets the value spans ellipsise all the way down instead. -->
                         <div class="flex-grow-1 d-flex flex-column justify-content-center"
-                            style="gap: 8px; padding-right: 18px;">
+                            style="gap: 8px; padding-right: 18px; min-width: 0;">
                             <!-- Row 1: Nama ILAP | Jenis Data -->
                             <div class="d-flex" style="gap: 32px;">
                                 <div class="d-flex align-items-baseline" style="flex: 1; min-width: 0; gap: 8px;">
@@ -178,11 +187,11 @@
 
                         <!-- Thin Blue Separator -->
                         <div class="status-separator"
-                            style="width: 1px; background: linear-gradient(180deg, #00BDFB 0%, #0c92ff 100%); margin: 2px 18px 2px 0; opacity: 0.5;">
+                            style="width: 1px; flex-shrink: 0; background: linear-gradient(180deg, #00BDFB 0%, #0c92ff 100%); margin: 2px 18px 2px 0; opacity: 0.5;">
                         </div>
 
                         <!-- SECTION 3: Status Tiket (lebih besar, paling kanan) -->
-                        <div class="d-flex align-items-center justify-content-center card-status-badge-container" style="min-width: 120px;">
+                        <div class="d-flex align-items-center justify-content-center card-status-badge-container" style="min-width: 120px; flex-shrink: 0;">
                             <span class="badge {% if tiket.status_tiket == 1 %}status-perekaman{% elif tiket.status_tiket == 2 %}status-diteliti{% elif tiket.status_tiket == 3 %}status-dikembalikan{% elif tiket.status_tiket == 4 %}status-belum-diterima{% elif tiket.status_tiket == 5 %}status-identifikasi{% elif tiket.status_tiket == 6 %}status-qc{% elif tiket.status_tiket == 7 %}status-dibatalkan{% elif tiket.status_tiket == 8 %}status-selesai{% elif tiket.status_tiket == 9 %}status-tidak-direkam{% else %}bg-secondary{% endif %} d-flex align-items-center gap-2"
                                 style="font-size: 15px; padding: 10px 16px; white-space: nowrap; line-height: 1.2;">
                                 {% if tiket.status_tiket == 1 %}
@@ -242,53 +251,45 @@
                                 <div class="meta-list">
                                     <div class="meta-item">
                                         <span class="meta-label">Nomor Tiket</span>
-                                        <span class="meta-value fw-bold text-primary">{{ tiket.nomor_tiket }}</span>
+                                        <span class="meta-value fw-bold">{{ tiket.nomor_tiket }}</span>
                                     </div>
                                     <div class="meta-item">
                                         <span class="meta-label">Status Tiket</span>
                                         <span class="meta-value">
-                                            <span class="badge {% if tiket.status_tiket == 1 %}status-perekaman{% elif tiket.status_tiket == 2 %}status-diteliti{% elif tiket.status_tiket == 3 %}status-dikembalikan{% elif tiket.status_tiket == 4 %}status-belum-diterima{% elif tiket.status_tiket == 5 %}status-identifikasi{% elif tiket.status_tiket == 6 %}status-qc{% elif tiket.status_tiket == 7 %}status-dibatalkan{% elif tiket.status_tiket == 8 %}status-selesai{% elif tiket.status_tiket == 9 %}status-tidak-direkam{% else %}bg-secondary{% endif %}">
-                                                {% if tiket.status_tiket == 1 %}
-                                                <i class="feather-edit-2 me-1"></i>
-                                                {% elif tiket.status_tiket == 2 %}
-                                                <i class="feather-search me-1"></i>
-                                                {% elif tiket.status_tiket == 3 %}
-                                                <i class="feather-corner-up-left me-1"></i>
-                                                {% elif tiket.status_tiket == 4 %}
-                                                <i class="feather-clock me-1"></i>
-                                                {% elif tiket.status_tiket == 5 %}
-                                                <i class="feather-info me-1"></i>
-                                                {% elif tiket.status_tiket == 6 %}
-                                                <i class="feather-shield me-1"></i>
-                                                {% elif tiket.status_tiket == 7 %}
-                                                <i class="feather-x-circle me-1"></i>
-                                                {% elif tiket.status_tiket == 8 %}
-                                                <i class="feather-check-circle me-1"></i>
-                                                {% elif tiket.status_tiket == 9 %}
-                                                <i class="feather-slash me-1"></i>
-                                                {% else %}
-                                                <i class="feather-info me-1"></i>
-                                                {% endif %}
-                                                {{ status_label }}
-                                            </span>
+                                            {% if tiket.status_tiket == 1 %}
+                                            <i class="feather-edit-2 me-1"></i>
+                                            {% elif tiket.status_tiket == 2 %}
+                                            <i class="feather-search me-1"></i>
+                                            {% elif tiket.status_tiket == 3 %}
+                                            <i class="feather-corner-up-left me-1"></i>
+                                            {% elif tiket.status_tiket == 4 %}
+                                            <i class="feather-clock me-1"></i>
+                                            {% elif tiket.status_tiket == 5 %}
+                                            <i class="feather-info me-1"></i>
+                                            {% elif tiket.status_tiket == 6 %}
+                                            <i class="feather-shield me-1"></i>
+                                            {% elif tiket.status_tiket == 7 %}
+                                            <i class="feather-x-circle me-1"></i>
+                                            {% elif tiket.status_tiket == 8 %}
+                                            <i class="feather-check-circle me-1"></i>
+                                            {% elif tiket.status_tiket == 9 %}
+                                            <i class="feather-slash me-1"></i>
+                                            {% else %}
+                                            <i class="feather-info me-1"></i>
+                                            {% endif %}
+                                            {{ status_label }}
                                         </span>
                                     </div>
                                     {% if periode_formatted %}
                                     <div class="meta-item">
                                         <span class="meta-label">Periode</span>
-                                        <span class="meta-value">
-                                            <span class="badge bg-dark">{{ periode_formatted }}</span>
-                                        </span>
+                                        <span class="meta-value">{{ periode_formatted }}</span>
                                     </div>
                                     {% endif %}
                                     <div class="meta-item">
                                         <span class="meta-label">Data Prioritas</span>
                                         <span class="meta-value">
-                                            {% if tiket.id_jenis_prioritas_data %}
-                                            <span class="badge bg-danger text-white">Ya</span>
-                                            {% else %}
-                                            <span class="badge bg-secondary text-white">Tidak</span>
-                                            {% endif %}
+                                            {% if tiket.id_jenis_prioritas_data %}Ya{% else %}Tidak{% endif %}
                                         </span>
                                     </div>
                                     <div class="meta-item">
@@ -367,11 +368,9 @@
                                         <span class="meta-label">Status Ketersediaan Data</span>
                                         <span class="meta-value">
                                             {% if tiket.status_ketersediaan_data %}
-                                            <span class="badge bg-success"><i
-                                                    class="feather-check me-1"></i>Tersedia</span>
+                                            <i class="feather-check me-1"></i>Tersedia
                                             {% else %}
-                                            <span class="badge bg-danger"><i class="feather-x me-1"></i>Tidak
-                                                Tersedia</span>
+                                            <i class="feather-x me-1"></i>Tidak Tersedia
                                             {% endif %}
                                         </span>
                                     </div>
@@ -379,16 +378,16 @@
                                         <span class="meta-label">Permintaan Khusus</span>
                                         <span class="meta-value" id="special-request-value">
                                             {% if tiket.special_request %}
-                                            <span class="badge bg-primary"><i class="feather-star me-1"></i>Ya</span>
+                                            <i class="feather-star me-1"></i>Ya
                                             {% else %}
-                                            <span class="badge bg-secondary"><i class="feather-minus me-1"></i>Tidak</span>
+                                            <i class="feather-minus me-1"></i>Tidak
                                             {% endif %}
                                         </span>
                                     </div>
                                     {% if not tiket.status_ketersediaan_data %}
                                     <div class="meta-item">
                                         <span class="meta-label">Alasan Ketidaktersediaan</span>
-                                        <span class="meta-value text-danger fw-semibold">{{ tiket.alasan_ketidaktersediaan|default:"-" }}</span>
+                                        <span class="meta-value fw-semibold">{{ tiket.alasan_ketidaktersediaan|default:"-" }}</span>
                                     </div>
                                     {% endif %}
                                 </div>
@@ -406,17 +405,7 @@
                                     <div class="meta-item">
                                         <span class="meta-label">Status Penelitian</span>
                                         <span class="meta-value">
-                                            {% with status_penelitian_text=tiket.id_status_penelitian.nama_status_penelitian|default:tiket_details.status_penelitian %}
-                                            {% if status_penelitian_text == 'Lengkap' %}
-                                            <span class="badge bg-success px-2.5 py-1 fw-bold" style="font-size: 11px; border-radius: 6px;">{{ status_penelitian_text }}</span>
-                                            {% elif status_penelitian_text == 'Lengkap Sebagian' %}
-                                            <span class="badge bg-warning text-dark px-2.5 py-1 fw-bold" style="font-size: 11px; border-radius: 6px;">{{ status_penelitian_text }}</span>
-                                            {% elif status_penelitian_text == 'Tidak Lengkap' %}
-                                            <span class="badge bg-danger px-2.5 py-1 fw-bold" style="font-size: 11px; border-radius: 6px;">{{ status_penelitian_text }}</span>
-                                            {% else %}
-                                            <span class="badge bg-secondary px-2.5 py-1 fw-bold" style="font-size: 11px; border-radius: 6px;">{{ status_penelitian_text }}</span>
-                                            {% endif %}
-                                            {% endwith %}
+                                            {{ tiket.id_status_penelitian.nama_status_penelitian|default:tiket_details.status_penelitian }}
                                         </span>
                                     </div>
                                     {% endif %}
@@ -470,7 +459,7 @@
                                     <div class="meta-item">
                                         <span class="meta-label">Tanggal Dibatalkan</span>
                                         <span class="meta-value">
-                                            <span class="badge bg-danger"><i class="feather-calendar me-1"></i>{{ tiket.tgl_dibatalkan|date:"d/m/Y" }}</span>
+                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_dibatalkan|date:"d/m/Y" }}
                                         </span>
                                     </div>
                                     {% endif %}
@@ -543,13 +532,11 @@
                                     </div>
                                     <div class="meta-item">
                                         <span class="meta-label">Nama Tabel I</span>
-                                        <span class="meta-value" style="color: #00BDFB; font-weight: 600;">{{ ilap_info.nama_tabel_I|default:"-" }}</span>
+                                        <span class="meta-value">{{ ilap_info.nama_tabel_I|default:"-" }}</span>
                                     </div>
                                     <div class="meta-item">
                                         <span class="meta-label">Jenis Data</span>
-                                        <span class="meta-value">
-                                            <span class="badge bg-secondary">{{ ilap_info.id_sub_jenis_data }} - {{ ilap_info.nama_sub_jenis_data }}</span>
-                                        </span>
+                                        <span class="meta-value">{{ ilap_info.id_sub_jenis_data }} - {{ ilap_info.nama_sub_jenis_data }}</span>
                                     </div>
                                     <div class="meta-item">
                                         <span class="meta-label">Nama Sub Jenis Data</span>
@@ -572,15 +559,7 @@
                                     <div class="meta-item">
                                         <span class="meta-label">Klasifikasi</span>
                                         <span class="meta-value">
-                                            {% if ilap_info.klasifikasi %}
-                                            <div class="d-flex flex-wrap gap-2 justify-content-end">
-                                                {% for klas in ilap_info.klasifikasi %}
-                                                <span class="badge bg-info">{{ klas }}</span>
-                                                {% endfor %}
-                                            </div>
-                                            {% else %}
-                                            -
-                                            {% endif %}
+                                            {% for klas in ilap_info.klasifikasi %}{{ klas }}{% if not forloop.last %}, {% endif %}{% empty %}-{% endfor %}
                                         </span>
                                     </div>
                                 </div>
@@ -647,23 +626,27 @@
                     <h5 class="mb-0"><i class="feather-settings me-2"></i>Aksi</h5>
                 </div>
                 <div class="card-body">
+                    {# Edit button sits outside the PIC blocks: an Admin P3DE may edit without being a PIC. #}
+                    {% if user_can_edit_tiket %}
+                    <div class="d-grid gap-2 mb-2">
+                        <button type="button" class="btn btn-secondary" data-bs-toggle="modal"
+                            data-bs-target="#editTiketModal">
+                            <i class="feather-edit-3 me-1"></i>Ubah Isian Tiket
+                        </button>
+                    </div>
+                    {% endif %}
+
                     {% if not user_is_active_pic %}
                     <div class="alert alert-info mb-0">
-                        <i class="feather-info me-2"></i>Anda bukan PIC aktif untuk tiket ini. Anda hanya dapat melihat,
-                        tidak dapat melakukan perubahan.
+                        <i class="feather-info me-2"></i>Anda bukan PIC aktif untuk tiket ini.
+                        {% if user_is_admin_p3de %}Sebagai Admin P3DE Anda hanya dapat mengubah isian
+                        tiket.{% else %}Anda hanya dapat melihat, tidak dapat melakukan perubahan.{% endif %}
                     </div>
                     {% else %}
                     <!-- P3DE actions (existing) -->
                     {% if user_is_active_pic_p3de %}
                     {% if tiket.status_tiket < STATUS_DIKIRIM_KE_PIDE and tiket.status_tiket != STATUS_DIBATALKAN and tiket.status_tiket != STATUS_SELESAI and tiket.status_tiket != STATUS_DIKEMBALIKAN %} <div
                         class="d-grid gap-2">
-                        {% if user_can_edit_tiket %}
-                        <button type="button" class="btn btn-secondary" data-bs-toggle="modal"
-                            data-bs-target="#editTiketModal">
-                            <i class="feather-edit-3 me-1"></i>Ubah Isian Tiket
-                        </button>
-                        {% endif %}
-
                         {% if not tiket.backup %}
                         <button type="button" class="btn btn-warning" data-bs-toggle="modal"
                             data-bs-target="#rekamBackupDataModal">
@@ -2197,6 +2180,82 @@
                 });
             };
 
+            /**
+             * Wire a modal's AJAX submit ONCE, on the container instead of the <form>.
+             *
+             * Binding to the form element is what broke these modals: the error
+             * branch replaces the container's innerHTML, so the element holding the
+             * listener is destroyed and the next Simpan falls through to a native
+             * browser POST that navigates off the tiket page. The container itself
+             * is never replaced, so a delegated listener here survives every
+             * re-render -- the same reason the CRUD pages, which delegate from
+             * document, never had this problem.
+             *
+             * opts.onRender re-initialises field-level handlers (date pickers, live
+             * totals) on the freshly rendered markup.
+             * opts.redirectMeansSuccess is for views that answer a normal form POST
+             * with a redirect instead of the usual {success, html, message} JSON.
+             */
+            function bindModalSubmit(containerId, modalEl, opts) {
+                opts = opts || {};
+                const container = document.getElementById(containerId);
+                if (!container || container.dataset.submitBound) {
+                    return;
+                }
+                container.dataset.submitBound = '1';
+
+                const rerender = (html) => {
+                    container.innerHTML = html
+                        || '<div class="alert alert-danger">Terjadi kesalahan</div>';
+                    if (opts.onRender) {
+                        opts.onRender(container);
+                    }
+                };
+
+                container.addEventListener('submit', function (e) {
+                    const form = e.target.closest('form');
+                    if (!form || !container.contains(form)) {
+                        return;
+                    }
+                    e.preventDefault();
+
+                    fetch(form.action, {
+                        method: 'POST',
+                        body: new FormData(form),
+                        headers: opts.redirectMeansSuccess
+                            ? {}
+                            : { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                        .then(response => {
+                            if (opts.redirectMeansSuccess) {
+                                return (response.ok && response.redirected)
+                                    ? { success: true }
+                                    : response.text().then(html => ({ success: false, html }));
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            if (data.success) {
+                                const instance = bootstrap.Modal.getInstance(modalEl);
+                                if (instance) {
+                                    instance.hide();
+                                }
+                                showToast(data.message || opts.successMessage
+                                    || 'Data berhasil disimpan.', 'success');
+                                setTimeout(() => location.reload(), 800);
+                            } else {
+                                showToast(data.message || opts.errorMessage
+                                    || 'Gagal menyimpan data.', 'danger');
+                                rerender(data.html || data.form_html);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showToast('Terjadi kesalahan saat menyimpan data.', 'danger');
+                        });
+                });
+            }
+
             const rekamBackupDataModal = document.getElementById('rekamBackupDataModal');
             if (rekamBackupDataModal) {
                 setupModalAria(rekamBackupDataModal);
@@ -2208,38 +2267,10 @@
                         .then(response => response.text())
                         .then(html => {
                             formContainer.innerHTML = html;
-
-                            // Handle form submission
-                            const form = formContainer.querySelector('form');
-                            if (form) {
-                                form.addEventListener('submit', function (e) {
-                                    e.preventDefault();
-                                    const formData = new FormData(form);
-
-                                    fetch(form.action, {
-                                        method: 'POST',
-                                        body: formData,
-                                        headers: {
-                                            'X-Requested-With': 'XMLHttpRequest'
-                                        }
-                                    })
-                                        .then(response => response.json())
-                                        .then(data => {
-                                            if (data.success) {
-                                                bootstrap.Modal.getInstance(rekamBackupDataModal).hide();
-                                                showToast(data.message || 'Backup data berhasil disimpan.', 'success');
-                                                setTimeout(() => location.reload(), 800);
-                                            } else {
-                                                showToast(data.message || 'Gagal menyimpan backup data.', 'danger');
-                                                formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
-                                            }
-                                        })
-                                        .catch(error => {
-                                            console.error('Error:', error);
-                                            showToast('Terjadi kesalahan saat menyimpan data.', 'danger');
-                                        });
-                                });
-                            }
+                            bindModalSubmit('backup-data-form-container', rekamBackupDataModal, {
+                                successMessage: 'Backup data berhasil disimpan.',
+                                errorMessage: 'Gagal menyimpan backup data.'
+                            });
                         })
                         .catch(error => {
                             console.error('Error loading form:', error);
@@ -2261,40 +2292,11 @@
                         .then(html => {
                             formContainer.innerHTML = html;
                             attachTandaTerimaHandlers(formContainer);
-
-                            // Handle form submission
-                            const form = formContainer.querySelector('form');
-                            if (form) {
-                                form.addEventListener('submit', function (e) {
-                                    e.preventDefault();
-                                    const formData = new FormData(form);
-
-                                    fetch(form.action, {
-                                        method: 'POST',
-                                        body: formData,
-                                        headers: {
-                                            'X-Requested-With': 'XMLHttpRequest'
-                                        }
-                                    })
-                                        .then(response => response.json())
-                                        .then(data => {
-                                            if (data.success) {
-                                                bootstrap.Modal.getInstance(tandaTerimaModal).hide();
-                                                showToast(data.message || 'Tanda terima berhasil dibuat.', 'success');
-                                                setTimeout(() => location.reload(), 800);
-                                            } else {
-                                                // Handle form errors - the mixin returns 'html' not 'form_html'
-                                                showToast(data.message || 'Gagal membuat tanda terima.', 'danger');
-                                                formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
-                                                attachTandaTerimaHandlers(formContainer);
-                                            }
-                                        })
-                                        .catch(error => {
-                                            console.error('Error:', error);
-                                            showToast('Terjadi kesalahan saat menyimpan data.', 'danger');
-                                        });
-                                });
-                            }
+                            bindModalSubmit('tanda-terima-form-container', tandaTerimaModal, {
+                                successMessage: 'Tanda terima berhasil dibuat.',
+                                errorMessage: 'Gagal membuat tanda terima.',
+                                onRender: attachTandaTerimaHandlers
+                            });
                         })
                         .catch(error => {
                             console.error('Error loading form:', error);
@@ -2319,39 +2321,11 @@
                         .then(response => response.text())
                         .then(html => {
                             formContainer.innerHTML = html;
-
-                            // Handle form submission
-                            const form = formContainer.querySelector('form');
-                            if (form) {
-                                form.addEventListener('submit', function (e) {
-                                    e.preventDefault();
-                                    const formData = new FormData(form);
-
-                                    fetch(form.action, {
-                                        method: 'POST',
-                                        body: formData
-                                    })
-                                        .then(response => {
-                                            if (response.ok && response.redirected) {
-                                                bootstrap.Modal.getInstance(batalkanTiketModal).hide();
-                                                showToast('Tiket berhasil dibatalkan.', 'success');
-                                                setTimeout(() => location.reload(), 800);
-                                            } else {
-                                                showToast('Gagal membatalkan tiket.', 'danger');
-                                                return response.text();
-                                            }
-                                        })
-                                        .then(html => {
-                                            if (html) {
-                                                formContainer.innerHTML = html;
-                                            }
-                                        })
-                                        .catch(error => {
-                                            console.error('Error:', error);
-                                            showToast('Terjadi kesalahan saat membatalkan tiket.', 'danger');
-                                        });
-                                });
-                            }
+                            bindModalSubmit('batalkan-tiket-form-container', batalkanTiketModal, {
+                                redirectMeansSuccess: true,
+                                successMessage: 'Tiket berhasil dibatalkan.',
+                                errorMessage: 'Gagal membatalkan tiket.'
+                            });
                         })
                         .catch(error => {
                             console.error('Error loading form:', error);
@@ -2377,39 +2351,11 @@
                         .then(html => {
                             formContainer.innerHTML = html;
                             initRekamHasilPenelitianForm(formContainer);
-
-                            // Handle form submission
-                            const form = formContainer.querySelector('form');
-                            if (form) {
-                                form.addEventListener('submit', function (e) {
-                                    e.preventDefault();
-                                    const formData = new FormData(form);
-
-                                    fetch(form.action, {
-                                        method: 'POST',
-                                        body: formData,
-                                        headers: {
-                                            'X-Requested-With': 'XMLHttpRequest'
-                                        }
-                                    })
-                                        .then(response => response.json())
-                                        .then(data => {
-                                            if (data.success) {
-                                                bootstrap.Modal.getInstance(rekamHasilPenelitianModal).hide();
-                                                showToast(data.message || 'Hasil penelitian berhasil disimpan.', 'success');
-                                                setTimeout(() => location.reload(), 800);
-                                            } else {
-                                                showToast(data.message || 'Gagal menyimpan hasil penelitian.', 'danger');
-                                                formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
-                                                initRekamHasilPenelitianForm(formContainer);
-                                            }
-                                        })
-                                        .catch(error => {
-                                            console.error('Error:', error);
-                                            showToast('Terjadi kesalahan saat menyimpan data.', 'danger');
-                                        });
-                                });
-                            }
+                            bindModalSubmit('rekam-hasil-penelitian-form-container', rekamHasilPenelitianModal, {
+                                successMessage: 'Hasil penelitian berhasil disimpan.',
+                                errorMessage: 'Gagal menyimpan hasil penelitian.',
+                                onRender: initRekamHasilPenelitianForm
+                            });
                         })
                         .catch(error => {
                             console.error('Error loading form:', error);
@@ -2560,39 +2506,12 @@
                         .then(response => response.text())
                         .then(html => {
                             formContainer.innerHTML = html;
-
                             attachSelesaikanTiketHandlers(formContainer);
-
-                            const form = formContainer.querySelector('form');
-                            if (form) {
-                                form.addEventListener('submit', function (e) {
-                                    e.preventDefault();
-                                    const formData = new FormData(form);
-
-                                    fetch(form.action, {
-                                        method: 'POST',
-                                        body: formData,
-                                        headers: {
-                                            'X-Requested-With': 'XMLHttpRequest'
-                                        }
-                                    })
-                                        .then(response => response.json())
-                                        .then(data => {
-                                            if (data.success) {
-                                                bootstrap.Modal.getInstance(dikembalikanTiketModal).hide();
-                                                showToast(data.message || 'Tiket berhasil dikembalikan.', 'success');
-                                                setTimeout(() => location.reload(), 800);
-                                            } else {
-                                                showToast(data.message || 'Gagal mengembalikan tiket.', 'danger');
-                                                formContainer.innerHTML = data.html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
-                                            }
-                                        })
-                                        .catch(error => {
-                                            console.error('Error:', error);
-                                            showToast('Terjadi kesalahan saat mengembalikan tiket.', 'danger');
-                                        });
-                                });
-                            }
+                            bindModalSubmit('dikembalikan-tiket-form-container', dikembalikanTiketModal, {
+                                successMessage: 'Tiket berhasil dikembalikan.',
+                                errorMessage: 'Gagal mengembalikan tiket.',
+                                onRender: attachSelesaikanTiketHandlers
+                            });
                         })
                         .catch(error => {
                             console.error('Error loading form:', error);
@@ -2677,48 +2596,14 @@
                         .then(html => {
                             formContainer.innerHTML = html;
                             attachTransferKePMDEHandlers(formContainer);
-
-                            const form = formContainer.querySelector('form');
-                            if (form) {
-                                form.addEventListener('submit', function (e) {
-                                    e.preventDefault();
-                                    const formData = new FormData(form);
-
-                                    fetch(form.action, {
-                                        method: 'POST',
-                                        body: formData,
-                                        headers: {
-                                            'X-Requested-With': 'XMLHttpRequest'
-                                        }
-                                    })
-                                        .then(response => {
-                                            if (!response.ok && response.status === 400) {
-                                                // Validation error - return JSON errors
-                                                return response.json().then(data => {
-                                                    showToast(data.message || 'Form tidak valid.', 'danger');
-                                                    // Reload the form to display backend errors
-                                                    return fetch('{% url "transfer_ke_pmde" tiket.pk %}', {
-                                                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                                                    }).then(resp => resp.text()).then(html => {
-                                                        formContainer.innerHTML = html;
-                                                    });
-                                                });
-                                            }
-                                            return response.json();
-                                        })
-                                        .then(data => {
-                                            if (data && data.success) {
-                                                bootstrap.Modal.getInstance(transferKePMDEModal).hide();
-                                                showToast(data.message || 'Tiket berhasil ditransfer ke PMDE.', 'success');
-                                                setTimeout(() => location.reload(), 800);
-                                            }
-                                        })
-                                        .catch(error => {
-                                            console.error('Error:', error);
-                                            showToast('Terjadi kesalahan saat mentransfer tiket.', 'danger');
-                                        });
-                                });
-                            }
+                            // form_invalid() now returns the bound form as `html`, so the
+                            // rejected values come straight back instead of being thrown
+                            // away by a re-fetch of an empty form.
+                            bindModalSubmit('transfer-ke-pmde-form-container', transferKePMDEModal, {
+                                successMessage: 'Tiket berhasil ditransfer ke PMDE.',
+                                errorMessage: 'Gagal mentransfer tiket ke PMDE.',
+                                onRender: attachTransferKePMDEHandlers
+                            });
                         })
                         .catch(error => {
                             console.error('Error loading form:', error);

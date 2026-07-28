@@ -13,8 +13,7 @@
 
     /* Table frame: only body scrolls, header stays sticky */
     .table-frame {
-        max-height: calc(100vh - 420px);
-        overflow: auto;
+        overflow-x: auto;
         border-top: 1px solid #e2e8f0;
         position: relative;
     }
@@ -93,7 +92,7 @@
 
 <div class="page-header">
     <div class="page-header-left d-flex align-items-center">
-        <a href="{% url 'profil_ilap_list' %}" class="btn btn-icon btn-light me-3" style="width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid #e2e8f0;" title="Kembali ke Daftar">
+        <a href="{% url 'profil_ilap_list' %}" class="btn btn-icon btn-light me-3" style="width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; border: 1px solid #e2e8f0;" title="Kembali ke Daftar">
             <i class="feather-arrow-left text-secondary fs-16"></i>
         </a>
         <ul class="breadcrumb mb-0">
@@ -207,7 +206,7 @@
     <!-- Jenis Data ILAP Card -->
     <div class="card stretch stretch-full">
         <div class="card-header border-bottom-0 pb-0 bg-transparent">
-            <h5 class="card-title mb-0"><i class="feather-table me-2 text-primary"></i>Data Jenis ILAP dan Tiket</h5>
+            <h5 class="card-title mb-0"><i class="feather-table me-2 text-primary"></i>Jenis Data ILAP</h5>
         </div>
         <div class="card-body custom-card-action">
             {% if jenis_data_details %}
@@ -215,11 +214,10 @@
                 <table class="table table-hover mb-0" style="width:100%">
                     <thead>
                         <tr>
-                            <th>Jenis Data</th>
-                            <th>Sub Jenis Data</th>
+                            <th>ID Sub Jenis Data</th>
+                            <th>Nama Sub Jenis Data</th>
                             <th>Dasar Hukum</th>
-                            <th>Periode Penyampaian</th>
-                            <th>Periode Penerimaan</th>
+                            <th>Periode Penyampaian - Periode Penerimaan</th>
                             {% for year in years %}
                             <th class="text-center">{{ year }}</th>
                             {% endfor %}
@@ -228,22 +226,28 @@
                     <tbody>
                         {% for detail in jenis_data_details %}
                         <tr>
-                            <td class="fw-semibold text-dark">{{ detail.jenis_data.nama_jenis_data }}</td>
+                            <td>
+                                <a href="{% url 'jenis_data_ilap_profil' detail.jenis_data.id_sub_jenis_data %}"
+                                   class="fw-semibold text-primary text-decoration-none">
+                                    {{ detail.jenis_data.id_sub_jenis_data }}
+                                </a>
+                            </td>
                             <td>{{ detail.jenis_data.nama_sub_jenis_data }}</td>
                             <td>
                                 <small class="text-muted">{{ detail.dasar_hukum|default:"---" }}</small>
                             </td>
-                            <td><span class="badge bg-soft-secondary text-secondary">{{ detail.periode_penyampaian }}</span></td>
-                            <td><span class="badge bg-soft-secondary text-secondary">{{ detail.periode_penerimaan }}</span></td>
+                            <td><span class="badge bg-soft-secondary text-secondary">{{ detail.periode_label }}</span></td>
                             {% for year in years %}
                             <td class="text-center">
-                                {% with count=detail.year_data|get_item:year %}
-                                    {% if count > 0 %}
-                                        <span class="badge bg-soft-primary text-primary fw-bold" style="font-size: 11px; padding: 4px 8px;">
-                                            {{ count }}
+                                {% with cell=detail.year_data|get_item:year %}
+                                    {% if cell.label %}
+                                        <span class="badge fw-bold {% if cell.complete %}bg-soft-success text-success{% else %}bg-soft-primary text-primary{% endif %}"
+                                              style="font-size: 11px; padding: 4px 8px;"
+                                              title="{{ cell.count }} tiket dari {{ cell.total }} periode">
+                                            {{ cell.label }}
                                         </span>
                                     {% else %}
-                                        <span class="text-muted" style="font-size: 11px;">0</span>
+                                        <span class="text-muted" style="font-size: 11px;">&ndash;</span>
                                     {% endif %}
                                 {% endwith %}
                             </td>

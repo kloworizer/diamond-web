@@ -374,6 +374,20 @@ def _in_group(user, *names):
     return user.groups.filter(name__in=names).exists()
 
 
+def is_admin_p3de(user):
+    """Return True for users who administer P3DE tikets.
+
+    Covers superusers, the global `admin` group and the `admin_p3de` group.
+    P3DE administrators are not bound to the PIC assignments of a tiket: they
+    may open any tiket and correct its isian at any point in the workflow.
+    """
+    if not user or not getattr(user, 'is_authenticated', False):
+        return False
+    if user.is_superuser:
+        return True
+    return _in_group(user, 'admin', 'admin_p3de')
+
+
 def is_kasi_p3de(user):
     """Return True when `user` belongs to the `kasi_p3de` supervisor group."""
     return _in_group(user, 'kasi_p3de')

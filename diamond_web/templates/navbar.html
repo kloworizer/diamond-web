@@ -126,7 +126,8 @@
                 </li>
                 {% endif %}
 
-                {% if user|has_group:"admin_pmde" or user|has_group:"user_pmde" %}
+                {# Kasi PMDE get the Quality Control page (unscoped), not the entries below. #}
+                {% if user|has_group:"admin_pmde" or user|has_group:"user_pmde" or user|has_group:"kasi_pmde" %}
                 <li class="nxl-item nxl-caption"><label>PMDE</label></li>
                 <li class="nxl-item">
                     <a class="nxl-link" href="{% url 'quality_control' %}">
@@ -134,6 +135,9 @@
                         <span class="nxl-mtext">Quality Control</span>
                     </a>
                 </li>
+                {% endif %}
+
+                {% if user|has_group:"admin_pmde" or user|has_group:"user_pmde" %}
                 <li class="nxl-item">
                     <a class="nxl-link" href="{% url 'pic_pmde_list' %}">
                         <span class="nxl-micon"><i class="feather-user"></i></span>
@@ -308,47 +312,250 @@
             {% endif %}
 
             {% if user.is_authenticated %}
-            <form class="d-flex align-items-center ms-2" id="navbar-tiket-search">
+            <form class="d-flex align-items-center ms-2" id="navbar-tiket-search" autocomplete="off" role="search">
                 {% csrf_token %}
-                <div class="input-group input-group-sm">
-                    <input type="text" class="form-control" id="navbar-search-nomor-tiket" placeholder="Cari Nomor Tiket..." aria-label="Cari Nomor Tiket" style="min-width: 180px;">
-                    <button class="btn btn-outline-secondary" type="submit" title="Cari">
+                <div class="navbar-search-field">
+                    <input type="text" class="form-control" id="navbar-search-nomor-tiket"
+                           placeholder="Cari ILAP / Jenis Data / Nomor Tiket..."
+                           aria-label="Cari ILAP, jenis data, atau nomor tiket"
+                           role="combobox" aria-expanded="false" aria-autocomplete="list"
+                           aria-controls="navbar-search-suggestions" style="min-width: 340px;">
+                    <button class="btn" type="submit" title="Cari">
                         <i class="feather-search"></i>
                     </button>
+                    <div class="navbar-search-suggestions" id="navbar-search-suggestions" role="listbox"
+                         aria-label="Saran pencarian" hidden></div>
                 </div>
             </form>
             <script>
-                document.getElementById('navbar-tiket-search').addEventListener('submit', function (e) {
-                    e.preventDefault();
+                (function () {
+                    // Header search: the ILAP and jenis data halves of the term are
+                    // suggested as you type, while a nomor tiket only ever resolves
+                    // on an exact match (see the navbar_search view).
+                    var SUGGEST_MIN_LENGTH = 3;
+                    var SUGGEST_DEBOUNCE_MS = 250;
+
+                    var form = document.getElementById('navbar-tiket-search');
                     var input = document.getElementById('navbar-search-nomor-tiket');
-                    var nomorTiket = input.value.trim();
-                    if (!nomorTiket) return;
+                    var box = document.getElementById('navbar-search-suggestions');
+                    var searchBtn = form.querySelector('button[type="submit"]');
 
-                    var searchBtn = this.querySelector('button[type="submit"]');
-                    searchBtn.disabled = true;
-                    searchBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+                    var suggestions = [];
+                    var activeIndex = -1;
+                    var debounceTimer = null;
+                    var pendingRequest = null;
+                    // Last resolved payload, so submitting right after typing does
+                    // not fetch the very same term a second time.
+                    var cachedTerm = null;
+                    var cachedPayload = null;
 
-                    fetch('{% url "tiket_data" %}?nomor_tiket=' + encodeURIComponent(nomorTiket) + '&length=5', {
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                    })
-                    .then(function (r) { return r.json(); })
-                    .then(function (data) {
-                        if (data.data && data.data.length === 1) {
-                            window.location.href = '{% url "tiket_detail" 0 %}'.replace('/0/', '/' + data.data[0].id + '/');
-                        } else if (data.data && data.data.length > 1) {
-                            window.location.href = '{% url "tiket_list" %}?nomor_tiket=' + encodeURIComponent(nomorTiket);
-                        } else {
-                            showToast('Tiket dengan nomor "' + nomorTiket + '" tidak ditemukan', 'warning', 'Pencarian');
+                    function closeSuggestions() {
+                        box.hidden = true;
+                        box.innerHTML = '';
+                        activeIndex = -1;
+                        input.setAttribute('aria-expanded', 'false');
+                        input.removeAttribute('aria-activedescendant');
+                    }
+
+                    function setActive(index) {
+                        var options = box.querySelectorAll('.navbar-search-suggestion');
+                        if (!options.length) return;
+                        if (activeIndex >= 0 && options[activeIndex]) {
+                            options[activeIndex].classList.remove('is-active');
+                            options[activeIndex].setAttribute('aria-selected', 'false');
                         }
-                    })
-                    .catch(function () {
-                        showToast('Gagal mencari tiket', 'danger', 'Kesalahan');
-                    })
-                    .finally(function () {
-                        searchBtn.disabled = false;
-                        searchBtn.innerHTML = '<i class="feather-search"></i>';
+                        activeIndex = index;
+                        if (activeIndex < 0) {
+                            input.removeAttribute('aria-activedescendant');
+                            return;
+                        }
+                        var active = options[activeIndex];
+                        active.classList.add('is-active');
+                        active.setAttribute('aria-selected', 'true');
+                        active.scrollIntoView({ block: 'nearest' });
+                        input.setAttribute('aria-activedescendant', active.id);
+                    }
+
+                    function buildOption(item, index) {
+                        var option = document.createElement('button');
+                        option.type = 'button';
+                        option.className = 'navbar-search-suggestion';
+                        option.id = 'navbar-search-suggestion-' + index;
+                        option.setAttribute('role', 'option');
+                        option.setAttribute('aria-selected', 'false');
+
+                        var label = document.createElement('span');
+                        label.className = 'suggestion-label';
+                        label.textContent = item.label;
+                        option.appendChild(label);
+
+                        if (item.sublabel) {
+                            var sublabel = document.createElement('span');
+                            sublabel.className = 'suggestion-sublabel';
+                            sublabel.textContent = item.sublabel;
+                            option.appendChild(sublabel);
+                        }
+
+                        // mousedown, not click: the input's blur would otherwise
+                        // close the box before the click lands.
+                        option.addEventListener('mousedown', function (e) {
+                            e.preventDefault();
+                            window.location.href = item.url;
+                        });
+                        option.addEventListener('mouseenter', function () { setActive(index); });
+                        return option;
+                    }
+
+                    function renderSuggestions(items) {
+                        suggestions = items || [];
+                        box.innerHTML = '';
+                        activeIndex = -1;
+                        input.removeAttribute('aria-activedescendant');
+
+                        if (!suggestions.length) {
+                            box.hidden = true;
+                            input.setAttribute('aria-expanded', 'false');
+                            return;
+                        }
+
+                        var currentType = null;
+                        suggestions.forEach(function (item, index) {
+                            if (item.type !== currentType) {
+                                currentType = item.type;
+                                var header = document.createElement('div');
+                                header.className = 'navbar-search-suggestion-group';
+                                header.textContent = item.type_label;
+                                box.appendChild(header);
+                            }
+                            box.appendChild(buildOption(item, index));
+                        });
+
+                        box.hidden = false;
+                        input.setAttribute('aria-expanded', 'true');
+                    }
+
+                    function search(term) {
+                        if (cachedTerm === term && cachedPayload) {
+                            return Promise.resolve(cachedPayload);
+                        }
+                        if (pendingRequest) pendingRequest.abort();
+                        pendingRequest = new AbortController();
+                        return fetch('{% url "navbar_search" %}?q=' + encodeURIComponent(term), {
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                            signal: pendingRequest.signal
+                        })
+                        .then(function (r) { return r.json(); })
+                        .then(function (payload) {
+                            cachedTerm = term;
+                            cachedPayload = payload;
+                            return payload;
+                        });
+                    }
+
+                    function searchNomorTiket(term) {
+                        return fetch('{% url "tiket_data" %}?nomor_tiket=' + encodeURIComponent(term) + '&length=5', {
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                        })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            if (data.data && data.data.length === 1) {
+                                window.location.href = '{% url "tiket_detail" 0 %}'.replace('/0/', '/' + data.data[0].id + '/');
+                            } else if (data.data && data.data.length > 1) {
+                                window.location.href = '{% url "tiket_list" %}?nomor_tiket=' + encodeURIComponent(term);
+                            } else {
+                                showToast('"' + term + '" tidak cocok dengan ILAP, jenis data, atau nomor tiket mana pun', 'warning', 'Pencarian');
+                            }
+                        });
+                    }
+
+                    input.addEventListener('input', function () {
+                        var term = input.value.trim();
+                        clearTimeout(debounceTimer);
+                        if (term.length < SUGGEST_MIN_LENGTH) {
+                            closeSuggestions();
+                            return;
+                        }
+                        debounceTimer = setTimeout(function () {
+                            search(term)
+                                .then(function (payload) {
+                                    // A newer keystroke may have moved on already.
+                                    if (input.value.trim() !== term) return;
+                                    renderSuggestions(payload.suggestions);
+                                })
+                                .catch(function () { /* aborted or offline: keep the box as is */ });
+                        }, SUGGEST_DEBOUNCE_MS);
                     });
-                });
+
+                    input.addEventListener('keydown', function (e) {
+                        if (e.key === 'Escape') {
+                            closeSuggestions();
+                            return;
+                        }
+                        if (e.key === 'Enter' && activeIndex >= 0 && suggestions[activeIndex]) {
+                            e.preventDefault();
+                            window.location.href = suggestions[activeIndex].url;
+                            return;
+                        }
+                        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+                        if (box.hidden || !suggestions.length) return;
+                        e.preventDefault();
+                        var last = suggestions.length - 1;
+                        if (e.key === 'ArrowDown') {
+                            setActive(activeIndex >= last ? 0 : activeIndex + 1);
+                        } else {
+                            setActive(activeIndex <= 0 ? last : activeIndex - 1);
+                        }
+                    });
+
+                    document.addEventListener('click', function (e) {
+                        if (!form.contains(e.target)) closeSuggestions();
+                    });
+
+                    form.addEventListener('submit', function (e) {
+                        e.preventDefault();
+                        var term = input.value.trim();
+                        if (!term) return;
+
+                        if (activeIndex >= 0 && suggestions[activeIndex]) {
+                            window.location.href = suggestions[activeIndex].url;
+                            return;
+                        }
+
+                        searchBtn.disabled = true;
+                        searchBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+                        // An exact ID ILAP / ID sub jenis data / nomor tiket goes
+                        // straight to its page; a single suggestion is unambiguous
+                        // enough to follow too, and several are left on screen to
+                        // pick from. Only a term that matches nothing falls back to
+                        // the partial nomor tiket lookup.
+                        search(term)
+                            .then(function (payload) {
+                                if (payload.url) {
+                                    window.location.href = payload.url;
+                                    return;
+                                }
+                                var items = payload.suggestions || [];
+                                if (items.length === 1) {
+                                    window.location.href = items[0].url;
+                                    return;
+                                }
+                                if (items.length > 1) {
+                                    renderSuggestions(items);
+                                    setActive(0);
+                                    return;
+                                }
+                                return searchNomorTiket(term);
+                            })
+                            .catch(function () {
+                                showToast('Gagal melakukan pencarian', 'danger', 'Kesalahan');
+                            })
+                            .finally(function () {
+                                searchBtn.disabled = false;
+                                searchBtn.innerHTML = '<i class="feather-search"></i>';
+                            });
+                    });
+                })();
             </script>
             {% endif %}
         </div>

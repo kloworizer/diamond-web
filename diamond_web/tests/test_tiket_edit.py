@@ -1,8 +1,12 @@
 """Tests for editing a tiket's isian (EditTiketView / EditTiketForm).
 
-A tiket may be edited only by its active P3DE PIC while it is in status
+A tiket may be edited by its active P3DE PIC only while it is in status
 Direkam (1) and no tanda terima has been created yet. Once a tanda terima
-exists the isian is locked.
+exists the isian is locked for the PIC.
+
+P3DE administrators (`admin`, `admin_p3de`, superusers) are exempt from that
+lock and may edit any tiket at any status; their edits are logged as DIUBAH
+actions just like a PIC edit.
 """
 from datetime import date, datetime, timedelta
 
@@ -110,6 +114,21 @@ class TestEditTiketForm:
         assert not qs.filter(deskripsi__icontains='tidak tersedia').exists()
         assert tiket.id_bentuk_data in qs
 
+    def test_current_bentuk_data_stays_selectable(self):
+        """A "data tidak tersedia" tiket (admin-editable) keeps its own value.
+
+        Without this the admin could not save the form at all without also
+        changing the bentuk data.
+        """
+        from diamond_web.models.bentuk_data import BentukData
+        tidak_tersedia, _ = BentukData.objects.get_or_create(deskripsi='Data Tidak Tersedia')
+        tiket = TiketFactory(
+            id_bentuk_data=tidak_tersedia, id_periode_data=_editable_periode_data()
+        )
+        assert tidak_tersedia in EditTiketForm(instance=tiket).fields['id_bentuk_data'].queryset
+        form = EditTiketForm(data=_valid_post(tiket), instance=tiket)
+        assert form.is_valid(), form.errors
+
     def test_surat_pengantar_fields_optional(self):
         tiket = TiketFactory(id_periode_data=_editable_periode_data())
         data = _valid_post(tiket)
@@ -161,6 +180,85 @@ class TestEditTiketViewAccess:
         )
         assert resp.status_code == 403
         assert resp.json()['success'] is False
+
+
+@pytest.mark.django_db
+class TestEditTiketViewAdminP3DEAccess:
+    """Admin P3DE may edit any tiket without being one of its PICs."""
+
+    def test_allowed_without_pic(self, client, p3de_admin_user):
+        tiket = TiketFactory(status_tiket=1, id_periode_data=_editable_periode_data())
+        client.force_login(p3de_admin_user)
+        resp = client.get(reverse('edit_tiket', args=[tiket.pk]))
+        assert resp.status_code == 200
+        assert b'editTiketForm' in resp.content
+
+    def test_allowed_when_tanda_terima_exists(self, client, p3de_admin_user):
+        tiket = TiketFactory(
+            status_tiket=1, tanda_terima=True, id_periode_data=_editable_periode_data()
+        )
+        client.force_login(p3de_admin_user)
+        resp = client.get(reverse('edit_tiket', args=[tiket.pk]))
+        assert resp.status_code == 200
+
+    @pytest.mark.parametrize('status', [4, 6, 7, 8])
+    def test_allowed_at_any_status(self, client, p3de_admin_user, status):
+        tiket = TiketFactory(status_tiket=status, id_periode_data=_editable_periode_data())
+        client.force_login(p3de_admin_user)
+        resp = client.get(reverse('edit_tiket', args=[tiket.pk]))
+        assert resp.status_code == 200
+
+    def test_admin_allowed_when_locked(self, client, admin_user):
+        """The global admin group keeps access under the same rules."""
+        tiket = TiketFactory(
+            status_tiket=4, tanda_terima=True, id_periode_data=_editable_periode_data()
+        )
+        client.force_login(admin_user)
+        resp = client.get(reverse('edit_tiket', args=[tiket.pk]))
+        assert resp.status_code == 200
+
+    def test_other_admin_role_still_denied(self, client, db):
+        """admin_pide/admin_pmde are not P3DE administrators."""
+        from django.contrib.auth.models import Group
+        user = UserFactory()
+        group, _ = Group.objects.get_or_create(name='admin_pide')
+        user.groups.add(group)
+        tiket = TiketFactory(status_tiket=1, id_periode_data=_editable_periode_data())
+        client.force_login(user)
+        resp = client.get(reverse('edit_tiket', args=[tiket.pk]))
+        assert resp.status_code in (302, 403)
+
+    def test_edit_is_logged_as_diubah_action(self, client, p3de_admin_user):
+        """An admin edit lands in the audit trail exactly like a PIC edit."""
+        tiket = TiketFactory(
+            status_tiket=4, tanda_terima=True, id_periode_data=_editable_periode_data()
+        )
+        old_pengirim = tiket.nama_pengirim
+        client.force_login(p3de_admin_user)
+        resp = client.post(
+            reverse('edit_tiket', args=[tiket.pk]),
+            _valid_post(tiket, nama_pengirim='Dikoreksi Admin'),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        assert resp.status_code == 200, resp.content
+        tiket.refresh_from_db()
+        assert tiket.nama_pengirim == 'Dikoreksi Admin'
+        action = TiketAction.objects.filter(
+            id_tiket=tiket, action=TiketActionType.DIUBAH
+        ).latest('id')
+        assert action.id_user == p3de_admin_user
+        assert action.catatan.startswith('isian tiket diubah')
+        assert f'{old_pengirim} → Dikoreksi Admin' in action.catatan
+
+    def test_edit_does_not_change_status(self, client, p3de_admin_user):
+        tiket = TiketFactory(status_tiket=4, id_periode_data=_editable_periode_data())
+        client.force_login(p3de_admin_user)
+        client.post(
+            reverse('edit_tiket', args=[tiket.pk]),
+            _valid_post(tiket, nama_pengirim='Tetap 4', status_tiket=1),
+        )
+        tiket.refresh_from_db()
+        assert tiket.status_tiket == 4
 
 
 # ============================================================
@@ -290,9 +388,56 @@ class TestEditButtonOnDetailPage:
         resp = client.get(reverse('tiket_detail', args=[tiket.pk]))
         assert resp.context['user_can_edit_tiket'] is False
 
-    def test_button_hidden_for_non_pic_admin(self, client, admin_user):
+    def test_button_visible_for_non_pic_admin(self, client, admin_user):
         tiket = TiketFactory(status_tiket=1, id_periode_data=_editable_periode_data())
         client.force_login(admin_user)
         resp = client.get(reverse('tiket_detail', args=[tiket.pk]))
+        assert resp.context['user_can_edit_tiket'] is True
+        assert b'Ubah Isian Tiket' in resp.content
+
+    def test_button_hidden_for_non_pic_kasi(self, client, db):
+        """Kasi see the tiket read-only; they get no edit button."""
+        from django.contrib.auth.models import Group
+        user = UserFactory()
+        group, _ = Group.objects.get_or_create(name='kasi_p3de')
+        user.groups.add(group)
+        tiket = TiketFactory(status_tiket=1, id_periode_data=_editable_periode_data())
+        client.force_login(user)
+        resp = client.get(reverse('tiket_detail', args=[tiket.pk]))
         assert resp.context['user_can_edit_tiket'] is False
         assert b'Ubah Isian Tiket' not in resp.content
+
+
+@pytest.mark.django_db
+class TestAdminP3DEOnDetailPage:
+    """Admin P3DE can open any tiket detail and always sees the edit button."""
+
+    def test_can_open_detail_without_pic(self, client, p3de_admin_user):
+        tiket = TiketFactory(status_tiket=1, id_periode_data=_editable_periode_data())
+        client.force_login(p3de_admin_user)
+        resp = client.get(reverse('tiket_detail', args=[tiket.pk]))
+        assert resp.status_code == 200
+
+    @pytest.mark.parametrize('status,tanda_terima', [(1, True), (4, False), (8, True)])
+    def test_button_visible_regardless_of_state(self, client, p3de_admin_user, status, tanda_terima):
+        tiket = TiketFactory(
+            status_tiket=status,
+            tanda_terima=tanda_terima,
+            id_periode_data=_editable_periode_data(),
+        )
+        client.force_login(p3de_admin_user)
+        resp = client.get(reverse('tiket_detail', args=[tiket.pk]))
+        assert resp.context['user_can_edit_tiket'] is True
+        assert resp.context['user_is_admin_p3de'] is True
+        assert b'Ubah Isian Tiket' in resp.content
+        assert b'editTiketModal' in resp.content
+
+    def test_non_p3de_admin_cannot_open_detail(self, client, db):
+        from django.contrib.auth.models import Group
+        user = UserFactory()
+        group, _ = Group.objects.get_or_create(name='admin_pmde')
+        user.groups.add(group)
+        tiket = TiketFactory(status_tiket=1, id_periode_data=_editable_periode_data())
+        client.force_login(user)
+        resp = client.get(reverse('tiket_detail', args=[tiket.pk]))
+        assert resp.status_code in (302, 403)

@@ -1,147 +1,223 @@
 # DIAMOND Tiket Workflow — Playwright E2E Results
 
-_Generated: 2026-07-26 19:38:28_
+_Generated: 2026-07-28 12:54:47_
 
-**Steps:** 126 passed, 0 failed. **Bugs found:** 2.
+**Steps:** 203 passed, 0 failed. **Bugs found:** 0.
 
 ## Bugs / Findings
 
-### 1. [HIGH] Sidebar 'Transfer ke PMDE' button is permanently disabled
-
-On the tiket detail page (status Identifikasi), the button that opens the Transfer ke PMDE modal is rendered with a hardcoded `disabled` attribute (tiket_detail.html ~L750) and no JS ever enables it. A PIDE PIC therefore cannot open the modal or transfer the tiket to PMDE through the intended UI. (E2E forced-enabled it to verify the underlying flow still works.)
-
-### 2. [HIGH] Sidebar 'Selesaikan Tiket' button is permanently disabled
-
-On the tiket detail page (status Pengendalian Mutu), the button that opens the Selesaikan Tiket modal is rendered with a hardcoded `disabled` attribute (tiket_detail.html ~L766) and no JS enables it. A PMDE PIC cannot complete the tiket through the intended UI. (E2E forced-enabled it to verify the underlying flow still works.)
+_None recorded._
 
 ## Step log
 
 | Scenario | Step | Status | Detail |
 |---|---|---|---|
-| happy_path | rekam tiket | PASS |  -> Direkam |
-| happy_path | status after rekam | PASS | Direkam |
-| happy_path | buat tanda terima | PASS | reloaded |
-| happy_path | rekam hasil penelitian | PASS | lengkap=1000 -> Diteliti (btn_was_disabled=False) |
-| happy_path | status after penelitian (Lengkap) | PASS | Diteliti |
-| happy_path | generate ND pengantar | PASS | reloaded |
-| happy_path | kirim ke PIDE | PASS | -> Dikirim ke PIDE |
-| happy_path | status after kirim ke PIDE | PASS | Dikirim ke PIDE |
-| happy_path | identifikasi | PASS | -> Identifikasi |
-| happy_path | status after identifikasi | PASS | Identifikasi |
-| happy_path | transfer ke PMDE | PASS | -> Pengendalian Mutu (open_btn_was_disabled=True) |
-| happy_path | status after transfer ke PMDE | PASS | Pengendalian Mutu |
-| happy_path | selesaikan tiket | PASS | -> Selesai (open_btn_was_disabled=True) |
-| happy_path | status after selesaikan | PASS | Selesai |
-| langsung_selesai | rekam tiket | PASS |  -> Selesai |
-| langsung_selesai | status after rekam (data tidak tersedia) | PASS | Selesai |
-| penelitian_tidak_lengkap | rekam tiket | PASS |  -> Direkam |
-| penelitian_tidak_lengkap | buat tanda terima | PASS | reloaded |
-| penelitian_tidak_lengkap | rekam hasil penelitian | PASS | lengkap=0 -> Selesai (btn_was_disabled=False) |
-| penelitian_tidak_lengkap | status after penelitian (baris_lengkap==0) | PASS | Selesai |
-| batalkan | rekam tiket | PASS |  -> Direkam |
-| batalkan | status after rekam | PASS | Direkam |
-| batalkan | batalkan tiket | PASS | -> Dibatalkan |
-| batalkan | status after batalkan | PASS | Dibatalkan |
-| dikembalikan | rekam tiket | PASS |  -> Direkam |
-| dikembalikan | buat tanda terima | PASS | reloaded |
-| dikembalikan | rekam hasil penelitian | PASS | lengkap=800 -> Diteliti (btn_was_disabled=False) |
-| dikembalikan | generate ND pengantar | PASS | reloaded |
-| dikembalikan | kirim ke PIDE | PASS | -> Dikirim ke PIDE |
-| dikembalikan | status after kirim ke PIDE | PASS | Dikirim ke PIDE |
-| dikembalikan | dikembalikan ke P3DE | PASS | -> Dibatalkan |
-| dikembalikan | status after dikembalikan (expected Dibatalkan per design) | PASS | Dibatalkan |
-| val_rekam_future_date | future DIP blocked by client guard | PASS | endDateValidationModal shown |
-| val_rekam_missing_required | missing required blocked | PASS | confirmModal not shown (HTML5 validation) |
-| val_penelitian_negative | rekam tiket | PASS |  -> Direkam |
-| val_penelitian_negative | buat tanda terima | PASS | reloaded |
-| val_penelitian_negative | mismatched total disables submit | PASS | client validation works |
-| val_penelitian_negative | negative baris_lengkap rejected | PASS | status stayed Direkam |
-| val_pide_pmde_gaps | rekam tiket | PASS |  -> Direkam |
-| val_pide_pmde_gaps | buat tanda terima | PASS | reloaded |
-| val_pide_pmde_gaps | rekam hasil penelitian | PASS | lengkap=1000 -> Diteliti (btn_was_disabled=False) |
-| val_pide_pmde_gaps | generate ND pengantar | PASS | reloaded |
-| val_pide_pmde_gaps | kirim ke PIDE | PASS | -> Dikirim ke PIDE |
-| val_pide_pmde_gaps | identifikasi | PASS | -> Identifikasi |
-| val_pide_pmde_gaps | transfer ke PMDE | PASS | -> Identifikasi (open_btn_was_disabled=True) |
-| val_pide_pmde_gaps | negative transfer rejected (model-level protection) | PASS | status stayed Identifikasi |
-| val_pide_pmde_gaps | transfer ke PMDE | PASS | -> Pengendalian Mutu (open_btn_was_disabled=True) |
-| val_pide_pmde_gaps | selesaikan tiket | PASS | -> Pengendalian Mutu (open_btn_was_disabled=True) |
-| val_pide_pmde_gaps | invalid QC rejected | PASS | status stayed Pengendalian Mutu |
-| val_tanda_terima_before_dip | rekam tiket | PASS |  -> Direkam |
-| val_tanda_terima_before_dip | tanda terima before tgl_terima_dip rejected | PASS |  |
-| val_tanda_terima_before_dip | valid tanda terima accepted | PASS | Direkam |
-| val_teliti_before_tanda_terima | rekam tiket | PASS |  -> Direkam |
-| val_teliti_before_tanda_terima | setup: buat tanda terima | PASS | 2026-07-25 |
-| val_teliti_before_tanda_terima | tgl_teliti before tanda terima rejected | PASS | Direkam |
-| val_teliti_before_tanda_terima | valid tgl_teliti accepted | PASS | Diteliti |
-| val_datepicker_consistency | rekam tiket page has icon + flatpickr | PASS |  |
-| val_datepicker_consistency | rekam tiket | PASS |  -> Direkam |
-| val_datepicker_consistency | edit tiket AJAX modal has icon + flatpickr | PASS |  |
-| edit_tiket | rekam tiket | PASS |  -> Direkam |
-| edit_tiket | future tgl_terima_dip rejected | PASS |  |
-| edit_tiket | tgl_terima_vertikal disabled (non-regional ILAP) | INFO | skipped cross-field check |
-| edit_tiket | valid edit persisted | PASS | E2E-EDIT-000000 |
-| edit_tiket | buat tanda terima | PASS | reloaded |
-| edit_tiket | Edit Tiket correctly hidden after tanda terima | PASS |  |
-| special_request | rekam tiket | PASS |  -> Direkam |
-| special_request | toggle ON persisted | PASS | ya |
-| special_request | toggle OFF persisted | PASS | tidak |
-| crud_kategori_wilayah | empty submit blocked | PASS |  |
-| crud_kategori_wilayah | valid create | PASS | E2E kategori-wil 87305 |
-| crud_kategori_wilayah | duplicate rejected | PASS | modal stayed open with validation error |
-| crud_kategori_wilayah | edit | PASS | E2E kategori-wil 87305 (edited) |
-| crud_kategori_wilayah | delete | PASS |  |
-| crud_jenis_tabel | empty submit blocked | PASS |  |
-| crud_jenis_tabel | valid create | PASS | E2E jenis-tabel 96825 |
-| crud_jenis_tabel | duplicate rejected | PASS | modal stayed open with validation error |
-| crud_jenis_tabel | edit | PASS | E2E jenis-tabel 96825 (edited) |
-| crud_jenis_tabel | delete | PASS |  |
-| crud_status_data | empty submit blocked | PASS |  |
-| crud_status_data | valid create | PASS | E2E status-data 5966 |
-| crud_status_data | duplicate rejected | PASS | modal stayed open with validation error |
-| crud_status_data | edit | PASS | E2E status-data 5966 (edi |
-| crud_status_data | delete | PASS |  |
-| crud_status_penelitian | empty submit blocked | PASS |  |
-| crud_status_penelitian | valid create | PASS | E2E status-penel 15494 |
-| crud_status_penelitian | duplicate rejected | PASS | modal stayed open with validation error |
-| crud_status_penelitian | edit | PASS | E2E status-penel 15494 (e |
-| crud_status_penelitian | delete | PASS |  |
-| crud_bentuk_data | empty submit blocked | PASS |  |
-| crud_bentuk_data | valid create | PASS | E2E bentuk-data 24839 |
-| crud_bentuk_data | duplicate rejected | PASS | modal stayed open with validation error |
-| crud_bentuk_data | edit | PASS | E2E bentuk-data 24839 (ed |
-| crud_bentuk_data | delete | PASS |  |
-| crud_cara_penyampaian | empty submit blocked | PASS |  |
-| crud_cara_penyampaian | valid create | PASS | E2E cara-penyamp 33980 |
-| crud_cara_penyampaian | duplicate rejected | PASS | modal stayed open with validation error |
-| crud_cara_penyampaian | edit | PASS | E2E cara-penyamp 33980 (e |
-| crud_cara_penyampaian | delete | PASS |  |
-| crud_media_backup | empty submit blocked | PASS |  |
-| crud_media_backup | valid create | PASS | E2E media-backup 43214 |
-| crud_media_backup | duplicate rejected | PASS | modal stayed open with validation error |
-| crud_media_backup | edit | PASS | E2E media-backup 43214 (e |
-| crud_media_backup | delete | PASS |  |
-| crud_kanwil | empty submit blocked | PASS |  |
-| crud_kanwil | valid create | PASS | E47/E2E Kanwil 477 |
-| crud_kanwil | duplicate kode_kanwil rejected | PASS |  |
-| crud_kanwil | edit | PASS |  |
-| crud_kanwil | delete | PASS |  |
-| crud_kategori_ilap | empty submit blocked | PASS |  |
-| crud_kategori_ilap | valid create | PASS | E8/E2E Kategori ILAP 83 |
-| crud_kategori_ilap | id_kategori locked on edit | PASS |  |
-| crud_kategori_ilap | edit | PASS |  |
-| crud_kategori_ilap | delete | PASS |  |
-| crud_periode_pengiriman | empty submit blocked | PASS |  |
-| crud_periode_pengiriman | valid create | PASS | E2E Penyampaian 69399 |
-| crud_periode_pengiriman | edit | PASS |  |
-| crud_periode_pengiriman | delete | PASS |  |
-| crud_dasar_hukum | empty submit blocked | PASS |  |
-| crud_dasar_hukum | valid create | PASS | E2E Dasar Hukum 76991 |
-| crud_dasar_hukum | end_date < start_date rejected | PASS |  |
-| crud_dasar_hukum | edit | PASS |  |
-| crud_dasar_hukum | delete | PASS |  |
-| crud_kpp | empty submit blocked | PASS |  |
-| crud_kpp | valid create | PASS | Q28/E2E KPP 283 kanwil=1 |
-| crud_kpp | edit | PASS |  |
-| crud_kpp | delete | PASS |  |
-| crud_protected_delete | protected delete handled gracefully (no hard 500) | PASS |  |
+| form_kategori_wilayah | invalid submit reached server | PASS | 200 |
+| form_kategori_wilayah | modal stays open with form | PASS |  |
+| form_kategori_wilayah | field errors displayed | PASS | 1 error nodes |
+| form_kategori_wilayah | typed value preserved | PASS | deskripsi=E2EMARK |
+| form_kategori_wilayah | no uncaught JS during submit | PASS |  |
+| form_kategori_wilayah_edit | edit submit reached server | PASS | 200 |
+| form_kategori_wilayah_edit | edit errors displayed | PASS | 1 error nodes |
+| form_jenis_tabel | invalid submit reached server | PASS | 200 |
+| form_jenis_tabel | modal stays open with form | PASS |  |
+| form_jenis_tabel | field errors displayed | PASS | 1 error nodes |
+| form_jenis_tabel | typed value preserved | PASS | deskripsi=E2EMARK |
+| form_jenis_tabel | no uncaught JS during submit | PASS |  |
+| form_jenis_tabel_edit | edit submit reached server | PASS | 200 |
+| form_jenis_tabel_edit | edit errors displayed | PASS | 1 error nodes |
+| form_status_data | invalid submit reached server | PASS | 200 |
+| form_status_data | modal stays open with form | PASS |  |
+| form_status_data | field errors displayed | PASS | 1 error nodes |
+| form_status_data | typed value preserved | PASS | deskripsi=E2EMARK |
+| form_status_data | no uncaught JS during submit | PASS |  |
+| form_status_data_edit | edit submit reached server | PASS | 200 |
+| form_status_data_edit | edit errors displayed | PASS | 1 error nodes |
+| form_status_penelitian | invalid submit reached server | PASS | 200 |
+| form_status_penelitian | modal stays open with form | PASS |  |
+| form_status_penelitian | field errors displayed | PASS | 1 error nodes |
+| form_status_penelitian | typed value preserved | PASS | deskripsi=E2EMARK |
+| form_status_penelitian | no uncaught JS during submit | PASS |  |
+| form_status_penelitian_edit | edit submit reached server | PASS | 200 |
+| form_status_penelitian_edit | edit errors displayed | PASS | 1 error nodes |
+| form_bentuk_data | invalid submit reached server | PASS | 200 |
+| form_bentuk_data | modal stays open with form | PASS |  |
+| form_bentuk_data | field errors displayed | PASS | 1 error nodes |
+| form_bentuk_data | typed value preserved | PASS | deskripsi=E2EMARK |
+| form_bentuk_data | no uncaught JS during submit | PASS |  |
+| form_bentuk_data_edit | edit submit reached server | PASS | 200 |
+| form_bentuk_data_edit | edit errors displayed | PASS | 1 error nodes |
+| form_cara_penyampaian | invalid submit reached server | PASS | 200 |
+| form_cara_penyampaian | modal stays open with form | PASS |  |
+| form_cara_penyampaian | field errors displayed | PASS | 1 error nodes |
+| form_cara_penyampaian | typed value preserved | PASS | deskripsi=E2EMARK |
+| form_cara_penyampaian | no uncaught JS during submit | PASS |  |
+| form_cara_penyampaian_edit | edit submit reached server | PASS | 200 |
+| form_cara_penyampaian_edit | edit errors displayed | PASS | 1 error nodes |
+| form_media_backup | invalid submit reached server | PASS | 200 |
+| form_media_backup | modal stays open with form | PASS |  |
+| form_media_backup | field errors displayed | PASS | 1 error nodes |
+| form_media_backup | typed value preserved | PASS | deskripsi=E2EMARK |
+| form_media_backup | no uncaught JS during submit | PASS |  |
+| form_media_backup_edit | edit submit reached server | PASS | 200 |
+| form_media_backup_edit | edit errors displayed | PASS | 1 error nodes |
+| form_kanwil | invalid submit reached server | PASS | 200 |
+| form_kanwil | modal stays open with form | PASS |  |
+| form_kanwil | field errors displayed | PASS | 1 error nodes |
+| form_kanwil | typed value preserved | PASS | kode_kanwil=E2E |
+| form_kanwil | no uncaught JS during submit | PASS |  |
+| form_kanwil_edit | edit submit reached server | PASS | 200 |
+| form_kanwil_edit | edit errors displayed | PASS | 2 error nodes |
+| form_kpp | invalid submit reached server | PASS | 200 |
+| form_kpp | modal stays open with form | PASS |  |
+| form_kpp | field errors displayed | PASS | 2 error nodes |
+| form_kpp | typed value preserved | PASS | kode_kpp=E2E |
+| form_kpp | no uncaught JS during submit | PASS |  |
+| form_kpp_edit | edit submit reached server | PASS | 200 |
+| form_kpp_edit | edit errors displayed | PASS | 2 error nodes |
+| form_kategori_ilap | invalid submit reached server | PASS | 200 |
+| form_kategori_ilap | modal stays open with form | PASS |  |
+| form_kategori_ilap | field errors displayed | PASS | 1 error nodes |
+| form_kategori_ilap | typed value preserved | PASS | id_kategori=E2 |
+| form_kategori_ilap | no uncaught JS during submit | PASS |  |
+| form_kategori_ilap_edit | edit submit reached server | PASS | 200 |
+| form_kategori_ilap_edit | edit errors displayed | PASS | 1 error nodes |
+| form_dasar_hukum | invalid submit reached server | PASS | 200 |
+| form_dasar_hukum | modal stays open with form | PASS |  |
+| form_dasar_hukum | field errors displayed | PASS | 1 error nodes |
+| form_dasar_hukum | flatpickr survives re-render | PASS | 2 pickers |
+| form_dasar_hukum | typed value preserved | PASS | deskripsi=E2EMARK |
+| form_dasar_hukum | no uncaught JS during submit | PASS |  |
+| form_dasar_hukum_edit | edit submit reached server | PASS | 200 |
+| form_dasar_hukum_edit | edit errors displayed | PASS | 2 error nodes |
+| form_periode_pengiriman | invalid submit reached server | PASS | 200 |
+| form_periode_pengiriman | modal stays open with form | PASS |  |
+| form_periode_pengiriman | field errors displayed | PASS | 1 error nodes |
+| form_periode_pengiriman | typed value preserved | PASS | periode_penyampaian=E2EMARK |
+| form_periode_pengiriman | no uncaught JS during submit | PASS |  |
+| form_periode_pengiriman_edit | edit submit reached server | PASS | 200 |
+| form_periode_pengiriman_edit | edit errors displayed | PASS | 2 error nodes |
+| form_ilap | dynamic behaviour on open | PASS | kategori=BI -> id_ilap auto-filled |
+| form_ilap | invalid submit reached server | PASS | 200 |
+| form_ilap | modal stays open with form | PASS |  |
+| form_ilap | field errors displayed | PASS | 1 error nodes |
+| form_ilap | typed value preserved | PASS | nama_ilap=E2EMARK |
+| form_ilap | dynamic behaviour survives re-render | PASS | kategori=BI -> id_ilap auto-filled |
+| form_ilap | no uncaught JS during submit | PASS |  |
+| form_ilap_edit | edit submit reached server | PASS | 200 |
+| form_ilap_edit | edit errors displayed | PASS | 10 error nodes |
+| form_jenis_data_ilap | dynamic behaviour on open | PASS | ilap=2, 5 live wizard controls |
+| form_jenis_data_ilap | invalid submit reached server | PASS | 200 |
+| form_jenis_data_ilap | modal stays open with form | PASS |  |
+| form_jenis_data_ilap | field errors displayed | PASS | 2 error nodes |
+| form_jenis_data_ilap | typed value preserved | PASS | nama_jenis_data=E2EMARK |
+| form_jenis_data_ilap | dynamic behaviour survives re-render | PASS | ilap=2, 5 live wizard controls |
+| form_jenis_data_ilap | no uncaught JS during submit | PASS |  |
+| form_jenis_data_ilap_edit | edit submit reached server | PASS | 200 |
+| form_jenis_data_ilap_edit | edit errors displayed | PASS | 2 error nodes |
+| form_klasifikasi_jenis_data | invalid submit reached server | PASS | 200 |
+| form_klasifikasi_jenis_data | modal stays open with form | PASS |  |
+| form_klasifikasi_jenis_data | field errors displayed | PASS | 2 error nodes |
+| form_klasifikasi_jenis_data | no uncaught JS during submit | PASS |  |
+| form_klasifikasi_jenis_data_edit | edit submit reached server | PASS | 200 |
+| form_klasifikasi_jenis_data_edit | edit errors displayed | PASS | 1 error nodes |
+| form_periode_jenis_data | invalid submit reached server | PASS | 200 |
+| form_periode_jenis_data | modal stays open with form | PASS |  |
+| form_periode_jenis_data | field errors displayed | PASS | 4 error nodes |
+| form_periode_jenis_data | flatpickr survives re-render | PASS | 2 pickers |
+| form_periode_jenis_data | no uncaught JS during submit | PASS |  |
+| form_periode_jenis_data_edit | edit submit reached server | PASS | 200 |
+| form_periode_jenis_data_edit | edit errors displayed | PASS | 1 error nodes |
+| form_jenis_prioritas_data | invalid submit reached server | PASS | 200 |
+| form_jenis_prioritas_data | modal stays open with form | PASS |  |
+| form_jenis_prioritas_data | field errors displayed | PASS | 3 error nodes |
+| form_jenis_prioritas_data | flatpickr survives re-render | PASS | 2 pickers |
+| form_jenis_prioritas_data | typed value preserved | PASS | no_nd=E2EMARK |
+| form_jenis_prioritas_data | no uncaught JS during submit | PASS |  |
+| form_jenis_prioritas_data_edit | edit submit reached server | PASS | 200 |
+| form_jenis_prioritas_data_edit | edit errors displayed | PASS | 2 error nodes |
+| form_nama_tabel | invalid submit reached server | PASS | 200 |
+| form_nama_tabel | modal stays open with form | PASS |  |
+| form_nama_tabel | field errors displayed | PASS | 2 error nodes |
+| form_nama_tabel | typed value preserved | PASS | nama_tabel_I=E2EMARK |
+| form_nama_tabel | no uncaught JS during submit | PASS |  |
+| form_nama_tabel_edit | edit submit reached server | PASS | 200 |
+| form_nama_tabel_edit | edit errors displayed | PASS | 2 error nodes |
+| form_pic_p3de | dynamic behaviour on open | PASS | sub_jenis=2 -> info panel shown |
+| form_pic_p3de | invalid submit reached server | PASS | 200 |
+| form_pic_p3de | modal stays open with form | PASS |  |
+| form_pic_p3de | field errors displayed | PASS | 2 error nodes |
+| form_pic_p3de | flatpickr survives re-render | PASS | 2 pickers |
+| form_pic_p3de | select2 survives re-render | PASS | 2 widgets |
+| form_pic_p3de | dynamic behaviour survives re-render | PASS | sub_jenis=2 -> info panel shown |
+| form_pic_p3de | no uncaught JS during submit | PASS |  |
+| form_pic_p3de_edit | no field can be safely poisoned | INFO | skipped to avoid a destructive save |
+| form_pic_pide | dynamic behaviour on open | PASS | sub_jenis=2 -> info panel shown |
+| form_pic_pide | invalid submit reached server | PASS | 200 |
+| form_pic_pide | modal stays open with form | PASS |  |
+| form_pic_pide | field errors displayed | PASS | 2 error nodes |
+| form_pic_pide | flatpickr survives re-render | PASS | 2 pickers |
+| form_pic_pide | select2 survives re-render | PASS | 2 widgets |
+| form_pic_pide | dynamic behaviour survives re-render | PASS | sub_jenis=2 -> info panel shown |
+| form_pic_pide | no uncaught JS during submit | PASS |  |
+| form_pic_pide_edit | no field can be safely poisoned | INFO | skipped to avoid a destructive save |
+| form_pic_pmde | dynamic behaviour on open | PASS | sub_jenis=2 -> info panel shown |
+| form_pic_pmde | invalid submit reached server | PASS | 200 |
+| form_pic_pmde | modal stays open with form | PASS |  |
+| form_pic_pmde | field errors displayed | PASS | 2 error nodes |
+| form_pic_pmde | flatpickr survives re-render | PASS | 2 pickers |
+| form_pic_pmde | select2 survives re-render | PASS | 2 widgets |
+| form_pic_pmde | dynamic behaviour survives re-render | PASS | sub_jenis=2 -> info panel shown |
+| form_pic_pmde | no uncaught JS during submit | PASS |  |
+| form_pic_pmde_edit | no field can be safely poisoned | INFO | skipped to avoid a destructive save |
+| form_durasi_pide | invalid submit reached server | PASS | 200 |
+| form_durasi_pide | modal stays open with form | PASS |  |
+| form_durasi_pide | field errors displayed | PASS | 3 error nodes |
+| form_durasi_pide | flatpickr survives re-render | PASS | 2 pickers |
+| form_durasi_pide | no uncaught JS during submit | PASS |  |
+| form_durasi_pide_edit | edit submit reached server | PASS | 200 |
+| form_durasi_pide_edit | edit errors displayed | PASS | 1 error nodes |
+| form_durasi_pmde | invalid submit reached server | PASS | 200 |
+| form_durasi_pmde | modal stays open with form | PASS |  |
+| form_durasi_pmde | field errors displayed | PASS | 3 error nodes |
+| form_durasi_pmde | flatpickr survives re-render | PASS | 2 pickers |
+| form_durasi_pmde | no uncaught JS during submit | PASS |  |
+| form_durasi_pmde_edit | edit submit reached server | PASS | 200 |
+| form_durasi_pmde_edit | edit errors displayed | PASS | 1 error nodes |
+| form_docx_template | invalid submit reached server | PASS | 200 |
+| form_docx_template | modal stays open with form | PASS |  |
+| form_docx_template | field errors displayed | PASS | 2 error nodes |
+| form_docx_template | typed value preserved | PASS | nama_template=E2EMARK |
+| form_docx_template | no uncaught JS during submit | PASS |  |
+| form_docx_template_edit | edit submit reached server | PASS | 200 |
+| form_docx_template_edit | edit errors displayed | PASS | 2 error nodes |
+| form_sequence_tanda_terima | invalid submit reached server | PASS | 200 |
+| form_sequence_tanda_terima | modal stays open with form | PASS |  |
+| form_sequence_tanda_terima | field errors displayed | PASS | 2 error nodes |
+| form_sequence_tanda_terima | no uncaught JS during submit | PASS |  |
+| form_sequence_tanda_terima_edit | no rows to edit | INFO | skipped |
+| form_backup_data | dynamic behaviour on open | PASS | tiket=471 -> info panel shown |
+| form_backup_data | invalid submit reached server | PASS | 200 |
+| form_backup_data | modal stays open with form | PASS |  |
+| form_backup_data | field errors displayed | PASS | 2 error nodes |
+| form_backup_data | typed value preserved | PASS | lokasi_backup=E2EMARK |
+| form_backup_data | dynamic behaviour survives re-render | PASS | tiket=471 -> info panel shown |
+| form_backup_data | no uncaught JS during submit | PASS |  |
+| form_backup_data_edit | no rows to edit | INFO | skipped |
+| form_tanda_terima_data | invalid submit reached server | PASS | 200 |
+| form_tanda_terima_data | modal stays open with form | PASS |  |
+| form_tanda_terima_data | field errors displayed | PASS | 3 error nodes |
+| form_tanda_terima_data | flatpickr survives re-render | PASS | 1 pickers |
+| form_tanda_terima_data | no uncaught JS during submit | PASS |  |
+| form_tanda_terima_data_edit | no rows to edit | INFO | skipped |
+| form_ilap | kpp list toggles with kategori wilayah | PASS | regional -> kpp list visible=True |
+| form_tanda_terima_gating | regional shows Kanwil, hides ILAP | PASS |  |
+| form_tanda_terima_gating | Simpan + Tidak Diterbitkan disabled on empty form | PASS |  |
+| form_tanda_terima_gating | nasional shows ILAP, hides Kanwil | PASS |  |
+| form_tanda_terima_gating | server rejected submit | PASS | 2 error nodes |
+| form_tanda_terima_gating | scope fields correct AFTER error | PASS |  |
+| form_tanda_terima_gating | lingkup dropdown still live AFTER error | PASS |  |
+| form_tanda_terima_gating | kanwil choice loads tikets AFTER error | PASS |  |
+| form_tanda_terima_gating | stale Kanwil error cleared | PASS |  |
+| form_tanda_terima_gating | buttons enable once a tiket is selected | PASS |  |
+| form_tanda_terima_gating | no uncaught JS in tanda terima modal | PASS |  |

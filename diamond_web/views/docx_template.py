@@ -47,8 +47,7 @@ class DocxTemplateCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFor
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['form_action'] = 'create'
-        context['form_url'] = reverse_lazy('docx_template_create')
+        context['form_action'] = reverse_lazy('docx_template_create')
         return context
 
     def get(self, request, *args, **kwargs):
@@ -68,8 +67,7 @@ class DocxTemplateUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFor
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['form_action'] = 'update'
-        context['form_url'] = reverse_lazy('docx_template_update', kwargs={'pk': self.object.pk})
+        context['form_action'] = reverse_lazy('docx_template_update', kwargs={'pk': self.object.pk})
         if self.object.file_template:
             context['download_url'] = reverse_lazy('docx_template_download', kwargs={'pk': self.object.pk})
         return context

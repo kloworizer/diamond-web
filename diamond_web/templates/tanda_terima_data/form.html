@@ -178,14 +178,55 @@
             <i class="feather-hash"></i>Sumber Data & Tiket
         </div>
 
-        <div class="mb-4">
-            <label for="id_id_ilap" class="form-label-premium">ILAP</label>
-            <div class="input-icon-wrapper">
-                <i class="feather-database"></i>
-                {{ form.id_ilap }}
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label for="id_lingkup" class="form-label-premium">Lingkup Tanda Terima</label>
+                <div class="input-icon-wrapper">
+                    <i class="feather-layers"></i>
+                    {{ form.lingkup }}
+                </div>
+                <div class="text-muted fs-11 mt-1" id="lingkup-hint">
+                    ILAP regional (Provinsi/Pemda) direkam per Kanwil.
+                </div>
+                {% if form.lingkup.errors %}
+                    <div class="text-danger fs-11 mt-1">{{ form.lingkup.errors.as_text }}</div>
+                {% endif %}
             </div>
-            {% if form.id_ilap.errors %}
-                <div class="text-danger fs-11 mt-1">{{ form.id_ilap.errors.as_text }}</div>
+
+            <div class="col-md-6" id="scope-kanwil-wrapper">
+                <label for="id_id_kanwil" class="form-label-premium">Kanwil</label>
+                <div class="input-icon-wrapper">
+                    <i class="feather-map-pin"></i>
+                    {{ form.id_kanwil }}
+                </div>
+                {% if form.id_kanwil.errors %}
+                    <div class="text-danger fs-11 mt-1">{{ form.id_kanwil.errors.as_text }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-md-6" id="scope-ilap-wrapper">
+                <label for="id_id_ilap" class="form-label-premium">ILAP</label>
+                <div class="input-icon-wrapper">
+                    <i class="feather-database"></i>
+                    {{ form.id_ilap }}
+                </div>
+                {% if form.id_ilap.errors %}
+                    <div class="text-danger fs-11 mt-1">{{ form.id_ilap.errors.as_text }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label for="id_nomor_nd_pengantar" class="form-label-premium">ND Pengantar</label>
+            <div class="input-icon-wrapper">
+                <i class="feather-mail"></i>
+                {{ form.nomor_nd_pengantar }}
+            </div>
+            <div class="text-muted fs-11 mt-1">
+                Kosongkan untuk mencakup seluruh ND Pengantar pada lingkup terpilih.
+            </div>
+            {% if form.nomor_nd_pengantar.errors %}
+                <div class="text-danger fs-11 mt-1">{{ form.nomor_nd_pengantar.errors.as_text }}</div>
             {% endif %}
         </div>
 
@@ -203,6 +244,8 @@
                                 <input type="checkbox" id="tiket-select-all" title="Pilih Semua Tiket" style="width: 15px; height: 15px; cursor: pointer; accent-color: #0c92ff;">
                             </th>
                             <th class="py-2 border-0">Nomor Tiket</th>
+                            <th class="py-2 border-0">ILAP</th>
+                            <th class="py-2 border-0">ND Pengantar</th>
                             <th class="py-2 border-0">Jenis Data</th>
                             <th class="py-2 border-0">Subjenis Data</th>
                             <th class="py-2 border-0">Periode</th>
@@ -212,15 +255,15 @@
                     </thead>
                     <tbody id="tiket-table-body">
                         <tr id="tiket-empty-row">
-                            <td colspan="7" class="text-muted text-center py-4 fs-12 border-0">
-                                Pilih ILAP terlebih dahulu untuk memuat tiket tersedia.
+                            <td colspan="9" class="text-muted text-center py-4 fs-12 border-0">
+                                Pilih Kanwil atau ILAP terlebih dahulu untuk memuat tiket tersedia.
                             </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
             {% if form.tiket_ids.errors %}
-                <small class="text-danger d-block mt-1 fs-11">
+                <small id="tiket-error" class="text-danger d-block mt-1 fs-11">
                     {% for error in form.tiket_ids.errors %}
                         {{ error }}
                     {% endfor %}
@@ -231,9 +274,14 @@
     </div>
 
     <div class="modal-footer pt-0 px-4 pb-4 border-top-0 d-flex justify-content-between align-items-center" style="background: transparent !important;">
+        {% if not tanda_terima_id %}
+        {# Only meaningful while creating: it marks tikets as processed *instead* of issuing a Tanda Terima. #}
         <button type="button" class="btn btn-outline-danger btn-sm px-3" id="tidak-terbit-tt-btn"{% if tiket %} data-tiket-pk="{{ tiket.pk }}"{% endif %} style="height: 38px; font-weight: 600;">
             <i class="feather-x-circle me-1"></i>Tidak Diterbitkan
         </button>
+        {% else %}
+        <span></span>
+        {% endif %}
         <div class="d-flex gap-2">
             <button type="button" class="btn btn-light btn-sm px-4" data-bs-dismiss="modal" style="height: 38px; font-weight: 600;">Batal</button>
             <button type="submit" class="btn btn-primary btn-sm px-4" style="height: 38px; font-weight: 600; background: #0c92ff; border-color: #0c92ff;">
