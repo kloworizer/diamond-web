@@ -63,7 +63,7 @@ AUTH_PASSWORD_VALIDATORS = [
 |------------|-------|-----------|
 | `SESSION_COOKIE_AGE` | 1800 (30 mnt) | Masa berlaku sesi dalam detik |
 | `SESSION_EXPIRE_AT_BROWSER_CLOSE` | `False` | Sesi tetap ada setelah browser ditutup |
-| `SESSION_SAVE_EVERY_REQUEST` | `False` | Jangan perbarui sesi setiap permintaan (mengurangi penulisan DB) |
+| `SESSION_SAVE_EVERY_REQUEST` | `False` | Jangan perbarui sesi setiap permintaan (mengurangi penulisan DB & *lock contention* SQLite) |
 | `SESSION_COOKIE_SECURE` | `True` (prod) / `False` (dev) | Hanya kirim cookie melalui HTTPS |
 | `SESSION_COOKIE_HTTPONLY` | `True` (default Django) | Cookie tidak dapat diakses melalui JavaScript |
 
@@ -78,6 +78,16 @@ AUTH_PASSWORD_VALIDATORS = [
 - Endpoint: `GET /keep-alive/` — respons JSON ringan
 - Digunakan oleh frontend untuk mencegah waktu tunggu sesi selama penggunaan aktif
 - TIDAK memperpanjang sesi jika pengguna idle (hanya aktivitas nyata yang memperpanjang sesi)
+
+### Sliding Session (`diamond_web/middleware.py`)
+
+`SlidingSessionMiddleware` memperpanjang masa berlaku sesi bagi pengguna yang **sedang menjelajah**, tanpa menghidupkan `SESSION_SAVE_EVERY_REQUEST`.
+
+- Waktu perpanjangan terakhir disimpan di dalam sesi itu sendiri (`_last_session_slide`)
+- Sesi hanya ditulis ulang setelah **setengah** masa `SESSION_COOKIE_AGE` berlalu (`REFRESH_RATIO = 0.5`) — paling banyak satu penulisan sesi per jendela perpanjangan
+- Sesi dengan masa berlaku non-default (mis. login *remember me*) tidak disentuh
+- Pengguna yang **idle** tetap keluar sesuai jadwal — perpanjangan hanya berlaku bagi pengguna yang terbukti masih memakai aplikasi
+- Urutan pada `MIDDLEWARE` bersifat wajib: **setelah** `AuthenticationMiddleware` (membaca `request.user`) dan **di dalam** `SessionMiddleware` (yang melakukan penyimpanan)
 
 ---
 

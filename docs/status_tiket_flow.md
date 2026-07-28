@@ -81,6 +81,8 @@ flowchart TD
 
 ## Penjelasan Alur
 
+> **Catatan input tanggal:** Field tanggal pada aksi alur kerja (`tgl_teliti`, `tgl_nadine`, `tgl_kirim_pide`, `tgl_rekam_pide`, `tgl_transfer`) menggunakan pemilih **tanggal saja**. Komponen jam diisi otomatis dari waktu server saat perekaman, dan tanggal di masa depan ditolak.
+
 ### 1. P3DE: Rekam Penerimaan Data
 **Status: Direkam (1)**
 
@@ -109,6 +111,8 @@ Setelah tiket direkam, PIC P3DE melakukan penelitian awal dan merekam hasilnya m
 | `baris_lengkap == 0`                 | Tidak Lengkap        | **Selesai (8)** (langsung)|
 
 > **Perhatian:** Apabila `baris_lengkap == 0`, tiket langsung berstatus **Selesai (8)** tanpa melalui proses selanjutnya.
+
+**Validasi kronologi tanggal:** `tgl_teliti` tidak boleh mendahului `tgl_terima_dip` maupun tanggal tanda terima tiket. Tanda terima berada pada tabel terpisah (`DetilTandaTerima` → `TandaTerimaData`), sehingga pemeriksaannya dilakukan tersendiri di `RekamHasilPenelitianForm.clean_tgl_teliti()`.
 
 ### 3. P3DE: Kirim Tiket ke PIDE
 **Status: Dikirim ke PIDE (4)**
@@ -173,6 +177,8 @@ PIC PMDE menyelesaikan tiket melalui menu **Selesaikan Tiket** (modal di halaman
 - Jumlah baris lolos QC dan tidak lolos QC
 - Klasifikasi QC (P, X, W, F, A, C, N, Y, Z, U, E, V, R, D)
 
+**Validasi:** `lolos_qc` + `tidak_lolos_qc` wajib sama dengan `baris_i`. Validasi ini dijalankan di sisi server (`SelesaikanTiketForm.clean()`), sehingga selisih QC ditolak walaupun pemeriksaan di sisi browser dilewati.
+
 Sistem akan membuat **dua** *audit trail* dalam satu transaksi:
 1. **Pengendalian Mutu** — mencatat ringkasan QC
 2. **Selesai** — menandai penyelesaian tiket
@@ -186,6 +192,33 @@ PIC P3DE dapat membatalkan tiket melalui menu **Batalkan Tiket** (modal di halam
 **Ketentuan:**
 - Hanya dapat dilakukan jika status tiket **sebelum dikirim ke PIDE**, yaitu status **Direkam (1)** atau **Diteliti (2)**
 - Setelah tiket dikirim ke PIDE (status ≥ 4), P3DE **tidak dapat** membatalkan tiket
+
+---
+
+## Aksi Tanpa Perubahan Status
+
+Dua aksi berikut dijalankan dari halaman detail tiket namun **tidak** memindahkan status tiket. Keduanya tetap tercatat pada riwayat aksi tiket.
+
+### Edit Isian Tiket
+
+Koreksi isian tiket melalui modal **Edit Tiket** (`/tiket/<pk>/edit/`), tercatat sebagai aksi **`10` — Isian Tiket Diubah**.
+
+**Ketentuan:**
+- **PIC P3DE aktif** hanya boleh mengedit selama status **Direkam (1)** *dan* tiket belum memiliki tanda terima. Setelah tanda terima terbit, isian terkunci dan satu-satunya aksi yang tersisa adalah pembatalan tiket
+- **Admin P3DE** (`admin`, `admin_p3de`, superuser) dikecualikan dari pembatasan tersebut dan dapat mengoreksi tiket pada titik mana pun dalam alur kerja
+
+### Special Request
+
+Mengaktifkan/menonaktifkan penanda `special_request` melalui modal (`/tiket/<pk>/special-request/`), tercatat sebagai aksi **`401` — Special Request Diaktifkan** atau **`402` — Special Request Dinonaktifkan**. Aksi hanya dicatat bila nilainya benar-benar berubah.
+
+**Ketentuan:** hanya dapat dilakukan oleh **PIC aktif pemilik tiket** sesuai statusnya.
+
+| Status tiket | Yang berhak mengubah |
+|--------------|----------------------|
+| 1–3 (Direkam, Diteliti, Dikembalikan) | PIC P3DE aktif |
+| 4–5 (Dikirim ke PIDE, Identifikasi) | PIC PIDE aktif |
+| 6 (Pengendalian Mutu) | PIC PMDE aktif |
+| 7–8 (Dibatalkan, Selesai) | — (status final, tidak dapat diubah) |
 
 ---
 

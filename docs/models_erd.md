@@ -189,6 +189,7 @@ erDiagram
         datetime tgl_terima_dip
         bool backup
         bool tanda_terima
+        bool special_request
         int id_status_penelitian FK
         datetime tgl_teliti
         int baris_lengkap
@@ -251,6 +252,8 @@ erDiagram
         int tahun_terima
         datetime tanggal_tanda_terima
         int id_ilap FK
+        int id_kanwil FK
+        string nomor_nd_pengantar
         int id_perekam FK
         bool active
     }
@@ -280,7 +283,9 @@ erDiagram
     ILAPKPP {
         int id PK
         int id_ilap FK
+        bool kpp
         int id_kpp FK
+        int id_kanwil FK
     }
 
     DocxTemplate {
@@ -299,6 +304,7 @@ erDiagram
     KategoriWilayah ||--o{ ILAP : has
     ILAP ||--o{ ILAPKPP : has_kpp
     KPP ||--o{ ILAPKPP : assigned_to
+    Kanwil ||--o{ ILAPKPP : assigned_to
     ILAP ||--o{ JenisDataILAP : has
     JenisTabel ||--o{ JenisDataILAP : classified_as
     StatusData ||--o{ JenisDataILAP : has_status
@@ -324,6 +330,7 @@ erDiagram
     Tiket ||--o{ TiketPIC : has_pics
     User ||--o{ TiketPIC : assigned_as_pic
     ILAP ||--o{ TandaTerimaData : receives
+    Kanwil ||--o{ TandaTerimaData : receives
     User ||--o{ TandaTerimaData : recorded_by
     TandaTerimaData ||--o{ DetilTandaTerima : contains
     Tiket ||--o{ DetilTandaTerima : included_in
@@ -351,7 +358,7 @@ KategoriILAP, KategoriWilayah, Kanwil, KPP, JenisTabel, StatusData, StatusPeneli
 
 ### ILAP & Data Classification
 - **ILAP** — Main entity representing an ILAP institution
-- **ILAPKPP** — Relationship table linking ILAP and KPP (one ILAP can have many KPPs)
+- **ILAPKPP** — Wilayah mapping for an ILAP: to a KPP (`kpp=True`, kategori PD) or straight to a Kanwil (`kpp=False`, kategori PV). One ILAP can have many mappings
 - **JenisDataILAP** — Types of data associated with each ILAP
 - **KlasifikasiJenisData** — Many-to-many link between JenisDataILAP and DasarHukum
 - **PeriodeJenisData** — Submission periods for each data type
@@ -367,7 +374,7 @@ KategoriILAP, KategoriWilayah, Kanwil, KPP, JenisTabel, StatusData, StatusPeneli
 - **DurasiJatuhTempo** — Due date durations per seksi (Group)
 
 ### Receipt & Backup
-- **TandaTerimaData** — Receipt of data from ILAP
+- **TandaTerimaData** — Receipt of data, scoped either per Kanwil (regional ILAP) or per ILAP (nasional/internasional), optionally narrowed to a single ND Pengantar
 - **DetilTandaTerima** — Line items linking receipts to tickets
 - **BackupData** — Backup records per ticket
 - **KirimPideTemp** — Temporary PIDE submission records
@@ -567,13 +574,17 @@ Institusi Penerima Data (ILAP) — Entitas utama yang menerima dan mengelola dat
 
 ### `ILAPKPP` — `ilap_kpp`
 
-ILAP KPP — Tabel relasi antara ILAP dan KPP (satu ILAP dapat memiliki banyak KPP).
+ILAP KPP — Tabel relasi wilayah untuk ILAP (satu ILAP dapat memiliki banyak relasi). ILAP kategori `PD` (Pemda Kabupaten/Kota) dipetakan ke KPP, sedangkan ILAP kategori `PV` (Pemda Provinsi) tidak memiliki padanan KPP dan dipetakan langsung ke Kanwil. Flag `kpp` menentukan sisi relasi mana yang terisi: `True` → `id_kpp`, `False` → `id_kanwil`.
 
 | Field | Type | PK | FK | Constraints | Index | Description |
 |-------|------|----|----|-------------|-------|-------------|
 | `id` | `AutoField` | ✅ | | | | Primary Key |
 | `id_ilap` | `ForeignKey` | | ✅ → `ILAP` | `on_delete=PROTECT` | ✅ `ilk_id_ilap_idx` | ILAP terkait |
-| `id_kpp` | `ForeignKey` | | ✅ → `KPP` | `on_delete=PROTECT` | ✅ `ilk_id_kpp_idx` | KPP terkait |
+| `kpp` | `BooleanField` | | | `default=True` | | `True`: dipetakan ke KPP, `False`: dipetakan ke Kanwil |
+| `id_kpp` | `ForeignKey` | | ✅ → `KPP` | `on_delete=PROTECT, null=True, blank=True` | ✅ `ilk_id_kpp_idx` | KPP terkait (diisi saat `kpp=True`) |
+| `id_kanwil` | `ForeignKey` | | ✅ → `Kanwil` | `on_delete=PROTECT, null=True, blank=True` | ✅ `ilk_id_kanwil_idx` | Kanwil terkait (diisi saat `kpp=False`) |
+
+**Properti:** `kanwil` — mengembalikan Kanwil dari relasi ini, baik langsung (`id_kanwil`) maupun melalui KPP (`id_kpp.id_kanwil`).
 
 ---
 
@@ -730,6 +741,7 @@ Tiket — Inti sistem pelacakan pengajuan data.
 | `tgl_terima_dip` | `DateTimeField` | | | | ✅ `tiket_terima_dip_idx` | Tanggal terima DIP |
 | `backup` | `BooleanField` | | | `default=False` | | Status backup direkam |
 | `tanda_terima` | `BooleanField` | | | `default=False` | | Status tanda terima dibuat |
+| `special_request` | `BooleanField` | | | `default=False` | | Penanda special request |
 | `id_status_penelitian` | `ForeignKey` | | ✅ → `StatusPenelitian` | `on_delete=PROTECT, null=True, blank=True` | | Status penelitian |
 | `tgl_teliti` | `DateTimeField` | | | `null=True, blank=True` | | Tanggal diteliti |
 | `baris_lengkap` | `IntegerField` | | | `null=True, blank=True` | | Baris data lengkap |
@@ -792,7 +804,7 @@ Catatan Aksi Tiket — Log tindakan yang dilakukan pada tiket.
 
 ### `TandaTerimaData` — `tanda_terima_data`
 
-Tanda Terima Data — Bukti penerimaan data dari ILAP.
+Tanda Terima Data — Bukti penerimaan data yang mencakup satu atau beberapa tiket. Lingkupnya adalah **per Kanwil** (ILAP regional — kategori PV dan PD) atau **per ILAP** (ILAP nasional/internasional); tepat satu di antara `id_kanwil` dan `id_ilap` terisi. `nomor_nd_pengantar` mempersempit lingkup lebih jauh ke satu ND Pengantar.
 
 | Field | Type | PK | FK | Constraints | Index | Description |
 |-------|------|----|----|-------------|-------|-------------|
@@ -800,11 +812,15 @@ Tanda Terima Data — Bukti penerimaan data dari ILAP.
 | `nomor_tanda_terima` | `IntegerField` | | | | | Nomor tanda terima (sequence) |
 | `tahun_terima` | `IntegerField` | | | | | Tahun penerimaan |
 | `tanggal_tanda_terima` | `DateTimeField` | | | | | Tanggal tanda terima |
-| `id_ilap` | `ForeignKey` | | ✅ → `ILAP` | `on_delete=PROTECT` | | ILAP penerima |
+| `id_ilap` | `ForeignKey` | | ✅ → `ILAP` | `on_delete=PROTECT, null=True, blank=True` | | ILAP penerima (lingkup nasional) |
+| `id_kanwil` | `ForeignKey` | | ✅ → `Kanwil` | `on_delete=PROTECT, null=True, blank=True` | | Kanwil penerima (lingkup regional) |
+| `nomor_nd_pengantar` | `CharField(80)` | | | `blank=True` | | Nomor ND Pengantar (opsional) |
 | `id_perekam` | `ForeignKey` | | ✅ → `User` (auth) | `on_delete=PROTECT` | | Perekam / petugas |
 | `active` | `BooleanField` | | | `default=True` | | Status aktif |
 
 **Composite Constraints:** `unique_together = ('nomor_tanda_terima', 'tahun_terima')`
+
+**Properti:** `is_regional` (lingkup Kanwil), `nama_sumber` (nama Kanwil atau ILAP), `nomor_tanda_terima_format` (mis. `00001.TTD/PJ.1031/2026`). Alokasi nomor dilakukan di sisi server melalui `diamond_web/utils/tanda_terima_nomor.py`.
 
 ---
 

@@ -35,6 +35,8 @@ Aplikasi ini menggunakan autentikasi berbasis sesi bawaan Django. Semua endpoint
 ### Konfigurasi Sesi
 - Waktu tunggu sesi: **30 menit** (`SESSION_COOKIE_AGE = 1800`)
 - Sesi berakhir saat browser ditutup: **Tidak**
+- `SESSION_SAVE_EVERY_REQUEST = False` — sesi tidak ditulis ulang pada setiap request (menghindari *lock contention* SQLite)
+- **Sliding session:** `diamond_web.middleware.SlidingSessionMiddleware` memperpanjang masa berlaku sesi bagi pengguna yang aktif menjelajah, paling banyak satu kali penulisan per setengah masa `SESSION_COOKIE_AGE`. Pengguna yang menganggur tetap keluar sesuai jadwal. Middleware harus berada **setelah** `AuthenticationMiddleware` dan **di dalam** `SessionMiddleware`
 
 ---
 
@@ -49,6 +51,34 @@ Aplikasi ini menggunakan autentikasi berbasis sesi bawaan Django. Semua endpoint
 | `GET` | `/api/check-tiket-exists/` | Periksa apakah tiket sudah ada | ✓ |
 | `GET` | `/api/preview-nomor-tiket/` | Pratinjau nomor tiket yang dihasilkan otomatis | ✓ |
 | `GET` | `/api/ilap/<ilap_id>/periode-jenis-data/` | Ambil tipe data periode ILAP | ✓ |
+| `GET` | `/api/navbar-search/?q=<term>` | Pencarian global navbar: pencocokan persis + saran ILAP/sub jenis data | ✓ |
+
+#### `GET /api/navbar-search/`
+
+Melayani kedua sisi kotak pencarian navbar. Hasil dibatasi sesuai hak akses pengguna: pengguna tanpa akses halaman Profil ILAP tidak menerima saran maupun kecocokan ILAP/sub jenis data, dan kecocokan nomor tiket hanya dikembalikan untuk tiket yang boleh dibuka pengguna tersebut.
+
+| Parameter | Deskripsi |
+|-----------|-------------|
+| `q` | Kata kunci pencarian. Kata majemuk mensyaratkan seluruh kata cocok |
+
+```json
+{
+  "match": "ilap",
+  "url": "/profil-ilap/BI001/",
+  "label": "BI001 - Bank Indonesia",
+  "suggestions": [
+    {
+      "type": "jenis_data",
+      "type_label": "Jenis Data",
+      "url": "/jenis-data-ilap/BI0010101/",
+      "label": "BI0010101 - Data Penjualan",
+      "sublabel": "BI001 - Bank Indonesia"
+    }
+  ]
+}
+```
+
+`match` bernilai `null` bila tidak ada kecocokan persis, atau salah satu dari `ilap`, `jenis_data`, `tiket`. Nomor tiket sengaja tidak muncul pada `suggestions` — nomor parsial mengidentifikasi periode, bukan tiket, sehingga penelusurannya dilakukan melalui Daftar Tiket.
 
 ### Endpoint Umum
 
@@ -56,6 +86,9 @@ Aplikasi ini menggunakan autentikasi berbasis sesi bawaan Django. Semua endpoint
 |--------|-----|-------------|
 | `GET` | `/` | Halaman beranda (dasbor berdasarkan peran) |
 | `GET` | `/home/data/` | Data halaman beranda (AJAX) |
+| `GET` | `/home/pic-p3de-users/` | Daftar anggota `user_p3de` untuk modal quick-assign PIC |
+| `GET` | `/home/pic-pide-users/` | Daftar anggota `user_pide` untuk modal quick-assign PIC |
+| `GET` | `/home/pic-pmde-users/` | Daftar anggota `user_pmde` untuk modal quick-assign PIC |
 | `GET` | `/keep-alive/` | Pemeriksaan kesehatan / menjaga sesi tetap aktif |
 | `GET` | `/session-expired/` | Halaman notifikasi sesi berakhir |
 | `GET` | `/profil/` | Halaman profil pengguna |
@@ -173,7 +206,13 @@ Setiap modul data master mengikuti pola URL yang konsisten:
 | `GET` | `/jenis-data/sub/existing/` | Ambil daftar Sub Jenis Data yang ada |
 | `GET` | `/jenis-data/sub/next/` | Ambil ID Sub Jenis Data berikutnya |
 | `GET` | `/tanda-terima-data/next-number/` | Ambil nomor tanda terima berikutnya |
-| `GET` | `/tanda-terima-data/tikets-by-ilap/` | Ambil tiket yang dikelompokkan berdasarkan ILAP |
+| `GET` | `/tanda-terima-data/tikets-by-ilap/` | Ambil tiket yang dapat dipilih untuk lingkup tanda terima (Kanwil atau ILAP) |
+| `GET` | `/tanda-terima-data/nd-pengantar-options/` | Ambil nomor ND Pengantar yang tersedia dalam lingkup tanda terima |
+| `GET` | `/jenis-data-ilap/<pk>/info/` | Ambil detail klasifikasi sebuah Jenis Data ILAP |
+| `GET` | `/jenis-data-ilap/<id_sub_jenis_data>/tikets/` | Data JSON DataTables tiket untuk satu sub jenis data |
+| `GET` | `/backup-data/tiket-info/<tiket_pk>/` | Ringkasan tiket (ILAP, jenis data, periode, jumlah baris) untuk formulir Backup Data |
+
+> **Catatan cakupan:** `/backup-data/tiket-info/<tiket_pk>/` menerapkan cakupan data yang sama dengan Daftar Tiket — admin, superuser, dan kasi tanpa batasan; pengguna lain hanya untuk tiket dengan penugasan PIC aktif. Penolakan dikembalikan sebagai `404`, bukan `403`, agar respons tidak mengonfirmasi keberadaan tiket tersebut.
 
 ---
 
@@ -202,6 +241,13 @@ Setiap modul data master mengikuti pola URL yang konsisten:
 | `GET/POST` | `/tiket/<pk>/dikembalikan/` | Kembalikan tiket ke P3DE (modal) | → **Dikembalikan (3)** |
 | `GET/POST` | `/tiket/<pk>/transfer-ke-pmde/` | Transfer tiket ke PMDE (modal) | → **Pengendalian Mutu (6)** |
 | `GET/POST` | `/tiket/<pk>/selesaikan/` | Selesaikan tiket (modal) | → **Selesai (8)** |
+
+### Aksi Tiket Tanpa Perubahan Status
+
+| Method | URL | Deskripsi |
+|--------|-----|-------------|
+| `GET/POST` | `/tiket/<pk>/edit/` | Ubah isian tiket (modal). PIC P3DE aktif hanya saat status *Direkam* dan belum ada tanda terima; Admin P3DE (`admin`, `admin_p3de`, superuser) pada status mana pun. Tercatat sebagai aksi `10` (*Isian Tiket Diubah*) |
+| `GET/POST` | `/tiket/<pk>/special-request/` | Aktifkan/nonaktifkan penanda special request (modal). Hanya oleh PIC aktif pemilik tiket sesuai statusnya: P3DE (1–3), PIDE (4–5), PMDE (6). Tercatat sebagai aksi `401`/`402` hanya bila nilainya benar-benar berubah |
 
 ### Sub-endpoint Kirim Tiket
 
