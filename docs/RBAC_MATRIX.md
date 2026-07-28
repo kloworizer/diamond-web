@@ -1,6 +1,6 @@
 # Matriks RBAC & Hak Akses Menu
 
-> **Terakhir Diperbarui:** Juni 24, 2026  
+> **Terakhir Diperbarui:** Juli 28, 2026 (versi 1.2.0)  
 > **Proyek:** Diamond — Sistem P3DE/PIDE/PMDE
 
 ---
@@ -9,6 +9,7 @@
 
 - [Grup Pengguna (Role)](#grup-pengguna-role)
 - [Matriks Akses Menu Berdasarkan Role](#matriks-akses-menu-berdasarkan-role)
+- [Cakupan Data (Row-Level Scope)](#cakupan-data-row-level-scope)
 - [Deskripsi Menu](#deskripsi-menu)
 - [Implementasi RBAC](#implementasi-rbac)
 
@@ -16,14 +17,36 @@
 
 ## Grup Pengguna (Role)
 
-Sistem Diamond memiliki **4 grup pengguna** dengan tingkat akses yang berbeda:
+Sistem Diamond memiliki **grup pengguna operasional**, **grup pengawas (kasi)**, dan **grup administrator** dengan tingkat akses yang berbeda:
+
+### Grup Operasional
 
 | Grup | Deskripsi | Singkatan |
 |------|-----------|-----------|
 | `user_p3de` | Penghimpunan Data Eksternal — Tim pengumpul data | P3DE |
 | `user_pide` | Pengolahan Informasi Data Eksternal — Tim pengolah data | PIDE |
 | `user_pmde` | Pengendalian Mutu Data Eksternal — Tim quality control | PMDE |
-| `admin` | Administrator sistem — Akses penuh termasuk sync Oracle | Admin |
+
+### Grup Pengawas (Kasi)
+
+Kasi **bukan** administrator: mereka tidak memperoleh menu admin maupun sinkronisasi Oracle. Yang membedakan kasi dari pengguna biasa adalah **cakupan data** — kasi tidak dibatasi pada tiket tempat mereka menjadi PIC aktif, sehingga dapat memantau seluruh tiket unitnya.
+
+| Grup | Deskripsi |
+|------|-----------|
+| `kasi_p3de` | Kepala Seksi P3DE — pengawas tim penghimpunan data |
+| `kasi_pide` | Kepala Seksi PIDE — pengawas tim pengolahan data |
+| `kasi_pmde` | Kepala Seksi PMDE — pengawas tim pengendalian mutu |
+
+### Grup Administrator
+
+| Grup | Deskripsi |
+|------|-----------|
+| `admin` | Administrator global — seluruh menu admin ditambah sinkronisasi Oracle |
+| `admin_p3de` | Administrator divisi P3DE — referensi & ILAP P3DE, PIC P3DE, template, sequence |
+| `admin_pide` | Administrator divisi PIDE — Durasi Jatuh Tempo PIDE, Nama Tabel, PIC PIDE |
+| `admin_pmde` | Administrator divisi PMDE — Durasi Jatuh Tempo PMDE, PIC PMDE |
+
+> Rincian menu per role admin tersedia pada [Panduan Menu Admin](ADMIN_MENU_GUIDE.md).
 
 ---
 
@@ -47,6 +70,15 @@ Berikut adalah matriks hak akses setiap menu di navbar untuk masing-masing grup 
 | **Daftar Tiket** | `/tiket/` | ✅ | ✅ | ✅ | ✅ |
 | **Kirim Tiket ke PIDE** | `/tiket/kirim-tiket/` | ✅ | ❌ | ❌ | ✅ |
 | **Identifikasi Tiket** | `/tiket/identifikasi/` | ❌ | ✅ | ❌ | ✅ |
+
+### Aksi pada Detail Tiket
+
+Aksi berikut bukan menu navbar melainkan tombol pada halaman detail tiket. Selain grup, aksi ini juga menuntut pengguna berperan sebagai **PIC aktif** yang memiliki tiket pada status berjalan.
+
+| Aksi | URL | Syarat |
+|------|-----|--------|
+| **Edit Tiket** | `/tiket/<pk>/edit/` | PIC P3DE aktif, hanya selama status *Direkam* dan belum ada tanda terima. Admin P3DE (`admin`, `admin_p3de`, superuser) dikecualikan dan dapat mengedit pada status mana pun |
+| **Special Request** | `/tiket/<pk>/special-request/` | PIC aktif pemilik tiket sesuai statusnya: P3DE (status 1–3), PIDE (4–5), PMDE (6). Status 7–8 tidak dapat diubah |
 
 ### Tanda Terima
 
@@ -103,7 +135,8 @@ Berikut adalah matriks hak akses setiap menu di navbar untuk masing-masing grup 
 | **Kelengkapan Data** | `/laporan-kelengkapan-data/` | ❌ | ❌ | ✅ | ✅ |
 | **Rekap Himpun Olah Data** | `/laporan-rekap-himpun-olah-data/` | ❌ | ❌ | ✅ | ✅ |
 | **Detail Himpun Olah Data** | `/laporan-detail-himpun-olah-data/` | ❌ | ❌ | ✅ | ✅ |
-| **Profil ILAP** | `/profil-ilap/` | ✅ | ✅ | ✅ | ✅ |
+| **Profil ILAP** | `/profil-ilap/` | ✅ | ❌ | ❌ | ✅ |
+| **Profil Sub Jenis Data** | `/jenis-data-ilap/<id_sub_jenis_data>/` | ✅ | ❌ | ❌ | ✅ |
 | **Monitoring Penyampaian Data** | `/monitoring-penyampaian-data/` | ✅ | ✅ | ✅ | ✅ |
 | **Quality Control** | `/quality-control/` | ❌ | ✅ | ✅ | ✅ |
 
@@ -121,6 +154,22 @@ Berikut adalah matriks hak akses setiap menu di navbar untuk masing-masing grup 
 |------|-----|:----:|:----:|:----:|:-----:|
 | **Admin Django** | `/admin/` | ❌ | ❌ | ❌ | ✅ (superuser) |
 | **Bulk Generate Dokumen** | `/bulk-generate/` | ✅ | ✅ | ❌ | ✅ |
+
+---
+
+## Cakupan Data (Row-Level Scope)
+
+Hak akses menu menentukan halaman mana yang boleh dibuka; **cakupan data** menentukan baris mana yang terlihat di dalamnya. Keduanya terpisah — dua pengguna dengan menu yang sama dapat melihat isi tabel yang berbeda.
+
+| Kelompok | Cakupan tiket yang terlihat |
+|----------|-----------------------------|
+| Superuser & grup `admin` | Seluruh tiket |
+| Grup kasi (`kasi_p3de`, `kasi_pide`, `kasi_pmde`) | Seluruh tiket |
+| `user_p3de` / `user_pide` / `user_pmde` | Hanya tiket dengan penugasan `TiketPIC` aktif atas nama pengguna tersebut |
+
+Aturan ini berlaku konsisten pada Daftar Tiket, dashboard Tugas Saya, Monitoring Penyampaian Data, Quality Control, dan endpoint ringkasan tiket pada Backup Data. Endpoint JSON menerapkan cakupan yang sama seperti halamannya, sehingga id tiket tidak dapat ditelusuri secara berurutan untuk membaca data di luar cakupan pengguna.
+
+Helper terkait berada di `diamond_web/views/mixins.py`: `is_kasi()`, `is_kasi_p3de()`, `is_kasi_pide()`, `is_kasi_pmde()`, `is_admin_p3de()`, dan `can_access_tiket_list()`.
 
 ---
 
@@ -152,11 +201,19 @@ Berikut adalah matriks hak akses setiap menu di navbar untuk masing-masing grup 
 - ❌ Tidak bisa mengakses backup data
 - ❌ Tidak bisa mengakses sync Oracle
 
+### Kasi (kasi_p3de / kasi_pide / kasi_pmde)
+- ✅ Melihat seluruh tiket unitnya tanpa harus menjadi PIC aktif
+- ✅ Daftar Tiket, Monitoring Penyampaian Data, dan Quality Control tanpa batasan PIC
+- ❌ Tidak memperoleh menu admin (referensi, PIC, template, sequence)
+- ❌ Tidak bisa mengakses sync Oracle
+- ❌ Tidak memperoleh aksi alur kerja yang menuntut peran PIC aktif
+
 ### Admin
 - ✅ Semua akses termasuk sync Oracle
 - ✅ Manajemen user melalui Django Admin
 - ✅ Template dokumen dan bulk generate
 - ✅ Semua laporan
+- ✅ Admin P3DE (`admin`, `admin_p3de`, superuser) dapat mengedit isian tiket pada status mana pun
 
 ---
 
@@ -166,8 +223,9 @@ RBAC diimplementasikan menggunakan:
 
 1. **Django Group Model** — Grup dibuat melalui Django Admin
 2. **Decorator di Views** — Pengecekan grup menggunakan `request.user.groups.filter(name='...').exists()`
-3. **Template Tag `has_group`** — Filter UI di template (`diamond_web/templatetags/auth_extras.py`)
-4. **Home View** — Dashboard berbeda ditampilkan berdasarkan role (`diamond_web/views/home.py`)
+3. **Mixin & Helper Terpusat** — `diamond_web/views/mixins.py` menyediakan mixin (`UserP3DERequiredMixin`, `ActiveTiketP3DERequiredForEditMixin`, dll.) dan helper grup (`is_kasi`, `is_admin_p3de`, `can_access_tiket_list`) agar aturan yang sama tidak ditulis ulang per view
+4. **Template Tag `has_group`** — Filter UI di template (`diamond_web/templatetags/auth_extras.py`)
+5. **Home View** — Dashboard berbeda ditampilkan berdasarkan role (`diamond_web/views/home.py`)
 
 ### Contoh Pengecekan di View
 

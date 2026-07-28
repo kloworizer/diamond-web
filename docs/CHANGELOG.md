@@ -1,5 +1,57 @@
 # Catatan Rilis & Perubahan
 
+## [1.2.0] — 2026-07-28
+
+### Ditambahkan
+- **Edit Isian Tiket** — Aksi baru `Edit Tiket` (modal AJAX) bagi PIC P3DE aktif untuk memperbaiki isian tiket selama tiket masih berstatus *Direkam* dan belum memiliki tanda terima. Admin P3DE (`admin`, `admin_p3de`, superuser) dikecualikan dari pembatasan tersebut sehingga dapat mengoreksi tiket pada titik mana pun dalam alur kerja. Setiap perubahan dicatat pada riwayat aksi tiket sebagai *Isian Tiket Diubah* (`action = 10`).
+- **Special Request pada Tiket** — Penanda `special_request` pada tiket yang dapat diaktifkan/dinonaktifkan melalui modal oleh PIC aktif pemilik tiket sesuai statusnya (P3DE untuk status 1–3, PIDE untuk 4–5, PMDE untuk 6). Perubahan nilai dicatat sebagai aksi *Special Request Diaktifkan/Dinonaktifkan* (`action = 401/402`), tersedia sebagai kolom & filter pada daftar tiket, serta ditonjolkan pada dashboard.
+- **Pemetaan ILAP ke Kanwil (kategori PV)** — `ILAPKPP` kini dapat memetakan ILAP langsung ke Kanwil tanpa melalui KPP, ditentukan oleh flag `kpp`. ILAP kategori `PD` (Pemda Kabupaten/Kota) tetap memetakan ke KPP, sedangkan ILAP kategori `PV` (Pemda Provinsi) memetakan ke Kanwil. Disertai seed pemetaan ILAP–Kanwil dan properti bantu `ILAP.kanwil` / `ILAP.kanwil_list`.
+- **Tanda Terima Berlingkup Kanwil & ND Pengantar** — Tanda terima kini dapat direkam per **Kanwil** (ILAP regional) atau per **ILAP** (nasional/internasional) melalui selektor *lingkup*, dengan opsi penyaringan tambahan berdasarkan **Nomor ND Pengantar**. Nomor tanda terima dialokasikan di sisi server saat penyimpanan sehingga aman terhadap perebutan nomor dan perpindahan tahun seri.
+- **Profil Sub Jenis Data** — Halaman profil per sub jenis data (`/jenis-data-ilap/<id_sub_jenis_data>/`) berisi ringkasan periode dan capaian per tahun beserta daftar tiket terkait. Halaman Profil ILAP diperkaya dengan rekap sub jenis data dan tiket.
+- **Pencarian Global di Navbar** — Kotak pencarian pada navbar dengan saran (*suggestions*) berperingkat untuk ILAP dan sub jenis data, serta pencocokan persis untuk kode ILAP, kode sub jenis data, dan nomor tiket. Hasil selalu dibatasi sesuai hak akses pengguna.
+- **Grup Kasi (Supervisor)** — Tiga grup pengawas baru: `kasi_p3de`, `kasi_pide`, `kasi_pmde`. Kasi bukan admin, namun tidak dibatasi pada tiket tempat mereka menjadi PIC aktif sehingga dapat memantau seluruh tiket unitnya.
+- **Dashboard Tugas Saya: Quick-Assign PIC & SLA Kustom** — Tombol penugasan cepat PIC P3DE/PIDE/PMDE langsung dari dashboard untuk tiket tanpa PIC, kolom **Nama Tabel I**, badge jumlah tugas real-time, toolbar terpadu, serta filter kelompok umur tiket berbasis SLA PIDE 30 hari kerja dan PMDE 85 hari kerja.
+- **Sliding Session Middleware** — `SlidingSessionMiddleware` memperpanjang masa sesi pengguna yang aktif menjelajah tanpa menulis baris sesi pada setiap request (menghindari *lock contention* SQLite). Pengguna yang menganggur tetap keluar sesuai jadwal.
+- **Ringkasan Tiket pada Formulir Backup Data** — Endpoint `GET /backup-data/tiket-info/<tiket_pk>/` yang mengisi ILAP, jenis data, periode, dan jumlah baris pada formulir Rekam Backup Data, dengan pembatasan akses setara daftar tiket.
+- **Panduan Menu Admin** — Dokumen baru `docs/ADMIN_MENU_GUIDE.md` yang menjelaskan menu administratif P3DE, PIDE, dan PMDE; ikut ditampilkan pada halaman Dokumentasi.
+- **Pengujian End-to-End (Playwright)** — Suite E2E pada direktori `e2e/` yang mencakup alur normal tiket, alur alternatif, validasi form, aksi tambahan tiket, dan CRUD data master, dilengkapi skrip penyiapan data uji dan *runner*.
+
+### Diubah
+- **Input Tanggal Alur Kerja Menjadi Tanggal Saja** — Field `tgl_teliti`, `tgl_nadine`, `tgl_kirim_pide`, `tgl_rekam_pide`, dan `tgl_transfer` beralih dari `datetime-local` ke pemilih tanggal, dengan jam diisi otomatis dari waktu server saat perekaman.
+- **Perombakan Tampilan Detail Tiket & Modal Form** — Tata letak halaman detail tiket, modal konfirmasi, dan formulir alur kerja ditata ulang; daftar unduhan dokumen disajikan sebagai *list-group* dengan tombol *outline*, dan tombol *Tanda Terima* digabung menjadi **Tanda Terima & Lampiran**.
+- **Filter Daftar Tiket** — Filter beralih ke Select2 *multi-select* dengan tombol **Reset**, ditambah filter *Special Request*.
+- **Akses Daftar Tiket & Monitoring untuk Kasi** — `can_access_tiket_list` dan penyaringan pada daftar tiket, monitoring, serta backup data kini mengizinkan anggota grup kasi melihat seluruh tiket unitnya.
+- **URL Profil ILAP** — Berubah dari `/profil-ilap/<pk>/` menjadi `/profil-ilap/<id_ilap>/` (mis. `/profil-ilap/BI001/`).
+- **Helper Wilayah Terpusat** — Penyelesaian relasi ILAP/Tiket ke Kanwil dipindahkan ke `diamond_web/utils/wilayah.py` sehingga daftar tiket, monitoring, laporan, dan quality control memakai satu jalur relasi yang sama dan mendukung ILAP tanpa KPP.
+- **Penyegaran Gaya Tabel, Tombol, & Aksesibilitas** — Penyeragaman gaya tabel dan tombol pada seluruh template daftar, halaman login, navbar, notifikasi, dan formulir PIC, termasuk perbaikan kontras warna judul modal.
+- **Validasi & Tampilan Formulir Data Master** — Penyempurnaan validasi serta tampilan pada formulir Dasar Hukum, Durasi Jatuh Tempo, Jenis Prioritas Data, Periode Jenis Data, PIC, dan Profil pengguna.
+- **Formulir & Daftar Backup Data** — Perombakan tampilan modal Rekam Backup Data agar selaras dengan gaya formulir lain, serta penyegaran daftar Backup Data.
+
+### Diperbaiki
+- Validasi sisi server pada penyelesaian tiket: `lolos_qc` + `tidak_lolos_qc` wajib sama dengan `baris_i`, sehingga selisih QC tidak lagi lolos tanpa pemeriksaan.
+- Validasi kronologi tanggal: `tgl_teliti` tidak boleh mendahului tanggal tanda terima tiket (pemeriksaan terpisah karena tanda terima berada di tabel lain).
+- Kebocoran informasi tiket pada endpoint ringkasan tiket di Backup Data — pengguna `user_p3de` sebelumnya dapat menelusuri id tiket secara berurutan dan membaca ILAP, jenis data, periode, serta jumlah baris tiket yang sengaja disembunyikan dari daftar tiketnya.
+- Sesi berakhir di tengah pekerjaan meskipun pengguna aktif menjelajah, karena `SESSION_SAVE_EVERY_REQUEST=False` membuat masa berlaku sesi tidak pernah diperpanjang dan *keep-alive* sisi klien baru berjalan sepuluh menit setelah halaman dimuat.
+- `AttributeError` pada helper `_merge_docx` akibat dekorator view yang tidak seharusnya melekat, yang membuat penggabungan dokumen gagal.
+- Pemeriksaan izin pada aksi *Tidak Diterbitkan* mengembalikan status yang membuat *fetch* global mengalihkan pengguna ke halaman login.
+- `formatDateTime` tak terdefinisi pada formulir rekam tiket, serta variabel yang dideklarasikan ganda pada validasi *submit*.
+- Visibilitas dinamis status ketersediaan data dan alasan ketidaktersediaan pada formulir rekam tiket.
+- Berbagai bug Select2: penanganan pilihan, pembungkusan/kliping daftar pilihan, ikon hapus, dan *z-index*.
+- Peringatan aksesibilitas `aria-hidden` saat fokus berpindah ke tombol submit pada modal konfirmasi.
+- Filter `has_group` tidak lagi galat ketika `user` bernilai `None`.
+- *Dropdown* ILAP & Jenis Data pada formulir rekam tiket beserta *fallback* queryset ILAP dan pemeriksaan grup admin pada `TiketForm`.
+
+### Known Issues
+- Pemetaan wilayah baru mencakup ILAP kategori `PV` (Pemda Provinsi) yang di-seed langsung ke Kanwil. Data KPP dan pemetaan ILAP kategori `PD` (Pemda Kabupaten/Kota) ke KPP masih perlu dilengkapi.
+- Template dokumen (DOCX) belum sempurna — beberapa placeholder masih perlu penyesuaian.
+- Flow sinkronisasi ke bankdata untuk tiket baru belum lengkap.
+
+### Rencana
+- Pengembangan halaman Dashboard dengan Power BI.
+- Penyempurnaan template dokumen (Tanda Terima, ND Pengantar, Surat Klarifikasi, PKDI).
+- Penyempurnaan flow sinkronisasi tiket new Diamond dari bankdata.
+- Melengkapi data KPP dan pemetaan ILAP kategori `PD` ke KPP.
+
 ## [1.1.1] — 2026-07-17
 
 ### Ditambahkan

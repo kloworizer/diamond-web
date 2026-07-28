@@ -62,6 +62,7 @@ Seluruh dokumentasi proyek tersedia di folder [`docs/`](docs/):
 | [📊 **status_tiket_flow.md**](docs/status_tiket_flow.md) | Diagram alur status tiket |
 | [📄 **TEMPLATES_SETUP.md**](docs/TEMPLATES_SETUP.md) | Setup template DOCX |
 | [🔑 **RBAC_MATRIX.md**](docs/RBAC_MATRIX.md) | Matriks RBAC & hak akses menu berdasarkan role |
+| [🛡️ **ADMIN_MENU_GUIDE.md**](docs/ADMIN_MENU_GUIDE.md) | Panduan menu admin P3DE/PIDE/PMDE dan efek samping menu PIC |
 
 ---
 
@@ -136,6 +137,7 @@ diamond-web/
 │   ├── urls.py                # ~300+ baris routing (semua endpoint aplikasi)
 │   ├── signals.py             # Signal: sambutan login
 │   ├── context_processors.py  # Context processor: notifikasi, git commit, tahun
+│   ├── middleware.py          # SlidingSessionMiddleware: perpanjang sesi pengguna aktif
 │   ├── tasks.py               # Celery tasks: background sync Oracle
 │   │
 │   ├── models/                # 📦 Model-model database
@@ -175,6 +177,8 @@ diamond-web/
 │   │   │   ├── identifikasi_tiket.py       # Modal: Identifikasi tiket
 │   │   │   ├── transfer_ke_pmde.py         # Modal: Transfer ke PMDE
 │   │   │   ├── selesaikan_tiket.py         # Modal: Selesaikan tiket
+│   │   │   ├── edit_tiket.py               # Modal: Edit isian tiket (PIC P3DE / Admin P3DE)
+│   │   │   ├── special_request.py          # Modal: Toggle penanda special request
 │   │   │   └── documents.py  # Download dokumen tiket
 │   │   ├── backup_data.py, tanda_terima_data.py, monitoring_penyampaian_data.py
 │   │   ├── ilap.py, jenis_data_ilap.py, profil_ilap.py, periode_jenis_data.py
@@ -209,7 +213,10 @@ diamond-web/
 │   │
 │   ├── utils/
 │   │   ├── oracle_sync.py    # 🔄 Oracle sync service (3368 baris!)
-│   │   └── docx_template.py  # 📄 DOCX template processing
+│   │   ├── docx_template.py  # 📄 DOCX template processing
+│   │   ├── wilayah.py        # 🗺️ Resolusi relasi ILAP/Tiket → Kanwil (via KPP atau langsung)
+│   │   ├── tanda_terima_nomor.py  # Alokasi & format nomor tanda terima (server-side)
+│   │   └── tanda_terima_scope.py  # Lingkup tanda terima (Kanwil/ILAP, ND Pengantar)
 │   │
 │   ├── constants/
 │   │   ├── tiket_status.py        # Status tiket & badge classes
@@ -229,14 +236,20 @@ diamond-web/
 │   ├── static/                # Static files (CSS, JS, images)
 │   └── media/                 # User-uploaded files (tidak di-git)
 │
+├── e2e/                       # 🎭 Test end-to-end Playwright (alur tiket, validasi form, CRUD)
 ├── Duralux-admin/             # 🎨 Frontend HTML template (static mockup)
 ├── requirements/              # 📦 Python dependencies
 │   ├── base.txt               # Base dependencies
 │   ├── dev.txt                # Development dependencies
 │   └── prod.txt               # Production dependencies
 │
-├── docs/
-│   └── models_erd.md          # ERD documentation
+├── docs/                      # 📚 Dokumentasi internal (juga tampil di /docs/)
+│   ├── CHANGELOG.md           # Catatan rilis & perubahan
+│   ├── models_erd.md          # ERD documentation
+│   ├── RBAC_MATRIX.md         # Matriks RBAC & hak akses menu
+│   ├── ADMIN_MENU_GUIDE.md    # Panduan menu admin (P3DE, PIDE, PMDE)
+│   ├── API_DOCUMENTATION.md   # Daftar endpoint
+│   └── ...                    # Panduan setup, deployment, handover
 │
 ├── htmlcov/                   # Coverage report (hasil pytest --cov)
 ├── sync_logs/                 # Log sinkronisasi Oracle
@@ -369,7 +382,7 @@ python manage.py createsuperuser
 
 Setelah login sebagai superuser, buka [http://localhost:8000/admin/](http://localhost:8000/admin/) dan:
 
-1. **Buat grup** dengan nama: `user_p3de`, `user_pide`, `user_pmde`, `admin`
+1. **Buat grup** dengan nama: `user_p3de`, `user_pide`, `user_pmde`, `admin`. Opsional: `admin_p3de`, `admin_pide`, `admin_pmde`, `kasi_p3de`, `kasi_pide`, `kasi_pmde`
 2. **Assign user** ke grup yang sesuai
 3. Login ke aplikasi di [http://localhost:8000](http://localhost:8000)
 
@@ -378,9 +391,11 @@ Setelah login sebagai superuser, buka [http://localhost:8000/admin/](http://loca
 | `user_p3de` | Tiket Rekam, Kirim, Backup Data, Tanda Terima, Laporan P3DE |
 | `user_pide` | Identifikasi, Penelitian, Transfer ke PMDE, Kendali Mutu |
 | `user_pmde` | Laporan Kelengkapan Data, Rekap Himpun Olah Data |
-| `admin` | Sync Oracle via Web UI |
+| `kasi_p3de` / `kasi_pide` / `kasi_pmde` | Sama seperti grup user seksinya, tetapi melihat **seluruh tiket** tanpa harus menjadi PIC aktif |
+| `admin_p3de` / `admin_pide` / `admin_pmde` | Menu admin per divisi (referensi, PIC, template, durasi jatuh tempo) |
+| `admin` | Seluruh menu admin + Sync Oracle via Web UI |
 
-> Cek kode di `diamond_web/views/home.py` untuk detail view berdasarkan grup.
+> Cek kode di `diamond_web/views/home.py` untuk detail view berdasarkan grup, `diamond_web/views/mixins.py` untuk helper grup, [docs/RBAC_MATRIX.md](docs/RBAC_MATRIX.md) untuk matriks lengkap, dan [docs/ADMIN_MENU_GUIDE.md](docs/ADMIN_MENU_GUIDE.md) untuk menu admin.
 
 ---
 
@@ -429,7 +444,14 @@ Tiket adalah **inti dari aplikasi**. Workflow dimulai dari data masuk hingga sel
 | **Transfer ke PMDE** | `/tiket/<pk>/transfer-ke-pmde/` | Transfer data ke PMDE |
 | **Selesaikan** | `/tiket/<pk>/selesaikan/` | Penyelesaian tiket |
 
-> Aksi modal (batalkan, penelitian, dll.) diakses dari halaman **Detail Tiket** (`/tiket/<pk>/`).
+Selain tahapan di atas, ada dua aksi yang **tidak mengubah status** tiket:
+
+| Aksi | URL | Keterangan |
+|------|-----|-----------|
+| **Edit Tiket** | `/tiket/<pk>/edit/` | Koreksi isian tiket. PIC P3DE aktif hanya selama status *Direkam* dan belum ada tanda terima; Admin P3DE bebas pada status mana pun |
+| **Special Request** | `/tiket/<pk>/special-request/` | Aktifkan/nonaktifkan penanda special request oleh PIC aktif pemilik tiket sesuai statusnya |
+
+> Aksi modal (batalkan, penelitian, edit, special request, dll.) diakses dari halaman **Detail Tiket** (`/tiket/<pk>/`). Setiap aksi tercatat pada riwayat aksi tiket (`TiketAction`).
 
 **API Endpoints (JSON)**:
 
@@ -439,6 +461,7 @@ Tiket adalah **inti dari aplikasi**. Workflow dimulai dari data masuk hingga sel
 | `/api/check-jenis-prioritas/<jenis_data_id>/<tahun>/` | Cek prioritas data |
 | `/api/check-tiket-exists/` | Cek apakah tiket sudah ada |
 | `/api/preview-nomor-tiket/` | Preview nomor tiket |
+| `/api/navbar-search/?q=<term>` | Pencarian global navbar (ILAP, sub jenis data, nomor tiket) |
 
 ### 3. Document Generator (DOCX)
 
@@ -489,7 +512,29 @@ Aplikasi memiliki **12+ jenis laporan** yang bisa diexport ke Excel:
 | Rekap Himpun Olah Data | `/laporan-rekap-himpun-olah-data/` | Rekap penghimpunan & pengolahan |
 | Detail Himpun Olah Data | `/laporan-detail-himpun-olah-data/` | Detail penghimpunan & pengolahan |
 
+Halaman pemantauan lain:
+
+| Halaman | URL | Deskripsi |
+|---------|-----|-----------|
+| Profil ILAP | `/profil-ilap/` dan `/profil-ilap/<id_ilap>/` | Profil ILAP beserta rekap sub jenis data dan tiketnya |
+| Profil Sub Jenis Data | `/jenis-data-ilap/<id_sub_jenis_data>/` | Ringkasan periode & capaian per tahun untuk satu sub jenis data, beserta daftar tiket |
+| Monitoring Penyampaian Data | `/monitoring-penyampaian-data/` | Pemantauan penyampaian data |
+| Quality Control | `/quality-control/` | Halaman pengendalian mutu |
+
 Selain itu, ada **Dashboard Monitoring** di `/dashboard/` yang menampilkan Power BI report embedded.
+
+### 6. Tanda Terima Data
+
+Tanda terima direkam per **lingkup**, bukan selalu per ILAP:
+
+| Lingkup | Kapan dipakai | Field yang terisi |
+|---------|---------------|-------------------|
+| **Regional** | ILAP daerah (kategori Pemda Provinsi/Kabupaten/Kota) | `id_kanwil` |
+| **Nasional / Internasional** | ILAP pusat | `id_ilap` |
+
+Nomor **ND Pengantar** dapat dipakai untuk mempersempit tiket yang masuk ke satu tanda terima. Nomor tanda terima (`00001.TTD/PJ.1031/<tahun>`) dialokasikan di sisi server saat penyimpanan — nilai yang diposkan browser hanya dianggap usulan — sehingga aman dari perebutan nomor antar pengguna dan dari perpindahan tahun seri.
+
+Pemetaan ILAP daerah ke wilayah berada pada `ILAPKPP`: ILAP kategori `PD` dipetakan ke **KPP**, sedangkan ILAP kategori `PV` tidak memiliki padanan KPP dan dipetakan langsung ke **Kanwil** (`kpp=False`). Helper penyelesaian relasi wilayah ada di `diamond_web/utils/wilayah.py`.
 
 ---
 
@@ -561,6 +606,26 @@ Konfigurasi test ada di `pytest.ini`:
 - Settings: `config.test_settings`
 - Coverage: views, models, forms, context_processors
 - Report: HTML, terminal, XML
+
+### Test End-to-End (Playwright)
+
+Test E2E menjalankan aplikasi sungguhan di browser untuk memverifikasi alur tiket, validasi form, dan CRUD data master. Berkasnya ada di [`e2e/`](e2e/) — lihat [`e2e/README.md`](e2e/README.md) untuk detail.
+
+```bash
+# 1. Jalankan server dev di terminal lain (http://127.0.0.1:8000)
+python manage.py runserver
+
+# 2. Siapkan user + penugasan PIC untuk test (idempoten)
+python e2e/setup_test_data.py
+
+# 3. Jalankan seluruh skenario (headless)
+python e2e/run_all.py
+
+# Atau tampilkan browsernya
+E2E_HEADFUL=1 python e2e/run_all.py
+```
+
+Hasilnya ditulis ke `e2e/report/RESULTS.md` beserta tangkapan layar per langkah.
 
 ---
 
