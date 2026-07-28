@@ -402,13 +402,149 @@ class TestNavbarSearch:
     @pytest.mark.parametrize('term', ['', '   ', 'tidak-ada'])
     def test_no_match_returns_null(self, client, term):
         client.force_login(_p3de_user())
-        assert client.get(reverse('navbar_search'), {'q': term}).json() == {'match': None}
+        assert client.get(reverse('navbar_search'), {'q': term}).json() == {
+            'match': None, 'suggestions': []
+        }
 
     def test_users_without_profil_ilap_access_get_no_match(self, client):
         """Non-P3DE users fall through to the nomor tiket search instead of a 403."""
         ilap = ILAPFactory()
         client.force_login(UserFactory())
-        assert client.get(reverse('navbar_search'), {'q': ilap.id_ilap}).json() == {'match': None}
+        assert client.get(reverse('navbar_search'), {'q': ilap.id_ilap}).json() == {
+            'match': None, 'suggestions': []
+        }
+
+
+@pytest.mark.django_db
+class TestNavbarSearchSuggestions:
+    """Full text suggestions over ILAP and sub jenis data codes and names.
+
+    The seeded ILAP catalogue is part of every test database, so the terms here
+    are words it does not use (``purwakarta``) whenever a test asserts on the
+    whole suggestion list.
+    """
+
+    def _suggest(self, client, term):
+        return client.get(reverse('navbar_search'), {'q': term}).json()['suggestions']
+
+    def test_suggests_ilap_by_name_fragment(self, client):
+        ilap = ILAPFactory(nama_ilap='Pemda Kabupaten Purwakarta')
+        client.force_login(_p3de_user())
+        suggestions = self._suggest(client, 'purwakarta')
+        assert [s['url'] for s in suggestions] == [
+            reverse('profil_ilap_detail', args=[ilap.id_ilap])
+        ]
+        assert suggestions[0]['type'] == 'ilap'
+        assert suggestions[0]['label'] == f'{ilap.id_ilap} - Pemda Kabupaten Purwakarta'
+
+    def test_suggests_ilap_by_kota(self, client):
+        """The city is a field of its own, so it is searched as well as the name."""
+        ilap = ILAPFactory(nama_ilap='Dinas Pendapatan', kota_ilap='Purwakarta')
+        client.force_login(_p3de_user())
+        suggestions = self._suggest(client, 'purwakarta')
+        assert [s['url'] for s in suggestions] == [
+            reverse('profil_ilap_detail', args=[ilap.id_ilap])
+        ]
+        assert suggestions[0]['sublabel'] == 'Purwakarta'
+
+    def test_suggests_sub_jenis_data_by_name_fragment(self, client):
+        """A jenis data word lists every sub jenis data named after it."""
+        jenis_data = JenisDataILAPFactory(nama_sub_jenis_data='Penjualan Kendaraan Bermotor')
+        client.force_login(_p3de_user())
+        suggestions = self._suggest(client, 'penjualan')
+        assert all(s['type'] == 'jenis_data' for s in suggestions)
+
+        own_url = reverse('jenis_data_ilap_profil', args=[jenis_data.id_sub_jenis_data])
+        urls = [s['url'] for s in suggestions]
+        assert own_url in urls
+        # The seeded catalogue has a Penjualan row of its own, so the term is
+        # not just finding what this test created.
+        assert reverse('jenis_data_ilap_profil', args=['AS0010101']) in urls
+
+        own = next(s for s in suggestions if s['url'] == own_url)
+        assert own['label'] == f'{jenis_data.id_sub_jenis_data} - Penjualan Kendaraan Bermotor'
+        # The owning ILAP is what tells two similarly named rows apart.
+        assert own['sublabel'] == str(jenis_data.id_ilap)
+
+    def test_suggests_sub_jenis_data_by_nama_jenis_data(self, client):
+        """The parent jenis data name is searched, not just the sub jenis data one."""
+        jenis_data = JenisDataILAPFactory(
+            nama_jenis_data='Pajak Daerah Purwakarta', nama_sub_jenis_data='Rekapitulasi'
+        )
+        client.force_login(_p3de_user())
+        assert [s['url'] for s in self._suggest(client, 'purwakarta')] == [
+            reverse('jenis_data_ilap_profil', args=[jenis_data.id_sub_jenis_data])
+        ]
+
+    def test_case_insensitive(self, client):
+        ILAPFactory(nama_ilap='Kabupaten Purwakarta')
+        client.force_login(_p3de_user())
+        assert len(self._suggest(client, 'PURWAKARTA kabupaten')) == 1
+
+    def test_every_word_has_to_match(self, client):
+        """Multi-word terms narrow the list instead of widening it."""
+        ILAPFactory(nama_ilap='Bank Purwakarta Barat')
+        ILAPFactory(nama_ilap='Bank Purwakarta Timur')
+        client.force_login(_p3de_user())
+        assert len(self._suggest(client, 'purwakarta')) == 2
+        assert len(self._suggest(client, 'purwakarta timur')) == 1
+        assert self._suggest(client, 'purwakarta sumatera') == []
+
+    def test_words_match_in_any_order_and_across_fields(self, client):
+        ILAPFactory(nama_ilap='Dinas Pendapatan', kota_ilap='Purwakarta')
+        client.force_login(_p3de_user())
+        assert len(self._suggest(client, 'purwakarta pendapatan')) == 1
+
+    def test_ilap_group_comes_before_jenis_data(self, client):
+        """The dropdown groups its rows, so the two kinds arrive contiguously."""
+        ILAPFactory(nama_ilap='Pemda Purwakarta')
+        JenisDataILAPFactory(nama_sub_jenis_data='Penjualan Purwakarta')
+        client.force_login(_p3de_user())
+        assert [s['type'] for s in self._suggest(client, 'purwakarta')] == [
+            'ilap', 'jenis_data'
+        ]
+
+    def test_prefix_matches_are_ranked_first(self, client):
+        ILAPFactory(id_ilap='00901', nama_ilap='Koperasi Purwakarta Umum')
+        ILAPFactory(id_ilap='00902', nama_ilap='Purwakarta Ritel')
+        client.force_login(_p3de_user())
+        assert [s['label'].split(' - ')[1] for s in self._suggest(client, 'purwakarta')] == [
+            'Purwakarta Ritel', 'Koperasi Purwakarta Umum'
+        ]
+
+    def test_each_group_is_capped(self, client):
+        for n in range(7):
+            ILAPFactory(nama_ilap=f'Bank Purwakarta {n}')
+        client.force_login(_p3de_user())
+        assert len(self._suggest(client, 'purwakarta')) == 5
+
+    @pytest.mark.parametrize('term', ['pu', 'p'])
+    def test_short_terms_are_not_suggested(self, client, term):
+        """One or two characters match too much to be worth a dropdown."""
+        ILAPFactory(nama_ilap='Pemda Purwakarta')
+        client.force_login(_p3de_user())
+        assert self._suggest(client, term) == []
+
+    def test_exact_id_still_resolves_and_is_suggested(self, client):
+        """Submitting an exact code navigates; the dropdown still lists it."""
+        ilap = ILAPFactory(id_ilap='xy001', nama_ilap='Pemda Purwakarta')
+        client.force_login(_p3de_user())
+        payload = client.get(reverse('navbar_search'), {'q': 'XY001'}).json()
+        assert payload['match'] == 'ilap'
+        assert [s['url'] for s in payload['suggestions']] == [
+            reverse('profil_ilap_detail', args=[ilap.id_ilap])
+        ]
+
+    def test_nomor_tiket_is_never_suggested(self, client, p3de_admin_user):
+        """Nomor tiket stays an exact-match-only lookup."""
+        tiket = TiketFactory(nomor_tiket='pd0019901250001')
+        client.force_login(p3de_admin_user)
+        assert self._suggest(client, tiket.nomor_tiket[:10]) == []
+
+    def test_users_without_profil_ilap_access_get_no_suggestions(self, client):
+        ILAPFactory(nama_ilap='Bank Indonesia')
+        client.force_login(UserFactory())
+        assert self._suggest(client, 'bank') == []
 
 
 @pytest.mark.django_db
@@ -462,7 +598,7 @@ class TestNavbarSearchNomorTiket:
         client.force_login(_p3de_user())
         assert client.get(
             reverse('navbar_search'), {'q': tiket.nomor_tiket}
-        ).json() == {'match': None}
+        ).json() == {'match': None, 'suggestions': []}
 
     def test_other_admin_role_gets_no_match(self, client):
         """admin_pide/admin_pmde are not P3DE administrators."""
@@ -473,12 +609,16 @@ class TestNavbarSearchNomorTiket:
         client.force_login(user)
         assert client.get(
             reverse('navbar_search'), {'q': tiket.nomor_tiket}
-        ).json() == {'match': None}
+        ).json() == {'match': None, 'suggestions': []}
 
     def test_partial_nomor_tiket_is_not_matched(self, client, p3de_admin_user):
-        """Only exact matches resolve; partial terms fall through as before."""
+        """Only exact matches resolve; partial terms fall through as before.
+
+        A partial nomor tiket gets no suggestion either — see
+        `TestNavbarSearchSuggestions.test_nomor_tiket_is_never_suggested`.
+        """
         tiket = self._tiket_of_another_pic()
         client.force_login(p3de_admin_user)
         assert client.get(
             reverse('navbar_search'), {'q': tiket.nomor_tiket[:6]}
-        ).json() == {'match': None}
+        ).json()['match'] is None

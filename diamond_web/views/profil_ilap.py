@@ -2,7 +2,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView, DetailView
 from django.http import Http404, JsonResponse
-from django.db.models import Q
+from django.db.models import Case, IntegerField, Q, Value, When
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils.dateformat import format as date_format
@@ -438,6 +438,110 @@ def _can_view_profil_ilap(user):
     return user.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de']).exists()
 
 
+# Fields the navbar suggestion box searches, per model. Only the codes and
+# names are covered: alamat_ilap is long free text and would surface rows whose
+# connection to the term the suggestion label cannot show.
+NAVBAR_ILAP_SEARCH_FIELDS = ('id_ilap', 'nama_ilap', 'kota_ilap')
+NAVBAR_JENIS_DATA_SEARCH_FIELDS = (
+    'id_sub_jenis_data',
+    'id_jenis_data',
+    'nama_sub_jenis_data',
+    'nama_jenis_data',
+)
+# The dropdown has to stay readable at a glance, so each group contributes at
+# most this many rows.
+NAVBAR_SUGGESTION_LIMIT = 5
+# Below this length a term matches too much to be a useful suggestion; the
+# exact lookups still run, so short codes keep resolving.
+NAVBAR_SUGGESTION_MIN_LENGTH = 3
+
+
+def _full_text_filter(term, fields):
+    """Build an AND-of-tokens, OR-of-fields ``icontains`` filter.
+
+    Every whitespace-separated token of `term` has to appear in at least one of
+    `fields`, so ``penjualan bulanan`` matches a row holding both words in
+    either order, while a single token behaves like a plain substring search.
+
+    Args:
+        term (str): The raw search term.
+        fields (tuple): Model field names to match the tokens against.
+
+    Returns:
+        Q: The combined filter.
+    """
+    query = Q()
+    for token in term.split():
+        token_query = Q()
+        for field in fields:
+            token_query |= Q(**{f'{field}__icontains': token})
+        query &= token_query
+    return query
+
+
+def _full_text_rank(term, fields):
+    """Rank rows that start with `term` in any of `fields` ahead of the rest.
+
+    Substring matching alone puts a row that merely mentions the term next to
+    the one named after it, so the annotation is used as the primary ordering
+    of the suggestion lists.
+
+    Args:
+        term (str): The raw search term.
+        fields (tuple): Model field names to test for the prefix.
+
+    Returns:
+        Case: ``0`` for a prefix match, ``1`` otherwise.
+    """
+    starts_with = Q()
+    for field in fields:
+        starts_with |= Q(**{f'{field}__istartswith': term})
+    return Case(
+        When(starts_with, then=Value(0)), default=Value(1), output_field=IntegerField()
+    )
+
+
+def _ilap_suggestions(term):
+    """Return navbar suggestion dicts for the ILAPs matching `term`."""
+    ilaps = (
+        ILAP.objects
+        .filter(_full_text_filter(term, NAVBAR_ILAP_SEARCH_FIELDS))
+        .annotate(match_rank=_full_text_rank(term, NAVBAR_ILAP_SEARCH_FIELDS))
+        .order_by('match_rank', 'id_ilap')[:NAVBAR_SUGGESTION_LIMIT]
+    )
+    return [
+        {
+            'type': 'ilap',
+            'type_label': 'ILAP',
+            'url': reverse('profil_ilap_detail', args=[ilap.id_ilap]),
+            'label': f'{ilap.id_ilap} - {ilap.nama_ilap}',
+            'sublabel': ilap.kota_ilap or '',
+        }
+        for ilap in ilaps
+    ]
+
+
+def _jenis_data_suggestions(term):
+    """Return navbar suggestion dicts for the sub jenis data matching `term`."""
+    rows = (
+        JenisDataILAP.objects
+        .filter(_full_text_filter(term, NAVBAR_JENIS_DATA_SEARCH_FIELDS))
+        .annotate(match_rank=_full_text_rank(term, NAVBAR_JENIS_DATA_SEARCH_FIELDS))
+        .select_related('id_ilap')
+        .order_by('match_rank', 'id_sub_jenis_data')[:NAVBAR_SUGGESTION_LIMIT]
+    )
+    return [
+        {
+            'type': 'jenis_data',
+            'type_label': 'Jenis Data',
+            'url': reverse('jenis_data_ilap_profil', args=[row.id_sub_jenis_data]),
+            'label': f'{row.id_sub_jenis_data} - {row.nama_sub_jenis_data}',
+            'sublabel': f'{row.id_ilap.id_ilap} - {row.id_ilap.nama_ilap}',
+        }
+        for row in rows
+    ]
+
+
 def _can_open_tiket(user, tiket):
     """Return True when `user` may open `tiket`'s detail page.
 
@@ -452,14 +556,24 @@ def _can_open_tiket(user, tiket):
 
 @login_required
 def navbar_search(request):
-    """Resolve a header search term to an ILAP, sub jenis data or tiket page.
+    """Resolve a header search term and suggest the ILAPs it partially matches.
 
-    Used by the navbar search box before it falls back to looking the term up
-    as a nomor tiket through the tiket list endpoint. Matching is exact but
-    case-insensitive, so ``BI001`` resolves to the ILAP profile, ``BI0010101``
-    to the sub jenis data page and a full nomor tiket to the tiket detail page.
-    Users without access to the profil ILAP pages get no ILAP/jenis data match,
-    which leaves them on the nomor tiket path.
+    Serves both halves of the navbar search box:
+
+    * ``match`` is the exact, case-insensitive resolution the box navigates to
+      straight away — ``BI001`` for the ILAP profile, ``BI0010101`` for the sub
+      jenis data page, a full nomor tiket for the tiket detail page.
+    * ``suggestions`` is the dropdown: a full text search over the ILAP and sub
+      jenis data codes and names, so ``purwakarta`` lists the ILAPs of that city
+      and ``penjualan`` the sub jenis data named after it. Multi-word terms
+      require every word (see :func:`_full_text_filter`).
+
+    Tikets are deliberately absent from the suggestions: nomor tiket stays an
+    exact lookup, because a partial number identifies a periode rather than a
+    tiket and the tiket list is the right tool for browsing those.
+
+    Users without access to the profil ILAP pages get neither an ILAP/jenis
+    data match nor suggestions, which leaves them on the nomor tiket path.
 
     The nomor tiket branch exists for Admin P3DE: they may correct the isian of
     any tiket but the tiket list endpoint only ever shows them the tikets they
@@ -473,42 +587,54 @@ def navbar_search(request):
             ``q`` query parameter.
 
     Returns:
-        JsonResponse: ``{'match': None}`` when nothing matched, otherwise
-        ``{'match': 'ilap'|'jenis_data'|'tiket', 'url': str, 'label': str}``.
+        JsonResponse: ``{'match': None, 'suggestions': []}`` when nothing
+        matched, otherwise the same keys with ``match`` set to
+        ``'ilap'|'jenis_data'|'tiket'`` plus ``url`` and ``label`` for the exact
+        hit, and one ``{'type', 'type_label', 'url', 'label', 'sublabel'}`` dict
+        per suggestion.
     """
     term = request.GET.get('q', '').strip()
+    payload = {'match': None, 'suggestions': []}
     if not term:
-        return JsonResponse({'match': None})
+        return JsonResponse(payload)
 
     if _can_view_profil_ilap(request.user):
         # Sub jenis data codes are the more specific of the two, so check them
         # first even though the ID lengths make a collision unlikely.
         jenis_data = JenisDataILAP.objects.filter(id_sub_jenis_data__iexact=term).first()
         if jenis_data is not None:
-            return JsonResponse({
+            payload.update({
                 'match': 'jenis_data',
                 'url': reverse('jenis_data_ilap_profil', args=[jenis_data.id_sub_jenis_data]),
                 'label': f'{jenis_data.id_sub_jenis_data} - {jenis_data.nama_sub_jenis_data}',
             })
+        else:
+            ilap = ILAP.objects.filter(id_ilap__iexact=term).first()
+            if ilap is not None:
+                payload.update({
+                    'match': 'ilap',
+                    'url': reverse('profil_ilap_detail', args=[ilap.id_ilap]),
+                    'label': f'{ilap.id_ilap} - {ilap.nama_ilap}',
+                })
 
-        ilap = ILAP.objects.filter(id_ilap__iexact=term).first()
-        if ilap is not None:
-            return JsonResponse({
-                'match': 'ilap',
-                'url': reverse('profil_ilap_detail', args=[ilap.id_ilap]),
-                'label': f'{ilap.id_ilap} - {ilap.nama_ilap}',
-            })
+        if len(term) >= NAVBAR_SUGGESTION_MIN_LENGTH:
+            payload['suggestions'] = (
+                _ilap_suggestions(term) + _jenis_data_suggestions(term)
+            )
+
+    if payload['match'] is not None:
+        return JsonResponse(payload)
 
     # nomor_tiket is unique, so an exact match identifies a single tiket.
     tiket = Tiket.objects.filter(nomor_tiket__iexact=term).first()
     if tiket is not None and _can_open_tiket(request.user, tiket):
-        return JsonResponse({
+        payload.update({
             'match': 'tiket',
             'url': reverse('tiket_detail', args=[tiket.pk]),
             'label': tiket.nomor_tiket,
         })
 
-    return JsonResponse({'match': None})
+    return JsonResponse(payload)
 
 
 @login_required
