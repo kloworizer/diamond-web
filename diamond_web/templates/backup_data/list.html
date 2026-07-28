@@ -804,7 +804,10 @@
                 }
                 
                 $.ajax({
-                    url: `/backup-data/tiket-info/${tiketId}/`,
+                    // Reversed from the route name rather than hardcoded, so a
+                    // rename fails loudly at render time instead of silently
+                    // 404ing and leaving the panel permanently hidden.
+                    url: '{% url "backup_data_tiket_info" 0 %}'.replace('/0/', '/' + tiketId + '/'),
                     type: 'GET',
                     success: function(res) {
                         if (res.success) {

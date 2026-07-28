@@ -2180,6 +2180,82 @@
                 });
             };
 
+            /**
+             * Wire a modal's AJAX submit ONCE, on the container instead of the <form>.
+             *
+             * Binding to the form element is what broke these modals: the error
+             * branch replaces the container's innerHTML, so the element holding the
+             * listener is destroyed and the next Simpan falls through to a native
+             * browser POST that navigates off the tiket page. The container itself
+             * is never replaced, so a delegated listener here survives every
+             * re-render -- the same reason the CRUD pages, which delegate from
+             * document, never had this problem.
+             *
+             * opts.onRender re-initialises field-level handlers (date pickers, live
+             * totals) on the freshly rendered markup.
+             * opts.redirectMeansSuccess is for views that answer a normal form POST
+             * with a redirect instead of the usual {success, html, message} JSON.
+             */
+            function bindModalSubmit(containerId, modalEl, opts) {
+                opts = opts || {};
+                const container = document.getElementById(containerId);
+                if (!container || container.dataset.submitBound) {
+                    return;
+                }
+                container.dataset.submitBound = '1';
+
+                const rerender = (html) => {
+                    container.innerHTML = html
+                        || '<div class="alert alert-danger">Terjadi kesalahan</div>';
+                    if (opts.onRender) {
+                        opts.onRender(container);
+                    }
+                };
+
+                container.addEventListener('submit', function (e) {
+                    const form = e.target.closest('form');
+                    if (!form || !container.contains(form)) {
+                        return;
+                    }
+                    e.preventDefault();
+
+                    fetch(form.action, {
+                        method: 'POST',
+                        body: new FormData(form),
+                        headers: opts.redirectMeansSuccess
+                            ? {}
+                            : { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                        .then(response => {
+                            if (opts.redirectMeansSuccess) {
+                                return (response.ok && response.redirected)
+                                    ? { success: true }
+                                    : response.text().then(html => ({ success: false, html }));
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            if (data.success) {
+                                const instance = bootstrap.Modal.getInstance(modalEl);
+                                if (instance) {
+                                    instance.hide();
+                                }
+                                showToast(data.message || opts.successMessage
+                                    || 'Data berhasil disimpan.', 'success');
+                                setTimeout(() => location.reload(), 800);
+                            } else {
+                                showToast(data.message || opts.errorMessage
+                                    || 'Gagal menyimpan data.', 'danger');
+                                rerender(data.html || data.form_html);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showToast('Terjadi kesalahan saat menyimpan data.', 'danger');
+                        });
+                });
+            }
+
             const rekamBackupDataModal = document.getElementById('rekamBackupDataModal');
             if (rekamBackupDataModal) {
                 setupModalAria(rekamBackupDataModal);
@@ -2191,38 +2267,10 @@
                         .then(response => response.text())
                         .then(html => {
                             formContainer.innerHTML = html;
-
-                            // Handle form submission
-                            const form = formContainer.querySelector('form');
-                            if (form) {
-                                form.addEventListener('submit', function (e) {
-                                    e.preventDefault();
-                                    const formData = new FormData(form);
-
-                                    fetch(form.action, {
-                                        method: 'POST',
-                                        body: formData,
-                                        headers: {
-                                            'X-Requested-With': 'XMLHttpRequest'
-                                        }
-                                    })
-                                        .then(response => response.json())
-                                        .then(data => {
-                                            if (data.success) {
-                                                bootstrap.Modal.getInstance(rekamBackupDataModal).hide();
-                                                showToast(data.message || 'Backup data berhasil disimpan.', 'success');
-                                                setTimeout(() => location.reload(), 800);
-                                            } else {
-                                                showToast(data.message || 'Gagal menyimpan backup data.', 'danger');
-                                                formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
-                                            }
-                                        })
-                                        .catch(error => {
-                                            console.error('Error:', error);
-                                            showToast('Terjadi kesalahan saat menyimpan data.', 'danger');
-                                        });
-                                });
-                            }
+                            bindModalSubmit('backup-data-form-container', rekamBackupDataModal, {
+                                successMessage: 'Backup data berhasil disimpan.',
+                                errorMessage: 'Gagal menyimpan backup data.'
+                            });
                         })
                         .catch(error => {
                             console.error('Error loading form:', error);
@@ -2244,40 +2292,11 @@
                         .then(html => {
                             formContainer.innerHTML = html;
                             attachTandaTerimaHandlers(formContainer);
-
-                            // Handle form submission
-                            const form = formContainer.querySelector('form');
-                            if (form) {
-                                form.addEventListener('submit', function (e) {
-                                    e.preventDefault();
-                                    const formData = new FormData(form);
-
-                                    fetch(form.action, {
-                                        method: 'POST',
-                                        body: formData,
-                                        headers: {
-                                            'X-Requested-With': 'XMLHttpRequest'
-                                        }
-                                    })
-                                        .then(response => response.json())
-                                        .then(data => {
-                                            if (data.success) {
-                                                bootstrap.Modal.getInstance(tandaTerimaModal).hide();
-                                                showToast(data.message || 'Tanda terima berhasil dibuat.', 'success');
-                                                setTimeout(() => location.reload(), 800);
-                                            } else {
-                                                // Handle form errors - the mixin returns 'html' not 'form_html'
-                                                showToast(data.message || 'Gagal membuat tanda terima.', 'danger');
-                                                formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
-                                                attachTandaTerimaHandlers(formContainer);
-                                            }
-                                        })
-                                        .catch(error => {
-                                            console.error('Error:', error);
-                                            showToast('Terjadi kesalahan saat menyimpan data.', 'danger');
-                                        });
-                                });
-                            }
+                            bindModalSubmit('tanda-terima-form-container', tandaTerimaModal, {
+                                successMessage: 'Tanda terima berhasil dibuat.',
+                                errorMessage: 'Gagal membuat tanda terima.',
+                                onRender: attachTandaTerimaHandlers
+                            });
                         })
                         .catch(error => {
                             console.error('Error loading form:', error);
@@ -2302,39 +2321,11 @@
                         .then(response => response.text())
                         .then(html => {
                             formContainer.innerHTML = html;
-
-                            // Handle form submission
-                            const form = formContainer.querySelector('form');
-                            if (form) {
-                                form.addEventListener('submit', function (e) {
-                                    e.preventDefault();
-                                    const formData = new FormData(form);
-
-                                    fetch(form.action, {
-                                        method: 'POST',
-                                        body: formData
-                                    })
-                                        .then(response => {
-                                            if (response.ok && response.redirected) {
-                                                bootstrap.Modal.getInstance(batalkanTiketModal).hide();
-                                                showToast('Tiket berhasil dibatalkan.', 'success');
-                                                setTimeout(() => location.reload(), 800);
-                                            } else {
-                                                showToast('Gagal membatalkan tiket.', 'danger');
-                                                return response.text();
-                                            }
-                                        })
-                                        .then(html => {
-                                            if (html) {
-                                                formContainer.innerHTML = html;
-                                            }
-                                        })
-                                        .catch(error => {
-                                            console.error('Error:', error);
-                                            showToast('Terjadi kesalahan saat membatalkan tiket.', 'danger');
-                                        });
-                                });
-                            }
+                            bindModalSubmit('batalkan-tiket-form-container', batalkanTiketModal, {
+                                redirectMeansSuccess: true,
+                                successMessage: 'Tiket berhasil dibatalkan.',
+                                errorMessage: 'Gagal membatalkan tiket.'
+                            });
                         })
                         .catch(error => {
                             console.error('Error loading form:', error);
@@ -2360,39 +2351,11 @@
                         .then(html => {
                             formContainer.innerHTML = html;
                             initRekamHasilPenelitianForm(formContainer);
-
-                            // Handle form submission
-                            const form = formContainer.querySelector('form');
-                            if (form) {
-                                form.addEventListener('submit', function (e) {
-                                    e.preventDefault();
-                                    const formData = new FormData(form);
-
-                                    fetch(form.action, {
-                                        method: 'POST',
-                                        body: formData,
-                                        headers: {
-                                            'X-Requested-With': 'XMLHttpRequest'
-                                        }
-                                    })
-                                        .then(response => response.json())
-                                        .then(data => {
-                                            if (data.success) {
-                                                bootstrap.Modal.getInstance(rekamHasilPenelitianModal).hide();
-                                                showToast(data.message || 'Hasil penelitian berhasil disimpan.', 'success');
-                                                setTimeout(() => location.reload(), 800);
-                                            } else {
-                                                showToast(data.message || 'Gagal menyimpan hasil penelitian.', 'danger');
-                                                formContainer.innerHTML = data.html || data.form_html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
-                                                initRekamHasilPenelitianForm(formContainer);
-                                            }
-                                        })
-                                        .catch(error => {
-                                            console.error('Error:', error);
-                                            showToast('Terjadi kesalahan saat menyimpan data.', 'danger');
-                                        });
-                                });
-                            }
+                            bindModalSubmit('rekam-hasil-penelitian-form-container', rekamHasilPenelitianModal, {
+                                successMessage: 'Hasil penelitian berhasil disimpan.',
+                                errorMessage: 'Gagal menyimpan hasil penelitian.',
+                                onRender: initRekamHasilPenelitianForm
+                            });
                         })
                         .catch(error => {
                             console.error('Error loading form:', error);
@@ -2543,39 +2506,12 @@
                         .then(response => response.text())
                         .then(html => {
                             formContainer.innerHTML = html;
-
                             attachSelesaikanTiketHandlers(formContainer);
-
-                            const form = formContainer.querySelector('form');
-                            if (form) {
-                                form.addEventListener('submit', function (e) {
-                                    e.preventDefault();
-                                    const formData = new FormData(form);
-
-                                    fetch(form.action, {
-                                        method: 'POST',
-                                        body: formData,
-                                        headers: {
-                                            'X-Requested-With': 'XMLHttpRequest'
-                                        }
-                                    })
-                                        .then(response => response.json())
-                                        .then(data => {
-                                            if (data.success) {
-                                                bootstrap.Modal.getInstance(dikembalikanTiketModal).hide();
-                                                showToast(data.message || 'Tiket berhasil dikembalikan.', 'success');
-                                                setTimeout(() => location.reload(), 800);
-                                            } else {
-                                                showToast(data.message || 'Gagal mengembalikan tiket.', 'danger');
-                                                formContainer.innerHTML = data.html || '<div class="alert alert-danger">Terjadi kesalahan</div>';
-                                            }
-                                        })
-                                        .catch(error => {
-                                            console.error('Error:', error);
-                                            showToast('Terjadi kesalahan saat mengembalikan tiket.', 'danger');
-                                        });
-                                });
-                            }
+                            bindModalSubmit('dikembalikan-tiket-form-container', dikembalikanTiketModal, {
+                                successMessage: 'Tiket berhasil dikembalikan.',
+                                errorMessage: 'Gagal mengembalikan tiket.',
+                                onRender: attachSelesaikanTiketHandlers
+                            });
                         })
                         .catch(error => {
                             console.error('Error loading form:', error);
@@ -2660,48 +2596,14 @@
                         .then(html => {
                             formContainer.innerHTML = html;
                             attachTransferKePMDEHandlers(formContainer);
-
-                            const form = formContainer.querySelector('form');
-                            if (form) {
-                                form.addEventListener('submit', function (e) {
-                                    e.preventDefault();
-                                    const formData = new FormData(form);
-
-                                    fetch(form.action, {
-                                        method: 'POST',
-                                        body: formData,
-                                        headers: {
-                                            'X-Requested-With': 'XMLHttpRequest'
-                                        }
-                                    })
-                                        .then(response => {
-                                            if (!response.ok && response.status === 400) {
-                                                // Validation error - return JSON errors
-                                                return response.json().then(data => {
-                                                    showToast(data.message || 'Form tidak valid.', 'danger');
-                                                    // Reload the form to display backend errors
-                                                    return fetch('{% url "transfer_ke_pmde" tiket.pk %}', {
-                                                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                                                    }).then(resp => resp.text()).then(html => {
-                                                        formContainer.innerHTML = html;
-                                                    });
-                                                });
-                                            }
-                                            return response.json();
-                                        })
-                                        .then(data => {
-                                            if (data && data.success) {
-                                                bootstrap.Modal.getInstance(transferKePMDEModal).hide();
-                                                showToast(data.message || 'Tiket berhasil ditransfer ke PMDE.', 'success');
-                                                setTimeout(() => location.reload(), 800);
-                                            }
-                                        })
-                                        .catch(error => {
-                                            console.error('Error:', error);
-                                            showToast('Terjadi kesalahan saat mentransfer tiket.', 'danger');
-                                        });
-                                });
-                            }
+                            // form_invalid() now returns the bound form as `html`, so the
+                            // rejected values come straight back instead of being thrown
+                            // away by a re-fetch of an empty form.
+                            bindModalSubmit('transfer-ke-pmde-form-container', transferKePMDEModal, {
+                                successMessage: 'Tiket berhasil ditransfer ke PMDE.',
+                                errorMessage: 'Gagal mentransfer tiket ke PMDE.',
+                                onRender: attachTransferKePMDEHandlers
+                            });
                         })
                         .catch(error => {
                             console.error('Error loading form:', error);

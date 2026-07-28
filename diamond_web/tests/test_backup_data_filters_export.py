@@ -352,31 +352,51 @@ class TestBackupDataExport:
 
 @pytest.mark.django_db
 class TestBackupDataTiketInfo:
-    """backup_data_tiket_info isn't wired to any urls.py route, so it's
-    exercised by calling the view function directly with RequestFactory.
-    """
+    """Summary endpoint behind the Backup Data form's 'Detail Informasi Tiket'
+    panel, reached through its real route."""
 
-    def test_success(self, admin_user):
-        from django.test import RequestFactory
-        from diamond_web.views.backup_data import backup_data_tiket_info
-
+    def test_success(self, client, admin_user):
         bundle = _backup_bundle()
-        request = RequestFactory().get('/backup-data/tiket-info/')
-        request.user = admin_user
-        resp = backup_data_tiket_info(request, tiket_pk=bundle['tiket'].pk)
+        client.force_login(admin_user)
+        resp = client.get(
+            reverse('backup_data_tiket_info', args=[bundle['tiket'].pk])
+        )
         assert resp.status_code == 200
-        import json
-        data = json.loads(resp.content)
+        data = resp.json()
         assert data['success'] is True
         assert data['ilap'] == bundle['ilap'].nama_ilap
 
-    def test_not_found(self, admin_user, db):
-        from django.test import RequestFactory
-        from diamond_web.views.backup_data import backup_data_tiket_info
-
-        request = RequestFactory().get('/backup-data/tiket-info/')
-        request.user = admin_user
-        resp = backup_data_tiket_info(request, tiket_pk=999999)
+    def test_not_found(self, client, admin_user, db):
+        client.force_login(admin_user)
+        resp = client.get(reverse('backup_data_tiket_info', args=[999999]))
         assert resp.status_code == 404
-        import json
-        assert json.loads(resp.content)['success'] is False
+        assert resp.json()['success'] is False
+
+    def test_assigned_pic_may_view(self, client):
+        """The tiket's own active P3DE PIC is entitled to its summary."""
+        bundle = _backup_bundle()
+        client.force_login(bundle['user'])
+        resp = client.get(
+            reverse('backup_data_tiket_info', args=[bundle['tiket'].pk])
+        )
+        assert resp.status_code == 200
+        assert resp.json()['ilap'] == bundle['ilap'].nama_ilap
+
+    def test_unassigned_user_denied(self, client):
+        """A user_p3de with no assignment on this tiket must not read it.
+
+        The decorator only checks group membership, so without the per-tiket
+        scoping any user_p3de could walk sequential ids and harvest every
+        tiket's ILAP, jenis data, periode and row count -- exactly what the
+        tiket list withholds from them. 404, not 403, so the response does not
+        confirm the tiket exists.
+        """
+        bundle = _backup_bundle()
+        outsider = UserFactory()
+        outsider.groups.add(Group.objects.get_or_create(name='user_p3de')[0])
+        client.force_login(outsider)
+        resp = client.get(
+            reverse('backup_data_tiket_info', args=[bundle['tiket'].pk])
+        )
+        assert resp.status_code == 404
+        assert resp.json()['success'] is False

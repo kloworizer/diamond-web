@@ -122,6 +122,43 @@ def browser_page(headless=True):
             b.close()
 
 
+@contextmanager
+def collect_pageerrors(page):
+    """Collect uncaught JS exceptions raised inside the block.
+
+    browser_page() only *prints* pageerrors; a scenario that wants to assert
+    "this interaction threw nothing" needs them as data. Yields a list that is
+    appended to for the duration of the block.
+    """
+    errors = []
+    handler = lambda e: errors.append(str(e))  # noqa: E731
+    page.on("pageerror", handler)
+    try:
+        yield errors
+    finally:
+        page.remove_listener("pageerror", handler)
+
+
+@contextmanager
+def collect_requests(page, predicate=None):
+    """Collect (method, url, status) for responses matching `predicate(url)`.
+
+    Used to prove a single user interaction fires exactly one AJAX call --
+    re-executing an AJAX-loaded <script> can silently double-bind listeners.
+    """
+    seen = []
+
+    def handler(resp):
+        if predicate is None or predicate(resp.url):
+            seen.append((resp.request.method, resp.url, resp.status))
+
+    page.on("response", handler)
+    try:
+        yield seen
+    finally:
+        page.remove_listener("response", handler)
+
+
 def login(page):
     page.goto(f"{BASE_URL}/accounts/login/")
     page.fill('input[name="username"]', USER)
