@@ -18,6 +18,8 @@ import helpers as H
 import test_happy_path
 import test_alt_paths
 import test_form_validation
+import test_form_interactions
+import test_form_interactions_pages
 import test_master_data_crud
 import test_tiket_extra_actions
 
@@ -30,6 +32,8 @@ def main():
             ("HAPPY PATH", test_happy_path.run),
             ("ALT PATHS", test_alt_paths.run),
             ("FORM VALIDATION", test_form_validation.run),
+            ("FORM INTERACTIONS", test_form_interactions.run),
+            ("FORM INTERACTIONS (PAGES)", test_form_interactions_pages.run),
             ("TIKET EXTRA ACTIONS", test_tiket_extra_actions.run),
             ("MASTER DATA CRUD", test_master_data_crud.run),
         ):

@@ -21,7 +21,7 @@ from ..models.media_backup import MediaBackup
 from ..forms.backup_data import BackupDataForm
 from ..constants.tiket_action_types import BackupActionType
 from ..constants.tiket_status import STATUS_DIKIRIM_KE_PIDE, STATUS_DIREKAM
-from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, SafeDeleteMixin
+from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, SafeDeleteMixin, is_kasi
 
 
 def create_tiket_action(tiket, user, catatan, action_type):
@@ -1155,16 +1155,46 @@ def backup_data_export_pdf(request):
     return response
 
 
+def _may_view_tiket_info(user, tiket):
+    """True when `user` is entitled to see `tiket`'s summary information.
+
+    Mirrors the scoping in `tiket_data` (views/tiket/list.py): admins,
+    superusers and kasi are unrestricted; everyone else needs an active
+    TiketPIC assignment on that specific tiket.
+    """
+    if user.is_superuser or user.groups.filter(name='admin').exists() or is_kasi(user):
+        return True
+    return TiketPIC.objects.filter(
+        id_tiket=tiket, id_user=user, active=True
+    ).exists()
+
+
 @login_required
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
 @require_GET
 def backup_data_tiket_info(request, tiket_pk):
-    """Retrieve details for a specific ticket to display on the backup form."""
+    """Retrieve details for a specific ticket to display on the backup form.
+
+    Scoped the same way as the tiket list: admins, superusers and kasi see any
+    tiket, everyone else only the ones they are actively assigned to. The group
+    check in the decorator is not sufficient on its own -- without this, any
+    `user_p3de` could walk sequential ids and read the ILAP, jenis data, periode
+    and row count of every tiket in the system, including the ones the tiket
+    list deliberately hides from them.
+
+    Denials return 404 rather than 403 so the response does not confirm that a
+    tiket with that id exists.
+    """
     try:
         tiket = Tiket.objects.select_related(
             'id_periode_data__id_sub_jenis_data_ilap__id_ilap'
         ).get(pk=tiket_pk)
-        
+
+        if not _may_view_tiket_info(request.user, tiket):
+            return JsonResponse(
+                {'success': False, 'message': 'Tiket tidak ditemukan'}, status=404
+            )
+
         subjenis = tiket.id_periode_data.id_sub_jenis_data_ilap if tiket.id_periode_data else None
         ilap = subjenis.id_ilap if subjenis else None
         
