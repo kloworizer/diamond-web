@@ -212,6 +212,7 @@ Setiap modul data master mengikuti pola URL yang konsisten:
 | `GET` | `/tanda-terima-data/nd-pengantar-options/` | Ambil nomor ND Pengantar yang tersedia dalam lingkup tanda terima |
 | `GET` | `/jenis-data-ilap/<pk>/info/` | Ambil detail klasifikasi sebuah Jenis Data ILAP |
 | `GET` | `/jenis-data-ilap/<id_sub_jenis_data>/tikets/` | Data JSON DataTables tiket untuk satu sub jenis data |
+| `GET` | `/profil-ilap/<id_ilap>/jenis-data/` | Data JSON DataTables matriks Jenis Data ILAP; kolom tahun berkunci `y<tahun>` mengikuti header yang dirender halaman profilnya |
 | `GET` | `/backup-data/tiket-info/<tiket_pk>/` | Ringkasan tiket (ILAP, jenis data, periode, jumlah baris) untuk formulir Backup Data |
 
 > **Catatan cakupan:** `/backup-data/tiket-info/<tiket_pk>/` menerapkan cakupan data yang sama dengan Daftar Tiket — admin, superuser, dan kasi tanpa batasan; pengguna lain hanya untuk tiket dengan penugasan PIC aktif. Penolakan dikembalikan sebagai `404`, bukan `403`, agar respons tidak mengonfirmasi keberadaan tiket tersebut.

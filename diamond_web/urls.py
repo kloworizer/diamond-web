@@ -82,6 +82,7 @@ urlpatterns = [
     path('ilap/<str:pk>/delete/', views.ILAPDeleteView.as_view(), name='ilap_delete'),
     # Profil ILAP URLs
     path('profil-ilap/', views.ProfilILAPListView.as_view(), name='profil_ilap_list'),
+    path('profil-ilap/<str:id_ilap>/jenis-data/', views.profil_ilap_jenis_data_data, name='profil_ilap_jenis_data_data'),
     path('profil-ilap/<str:id_ilap>/', views.ProfilILAPDetailView.as_view(), name='profil_ilap_detail'),
     # Jenis Tabel URLs
     path('jenis-tabel/', views.JenisTabelListView.as_view(), name='jenis_tabel_list'),

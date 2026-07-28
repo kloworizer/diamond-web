@@ -2,7 +2,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView, DetailView
 from django.http import Http404, JsonResponse
-from django.db.models import Case, IntegerField, Q, Value, When
+from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils.dateformat import format as date_format
@@ -29,6 +29,7 @@ __all__ = [
     'ProfilILAPListView',
     'ProfilILAPDetailView',
     'JenisDataILAPProfilView',
+    'profil_ilap_jenis_data_data',
     'jenis_data_ilap_tiket_data',
     'navbar_search',
 ]
@@ -84,7 +85,26 @@ def get_periode_for_year(periode_list, year):
     return started[-1] if started else periode_list[0]
 
 
-def build_jenis_data_year_summary(jenis_data, current_year):
+def get_tiket_counts(periode_ids):
+    """Count the tikets of `periode_ids`, grouped by periode and year.
+
+    Args:
+        periode_ids (iterable): PeriodeJenisData primary keys.
+
+    Returns:
+        dict: ``{(periode_id, tahun): jumlah}``; combinations without a tiket
+        are absent rather than zero.
+    """
+    rows = (
+        Tiket.objects
+        .filter(id_periode_data__in=list(periode_ids))
+        .values('id_periode_data', 'tahun')
+        .annotate(total=Count('id'))
+    )
+    return {(row['id_periode_data'], row['tahun']): row['total'] for row in rows}
+
+
+def build_jenis_data_year_summary(jenis_data, current_year, tiket_counts=None):
     """Summarise a JenisDataILAP row for the profil ILAP year matrix.
 
     The displayed years span from the earliest ``start_date`` in
@@ -96,6 +116,10 @@ def build_jenis_data_year_summary(jenis_data, current_year):
     Args:
         jenis_data (JenisDataILAP): The sub jenis data row to summarise.
         current_year (int): Year used as the upper bound for open periods.
+        tiket_counts (dict, optional): Counts from :func:`get_tiket_counts`,
+            covering at least this row's periodes. Callers summarising several
+            rows pass one dict for the lot; left out, the counts of this row
+            are fetched on the spot.
 
     Returns:
         dict: Summary with ``jenis_data``, ``dasar_hukum``, ``periode_label``,
@@ -110,6 +134,9 @@ def build_jenis_data_year_summary(jenis_data, current_year):
     )
     if not periode_list:
         return None
+
+    if tiket_counts is None:
+        tiket_counts = get_tiket_counts(p.pk for p in periode_list)
 
     start_year = min(p.start_date.year for p in periode_list)
     end_year = max(p.end_date.year if p.end_date else current_year for p in periode_list)
@@ -133,7 +160,7 @@ def build_jenis_data_year_summary(jenis_data, current_year):
     for year in years:
         periode = get_periode_for_year(periode_list, year)
         total = get_periode_per_year(periode.id_periode_pengiriman.periode_penerimaan)
-        count = Tiket.objects.filter(id_periode_data=periode, tahun=year).count()
+        count = tiket_counts.get((periode.pk, year), 0)
         year_data[year] = {
             'count': count,
             'total': total,
@@ -149,6 +176,41 @@ def build_jenis_data_year_summary(jenis_data, current_year):
         'years': years,
         'year_data': year_data,
     }
+
+
+def build_ilap_years(ilap, current_year):
+    """Return the years the Jenis Data ILAP matrix of `ilap` spans.
+
+    The header has to be known before the rows are, because the table is
+    paginated server-side and a single page does not see every year. It is
+    the union of the per-row ranges — the same years
+    :func:`build_jenis_data_year_summary` produces, gaps included — read from
+    the periode rows alone, so no tiket is counted to draw it.
+
+    Args:
+        ilap (ILAP): The ILAP whose sub jenis data are covered.
+        current_year (int): Year used as the upper bound for open periods.
+
+    Returns:
+        list: Sorted years, empty when the ILAP has no periode rows at all.
+    """
+    periodes = (
+        PeriodeJenisData.objects
+        .filter(id_sub_jenis_data_ilap__id_ilap=ilap)
+        .values_list('id_sub_jenis_data_ilap_id', 'start_date', 'end_date')
+    )
+
+    bounds = {}
+    for jenis_data_id, start_date, end_date in periodes:
+        start_year = start_date.year
+        end_year = end_date.year if end_date else current_year
+        first, last = bounds.get(jenis_data_id, (start_year, end_year))
+        bounds[jenis_data_id] = (min(first, start_year), max(last, end_year))
+
+    years = set()
+    for first, last in bounds.values():
+        years.update(range(first, max(first, last) + 1))
+    return sorted(years)
 
 
 class ProfilILAPListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView):
@@ -328,12 +390,11 @@ class ProfilILAPDetailView(LoginRequiredMixin, DetailView):
         return ilap
 
     def get_context_data(self, **kwargs):
-        """Add the Jenis Data ILAP matrix for this ILAP.
+        """Add the year header of the Jenis Data ILAP matrix for this ILAP.
 
-        Each row covers one sub jenis data and reports, per year, the number
-        of recorded tikets against the expected number of periods for that
-        year. Years run from the earliest `periode_jenis_data` start date up
-        to the end date year, or the current year while the period is open.
+        Only the header is built here: the rows are paginated server-side by
+        :func:`profil_ilap_jenis_data_data`, which cannot know the full span
+        of years from the page it returns.
 
         Args:
             **kwargs: Additional keyword arguments passed to the parent class
@@ -342,31 +403,14 @@ class ProfilILAPDetailView(LoginRequiredMixin, DetailView):
         Returns:
             dict: Template context containing:
                 - ilap (ILAP): The current ILAP object.
-                - jenis_data_details (list): One summary dict per sub jenis data.
                 - years (list): Union of every row's years, used as the header.
                 - can_view_kontak (bool): Whether the PIC and contact block is
                   shown to the current user.
         """
         context = super().get_context_data(**kwargs)
-        current_year = datetime.now().year
 
         context['can_view_kontak'] = can_view_ilap_kontak(self.request.user, self.object)
-
-        jenis_data_list = JenisDataILAP.objects.filter(
-            id_ilap=self.object
-        ).select_related('id_jenis_tabel', 'id_status_data').order_by('id_sub_jenis_data')
-
-        jenis_data_details = []
-        years = set()
-        for jenis_data in jenis_data_list:
-            detail = build_jenis_data_year_summary(jenis_data, current_year)
-            if detail is None:
-                continue
-            years.update(detail['years'])
-            jenis_data_details.append(detail)
-
-        context['jenis_data_details'] = jenis_data_details
-        context['years'] = sorted(years)
+        context['years'] = build_ilap_years(self.object, datetime.now().year)
 
         return context
 
@@ -658,6 +702,135 @@ def navbar_search(request):
         })
 
     return JsonResponse(payload)
+
+
+# Columns of the Jenis Data ILAP table the client may sort on. Dasar hukum and
+# periode summarise related rows rather than a column, and the year cells are
+# counts, so all of those are declared unsortable in the template instead.
+JENIS_DATA_ORDER_COLUMNS = {
+    0: 'id_sub_jenis_data',
+    1: 'nama_sub_jenis_data',
+}
+
+
+@login_required
+def profil_ilap_jenis_data_data(request, id_ilap):
+    """Server-side DataTables endpoint for the Jenis Data ILAP matrix.
+
+    One row per sub jenis data of the ILAP, with a cell per year reporting the
+    recorded tikets against the periods that year expects (``7/12`` for a
+    monthly reception period). The year columns are keyed ``y<tahun>`` and the
+    page they belong to renders the matching header from
+    :func:`build_ilap_years`, so both sides agree on the columns even though a
+    single page of rows may not cover every year.
+
+    Sub jenis data without a periode row are left out: there is nothing to
+    report per year for them.
+
+    Args:
+        request (HttpRequest): The current request, carrying the DataTables
+            ``draw``, ``start``, ``length``, ``search[value]`` and ``order``
+            parameters.
+        id_ilap (str): The business code of the ILAP the rows belong to.
+
+    Returns:
+        JsonResponse: A JSON object with ``draw``, ``recordsTotal``,
+        ``recordsFiltered`` and ``data`` (one dict per sub jenis data row).
+    """
+    ilap = get_object_or_404(ILAP, id_ilap=id_ilap)
+    current_year = datetime.now().year
+
+    draw = int(request.GET.get('draw', 1))
+    start = int(request.GET.get('start', 0))
+    length = int(request.GET.get('length', 10))
+    search_value = request.GET.get('search[value]', '').strip()
+
+    base_qs = JenisDataILAP.objects.filter(
+        id_ilap=ilap, periodejenisdata__isnull=False
+    ).distinct()
+
+    records_total = base_qs.count()
+
+    if search_value:
+        # Every column the table shows is searchable, including the two that
+        # are read from related rows.
+        base_qs = base_qs.filter(
+            Q(id_sub_jenis_data__icontains=search_value)
+            | Q(nama_sub_jenis_data__icontains=search_value)
+            | Q(klasifikasijenisdata__id_klasifikasi_tabel__deskripsi__icontains=search_value)
+            | Q(periodejenisdata__id_periode_pengiriman__periode_penyampaian__icontains=search_value)
+            | Q(periodejenisdata__id_periode_pengiriman__periode_penerimaan__icontains=search_value)
+        ).distinct()
+
+    records_filtered = base_qs.count()
+
+    order_column_idx = request.GET.get('order[0][column]')
+    order_col = (
+        JENIS_DATA_ORDER_COLUMNS.get(int(order_column_idx)) if order_column_idx else None
+    )
+    if order_col:
+        if request.GET.get('order[0][dir]', 'asc') == 'desc':
+            order_col = f'-{order_col}'
+        base_qs = base_qs.order_by(order_col)
+    else:
+        base_qs = base_qs.order_by('id_sub_jenis_data')
+
+    rows = list(base_qs[start:start + length])
+
+    # One count query for the whole page instead of one per year cell.
+    tiket_counts = get_tiket_counts(
+        PeriodeJenisData.objects
+        .filter(id_sub_jenis_data_ilap__in=rows)
+        .values_list('id', flat=True)
+    )
+    years = build_ilap_years(ilap, current_year)
+
+    data = []
+    for jenis_data in rows:
+        summary = build_jenis_data_year_summary(
+            jenis_data, current_year, tiket_counts=tiket_counts
+        )
+        if summary is None:
+            continue
+
+        profil_url = reverse('jenis_data_ilap_profil', args=[jenis_data.id_sub_jenis_data])
+        row = {
+            'id_sub_jenis_data': (
+                f'<a href="{profil_url}" class="fw-semibold text-primary text-decoration-none">'
+                f'{escape(jenis_data.id_sub_jenis_data)}</a>'
+            ),
+            'nama_sub_jenis_data': escape(jenis_data.nama_sub_jenis_data),
+            'dasar_hukum': (
+                f'<small class="text-muted">{escape(summary["dasar_hukum"] or "---")}</small>'
+            ),
+            'periode': (
+                f'<span class="badge bg-soft-secondary text-secondary">'
+                f'{escape(summary["periode_label"])}</span>'
+            ),
+        }
+        for year in years:
+            cell = summary['year_data'].get(year)
+            if cell:
+                badge = (
+                    'bg-soft-success text-success' if cell['complete']
+                    else 'bg-soft-primary text-primary'
+                )
+                row[f'y{year}'] = (
+                    f'<span class="badge fw-bold {badge}" '
+                    f'style="font-size: 11px; padding: 4px 8px;" '
+                    f'title="{cell["count"]} tiket dari {cell["total"]} periode">'
+                    f'{cell["label"]}</span>'
+                )
+            else:
+                row[f'y{year}'] = '<span class="text-muted" style="font-size: 11px;">&ndash;</span>'
+        data.append(row)
+
+    return JsonResponse({
+        'draw': draw,
+        'recordsTotal': records_total,
+        'recordsFiltered': records_filtered,
+        'data': data,
+    })
 
 
 @login_required

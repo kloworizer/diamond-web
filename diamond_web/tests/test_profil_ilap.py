@@ -171,57 +171,12 @@ class TestProfilILAPDetailView:
         resp = client.get(reverse('profil_ilap_detail', args=['ZZ999']))
         assert resp.status_code == 404
 
-    def test_detail_bulanan_periode(self, client):
-        ilap, jenis_data = _bundle('Bulanan', extra_tikets=2)
-        client.force_login(_p3de_user())
-        resp = client.get(reverse('profil_ilap_detail', args=[ilap.id_ilap]))
-        assert resp.status_code == 200
-        details = resp.context['jenis_data_details']
-        assert len(details) == 1
-        assert details[0]['jenis_data'] == jenis_data
-        assert 'DH Profil' in details[0]['dasar_hukum']
-        assert details[0]['periode_label'] == 'Bulanan - Bulanan'
-        current_year = datetime.now().year
-        assert details[0]['year_data'][current_year]['label'] == '2/12'
-
-    @pytest.mark.parametrize('periode_penerimaan,total', [
-        ('Bulanan', 12),
-        ('Triwulanan', 4),
-        ('Semesteran', 2),
-        ('Tahunan', 1),
-    ])
-    def test_detail_periode_penerimaan_drives_the_denominator(self, client, periode_penerimaan, total):
-        ilap, _ = _bundle(periode_penerimaan, extra_tikets=1)
-        client.force_login(_p3de_user())
-        resp = client.get(reverse('profil_ilap_detail', args=[ilap.id_ilap]))
-        current_year = datetime.now().year
-        cell = resp.context['jenis_data_details'][0]['year_data'][current_year]
-        assert cell == {'count': 1, 'total': total, 'label': f'1/{total}', 'complete': 1 >= total}
-
-    def test_detail_unknown_periode_type_defaults_to_monthly(self, client):
-        ilap, _ = _bundle('Mingguan')
-        client.force_login(_p3de_user())
-        resp = client.get(reverse('profil_ilap_detail', args=[ilap.id_ilap]))
-        current_year = datetime.now().year
-        assert resp.context['jenis_data_details'][0]['year_data'][current_year]['total'] == 12
-
-    def test_detail_jenis_data_without_periode_is_skipped(self, client):
-        """A JenisDataILAP with no PeriodeJenisData is excluded from the details list."""
-        ilap = ILAPFactory()
-        JenisDataILAPFactory(id_ilap=ilap)
-        client.force_login(_p3de_user())
-        resp = client.get(reverse('profil_ilap_detail', args=[ilap.id_ilap]))
-        assert resp.context['jenis_data_details'] == []
-        assert resp.context['years'] == []
-
     def test_years_run_from_start_date_to_current_year_when_open(self, client):
         current_year = datetime.now().year
         ilap, _ = _bundle('Bulanan', start_date=date(current_year - 2, 3, 1))
         client.force_login(_p3de_user())
         resp = client.get(reverse('profil_ilap_detail', args=[ilap.id_ilap]))
-        expected = [current_year - 2, current_year - 1, current_year]
-        assert resp.context['years'] == expected
-        assert resp.context['jenis_data_details'][0]['years'] == expected
+        assert resp.context['years'] == [current_year - 2, current_year - 1, current_year]
 
     def test_years_stop_at_end_date_year(self, client):
         current_year = datetime.now().year
@@ -235,7 +190,11 @@ class TestProfilILAPDetailView:
         assert resp.context['years'] == [current_year - 3, current_year - 2]
 
     def test_years_header_is_the_union_across_rows(self, client):
-        """Rows with different start dates share one header spanning every year."""
+        """Rows with different start dates share one header spanning every year.
+
+        The header is built before the rows are, because the table is
+        paginated server-side and one page need not cover every year.
+        """
         current_year = datetime.now().year
         ilap, _ = _bundle('Bulanan', start_date=date(current_year - 2, 1, 1))
         other = JenisDataILAPFactory(id_ilap=ilap)
@@ -251,15 +210,38 @@ class TestProfilILAPDetailView:
         client.force_login(_p3de_user())
         resp = client.get(reverse('profil_ilap_detail', args=[ilap.id_ilap]))
         assert resp.context['years'] == [current_year - 2, current_year - 1, current_year]
-        details = {d['jenis_data'].pk: d for d in resp.context['jenis_data_details']}
-        assert details[other.pk]['years'] == [current_year]
 
-    def test_sub_jenis_data_id_links_to_its_own_page(self, client):
-        ilap, jenis_data = _bundle('Bulanan')
+    def test_years_header_keeps_gaps_between_rows(self, client):
+        """A year no row reports on gets no column of its own."""
+        ilap, _ = _bundle('Bulanan', start_date=date(2018, 1, 1), end_date=date(2019, 12, 31))
+        other = JenisDataILAPFactory(id_ilap=ilap)
+        periode_pengiriman, _created = PeriodePengiriman.objects.get_or_create(
+            periode_penyampaian='Tahunan', defaults={'periode_penerimaan': 'Tahunan'},
+        )
+        PeriodeJenisDataFactory(
+            id_sub_jenis_data_ilap=other,
+            id_periode_pengiriman=periode_pengiriman,
+            start_date=date(2023, 1, 1),
+            end_date=date(2023, 12, 31),
+        )
         client.force_login(_p3de_user())
         resp = client.get(reverse('profil_ilap_detail', args=[ilap.id_ilap]))
-        expected = reverse('jenis_data_ilap_profil', args=[jenis_data.id_sub_jenis_data])
-        assert expected in resp.content.decode()
+        assert resp.context['years'] == [2018, 2019, 2023]
+
+    def test_years_header_is_empty_without_any_periode(self, client):
+        ilap = ILAPFactory()
+        JenisDataILAPFactory(id_ilap=ilap)
+        client.force_login(_p3de_user())
+        resp = client.get(reverse('profil_ilap_detail', args=[ilap.id_ilap]))
+        assert resp.context['years'] == []
+
+    def test_table_is_loaded_from_the_datatables_endpoint(self, client):
+        """The rows are fetched server-side, so the page ships an empty table."""
+        ilap, jenis_data = _bundle('Bulanan')
+        client.force_login(_p3de_user())
+        html = client.get(reverse('profil_ilap_detail', args=[ilap.id_ilap])).content.decode()
+        assert reverse('profil_ilap_jenis_data_data', args=[ilap.id_ilap]) in html
+        assert jenis_data.nama_sub_jenis_data not in html
 
     def test_instansi_card_shows_every_ilap_field(self, client):
         """The card is the readable form of the ILAP row, so no field is left out.
@@ -304,8 +286,6 @@ class TestProfilILAPDetailView:
             ilap.fax_ilap,
             ilap.tujuan_surat,
             ilap.tembusan,
-            ilap.create_by,
-            ilap.update_by,
         ):
             assert value in html
 
@@ -316,6 +296,166 @@ class TestProfilILAPDetailView:
         resp = client.get(reverse('profil_ilap_detail', args=[ilap.id_ilap]))
         assert resp.status_code == 200
         assert '---' in resp.content.decode()
+
+
+@pytest.mark.django_db
+class TestProfilILAPJenisDataData:
+    """Server-side DataTables endpoint behind the Jenis Data ILAP matrix."""
+
+    def _rows(self, client, ilap, **params):
+        resp = client.get(
+            reverse('profil_ilap_jenis_data_data', args=[ilap.id_ilap]), params
+        )
+        assert resp.status_code == 200
+        return resp.json()
+
+    def test_login_required(self, client):
+        ilap, _ = _bundle('Bulanan')
+        resp = client.get(reverse('profil_ilap_jenis_data_data', args=[ilap.id_ilap]))
+        assert resp.status_code == 302
+
+    def test_open_to_any_logged_in_user(self, client):
+        ilap, _ = _bundle('Bulanan')
+        client.force_login(UserFactory())
+        assert self._rows(client, ilap)['recordsTotal'] == 1
+
+    def test_unknown_id_ilap_returns_404(self, client):
+        client.force_login(_p3de_user())
+        resp = client.get(reverse('profil_ilap_jenis_data_data', args=['ZZ999']))
+        assert resp.status_code == 404
+
+    def test_row_carries_every_column_of_the_matrix(self, client):
+        ilap, jenis_data = _bundle('Bulanan', extra_tikets=2)
+        client.force_login(_p3de_user())
+        payload = self._rows(client, ilap)
+        assert payload['recordsTotal'] == 1
+        row = payload['data'][0]
+        assert jenis_data.id_sub_jenis_data in row['id_sub_jenis_data']
+        assert reverse(
+            'jenis_data_ilap_profil', args=[jenis_data.id_sub_jenis_data]
+        ) in row['id_sub_jenis_data']
+        assert row['nama_sub_jenis_data'] == jenis_data.nama_sub_jenis_data
+        assert 'DH Profil' in row['dasar_hukum']
+        assert 'Bulanan - Bulanan' in row['periode']
+        assert '2/12' in row[f'y{datetime.now().year}']
+
+    @pytest.mark.parametrize('periode_penerimaan,total', [
+        ('Bulanan', 12),
+        ('Triwulanan', 4),
+        ('Semesteran', 2),
+        ('Tahunan', 1),
+    ])
+    def test_periode_penerimaan_drives_the_denominator(self, client, periode_penerimaan, total):
+        ilap, _ = _bundle(periode_penerimaan, extra_tikets=1)
+        client.force_login(_p3de_user())
+        cell = self._rows(client, ilap)['data'][0][f'y{datetime.now().year}']
+        assert f'1/{total}' in cell
+        assert 'title="1 tiket dari %d periode"' % total in cell
+
+    def test_unknown_periode_type_defaults_to_monthly(self, client):
+        ilap, _ = _bundle('Mingguan')
+        client.force_login(_p3de_user())
+        assert '0/12' in self._rows(client, ilap)['data'][0][f'y{datetime.now().year}']
+
+    def test_a_complete_year_is_badged_apart(self, client):
+        ilap, _ = _bundle('Tahunan', extra_tikets=1)
+        client.force_login(_p3de_user())
+        cell = self._rows(client, ilap)['data'][0][f'y{datetime.now().year}']
+        assert 'bg-soft-success' in cell
+
+    def test_years_the_row_does_not_cover_render_a_dash(self, client):
+        """The header spans every row, so a row can be short of a column."""
+        current_year = datetime.now().year
+        ilap, _ = _bundle('Bulanan', start_date=date(current_year - 2, 1, 1))
+        other = JenisDataILAPFactory(id_ilap=ilap)
+        periode_pengiriman, _created = PeriodePengiriman.objects.get_or_create(
+            periode_penyampaian='Tahunan', defaults={'periode_penerimaan': 'Tahunan'},
+        )
+        PeriodeJenisDataFactory(
+            id_sub_jenis_data_ilap=other,
+            id_periode_pengiriman=periode_pengiriman,
+            start_date=date(current_year, 1, 1),
+            end_date=None,
+        )
+        client.force_login(_p3de_user())
+        rows = {
+            row['nama_sub_jenis_data']: row
+            for row in self._rows(client, ilap)['data']
+        }
+        younger = rows[other.nama_sub_jenis_data]
+        assert 'ndash' in younger[f'y{current_year - 2}']
+        assert '0/1' in younger[f'y{current_year}']
+
+    def test_jenis_data_without_periode_is_left_out(self, client):
+        ilap, _ = _bundle('Bulanan')
+        JenisDataILAPFactory(id_ilap=ilap)
+        client.force_login(_p3de_user())
+        payload = self._rows(client, ilap)
+        assert payload['recordsTotal'] == 1
+        assert len(payload['data']) == 1
+
+    def test_rows_of_another_ilap_are_left_out(self, client):
+        ilap, jenis_data = _bundle('Bulanan')
+        PeriodeJenisDataFactory(id_sub_jenis_data_ilap=JenisDataILAPFactory())
+        client.force_login(_p3de_user())
+        payload = self._rows(client, ilap)
+        assert payload['recordsTotal'] == 1
+        assert jenis_data.id_sub_jenis_data in payload['data'][0]['id_sub_jenis_data']
+
+    def test_search_matches_the_sub_jenis_data_name(self, client):
+        ilap, jenis_data = _bundle('Bulanan')
+        other = JenisDataILAPFactory(id_ilap=ilap, nama_sub_jenis_data='Sesuatu Yang Lain')
+        PeriodeJenisDataFactory(id_sub_jenis_data_ilap=other)
+        client.force_login(_p3de_user())
+        payload = self._rows(
+            client, ilap, **{'search[value]': jenis_data.nama_sub_jenis_data}
+        )
+        assert payload['recordsTotal'] == 2
+        assert payload['recordsFiltered'] == 1
+        assert payload['data'][0]['nama_sub_jenis_data'] == jenis_data.nama_sub_jenis_data
+
+    def test_search_matches_the_dasar_hukum(self, client):
+        """It is a column of the table, so the search box reaches it."""
+        ilap, _ = _bundle('Bulanan')
+        client.force_login(_p3de_user())
+        assert self._rows(client, ilap, **{'search[value]': 'DH Profil'})['recordsFiltered'] == 1
+        assert self._rows(client, ilap, **{'search[value]': 'DH Lain'})['recordsFiltered'] == 0
+
+    def test_search_matches_the_periode_label(self, client):
+        ilap, _ = _bundle('Triwulanan')
+        client.force_login(_p3de_user())
+        assert self._rows(client, ilap, **{'search[value]': 'triwulan'})['recordsFiltered'] == 1
+        assert self._rows(client, ilap, **{'search[value]': 'semester'})['recordsFiltered'] == 0
+
+    def test_rows_are_sorted_by_id_sub_jenis_data_by_default(self, client):
+        ilap, _ = _bundle('Bulanan')
+        PeriodeJenisDataFactory(id_sub_jenis_data_ilap=JenisDataILAPFactory(id_ilap=ilap))
+        client.force_login(_p3de_user())
+        codes = [row['id_sub_jenis_data'] for row in self._rows(client, ilap)['data']]
+        assert codes == sorted(codes)
+
+    def test_ordering_can_be_reversed(self, client):
+        ilap, _ = _bundle('Bulanan')
+        other = JenisDataILAPFactory(id_ilap=ilap)
+        PeriodeJenisDataFactory(id_sub_jenis_data_ilap=other)
+        client.force_login(_p3de_user())
+        payload = self._rows(
+            client, ilap, **{'order[0][column]': '0', 'order[0][dir]': 'desc'}
+        )
+        codes = [row['id_sub_jenis_data'] for row in payload['data']]
+        assert codes == sorted(codes, reverse=True)
+
+    def test_pagination_and_draw_are_echoed(self, client):
+        ilap, _ = _bundle('Bulanan')
+        for _ in range(2):
+            PeriodeJenisDataFactory(
+                id_sub_jenis_data_ilap=JenisDataILAPFactory(id_ilap=ilap)
+            )
+        client.force_login(_p3de_user())
+        payload = self._rows(client, ilap, draw='4', start='0', length='2')
+        assert payload['draw'] == 4
+        assert payload['recordsTotal'] == 3
+        assert len(payload['data']) == 2
 
 
 @pytest.mark.django_db
