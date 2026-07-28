@@ -1,4 +1,4 @@
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView, DetailView
 from django.http import Http404, JsonResponse
@@ -18,7 +18,12 @@ from ..models.pic import PIC
 from ..models.tiket import Tiket
 from ..models.tiket_pic import TiketPIC
 from ..utils import format_periode
-from .mixins import UserP3DERequiredMixin, is_admin_p3de, is_kasi
+from .mixins import (
+    UserP3DERequiredMixin,
+    can_view_ilap_kontak,
+    is_admin_p3de,
+    is_kasi,
+)
 
 __all__ = [
     'ProfilILAPListView',
@@ -147,7 +152,11 @@ def build_jenis_data_year_summary(jenis_data, current_year):
 
 
 class ProfilILAPListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView):
-    """List view for ILAP profiles with basic information."""
+    """List view for ILAP profiles with basic information.
+
+    Unlike the detail pages, browsing the whole catalogue stays a P3DE
+    feature; other roles reach a single profile through the navbar search.
+    """
     template_name = 'profil_ilap/list.html'
 
     def get_context_data(self, **kwargs):
@@ -278,8 +287,13 @@ class ProfilILAPListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView
         })
 
 
-class ProfilILAPDetailView(LoginRequiredMixin, UserP3DERequiredMixin, DetailView):
-    """Detail view for ILAP profile, keyed by the business `id_ilap` code."""
+class ProfilILAPDetailView(LoginRequiredMixin, DetailView):
+    """Detail view for ILAP profile, keyed by the business `id_ilap` code.
+
+    Open to every logged in user: the catalogue tells people which data the
+    directorate receives and who to talk to about it. Only the contact block
+    is restricted, see :func:`can_view_ilap_kontak`.
+    """
     model = ILAP
     template_name = 'profil_ilap/detail.html'
     context_object_name = 'ilap'
@@ -288,7 +302,12 @@ class ProfilILAPDetailView(LoginRequiredMixin, UserP3DERequiredMixin, DetailView
         """Return the ILAP queryset with the relations used by the template."""
         return ILAP.objects.select_related(
             'id_kategori', 'id_kategori_wilayah'
-        ).prefetch_related('ilap_kpp_relations__id_kpp')
+        ).prefetch_related(
+            # kanwil_list resolves through the KPP for kategori PD and straight
+            # from the mapping row for kategori PV, so both sides are loaded.
+            'ilap_kpp_relations__id_kpp__id_kanwil',
+            'ilap_kpp_relations__id_kanwil',
+        )
 
     def get_object(self, queryset=None):
         """Look the ILAP up by its `id_ilap` code instead of its primary key.
@@ -325,9 +344,13 @@ class ProfilILAPDetailView(LoginRequiredMixin, UserP3DERequiredMixin, DetailView
                 - ilap (ILAP): The current ILAP object.
                 - jenis_data_details (list): One summary dict per sub jenis data.
                 - years (list): Union of every row's years, used as the header.
+                - can_view_kontak (bool): Whether the PIC and contact block is
+                  shown to the current user.
         """
         context = super().get_context_data(**kwargs)
         current_year = datetime.now().year
+
+        context['can_view_kontak'] = can_view_ilap_kontak(self.request.user, self.object)
 
         jenis_data_list = JenisDataILAP.objects.filter(
             id_ilap=self.object
@@ -348,8 +371,11 @@ class ProfilILAPDetailView(LoginRequiredMixin, UserP3DERequiredMixin, DetailView
         return context
 
 
-class JenisDataILAPProfilView(LoginRequiredMixin, UserP3DERequiredMixin, DetailView):
-    """Profile page for a single sub jenis data, keyed by `id_sub_jenis_data`."""
+class JenisDataILAPProfilView(LoginRequiredMixin, DetailView):
+    """Profile page for a single sub jenis data, keyed by `id_sub_jenis_data`.
+
+    Open to every logged in user, like the ILAP profile it belongs to.
+    """
     model = JenisDataILAP
     template_name = 'profil_ilap/jenis_data_detail.html'
     context_object_name = 'jenis_data'
@@ -433,14 +459,9 @@ class JenisDataILAPProfilView(LoginRequiredMixin, UserP3DERequiredMixin, DetailV
         return context
 
 
-def _can_view_profil_ilap(user):
-    """Return True when `user` may read profil ILAP pages and their data."""
-    return user.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de']).exists()
-
-
-# Fields the navbar suggestion box searches, per model. Only the codes and
-# names are covered: alamat_ilap is long free text and would surface rows whose
-# connection to the term the suggestion label cannot show.
+# Fields the navbar suggestion box searches, per model. Only the codes, names
+# and the city are covered: alamat_ilap is long free text and would surface
+# rows whose connection to the term is not obvious from the row itself.
 NAVBAR_ILAP_SEARCH_FIELDS = ('id_ilap', 'nama_ilap', 'kota_ilap')
 NAVBAR_JENIS_DATA_SEARCH_FIELDS = (
     'id_sub_jenis_data',
@@ -515,7 +536,6 @@ def _ilap_suggestions(term):
             'type_label': 'ILAP',
             'url': reverse('profil_ilap_detail', args=[ilap.id_ilap]),
             'label': f'{ilap.id_ilap} - {ilap.nama_ilap}',
-            'sublabel': ilap.kota_ilap or '',
         }
         for ilap in ilaps
     ]
@@ -572,8 +592,11 @@ def navbar_search(request):
     exact lookup, because a partial number identifies a periode rather than a
     tiket and the tiket list is the right tool for browsing those.
 
-    Users without access to the profil ILAP pages get neither an ILAP/jenis
-    data match nor suggestions, which leaves them on the nomor tiket path.
+    The ILAP catalogue is not scoped to the searcher: every logged in user
+    resolves and is suggested every ILAP and sub jenis data, because the
+    profil pages they lead to are open to everyone. What a user is not a PIC
+    for is held back on the page itself, not here — see
+    :func:`~diamond_web.views.mixins.can_view_ilap_kontak`.
 
     The nomor tiket branch exists for Admin P3DE: they may correct the isian of
     any tiket but the tiket list endpoint only ever shows them the tikets they
@@ -590,37 +613,37 @@ def navbar_search(request):
         JsonResponse: ``{'match': None, 'suggestions': []}`` when nothing
         matched, otherwise the same keys with ``match`` set to
         ``'ilap'|'jenis_data'|'tiket'`` plus ``url`` and ``label`` for the exact
-        hit, and one ``{'type', 'type_label', 'url', 'label', 'sublabel'}`` dict
-        per suggestion.
+        hit, and one ``{'type', 'type_label', 'url', 'label'}`` dict per
+        suggestion — sub jenis data rows carry an extra ``sublabel`` naming the
+        ILAP they belong to, which is what tells two similar names apart.
     """
     term = request.GET.get('q', '').strip()
     payload = {'match': None, 'suggestions': []}
     if not term:
         return JsonResponse(payload)
 
-    if _can_view_profil_ilap(request.user):
-        # Sub jenis data codes are the more specific of the two, so check them
-        # first even though the ID lengths make a collision unlikely.
-        jenis_data = JenisDataILAP.objects.filter(id_sub_jenis_data__iexact=term).first()
-        if jenis_data is not None:
+    # Sub jenis data codes are the more specific of the two, so check them
+    # first even though the ID lengths make a collision unlikely.
+    jenis_data = JenisDataILAP.objects.filter(id_sub_jenis_data__iexact=term).first()
+    if jenis_data is not None:
+        payload.update({
+            'match': 'jenis_data',
+            'url': reverse('jenis_data_ilap_profil', args=[jenis_data.id_sub_jenis_data]),
+            'label': f'{jenis_data.id_sub_jenis_data} - {jenis_data.nama_sub_jenis_data}',
+        })
+    else:
+        ilap = ILAP.objects.filter(id_ilap__iexact=term).first()
+        if ilap is not None:
             payload.update({
-                'match': 'jenis_data',
-                'url': reverse('jenis_data_ilap_profil', args=[jenis_data.id_sub_jenis_data]),
-                'label': f'{jenis_data.id_sub_jenis_data} - {jenis_data.nama_sub_jenis_data}',
+                'match': 'ilap',
+                'url': reverse('profil_ilap_detail', args=[ilap.id_ilap]),
+                'label': f'{ilap.id_ilap} - {ilap.nama_ilap}',
             })
-        else:
-            ilap = ILAP.objects.filter(id_ilap__iexact=term).first()
-            if ilap is not None:
-                payload.update({
-                    'match': 'ilap',
-                    'url': reverse('profil_ilap_detail', args=[ilap.id_ilap]),
-                    'label': f'{ilap.id_ilap} - {ilap.nama_ilap}',
-                })
 
-        if len(term) >= NAVBAR_SUGGESTION_MIN_LENGTH:
-            payload['suggestions'] = (
-                _ilap_suggestions(term) + _jenis_data_suggestions(term)
-            )
+    if len(term) >= NAVBAR_SUGGESTION_MIN_LENGTH:
+        payload['suggestions'] = (
+            _ilap_suggestions(term) + _jenis_data_suggestions(term)
+        )
 
     if payload['match'] is not None:
         return JsonResponse(payload)
@@ -638,9 +661,12 @@ def navbar_search(request):
 
 
 @login_required
-@user_passes_test(_can_view_profil_ilap)
 def jenis_data_ilap_tiket_data(request, id_sub_jenis_data):
     """Server-side DataTables endpoint for a sub jenis data's tiket list.
+
+    Open to every logged in user, like the page whose table it fills. The rows
+    carry nomor tiket, periode and status only; opening one still goes through
+    `TiketDetailView`, which enforces the PIC rules.
 
     Args:
         request (HttpRequest): The current request, carrying the DataTables

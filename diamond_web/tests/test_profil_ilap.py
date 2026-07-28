@@ -5,12 +5,19 @@ import pytest
 from django.contrib.auth.models import Group
 from django.urls import reverse
 
-from diamond_web.models import DasarHukum, KlasifikasiJenisData, PeriodePengiriman, TiketPIC
+from diamond_web.models import (
+    DasarHukum,
+    ILAPKPP,
+    KlasifikasiJenisData,
+    PeriodePengiriman,
+    TiketPIC,
+)
 from diamond_web.tests.conftest import (
     ILAPFactory,
     JenisDataILAPFactory,
     KategoriILAPFactory,
     KategoriWilayahFactory,
+    KPPFactory,
     PeriodeJenisDataFactory,
     PICFactory,
     TiketFactory,
@@ -19,11 +26,15 @@ from diamond_web.tests.conftest import (
 )
 
 
-def _p3de_user():
+def _user_in_group(name):
     user = UserFactory()
-    group, _ = Group.objects.get_or_create(name='user_p3de')
+    group, _ = Group.objects.get_or_create(name=name)
     user.groups.add(group)
     return user
+
+
+def _p3de_user():
+    return _user_in_group('user_p3de')
 
 
 @pytest.mark.django_db
@@ -136,11 +147,17 @@ def _bundle(periode_penerimaan, extra_tikets=0, start_date=None, end_date=None,
 
 @pytest.mark.django_db
 class TestProfilILAPDetailView:
-    def test_get_denied_without_p3de_group(self, client):
+    def test_open_to_any_logged_in_user(self, client):
+        """The catalogue is open; only the contact block is held back."""
         ilap = ILAPFactory()
         client.force_login(UserFactory())
         resp = client.get(reverse('profil_ilap_detail', args=[ilap.id_ilap]))
-        assert resp.status_code in (302, 403)
+        assert resp.status_code == 200
+
+    def test_login_still_required(self, client):
+        ilap = ILAPFactory()
+        resp = client.get(reverse('profil_ilap_detail', args=[ilap.id_ilap]))
+        assert resp.status_code == 302
 
     def test_detail_is_looked_up_by_id_ilap(self, client):
         ilap, _ = _bundle('Bulanan')
@@ -244,14 +261,166 @@ class TestProfilILAPDetailView:
         expected = reverse('jenis_data_ilap_profil', args=[jenis_data.id_sub_jenis_data])
         assert expected in resp.content.decode()
 
+    def test_instansi_card_shows_every_ilap_field(self, client):
+        """The card is the readable form of the ILAP row, so no field is left out.
+
+        Read as an admin: the contact half is hidden from users who are not a
+        PIC of the ILAP, which `TestProfilILAPKontakVisibility` covers.
+        """
+        ilap = ILAPFactory(
+            alamat_ilap='Jalan Merdeka Nomor 1',
+            kota_ilap='Purwakarta',
+            namapic_ilap='Budi Santoso',
+            jabatan_picilap='Kepala Seksi Data',
+            telp_kantor='0264-111222',
+            fax_ilap='0264-333444',
+            email_picilap='budi@example.com',
+            telp_pic='0812-3456789',
+            tujuan_surat='Kepala Dinas Pendapatan',
+            tembusan='Sekretaris Daerah',
+            create_date=date(2024, 1, 2),
+            create_by='pembuat',
+            update_date=date(2025, 3, 4),
+            update_by='pengubah',
+        )
+        kpp = KPPFactory(nama_kpp='KPP Pratama Purwakarta')
+        ILAPKPP.objects.create(id_ilap=ilap, id_kpp=kpp)
+        client.force_login(_user_in_group('admin_p3de'))
+        html = client.get(reverse('profil_ilap_detail', args=[ilap.id_ilap])).content.decode()
+        for value in (
+            ilap.id_ilap,
+            ilap.nama_ilap,
+            ilap.id_kategori.nama_kategori,
+            ilap.id_kategori_wilayah.deskripsi,
+            ilap.alamat_ilap,
+            ilap.kota_ilap,
+            kpp.nama_kpp,
+            kpp.id_kanwil.nama_kanwil,
+            ilap.namapic_ilap,
+            ilap.jabatan_picilap,
+            ilap.email_picilap,
+            ilap.telp_pic,
+            ilap.telp_kantor,
+            ilap.fax_ilap,
+            ilap.tujuan_surat,
+            ilap.tembusan,
+            ilap.create_by,
+            ilap.update_by,
+        ):
+            assert value in html
+
+    def test_instansi_card_falls_back_to_placeholders(self, client):
+        """An ILAP carrying only its mandatory columns still renders."""
+        ilap = ILAPFactory()
+        client.force_login(_user_in_group('admin_p3de'))
+        resp = client.get(reverse('profil_ilap_detail', args=[ilap.id_ilap]))
+        assert resp.status_code == 200
+        assert '---' in resp.content.decode()
+
+
+@pytest.mark.django_db
+class TestProfilILAPKontakVisibility:
+    """The Informasi PIC & Kontak block is for whoever corresponds with the ILAP.
+
+    Everyone may open the profile, but the institution's contact person is
+    shown to admins, kasi P3DE and the active PICs of the ILAP only.
+    """
+
+    def _can_view(self, client, user, ilap):
+        client.force_login(user)
+        resp = client.get(reverse('profil_ilap_detail', args=[ilap.id_ilap]))
+        assert resp.status_code == 200
+        return resp.context['can_view_kontak']
+
+    def _assign(self, user, jenis_data, tipe='P3DE', start_date=None, end_date=None):
+        return PICFactory(
+            tipe=tipe,
+            id_sub_jenis_data_ilap=jenis_data,
+            id_user=user,
+            start_date=start_date or date(2020, 1, 1),
+            end_date=end_date,
+        )
+
+    def test_hidden_from_a_user_without_an_assignment(self, client):
+        ilap, _ = _bundle('Bulanan')
+        assert self._can_view(client, UserFactory(), ilap) is False
+
+    def test_hidden_from_user_p3de_without_an_assignment(self, client):
+        """Group membership alone is not correspondence with the ILAP."""
+        ilap, _ = _bundle('Bulanan')
+        assert self._can_view(client, _p3de_user(), ilap) is False
+
+    @pytest.mark.parametrize('tipe', ['P3DE', 'PIDE', 'PMDE'])
+    def test_shown_to_an_active_pic_of_any_tipe(self, client, tipe):
+        ilap, jenis_data = _bundle('Bulanan')
+        user = UserFactory()
+        self._assign(user, jenis_data, tipe=tipe)
+        assert self._can_view(client, user, ilap) is True
+
+    def test_one_jenis_data_of_the_ilap_is_enough(self, client):
+        """The block belongs to the ILAP, so any of its jenis data unlocks it."""
+        ilap, _ = _bundle('Bulanan')
+        other_jenis_data = JenisDataILAPFactory(id_ilap=ilap)
+        user = UserFactory()
+        self._assign(user, other_jenis_data)
+        assert self._can_view(client, user, ilap) is True
+
+    def test_hidden_when_the_assignment_has_ended(self, client):
+        ilap, jenis_data = _bundle('Bulanan')
+        user = UserFactory()
+        self._assign(user, jenis_data, end_date=date(2021, 12, 31))
+        assert self._can_view(client, user, ilap) is False
+
+    def test_hidden_when_the_assignment_has_not_started(self, client):
+        ilap, jenis_data = _bundle('Bulanan')
+        user = UserFactory()
+        self._assign(user, jenis_data, start_date=date(2999, 1, 1))
+        assert self._can_view(client, user, ilap) is False
+
+    def test_hidden_when_the_assignment_is_on_another_ilap(self, client):
+        ilap, _ = _bundle('Bulanan')
+        user = UserFactory()
+        self._assign(user, JenisDataILAPFactory())
+        assert self._can_view(client, user, ilap) is False
+
+    @pytest.mark.parametrize('group_name', ['admin', 'admin_p3de', 'kasi_p3de'])
+    def test_shown_to_admins_and_kasi_p3de(self, client, group_name):
+        ilap, _ = _bundle('Bulanan')
+        assert self._can_view(client, _user_in_group(group_name), ilap) is True
+
+    @pytest.mark.parametrize('group_name', ['kasi_pide', 'kasi_pmde'])
+    def test_hidden_from_kasi_pide_and_pmde(self, client, group_name):
+        """They supervise the processing, not the correspondence with the ILAP."""
+        ilap, _ = _bundle('Bulanan')
+        assert self._can_view(client, _user_in_group(group_name), ilap) is False
+
+    def test_contact_details_are_absent_from_the_html_when_hidden(self, client):
+        ilap, _ = _bundle('Bulanan')
+        ilap.namapic_ilap = 'Budi Santoso'
+        ilap.email_picilap = 'budi@example.com'
+        ilap.telp_pic = '0812-3456789'
+        ilap.save()
+        client.force_login(UserFactory())
+        html = client.get(reverse('profil_ilap_detail', args=[ilap.id_ilap])).content.decode()
+        assert 'Informasi PIC & Kontak' not in html
+        for value in (ilap.namapic_ilap, ilap.email_picilap, ilap.telp_pic):
+            assert value not in html
+        # The rest of the profile is still there.
+        assert ilap.nama_ilap in html
+
 
 @pytest.mark.django_db
 class TestJenisDataILAPProfilView:
-    def test_get_denied_without_p3de_group(self, client):
+    def test_open_to_any_logged_in_user(self, client):
         _, jenis_data = _bundle('Bulanan')
         client.force_login(UserFactory())
         resp = client.get(reverse('jenis_data_ilap_profil', args=[jenis_data.id_sub_jenis_data]))
-        assert resp.status_code in (302, 403)
+        assert resp.status_code == 200
+
+    def test_login_still_required(self, client):
+        _, jenis_data = _bundle('Bulanan')
+        resp = client.get(reverse('jenis_data_ilap_profil', args=[jenis_data.id_sub_jenis_data]))
+        assert resp.status_code == 302
 
     def test_unknown_sub_jenis_data_returns_404(self, client):
         client.force_login(_p3de_user())
@@ -296,11 +465,17 @@ class TestJenisDataILAPProfilView:
 class TestJenisDataILAPTiketData:
     """Server-side DataTables endpoint backing the Daftar Tiket table."""
 
-    def test_denied_without_p3de_group(self, client):
+    def test_open_to_any_logged_in_user(self, client):
+        """The table fills a page every user may open, so it answers them all."""
         _, jenis_data = _bundle('Bulanan')
         client.force_login(UserFactory())
         resp = client.get(reverse('jenis_data_ilap_tiket_data', args=[jenis_data.id_sub_jenis_data]))
-        assert resp.status_code in (302, 403)
+        assert resp.status_code == 200
+
+    def test_login_still_required(self, client):
+        _, jenis_data = _bundle('Bulanan')
+        resp = client.get(reverse('jenis_data_ilap_tiket_data', args=[jenis_data.id_sub_jenis_data]))
+        assert resp.status_code == 302
 
     def test_unknown_sub_jenis_data_returns_404(self, client):
         client.force_login(_p3de_user())
@@ -406,13 +581,21 @@ class TestNavbarSearch:
             'match': None, 'suggestions': []
         }
 
-    def test_users_without_profil_ilap_access_get_no_match(self, client):
-        """Non-P3DE users fall through to the nomor tiket search instead of a 403."""
+    def test_any_logged_in_user_resolves_an_ilap(self, client):
+        """The catalogue is not scoped to the searcher, the contact block is."""
         ilap = ILAPFactory()
         client.force_login(UserFactory())
-        assert client.get(reverse('navbar_search'), {'q': ilap.id_ilap}).json() == {
-            'match': None, 'suggestions': []
-        }
+        payload = client.get(reverse('navbar_search'), {'q': ilap.id_ilap}).json()
+        assert payload['match'] == 'ilap'
+        assert payload['url'] == reverse('profil_ilap_detail', args=[ilap.id_ilap])
+
+    def test_any_logged_in_user_resolves_a_sub_jenis_data(self, client):
+        jenis_data = JenisDataILAPFactory()
+        client.force_login(UserFactory())
+        payload = client.get(
+            reverse('navbar_search'), {'q': jenis_data.id_sub_jenis_data}
+        ).json()
+        assert payload['match'] == 'jenis_data'
 
 
 @pytest.mark.django_db
@@ -445,7 +628,12 @@ class TestNavbarSearchSuggestions:
         assert [s['url'] for s in suggestions] == [
             reverse('profil_ilap_detail', args=[ilap.id_ilap])
         ]
-        assert suggestions[0]['sublabel'] == 'Purwakarta'
+
+    def test_ilap_suggestions_have_no_sublabel(self, client):
+        """The code and name identify an ILAP on their own, so the row is one line."""
+        ILAPFactory(nama_ilap='Dinas Pendapatan', kota_ilap='Purwakarta')
+        client.force_login(_p3de_user())
+        assert 'sublabel' not in self._suggest(client, 'purwakarta')[0]
 
     def test_suggests_sub_jenis_data_by_name_fragment(self, client):
         """A jenis data word lists every sub jenis data named after it."""
@@ -541,10 +729,13 @@ class TestNavbarSearchSuggestions:
         client.force_login(p3de_admin_user)
         assert self._suggest(client, tiket.nomor_tiket[:10]) == []
 
-    def test_users_without_profil_ilap_access_get_no_suggestions(self, client):
-        ILAPFactory(nama_ilap='Bank Indonesia')
+    def test_suggestions_are_not_scoped_to_the_searcher(self, client):
+        """A user with no P3DE role and no PIC assignment still gets the list."""
+        ilap = ILAPFactory(nama_ilap='Bank Purwakarta')
         client.force_login(UserFactory())
-        assert self._suggest(client, 'bank') == []
+        assert [s['url'] for s in self._suggest(client, 'purwakarta')] == [
+            reverse('profil_ilap_detail', args=[ilap.id_ilap])
+        ]
 
 
 @pytest.mark.django_db

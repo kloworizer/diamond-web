@@ -55,7 +55,7 @@ Aplikasi ini menggunakan autentikasi berbasis sesi bawaan Django. Semua endpoint
 
 #### `GET /api/navbar-search/`
 
-Melayani kedua sisi kotak pencarian navbar. Hasil dibatasi sesuai hak akses pengguna: pengguna tanpa akses halaman Profil ILAP tidak menerima saran maupun kecocokan ILAP/sub jenis data, dan kecocokan nomor tiket hanya dikembalikan untuk tiket yang boleh dibuka pengguna tersebut.
+Melayani kedua sisi kotak pencarian navbar. Katalog ILAP dan sub jenis data tidak dibatasi per pengguna — setiap pengguna yang login memperoleh kecocokan dan saran yang sama, karena halaman profil yang dituju terbuka untuk semua. Pembatasan berlaku pada halamannya (blok Informasi PIC & Kontak, lihat `RBAC_MATRIX.md`). Kecocokan nomor tiket tetap dibatasi: hanya dikembalikan untuk tiket yang boleh dibuka pengguna tersebut.
 
 | Parameter | Deskripsi |
 |-----------|-------------|
@@ -77,6 +77,8 @@ Melayani kedua sisi kotak pencarian navbar. Hasil dibatasi sesuai hak akses peng
   ]
 }
 ```
+
+`sublabel` hanya muncul pada saran `jenis_data` (berisi ILAP induknya); saran `ilap` cukup diwakili oleh `label`.
 
 `match` bernilai `null` bila tidak ada kecocokan persis, atau salah satu dari `ilap`, `jenis_data`, `tiket`. Nomor tiket sengaja tidak muncul pada `suggestions` — nomor parsial mengidentifikasi periode, bukan tiket, sehingga penelusurannya dilakukan melalui Daftar Tiket.
 

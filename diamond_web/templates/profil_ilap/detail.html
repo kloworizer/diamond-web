@@ -113,7 +113,8 @@
         <div class="card-body">
             <div class="row">
                 <!-- Left Column: Profil Instansi -->
-                <div class="col-md-6 border-end-md">
+                <div class="{% if can_view_kontak %}col-md-6 border-end-md{% else %}col-12{% endif %}">
+                    <h6 class="text-muted fw-bold mb-3 small" style="text-transform: uppercase; letter-spacing: 0.5px;">Profil Instansi</h6>
                     <div class="info-item">
                         <div class="info-item-icon bg-soft-primary text-primary">
                             <i class="feather-hash"></i>
@@ -137,8 +138,35 @@
                             <i class="feather-grid"></i>
                         </div>
                         <div class="info-item-content">
-                            <span class="info-item-label text-muted">Kategori / Wilayah</span>
-                            <p class="info-item-value">{{ ilap.id_kategori.nama_kategori }} ({{ ilap.id_kategori_wilayah.deskripsi|default:"---" }})</p>
+                            <span class="info-item-label text-muted">Kategori ILAP</span>
+                            <p class="info-item-value">{{ ilap.id_kategori.nama_kategori }}</p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-icon bg-soft-primary text-primary">
+                            <i class="feather-globe"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">Kategori Wilayah</span>
+                            <p class="info-item-value">{{ ilap.id_kategori_wilayah.deskripsi|default:"---" }}</p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-icon bg-soft-primary text-primary">
+                            <i class="feather-map-pin"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">Alamat ILAP</span>
+                            <p class="info-item-value">{{ ilap.alamat_ilap|default:"---"|linebreaksbr }}</p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-icon bg-soft-primary text-primary">
+                            <i class="feather-map"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">Kota</span>
+                            <p class="info-item-value">{{ ilap.kota_ilap|default:"---" }}</p>
                         </div>
                     </div>
                     <div class="info-item">
@@ -146,23 +174,28 @@
                             <i class="feather-award"></i>
                         </div>
                         <div class="info-item-content">
-                            <span class="info-item-label text-muted">KPP Administrasi</span>
-                            <p class="info-item-value">{{ ilap.id_kpp.nama_kpp|default:"---" }}</p>
+                            <span class="info-item-label text-muted">KPP</span>
+                            <p class="info-item-value">
+                                {% for kpp in ilap.kpp_list %}{{ kpp.nama_kpp }}{% if not forloop.last %}, {% endif %}{% empty %}---{% endfor %}
+                            </p>
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">KPP</label>
-                        <p>
-                            {% for rel in ilap.ilap_kpp_relations.all %}
-                                {{ rel.id_kpp.nama_kpp }}{% if not forloop.last %}, {% endif %}
-                            {% empty %}
-                                ---
-                            {% endfor %}
-                        </p>
+                    <div class="info-item mb-0">
+                        <div class="info-item-icon bg-soft-primary text-primary">
+                            <i class="feather-home"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">Kanwil</span>
+                            <p class="info-item-value">
+                                {% for kanwil in ilap.kanwil_list %}{{ kanwil.nama_kanwil }}{% if not forloop.last %}, {% endif %}{% empty %}---{% endfor %}
+                            </p>
+                        </div>
                     </div>
                 </div>
-                
-                <!-- Right Column: Kontak & PIC -->
+
+                <!-- Right Column: Kontak & PIC. Reserved for the people who
+                     correspond with this ILAP, see can_view_ilap_kontak. -->
+                {% if can_view_kontak %}
                 <div class="col-md-6 ps-md-4">
                     <h6 class="text-muted fw-bold mb-3 small" style="text-transform: uppercase; letter-spacing: 0.5px;">Informasi PIC & Kontak</h6>
                     <div class="info-item">
@@ -172,6 +205,15 @@
                         <div class="info-item-content">
                             <span class="info-item-label text-muted">Nama PIC</span>
                             <p class="info-item-value">{{ ilap.namapic_ilap|default:"---" }}</p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-icon bg-soft-success text-success">
+                            <i class="feather-briefcase"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">Jabatan PIC</span>
+                            <p class="info-item-value">{{ ilap.jabatan_picilap|default:"---" }}</p>
                         </div>
                     </div>
                     <div class="info-item">
@@ -189,7 +231,16 @@
                             </p>
                         </div>
                     </div>
-                    <div class="info-item mb-0">
+                    <div class="info-item">
+                        <div class="info-item-icon bg-soft-success text-success">
+                            <i class="feather-smartphone"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">Telepon PIC</span>
+                            <p class="info-item-value">{{ ilap.telp_pic|default:"---" }}</p>
+                        </div>
+                    </div>
+                    <div class="info-item">
                         <div class="info-item-icon bg-soft-success text-success">
                             <i class="feather-phone"></i>
                         </div>
@@ -198,7 +249,49 @@
                             <p class="info-item-value">{{ ilap.telp_kantor|default:"---" }}</p>
                         </div>
                     </div>
+                    <div class="info-item">
+                        <div class="info-item-icon bg-soft-success text-success">
+                            <i class="feather-printer"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">Fax</span>
+                            <p class="info-item-value">{{ ilap.fax_ilap|default:"---" }}</p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-icon bg-soft-success text-success">
+                            <i class="feather-send"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">Tujuan Surat</span>
+                            <p class="info-item-value">{{ ilap.tujuan_surat|default:"---" }}</p>
+                        </div>
+                    </div>
+                    <div class="info-item mb-0">
+                        <div class="info-item-icon bg-soft-success text-success">
+                            <i class="feather-copy"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">Tembusan</span>
+                            <p class="info-item-value">{{ ilap.tembusan|default:"---" }}</p>
+                        </div>
+                    </div>
                 </div>
+                {% endif %}
+            </div>
+
+            <!-- Audit trail: who recorded the ILAP and who touched it last -->
+            <div class="d-flex flex-wrap gap-4 pt-3 mt-3" style="border-top: 1px solid #e2e8f0;">
+                <span class="text-muted" style="font-size: 12px;">
+                    <i class="feather-plus-circle me-1"></i>Dibuat
+                    {% if ilap.create_date %}{{ ilap.create_date|date:"d M Y" }}{% else %}---{% endif %}
+                    oleh {{ ilap.create_by|default:"---" }}
+                </span>
+                <span class="text-muted" style="font-size: 12px;">
+                    <i class="feather-edit-2 me-1"></i>Diperbarui
+                    {% if ilap.update_date %}{{ ilap.update_date|date:"d M Y" }}{% else %}---{% endif %}
+                    oleh {{ ilap.update_by|default:"---" }}
+                </span>
             </div>
         </div>
     </div>
