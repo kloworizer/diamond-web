@@ -100,6 +100,41 @@ class TestTiketDataEndpoint:
         data = json.loads(resp.content)
         assert data['recordsFiltered'] >= 1
 
+    def test_p3de_admin_does_not_see_other_pic_tikets(self, client, p3de_admin_user):
+        """Admin P3DE stays PIC-scoped in the daftar tiket table.
+
+        They may edit any tiket, but only reach one they are not a PIC for via
+        its URL or an exact nomor tiket search (see `navbar_search`) — the
+        listing itself must not widen.
+        """
+        other = UserFactory()
+        tiket = TiketFactory()
+        TiketPICFactory(id_tiket=tiket, id_user=other,
+                        role=TiketPIC.Role.P3DE, active=True)
+
+        client.force_login(p3de_admin_user)
+        resp = client.get(reverse('tiket_data'), {
+            'draw': '1', 'start': '0', 'length': '5',
+            'nomor_tiket': tiket.nomor_tiket,
+        })
+        assert resp.status_code == 200
+        assert json.loads(resp.content)['data'] == []
+
+    def test_non_admin_does_not_find_other_tiket_by_nomor(self, client, authenticated_user):
+        """The same lookup stays scoped to own tikets for a plain user_p3de."""
+        other = UserFactory()
+        tiket = TiketFactory()
+        TiketPICFactory(id_tiket=tiket, id_user=other,
+                        role=TiketPIC.Role.P3DE, active=True)
+
+        client.force_login(authenticated_user)
+        resp = client.get(reverse('tiket_data'), {
+            'draw': '1', 'start': '0', 'length': '5',
+            'nomor_tiket': tiket.nomor_tiket,
+        })
+        assert resp.status_code == 200
+        assert json.loads(resp.content)['data'] == []
+
     def test_get_filter_options(self, client, admin_user, tiket):
         """Filter options endpoint returns expected keys."""
         client.force_login(admin_user)

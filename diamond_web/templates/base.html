@@ -348,40 +348,237 @@
             pointer-events: none !important;
         }
 
-        /* Duralux-style DataTables skin (global for all list pages) */
+        /* ============================================================
+           Compact side menu — Duralux ships the navigation at 280px,
+           which is a lot of horizontal room to give up on the wide
+           datatable pages. Narrow it to --nxl-nav-width and tighten
+           the item metrics; everything the sidebar pushes across (the
+           header and the main container) has to move by exactly the
+           same amount, so those offsets read from the variable too.
 
-        /* DataTables layout rows — no negative Bootstrap margins */
+           The collapsed "minimenu" state (100px, expands on hover) is
+           left alone apart from its hover flyout, which matches the
+           expanded width. The container offset is scoped to >=1200px
+           because theme.min.css drops it to 0 below that breakpoint. */
+        :root {
+            --nxl-nav-width: 220px;
+        }
+
+        .nxl-navigation {
+            width: var(--nxl-nav-width);
+        }
+
+        .nxl-header {
+            left: var(--nxl-nav-width);
+        }
+
+        @media (min-width: 1200px) {
+            .nxl-container {
+                margin-left: var(--nxl-nav-width);
+            }
+        }
+
+        html.minimenu .nxl-navigation:hover .navbar-content {
+            width: var(--nxl-nav-width);
+        }
+
+        /* The full logo is 213px wide, so it needs to shrink with the
+           rail instead of spilling past it. */
+        .nxl-navigation .m-header {
+            padding: 15px 18px;
+        }
+
+        .nxl-navigation .m-header .logo-lg {
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* Item metrics: less padding, tighter icon gutter, smaller
+           submenu indents. Font sizes stay readable. */
+        .nxl-navigation .navbar-content .nxl-link {
+            padding: 8px 12px;
+            font-size: 12.5px;
+        }
+
+        html:not(.minimenu) .nxl-navigation .nxl-link {
+            margin: 2px 10px;
+        }
+
+        .nxl-navigation .navbar-content .nxl-micon {
+            margin-right: 10px;
+        }
+
+        /* The theme floats .nxl-arrow right inside a display:block link, so once
+           a label wraps onto two lines (which the narrower rail makes likely —
+           "Kelola Referensi P3DE") the float drops below the text. Laying the
+           link out as a flex row keeps the caret vertically centred against the
+           label however many lines it takes. Top-level links only: submenu links
+           have no icon or caret. */
+        html:not(.minimenu) .nxl-navigation .navbar-content .nxl-navbar > .nxl-item > .nxl-link {
+            display: flex;
+            align-items: center;
+        }
+
+        html:not(.minimenu) .nxl-navigation .navbar-content .nxl-navbar > .nxl-item > .nxl-link .nxl-micon {
+            flex-shrink: 0;
+        }
+
+        html:not(.minimenu) .nxl-navigation .navbar-content .nxl-navbar > .nxl-item > .nxl-link .nxl-mtext {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        html:not(.minimenu) .nxl-navigation .navbar-content .nxl-navbar > .nxl-item > .nxl-link .nxl-arrow {
+            float: none;
+            flex-shrink: 0;
+            margin-left: 8px;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .nxl-navigation .navbar-content .nxl-micon i {
+            font-size: 16px;
+        }
+
+        .nxl-navigation .navbar-content .nxl-caption {
+            padding: 12px 14px 6px;
+        }
+
+        html:not(.minimenu) .nxl-navigation .nxl-submenu .nxl-item {
+            margin: 2px 6px;
+        }
+
+        .nxl-navigation .navbar-content .nxl-submenu .nxl-link {
+            font-size: 12px;
+            padding: 7px 12px;
+            margin-left: 26px !important;
+            margin-right: 4px !important;
+        }
+
+        .nxl-navigation .navbar-content .nxl-submenu .nxl-submenu .nxl-link {
+            margin-left: 34px !important;
+        }
+
+        .nxl-navigation .navbar-content .nxl-submenu .nxl-submenu .nxl-submenu .nxl-link {
+            margin-left: 42px !important;
+        }
+
+        /* ============================================================
+           Duralux "Project Tracker" table skin — the single source of
+           truth for every DataTable in the app (see the Project Tracker
+           card on Duralux widgets-tables.html). Markup contract:
+
+             .card.stretch.stretch-full.datatable-card
+                 > .card-header  → h5.card-title [+ .card-header-action]
+                 > .card-body.custom-card-action.p-0
+                     > .table-responsive
+                         > table.table.table-hover.mb-0
+
+           Cell styling (10px uppercase headings, 30px edge gutters,
+           colours, hover) comes from theme.min.css
+           `.table-responsive .table`; the only intentional deviation is
+           the compact row height set under "Compact density" below. */
+
+        /* Card frame — Duralux .card defaults, not the app's rounder card */
+        .card.datatable-card {
+            border-radius: 10px !important;
+            overflow: hidden;
+        }
+
+        /* `.stretch` is repeated so this outweighs the "Premium Card
+           Spacers" header padding further down. */
+        .card.stretch.datatable-card > .card-header {
+            padding: 25px !important;
+            border-bottom: 1px solid #e5e7eb !important;
+        }
+
+        .card.stretch.datatable-card > .card-header .card-title {
+            margin-bottom: 0 !important;
+            color: #283c50;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        /* The body holding a table stays flush — the table's own 30px
+           edge padding is the gutter, exactly like the Project Tracker.
+           Beats the "Premium Card Spacers" padding further down. */
+        .card .card-body.p-0,
+        .card.stretch .card-body.p-0,
+        .card.datatable-card .card-body.p-0 {
+            padding: 0 !important;
+        }
+
+        .table-responsive .table thead th {
+            white-space: nowrap;
+        }
+
+        /* Compact density — Duralux cell metrics with the vertical
+           padding dialled down (rows 15px → 8px, headings 8px → 6px).
+           The 30px first/last-child gutters are kept so the table still
+           lines up with the card header. */
+        .datatable-card .table-responsive .table tfoot th,
+        .datatable-card .table-responsive .table thead th {
+            padding: 6px 15px;
+        }
+
+        .datatable-card .table-responsive .table tr td {
+            padding: 8px 15px;
+        }
+
+        .datatable-card .table-responsive .table tfoot th:first-child,
+        .datatable-card .table-responsive .table thead th:first-child,
+        .datatable-card .table-responsive .table tr td:first-child {
+            padding-left: 30px;
+        }
+
+        .datatable-card .table-responsive .table tfoot th:last-child,
+        .datatable-card .table-responsive .table thead th:last-child,
+        .datatable-card .table-responsive .table tr td:last-child {
+            padding-right: 30px;
+        }
+
+        /* DataTables control rows — Duralux `.dataTables_wrapper .row`.
+           `dt-controls-row` / `dt-table-row` are tagged by
+           enhanceDataTableUI() below, because the wrapper markup differs
+           between the `layout` (dt-layout-row) and `dom` (row) options. */
         .dt-container .dt-layout-row,
-        .dataTables_wrapper .row {
+        .dt-container > .row,
+        .dataTables_wrapper > .row {
             margin-left: 0;
             margin-right: 0;
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
         }
 
-        /* First row: search + length menu */
-        .dt-container .dt-layout-row:first-child,
-        .dataTables_wrapper .row:first-child {
-            padding: .85rem 1rem;
-            border-bottom: 1px solid #e9ecef;
+        /* Rows holding controls (search, length menu, info, paging).
+           Horizontal padding matches the card header; vertical padding
+           follows the compact row density. */
+        .dt-container .dt-controls-row,
+        .dataTables_wrapper .dt-controls-row {
+            padding: 15px 25px !important;
             background: #fff;
         }
 
-        /* Middle row: the actual table — add horizontal padding */
-        .dt-container .dt-layout-row:not(:first-child):not(:last-child),
-        .dataTables_wrapper .row:not(:first-child):not(:last-child) {
-            padding: 0 1rem;
+        .dt-container .dt-controls-row.dt-controls-top,
+        .dataTables_wrapper .dt-controls-row.dt-controls-top {
+            border-bottom: 1px solid #dcdee4;
         }
 
-        /* Last row: info + pagination */
-        .dt-container .dt-layout-row:last-child,
-        .dataTables_wrapper .row:last-child {
-            padding: .85rem 1rem;
-            border-top: 1px solid #e9ecef;
-            background: #fff;
+        .dt-container .dt-controls-row.dt-controls-bottom,
+        .dataTables_wrapper .dt-controls-row.dt-controls-bottom {
+            border-top: 1px solid #dcdee4;
         }
 
-        /* Remove double table-responsive nesting padding */
-        .dt-container .dt-layout-row .table-responsive {
-            padding: 0;
+        /* The row holding the table itself is flush with the card */
+        .dt-container .dt-table-row,
+        .dt-container .dt-table-row > div,
+        .dataTables_wrapper .dt-table-row,
+        .dataTables_wrapper .dt-table-row > div,
+        .dt-container .table-responsive,
+        .dataTables_wrapper .table-responsive {
+            padding: 0 !important;
         }
 
         table.dataTable {
@@ -564,10 +761,6 @@
             cursor: not-allowed !important;
         }
 
-        .dt-paging {
-            margin-top: 16px !important;
-        }
-
         .dt-paging__list,
         .dt-container .dt-paging nav ul {
             list-style: none !important;
@@ -589,16 +782,6 @@
         table.table.dataTable {
             margin-top: 0 !important;
             margin-bottom: 0 !important;
-        }
-
-        table.dataTable>thead>tr>th,
-        table.table.dataTable>thead>tr>th {
-            white-space: nowrap;
-            font-size: .75rem;
-            text-transform: uppercase;
-            letter-spacing: .04em;
-            color: #6b7280;
-            border-bottom: 1px solid #e9ecef !important;
         }
 
         /* Empty state placeholder styling */
@@ -653,6 +836,73 @@
             z-index: 1020 !important;
             background-color: #ffffff !important;
             border-bottom: 1px solid #e2e8f0 !important;
+        }
+
+        /* ============================================================
+           Buttons — one corner radius and one hover behaviour app-wide.
+           Duralux ships .btn at 3px and individual pages had drifted to
+           4/6/8/10px, so every button is pinned to 4px here (the inline
+           per-page radii were rewritten to match; see the button tags in
+           the laporan_* and backup_data lists).
+
+           The hover lift is deliberately small — these sit in dense
+           toolbars and table rows, so a 1px rise plus a soft shadow
+           reads as feedback without shifting the layout. Disabled
+           buttons stay put. */
+        .btn,
+        .btn-icon {
+            border-radius: 4px;
+            transition: transform 0.15s ease, box-shadow 0.15s ease,
+                        background-color 0.2s ease, border-color 0.2s ease,
+                        color 0.2s ease;
+        }
+
+        .btn:hover:not(:disabled):not(.disabled),
+        .btn-icon:hover:not(:disabled):not(.disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
+        }
+
+        .btn:active:not(:disabled):not(.disabled),
+        .btn-icon:active:not(:disabled):not(.disabled) {
+            transform: translateY(0);
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+        }
+
+        .btn:disabled,
+        .btn.disabled,
+        .btn-icon:disabled,
+        .btn-icon.disabled {
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Buttons fused into an input group or a .btn-group keep their
+           shared edge square, otherwise the 4px corners break the seam. */
+        .input-group > .btn:not(:first-child),
+        .btn-group > .btn:not(:first-child) {
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+        }
+
+        .input-group > .btn:not(:last-child),
+        .btn-group > .btn:not(:last-child) {
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+
+        /* The lift is decorative — drop it when the OS asks for less motion. */
+        @media (prefers-reduced-motion: reduce) {
+            .btn,
+            .btn-icon {
+                transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+            }
+            .btn:hover:not(:disabled):not(.disabled),
+            .btn-icon:hover:not(:disabled):not(.disabled),
+            .btn:active:not(:disabled):not(.disabled),
+            .btn-icon:active:not(:disabled):not(.disabled) {
+                transform: none;
+            }
         }
 
         /* Custom Premium Figma Styled Buttons */
@@ -727,8 +977,7 @@
 
         /* Premium Scrollable Table Frame & Sticky Actions */
         .table-frame {
-            max-height: calc(100vh - 290px);
-            overflow: auto;
+            overflow-x: auto;
             border-top: 1px solid #e2e8f0;
             position: relative;
         }
@@ -785,15 +1034,8 @@
             padding-right: 28px !important;
         }
 
-        /* DataTables Centering & Alignment */
-        .dt-layout-row {
-            display: flex !important;
-            flex-direction: row !important;
-            align-items: center !important;
-            justify-content: space-between !important;
-            padding-top: 12px !important;
-            padding-bottom: 8px !important;
-        }
+        /* DataTables Centering & Alignment
+           (row padding lives in the Duralux table skin above) */
         .dt-layout-cell {
             display: flex !important;
             align-items: center !important;
@@ -844,6 +1086,110 @@
         .form-control:focus, .form-select:focus {
             border-color: #00BDFB !important;
             box-shadow: 0 0 0 2px rgba(0, 189, 251, 0.1) !important;
+        }
+
+        /* Navbar search — one field with the magnifier sitting inside it
+           on the right, instead of a separate button glued to the input. */
+        .navbar-search-field {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .navbar-search-field .form-control {
+            padding-right: 42px !important;
+        }
+        .navbar-search-field .btn {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border: 0;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            background-color: transparent;
+            box-shadow: none;
+        }
+        /* This button is centred with translateY(-50%), so it has to opt out
+           of the global hover lift or it would jump out of the field. */
+        .navbar-search-field .btn:hover:not(:disabled),
+        .navbar-search-field .btn:focus:not(:disabled),
+        .navbar-search-field .btn:active:not(:disabled) {
+            color: #00BDFB;
+            background-color: rgba(0, 189, 251, 0.08);
+            transform: translateY(-50%);
+            box-shadow: none;
+        }
+
+        /* Suggestion box for the navbar search, filled in by the header script
+           with the ILAP and jenis data rows matching what was typed. */
+        .navbar-search-suggestions {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            z-index: 1030;
+            /* Tall enough for a full result set (two groups of five) without
+               clipping the last row, and scrollable on a short viewport. */
+            max-height: 420px;
+            overflow-y: auto;
+            padding: 4px;
+            background-color: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+        }
+        .navbar-search-suggestions[hidden] {
+            display: none;
+        }
+        .navbar-search-suggestion-group {
+            padding: 6px 10px 4px;
+            font-size: 10px;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .navbar-search-suggestion {
+            display: block;
+            width: 100%;
+            padding: 6px 10px;
+            border: 0;
+            border-radius: 4px;
+            background-color: transparent;
+            text-align: left;
+            box-shadow: none;
+        }
+        /* Buttons app-wide lift on hover; inside a dropdown list that reads as
+           a glitch, so the active row is marked with a tint instead. */
+        .navbar-search-suggestion:hover,
+        .navbar-search-suggestion:focus,
+        .navbar-search-suggestion.is-active {
+            background-color: rgba(0, 189, 251, 0.08);
+            transform: none;
+            box-shadow: none;
+        }
+        .navbar-search-suggestion .suggestion-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e293b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .navbar-search-suggestion .suggestion-sublabel {
+            display: block;
+            font-size: 11px;
+            color: #64748b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         /* Native Webkit Date & DateTime Alignment & Color */
@@ -1066,8 +1412,25 @@
                 if (!$container.length && !$tableWrapper.length) return;
 
                 if ($container.length) {
-                    // Add margin to dt-container for spacing
-                    $container.addClass('m-3');
+                    // The wrapper sits flush inside `.card-body.p-0` and the
+                    // Duralux control rows supply their own 25px padding, so
+                    // tag each wrapper row to tell the table apart from the
+                    // control rows above/below it. The markup differs per
+                    // DataTables layout option, hence deciding from content
+                    // rather than child position.
+                    let tableRowSeen = false;
+                    $container.children('.dt-layout-row, .row').each(function () {
+                        const $row = $(this);
+                        if ($row.find('table').length) {
+                            tableRowSeen = true;
+                            $row.addClass('dt-table-row')
+                                .removeClass('dt-controls-row dt-controls-top dt-controls-bottom');
+                        } else {
+                            $row.addClass('dt-controls-row')
+                                .toggleClass('dt-controls-top', !tableRowSeen)
+                                .toggleClass('dt-controls-bottom', tableRowSeen);
+                        }
+                    });
 
                     $container.find('.dt-search input, .dataTables_filter input')
                         .attr('placeholder', 'Cari...')
@@ -1088,11 +1451,16 @@
                             const $button = $(this).find('button');
                             if ($button.length) {
                                 $button.addClass('page-link');
-                                // Add icon classes for prev/next buttons
+                                // One icon family for every control, as Duralux
+                                // does it: bi arrows, and a dot for the ellipsis.
                                 if ($button.hasClass('dt-paging__button--previous')) {
                                     $button.html('<i class="bi bi-arrow-left"></i>');
                                 } else if ($button.hasClass('dt-paging__button--next')) {
                                     $button.html('<i class="bi bi-arrow-right"></i>');
+                                } else if ($button.hasClass('dt-paging__button--first')) {
+                                    $button.html('<i class="bi bi-chevron-bar-left"></i>');
+                                } else if ($button.hasClass('dt-paging__button--last')) {
+                                    $button.html('<i class="bi bi-chevron-bar-right"></i>');
                                 }
                             }
                         });
@@ -1127,19 +1495,37 @@
                         }
                     }
 
-                    $container.find('.dataTables_paginate .paginate_button, .dt-paging .dt-paging__button, .dataTables_paginate .page-item button, .dataTables_paginate .page-item a').each(function () {
+                    // Normalise every paging control onto the one icon family. Matching
+                    // on class as well as on label catches tables that opted out of the
+                    // global defaults and still render DataTables' stock « ‹ › » glyphs.
+                    const PAGING_ICONS = {
+                        previous: '<i class="bi bi-arrow-left"></i>',
+                        next: '<i class="bi bi-arrow-right"></i>',
+                        first: '<i class="bi bi-chevron-bar-left"></i>',
+                        last: '<i class="bi bi-chevron-bar-right"></i>'
+                    };
+                    $container.find('.dataTables_paginate .paginate_button, .dt-paging .dt-paging__button, .dt-paging button, .dataTables_paginate .page-item button, .dataTables_paginate .page-item a').each(function () {
                         const $button = $(this);
-                        const text = $button.text().trim();
-                        if (text === 'Previous' || text === 'Prev') {
-                            $button.html('<i class="bi bi-arrow-left"></i>');
-                        } else if (text === 'Next') {
-                            $button.html('<i class="bi bi-arrow-right"></i>');
-                        } else if (text === 'First') {
-                            $button.html('<i class="bi bi-chevron-bar-left"></i>');
-                        } else if (text === 'Last') {
-                            $button.html('<i class="bi bi-chevron-bar-right"></i>');
+                        let role = null;
+                        if ($button.is('.previous, .dt-paging__button--previous')) role = 'previous';
+                        else if ($button.is('.next, .dt-paging__button--next')) role = 'next';
+                        else if ($button.is('.first, .dt-paging__button--first')) role = 'first';
+                        else if ($button.is('.last, .dt-paging__button--last')) role = 'last';
+                        else {
+                            const text = $button.text().trim();
+                            if (text === 'Previous' || text === 'Prev') role = 'previous';
+                            else if (text === 'Next') role = 'next';
+                            else if (text === 'First') role = 'first';
+                            else if (text === 'Last') role = 'last';
+                        }
+                        if (role && $button.html() !== PAGING_ICONS[role]) {
+                            $button.html(PAGING_ICONS[role]);
                         }
                     });
+
+                    // Duralux renders the paging ellipsis as a dot.
+                    $container.find('.dt-paging .ellipsis, .dataTables_paginate .ellipsis')
+                        .html('<i class="bi bi-dot"></i>');
 
                     const $infoText = $container.find('.dataTables_info');
                     if ($infoText.length) {
@@ -1223,16 +1609,21 @@
                 }
             }
 
-            $(document).ready(function () {
-                $('table').each(function () {
-                    enhanceTableStructure(this);
-                    enhanceDataTableUI(this);
-                });
-
-                if (!$.fn.DataTable) return;
-
+            // These defaults are applied synchronously, NOT inside $(document).ready.
+            // A template whose script block sits in its content block registers its
+            // own native DOMContentLoaded listener before jQuery is even loaded, so its
+            // listener runs ahead of every jQuery ready handler. home.html does exactly
+            // that, and when the defaults were set in ready() its tables were already
+            // built — they fell back to the stock DataTables paging (« ‹ › ») instead of
+            // the arrow icons every other table uses. Running at parse time means the
+            // defaults are in place before any DOMContentLoaded callback fires.
+            if ($.fn.DataTable) {
                 $.extend(true, $.fn.dataTable.defaults, {
                     pageLength: 10,
+                    // Duralux pagination: one arrow back, the page numbers with
+                    // a dot ellipsis, one arrow forward — no first/last buttons
+                    // (the last page number is always in the list anyway).
+                    pagingType: 'simple_numbers',
                     language: {
                         search: 'Cari:',
                         searchPlaceholder: 'Cari...',
@@ -1249,6 +1640,10 @@
                             sortDescending: ': aktifkan untuk mengurutkan kolom turun'
                         },
                         paginate: {
+                            // Only rendered if a page opts out of
+                            // pagingType 'simple_numbers'. bi-arrow-bar-* draw
+                            // their bar on the wrong side in this icon build,
+                            // so the chevron-bar pair is used for those.
                             first: '<i class="bi bi-chevron-bar-left"></i>',
                             last: '<i class="bi bi-chevron-bar-right"></i>',
                             next: '<i class="bi bi-arrow-right"></i>',
@@ -1272,12 +1667,20 @@
                     }
                 });
 
+                // Registered here for the same reason: a table built from a native
+                // DOMContentLoaded listener must still get its UI enhanced.
                 $(document).on('init.dt draw.dt', function (e, settings) {
                     if (!settings || !settings.nTable) return;
                     enhanceTableStructure(settings.nTable);
                     enhanceDataTableUI(settings.nTable);
                 });
+            }
 
+            $(document).ready(function () {
+                $('table').each(function () {
+                    enhanceTableStructure(this);
+                    enhanceDataTableUI(this);
+                });
             });
         })();
 
@@ -1583,8 +1986,8 @@
                         <p class="text-muted mb-4" style="font-size: 13px; line-height: 1.5; font-family: 'Inter', sans-serif;">Untuk alasan keamanan, sistem akan logout otomatis apabila Anda tidak aktif dalam kurun waktu tertentu</p>
                         <div id="sessionCountdown" class="fw-bold mb-4" style="font-size: 32px; color: #0f172a; font-family: 'Outfit', sans-serif; letter-spacing: 1.5px;">05:00</div>
                         <div class="d-flex gap-2">
-                          <button type="button" class="btn btn-outline-danger w-50" id="btn-logout-now" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 8px;">KELUAR SEKARANG</button>
-                          <button type="button" class="btn btn-primary w-50" id="btn-extend-session" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 8px; background-color: #0c92ff; border-color: #0c92ff;">LANJUTKAN SESI</button>
+                          <button type="button" class="btn btn-outline-danger w-50" id="btn-logout-now" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 4px;">KELUAR SEKARANG</button>
+                          <button type="button" class="btn btn-primary w-50" id="btn-extend-session" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 4px; background-color: #0c92ff; border-color: #0c92ff;">LANJUTKAN SESI</button>
                         </div>
                       </div>
                     </div>
@@ -1683,7 +2086,7 @@
                         </div>
                         <h5 class="fw-bold mb-2 text-dark" style="font-size: 16px; font-family: 'Outfit', sans-serif; text-transform: uppercase; letter-spacing: 0.5px;">Session Timeout!</h5>
                         <p class="text-muted mb-4" style="font-size: 13px; line-height: 1.5; font-family: 'Inter', sans-serif;">Anda sudah logout karena terdeteksi tidak aktif selama <strong>30 menit</strong></p>
-                        <button type="button" class="btn btn-primary w-100" id="btn-login-again" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 8px; background-color: #0c92ff; border-color: #0c92ff;">MASUK KEMBALI</button>
+                        <button type="button" class="btn btn-primary w-100" id="btn-login-again" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 4px; background-color: #0c92ff; border-color: #0c92ff;">MASUK KEMBALI</button>
                       </div>
                     </div>
                   </div>
@@ -1711,16 +2114,21 @@
                 });
             }
 
-            // Reset expiryTimestamp on user activity (avoid accidental expiry while active)
-            // Throttled: only reschedules once per second at most, even on frequent events like mousemove.
-            let lastUserActivity = 0;
+            // Extend the session on user activity. This deliberately does NOT
+            // just push the local clock forward: doing that made the browser
+            // believe the session was alive whenever the mouse moved, which
+            // suppressed the warning modal while the server-side session
+            // quietly expired — the user only found out on the next page load.
+            // Activity now triggers a real keep-alive, and expiryTimestamp is
+            // set from what the server reports. Throttled to one request per
+            // ACTIVITY_KEEP_ALIVE_MS so mousemove cannot flood the endpoint.
+            const ACTIVITY_KEEP_ALIVE_MS = 5 * 60 * 1000;
+            let lastActivityKeepAlive = Date.now();
             function onUserActivity() {
                 const now = Date.now();
-                if (now - lastUserActivity < 1000) return; // throttle to 1s
-                lastUserActivity = now;
-                // optimistic: extend local expiry
-                expiryTimestamp = now + SESSION_SECONDS * 1000;
-                scheduleTimers();
+                if (now - lastActivityKeepAlive < ACTIVITY_KEEP_ALIVE_MS) return;
+                lastActivityKeepAlive = now;
+                sendKeepAlive();
             }
 
             ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evt => document.addEventListener(evt, onUserActivity, { passive: true }));

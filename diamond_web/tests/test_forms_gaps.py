@@ -648,15 +648,18 @@ class TestTandaTerimaDataFormBranches:
         # Build a valid form and manually set cleaned_data for save() testing
         form = TandaTerimaDataForm(user=admin_user)
 
-        # Simulate a validated form state
+        # Simulate a validated form state. The year has to match the date:
+        # save() derives tahun_terima from tanggal_tanda_terima and ignores a
+        # nomor belonging to a different year's series.
         from django.db.models import Max
-        tahun = 2024
+        tanggal = timezone.now()
+        tahun = tanggal.year
         max_nomor = TandaTerimaData.objects.filter(tahun_terima=tahun).aggregate(
             Max('nomor_tanda_terima')
         )['nomor_tanda_terima__max'] or 0
 
         form.cleaned_data = {
-            'tanggal_tanda_terima': timezone.now(),
+            'tanggal_tanda_terima': tanggal,
             'tahun_terima': tahun,
             'id_ilap': ilap,
             'tiket_ids': TiketFactory._meta.model.objects.filter(pk=tiket.pk),
@@ -666,7 +669,7 @@ class TestTandaTerimaDataFormBranches:
 
         # Patch super().save() to return a minimal unsaved instance
         instance = TandaTerimaData(
-            tanggal_tanda_terima=timezone.now(),
+            tanggal_tanda_terima=tanggal,
             tahun_terima=tahun,
             id_ilap=ilap,
         )

@@ -2,6 +2,47 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
+<style>
+    /* Collapsible filter panel — the 21 filter dropdowns push the table well
+       below the fold, so the panel folds away. This is the same accordion
+       banner the Backup Data page uses (see backup_data/list.html
+       .accordion-button-premium), so the affordance reads the same in both
+       places: grey bar, blue text when open, Bootstrap's own caret. */
+    .accordion-button-premium {
+        background-color: #f8fafc !important;
+        color: #475569 !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        padding: 14px 28px !important;
+        border: none !important;
+        box-shadow: none !important;
+        transition: all 0.2s ease !important;
+        cursor: pointer;
+    }
+
+    .accordion-button-premium:hover {
+        background-color: #f1f5f9 !important;
+        color: #0c92ff !important;
+    }
+
+    .accordion-button-premium:not(.collapsed) {
+        background-color: #f1f5f9 !important;
+        color: #0c92ff !important;
+        border-bottom: none !important;
+    }
+
+    #filterAccordion,
+    #filterAccordion .accordion-item {
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    .filter-section-premium {
+        background-color: #ffffff !important;
+        padding: 24px 28px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+    }
+</style>
 <div class="page-header">
         <div class="page-header-left d-flex align-items-center">
             <div class="page-header-title">
@@ -33,12 +74,23 @@
 
     <div class="main-content">
     <!-- Filter card above table with 3 internal columns -->
-    <div class="card mb-3">
-        <div class="card-header d-flex align-items-center justify-content-between">
-            <h5 class="mb-0"><i class="feather-filter me-2"></i>Filter Data</h5>
-            <button type="reset" class="btn btn-secondary btn-sm" id="btn-reset-filter"><i class="feather-refresh-cw me-1"></i>Atur Ulang</button>
-        </div>
-        <div class="card-body">
+    <div class="card mb-3 overflow-hidden">
+        <div class="accordion" id="filterAccordion">
+            <div class="accordion-item border-0 rounded-0">
+                <h2 class="accordion-header" id="headingFilters">
+                    {# Rendered expanded so Select2 can measure its widths, then folded shut on load. #}
+                    <button class="accordion-button accordion-button-premium" type="button" id="filter-toggle"
+                        data-bs-toggle="collapse" data-bs-target="#filter-collapse"
+                        aria-expanded="true" aria-controls="filter-collapse">
+                        <i class="feather-filter me-2 text-primary"></i>Filter Data
+                        <span class="badge bg-primary ms-2 d-none" id="filter-active-count">0</span>
+                    </button>
+                </h2>
+                <div id="filter-collapse" class="accordion-collapse collapse show" aria-labelledby="headingFilters">
+        <div class="accordion-body filter-section-premium">
+            <div class="d-flex justify-content-end mb-3">
+                <button type="reset" class="btn btn-secondary btn-sm" id="btn-reset-filter"><i class="feather-refresh-cw me-1"></i>Atur Ulang</button>
+            </div>
             <form id="filter-form">
                 {% csrf_token %}
                 <div class="row g-2">
@@ -179,12 +231,15 @@
                 </div>
             </form>
         </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Table card -->
-    <div class="card">
-        <div class="card-header d-flex align-items-center">
-            <h5 class="card-title mb-0"><i class="feather-list me-2"></i>Daftar Tiket</h5>
+    <div class="card stretch stretch-full datatable-card">
+        <div class="card-header">
+            <h5 class="card-title"><i class="feather-list me-2"></i>Daftar Tiket</h5>
         </div>
         <div class="card-body custom-card-action p-0">
             <div class="table-responsive">
@@ -221,6 +276,42 @@
         function getMultiSelectValue(selector) {
             const val = $(selector).val();
             return (val && val.length > 0) ? val.join(',') : '';
+        }
+
+        // ---- Collapsible filter panel ----
+        const FILTER_PANEL_KEY = 'diamond-tiket-filter-panel';
+
+        function countActiveFilters() {
+            let n = 0;
+            $('#filter-form select').each(function () {
+                const val = $(this).val();
+                const values = Array.isArray(val) ? val : (val ? [val] : []);
+                if (values.filter(function (v) { return v !== '' && v != null; }).length > 0) n += 1;
+            });
+            return n;
+        }
+
+        function updateFilterBadge() {
+            const n = countActiveFilters();
+            $('#filter-active-count').text(n).toggleClass('d-none', n === 0);
+        }
+
+        // Called once the dropdowns exist and Select2 has measured itself. The
+        // panel is rendered open so Select2 can resolve its widths against a
+        // visible container; only then is it folded shut, by dropping the class
+        // directly so there is no opening-then-closing animation on load.
+        function applyInitialFilterPanelState(hasUrlFilters) {
+            updateFilterBadge();
+            let open;
+            if (hasUrlFilters || countActiveFilters() > 0) {
+                open = true;   // never hide a filter the user arrived with
+            } else {
+                open = localStorage.getItem(FILTER_PANEL_KEY) === 'open';
+            }
+            if (!open) {
+                $('#filter-collapse').removeClass('show');
+                $('#filter-toggle').addClass('collapsed').attr('aria-expanded', 'false');
+            }
         }
 
         function normalizePeriodeParam() {
@@ -530,7 +621,18 @@
                 updateDynamicDropdowns();
                 // Reload table with new filters
                 table.ajax.reload();
+                updateFilterBadge();
             });
+
+            // Remember whether the panel was left open, so the choice survives
+            // navigation instead of snapping back on every visit.
+            $('#filter-collapse')
+                .on('shown.bs.collapse', function () {
+                    localStorage.setItem(FILTER_PANEL_KEY, 'open');
+                })
+                .on('hidden.bs.collapse', function () {
+                    localStorage.setItem(FILTER_PANEL_KEY, 'closed');
+                });
 
             // Reset button — clear form then reload
             $('#btn-reset-filter').on('click', function () {
@@ -549,6 +651,7 @@
                 initSelect2();
                 updateDynamicDropdowns();
                 table.ajax.reload();
+                updateFilterBadge();
             });
 
             // Load filter dropdown options on page load
@@ -609,10 +712,12 @@
 
                     if (!initialFiltersApplied) {
                         initialFiltersApplied = true;
-                        if (applyInitialFiltersFromUrl()) {
+                        const fromUrl = applyInitialFiltersFromUrl();
+                        if (fromUrl) {
                             updateDynamicDropdowns();
                             table.ajax.reload();
                         }
+                        applyInitialFilterPanelState(fromUrl);
                     }
                 },
                 error: function () {
@@ -620,9 +725,11 @@
                     initSelect2();
                     if (!initialFiltersApplied) {
                         initialFiltersApplied = true;
-                        if (applyInitialFiltersFromUrl()) {
+                        const fromUrl = applyInitialFiltersFromUrl();
+                        if (fromUrl) {
                             table.ajax.reload();
                         }
+                        applyInitialFilterPanelState(fromUrl);
                     }
                 }
             });

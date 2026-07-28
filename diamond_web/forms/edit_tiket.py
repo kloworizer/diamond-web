@@ -1,4 +1,5 @@
 from django import forms
+from django.db.models import Q
 from datetime import datetime
 from ..models.tiket import Tiket
 from ..models.bentuk_data import BentukData
@@ -7,10 +8,11 @@ from ..utils import validate_not_future_datetime, normalize_server_datetime, com
 
 
 class EditTiketForm(AutoRequiredFormMixin, forms.ModelForm):
-    """Edit the isian of an existing tiket while it is still editable.
+    """Edit the isian of an existing tiket.
 
     A tiket may only be edited by its active P3DE PIC while it is in status
-    Direkam and no tanda terima has been created yet (enforced in the view).
+    Direkam and no tanda terima has been created yet; P3DE admins may edit at
+    any status (both enforced in the view).
 
     The editable fields mirror the recording (rekam) form and reuse the exact
     same validation rules. ILAP / jenis data ILAP / status ketersediaan are
@@ -67,12 +69,19 @@ class EditTiketForm(AutoRequiredFormMixin, forms.ModelForm):
         if self.instance and self.instance.pk and self.instance.periode is not None:
             self.fields['periode'].widget.choices = [(self.instance.periode, str(self.instance.periode))]
 
-        # Hide the "Data Tidak Tersedia" bentuk data option: an editable tiket
-        # always has data available, so that choice must not be selectable
-        # (mirrors the rekam form which hides it client-side).
-        self.fields['id_bentuk_data'].queryset = BentukData.objects.exclude(
-            deskripsi__icontains='tidak tersedia'
-        )
+        # Hide the "Data Tidak Tersedia" bentuk data option: a tiket recorded
+        # with available data must not be switched to it here (mirrors the
+        # rekam form which hides it client-side). The tiket's own bentuk data
+        # is always kept selectable — a P3DE admin may edit a "data tidak
+        # tersedia" tiket, and dropping its current value would force an
+        # unrelated change before the form could be saved.
+        bentuk_data_qs = BentukData.objects.exclude(deskripsi__icontains='tidak tersedia')
+        current_bentuk_data_id = getattr(self.instance, 'id_bentuk_data_id', None)
+        if current_bentuk_data_id:
+            bentuk_data_qs = BentukData.objects.filter(
+                Q(pk=current_bentuk_data_id) | ~Q(deskripsi__icontains='tidak tersedia')
+            )
+        self.fields['id_bentuk_data'].queryset = bentuk_data_qs
 
         # Surat pengantar fields and tanggal terima vertikal are optional
         # (mirrors the rekam form).

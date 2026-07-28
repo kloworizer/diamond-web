@@ -82,7 +82,7 @@ urlpatterns = [
     path('ilap/<str:pk>/delete/', views.ILAPDeleteView.as_view(), name='ilap_delete'),
     # Profil ILAP URLs
     path('profil-ilap/', views.ProfilILAPListView.as_view(), name='profil_ilap_list'),
-    path('profil-ilap/<int:pk>/', views.ProfilILAPDetailView.as_view(), name='profil_ilap_detail'),
+    path('profil-ilap/<str:id_ilap>/', views.ProfilILAPDetailView.as_view(), name='profil_ilap_detail'),
     # Jenis Tabel URLs
     path('jenis-tabel/', views.JenisTabelListView.as_view(), name='jenis_tabel_list'),
     path('jenis-tabel/data/', views.jenis_tabel_data, name='jenis_tabel_data'),
@@ -160,6 +160,9 @@ urlpatterns = [
     path('jenis-data-ilap/<int:pk>/update/', views.JenisDataILAPUpdateView.as_view(), name='jenis_data_ilap_update'),
     path('jenis-data-ilap/<int:pk>/delete/', views.JenisDataILAPDeleteView.as_view(), name='jenis_data_ilap_delete'),
     path('jenis-data-ilap/<int:pk>/info/', views.jenis_data_ilap_info_ajax, name='jenis_data_ilap_info_ajax'),
+    path('jenis-data-ilap/<str:id_sub_jenis_data>/tikets/', views.jenis_data_ilap_tiket_data, name='jenis_data_ilap_tiket_data'),
+    # Keep last: matches any remaining single-segment id_sub_jenis_data code.
+    path('jenis-data-ilap/<str:id_sub_jenis_data>/', views.JenisDataILAPProfilView.as_view(), name='jenis_data_ilap_profil'),
     # Klasifikasi Jenis Data URLs
     path('klasifikasi-jenis-data/', views.KlasifikasiJenisDataListView.as_view(), name='klasifikasi_jenis_data_list'),
     path('klasifikasi-jenis-data/data/', views.klasifikasi_jenis_data_data, name='klasifikasi_jenis_data_data'),
@@ -209,6 +212,7 @@ urlpatterns = [
     path('tanda-terima-data/data/', views.tanda_terima_data_data, name='tanda_terima_data_data'),
     path('tanda-terima-data/next-number/', views.tanda_terima_next_number, name='tanda_terima_next_number'),
     path('tanda-terima-data/tikets-by-ilap/', views.tanda_terima_tikets_by_ilap, name='tanda_terima_tikets_by_ilap'),
+    path('tanda-terima-data/nd-pengantar-options/', views.tanda_terima_nd_pengantar_options, name='tanda_terima_nd_pengantar_options'),
     path('tanda-terima-data/create/', views.TandaTerimaDataCreateView.as_view(), name='tanda_terima_data_create'),
     path('tanda-terima-data/from-tiket/<int:tiket_pk>/create/', views.TandaTerimaDataFromTiketCreateView.as_view(), name='tanda_terima_data_from_tiket_create'),
     path('tanda-terima-data/from-tiket/<int:pk>/tidak-terbit/', views.tidak_terbit_tanda_terima, name='tidak_terbit_tanda_terima'),
@@ -304,6 +308,7 @@ urlpatterns = [
     path('backup-data/', views.BackupDataListView.as_view(), name='backup_data_list'),
     path('backup-data/data/', views.backup_data_data, name='backup_data_data'),
     path('backup-data/filter-options/', views.backup_data_filter_options, name='backup_data_filter_options'),
+    path('backup-data/tiket-info/<int:tiket_pk>/', views.backup_data_tiket_info, name='backup_data_tiket_info'),
     path('backup-data/export/excel/', views.backup_data_export_excel, name='backup_data_export_excel'),
     path('backup-data/export/pdf/', views.backup_data_export_pdf, name='backup_data_export_pdf'),
     path('backup-data/create/', views.BackupDataCreateView.as_view(), name='backup_data_create'),
@@ -326,6 +331,7 @@ urlpatterns = [
     # API endpoints
     path('api/ilap/<int:ilap_id>/periode-jenis-data/', views.ILAPPeriodeDataAPIView.as_view(), name='api_ilap_periode_jenis_data'),
     path('api/check-jenis-prioritas/<str:jenis_data_id>/<int:tahun>/', views.CheckJenisPrioritasAPIView.as_view(), name='check_jenis_prioritas'),
+    path('api/navbar-search/', views.navbar_search, name='navbar_search'),
     path('api/check-tiket-exists/', views.CheckTiketExistsAPIView.as_view(), name='check_tiket_exists'),
     path('api/preview-nomor-tiket/', views.PreviewNomorTiketAPIView.as_view(), name='preview_nomor_tiket'),
     

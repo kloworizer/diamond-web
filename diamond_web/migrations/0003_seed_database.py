@@ -376,6 +376,21 @@ ILAP_DATA = [
     {"id_ilap": "PD010", "id_kategori": "PD", "nama_ilap": "KOTA DENPASAR", "kode_kpp": "025", "id_kategori_wilayah": "Regional"},
     {"id_ilap": "PD011", "id_kategori": "PD", "nama_ilap": "KABUPATEN LOMBOK BARAT", "kode_kpp": "026", "id_kategori_wilayah": "Regional"},
     {"id_ilap": "PD012", "id_kategori": "PD", "nama_ilap": "KOTA BANDA ACEH", "kode_kpp": "001", "id_kategori_wilayah": "Regional"},
+    # Pemerintah Daerah Provinsi (PV) — no KPP counterpart, mapped straight to a Kanwil.
+    # `kode_kanwil` is consumed by seed_ilap_kanwil_mapping (migration 0010).
+    {"id_ilap": "PV001", "id_kategori": "PV", "nama_ilap": "PROVINSI JAWA BARAT", "kode_kanwil": "090", "id_kategori_wilayah": "Regional"},
+    {"id_ilap": "PV002", "id_kategori": "PV", "nama_ilap": "PROVINSI JAWA TENGAH", "kode_kanwil": "100", "id_kategori_wilayah": "Regional"},
+    {"id_ilap": "PV003", "id_kategori": "PV", "nama_ilap": "PROVINSI JAWA TIMUR", "kode_kanwil": "120", "id_kategori_wilayah": "Regional"},
+    {"id_ilap": "PV004", "id_kategori": "PV", "nama_ilap": "PROVINSI DKI JAKARTA", "kode_kanwil": "080", "id_kategori_wilayah": "Regional"},
+    {"id_ilap": "PV005", "id_kategori": "PV", "nama_ilap": "PROVINSI BALI", "kode_kanwil": "140", "id_kategori_wilayah": "Regional"},
+]
+
+# ILAP → Kanwil mapping for ILAP that cannot be mapped to a KPP (kategori PV).
+# Consumed by migration 0010 to create ILAPKPP rows with kpp=False.
+ILAP_KANWIL_DATA = [
+    {"id_ilap": item["id_ilap"], "kode_kanwil": item["kode_kanwil"]}
+    for item in ILAP_DATA
+    if item.get("kode_kanwil")
 ]
 
 JENIS_DATA_ILAP_DATA = [
@@ -426,6 +441,14 @@ JENIS_DATA_ILAP_DATA = [
     {"id_ilap": "PD007", "id_jenis_data": "PD00107", "id_sub_jenis_data": "PD0070101", "nama_jenis_data": "Data Perdagangan Daerah", "nama_sub_jenis_data": "Data Pasar Tradisional", "nama_tabel_I": "tabel_pasar_tradisional_i", "nama_tabel_U": "tabel_pasar_tradisional_u", "id_jenis_tabel": "Tidak Terstruktur", "id_status_data": "Data Utama"},
     {"id_ilap": "PD008", "id_jenis_data": "PD00108", "id_sub_jenis_data": "PD0080101", "nama_jenis_data": "Data Pelabuhan Daerah", "nama_sub_jenis_data": "Aktivitas Pelabuhan", "nama_tabel_I": "tabel_aktivitas_pelabuhan_i", "nama_tabel_U": "tabel_aktivitas_pelabuhan_u", "id_jenis_tabel": "Diidentifikasi", "id_status_data": "Data Utama"},
     {"id_ilap": "PD009", "id_jenis_data": "PD00101", "id_sub_jenis_data": "PD0090101", "nama_jenis_data": "Data Transportasi Daerah", "nama_sub_jenis_data": "Data Kendaraan Umum", "nama_tabel_I": "tabel_kendaraan_umum_i", "nama_tabel_U": "tabel_kendaraan_umum_u", "id_jenis_tabel": "Tidak Diidentifikasi", "id_status_data": "Data Utama"},
+
+    # Pemerintah Daerah Provinsi (PV)
+    {"id_ilap": "PV001", "id_jenis_data": "PV00101", "id_sub_jenis_data": "PV0010101", "nama_jenis_data": "Data Pajak Provinsi", "nama_sub_jenis_data": "Pajak Kendaraan Bermotor", "nama_tabel_I": "tabel_pkb_i", "nama_tabel_U": "tabel_pkb_u", "id_jenis_tabel": "Diidentifikasi", "id_status_data": "Data Utama"},
+    {"id_ilap": "PV001", "id_jenis_data": "PV00102", "id_sub_jenis_data": "PV0010201", "nama_jenis_data": "Data Pajak Provinsi", "nama_sub_jenis_data": "Bea Balik Nama Kendaraan Bermotor", "nama_tabel_I": "tabel_bbnkb_i", "nama_tabel_U": "tabel_bbnkb_u", "id_jenis_tabel": "Diidentifikasi", "id_status_data": "Data Utama"},
+    {"id_ilap": "PV002", "id_jenis_data": "PV00201", "id_sub_jenis_data": "PV0020101", "nama_jenis_data": "Data Pajak Provinsi", "nama_sub_jenis_data": "Pajak Bahan Bakar Kendaraan Bermotor", "nama_tabel_I": "tabel_pbbkb_i", "nama_tabel_U": "tabel_pbbkb_u", "id_jenis_tabel": "Diidentifikasi", "id_status_data": "Data Utama"},
+    {"id_ilap": "PV003", "id_jenis_data": "PV00301", "id_sub_jenis_data": "PV0030101", "nama_jenis_data": "Data Pajak Provinsi", "nama_sub_jenis_data": "Pajak Air Permukaan", "nama_tabel_I": "tabel_pap_i", "nama_tabel_U": "tabel_pap_u", "id_jenis_tabel": "Diidentifikasi", "id_status_data": "Data Utama"},
+    {"id_ilap": "PV004", "id_jenis_data": "PV00401", "id_sub_jenis_data": "PV0040101", "nama_jenis_data": "Data Pajak Provinsi", "nama_sub_jenis_data": "Pajak Rokok", "nama_tabel_I": "tabel_pajak_rokok_i", "nama_tabel_U": "tabel_pajak_rokok_u", "id_jenis_tabel": "Diidentifikasi", "id_status_data": "Data Utama"},
+    {"id_ilap": "PV005", "id_jenis_data": "PV00501", "id_sub_jenis_data": "PV0050101", "nama_jenis_data": "Data Retribusi Provinsi", "nama_sub_jenis_data": "Retribusi Perizinan Tertentu", "nama_tabel_I": "tabel_retribusi_izin_i", "nama_tabel_U": "tabel_retribusi_izin_u", "id_jenis_tabel": "Tidak Diidentifikasi", "id_status_data": "Data Utama"},
 ]
 
 KLASIFIKASI_JENIS_DATA = [
@@ -490,6 +513,16 @@ KLASIFIKASI_JENIS_DATA = [
     {"id_sub_jenis_data": "PD0080101", "dasar_hukum": "PMK"},
     {"id_sub_jenis_data": "PD0080101", "dasar_hukum": "KSWP"},
     {"id_sub_jenis_data": "PD0090101", "dasar_hukum": "ADHOC"},
+
+    # Pemerintah Daerah Provinsi (PV)
+    {"id_sub_jenis_data": "PV0010101", "dasar_hukum": "PMK"},
+    {"id_sub_jenis_data": "PV0010101", "dasar_hukum": "PKS"},
+    {"id_sub_jenis_data": "PV0010201", "dasar_hukum": "PMK"},
+    {"id_sub_jenis_data": "PV0020101", "dasar_hukum": "PMK"},
+    {"id_sub_jenis_data": "PV0020101", "dasar_hukum": "KSWP"},
+    {"id_sub_jenis_data": "PV0030101", "dasar_hukum": "PKS"},
+    {"id_sub_jenis_data": "PV0040101", "dasar_hukum": "PMK"},
+    {"id_sub_jenis_data": "PV0050101", "dasar_hukum": "ADHOC"},
 ]
 
 PERIODE_JENIS_DATA = [
@@ -540,6 +573,14 @@ PERIODE_JENIS_DATA = [
     {"id_sub_jenis_data": "PD0070101", "periode": "Triwulanan", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 18},
     {"id_sub_jenis_data": "PD0080101", "periode": "Mingguan", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 3},
     {"id_sub_jenis_data": "PD0090101", "periode": "2 Mingguan", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 7},
+
+    # Pemerintah Daerah Provinsi (PV)
+    {"id_sub_jenis_data": "PV0010101", "periode": "Bulanan", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 15},
+    {"id_sub_jenis_data": "PV0010201", "periode": "Triwulanan", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 20},
+    {"id_sub_jenis_data": "PV0020101", "periode": "Bulanan", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 15},
+    {"id_sub_jenis_data": "PV0030101", "periode": "Triwulanan", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 25},
+    {"id_sub_jenis_data": "PV0040101", "periode": "Bulanan", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 10},
+    {"id_sub_jenis_data": "PV0050101", "periode": "Bulanan", "start_date": "2024-01-01", "end_date": None, "akhir_penyampaian": 12},
 ]
 
 JENIS_PRIORITAS_DATA = [
@@ -779,6 +820,30 @@ PIC_DATA = [
     {"id_sub_jenis_data": "PL0440101", "tipe": "P3DE", "username": "219166966"},
     {"id_sub_jenis_data": "PL0440101", "tipe": "PIDE", "username": "778511709"},
     {"id_sub_jenis_data": "PL0440101", "tipe": "PMDE", "username": "897882042"},
+    # PV0010101 - Pajak Kendaraan Bermotor
+    {"id_sub_jenis_data": "PV0010101", "tipe": "P3DE", "username": "334070720"},
+    {"id_sub_jenis_data": "PV0010101", "tipe": "PIDE", "username": "648726232"},
+    {"id_sub_jenis_data": "PV0010101", "tipe": "PMDE", "username": "090860740"},
+    # PV0010201 - Bea Balik Nama Kendaraan Bermotor
+    {"id_sub_jenis_data": "PV0010201", "tipe": "P3DE", "username": "334070720"},
+    {"id_sub_jenis_data": "PV0010201", "tipe": "PIDE", "username": "235512708"},
+    {"id_sub_jenis_data": "PV0010201", "tipe": "PMDE", "username": "446674438"},
+    # PV0020101 - Pajak Bahan Bakar Kendaraan Bermotor
+    {"id_sub_jenis_data": "PV0020101", "tipe": "P3DE", "username": "219166966"},
+    {"id_sub_jenis_data": "PV0020101", "tipe": "PIDE", "username": "648726232"},
+    {"id_sub_jenis_data": "PV0020101", "tipe": "PMDE", "username": "897882042"},
+    # PV0030101 - Pajak Air Permukaan
+    {"id_sub_jenis_data": "PV0030101", "tipe": "P3DE", "username": "469817665"},
+    {"id_sub_jenis_data": "PV0030101", "tipe": "PIDE", "username": "778511709"},
+    {"id_sub_jenis_data": "PV0030101", "tipe": "PMDE", "username": "090860740"},
+    # PV0040101 - Pajak Rokok
+    {"id_sub_jenis_data": "PV0040101", "tipe": "P3DE", "username": "469817665"},
+    {"id_sub_jenis_data": "PV0040101", "tipe": "PIDE", "username": "235512708"},
+    {"id_sub_jenis_data": "PV0040101", "tipe": "PMDE", "username": "446674438"},
+    # PV0050101 - Retribusi Perizinan Tertentu
+    {"id_sub_jenis_data": "PV0050101", "tipe": "P3DE", "username": "219166966"},
+    {"id_sub_jenis_data": "PV0050101", "tipe": "PIDE", "username": "778511709"},
+    {"id_sub_jenis_data": "PV0050101", "tipe": "PMDE", "username": "897882042"},
 ]
 
 DURASI_JATUH_TEMPO_DATA = [
@@ -878,6 +943,24 @@ DURASI_JATUH_TEMPO_DATA = [
     # PL0440101 - Data Pelanggan
     {"id_sub_jenis_data": "PL0440101", "seksi": "user_pide", "durasi": 90},
     {"id_sub_jenis_data": "PL0440101", "seksi": "user_pmde", "durasi": 90},
+    # PV0010101 - Pajak Kendaraan Bermotor
+    {"id_sub_jenis_data": "PV0010101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PV0010101", "seksi": "user_pmde", "durasi": 90},
+    # PV0010201 - Bea Balik Nama Kendaraan Bermotor
+    {"id_sub_jenis_data": "PV0010201", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PV0010201", "seksi": "user_pmde", "durasi": 90},
+    # PV0020101 - Pajak Bahan Bakar Kendaraan Bermotor
+    {"id_sub_jenis_data": "PV0020101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PV0020101", "seksi": "user_pmde", "durasi": 90},
+    # PV0030101 - Pajak Air Permukaan
+    {"id_sub_jenis_data": "PV0030101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PV0030101", "seksi": "user_pmde", "durasi": 90},
+    # PV0040101 - Pajak Rokok
+    {"id_sub_jenis_data": "PV0040101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PV0040101", "seksi": "user_pmde", "durasi": 90},
+    # PV0050101 - Retribusi Perizinan Tertentu
+    {"id_sub_jenis_data": "PV0050101", "seksi": "user_pide", "durasi": 90},
+    {"id_sub_jenis_data": "PV0050101", "seksi": "user_pmde", "durasi": 90},
 ]
 
 

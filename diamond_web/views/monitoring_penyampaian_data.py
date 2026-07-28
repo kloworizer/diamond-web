@@ -25,6 +25,7 @@ from ..models.dasar_hukum import DasarHukum
 from ..models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ..models.periode_pengiriman import PeriodePengiriman
 from ..utils import format_periode
+from ..utils.wilayah import ilap_in_kanwil_q
 from .mixins import UserP3DERequiredMixin, get_active_p3de_jenis_data_ilap_ids
 
 
@@ -198,6 +199,7 @@ def monitoring_penyampaian_data_data(request):
                     'id_jenis_tabel',
                 ).prefetch_related(
                     'id_ilap__ilap_kpp_relations__id_kpp__id_kanwil',
+                    'id_ilap__ilap_kpp_relations__id_kanwil',
                 )
 
                 active_jenis_data = list(active_jenis_data_qs)
@@ -207,6 +209,7 @@ def monitoring_penyampaian_data_data(request):
                     'id_kategori_wilayah',
                 ).prefetch_related(
                     'ilap_kpp_relations__id_kpp__id_kanwil',
+                    'ilap_kpp_relations__id_kanwil',
                 )
                 ilap_list = ilap_qs.values('id', 'id_ilap', 'nama_ilap').order_by('id_ilap')
 
@@ -217,8 +220,10 @@ def monitoring_penyampaian_data_data(request):
                     for rel in ilap.ilap_kpp_relations.all():
                         if rel.id_kpp:
                             kpp_set.add(rel.id_kpp.id)
-                            if rel.id_kpp.id_kanwil:
-                                kanwil_set.add(rel.id_kpp.id_kanwil.id)
+                        # PV ILAPs have no KPP and point at the Kanwil directly
+                        rel_kanwil = rel.kanwil
+                        if rel_kanwil:
+                            kanwil_set.add(rel_kanwil.id)
                 
                 kanwil_list = Kanwil.objects.filter(id__in=kanwil_set).values('id', 'kode_kanwil', 'nama_kanwil').order_by('kode_kanwil')
                 kpp_list = KPP.objects.filter(id__in=kpp_set).values('id', 'kode_kpp', 'nama_kpp').order_by('kode_kpp')
@@ -390,7 +395,7 @@ def monitoring_penyampaian_data_data(request):
     # Push dimension filters to DB level to drastically reduce rows processed in Python
     if kanwil_id:
         periode_data_qs = periode_data_qs.filter(
-            id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil_id=kanwil_id
+            ilap_in_kanwil_q(kanwil_id, prefix='id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations')
         )
     if kpp_id:
         periode_data_qs = periode_data_qs.filter(
@@ -522,9 +527,11 @@ def monitoring_penyampaian_data_data(request):
             else ''
         )
         is_regional_ilap = 'regional' in kategori_wilayah_desc
-        # Get first KPP relation if any (for backward compatibility with single-KPP setups)
+        # Get first wilayah relation if any (for backward compatibility with
+        # single-KPP setups). PV ILAPs resolve to a Kanwil without a KPP.
         first_kpp_rel = jenis_data.id_ilap.ilap_kpp_relations.first() if jenis_data.id_ilap else None
-        jenis_data_kanwil_id = (first_kpp_rel.id_kpp.id_kanwil_id if first_kpp_rel and first_kpp_rel.id_kpp else '')
+        first_rel_kanwil = first_kpp_rel.kanwil if first_kpp_rel else None
+        jenis_data_kanwil_id = (first_rel_kanwil.id if first_rel_kanwil else '')
         jenis_data_kpp_id = (first_kpp_rel.id_kpp.id if first_kpp_rel and first_kpp_rel.id_kpp else '')
         jenis_data_kategori_wilayah_id = jenis_data.id_ilap.id_kategori_wilayah.id if jenis_data.id_ilap.id_kategori_wilayah else ''
         jenis_data_kategori_ilap_id = jenis_data.id_ilap.id_kategori.id if jenis_data.id_ilap.id_kategori else ''

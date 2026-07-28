@@ -179,12 +179,22 @@ class TransferKePMDEView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateView):
                 return self.form_invalid(form)
 
     def form_invalid(self, form):
-        """Return validation errors as JSON for AJAX requests.
+        """Return the re-rendered form plus its errors as JSON for AJAX requests.
 
-        Handles both AJAX (returns JsonResponse with form errors) and
+        The `html` key lets the modal put the user's own input back in front of
+        them with the errors attached. Without it the modal had to re-fetch a
+        blank form to show anything at all, discarding everything they typed.
+
+        Handles both AJAX (returns JsonResponse with the bound form) and
         non-AJAX requests (returns parent form_invalid response).
         """
         if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            from django.template.loader import render_to_string
+            html = render_to_string(
+                'tiket/transfer_ke_pmde_modal_form.html',
+                self.get_context_data(form=form),
+                request=self.request
+            )
             error_messages = []
             for field, errors in form.errors.items():
                 for err in errors:
@@ -192,6 +202,7 @@ class TransferKePMDEView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateView):
             message = '; '.join(error_messages) or 'Form tidak valid'
             return JsonResponse({
                 'success': False,
+                'html': html,
                 'message': message,
                 'errors': form.errors
             }, status=400)

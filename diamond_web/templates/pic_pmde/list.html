@@ -35,9 +35,9 @@
     </div>
 
     <div class="main-content">
-    <div class="card stretch stretch-full h-100">
-        <div class="card-header border-bottom-0 pb-0 bg-transparent d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0"><i class="feather-user-check me-2"></i>Daftar PIC PMDE</h5>
+    <div class="card stretch stretch-full datatable-card">
+        <div class="card-header">
+            <h5 class="card-title"><i class="feather-user-check me-2"></i>Daftar PIC PMDE</h5>
             <div class="d-flex align-items-center gap-3">
                 <a href="javascript:void(0);" id="btn-reset-pencarian" class="btn border-0 text-primary text-decoration-none p-0 fw-bold align-items-center gap-1" style="display: none; font-size: 13px;">
                     <i class="feather-x" style="width: 16px; height: 16px;"></i> Reset Pencarian
@@ -45,9 +45,9 @@
                 {% if is_admin %}<button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>{% endif %}
             </div>
         </div>
-        <div class="card-body custom-card-action">
-            <div class="table-frame">
-            <table id="pic-pmde-table" class="table table-hover table-compact mb-0" style="width:100%">
+        <div class="card-body custom-card-action p-0">
+            <div class="table-responsive">
+            <table id="pic-pmde-table" class="table table-hover mb-0" style="width:100%">
                 <thead>
                     <tr>
                         <th>ILAP</th>

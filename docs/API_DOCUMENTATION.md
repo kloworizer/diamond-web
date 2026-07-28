@@ -352,7 +352,8 @@ Pengguna mengklik "Generate" → Sistem memilih template berdasarkan:
 | `GET` | `/quality-control/` | Halaman pengendalian mutu |
 | `GET` | `/quality-control/data/` | Data JSON DataTables pengendalian mutu |
 | `GET` | `/profil-ilap/` | Daftar profil ILAP |
-| `GET` | `/profil-ilap/<pk>/` | Detail profil ILAP |
+| `GET` | `/profil-ilap/<id_ilap>/` | Detail profil ILAP (mis. `/profil-ilap/BI001/`) |
+| `GET` | `/jenis-data-ilap/<id_sub_jenis_data>/` | Profil sub jenis data (mis. `/jenis-data-ilap/BI0010101/`) |
 | `GET` | `/monitoring-penyampaian-data/` | Pemantauan penyampaian data |
 | `GET` | `/monitoring-penyampaian-data/data/` | Data JSON DataTables pemantauan |
 

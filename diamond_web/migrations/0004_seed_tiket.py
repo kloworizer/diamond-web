@@ -75,6 +75,8 @@ ALL_SUB_JENIS_DATA = [
     "PD0010101", "PD0010201", "PD0020101", "PD0020201",
     "PD0030101", "PD0030201", "PD0040101", "PD0050101",
     "PD0060101", "PD0070101", "PD0080101", "PD0090101",
+    "PV0010101", "PV0010201", "PV0020101", "PV0030101",
+    "PV0040101", "PV0050101",
 ]
 
 # Map sub_jenis_data → typical periode (month) values
@@ -112,6 +114,31 @@ PERIODE_MAP = {
     "PD0070101": ("Triwulanan", [1, 2, 3, 4]),
     "PD0080101": ("Mingguan",  list(range(1, 13))),
     "PD0090101": ("2 Mingguan", list(range(1, 13))),
+    "PV0010101": ("Bulanan",   list(range(1, 13))),
+    "PV0010201": ("Triwulanan", [1, 2, 3, 4]),
+    "PV0020101": ("Bulanan",   list(range(1, 13))),
+    "PV0030101": ("Triwulanan", [1, 2, 3, 4]),
+    "PV0040101": ("Bulanan",   list(range(1, 13))),
+    "PV0050101": ("Bulanan",   list(range(1, 13))),
+}
+
+# Regional ILAP (kategori PD/PV) deliver data under a shared ND Pengantar, so
+# their tikets draw from a small per-year pool instead of getting a unique
+# nomor surat each. That is what makes "Tanda Terima per ND Pengantar"
+# reproducible on seeded data.
+REGIONAL_ND_PENGANTAR_POOL = {
+    2024: [
+        "B-101/PEMDA/03/2024", "B-215/PEMDA/06/2024",
+        "B-347/PEMDA/09/2024", "B-482/PEMDA/12/2024",
+    ],
+    2025: [
+        "B-118/PEMDA/03/2025", "B-236/PEMDA/06/2025",
+        "B-359/PEMDA/09/2025", "B-471/PEMDA/12/2025",
+    ],
+    2026: [
+        "B-127/PEMDA/01/2026", "B-244/PEMDA/02/2026",
+        "B-368/PEMDA/03/2026", "B-495/PEMDA/04/2026",
+    ],
 }
 
 NAMA_PENGIRIM_POOL = [
@@ -423,11 +450,16 @@ def seed_tiket(apps, schema_editor):
             if status == 7:
                 tgl_dibatalkan = t_cancel
 
-            # nomor_surat_pengantar
-            nomor_surat = (
-                f"B-{random.randint(100, 9999)}/{sub_id[:2]}/"
-                f"{random.randint(1, 12):02d}/{tahun}"
-            )
+            # nomor_surat_pengantar — regional ILAP share a pool of ND Pengantar
+            if sub_id[:2] in ("PD", "PV"):
+                nomor_surat = random.choice(
+                    REGIONAL_ND_PENGANTAR_POOL.get(tahun, REGIONAL_ND_PENGANTAR_POOL[2026])
+                )
+            else:
+                nomor_surat = (
+                    f"B-{random.randint(100, 9999)}/{sub_id[:2]}/"
+                    f"{random.randint(1, 12):02d}/{tahun}"
+                )
             tanggal_surat = _random_datetime(start_date, base_dt.date())
 
             # Workflow flags:

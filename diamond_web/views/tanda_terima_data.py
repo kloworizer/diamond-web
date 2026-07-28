@@ -21,6 +21,8 @@ from ..constants.tiket_status import STATUS_DIREKAM
 from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, SafeDeleteMixin
 from ..constants.tiket_status import STATUS_DIKIRIM_KE_PIDE
 from ..utils import format_number_with_separator, format_periode
+from ..utils.tanda_terima_nomor import format_nomor_tanda_terima, next_nomor_tanda_terima
+from ..utils.tanda_terima_scope import nd_pengantar_options, scoped_tiket_queryset
 
 
 class TandaTerimaDataListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView):
@@ -76,14 +78,19 @@ def tanda_terima_data_data(request):
 
     Returns: JSON with `draw`, `recordsTotal`, `recordsFiltered`, and
     `data` rows. Each row includes `id`, `nomor_tanda_terima`,
-    `tanggal_tanda_terima`, `id_ilap`, `id_perekam`, `status`,
-    and `actions` HTML depending on the requesting user's permissions.
+    `tanggal_tanda_terima`, `sumber` (Kanwil for regional receipts, ILAP for
+    nasional/internasional ones), `lingkup`, `id_perekam`, `status`, and
+    `actions` HTML depending on the requesting user's permissions.
     """
+    from django.db.models.functions import Coalesce
+
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
 
-    qs = TandaTerimaData.objects.select_related('id_ilap', 'id_perekam').all()
+    qs = TandaTerimaData.objects.select_related('id_ilap', 'id_kanwil', 'id_perekam').annotate(
+        sumber_nama=Coalesce('id_kanwil__nama_kanwil', 'id_ilap__nama_ilap')
+    )
     if not request.user.is_superuser and not request.user.groups.filter(name='admin').exists():
         qs = qs.filter(
             detil_items__id_tiket__tiketpic__id_user=request.user,
@@ -98,14 +105,12 @@ def tanda_terima_data_data(request):
             qs = qs.filter(nomor_tanda_terima__icontains=columns_search[0])
         if len(columns_search) > 1 and columns_search[1]:  # Tanggal
             qs = qs.filter(tanggal_tanda_terima__icontains=columns_search[1])
-        if len(columns_search) > 2 and columns_search[2]:  # ILAP
-            qs = qs.filter(id_ilap__nama_ilap__icontains=columns_search[2])
-        if len(columns_search) > 3 and columns_search[3]:  # Jenis Data
-            qs = qs.filter(id_ilap__jenisdatailap__nama_jenis_data__icontains=columns_search[3])
-        if len(columns_search) > 4 and columns_search[4]:  # Perekam
-            qs = qs.filter(id_perekam__username__icontains=columns_search[4])
-        if len(columns_search) > 5 and columns_search[5]:  # Status
-            status_value = columns_search[5].strip().lower()
+        if len(columns_search) > 2 and columns_search[2]:  # Kanwil/ILAP
+            qs = qs.filter(sumber_nama__icontains=columns_search[2])
+        if len(columns_search) > 3 and columns_search[3]:  # Perekam
+            qs = qs.filter(id_perekam__username__icontains=columns_search[3])
+        if len(columns_search) > 4 and columns_search[4]:  # Status
+            status_value = columns_search[4].strip().lower()
             if status_value in ['dibatalkan', 'batal', 'false', '0']:
                 qs = qs.filter(active=False)
             elif status_value in ['aktif', 'active', 'true', '1']:
@@ -115,7 +120,13 @@ def tanda_terima_data_data(request):
 
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['nomor_tanda_terima', 'tanggal_tanda_terima', 'id_ilap__nama_ilap', 'id_ilap__jenisdatailap__nama_jenis_data', 'id_perekam__username', 'active']
+    columns = [
+        'nomor_tanda_terima',
+        'tanggal_tanda_terima',
+        'sumber_nama',
+        'id_perekam__username',
+        'active',
+    ]
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -152,31 +163,23 @@ def tanda_terima_data_data(request):
         if is_active_pic:
             actions_html += f"<button class='btn btn-sm btn-info' data-action='view' data-url='{reverse('tanda_terima_data_view', args=[obj.pk])}' title='Detail'><i class='feather-eye'></i></button>"
         
-        # Show direct download buttons - get first tiket from this tanda terima
+        # Show direct download button - get first tiket from this tanda terima
         tiket_item = obj.detil_items.select_related('id_tiket').first()
         if tiket_item and tiket_item.id_tiket:
             pk = tiket_item.id_tiket.pk
-            # Button 1: Download Tanda Terima & Lampiran (Combined)
             actions_html += f"<button class='btn btn-sm btn-primary' onclick=\"downloadTandaTerimaDoc({pk}, 'tanda_terima'); return false;\" title='Download Tanda Terima & Lampiran'><i class='feather-file-text'></i></button>"
-            # Button 2: Download Register (Separate)
-            actions_html += f"<button class='btn btn-sm btn-success' onclick=\"downloadTandaTerimaDoc({pk}, 'register'); return false;\" title='Download Register'><i class='feather-list'></i></button>"
-        
+
         # Show delete button only for active PIC when tanda terima is active
         if obj.active and can_edit and is_active_pic:
             actions_html += f"<button class='btn btn-sm btn-warning' data-action='delete' data-url='{reverse('tanda_terima_data_delete', args=[obj.pk])}' title='Batalkan'><i class='feather-x-circle'></i></button>"
         actions_html += "</div>"
         
-        # Get ILAP name and jenis data from first tiket
-        jenis_data_list = []
-        if obj.id_ilap:
-            jenis_data_list = list(obj.id_ilap.jenisdatailap_set.values_list('nama_jenis_data', flat=True))
-        
         data.append({
             'id': obj.pk,
             'nomor_tanda_terima': obj.nomor_tanda_terima_format,
             'tanggal_tanda_terima': obj.tanggal_tanda_terima.strftime('%d-%m-%Y %H:%M'),
-            'id_ilap': obj.id_ilap.nama_ilap if obj.id_ilap else '-',
-            'jenis_data': ', '.join(jenis_data_list) if jenis_data_list else '-',
+            'sumber': obj.nama_sumber,
+            'lingkup': 'Regional' if obj.is_regional else 'Nasional/Internasional',
             'id_perekam': obj.id_perekam.username,
             'status': status_text,
             'actions': actions_html
@@ -208,99 +211,87 @@ def tanda_terima_next_number(request):
         tanggal = parse_date(tanggal_param)
 
     tahun = (tanggal or timezone.now()).year
-
-    from ..models.sequence_tanda_terima import SequenceTandaTerima
-
-    # Get the max sequence for this year from existing records
-    max_seq = TandaTerimaData.objects.filter(tahun_terima=tahun).aggregate(
-        max_nomor=models.Max('nomor_tanda_terima')
-    )['max_nomor'] or 0
-
-    if max_seq > 0:
-        # If there are existing records, continue from the max
-        next_seq = max_seq + 1
-    else:
-        # No existing records — check for SequenceTandaTerima config
-        seq_config = SequenceTandaTerima.objects.filter(tahun=tahun).first()
-        if seq_config:
-            # Use configured sequence: start from nomor_terakhir + 1
-            next_seq = seq_config.nomor_terakhir + 1
-        else:
-            # Fallback: start from 1
-            next_seq = 1
-
-    nomor_tanda_terima = f"{str(next_seq).zfill(5)}.TTD/PJ.1031/{tahun}"
+    next_seq = next_nomor_tanda_terima(tahun)
 
     return JsonResponse({
         'success': True,
-        'nomor_tanda_terima': nomor_tanda_terima,
+        'nomor_tanda_terima': format_nomor_tanda_terima(next_seq, tahun),
         'nomor_sequence': next_seq,
         'tahun': tahun
     })
+
+
+def _parse_scope_params(request):
+    """Read the scope of a tanda terima out of the request query string.
+
+    Returns a ``(scope_kwargs, tanda_terima_id, error)`` tuple where
+    `scope_kwargs` is ready to hand to `scoped_tiket_queryset`.
+    """
+    kanwil_id = request.GET.get('kanwil_id') or None
+    ilap_id = request.GET.get('ilap_id') or None
+    nd_pengantar = request.GET.get('nd_pengantar') or None
+    tanda_terima_id = request.GET.get('tanda_terima_id') or None  # Optional, edit mode
+
+    if not kanwil_id and not ilap_id:
+        return None, None, 'kanwil_id atau ilap_id wajib diisi.'
+
+    try:
+        tanda_terima_id = int(tanda_terima_id) if tanda_terima_id else None
+    except (ValueError, TypeError):
+        tanda_terima_id = None
+
+    scope = {
+        'kanwil_id': kanwil_id,
+        'ilap_id': ilap_id,
+        'nomor_nd_pengantar': nd_pengantar,
+        'exclude_tanda_terima_id': tanda_terima_id,
+    }
+    return scope, tanda_terima_id, None
 
 
 @login_required
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
 @require_GET
 def tanda_terima_tikets_by_ilap(request):
-    """Return available `Tiket` options for a given ILAP for selection.
+    """Return the `Tiket` options selectable for a tanda terima scope.
 
-    Query params:
-    - `ilap_id` (required): ILAP primary key.
-    - `tanda_terima_id` (optional): current tanda terima id when editing to
-        allow already-selected tickets to remain selected.
+    Query params (one of `kanwil_id` / `ilap_id` is required):
+    - `kanwil_id`: Kanwil primary key — regional flow. Covers every ILAP
+        mapped to that Kanwil, whether through a KPP (kategori PD) or
+        directly (kategori PV).
+    - `ilap_id`: ILAP primary key — nasional/internasional flow.
+    - `nd_pengantar` (optional): narrow the result to a single ND Pengantar.
+    - `tanda_terima_id` (optional): current tanda terima id when editing so
+        already-selected tickets remain selected.
 
     Behavior:
-    - Filters `Tiket` with `status < STATUS_DIKIRIM_KE_PIDE` and that
-        reference the given ILAP via `id_periode_data__id_sub_jenis_data_ilap`.
-    - For non-admin users, filters by tikets where user is active P3DE PIC
-    - Excludes tickets already assigned to an active `TandaTerimaData` for
-        the same ILAP (unless they belong to the editing `tanda_terima_id`).
+    - Filters `Tiket` with `status < STATUS_DIKIRIM_KE_PIDE`.
+    - For non-admin users, filters by tikets where user is active P3DE PIC.
+    - Excludes tickets already assigned to an active `TandaTerimaData` in the
+        same scope (unless they belong to the editing `tanda_terima_id`).
 
-    Returns JSON: { 'success': True, 'data': [ {id,label,selected,disabled}, ... ] }
+    Returns JSON: { 'success': True, 'data': [ {id,nomor_tiket,...}, ... ] }
     """
-    ilap_id = request.GET.get('ilap_id')
-    tanda_terima_id = request.GET.get('tanda_terima_id')  # Optional, for edit mode
-    
-    if not ilap_id:
-        return JsonResponse({'success': False, 'error': 'ilap_id is required'}, status=400)
+    scope, tanda_terima_id, error = _parse_scope_params(request)
+    if error:
+        return JsonResponse({'success': False, 'error': error}, status=400)
 
     # Get existing tikets if editing
     existing_tiket_ids = set()
     if tanda_terima_id:
-        try:
-            existing_tiket_ids = set(
-                DetilTandaTerima.objects.filter(id_tanda_terima_id=int(tanda_terima_id))
-                .values_list('id_tiket_id', flat=True)
-            )
-        except (ValueError, TypeError):
-            pass
+        existing_tiket_ids = set(
+            DetilTandaTerima.objects.filter(id_tanda_terima_id=tanda_terima_id)
+            .values_list('id_tiket_id', flat=True)
+        )
 
-    # Get tikets assigned to active tanda terima for THIS ILAP (exclude current one if editing)
-    other_assigned_tiket_ids = set(
-        DetilTandaTerima.objects.filter(
-            id_tanda_terima__active=True,
-            id_tanda_terima__id_ilap_id=ilap_id
-        ).exclude(
-            id_tanda_terima_id=tanda_terima_id
-        ).values_list('id_tiket_id', flat=True)
-    )
-
-    # Get available tikets
-    available_tikets = Tiket.objects.filter(
-        status_tiket__lt=STATUS_DIKIRIM_KE_PIDE,
-        id_periode_data__id_sub_jenis_data_ilap__id_ilap_id=ilap_id
-    ).exclude(
-        id__in=other_assigned_tiket_ids
-    ).select_related('id_periode_data__id_periode_pengiriman', 'id_periode_data__id_sub_jenis_data_ilap').order_by('nomor_tiket')
-    
-    # Filter by user's P3DE PIC assignments for non-admin users
-    if not (request.user.is_superuser or request.user.groups.filter(name='admin').exists()):
-        available_tikets = available_tikets.filter(
-            tiketpic__id_user=request.user,
-            tiketpic__active=True,
-            tiketpic__role=TiketPIC.Role.P3DE
-        ).distinct()
+    available_tikets = scoped_tiket_queryset(
+        user=request.user,
+        max_status=STATUS_DIKIRIM_KE_PIDE,
+        **scope
+    ).select_related(
+        'id_periode_data__id_periode_pengiriman',
+        'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+    ).order_by('nomor_tiket')
 
     data = []
     for t in available_tikets:
@@ -311,19 +302,24 @@ def tanda_terima_tikets_by_ilap(request):
                 t.periode,
                 t.tahun
             )
-            
+
         jenis_data = '-'
         subjenis_data = '-'
+        nama_ilap = '-'
         if t.id_periode_data and t.id_periode_data.id_sub_jenis_data_ilap:
-            jenis_data = t.id_periode_data.id_sub_jenis_data_ilap.nama_jenis_data or '-'
-            subjenis_data = t.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data or '-'
+            sub = t.id_periode_data.id_sub_jenis_data_ilap
+            jenis_data = sub.nama_jenis_data or '-'
+            subjenis_data = sub.nama_sub_jenis_data or '-'
+            nama_ilap = sub.id_ilap.nama_ilap if sub.id_ilap else '-'
 
         baris = format_number_with_separator(t.baris_diterima) if t.baris_diterima is not None else '0'
         tgl_terima = t.tgl_terima_dip.strftime('%d-%m-%Y') if t.tgl_terima_dip else '-'
-        
+
         data.append({
             'id': t.id,
             'nomor_tiket': t.nomor_tiket or f'Tiket {t.id}',
+            'nama_ilap': nama_ilap,
+            'nd_pengantar': t.nomor_surat_pengantar or '-',
             'jenis_data': jenis_data,
             'subjenis_data': subjenis_data,
             'periode': p_desc,
@@ -334,6 +330,29 @@ def tanda_terima_tikets_by_ilap(request):
         })
 
     return JsonResponse({'success': True, 'data': data})
+
+
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
+@require_GET
+def tanda_terima_nd_pengantar_options(request):
+    """Return the ND Pengantar numbers available within a tanda terima scope.
+
+    Query params are the same as `tanda_terima_tikets_by_ilap`, minus
+    `nd_pengantar` itself (it is what this endpoint produces).
+
+    Returns JSON: { 'success': True, 'data': ['B-901/...', ...] }
+    """
+    scope, _, error = _parse_scope_params(request)
+    if error:
+        return JsonResponse({'success': False, 'error': error}, status=400)
+
+    options = nd_pengantar_options(
+        user=request.user,
+        max_status=STATUS_DIKIRIM_KE_PIDE,
+        **scope
+    )
+    return JsonResponse({'success': True, 'data': options})
 
 
 class TandaTerimaDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxFormMixin, CreateView):
@@ -407,20 +426,11 @@ class TandaTerimaDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxF
         Returns:
             HttpResponse: Redirect response or AJAX JSON response.
         """
-        # Set the logged-in user as id_perekam and tahun from tanggal_tanda_terima
+        # `tahun_terima` and `nomor_tanda_terima` are allocated by the form's
+        # `save()`, which is the only place that can safely resolve a stale
+        # or already-taken number.
         form.instance.id_perekam = self.request.user
-        form.instance.tahun_terima = form.instance.tanggal_tanda_terima.year
-        
-        # Extract sequence number from formatted string
-        formatted_nomor = form.cleaned_data.get('nomor_tanda_terima')
-        if formatted_nomor and isinstance(formatted_nomor, str):
-            try:
-                # Extract the first part (5-digit sequence) from "00001.TTD/PJ.1031/2026"
-                seq_part = formatted_nomor.split('.')[0]
-                form.instance.nomor_tanda_terima = int(seq_part)
-            except (ValueError, IndexError):
-                pass
-        
+
         response = super().form_valid(form)
         
         # Save selected tikets to DetilTandaTerima
@@ -550,25 +560,25 @@ class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMix
         """
         from ..models.tiket import Tiket
         
-        # Set the logged-in user as id_perekam and tahun from tanggal_tanda_terima
+        # `tahun_terima` and `nomor_tanda_terima` are allocated by the form's
+        # `save()`, which is the only place that can safely resolve a stale
+        # or already-taken number.
         form.instance.id_perekam = self.request.user
-        form.instance.tahun_terima = form.instance.tanggal_tanda_terima.year
-        
-        # Extract sequence number from formatted string
-        formatted_nomor = form.cleaned_data.get('nomor_tanda_terima')
-        if formatted_nomor and isinstance(formatted_nomor, str):
-            try:
-                # Extract the first part (5-digit sequence) from "00001.TTD/PJ.1031/2026"
-                seq_part = formatted_nomor.split('.')[0]
-                form.instance.nomor_tanda_terima = int(seq_part)
-            except (ValueError, IndexError):
-                pass
-        
-        # Ensure ILAP is set from tiket for single-tiket flow
+
+        # Ensure the scope is set from the tiket for the single-tiket flow:
+        # regional ILAP are recorded per Kanwil, the rest per ILAP.
         tiket = Tiket.objects.get(pk=self.kwargs['tiket_pk'])
         if tiket.id_periode_data:
-            form.instance.id_ilap = tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap
-        
+            ilap = tiket.id_periode_data.id_sub_jenis_data_ilap.id_ilap
+            kanwil = ilap.kanwil if ilap else None
+            if kanwil:
+                form.instance.id_kanwil = kanwil
+                form.instance.id_ilap = None
+            else:
+                form.instance.id_ilap = ilap
+                form.instance.id_kanwil = None
+        form.instance.nomor_nd_pengantar = tiket.nomor_surat_pengantar or ''
+
         # Save the form (this sets self.object)
         self.object = form.save()
         
