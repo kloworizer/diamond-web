@@ -327,7 +327,24 @@
             processing: true,
             ajax: {
                 url: "{% url 'profil_ilap_jenis_data_data' ilap.id_ilap %}",
-                type: 'GET'
+                type: 'GET',
+                // DataTables sends six parameters per column by default, which
+                // an ILAP with a long history turns into a request line past
+                // gunicorn's 4094 byte limit_request_line — a 400 before the
+                // view is ever reached. Only what the endpoint reads is sent,
+                // so the request stays a fixed size however many years the
+                // matrix grows to.
+                data: function (d) {
+                    var order = d.order && d.order.length ? d.order[0] : null;
+                    return {
+                        draw: d.draw,
+                        start: d.start,
+                        length: d.length,
+                        'search[value]': d.search ? d.search.value : '',
+                        'order[0][column]': order ? order.column : 0,
+                        'order[0][dir]': order ? order.dir : 'asc'
+                    };
+                }
             },
             columns: [
                 { data: 'id_sub_jenis_data' },
