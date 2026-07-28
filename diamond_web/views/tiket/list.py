@@ -22,6 +22,7 @@ from ...models.jenis_tabel import JenisTabel
 from ...models.dasar_hukum import DasarHukum
 from ...models.detil_tanda_terima import DetilTandaTerima
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
+from ...utils.wilayah import kanwil_value_paths, tiket_in_kanwil_q
 from ..mixins import can_access_tiket_list, is_kasi
 from ...constants.tiket_status import STATUS_LABELS
 from .documents import _is_p3de_user, _format_periode_tiket
@@ -249,7 +250,7 @@ def tiket_data(request):
         
         if filter_kanwil:
             filtered_qs = filtered_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__id__in=filter_kanwil
+                tiket_in_kanwil_q(filter_kanwil)
             )
         
         if filter_kpp:
@@ -354,7 +355,7 @@ def tiket_data(request):
             )
         if filter_kanwil:
             tahun_filter_qs = tahun_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__id__in=filter_kanwil
+                tiket_in_kanwil_q(filter_kanwil)
             )
         if filter_kpp:
             tahun_filter_qs = tahun_filter_qs.filter(
@@ -453,7 +454,7 @@ def tiket_data(request):
             )
         if filter_kanwil:
             periode_filter_qs = periode_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__id__in=filter_kanwil
+                tiket_in_kanwil_q(filter_kanwil)
             )
         if filter_kpp:
             periode_filter_qs = periode_filter_qs.filter(
@@ -648,7 +649,7 @@ def tiket_data(request):
             )
         if filter_kanwil:
             kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__id__in=filter_kanwil
+                tiket_in_kanwil_q(filter_kanwil)
             )
         if filter_kpp:
             kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(
@@ -759,7 +760,7 @@ def tiket_data(request):
             )
         if filter_kanwil:
             ilap_filter_qs = ilap_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__id__in=filter_kanwil
+                tiket_in_kanwil_q(filter_kanwil)
             )
         if filter_kpp:
             ilap_filter_qs = ilap_filter_qs.filter(
@@ -866,7 +867,7 @@ def tiket_data(request):
             )
         if filter_kanwil:
             jenis_filter_qs = jenis_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__id__in=filter_kanwil
+                tiket_in_kanwil_q(filter_kanwil)
             )
         if filter_kpp:
             jenis_filter_qs = jenis_filter_qs.filter(
@@ -936,21 +937,19 @@ def tiket_data(request):
                 sub_jenis_seen.add(sub_jenis_id)
                 sub_jenis_options.append({'id': sub_jenis_id, 'name': f"{sub_jenis_id} - {sub_jenis_name}"})
 
-        # Get Kanwil from filtered queryset
-        kanwil_qs = filtered_qs.values_list(
-            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__id',
-            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__kode_kanwil',
-            'id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__nama_kanwil'
-        ).distinct()
+        # Get Kanwil from filtered queryset. Both mapping shapes are read:
+        # ILAP → KPP → Kanwil (kategori PD) and ILAP → Kanwil (kategori PV).
         kanwil_options = []
         seen = set()
-        for kanwil_id, kanwil_code, kanwil_name in kanwil_qs:
-            if kanwil_id and kanwil_id not in seen:
-                seen.add(kanwil_id)
-                kanwil_options.append({
-                    'id': str(kanwil_id),
-                    'name': f"{kanwil_code} - {kanwil_name}"
-                })
+        for paths in kanwil_value_paths():
+            for kanwil_id, kanwil_code, kanwil_name in filtered_qs.values_list(*paths).distinct():
+                if kanwil_id and kanwil_id not in seen:
+                    seen.add(kanwil_id)
+                    kanwil_options.append({
+                        'id': str(kanwil_id),
+                        'name': f"{kanwil_code} - {kanwil_name}"
+                    })
+        kanwil_options.sort(key=lambda option: option['name'])
 
         # Get KPP from filtered queryset
         kpp_qs = filtered_qs.values_list(
@@ -1068,7 +1067,7 @@ def tiket_data(request):
             )
         if filter_kanwil:
             status_filter_qs = status_filter_qs.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__id__in=filter_kanwil
+                tiket_in_kanwil_q(filter_kanwil)
             )
         if filter_kpp:
             status_filter_qs = status_filter_qs.filter(
@@ -1262,7 +1261,7 @@ def tiket_data(request):
         qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_sub_jenis_data__in=filter_sub_jenis_data)
 
     if filter_kanwil:
-        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id_kanwil__id__in=filter_kanwil)
+        qs = qs.filter(tiket_in_kanwil_q(filter_kanwil))
 
     if filter_kpp:
         qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp__id__in=filter_kpp)

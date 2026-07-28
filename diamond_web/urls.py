@@ -212,6 +212,7 @@ urlpatterns = [
     path('tanda-terima-data/data/', views.tanda_terima_data_data, name='tanda_terima_data_data'),
     path('tanda-terima-data/next-number/', views.tanda_terima_next_number, name='tanda_terima_next_number'),
     path('tanda-terima-data/tikets-by-ilap/', views.tanda_terima_tikets_by_ilap, name='tanda_terima_tikets_by_ilap'),
+    path('tanda-terima-data/nd-pengantar-options/', views.tanda_terima_nd_pengantar_options, name='tanda_terima_nd_pengantar_options'),
     path('tanda-terima-data/create/', views.TandaTerimaDataCreateView.as_view(), name='tanda_terima_data_create'),
     path('tanda-terima-data/from-tiket/<int:tiket_pk>/create/', views.TandaTerimaDataFromTiketCreateView.as_view(), name='tanda_terima_data_from_tiket_create'),
     path('tanda-terima-data/from-tiket/<int:pk>/tidak-terbit/', views.tidak_terbit_tanda_terima, name='tidak_terbit_tanda_terima'),

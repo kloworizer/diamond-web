@@ -50,3 +50,26 @@ class ILAP(models.Model):
 
     def __str__(self):
         return f"{self.id_ilap} - {self.nama_ilap}"
+
+    @property
+    def kanwil_list(self):
+        """Return every Kanwil this ILAP belongs to.
+
+        Mapping rows either point at a KPP (kategori PD) or straight at a
+        Kanwil (kategori PV), so both shapes are resolved here. Order is
+        preserved and duplicates are dropped.
+        """
+        kanwils = []
+        seen = set()
+        for rel in self.ilap_kpp_relations.all():
+            kanwil = rel.kanwil
+            if kanwil and kanwil.pk not in seen:
+                seen.add(kanwil.pk)
+                kanwils.append(kanwil)
+        return kanwils
+
+    @property
+    def kanwil(self):
+        """Return the first Kanwil of this ILAP, or None when unmapped."""
+        kanwils = self.kanwil_list
+        return kanwils[0] if kanwils else None

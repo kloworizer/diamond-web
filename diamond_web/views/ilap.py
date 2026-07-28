@@ -103,7 +103,9 @@ def ilap_data(request):
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
 
-    qs = ILAP.objects.select_related('id_kategori', 'id_kategori_wilayah').prefetch_related('ilap_kpp_relations__id_kpp').all()
+    qs = ILAP.objects.select_related('id_kategori', 'id_kategori_wilayah').prefetch_related(
+        'ilap_kpp_relations__id_kpp', 'ilap_kpp_relations__id_kanwil'
+    ).all()
     records_total = qs.count()
 
     # Column-specific filtering
@@ -139,7 +141,12 @@ def ilap_data(request):
 
     data = []
     for obj in qs_page:
-        kpp_names = ', '.join(rel.id_kpp.nama_kpp for rel in obj.ilap_kpp_relations.all() if rel.id_kpp) or '-'
+        # ILAP kategori PV have no KPP, so their Kanwil is shown instead.
+        kpp_names = ', '.join(
+            rel.id_kpp.nama_kpp if rel.id_kpp else rel.id_kanwil.nama_kanwil
+            for rel in obj.ilap_kpp_relations.all()
+            if rel.id_kpp or rel.id_kanwil
+        ) or '-'
         data.append({
             'kategori_wilayah': str(obj.id_kategori_wilayah) if obj.id_kategori_wilayah else '-',
             'id_ilap': obj.id_ilap,
