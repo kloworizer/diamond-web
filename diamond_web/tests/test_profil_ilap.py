@@ -335,6 +335,7 @@ class TestProfilILAPJenisDataData:
             'jenis_data_ilap_profil', args=[jenis_data.id_sub_jenis_data]
         ) in row['id_sub_jenis_data']
         assert row['nama_sub_jenis_data'] == jenis_data.nama_sub_jenis_data
+        assert row['nama_tabel_I'] == jenis_data.nama_tabel_I
         assert 'DH Profil' in row['dasar_hukum']
         assert 'Bulanan - Bulanan' in row['periode']
         assert '2/12' in row[f'y{datetime.now().year}']
@@ -413,6 +414,31 @@ class TestProfilILAPJenisDataData:
         assert payload['recordsTotal'] == 2
         assert payload['recordsFiltered'] == 1
         assert payload['data'][0]['nama_sub_jenis_data'] == jenis_data.nama_sub_jenis_data
+
+    def test_search_matches_the_nama_tabel(self, client):
+        ilap, _ = _bundle('Bulanan')
+        other = JenisDataILAPFactory(id_ilap=ilap, nama_tabel_I='TBL_SASARAN')
+        PeriodeJenisDataFactory(id_sub_jenis_data_ilap=other)
+        client.force_login(_p3de_user())
+        payload = self._rows(client, ilap, **{'search[value]': 'TBL_SASARAN'})
+        assert payload['recordsTotal'] == 2
+        assert payload['recordsFiltered'] == 1
+        assert payload['data'][0]['nama_tabel_I'] == 'TBL_SASARAN'
+
+    def test_ordering_by_nama_tabel(self, client):
+        ilap, _ = _bundle('Bulanan')
+        for nama_tabel in ('TBL_B', 'TBL_A'):
+            PeriodeJenisDataFactory(
+                id_sub_jenis_data_ilap=JenisDataILAPFactory(
+                    id_ilap=ilap, nama_tabel_I=nama_tabel
+                )
+            )
+        client.force_login(_p3de_user())
+        payload = self._rows(
+            client, ilap, **{'order[0][column]': '2', 'order[0][dir]': 'asc'}
+        )
+        tabels = [row['nama_tabel_I'] for row in payload['data']]
+        assert tabels == sorted(tabels)
 
     def test_search_matches_the_dasar_hukum(self, client):
         """It is a column of the table, so the search box reaches it."""

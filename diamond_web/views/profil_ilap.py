@@ -710,6 +710,7 @@ def navbar_search(request):
 JENIS_DATA_ORDER_COLUMNS = {
     0: 'id_sub_jenis_data',
     1: 'nama_sub_jenis_data',
+    2: 'nama_tabel_I',
 }
 
 
@@ -757,6 +758,7 @@ def profil_ilap_jenis_data_data(request, id_ilap):
         base_qs = base_qs.filter(
             Q(id_sub_jenis_data__icontains=search_value)
             | Q(nama_sub_jenis_data__icontains=search_value)
+            | Q(nama_tabel_I__icontains=search_value)
             | Q(klasifikasijenisdata__id_klasifikasi_tabel__deskripsi__icontains=search_value)
             | Q(periodejenisdata__id_periode_pengiriman__periode_penyampaian__icontains=search_value)
             | Q(periodejenisdata__id_periode_pengiriman__periode_penerimaan__icontains=search_value)
@@ -800,6 +802,7 @@ def profil_ilap_jenis_data_data(request, id_ilap):
                 f'{escape(jenis_data.id_sub_jenis_data)}</a>'
             ),
             'nama_sub_jenis_data': escape(jenis_data.nama_sub_jenis_data),
+            'nama_tabel_I': escape(jenis_data.nama_tabel_I or '---'),
             'dasar_hukum': (
                 f'<small class="text-muted">{escape(summary["dasar_hukum"] or "---")}</small>'
             ),
