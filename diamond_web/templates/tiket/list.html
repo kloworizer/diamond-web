@@ -250,7 +250,6 @@
                             <th>Nomor Tiket</th>
                             <th>ILAP</th>
                             <th>Jenis Data</th>
-                            <th>Nama Tabel I</th>
                             <th>Periode</th>
                             <th>Status</th>
                             <th>Aksi</th>
@@ -600,17 +599,25 @@
                     {
                         data: null,
                         render: function(data, type, row) {
-                            return '<span class="text-muted small">' + (row.id_sub_jenis_data || '-') + '</span><br>' + (row.nama_sub_jenis_data || '-');
+                            const tabel_i = row.nama_tabel_I || '';
+                            const sub_jenis = row.nama_sub_jenis_data || '-';
+                            const esc_sub_jenis = String(sub_jenis).replace(/"/g, '&quot;');
+                            let html = '';
+                            if (tabel_i) {
+                                html += '<span class="text-muted d-block font-monospace" style="font-size: 11px; line-height: 1.25; color: #64748b;">' + tabel_i + '</span>';
+                            }
+                            html += '<div class="text-truncate cell-truncate fw-medium" style="max-width: 250px;" data-full-text="' + esc_sub_jenis + '">' + esc_sub_jenis + '</div>';
+                            
+                            return '<div>' + html + '</div>';
                         }
                     },
-                    { data: 'nama_tabel_I' },
                     { data: 'periode_formatted' },
                     { data: 'status' },
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [
                     { targets: 0, visible: false, searchable: false },
-                    { targets: 7, render: function (data, type, row, meta) { return data; } }
+                    { targets: 6, render: function (data, type, row, meta) { return data; } }
                 ],
                 order: [[0, 'asc']]
             });
@@ -734,6 +741,47 @@
                 }
             });
         }
+
+        // Smart Tooltip Event Delegation: Custom tooltip that follows cursor for truncated text
+        $(document).on('mouseenter', '.cell-truncate', function(e) {
+            const el = this;
+            if (el.scrollWidth > el.clientWidth) {
+                const fullText = el.getAttribute('data-full-text') || el.innerText;
+                let tt = document.getElementById('custom-cursor-tooltip');
+                if (!tt) {
+                    tt = document.createElement('div');
+                    tt.id = 'custom-cursor-tooltip';
+                    tt.style.cssText = 'position: fixed; pointer-events: none; opacity: 0; transition: opacity 0.2s cubic-bezier(0.25, 1, 0.5, 1); background: #1e293b; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 12px; max-width: 350px; z-index: 99999; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); word-wrap: break-word; line-height: 1.4;';
+                    document.body.appendChild(tt);
+                }
+                tt.innerText = fullText;
+                tt.style.left = (e.clientX + 15) + 'px';
+                tt.style.top = (e.clientY + 15) + 'px';
+                tt.style.opacity = '1';
+                el._showTooltip = true;
+            }
+        }).on('mousemove', '.cell-truncate', function(e) {
+            if (this._showTooltip) {
+                const tt = document.getElementById('custom-cursor-tooltip');
+                if (tt) {
+                    let left = e.clientX + 15;
+                    let top = e.clientY + 15;
+                    const rect = tt.getBoundingClientRect();
+                    if (left + rect.width > window.innerWidth) left = e.clientX - rect.width - 15;
+                    if (top + rect.height > window.innerHeight) top = e.clientY - rect.height - 15;
+                    tt.style.left = left + 'px';
+                    tt.style.top = top + 'px';
+                }
+            }
+        }).on('mouseleave', '.cell-truncate', function() {
+            if (this._showTooltip) {
+                const tt = document.getElementById('custom-cursor-tooltip');
+                if (tt) {
+                    tt.style.opacity = '0';
+                }
+                this._showTooltip = false;
+            }
+        });
     })();
 </script>
 {% endblock %}

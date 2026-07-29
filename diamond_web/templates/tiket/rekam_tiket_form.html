@@ -49,35 +49,53 @@
                 </div>
 
                 <!-- Status Ketersediaan Data and Alasan Ketidaktersediaan side-by-side -->
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">{{ form.status_ketersediaan_data.label }}{% if form.status_ketersediaan_data.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="status_ketersediaan_data" id="status_tersedia" value="1" checked>
-                            <label class="form-check-label" for="status_tersedia">Data Tersedia</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="status_ketersediaan_data" id="status_tidak_tersedia" value="0">
-                            <label class="form-check-label" for="status_tidak_tersedia">Data Tidak Tersedia</label>
-                        </div>
-                        <div class="form-check form-switch mt-3">
-                            {{ form.special_request }}
-                            <label class="form-check-label" for="{{ form.special_request.id_for_label }}">{{ form.special_request.label }}</label>
-                            {% if form.special_request.errors %}
-                                <div class="invalid-feedback d-block">{{ form.special_request.errors }}</div>
-                            {% endif %}
-                            <small class="form-text text-muted d-block">
-                                <i class="feather-info me-1"></i>Opsi ini untuk menandai tiket sebagai tiket permintaan khusus dengan prioritas pengolahan lebih tinggi dari tiket biasa.
-                            </small>
+                <div class="row mb-3 align-items-stretch">
+                    <div class="col-md-6 d-flex flex-column justify-content-between">
+                        <div class="h-100">
+                            <!-- Redesigned Permintaan Khusus Card -->
+                            <div class="p-2 px-3 rounded-3 border transition-all mb-3" id="special-request-card" style="background-color: #ffffff; border-color: #e2e8f0 !important;">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar avatar-xs bg-soft-warning text-warning rounded-circle" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">
+                                            <i class="feather-star fs-14"></i>
+                                        </div>
+                                        <div>
+                                            <label class="form-check-label fw-bold mb-0 cursor-pointer text-dark" for="{{ form.special_request.id_for_label }}" style="font-size: 13px;">
+                                                {{ form.special_request.label }}
+                                            </label>
+                                            <small class="text-muted d-block" style="font-size: 11px;"><i class="feather-info me-1"></i>Opsi ini untuk menandai tiket sebagai tiket permintaan khusus dengan prioritas pengolahan lebih tinggi dari tiket biasa.</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-check form-switch m-0 p-0">
+                                        {{ form.special_request }}
+                                    </div>
+                                </div>
+                                {% if form.special_request.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.special_request.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <label class="form-label">{{ form.status_ketersediaan_data.label }}{% if form.status_ketersediaan_data.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                            <div class="d-flex gap-4 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="status_ketersediaan_data" id="status_tersedia" value="1" checked>
+                                    <label class="form-check-label" for="status_tersedia">Data Tersedia</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="status_ketersediaan_data" id="status_tidak_tersedia" value="0">
+                                    <label class="form-check-label" for="status_tidak_tersedia">Data Tidak Tersedia</label>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="{{ form.alasan_ketidaktersediaan.id_for_label }}" class="form-label">{{ form.alasan_ketidaktersediaan.label }}</label>
+                    <div class="col-md-6" id="alasan-ketidaktersediaan-wrapper" style="display: none;">
+                        <div class="h-100">
+                            <label for="{{ form.alasan_ketidaktersediaan.id_for_label }}" class="form-label">{{ form.alasan_ketidaktersediaan.label }} <span class="text-danger">*</span></label>
                             {{ form.alasan_ketidaktersediaan }}
                             {% if form.alasan_ketidaktersediaan.errors %}
                                 <div class="invalid-feedback d-block">{{ form.alasan_ketidaktersediaan.errors }}</div>
                             {% endif %}
+                            <small class="text-muted mt-2 d-block" style="font-size: 11.5px;">Tuliskan penjelasan mengenai ketidaktersediaan data yang diterima.</small>
                         </div>
                     </div>
                 </div>
@@ -87,7 +105,7 @@
                     <div class="col-md-6">
                         {% if form.id_ilap %}
                             <div class="mb-3">
-                                <label for="{{ form.id_ilap.id_for_label }}" class="form-label">{{ form.id_ilap.label }}{% if form.id_ilap.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                                <label for="{{ form.id_ilap.id_for_label }}" class="form-label fw-bold">{{ form.id_ilap.label }}{% if form.id_ilap.field.required %}<span class="text-danger">*</span>{% endif %}</label>
                                 {{ form.id_ilap }}
                                 {% if form.id_ilap.errors %}
                                     <div class="invalid-feedback d-block">{{ form.id_ilap.errors }}</div>
@@ -98,7 +116,7 @@
                     <div class="col-md-6">
                         {% if form.id_periode_data %}
                             <div class="mb-3">
-                                <label for="{{ form.id_periode_data.id_for_label }}" class="form-label">{{ form.id_periode_data.label }}{% if form.id_periode_data.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                                <label for="{{ form.id_periode_data.id_for_label }}" class="form-label fw-bold">{{ form.id_periode_data.label }}{% if form.id_periode_data.field.required %}<span class="text-danger">*</span>{% endif %}</label>
                                 {{ form.id_periode_data }}
                                 {% if form.id_periode_data.errors %}
                                     <div class="invalid-feedback d-block">{{ form.id_periode_data.errors }}</div>
@@ -108,67 +126,40 @@
                     </div>
                 </div>
 
-                <!-- Jenis Data Information Section -->
-                <div id="jenis-data-info" class="card border-primary mb-4" style="display: none;">
-                    <div class="card-header bg-light">
-                        <h6 class="mb-0"><i class="feather-info me-2"></i>Informasi Jenis Data ILAP</h6>
+                <div id="jenis-data-info" class="card shadow-sm mb-4" style="display: none; border: 1px solid rgba(13, 110, 253, 0.3) !important;">
+                    <div class="card-header bg-transparent py-2 d-flex justify-content-between align-items-center" style="border-bottom: 1px solid rgba(13, 110, 253, 0.2) !important;">
+                        <h6 class="mb-0 text-dark fw-bold" style="color: #333333 !important;"><i class="feather-info me-2 text-primary"></i>Informasi Jenis Data ILAP</h6>
                     </div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <div class="info-group mb-2">
-                                    <label class="text-muted small mb-1">ILAP</label>
-                                    <p class="fw-semibold mb-0" id="info-nama-ilap">-</p>
-                                </div>
-                                <div class="info-group mb-2">
-                                    <label class="text-muted small mb-1">Kategori ILAP</label>
-                                    <p class="fw-semibold mb-0" id="info-kategori-ilap">-</p>
-                                </div>
-                                <div class="info-group mb-2">
-                                    <label class="text-muted small mb-1">Kategori Wilayah</label>
-                                    <p class="fw-semibold mb-0" id="info-kategori-wilayah">-</p>
-                                </div>
-                                <div class="info-group mb-2">
-                                    <label class="text-muted small mb-1">Jenis Tabel</label>
-                                    <p class="fw-semibold mb-0" id="info-jenis-tabel">-</p>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="info-group mb-2">
-                                    <label class="text-muted small mb-1">Klasifikasi Jenis Data</label>
-                                    <p class="fw-semibold mb-0" id="info-klasifikasi">-</p>
-                                </div>
-                                <div class="info-group mb-2">
-                                    <label class="text-muted small mb-1">Periode Penyampaian</label>
-                                    <p class="fw-semibold mb-0" id="info-deskripsi-periode">-</p>
-                                </div>
-                                <div class="info-group mb-2">
-                                    <label class="text-muted small mb-1">Periode Penerimaan</label>
-                                    <p class="fw-semibold mb-0" id="info-periode-penerimaan">-</p>
-                                </div>
+                    <div class="card-body py-2">
+                        <div class="row g-2 align-items-center mb-2">
+                            <div class="col-md-2 text-muted small">ILAP</div>
+                            <div class="col-md-10"><span class="badge bg-white text-dark border" id="info-nama-ilap">-</span></div>
+                        </div>
+                        <div class="row g-2 align-items-center mb-2">
+                            <div class="col-md-2 text-muted small">Kategori</div>
+                            <div class="col-md-10">
+                                <span class="badge bg-white text-dark border me-1"><span class="fw-normal">Kategori ILAP:</span> <span id="info-kategori-ilap">-</span></span>
+                                <span class="badge bg-white text-dark border me-1"><span class="fw-normal">Wilayah:</span> <span id="info-kategori-wilayah">-</span></span>
+                                <span class="badge bg-white text-dark border"><span class="fw-normal">Klasifikasi:</span> <span id="info-klasifikasi">-</span></span>
                             </div>
                         </div>
-                    </div>
-                    <div class="card-footer bg-light">
-                        <strong><i class="feather-users me-2"></i>PIC (Penanggung Jawab)</strong>
-                        <div class="row g-2 mt-2">
-                            <div class="col-md-4">
-                                <div class="info-group">
-                                    <label class="text-muted small mb-1">P3DE</label>
-                                    <p class="fw-semibold mb-0" id="info-pic-p3de">-</p>
-                                </div>
+                        <div class="row g-2 align-items-center mb-2">
+                            <div class="col-md-2 text-muted small">Jenis Tabel</div>
+                            <div class="col-md-10"><span class="badge bg-white text-dark border" id="info-jenis-tabel">-</span></div>
+                        </div>
+                        <div class="row g-2 align-items-center mb-2">
+                            <div class="col-md-2 text-muted small">Periode</div>
+                            <div class="col-md-10">
+                                <span class="badge bg-white text-dark border me-1"><i class="feather-send me-1 text-primary"></i><span class="fw-normal">Penyampaian:</span> <span id="info-deskripsi-periode">-</span></span>
+                                <span class="badge bg-white text-dark border"><i class="feather-inbox me-1 text-primary"></i><span class="fw-normal">Penerimaan:</span> <span id="info-periode-penerimaan">-</span></span>
                             </div>
-                            <div class="col-md-4">
-                                <div class="info-group">
-                                    <label class="text-muted small mb-1">PIDE</label>
-                                    <p class="fw-semibold mb-0" id="info-pic-pide">-</p>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="info-group">
-                                    <label class="text-muted small mb-1">PMDE</label>
-                                    <p class="fw-semibold mb-0" id="info-pic-pmde">-</p>
-                                </div>
+                        </div>
+                        <div class="row g-2 align-items-center">
+                            <div class="col-md-2 text-muted small">PIC Data</div>
+                            <div class="col-md-10">
+                                <span class="badge me-1" style="background-color: rgba(47, 84, 196, 0.1); color: #2f54c4; border: 1px solid #2f54c4;"><i class="feather-user me-1"></i>P3DE: <span id="info-pic-p3de">-</span></span>
+                                <span class="badge me-1" style="background-color: rgba(6, 196, 210, 0.1); color: #06C4D2; border: 1px solid #06C4D2;"><i class="feather-user me-1"></i>PIDE: <span id="info-pic-pide">-</span></span>
+                                <span class="badge" style="background-color: rgba(12, 146, 255, 0.1); color: #0C92FF; border: 1px solid #0C92FF;"><i class="feather-user me-1"></i>PMDE: <span id="info-pic-pmde">-</span></span>
                             </div>
                         </div>
                     </div>
@@ -179,7 +170,9 @@
                     <div class="col-md-3">
                         <div class="mb-3">
                             <label for="{{ form.periode.id_for_label }}" class="form-label">{{ form.periode.label }}{% if form.periode.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                            {{ form.periode }}
+                            <div style="max-width: 250px;">
+                                {{ form.periode }}
+                            </div>
                             {% if form.periode.errors %}
                                 <div class="invalid-feedback d-block">{{ form.periode.errors }}</div>
                             {% endif %}
@@ -188,7 +181,9 @@
                     <div class="col-md-3">
                         <div class="mb-3">
                             <label for="{{ form.tahun.id_for_label }}" class="form-label">{{ form.tahun.label }}{% if form.tahun.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                            {{ form.tahun }}
+                            <div style="max-width: 250px;">
+                                {{ form.tahun }}
+                            </div>
                             {% if form.tahun.errors %}
                                 <div class="invalid-feedback d-block">{{ form.tahun.errors }}</div>
                             {% endif %}
@@ -196,18 +191,18 @@
                     </div>
                     <div class="col-md-3">
                         <div class="mb-3">
-                            <label for="{{ form.penyampaian.id_for_label }}" class="form-label">{{ form.penyampaian.label }}{% if form.penyampaian.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                            <input type="text" class="form-control" id="id_penyampaian" name="penyampaian" readonly style="background-color: #e9ecef;" value="0">
-                            {% if form.penyampaian.errors %}
-                                <div class="invalid-feedback d-block">{{ form.penyampaian.errors }}</div>
-                            {% endif %}
+                            <label for="{{ form.penyampaian.id_for_label }}" class="form-label">PENYAMPAIAN KE-</label>
+                            <div class="pt-1">
+                                <span id="text_penyampaian" class="d-inline-block text-dark pt-1" style="font-weight: 400 !important; font-size: 15px;">0</span>
+                            </div>
+                            <input type="hidden" id="id_penyampaian" name="penyampaian" value="0">
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="mb-3">
                             <label class="form-label">Data Prioritas</label>
-                            <div class="info-group d-flex align-items-center justify-content-center" style="height: 38px;">
-                                <span id="info-jenis-prioritas" class="badge bg-secondary">-</span>
+                            <div class="pt-1">
+                                <span id="info-jenis-prioritas" class="badge bg-soft-secondary text-secondary border border-secondary fw-normal">-</span>
                             </div>
                         </div>
                     </div>
@@ -232,7 +227,9 @@
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="{{ form.tanggal_surat_pengantar.id_for_label }}" class="form-label">{{ form.tanggal_surat_pengantar.label }}</label>
-                            {{ form.tanggal_surat_pengantar }}
+                            <div style="max-width: 250px;">
+                                {{ form.tanggal_surat_pengantar }}
+                            </div>
                             {% if form.tanggal_surat_pengantar.errors %}
                                 <div class="invalid-feedback d-block">{{ form.tanggal_surat_pengantar.errors }}</div>
                             {% endif %}
@@ -254,7 +251,9 @@
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="{{ form.id_bentuk_data.id_for_label }}" class="form-label">{{ form.id_bentuk_data.label }}{% if form.id_bentuk_data.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                            {{ form.id_bentuk_data }}
+                            <div style="max-width: 250px;">
+                                {{ form.id_bentuk_data }}
+                            </div>
                             {% if form.id_bentuk_data.errors %}
                                 <div class="invalid-feedback d-block">{{ form.id_bentuk_data.errors }}</div>
                             {% endif %}
@@ -263,7 +262,9 @@
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="{{ form.id_cara_penyampaian.id_for_label }}" class="form-label">{{ form.id_cara_penyampaian.label }}{% if form.id_cara_penyampaian.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                            {{ form.id_cara_penyampaian }}
+                            <div style="max-width: 250px;">
+                                {{ form.id_cara_penyampaian }}
+                            </div>
                             {% if form.id_cara_penyampaian.errors %}
                                 <div class="invalid-feedback d-block">{{ form.id_cara_penyampaian.errors }}</div>
                             {% endif %}
@@ -272,7 +273,9 @@
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="{{ form.baris_diterima.id_for_label }}" class="form-label">{{ form.baris_diterima.label }}{% if form.baris_diterima.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                            {{ form.baris_diterima }}
+                            <div style="max-width: 250px;">
+                                {{ form.baris_diterima }}
+                            </div>
                             {% if form.baris_diterima.errors %}
                                 <div class="invalid-feedback d-block">{{ form.baris_diterima.errors }}</div>
                             {% endif %}
@@ -294,7 +297,9 @@
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="{{ form.tgl_terima_vertikal.id_for_label }}" class="form-label">{{ form.tgl_terima_vertikal.label }}<span class="text-danger" id="tgl-terima-vertikal-required" style="display: none;">*</span></label>
-                            {{ form.tgl_terima_vertikal }}
+                            <div style="max-width: 250px;">
+                                {{ form.tgl_terima_vertikal }}
+                            </div>
                             <small class="form-text text-muted" id="tgl-terima-vertikal-hint" style="display: none;">Tidak dapat diisi untuk kategori ILAP non-Regional</small>
                             {% if form.tgl_terima_vertikal.errors %}
                                 <div class="invalid-feedback d-block">{{ form.tgl_terima_vertikal.errors }}</div>
@@ -304,7 +309,9 @@
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="{{ form.tgl_terima_dip.id_for_label }}" class="form-label">{{ form.tgl_terima_dip.label }}{% if form.tgl_terima_dip.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                            {{ form.tgl_terima_dip }}
+                            <div style="max-width: 250px;">
+                                {{ form.tgl_terima_dip }}
+                            </div>
                             {% if form.tgl_terima_dip.errors %}
                                 <div class="invalid-feedback d-block">{{ form.tgl_terima_dip.errors }}</div>
                             {% endif %}
@@ -319,12 +326,12 @@
                     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
                         <h6 class="mb-0"><i class="feather-database me-2"></i><strong>Bagian C: Rekam Backup Data</strong></h6>
                         <div class="form-check form-switch mb-0">
-                            <input class="form-check-input" type="checkbox" role="switch" id="rekam-backup-checkbox" name="rekam_backup" value="1">
+                            <input class="form-check-input" type="checkbox" role="switch" id="rekam-backup-checkbox" name="rekam_backup" value="1" checked>
                             <label class="form-check-label" for="rekam-backup-checkbox">Rekam Backup Data Sekarang</label>
                         </div>
                     </div>
                 </div>
-                <div id="backup-data-section" style="display: none;">
+                <div id="backup-data-section" style="display: block;">
                     <div class="row">
                         <div class="col-md-4">
                             <div class="mb-3">
@@ -341,12 +348,14 @@
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label for="backup_id_media_backup" class="form-label">Media Backup <span class="text-danger">*</span></label>
-                                <select class="form-select" id="backup_id_media_backup" name="backup_id_media_backup">
-                                    <option value="">---------</option>
-                                    {% for mb in media_backup_list %}
-                                    <option value="{{ mb.pk }}">{{ mb.deskripsi }}</option>
-                                    {% endfor %}
-                                </select>
+                                <div style="max-width: 250px;">
+                                    <select class="form-select" id="backup_id_media_backup" name="backup_id_media_backup">
+                                        <option value="">---------</option>
+                                        {% for mb in media_backup_list %}
+                                        <option value="{{ mb.pk }}">{{ mb.deskripsi }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -401,163 +410,177 @@
 <!-- Confirmation Modal -->
 <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="confirmModalLabel">Konfirmasi Data</h5>
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header bg-light py-3 px-4 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar avatar-xs bg-soft-primary text-primary rounded-circle" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
+                        <i class="feather-check-square fs-16"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold text-dark mb-0" id="confirmModalLabel" style="font-size: 16px;">Konfirmasi Perekaman Tiket</h5>
+                        <small class="text-muted" style="font-size: 11.5px;">Periksa kembali rincian data sebelum disave ke sistem</small>
+                    </div>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
-                <p class="mb-3">Pastikan data berikut sudah benar sebelum disimpan:</p>
-                <div class="row">
+            <div class="modal-body p-4" style="max-height: 75vh; overflow-y: auto; background-color: #fafafa;">
+                <div class="row g-3">
+                    <!-- Left Column -->
                     <div class="col-md-6">
-                        <table class="table table-sm mb-0">
-                            <tbody>
-                                <tr>
-                                    <th style="width: 50%;">Nomor Tiket</th>
-                                    <td id="confirm-nomor-tiket">-</td>
-                                </tr>
-                                <tr>
-                                    <th>ILAP</th>
-                                    <td id="confirm-nama-ilap">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Kategori ILAP</th>
-                                    <td id="confirm-kategori-ilap">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Kategori Wilayah</th>
-                                    <td id="confirm-kategori-wilayah">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Jenis Tabel</th>
-                                    <td id="confirm-jenis-tabel">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Jenis Prioritas Data</th>
-                                    <td id="confirm-jenis-prioritas">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Klasifikasi Jenis Data</th>
-                                    <td id="confirm-klasifikasi">-</td>
-                                </tr>
-                                <tr>
-                                    <th>ID Sub Jenis Data</th>
-                                    <td id="confirm-id-sub-jenis-data">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Nama Sub Jenis Data</th>
-                                    <td id="confirm-nama-sub-jenis-data">-</td>
-                                </tr>
-                                <tr>
-                                    <th colspan="2"><strong>PIC</strong></th>
-                                </tr>
-                                <tr>
-                                    <th>PIC P3DE</th>
-                                    <td id="confirm-pic-p3de">-</td>
-                                </tr>
-                                <tr>
-                                    <th>PIC PIDE</th>
-                                    <td id="confirm-pic-pide">-</td>
-                                </tr>
-                                <tr>
-                                    <th>PIC PMDE</th>
-                                    <td id="confirm-pic-pmde">-</td>
-                                </tr>
-                                <tr>
-                                    <th colspan="2"><strong>Periode</strong></th>
-                                </tr>
-                                <tr>
-                                    <th>Deskripsi Periode</th>
-                                    <td id="confirm-deskripsi-periode">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Periode</th>
-                                    <td id="confirm-periode">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Tahun</th>
-                                    <td id="confirm-tahun">-</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div class="p-3 bg-white rounded-3 border shadow-sm h-100">
+                            <span class="badge bg-soft-primary text-primary mb-3 px-2.5 py-1.5" style="font-size: 11.5px;">
+                                <i class="feather-file-text me-1"></i> Identitas Tiket & ILAP
+                            </span>
+                            <table class="table table-sm table-hover mb-0" style="font-size: 12.5px;">
+                                <tbody>
+                                    <tr>
+                                        <th class="text-muted fw-medium" style="width: 45%;">Nomor Tiket</th>
+                                        <td class="fw-bold text-primary" id="confirm-nomor-tiket">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted fw-medium">ILAP</th>
+                                        <td class="fw-semibold text-dark" id="confirm-nama-ilap">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted fw-medium">Kategori ILAP</th>
+                                        <td id="confirm-kategori-ilap">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted fw-medium">Kategori Wilayah</th>
+                                        <td id="confirm-kategori-wilayah">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted fw-medium">Jenis Tabel</th>
+                                        <td id="confirm-jenis-tabel">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted fw-medium">Prioritas Data</th>
+                                        <td id="confirm-jenis-prioritas">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted fw-medium">Klasifikasi Data</th>
+                                        <td id="confirm-klasifikasi">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted fw-medium">Sub Jenis Data</th>
+                                        <td id="confirm-nama-sub-jenis-data">-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div class="mt-3 pt-3 border-top">
+                                <span class="badge bg-soft-info text-info mb-2 px-2 py-1" style="font-size: 11px;">
+                                    <i class="feather-users me-1"></i> Penanggung Jawab (PIC)
+                                </span>
+                                <table class="table table-sm table-borderless mb-0" style="font-size: 12px;">
+                                    <tbody>
+                                        <tr>
+                                            <th class="text-muted" style="width: 45%;">PIC P3DE</th>
+                                            <td class="fw-medium" id="confirm-pic-p3de">-</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="text-muted">PIC PIDE</th>
+                                            <td class="fw-medium" id="confirm-pic-pide">-</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="text-muted">PIC PMDE</th>
+                                            <td class="fw-medium" id="confirm-pic-pmde">-</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
+
+                    <!-- Right Column -->
                     <div class="col-md-6">
-                        <table class="table table-sm mb-0">
-                            <tbody>
-                                <tr>
-                                    <th style="width: 50%;" colspan="2"><strong>Tanggal Penerimaan</strong></th>
-                                </tr>
-                                <tr>
-                                    <th>Tanggal Terima Vertikal</th>
-                                    <td id="confirm-tgl-vertikal">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Tanggal Terima DIP</th>
-                                    <td id="confirm-tgl-dip">-</td>
-                                </tr>
-                                <tr>
-                                    <th colspan="2"><strong>Surat Pengantar</strong></th>
-                                </tr>
-                                <tr>
-                                    <th>Nomor Surat Pengantar</th>
-                                    <td id="confirm-nomor-surat-pengantar">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Tanggal Surat Pengantar</th>
-                                    <td id="confirm-tanggal-surat-pengantar">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Nama Pengirim</th>
-                                    <td id="confirm-nama-pengirim">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Bentuk Data</th>
-                                    <td id="confirm-bentuk-data">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Cara Penyampaian</th>
-                                    <td id="confirm-cara-penyampaian">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Penyampaian</th>
-                                    <td id="confirm-penyampaian">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Baris Diterima</th>
-                                    <td id="confirm-baris-diterima">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Satuan Data</th>
-                                    <td id="confirm-satuan-data">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Permintaan Khusus</th>
-                                    <td id="confirm-special-request">-</td>
-                                </tr>
-                                <!-- Status Penelitian removed from create form confirmation -->
-                                <tr id="confirm-row-backup" style="display: none;">
-                                    <th colspan="2">Backup Data</th>
-                                </tr>
-                                <tr id="confirm-row-lokasi-backup" style="display: none;">
-                                    <th>Lokasi Backup</th>
-                                    <td id="confirm-lokasi-backup">-</td>
-                                </tr>
-                                <tr id="confirm-row-nama-file" style="display: none;">
-                                    <th>Nama File</th>
-                                    <td id="confirm-nama-file">-</td>
-                                </tr>
-                                <tr id="confirm-row-media-backup" style="display: none;">
-                                    <th>Media Backup</th>
-                                    <td id="confirm-media-backup">-</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div class="p-3 bg-white rounded-3 border shadow-sm h-100">
+                            <span class="badge bg-soft-success text-success mb-3 px-2.5 py-1.5" style="font-size: 11.5px;">
+                                <i class="feather-calendar me-1"></i> Periode & Surat Pengantar
+                            </span>
+                            <table class="table table-sm table-hover mb-0" style="font-size: 12.5px;">
+                                <tbody>
+                                    <tr>
+                                        <th class="text-muted fw-medium" style="width: 45%;">Periode Data</th>
+                                        <td class="fw-semibold text-dark" id="confirm-periode">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted fw-medium">Tahun Data</th>
+                                        <td class="fw-semibold text-dark" id="confirm-tahun">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted fw-medium">Tgl Terima Vertikal</th>
+                                        <td id="confirm-tgl-vertikal">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted fw-medium">Tgl Terima DIP</th>
+                                        <td id="confirm-tgl-dip">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted fw-medium">No. Surat Pengantar</th>
+                                        <td id="confirm-nomor-surat-pengantar">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted fw-medium">Tgl Surat Pengantar</th>
+                                        <td id="confirm-tanggal-surat-pengantar">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted fw-medium">Nama Pengirim</th>
+                                        <td id="confirm-nama-pengirim">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted fw-medium">Bentuk Data</th>
+                                        <td id="confirm-bentuk-data">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted fw-medium">Cara Penyampaian</th>
+                                        <td id="confirm-cara-penyampaian">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted fw-medium">Baris Diterima</th>
+                                        <td class="fw-bold text-success" id="confirm-baris-diterima">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted fw-medium">Satuan Data</th>
+                                        <td id="confirm-satuan-data">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted fw-medium">Permintaan Khusus</th>
+                                        <td id="confirm-special-request">-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div class="mt-3 pt-3 border-top" id="confirm-backup-container">
+                                <tr id="confirm-row-backup" style="display: none;"></tr>
+                                <table class="table table-sm table-borderless mb-0" style="font-size: 12px;">
+                                    <tbody>
+                                        <tr id="confirm-row-lokasi-backup" style="display: none;">
+                                            <th class="text-muted" style="width: 45%;">Lokasi Backup</th>
+                                            <td id="confirm-lokasi-backup">-</td>
+                                        </tr>
+                                        <tr id="confirm-row-nama-file" style="display: none;">
+                                            <th class="text-muted">Nama File</th>
+                                            <td id="confirm-nama-file">-</td>
+                                        </tr>
+                                        <tr id="confirm-row-media-backup" style="display: none;">
+                                            <th class="text-muted">Media Backup</th>
+                                            <td id="confirm-media-backup">-</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="button" class="btn btn-success" id="btn-submit-form">Simpan</button>
+            <div class="modal-footer bg-light py-2 px-4 border-top">
+                <button type="button" class="btn btn-light text-muted border px-3" data-bs-dismiss="modal">
+                    <i class="feather-x me-1"></i> Kembali & Periksa
+                </button>
+                <button type="button" class="btn btn-primary px-4 fw-bold" id="btn-submit-form">
+                    <i class="feather-check-circle me-1"></i> Simpan Tiket
+                </button>
             </div>
         </div>
     </div>
@@ -582,14 +605,17 @@
                     if (data.tiket_count !== undefined && data.tiket_count !== null) {
                         // Set penyampaian = count + 1 (starts from 1)
                         penyampaianInput.value = data.tiket_count + 1;
+                        if (document.getElementById('text_penyampaian')) document.getElementById('text_penyampaian').textContent = data.tiket_count + 1;
                     } else {
                         // Default to 1
                         penyampaianInput.value = 1;
+                        if (document.getElementById('text_penyampaian')) document.getElementById('text_penyampaian').textContent = 1;
                     }
                 }
             } catch (error) {
                 console.error('Error updating penyampaian:', error);
                 penyampaianInput.value = 1;
+                if (document.getElementById('text_penyampaian')) document.getElementById('text_penyampaian').textContent = 1;
             }
         };
 
@@ -851,12 +877,12 @@
                 .then(data => {
                     prioritasSpan.textContent = data.has_prioritas ? 'Ya' : 'Tidak';
                     // Update badge styling
-                    prioritasSpan.className = 'badge ' + (data.has_prioritas ? 'bg-success' : 'bg-secondary');
+                    prioritasSpan.className = 'badge ' + (data.has_prioritas ? 'bg-soft-success text-success border border-success' : 'bg-soft-secondary text-secondary border border-secondary');
                 })
                 .catch(error => {
                     console.error('Error checking jenis prioritas:', error);
                     prioritasSpan.textContent = '-';
-                    prioritasSpan.className = 'badge bg-secondary';
+                    prioritasSpan.className = 'badge bg-soft-secondary text-secondary border border-secondary';
                 });
         }
 
@@ -876,6 +902,10 @@
                 tglTerimaVertikalInput.required = false;
                 tglTerimaVertikalInput.disabled = false;
                 tglTerimaVertikalInput.style.opacity = '1';
+                if (tglTerimaVertikalInput._flatpickr && tglTerimaVertikalInput._flatpickr.altInput) {
+                    tglTerimaVertikalInput._flatpickr.altInput.disabled = false;
+                    tglTerimaVertikalInput._flatpickr.altInput.style.opacity = '1';
+                }
                 if (requiredIndicator) requiredIndicator.style.display = 'none';
                 if (hintText) hintText.style.display = 'none';
             } else {
@@ -887,6 +917,10 @@
                     tglTerimaVertikalInput.required = true;
                     tglTerimaVertikalInput.disabled = false;
                     tglTerimaVertikalInput.style.opacity = '1';
+                    if (tglTerimaVertikalInput._flatpickr && tglTerimaVertikalInput._flatpickr.altInput) {
+                        tglTerimaVertikalInput._flatpickr.altInput.disabled = false;
+                        tglTerimaVertikalInput._flatpickr.altInput.style.opacity = '1';
+                    }
                     if (requiredIndicator) requiredIndicator.style.display = 'inline';
                     if (hintText) hintText.style.display = 'none';
                 } else {
@@ -895,6 +929,13 @@
                     tglTerimaVertikalInput.disabled = true;
                     tglTerimaVertikalInput.style.opacity = '0.6';
                     tglTerimaVertikalInput.value = '';
+                    if (tglTerimaVertikalInput._flatpickr) {
+                        tglTerimaVertikalInput._flatpickr.clear();
+                        if (tglTerimaVertikalInput._flatpickr.altInput) {
+                            tglTerimaVertikalInput._flatpickr.altInput.disabled = true;
+                            tglTerimaVertikalInput._flatpickr.altInput.style.opacity = '0.6';
+                        }
+                    }
                     if (requiredIndicator) requiredIndicator.style.display = 'none';
                     if (hintText) hintText.style.display = 'block';
                 }
@@ -957,13 +998,16 @@
             
             function updateKetersediaanDependents() {
                 const backupCheckbox = document.getElementById('rekam-backup-checkbox');
+                const wrapper = document.getElementById('alasan-ketidaktersediaan-wrapper');
                 
                 if (statusTidakTersedia && statusTidakTersedia.checked) {
                     // Data Tidak Tersedia selected
+                    if (wrapper) wrapper.style.display = '';
                     
                     // Enable Alasan Ketidaktersediaan
                     if (alasanKetidaktersedianInput) {
                         alasanKetidaktersedianInput.disabled = false;
+                        alasanKetidaktersedianInput.required = true;
                         alasanKetidaktersedianInput.style.opacity = '1';
                     }
                     
@@ -1012,12 +1056,13 @@
                     }
                 } else {
                     // Data Tersedia selected
+                    if (wrapper) wrapper.style.display = 'none';
                     
                     // Disable Alasan Ketidaktersediaan
                     if (alasanKetidaktersedianInput) {
                         alasanKetidaktersedianInput.disabled = true;
+                        alasanKetidaktersedianInput.required = false;
                         alasanKetidaktersedianInput.value = '';
-                        alasanKetidaktersedianInput.style.opacity = '0.6';
                     }
                     
                     // Clear and enable Bentuk Data
@@ -1110,12 +1155,138 @@
                 modal.show();
             }
 
+            // Special Request Card highlight listener
+            const specialRequestInput = document.getElementById('id_special_request');
+            const specialRequestCard = document.getElementById('special-request-card');
+            function updateSpecialRequestCard() {
+                if (specialRequestInput && specialRequestCard) {
+                    if (specialRequestInput.checked) {
+                        specialRequestCard.style.backgroundColor = 'rgba(245, 158, 11, 0.08)';
+                        specialRequestCard.style.borderColor = '#f59e0b';
+                    } else {
+                        specialRequestCard.style.backgroundColor = '#ffffff';
+                        specialRequestCard.style.borderColor = '#e2e8f0';
+                    }
+                }
+            }
+            if (specialRequestInput) {
+                specialRequestInput.addEventListener('change', updateSpecialRequestCard);
+                updateSpecialRequestCard();
+            }
+
+            // Helper: validate mandatory form fields
+            function validateMandatoryForm() {
+                let isValid = true;
+                let firstInvalid = null;
+
+                const mandatoryConfigs = [
+                    { id: 'id_ilap', guide: 'Pilih Nama ILAP (Instansi/Lembaga/Asosiasi/Pihak Lain) sumber data ini' },
+                    { id: 'id_periode_data', guide: 'Pilih jenis data ILAP yang sesuai dengan data yang Anda terima.' },
+                    { id: 'id_periode', guide: 'Pilih periode penyampaian data.' },
+                    { id: 'id_tahun', guide: 'Isi tahun penyampaian data dengan format yang benar.' },
+                    { id: 'id_tgl_terima_vertikal', guide: 'Pilih tanggal kapan data ini diterima secara vertikal.' },
+                    { id: 'id_tgl_terima_dip', guide: 'Pilih tanggal kapan data ini diterima oleh DIP.' },
+                    { id: 'id_id_bentuk_data', guide: 'Pilih format bentuk data yang diterima.' },
+                    { id: 'id_id_cara_penyampaian', guide: 'Pilih cara data ini disampaikan/dikirimkan.' },
+                    { id: 'id_satuan_data', guide: 'Isi dengan satuan unit untuk data yang Anda terima.' },
+                ];
+
+                if (statusTidakTersedia && statusTidakTersedia.checked) {
+                    mandatoryConfigs.push({ id: 'id_alasan_ketidaktersediaan', guide: 'Isi penjelasan mengapa data tidak tersedia.' });
+                } else {
+                    mandatoryConfigs.push({ id: 'id_baris_diterima', guide: 'Isi jumlah baris data yang diterima menggunakan angka.' });
+                }
+
+                mandatoryConfigs.forEach(cfg => {
+                    const el = document.getElementById(cfg.id);
+                    if (el) {
+                        el.classList.remove('is-invalid');
+                        const wrapper = el.closest('.mb-3');
+                        if (wrapper) {
+                            wrapper.classList.remove('border', 'border-danger', 'rounded', 'p-2', 'client-side-error-wrapper');
+                            let fb = wrapper.querySelector('.invalid-feedback.client-side-error');
+                            if (fb) fb.remove();
+                        } else {
+                            let fb = el.parentNode.querySelector('.invalid-feedback.client-side-error');
+                            if (fb) fb.remove();
+                        }
+                        
+                        if (el.disabled) {
+                            return; // Skip validation for disabled fields
+                        }
+
+                        const val = el.value ? el.value.trim() : '';
+                        if (!val || val === '' || val === null) {
+                            isValid = false;
+                            el.classList.add('is-invalid');
+                            
+                            const feedbackHtml = `<div class="invalid-feedback d-block client-side-error mt-2"><i class="feather-alert-circle me-1"></i> ${cfg.guide}</div>`;
+                            
+                            const wrapper = el.closest('.mb-3');
+                            if (wrapper) {
+                                wrapper.classList.add('border', 'border-danger', 'rounded', 'p-2', 'client-side-error-wrapper');
+                                $(feedbackHtml).appendTo(wrapper);
+                            } else {
+                                if ($(el).hasClass('select2-hidden-accessible')) {
+                                    $(feedbackHtml).insertAfter($(el).next('.select2-container'));
+                                } else {
+                                    $(feedbackHtml).insertAfter(el);
+                                }
+                            }
+                            
+                            if (!firstInvalid) firstInvalid = el;
+                        }
+                    }
+                });
+
+                if (!window._validationListenersAdded) {
+                    mandatoryConfigs.forEach(cfg => {
+                        const el = document.getElementById(cfg.id);
+                        if (el) {
+                            $(el).on('change input', function() {
+                                if (this.value && this.value.trim() !== '') {
+                                    this.classList.remove('is-invalid');
+                                    const wrapper = this.closest('.mb-3');
+                                    if (wrapper) {
+                                        wrapper.classList.remove('border', 'border-danger', 'rounded', 'p-2', 'client-side-error-wrapper');
+                                        let fb = wrapper.querySelector('.invalid-feedback.client-side-error');
+                                        if (fb) fb.remove();
+                                    } else {
+                                        let fb = this.parentNode.querySelector('.invalid-feedback.client-side-error');
+                                        if (fb) fb.remove();
+                                    }
+                                }
+                            });
+                        }
+                    });
+                    window._validationListenersAdded = true;
+                }
+
+                if (!isValid && firstInvalid) {
+                    firstInvalid.focus();
+                    if (firstInvalid.scrollIntoView) {
+                        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    showValidationModal(
+                        'Formulir Belum Lengkap!',
+                        [],
+                        'Mohon lengkapi seluruh kolom wajib bertanda (*) yang ditandai berwarna merah sebelum melanjutkan.'
+                    );
+                }
+                return isValid;
+            }
+
             // Handle confirmation button click
             if (btnConfirm) {
                 btnConfirm.addEventListener('click', function(e) {
                     e.preventDefault();
                     
-                    // Validate form first
+                    // Custom mandatory validation first
+                    if (!validateMandatoryForm()) {
+                        return;
+                    }
+                    
+                    // Validate form standard HTML5 rules
                     if (!form.checkValidity()) {
                         form.reportValidity();
                         return;
@@ -1471,6 +1642,16 @@
 .btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 .25rem .5rem rgba(0,0,0,.15);
+}
+
+/* Select2 Invalid State Styling */
+.is-invalid + .select2-container .select2-selection,
+select.is-invalid ~ .select2-container .select2-selection {
+    border-color: #dc3545 !important;
+}
+.is-invalid + .select2-container .select2-selection:focus,
+select.is-invalid ~ .select2-container .select2-selection:focus {
+    box-shadow: 0 0 0 .25rem rgba(220,53,69,.25) !important;
 }
 </style>
 {% endblock %}

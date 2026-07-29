@@ -893,57 +893,49 @@
         <div class="col-12">
 
             <!-- Metrik Kualitas & Hasil QC Data -->
-            {% if tiket_details.baris_diterima %}
             <div class="card shadow-sm mb-4">
-                <div
-                    class="card-header bg-success text-white d-flex justify-content-between align-items-center py-2 px-3">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center py-2 px-3">
                     <h5 class="mb-0"><i class="feather-bar-chart-2 me-2"></i>Metrik Kualitas & Hasil QC Data</h5>
                     <div class="d-flex align-items-center gap-2">
                         <span class="fw-normal"
                             style="font-size: 11px; letter-spacing: 0.02em; color: inherit; opacity: 0.7;">Satuan Data:</span>
                         <span class="badge bg-white text-success px-2.5 py-1 fw-bold shadow-sm"
                             style="font-size: 11px; border-radius: 6px; letter-spacing: 0.3px;">
-                            {% if tiket_details.satuan_data == 1 %}Baris{% else %}{{ tiket_details.satuan_data }}{% endif %}
+                            {% if tiket_details.satuan_data == 1 %}Baris{% else %}{{ tiket_details.satuan_data|default:"Baris" }}{% endif %}
                         </span>
                     </div>
                 </div>
                 <div class="card-body">
-                    <!-- Parallel Metric Counters Row -->
+                    <!-- Parallel Metric Counters Row (Always show all 4 metric cards!) -->
                     <div class="row g-3 mb-4">
                         <div class="col-md-3">
                             <div class="metric-card bg-light-primary d-flex flex-column align-items-center justify-content-center"
                                 style="height: 100%; min-height: 90px; padding: 1.25rem 1rem !important;">
                                 <span class="metric-label">Baris Diterima</span>
-                                <span class="metric-value text-primary">{{ tiket_details.baris_diterima }}</span>
+                                <span class="metric-value text-primary">{{ tiket_details.baris_diterima|default:"0" }}</span>
                             </div>
                         </div>
-                        {% if tiket_details.baris_lengkap is not null %}
                         <div class="col-md-3">
                             <div class="metric-card bg-light-success d-flex flex-column align-items-center justify-content-center"
                                 style="height: 100%; min-height: 90px; padding: 1.25rem 1rem !important;">
                                 <span class="metric-label">Baris Lengkap</span>
-                                <span class="metric-value text-success">{{ tiket_details.baris_lengkap }}</span>
+                                <span class="metric-value text-success">{{ tiket_details.baris_lengkap|default:"0" }}</span>
                             </div>
                         </div>
-                        {% endif %}
-                        {% if tiket_details.baris_tidak_lengkap is not null %}
                         <div class="col-md-3">
                             <div class="metric-card bg-light-danger d-flex flex-column align-items-center justify-content-center"
                                 style="height: 100%; min-height: 90px; padding: 1.25rem 1rem !important;">
                                 <span class="metric-label">Baris Tidak Lengkap</span>
-                                <span class="metric-value text-danger">{{ tiket_details.baris_tidak_lengkap }}</span>
+                                <span class="metric-value text-danger">{{ tiket_details.baris_tidak_lengkap|default:"0" }}</span>
                             </div>
                         </div>
-                        {% endif %}
-                        {% if tiket_details.baris_cde is not null %}
                         <div class="col-md-3">
                             <div class="metric-card bg-light-info d-flex flex-column align-items-center justify-content-center"
                                 style="height: 100%; min-height: 90px; padding: 1.25rem 1rem !important;">
                                 <span class="metric-label">Baris CDE</span>
-                                <span class="metric-value text-info">{{ tiket_details.baris_cde }}</span>
+                                <span class="metric-value text-info">{{ tiket_details.baris_cde|default:"0" }}</span>
                             </div>
                         </div>
-                        {% endif %}
                     </div>
 
                     <!-- Validation details and QC status split -->
@@ -1049,7 +1041,6 @@
                     </div>
                 </div>
             </div>
-            {% endif %}
         </div>
     </div>
 

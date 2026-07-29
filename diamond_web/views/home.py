@@ -35,8 +35,8 @@ def _get_category_metrics(qs):
     if qs is None:
         return {'tickets': 0, 'ilaps': 0, 'jenis_datas': 0}
     tickets = qs.count()
-    ilaps = qs.values('id_periode_data__id_sub_jenis_data_ilap__id_ilap').distinct().count() if tickets > 0 else 0
-    jenis_datas = qs.values('id_periode_data__id_sub_jenis_data_ilap').distinct().count() if tickets > 0 else 0
+    ilaps = len({i for i in qs.values_list('id_periode_data__id_sub_jenis_data_ilap__id_ilap__nama_ilap', flat=True) if i}) if tickets > 0 else 0
+    jenis_datas = len({j for j in qs.values_list('id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data', flat=True) if j}) if tickets > 0 else 0
     return {
         'tickets': tickets,
         'ilaps': ilaps,
@@ -131,7 +131,7 @@ def home(request):
         }
 
         context['p3de_category_counts'] = {
-            k: v['tickets'] for k, v in context['p3de_category_metrics'].items()
+            k: v['jenis_datas'] for k, v in context['p3de_category_metrics'].items()
         }
 
         # Admin: Jenis Data ILAP without active P3DE PIC
@@ -508,12 +508,13 @@ def home_data(request):
     jenis_data_list = []
 
     if is_tiket_category:
-        total_ilap = qs.values('id_periode_data__id_sub_jenis_data_ilap__id_ilap').distinct().count()
-        total_jenis_data = qs.values('id_periode_data__id_sub_jenis_data_ilap__id_jenis_data').distinct().count()
-        
-        # Get actual distinct names
-        ilap_list = list(qs.values_list('id_periode_data__id_sub_jenis_data_ilap__id_ilap__nama_ilap', flat=True).distinct())
-        jenis_data_list = list(qs.values_list('id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data', flat=True).distinct())
+        raw_ilap_list = list(qs.values_list('id_periode_data__id_sub_jenis_data_ilap__id_ilap__nama_ilap', flat=True))
+        ilap_list = sorted(list({i for i in raw_ilap_list if i}))
+        total_ilap = len(ilap_list)
+
+        raw_jenis_list = list(qs.values_list('id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data', flat=True))
+        jenis_data_list = sorted(list({j for j in raw_jenis_list if j}))
+        total_jenis_data = len(jenis_data_list)
                 # Determine the correct date field for age tracking
         is_pide_belum_mulai = category in ('belum_mulai_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic')
         is_pide_dalam_proses = category == 'dalam_proses_identifikasi'
@@ -758,6 +759,12 @@ def home_data(request):
                     'nama_ilap': nama_ilap,
                     'nama_sub_jenis_data': nama_sub_jenis,
                     'nama_tabel_I': nama_tabel_I,
+                    'baris_diterima': obj.baris_diterima or 0,
+                    'baris_lengkap': obj.baris_lengkap or 0,
+                    'baris_tidak_lengkap': obj.baris_tidak_lengkap or 0,
+                    'baris_cde': obj.baris_cde or 0,
+                    'belum_qc': obj.belum_qc or 0,
+                    'lolos_qc': obj.lolos_qc or 0,
                     'tanggal': date_val,
                     'tanggal_order': date_order,
                     'actions': action_html,

@@ -55,3 +55,7 @@ e2e/report/
 backups/
 !backups/.gitkeep
  
+node_modules/
+check_js.js
+temp_script_0.js
+test_runner.js

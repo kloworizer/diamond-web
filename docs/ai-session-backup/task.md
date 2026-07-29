@@ -1,0 +1,16 @@
+- `[x]` **Batch 1: Home Dashboard & NAMA ILAP Sorting**
+  - `[x]` Definisi Ulang Summary Jenis Data (Home)
+  - `[x]` Penambahan Kolom Jml Baris Data (Home)
+  - `[x]` Sorting NAMA ILAP (Global)
+- `[x]` **Batch 2: Form Rekam Tiket (Interaktivitas & Styling)**
+  - `[x]` Interaktivitas Ketersediaan Data
+  - `[x]` Restyling Card ILAP & PIC
+  - `[x]` Redesign Switch Permintaan Khusus
+  - `[x]` Client-side Form Validation
+- `[x]` **Batch 3: Modal Konfirmasi & Redesign Tambahan**
+  - `[x]` Styling Modal Konfirmasi
+  - `[x]` General Form Redesign
+- `[x]` **Batch 4: Halaman Detail Tiket**
+  - `[x]` Restyling Card Informasi Utama
+  - `[x]` Penyesuaian Button Aksi
+  - `[x]` Visibilitas Semua Metrik Kualitas

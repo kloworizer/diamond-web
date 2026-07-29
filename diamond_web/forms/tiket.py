@@ -24,7 +24,7 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
         required=False
     )
     id_ilap = forms.ModelChoiceField(
-        queryset=ILAP.objects.all(),
+        queryset=ILAP.objects.all().order_by('nama_ilap'),
         empty_label="Pilih ILAP",
         widget=forms.Select(attrs={
             'class': 'form-select',
@@ -51,7 +51,7 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
             'penyampaian': forms.NumberInput(attrs={'class': 'form-control', 'id': 'id_penyampaian', 'type': 'number', 'min': '0'}),
             'baris_diterima': forms.NumberInput(attrs={'class': 'form-control'}),
             'status_ketersediaan_data': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'alasan_ketidaktersediaan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Alasan jika data tidak tersedia'}),
+            'alasan_ketidaktersediaan': forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Alasan jika data tidak tersedia', 'rows': 3}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -106,7 +106,7 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
             jenisdatailap__periodejenisdata__id__in=valid_periode_ids
         ).select_related(
             'id_kategori', 'id_kategori_wilayah'
-        ).distinct()
+        ).distinct().order_by('nama_ilap')
 
         # Initialize id_periode_data with empty queryset
         self.fields['id_periode_data'].queryset = PeriodeJenisData.objects.none()

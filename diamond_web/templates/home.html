@@ -4,6 +4,21 @@
 {% block content %}
 {% if user.is_authenticated %}
 <style>
+    /* Smooth easy-ease transition for Bootstrap tooltips without breaking Popper positioning */
+    .tooltip {
+        transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        pointer-events: none;
+    }
+    .tooltip .tooltip-inner {
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    .tooltip:not(.show) .tooltip-inner {
+        transform: scale(0.92);
+    }
+    .tooltip.show .tooltip-inner {
+        transform: scale(1);
+    }
+
     /* Section Headers in Sidebar */
     .role-section-header {
         margin: 18px 0 8px !important;
@@ -913,6 +928,7 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
+                                        <th>Jml Baris Data<br>Diterima</th>
                                         <th>Tgl Terima DIP</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
@@ -997,7 +1013,7 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
-                                        <th>Nama Tabel I</th>
+                                        <th>Jml Baris Data<br>Diterima</th>
                                         <th>Tgl Terima DIP</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
@@ -1081,7 +1097,7 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
-                                        <th>Nama Tabel I</th>
+                                        <th>Jml Baris Data<br>Diterima</th>
                                         <th>Tgl Terima DIP</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
@@ -1165,7 +1181,8 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
-                                        <th>Nama Tabel I</th>
+                                        <th>Jml Baris Data<br>Diterima</th>
+                                        <th>Jml Baris Data<br>Lengkap</th>
                                         <th>Tgl Terima DIP</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
@@ -1249,7 +1266,10 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
-                                        <th>Nama Tabel I</th>
+                                        <th>Jml Baris Data<br>Diterima</th>
+                                        <th>Jml Baris Data<br>Lengkap</th>
+                                        <th>Jml Baris Data<br>Tidak Lengkap</th>
+                                        <th>Baris CDE</th>
                                         <th>Tgl Terima DIP</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
@@ -1333,7 +1353,10 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
-                                        <th>Nama Tabel I</th>
+                                        <th>Jml Baris Data<br>Diterima</th>
+                                        <th>Jml Baris Data<br>Lengkap</th>
+                                        <th>Jml Baris Data<br>Tidak Lengkap</th>
+                                        <th>Baris CDE</th>
                                         <th>Tgl Terima DIP</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
@@ -1417,7 +1440,6 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
-                                        <th>Nama Tabel I</th>
                                         <th>Tgl Terima DIP</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
@@ -1440,7 +1462,6 @@
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
                                         <th>Sub Jenis Data</th>
-                                        <th>Nama Tabel I</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
@@ -1463,6 +1484,7 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
+                                        <th>Periode</th>
                                         <th>Tahun</th>
                                         <th>Status</th>
                                         <th class="col-actions">Aksi</th>
@@ -1552,7 +1574,7 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
-                                        <th>Nama Tabel I</th>
+                                        <th>Jml Baris Data<br>Lengkap</th>
                                         <th>Tgl Kirim PIDE</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
@@ -1633,7 +1655,8 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
-                                        <th>Nama Tabel I</th>
+                                        <th>Jml Baris Data<br>Lengkap</th>
+                                        <th>Baris CDE</th>
                                         <th>Tgl Rekam PIDE</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
@@ -1656,7 +1679,6 @@
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
                                         <th>Sub Jenis Data</th>
-                                        <th>Nama Tabel I</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
@@ -1735,7 +1757,6 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
-                                        <th>Nama Tabel I</th>
                                         <th>Tgl Kirim PIDE</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
@@ -1903,7 +1924,8 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
-                                        <th>Nama Tabel I</th>
+                                        <th>Belum QC</th>
+                                        <th>Lolos QC</th>
                                         <th>Tgl Transfer</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
@@ -1926,7 +1948,6 @@
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
                                         <th>Sub Jenis Data</th>
-                                        <th>Nama Tabel I</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
@@ -2005,7 +2026,6 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
-                                        <th>Nama Tabel I</th>
                                         <th>Tgl Transfer</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
@@ -2349,7 +2369,6 @@
             { data: 'nomor_tiket', title: 'Nomor Tiket' },
             { data: 'nama_ilap', title: 'Nama ILAP' },
             { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
-            { data: 'nama_tabel_I', title: 'Nama Tabel I' },
             { 
                 data: 'tanggal', 
                 title: 'Tanggal',
@@ -2368,7 +2387,65 @@
             { data: 'nama_ilap', title: 'Nama ILAP' },
             { data: 'nama_jenis_data', title: 'Jenis Data' },
             { data: 'nama_sub_jenis_data', title: 'Sub Jenis Data' },
-            { data: 'nama_tabel_I', title: 'Nama Tabel I' },
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false, className: 'col-actions' }
+        ];
+
+        function createFixedBadge(value, bg, color) {
+            const num = (value === null || value === undefined || value === '' || isNaN(value)) ? 0 : Number(value);
+            const formatted = num.toLocaleString('id-ID');
+            return `<span class="badge d-inline-flex justify-content-end align-items-center" style="width: 100px; min-width: 100px; background-color: ${bg}; color: ${color}; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px; border: none; font-variant-numeric: tabular-nums; text-align: right;">${formatted}</span>`;
+        }
+
+        const pengembalianP3deColumns = [
+            { data: 'nomor_tiket', title: 'Nomor Tiket' },
+            { data: 'nama_ilap', title: 'Nama ILAP' },
+            { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
+            { 
+                data: 'baris_diterima', 
+                title: 'Jml Baris Data<br>Diterima',
+                width: '110px',
+                render: function(data, type, row) {
+                    if (type === 'display') return createFixedBadge(data, '#e0f2fe', '#0284c7', '#bae6fd');
+                    return (data === null || data === undefined || data === '' || isNaN(data)) ? 0 : Number(data);
+                }
+            },
+            { 
+                data: 'baris_lengkap', 
+                title: 'Jml Baris Data<br>Lengkap',
+                width: '110px',
+                render: function(data, type, row) {
+                    if (type === 'display') return createFixedBadge(data, '#dcfce7', '#15803d', '#bbf7d0');
+                    return (data === null || data === undefined || data === '' || isNaN(data)) ? 0 : Number(data);
+                }
+            },
+            { 
+                data: 'baris_tidak_lengkap', 
+                title: 'Jml Baris Data<br>Tidak Lengkap',
+                width: '110px',
+                render: function(data, type, row) {
+                    if (type === 'display') return createFixedBadge(data, '#fee2e2', '#b91c1c', '#fecaca');
+                    return (data === null || data === undefined || data === '' || isNaN(data)) ? 0 : Number(data);
+                }
+            },
+            { 
+                data: 'baris_cde', 
+                title: 'Baris CDE',
+                width: '100px',
+                render: function(data, type, row) {
+                    if (type === 'display') return createFixedBadge(data, '#ccfbf1', '#0f766e', '#99f6e4');
+                    return (data === null || data === undefined || data === '' || isNaN(data)) ? 0 : Number(data);
+                }
+            },
+            { 
+                data: 'tanggal', 
+                title: 'Tanggal',
+                render: function(data, type, row) {
+                    if (type === 'order' || type === 'type') {
+                        return row.tanggal_order || '';
+                    }
+                    return data || '';
+                }
+            },
             { data: 'actions', title: 'Aksi', orderable: false, searchable: false, className: 'col-actions' }
         ];
 
@@ -2376,7 +2453,6 @@
             { data: 'nomor_tiket', title: 'Nomor Tiket' },
             { data: 'nama_ilap', title: 'Nama ILAP' },
             { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
-            { data: 'nama_tabel_I', title: 'Nama Tabel I' },
             { data: 'periode', title: 'Periode' },
             { data: 'tahun', title: 'Tahun' },
             { data: 'status_tiket', title: 'Status' },
@@ -2395,7 +2471,6 @@
             { data: 'nomor_tiket', title: 'Nomor Tiket' },
             { data: 'nama_ilap', title: 'Nama ILAP' },
             { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
-            { data: 'nama_tabel_I', title: 'Nama Tabel I' },
             { 
                 data: 'tanggal', 
                 title: 'Tanggal Transfer',
@@ -2413,7 +2488,6 @@
             { data: 'nomor_tiket', title: 'Nomor Tiket' },
             { data: 'nama_ilap', title: 'Nama ILAP' },
             { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
-            { data: 'nama_tabel_I', title: 'Nama Tabel I' },
             { 
                 data: 'tanggal', 
                 title: 'Tanggal Kirim PIDE',
@@ -2427,8 +2501,183 @@
             { data: 'actions', title: 'Aksi', orderable: false, searchable: false, className: 'col-actions' }
         ];
 
+        const p3deBarisDiterimaColumns = [
+            { data: 'nomor_tiket', title: 'Nomor Tiket' },
+            { data: 'nama_ilap', title: 'Nama ILAP' },
+            { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
+            { 
+                data: 'baris_diterima', 
+                title: 'Jml Baris Data<br>Diterima',
+                width: '110px',
+                render: function(data, type, row) {
+                    if (type === 'display') return createFixedBadge(data, '#e0f2fe', '#0284c7', '#bae6fd');
+                    return (data === null || data === undefined || data === '' || isNaN(data)) ? 0 : Number(data);
+                }
+            },
+            { 
+                data: 'tanggal', 
+                title: 'Tanggal',
+                render: function(data, type, row) {
+                    if (type === 'order' || type === 'type') {
+                        return row.tanggal_order || '';
+                    }
+                    return data || '';
+                }
+            },
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false, className: 'col-actions' }
+        ];
+
+        const p3deBelumDikirimPideColumns = [
+            { data: 'nomor_tiket', title: 'Nomor Tiket' },
+            { data: 'nama_ilap', title: 'Nama ILAP' },
+            { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
+            { 
+                data: 'baris_diterima', 
+                title: 'Jml Baris Data<br>Diterima',
+                width: '110px',
+                render: function(data, type, row) {
+                    if (type === 'display') return createFixedBadge(data, '#e0f2fe', '#0284c7', '#bae6fd');
+                    return (data === null || data === undefined || data === '' || isNaN(data)) ? 0 : Number(data);
+                }
+            },
+            { 
+                data: 'baris_lengkap', 
+                title: 'Jml Baris Data<br>Lengkap',
+                width: '110px',
+                render: function(data, type, row) {
+                    if (type === 'display') return createFixedBadge(data, '#dcfce7', '#15803d', '#bbf7d0');
+                    return (data === null || data === undefined || data === '' || isNaN(data)) ? 0 : Number(data);
+                }
+            },
+            { 
+                data: 'tanggal', 
+                title: 'Tanggal',
+                render: function(data, type, row) {
+                    if (type === 'order' || type === 'type') {
+                        return row.tanggal_order || '';
+                    }
+                    return data || '';
+                }
+            },
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false, className: 'col-actions' }
+        ];
+
+        const pideBelumMulaiColumns = [
+            { data: 'nomor_tiket', title: 'Nomor Tiket' },
+            { data: 'nama_ilap', title: 'Nama ILAP' },
+            { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
+            { 
+                data: 'baris_lengkap', 
+                title: 'Jml Baris Data<br>Lengkap',
+                width: '110px',
+                render: function(data, type, row) {
+                    if (type === 'display') return createFixedBadge(data, '#dcfce7', '#15803d', '#bbf7d0');
+                    return (data === null || data === undefined || data === '' || isNaN(data)) ? 0 : Number(data);
+                }
+            },
+            { 
+                data: 'tanggal', 
+                title: 'Tanggal',
+                render: function(data, type, row) {
+                    if (type === 'order' || type === 'type') {
+                        return row.tanggal_order || '';
+                    }
+                    return data || '';
+                }
+            },
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false, className: 'col-actions' }
+        ];
+
+        const pideDalamProsesColumns = [
+            { data: 'nomor_tiket', title: 'Nomor Tiket' },
+            { data: 'nama_ilap', title: 'Nama ILAP' },
+            { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
+            { 
+                data: 'baris_lengkap', 
+                title: 'Jml Baris Data<br>Lengkap',
+                width: '110px',
+                render: function(data, type, row) {
+                    if (type === 'display') return createFixedBadge(data, '#dcfce7', '#15803d', '#bbf7d0');
+                    return (data === null || data === undefined || data === '' || isNaN(data)) ? 0 : Number(data);
+                }
+            },
+            { 
+                data: 'baris_cde', 
+                title: 'Baris CDE',
+                width: '100px',
+                render: function(data, type, row) {
+                    if (type === 'display') return createFixedBadge(data, '#ccfbf1', '#0f766e', '#99f6e4');
+                    return (data === null || data === undefined || data === '' || isNaN(data)) ? 0 : Number(data);
+                }
+            },
+            { 
+                data: 'tanggal', 
+                title: 'Tanggal',
+                render: function(data, type, row) {
+                    if (type === 'order' || type === 'type') {
+                        return row.tanggal_order || '';
+                    }
+                    return data || '';
+                }
+            },
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false, className: 'col-actions' }
+        ];
+
+        const pmdeDalamProsesColumns = [
+            { data: 'nomor_tiket', title: 'Nomor Tiket' },
+            { data: 'nama_ilap', title: 'Nama ILAP' },
+            { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
+            { 
+                data: 'belum_qc', 
+                title: 'Belum QC',
+                width: '100px',
+                render: function(data, type, row) {
+                    if (type === 'display') return createFixedBadge(data, '#f1f5f9', '#475569', '#cbd5e1');
+                    return (data === null || data === undefined || data === '' || isNaN(data)) ? 0 : Number(data);
+                }
+            },
+            { 
+                data: 'lolos_qc', 
+                title: 'Lolos QC',
+                width: '100px',
+                render: function(data, type, row) {
+                    if (type === 'display') return createFixedBadge(data, '#e0f2fe', '#0369a1', '#bae6fd');
+                    return (data === null || data === undefined || data === '' || isNaN(data)) ? 0 : Number(data);
+                }
+            },
+            { 
+                data: 'tanggal', 
+                title: 'Tanggal',
+                render: function(data, type, row) {
+                    if (type === 'order' || type === 'type') {
+                        return row.tanggal_order || '';
+                    }
+                    return data || '';
+                }
+            },
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false, className: 'col-actions' }
+        ];
+
         // Map category to column config
         function getColumnsForCategory(category) {
+            if (category === 'belum_rekam_backup_data' || category === 'belum_dibuat_tanda_terima' || category === 'belum_diteliti') {
+                return p3deBarisDiterimaColumns;
+            }
+            if (category === 'belum_dikirim_ke_pide') {
+                return p3deBelumDikirimPideColumns;
+            }
+            if (category === 'pengembalian_seluruhnya_dari_pide' || category === 'pengembalian_sebagian_dari_pide') {
+                return pengembalianP3deColumns;
+            }
+            if (category === 'belum_mulai_proses_identifikasi') {
+                return pideBelumMulaiColumns;
+            }
+            if (category === 'dalam_proses_identifikasi') {
+                return pideDalamProsesColumns;
+            }
+            if (category === 'dalam_proses_pengendalian_mutu') {
+                return pmdeDalamProsesColumns;
+            }
             if (category === 'periode_tiket_null_p3de') {
                 return periodeTiketNullColumns;
             }
@@ -2568,7 +2817,44 @@
         // Initialize server-side datatables for each category
         document.querySelectorAll('.tiket-datatable').forEach(table => {
             const category = table.closest('[data-category]').getAttribute('data-category');
-            const columns = getColumnsForCategory(category);
+            let columns = getColumnsForCategory(category);
+            
+            // Apply stacked layout (Nama Tabel I on top of Jenis Data) and text truncation
+            columns = columns.map(col => {
+                if (['nama_sub_jenis_data', 'nama_jenis_data'].includes(col.data) && !col.render) {
+                    return {
+                        ...col,
+                        render: function(data, type, row) {
+                            if (data === null || data === undefined || data === '') return '-';
+                            const sub_jenis = String(data);
+                            const tabel_i = row.nama_tabel_I || '';
+                            const esc_sub_jenis = sub_jenis.replace(/"/g, '&quot;');
+                            const esc_tabel_i = String(tabel_i).replace(/"/g, '&quot;');
+                            
+                            let subHtml = '';
+                            if (tabel_i) {
+                                subHtml = `<small class="text-muted d-block font-monospace" style="font-size: 11px; line-height: 1.25; color: #64748b;">${esc_tabel_i}</small>`;
+                            }
+                            return `<div>
+                                ${subHtml}
+                                <div class="text-truncate cell-truncate fw-medium" style="max-width: 250px;" data-full-text="${esc_sub_jenis}">${esc_sub_jenis}</div>
+                            </div>`;
+                        }
+                    };
+                }
+                if (['nama_ilap'].includes(col.data) && !col.render) {
+                    return {
+                        ...col,
+                        render: function(data) {
+                            if (data === null || data === undefined || data === '') return '-';
+                            const text = String(data);
+                            const esc = text.replace(/"/g, '&quot;');
+                            return `<div class="text-truncate cell-truncate" style="max-width: 220px;" data-full-text="${esc}">${esc}</div>`;
+                        }
+                    };
+                }
+                return col;
+            });
 
             $(table).on('xhr.dt', function (e, settings, json, xhr) {
                 if (json && json.summary) {
@@ -2629,7 +2915,12 @@
                 columns: columns,
                 drawCallback: function(settings) {
                     const json = settings.json;
-                    if (json && json.recordsTotal !== undefined) {
+                    if (json && json.summary && json.summary.total_jenis_data !== undefined) {
+                        const badgeEl = document.querySelector(`.tiket-filter-link[data-filter="${category}"] .badge`);
+                        if (badgeEl) {
+                            badgeEl.textContent = json.summary.total_jenis_data;
+                        }
+                    } else if (json && json.recordsTotal !== undefined) {
                         const badgeEl = document.querySelector(`.tiket-filter-link[data-filter="${category}"] .badge`);
                         if (badgeEl) {
                             badgeEl.textContent = json.recordsTotal;
@@ -2722,6 +3013,47 @@
                         }
                     }
                 }, 50);
+            }
+        });
+
+        // Smart Tooltip Event Delegation: Custom tooltip that follows cursor for truncated text
+        $(document).on('mouseenter', '.cell-truncate', function(e) {
+            const el = this;
+            if (el.scrollWidth > el.clientWidth) {
+                const fullText = el.getAttribute('data-full-text') || el.innerText;
+                let tt = document.getElementById('custom-cursor-tooltip');
+                if (!tt) {
+                    tt = document.createElement('div');
+                    tt.id = 'custom-cursor-tooltip';
+                    tt.style.cssText = 'position: fixed; pointer-events: none; opacity: 0; transition: opacity 0.2s cubic-bezier(0.25, 1, 0.5, 1); background: #1e293b; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 12px; max-width: 350px; z-index: 99999; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); word-wrap: break-word; line-height: 1.4;';
+                    document.body.appendChild(tt);
+                }
+                tt.innerText = fullText;
+                tt.style.left = (e.clientX + 15) + 'px';
+                tt.style.top = (e.clientY + 15) + 'px';
+                tt.style.opacity = '1';
+                el._showTooltip = true;
+            }
+        }).on('mousemove', '.cell-truncate', function(e) {
+            if (this._showTooltip) {
+                const tt = document.getElementById('custom-cursor-tooltip');
+                if (tt) {
+                    let left = e.clientX + 15;
+                    let top = e.clientY + 15;
+                    const rect = tt.getBoundingClientRect();
+                    if (left + rect.width > window.innerWidth) left = e.clientX - rect.width - 15;
+                    if (top + rect.height > window.innerHeight) top = e.clientY - rect.height - 15;
+                    tt.style.left = left + 'px';
+                    tt.style.top = top + 'px';
+                }
+            }
+        }).on('mouseleave', '.cell-truncate', function() {
+            if (this._showTooltip) {
+                const tt = document.getElementById('custom-cursor-tooltip');
+                if (tt) {
+                    tt.style.opacity = '0';
+                }
+                this._showTooltip = false;
             }
         });
 

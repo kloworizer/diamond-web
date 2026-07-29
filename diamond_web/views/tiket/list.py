@@ -1383,6 +1383,8 @@ def tiket_data(request):
             'status': STATUS_LABELS.get(obj.status_tiket, '-'),
             'status_ketersediaan_data': 'Ya' if obj.status_ketersediaan_data else 'Tidak',
             'special_request': 'Ya' if obj.special_request else 'Tidak',
+            'baris_lengkap': obj.baris_lengkap,
+            'baris_diterima': obj.baris_diterima,
             'actions': actions_html
         })
 
