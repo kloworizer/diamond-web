@@ -135,8 +135,9 @@ Aksi berikut bukan menu navbar melainkan tombol pada halaman detail tiket. Selai
 | **Kelengkapan Data** | `/laporan-kelengkapan-data/` | ❌ | ❌ | ✅ | ✅ |
 | **Rekap Himpun Olah Data** | `/laporan-rekap-himpun-olah-data/` | ❌ | ❌ | ✅ | ✅ |
 | **Detail Himpun Olah Data** | `/laporan-detail-himpun-olah-data/` | ❌ | ❌ | ✅ | ✅ |
-| **Profil ILAP** | `/profil-ilap/` | ✅ | ❌ | ❌ | ✅ |
-| **Profil Sub Jenis Data** | `/jenis-data-ilap/<id_sub_jenis_data>/` | ✅ | ❌ | ❌ | ✅ |
+| **Profil ILAP (daftar)** | `/profil-ilap/` | ✅ | ❌ | ❌ | ✅ |
+| **Profil ILAP (detail)** | `/profil-ilap/<id_ilap>/` | ✅ | ✅ | ✅ | ✅ |
+| **Profil Sub Jenis Data** | `/jenis-data-ilap/<id_sub_jenis_data>/` | ✅ | ✅ | ✅ | ✅ |
 | **Monitoring Penyampaian Data** | `/monitoring-penyampaian-data/` | ✅ | ✅ | ✅ | ✅ |
 | **Quality Control** | `/quality-control/` | ❌ | ✅ | ✅ | ✅ |
 
@@ -169,7 +170,17 @@ Hak akses menu menentukan halaman mana yang boleh dibuka; **cakupan data** menen
 
 Aturan ini berlaku konsisten pada Daftar Tiket, dashboard Tugas Saya, Monitoring Penyampaian Data, Quality Control, dan endpoint ringkasan tiket pada Backup Data. Endpoint JSON menerapkan cakupan yang sama seperti halamannya, sehingga id tiket tidak dapat ditelusuri secara berurutan untuk membaca data di luar cakupan pengguna.
 
-Helper terkait berada di `diamond_web/views/mixins.py`: `is_kasi()`, `is_kasi_p3de()`, `is_kasi_pide()`, `is_kasi_pmde()`, `is_admin_p3de()`, dan `can_access_tiket_list()`.
+### Blok "Informasi PIC & Kontak" pada Profil ILAP
+
+Katalog ILAP tidak dibatasi per pengguna: setiap pengguna yang login dapat mencari dan membuka profil ILAP maupun sub jenis data mana pun. Yang dibatasi hanyalah blok **Informasi PIC & Kontak** (nama, jabatan, email, telepon PIC instansi, fax, tujuan surat, tembusan), karena itu adalah data korespondensi dengan instansi.
+
+| Kelompok | Melihat blok Informasi PIC & Kontak |
+|----------|--------------------------------------|
+| Superuser, `admin`, `admin_p3de` | Seluruh ILAP |
+| `kasi_p3de` | Seluruh ILAP |
+| `kasi_pide`, `kasi_pmde`, `user_p3de`/`user_pide`/`user_pmde`, lainnya | Hanya ILAP dengan penugasan `PIC` aktif (tipe P3DE, PIDE, atau PMDE) pada minimal satu jenis data milik ILAP tersebut |
+
+Helper terkait berada di `diamond_web/views/mixins.py`: `is_kasi()`, `is_kasi_p3de()`, `is_kasi_pide()`, `is_kasi_pmde()`, `is_admin_p3de()`, `can_access_tiket_list()`, `is_active_ilap_pic()`, dan `can_view_ilap_kontak()`.
 
 ---
 

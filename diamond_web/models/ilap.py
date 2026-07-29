@@ -52,6 +52,15 @@ class ILAP(models.Model):
         return f"{self.id_ilap} - {self.nama_ilap}"
 
     @property
+    def kpp_list(self):
+        """Return every KPP this ILAP is mapped to.
+
+        ILAP of kategori PV map straight to a Kanwil, so their mapping rows
+        carry no KPP and are left out here.
+        """
+        return [rel.id_kpp for rel in self.ilap_kpp_relations.all() if rel.id_kpp]
+
+    @property
     def kanwil_list(self):
         """Return every Kanwil this ILAP belongs to.
 
