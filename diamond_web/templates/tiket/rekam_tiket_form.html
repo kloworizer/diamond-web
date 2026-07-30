@@ -52,29 +52,6 @@
                 <div class="row mb-3 align-items-stretch">
                     <div class="col-md-6 d-flex flex-column justify-content-between">
                         <div class="h-100">
-                            <!-- Redesigned Permintaan Khusus Card -->
-                            <div class="p-2 px-3 rounded-3 border transition-all mb-3" id="special-request-card" style="background-color: #ffffff; border-color: #e2e8f0 !important;">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <div class="avatar avatar-xs bg-soft-warning text-warning rounded-circle" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">
-                                            <i class="feather-star fs-14"></i>
-                                        </div>
-                                        <div>
-                                            <label class="form-check-label fw-bold mb-0 cursor-pointer text-dark" for="{{ form.special_request.id_for_label }}" style="font-size: 13px;">
-                                                {{ form.special_request.label }}
-                                            </label>
-                                            <small class="text-muted d-block" style="font-size: 11px;"><i class="feather-info me-1"></i>Opsi ini untuk menandai tiket sebagai tiket permintaan khusus dengan prioritas pengolahan lebih tinggi dari tiket biasa.</small>
-                                        </div>
-                                    </div>
-                                    <div class="form-check form-switch m-0 p-0">
-                                        {{ form.special_request }}
-                                    </div>
-                                </div>
-                                {% if form.special_request.errors %}
-                                    <div class="invalid-feedback d-block">{{ form.special_request.errors }}</div>
-                                {% endif %}
-                            </div>
-
                             <label class="form-label">{{ form.status_ketersediaan_data.label }}{% if form.status_ketersediaan_data.field.required %}<span class="text-danger">*</span>{% endif %}</label>
                             <div class="d-flex gap-4 mb-3">
                                 <div class="form-check">
@@ -85,6 +62,24 @@
                                     <input class="form-check-input" type="radio" name="status_ketersediaan_data" id="status_tidak_tersedia" value="0">
                                     <label class="form-check-label" for="status_tidak_tersedia">Data Tidak Tersedia</label>
                                 </div>
+                            </div>
+
+                            <!-- Simple Permintaan Khusus Switch -->
+                            <div class="mt-3 mb-2">
+                                <div class="form-check form-switch mb-1">
+                                    {{ form.special_request }}
+                                    <label class="form-check-label text-muted cursor-pointer" for="{{ form.special_request.id_for_label }}">
+                                        {{ form.special_request.label }}
+                                    </label>
+                                </div>
+                                <div class="ps-4 ms-1">
+                                    <small class="text-muted d-block lh-sm" style="font-size: 11.5px;">
+                                        <i class="feather-info me-1"></i>Opsi ini untuk menandai tiket sebagai tiket permintaan khusus dengan prioritas pengolahan lebih tinggi dari tiket biasa.
+                                    </small>
+                                </div>
+                                {% if form.special_request.errors %}
+                                    <div class="invalid-feedback d-block mt-1">{{ form.special_request.errors }}</div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -373,35 +368,58 @@
 </div>
 
 <div class="modal fade" id="duplicateTiketModal" tabindex="-1" aria-labelledby="duplicateTiketModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title" id="duplicateTiketModalLabel">Peringatan</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #fef3c7; color: #d97706; flex-shrink: 0;">
+                        <i class="feather-alert-circle" style="font-size: 16px;"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="duplicateTiketModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Peringatan Duplikasi</h5>
+                        <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Periksa Data Serupa</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" id="duplicateTiketModalBody">
-                Tiket sudah ada untuk jenis data, periode, dan tahun ini.
+            <div class="modal-body px-4 pt-3 pb-2" id="duplicateTiketModalBody">
+                <div class="alert alert-warning py-2 px-3 mb-1" style="font-size: 13px; border-radius: 8px;">
+                    <i class="feather-info me-1"></i> Tiket sudah ada untuk jenis data, periode, dan tahun ini.
+                </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4 mt-2" style="background: transparent !important;">
+                <button type="button" class="btn btn-warning w-100 fw-bold text-dark" data-bs-dismiss="modal" style="border-radius: 8px;">SAYA MENGERTI</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Validation Error Modal for Tanggal Terima DIP > End Date -->
+<!-- Validation Error Modal -->
 <div class="modal fade" id="endDateValidationModal" tabindex="-1" aria-labelledby="endDateValidationModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="endDateValidationModalLabel">Validasi Gagal</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+            <!-- Header -->
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #fee2e2; color: #dc3545; flex-shrink: 0;">
+                        <i class="feather-alert-triangle" style="font-size: 16px;"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="endDateValidationModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Validasi Gagal</h5>
+                        <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Peringatan Sistem</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" id="endDateValidationModalBody">
-                Tanggal Terima DIP tidak boleh melebihi end date periode.
+            <!-- Body -->
+            <div class="modal-body px-4 pt-3 pb-2" id="endDateValidationModalBody">
+                <div class="alert alert-danger py-2 px-3 mb-1" style="font-size: 13px; border-radius: 8px;">
+                    <i class="feather-info me-1"></i> Tanggal Terima DIP tidak boleh melebihi end date periode.
+                </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
+            <!-- Footer -->
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4 mt-2" style="background: transparent !important;">
+                <button type="button" class="btn btn-danger w-100 fw-bold" data-bs-dismiss="modal" style="border-radius: 8px;">MENGERTI</button>
             </div>
         </div>
     </div>
@@ -409,182 +427,231 @@
 
 <!-- Confirmation Modal -->
 <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg rounded-3">
-            <div class="modal-header bg-light py-3 px-4 border-bottom">
+    <div class="modal-dialog modal-lg modal-dialog-centered" style="max-width: 740px;">
+        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+
+            <!-- Modal Header -->
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
                 <div class="d-flex align-items-center gap-2">
-                    <div class="avatar avatar-xs bg-soft-primary text-primary rounded-circle" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
-                        <i class="feather-check-square fs-16"></i>
+                    <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #dbeafe; color: #2563eb; flex-shrink: 0;">
+                        <i class="feather-file-text" style="font-size: 16px;"></i>
                     </div>
                     <div>
-                        <h5 class="modal-title fw-bold text-dark mb-0" id="confirmModalLabel" style="font-size: 16px;">Konfirmasi Perekaman Tiket</h5>
-                        <small class="text-muted" style="font-size: 11.5px;">Periksa kembali rincian data sebelum disave ke sistem</small>
+                        <h5 class="modal-title fw-bold mb-0" id="confirmModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Konfirmasi Perekaman Tiket</h5>
+                        <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Tinjau Data Sebelum Simpan</span>
                     </div>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4" style="max-height: 75vh; overflow-y: auto; background-color: #fafafa;">
-                <div class="row g-3">
-                    <!-- Left Column -->
-                    <div class="col-md-6">
-                        <div class="p-3 bg-white rounded-3 border shadow-sm h-100">
-                            <span class="badge bg-soft-primary text-primary mb-3 px-2.5 py-1.5" style="font-size: 11.5px;">
-                                <i class="feather-file-text me-1"></i> Identitas Tiket & ILAP
-                            </span>
-                            <table class="table table-sm table-hover mb-0" style="font-size: 12.5px;">
-                                <tbody>
-                                    <tr>
-                                        <th class="text-muted fw-medium" style="width: 45%;">Nomor Tiket</th>
-                                        <td class="fw-bold text-primary" id="confirm-nomor-tiket">-</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted fw-medium">ILAP</th>
-                                        <td class="fw-semibold text-dark" id="confirm-nama-ilap">-</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted fw-medium">Kategori ILAP</th>
-                                        <td id="confirm-kategori-ilap">-</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted fw-medium">Kategori Wilayah</th>
-                                        <td id="confirm-kategori-wilayah">-</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted fw-medium">Jenis Tabel</th>
-                                        <td id="confirm-jenis-tabel">-</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted fw-medium">Prioritas Data</th>
-                                        <td id="confirm-jenis-prioritas">-</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted fw-medium">Klasifikasi Data</th>
-                                        <td id="confirm-klasifikasi">-</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted fw-medium">Sub Jenis Data</th>
-                                        <td id="confirm-nama-sub-jenis-data">-</td>
-                                    </tr>
-                                </tbody>
-                            </table>
 
-                            <div class="mt-3 pt-3 border-top">
-                                <span class="badge bg-soft-info text-info mb-2 px-2 py-1" style="font-size: 11px;">
-                                    <i class="feather-users me-1"></i> Penanggung Jawab (PIC)
-                                </span>
-                                <table class="table table-sm table-borderless mb-0" style="font-size: 12px;">
-                                    <tbody>
-                                        <tr>
-                                            <th class="text-muted" style="width: 45%;">PIC P3DE</th>
-                                            <td class="fw-medium" id="confirm-pic-p3de">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th class="text-muted">PIC PIDE</th>
-                                            <td class="fw-medium" id="confirm-pic-pide">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th class="text-muted">PIC PMDE</th>
-                                            <td class="fw-medium" id="confirm-pic-pmde">-</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+            <!-- Modal Body -->
+            <div class="modal-body px-4 pt-3 pb-2" style="max-height: 72vh; overflow-y: auto;">
+
+                <!-- Nomor Tiket -->
+                <div class="p-3 rounded mb-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Nomor Tiket</span>
+                            <span id="confirm-nomor-tiket" style="font-size: 15px; font-weight: 700; color: #0f172a; font-family: 'Courier New', monospace; letter-spacing: 0.5px;">-</span>
+                        </div>
+                        <i class="feather-tag" style="color: #94a3b8; font-size: 18px;"></i>
+                    </div>
+                </div>
+
+                <!-- CLUSTER A: Identitas ILAP & Data -->
+                <div class="p-3 rounded mb-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;">
+                        <i class="feather-layers me-1" style="font-size: 10px;"></i>Identitas ILAP &amp; Data
+                    </div>
+                    <div class="row g-2" style="font-size: 12.5px;">
+                        <div class="col-12">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">ILAP</span>
+                            <span id="confirm-nama-ilap" class="fw-bold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Kategori ILAP</span>
+                            <span id="confirm-kategori-ilap" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Kategori Wilayah</span>
+                            <span id="confirm-kategori-wilayah" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Jenis Tabel</span>
+                            <span id="confirm-jenis-tabel" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Sub Jenis Data</span>
+                            <span id="confirm-nama-sub-jenis-data" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Prioritas</span>
+                            <span id="confirm-jenis-prioritas" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Klasifikasi Data</span>
+                            <span id="confirm-klasifikasi" class="fw-semibold text-dark">-</span>
                         </div>
                     </div>
 
-                    <!-- Right Column -->
-                    <div class="col-md-6">
-                        <div class="p-3 bg-white rounded-3 border shadow-sm h-100">
-                            <span class="badge bg-soft-success text-success mb-3 px-2.5 py-1.5" style="font-size: 11.5px;">
-                                <i class="feather-calendar me-1"></i> Periode & Surat Pengantar
-                            </span>
-                            <table class="table table-sm table-hover mb-0" style="font-size: 12.5px;">
-                                <tbody>
-                                    <tr>
-                                        <th class="text-muted fw-medium" style="width: 45%;">Periode Data</th>
-                                        <td class="fw-semibold text-dark" id="confirm-periode">-</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted fw-medium">Tahun Data</th>
-                                        <td class="fw-semibold text-dark" id="confirm-tahun">-</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted fw-medium">Tgl Terima Vertikal</th>
-                                        <td id="confirm-tgl-vertikal">-</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted fw-medium">Tgl Terima DIP</th>
-                                        <td id="confirm-tgl-dip">-</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted fw-medium">No. Surat Pengantar</th>
-                                        <td id="confirm-nomor-surat-pengantar">-</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted fw-medium">Tgl Surat Pengantar</th>
-                                        <td id="confirm-tanggal-surat-pengantar">-</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted fw-medium">Nama Pengirim</th>
-                                        <td id="confirm-nama-pengirim">-</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted fw-medium">Bentuk Data</th>
-                                        <td id="confirm-bentuk-data">-</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted fw-medium">Cara Penyampaian</th>
-                                        <td id="confirm-cara-penyampaian">-</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted fw-medium">Baris Diterima</th>
-                                        <td class="fw-bold text-success" id="confirm-baris-diterima">-</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted fw-medium">Satuan Data</th>
-                                        <td id="confirm-satuan-data">-</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted fw-medium">Permintaan Khusus</th>
-                                        <td id="confirm-special-request">-</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-
-                            <div class="mt-3 pt-3 border-top" id="confirm-backup-container">
-                                <tr id="confirm-row-backup" style="display: none;"></tr>
-                                <table class="table table-sm table-borderless mb-0" style="font-size: 12px;">
-                                    <tbody>
-                                        <tr id="confirm-row-lokasi-backup" style="display: none;">
-                                            <th class="text-muted" style="width: 45%;">Lokasi Backup</th>
-                                            <td id="confirm-lokasi-backup">-</td>
-                                        </tr>
-                                        <tr id="confirm-row-nama-file" style="display: none;">
-                                            <th class="text-muted">Nama File</th>
-                                            <td id="confirm-nama-file">-</td>
-                                        </tr>
-                                        <tr id="confirm-row-media-backup" style="display: none;">
-                                            <th class="text-muted">Media Backup</th>
-                                            <td id="confirm-media-backup">-</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                    <!-- PIC strip -->
+                    <div class="pt-2 mt-3" style="border-top: 1px dashed #e2e8f0;">
+                        <div style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;">
+                            <i class="feather-users me-1" style="font-size:10px;"></i>PIC
+                        </div>
+                        <div class="row g-2" style="font-size: 12.5px;">
+                            <div class="col-4">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">P3DE</span>
+                                <span id="confirm-pic-p3de" class="fw-semibold text-dark">-</span>
+                            </div>
+                            <div class="col-4">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">PIDE</span>
+                                <span id="confirm-pic-pide" class="fw-semibold text-dark">-</span>
+                            </div>
+                            <div class="col-4">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">PMDE</span>
+                                <span id="confirm-pic-pmde" class="fw-semibold text-dark">-</span>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- CLUSTER B: Periode & Waktu -->
+                <div class="p-3 rounded mb-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;">
+                        <i class="feather-calendar me-1" style="font-size: 10px;"></i>Periode &amp; Waktu
+                    </div>
+                    <div class="row g-2" style="font-size: 12.5px;">
+                        <div class="col-4">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Periode</span>
+                            <span id="confirm-periode" class="fw-bold text-dark">-</span>
+                        </div>
+                        <div class="col-2">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Tahun</span>
+                            <span id="confirm-tahun" class="fw-bold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Deskripsi Periode</span>
+                            <span id="confirm-deskripsi-periode" class="fw-semibold text-dark">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Tanggal Terima strip -->
+                    <div class="pt-2 mt-3" style="border-top: 1px dashed #e2e8f0;">
+                        <div style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;">
+                            <i class="feather-clock me-1" style="font-size:10px;"></i>Tanggal Terima
+                        </div>
+                        <div class="row g-2" style="font-size: 12.5px;">
+                            <div class="col-6">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Tgl Terima Vertikal</span>
+                                <span id="confirm-tgl-vertikal" class="fw-semibold text-dark">-</span>
+                            </div>
+                            <div class="col-6">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Tgl Terima DIP</span>
+                                <span id="confirm-tgl-dip" class="fw-semibold text-dark">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Surat Pengantar strip -->
+                    <div class="pt-2 mt-3" style="border-top: 1px dashed #e2e8f0;">
+                        <div style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;">
+                            <i class="feather-mail me-1" style="font-size:10px;"></i>Surat Pengantar
+                        </div>
+                        <div class="row g-2" style="font-size: 12.5px;">
+                            <div class="col-4">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">No. Surat</span>
+                                <span id="confirm-nomor-surat-pengantar" class="fw-semibold text-dark">-</span>
+                            </div>
+                            <div class="col-4">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Tgl Surat</span>
+                                <span id="confirm-tanggal-surat-pengantar" class="fw-semibold text-dark">-</span>
+                            </div>
+                            <div class="col-4">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Nama Pengirim</span>
+                                <span id="confirm-nama-pengirim" class="fw-semibold text-dark">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CLUSTER C: Detail Penerimaan Data -->
+                <div class="p-3 rounded mb-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;">
+                        <i class="feather-package me-1" style="font-size: 10px;"></i>Detail Penerimaan Data
+                    </div>
+                    <div class="row g-2" style="font-size: 12.5px;">
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Bentuk Data</span>
+                            <span id="confirm-bentuk-data" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Cara Penyampaian</span>
+                            <span id="confirm-cara-penyampaian" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-12">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Penyampaian</span>
+                            <span id="confirm-penyampaian" class="fw-semibold text-dark">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Volume data strip -->
+                    <div class="pt-2 mt-3" style="border-top: 1px dashed #e2e8f0;">
+                        <div class="row g-2 align-items-center" style="font-size: 12.5px;">
+                            <div class="col-4">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 4px;">Baris Diterima</span>
+                                <span id="confirm-baris-diterima" style="display: inline-block; background: #d1fae5; color: #059669; font-size: 14px; font-weight: 800; padding: 3px 14px; border-radius: 999px;">-</span>
+                            </div>
+                            <div class="col-4">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Satuan Data</span>
+                                <span id="confirm-satuan-data" class="fw-semibold text-dark">-</span>
+                            </div>
+                            <div class="col-4">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Permintaan Khusus</span>
+                                <span id="confirm-special-request" class="fw-semibold text-dark">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CLUSTER D: Backup Data (conditional) -->
+                <div id="confirm-row-backup" style="display: none;">
+                    <div class="p-3 rounded mb-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                        <div style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;">
+                            <i class="feather-hard-drive me-1" style="font-size: 10px;"></i>Rekam Backup Data
+                        </div>
+                        <div class="row g-2" style="font-size: 12.5px;">
+                            <div class="col-12" id="confirm-row-lokasi-backup" style="display: none;">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Lokasi Backup</span>
+                                <span id="confirm-lokasi-backup" class="fw-semibold text-dark">-</span>
+                            </div>
+                            <div class="col-6" id="confirm-row-nama-file" style="display: none;">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Nama File</span>
+                                <span id="confirm-nama-file" class="fw-semibold text-dark">-</span>
+                            </div>
+                            <div class="col-6" id="confirm-row-media-backup" style="display: none;">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Media Backup</span>
+                                <span id="confirm-media-backup" class="fw-semibold text-dark">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
-            <div class="modal-footer bg-light py-2 px-4 border-top">
-                <button type="button" class="btn btn-light text-muted border px-3" data-bs-dismiss="modal">
-                    <i class="feather-x me-1"></i> Kembali & Periksa
-                </button>
-                <button type="button" class="btn btn-primary px-4 fw-bold" id="btn-submit-form">
-                    <i class="feather-check-circle me-1"></i> Simpan Tiket
+
+            <!-- Modal Footer -->
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4" style="background: transparent !important;">
+                <button type="button" class="btn btn-figma-outline" data-bs-dismiss="modal">BATAL</button>
+                <button type="button" class="btn btn-figma-primary fw-bold" id="btn-submit-form">
+                    <i class="feather-check-circle me-1"></i> SIMPAN TIKET
                 </button>
             </div>
+
         </div>
     </div>
 </div>
+
+
 
 <script>
     (function () {
@@ -1136,21 +1203,26 @@
             function showValidationModal(title, rows, message) {
                 const modalBody = document.getElementById('endDateValidationModalBody');
                 if (!modalBody) return;
-                let rowsHtml = '';
-                rows.forEach(r => {
-                    rowsHtml += `<tr><td class="text-muted">${r.label}</td><td class="fw-semibold${r.danger ? ' text-danger' : ''}">${r.value}</td></tr>`;
-                });
-                modalBody.innerHTML = `
-                    <div class="d-flex align-items-start gap-3">
-                        <i class="feather-alert-circle fs-1 text-danger"></i>
-                        <div>
-                            <strong>${title}</strong><br><br>
-                            <table class="table table-sm table-borderless mb-0">${rowsHtml}</table>
-                            <br>
-                            <p class="mb-0">${message}</p>
-                        </div>
-                    </div>
-                `;
+                
+                let contentHtml = '';
+                if (title) {
+                    contentHtml += `<p class="fw-bold text-dark mb-1" style="font-size: 13.5px;">${title}</p>`;
+                    contentHtml += `<p class="text-muted mb-3" style="font-size: 12.5px;">Mohon lengkapi seluruh kolom wajib bertanda (*) yang ditandai berwarna merah sebelum melanjutkan.</p>`;
+                }
+                
+                if (rows && rows.length > 0) {
+                    let rowsHtml = '';
+                    rows.forEach(r => {
+                        rowsHtml += `<tr><td class="text-muted py-1" style="width: 40%;">${r.label}</td><td class="fw-semibold py-1${r.danger ? ' text-danger' : ' text-dark'}">${r.value}</td></tr>`;
+                    });
+                    contentHtml += `<div class="p-3 rounded mb-3" style="background: #f8fafc; border: 1px solid #e2e8f0;"><table class="table table-sm table-borderless mb-0" style="font-size: 12.5px;">${rowsHtml}</table></div>`;
+                }
+                
+                if (message) {
+                    contentHtml += `<div class="alert alert-danger py-2 px-3 mb-1" style="font-size: 12.5px; border-radius: 8px;"><i class="feather-info me-1"></i> ${message}</div>`;
+                }
+                
+                modalBody.innerHTML = contentHtml;
                 const modal = new bootstrap.Modal(document.getElementById('endDateValidationModal'));
                 modal.show();
             }
@@ -1269,8 +1341,7 @@
                     }
                     showValidationModal(
                         'Formulir Belum Lengkap!',
-                        [],
-                        'Mohon lengkapi seluruh kolom wajib bertanda (*) yang ditandai berwarna merah sebelum melanjutkan.'
+                        []
                     );
                 }
                 return isValid;
@@ -1280,17 +1351,45 @@
             if (btnConfirm) {
                 btnConfirm.addEventListener('click', function(e) {
                     e.preventDefault();
-                    
-                    // Custom mandatory validation first
-                    if (!validateMandatoryForm()) {
-                        return;
-                    }
-                    
-                    // Validate form standard HTML5 rules
-                    if (!form.checkValidity()) {
-                        form.reportValidity();
-                        return;
-                    }
+                    try {
+                        // Custom mandatory validation first
+                        if (!validateMandatoryForm()) {
+                            return;
+                        }
+                        
+                        // Validate form standard HTML5 rules
+                        if (!form.checkValidity()) {
+                            let errorRows = [];
+                            const invalidElements = form.querySelectorAll(':invalid');
+                            invalidElements.forEach(el => {
+                                // Skip disabled elements
+                                if (el.disabled) return;
+                                
+                                let labelText = 'Field';
+                                if (el.id) {
+                                    const label = document.querySelector(`label[for="${el.id}"]`);
+                                    if (label) {
+                                        // Remove asterisk if any
+                                        labelText = label.textContent.replace('*', '').trim();
+                                    } else {
+                                        labelText = el.name || el.id;
+                                    }
+                                } else {
+                                    labelText = el.name || 'Kolom Wajib';
+                                }
+                                
+                                errorRows.push({ label: labelText, value: 'Belum diisi / Tidak valid', danger: true });
+                                
+                                // Add visual cue
+                                el.classList.add('is-invalid');
+                            });
+                            
+                            showValidationModal(
+                                'Formulir Belum Lengkap / Tidak Valid!',
+                                errorRows
+                            );
+                            return;
+                        }
 
                     const now = new Date();
                     const tglVertikalInput = document.getElementById('id_tgl_terima_vertikal');
@@ -1370,6 +1469,10 @@
                     
                     // Show modal
                     confirmModal.show();
+                    } catch(err) {
+                        alert("JS Error pada btnSimpan: " + err.message);
+                        console.error(err);
+                    }
                 });
             }
 
@@ -1454,90 +1557,56 @@
         });
 
         function populateConfirmationModal() {
+            // Helper to safely set text content
+            const setConfirm = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = val || '-';
+            };
+            const getVal = (id) => document.getElementById(id)?.value;
+            const getText = (id) => document.getElementById(id)?.textContent;
+            const getSelectText = (id) => {
+                const el = document.getElementById(id);
+                return el && el.selectedIndex >= 0 ? el.options[el.selectedIndex].text : '';
+            };
+
             // Get form values
             const periodeDataSelect = document.getElementById('id_periode_data');
-            const periodeSelect = document.getElementById('id_periode');
-            const tahunSelect = document.getElementById('id_tahun');
-            const tglVertikalInput = document.getElementById('id_tgl_terima_vertikal');
-            const tglDipInput = document.getElementById('id_tgl_terima_dip');
             const nomorTiketCell = document.getElementById('confirm-nomor-tiket');
 
             // Set all confirmation values from info section and form
-            document.getElementById('confirm-nama-ilap').textContent = 
-                document.getElementById('info-nama-ilap').textContent || '-';
-            
-            document.getElementById('confirm-kategori-ilap').textContent = 
-                document.getElementById('info-kategori-ilap').textContent || '-';
-            
-            document.getElementById('confirm-kategori-wilayah').textContent = 
-                document.getElementById('info-kategori-wilayah').textContent || '-';
-            
-            document.getElementById('confirm-jenis-tabel').textContent = 
-                document.getElementById('info-jenis-tabel').textContent || '-';
-            
-            document.getElementById('confirm-jenis-prioritas').textContent = 
-                document.getElementById('info-jenis-prioritas').textContent || '-';
-            
-            document.getElementById('confirm-klasifikasi').textContent = 
-                document.getElementById('info-klasifikasi').textContent || '-';
+            setConfirm('confirm-nama-ilap', getText('info-nama-ilap'));
+            setConfirm('confirm-kategori-ilap', getText('info-kategori-ilap'));
+            setConfirm('confirm-kategori-wilayah', getText('info-kategori-wilayah'));
+            setConfirm('confirm-jenis-tabel', getText('info-jenis-tabel'));
+            setConfirm('confirm-jenis-prioritas', getText('info-jenis-prioritas'));
+            setConfirm('confirm-klasifikasi', getText('info-klasifikasi'));
             
             // Get selected periode data for id/nama sub jenis
-            const selectedPeriodeData = periodeDataCache[periodeDataSelect?.value];
-            document.getElementById('confirm-id-sub-jenis-data').textContent = 
-                selectedPeriodeData?.id_sub_jenis_data || '-';
-            document.getElementById('confirm-nama-sub-jenis-data').textContent = 
-                selectedPeriodeData?.nama_sub_jenis_data || '-';
+            const selectedPeriodeData = typeof periodeDataCache !== 'undefined' ? periodeDataCache[periodeDataSelect?.value] : null;
+            setConfirm('confirm-id-sub-jenis-data', selectedPeriodeData?.id_sub_jenis_data);
+            setConfirm('confirm-nama-sub-jenis-data', selectedPeriodeData?.nama_sub_jenis_data);
             
-            document.getElementById('confirm-pic-p3de').textContent = 
-                document.getElementById('info-pic-p3de').textContent || '-';
+            setConfirm('confirm-pic-p3de', getText('info-pic-p3de'));
+            setConfirm('confirm-pic-pide', getText('info-pic-pide'));
+            setConfirm('confirm-pic-pmde', getText('info-pic-pmde'));
+            setConfirm('confirm-deskripsi-periode', getText('info-deskripsi-periode'));
             
-            document.getElementById('confirm-pic-pide').textContent = 
-                document.getElementById('info-pic-pide').textContent || '-';
+            setConfirm('confirm-periode', getSelectText('id_periode'));
+            setConfirm('confirm-tahun', getSelectText('id_tahun'));
+            setConfirm('confirm-tgl-vertikal', formatDateTime(getVal('id_tgl_terima_vertikal')));
+            setConfirm('confirm-tgl-dip', formatDateTime(getVal('id_tgl_terima_dip')));
+            setConfirm('confirm-nomor-surat-pengantar', getVal('id_nomor_surat_pengantar'));
+            setConfirm('confirm-tanggal-surat-pengantar', formatDateTime(getVal('id_tanggal_surat_pengantar')));
+            setConfirm('confirm-nama-pengirim', getVal('id_nama_pengirim'));
             
-            document.getElementById('confirm-pic-pmde').textContent = 
-                document.getElementById('info-pic-pmde').textContent || '-';
+            setConfirm('confirm-bentuk-data', getSelectText('id_id_bentuk_data'));
+            setConfirm('confirm-cara-penyampaian', getSelectText('id_id_cara_penyampaian'));
+            setConfirm('confirm-penyampaian', getVal('id_penyampaian'));
+            setConfirm('confirm-baris-diterima', getVal('id_baris_diterima'));
+            setConfirm('confirm-satuan-data', getSelectText('id_satuan_data'));
             
-            document.getElementById('confirm-deskripsi-periode').textContent = 
-                document.getElementById('info-deskripsi-periode').textContent || '-';
-            
-            document.getElementById('confirm-periode').textContent = 
-                periodeSelect.options[periodeSelect.selectedIndex]?.text || '-';
-            
-            document.getElementById('confirm-tahun').textContent = 
-                tahunSelect.options[tahunSelect.selectedIndex]?.text || '-';
-            
-            document.getElementById('confirm-tgl-vertikal').textContent = 
-                formatDateTime(tglVertikalInput.value) || '-';
-            
-            document.getElementById('confirm-tgl-dip').textContent = 
-                formatDateTime(tglDipInput.value) || '-';
-
-            document.getElementById('confirm-nomor-surat-pengantar').textContent = 
-                document.getElementById('id_nomor_surat_pengantar')?.value || '-';
-            
-            document.getElementById('confirm-tanggal-surat-pengantar').textContent = 
-                formatDateTime(document.getElementById('id_tanggal_surat_pengantar')?.value) || '-';
-            
-            document.getElementById('confirm-nama-pengirim').textContent = 
-                document.getElementById('id_nama_pengirim')?.value || '-';
-            
-            document.getElementById('confirm-bentuk-data').textContent = 
-                document.getElementById('id_id_bentuk_data')?.options[document.getElementById('id_id_bentuk_data')?.selectedIndex]?.text || '-';
-            
-            document.getElementById('confirm-cara-penyampaian').textContent = 
-                document.getElementById('id_id_cara_penyampaian')?.options[document.getElementById('id_id_cara_penyampaian')?.selectedIndex]?.text || '-';
-
-            document.getElementById('confirm-penyampaian').textContent = 
-                document.getElementById('id_penyampaian')?.value || '-';
-            
-            document.getElementById('confirm-baris-diterima').textContent = 
-                document.getElementById('id_baris_diterima')?.value || '-';
-            
-            document.getElementById('confirm-satuan-data').textContent =
-                document.getElementById('id_satuan_data')?.options[document.getElementById('id_satuan_data')?.selectedIndex]?.text || '-';
-
-            document.getElementById('confirm-special-request').textContent =
-                document.getElementById('id_special_request')?.checked ? 'Ya' : 'Tidak';
+            const specialReq = document.getElementById('id_special_request');
+            setConfirm('confirm-special-request', specialReq?.checked ? 'Ya' : 'Tidak');
 
             // Backup Data (Bagian C)
             const backupChecked = document.getElementById('rekam-backup-checkbox')?.checked;
@@ -1547,13 +1616,9 @@
                 if (el) el.style.display = backupChecked ? '' : 'none';
             });
             if (backupChecked) {
-                document.getElementById('confirm-lokasi-backup').textContent =
-                    document.getElementById('backup_lokasi_backup')?.value || '-';
-                document.getElementById('confirm-nama-file').textContent =
-                    document.getElementById('backup_nama_file')?.value || '-';
-                const mediaSelect = document.getElementById('backup_id_media_backup');
-                document.getElementById('confirm-media-backup').textContent =
-                    mediaSelect?.options[mediaSelect?.selectedIndex]?.text || '-';
+                setConfirm('confirm-lokasi-backup', getVal('backup_lokasi_backup'));
+                setConfirm('confirm-nama-file', getVal('backup_nama_file'));
+                setConfirm('confirm-media-backup', getSelectText('backup_id_media_backup'));
             }
 
             if (nomorTiketCell && periodeDataSelect?.value) {
