@@ -11,8 +11,12 @@
     <div class="modal-body">
         <div class="alert alert-info">
             <i class="feather-info me-2"></i>
-            Ubah isian tiket <strong>{{ tiket.nomor_tiket }}</strong>. Perubahan hanya
-            dapat dilakukan selama tiket belum dibuatkan tanda terima.
+            Ubah isian tiket <strong>{{ tiket.nomor_tiket }}</strong>.
+            {% if is_admin_p3de %}
+            Perubahan tidak mengubah status tiket.
+            {% else %}
+            Perubahan hanya dapat dilakukan selama tiket belum dibuatkan tanda terima.
+            {% endif %}
         </div>
 
         <!-- Periode, Tahun, Penyampaian -->
@@ -108,6 +112,96 @@
                 </div>
             </div>
         </div>
+
+        {% if form.show_penelitian %}
+        <!-- Hasil Penelitian (admin only, once the tiket is past Direkam) -->
+        <hr class="my-3">
+        <h6 class="fw-semibold {% if form.tgl_teliti.field.required %}mb-1{% else %}mb-3{% endif %}">Hasil Penelitian</h6>
+        {% if form.tgl_teliti.field.required %}
+        <div class="small text-muted mb-3">Tidak dapat dikosongkan karena status tiket <strong>{{ tiket.get_status_tiket_display }}</strong>.</div>
+        {% endif %}
+        <div class="row">
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label for="{{ form.tgl_teliti.id_for_label }}" class="form-label">{{ form.tgl_teliti.label }}{% if form.tgl_teliti.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                    {{ form.tgl_teliti }}
+                    {% if form.tgl_teliti.errors %}<div class="invalid-feedback d-block">{{ form.tgl_teliti.errors }}</div>{% endif %}
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label for="{{ form.baris_lengkap.id_for_label }}" class="form-label">{{ form.baris_lengkap.label }}{% if form.baris_lengkap.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                    {{ form.baris_lengkap }}
+                    {% if form.baris_lengkap.errors %}<div class="invalid-feedback d-block">{{ form.baris_lengkap.errors }}</div>{% endif %}
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label for="{{ form.baris_tidak_lengkap.id_for_label }}" class="form-label">{{ form.baris_tidak_lengkap.label }}{% if form.baris_tidak_lengkap.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                    {{ form.baris_tidak_lengkap }}
+                    {% if form.baris_tidak_lengkap.errors %}<div class="invalid-feedback d-block">{{ form.baris_tidak_lengkap.errors }}</div>{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sisa baris validation hint -->
+        <div id="edit-baris-validation-hint" class="mb-3 small"></div>
+
+        <!-- Status Penelitian (read-only, dynamically calculated) -->
+        <div class="mb-3">
+            <label class="form-label">Status Penelitian</label>
+            <div class="d-flex gap-4 ps-1">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="edit_status_penelitian_display"
+                        id="edit-status-lengkap" value="1" disabled>
+                    <label class="form-check-label" for="edit-status-lengkap">Lengkap</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="edit_status_penelitian_display"
+                        id="edit-status-lengkap-sebagian" value="2" disabled>
+                    <label class="form-check-label" for="edit-status-lengkap-sebagian">Lengkap Sebagian</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="edit_status_penelitian_display"
+                        id="edit-status-tidak-lengkap" value="3" disabled>
+                    <label class="form-check-label" for="edit-status-tidak-lengkap">Tidak Lengkap</label>
+                </div>
+            </div>
+            <small class="form-text text-muted">Dihitung otomatis dari baris lengkap dan baris diterima.</small>
+        </div>
+        {% endif %}
+
+        {% if form.show_pengiriman_pide %}
+        <!-- Pengiriman ke PIDE (admin only, once the tiket has been sent) -->
+        <hr class="my-3">
+        <h6 class="fw-semibold {% if form.tgl_nadine.field.required %}mb-1{% else %}mb-3{% endif %}">Pengiriman ke PIDE</h6>
+        {% if form.tgl_nadine.field.required %}
+        <div class="small text-muted mb-3">Tidak dapat dikosongkan karena status tiket <strong>{{ tiket.get_status_tiket_display }}</strong>.</div>
+        {% endif %}
+        <div class="row">
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label for="{{ form.tgl_nadine.id_for_label }}" class="form-label">{{ form.tgl_nadine.label }}{% if form.tgl_nadine.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                    {{ form.tgl_nadine }}
+                    {% if form.tgl_nadine.errors %}<div class="invalid-feedback d-block">{{ form.tgl_nadine.errors }}</div>{% endif %}
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label for="{{ form.nomor_nd_nadine.id_for_label }}" class="form-label">{{ form.nomor_nd_nadine.label }}{% if form.nomor_nd_nadine.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                    {{ form.nomor_nd_nadine }}
+                    {% if form.nomor_nd_nadine.errors %}<div class="invalid-feedback d-block">{{ form.nomor_nd_nadine.errors }}</div>{% endif %}
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label for="{{ form.tgl_kirim_pide.id_for_label }}" class="form-label">{{ form.tgl_kirim_pide.label }}{% if form.tgl_kirim_pide.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                    {{ form.tgl_kirim_pide }}
+                    {% if form.tgl_kirim_pide.errors %}<div class="invalid-feedback d-block">{{ form.tgl_kirim_pide.errors }}</div>{% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
     <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>

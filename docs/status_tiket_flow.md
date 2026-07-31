@@ -201,11 +201,33 @@ Dua aksi berikut dijalankan dari halaman detail tiket namun **tidak** memindahka
 
 ### Edit Isian Tiket
 
-Koreksi isian tiket melalui modal **Edit Tiket** (`/tiket/<pk>/edit/`), tercatat sebagai aksi **`10` — Isian Tiket Diubah**.
+Koreksi isian tiket melalui modal **Edit Tiket** (`/tiket/<pk>/edit/`), tercatat sebagai aksi **`10` — Isian Tiket Diubah**. Aksi ini **tidak pernah memindahkan `status_tiket`**; perpindahan status tetap hanya melalui aksi alur kerja masing-masing.
 
 **Ketentuan:**
 - **PIC P3DE aktif** hanya boleh mengedit selama status **Direkam (1)** *dan* tiket belum memiliki tanda terima. Setelah tanda terima terbit, isian terkunci dan satu-satunya aksi yang tersisa adalah pembatalan tiket
 - **Admin P3DE** (`admin`, `admin_p3de`, superuser) dikecualikan dari pembatasan tersebut dan dapat mengoreksi tiket pada titik mana pun dalam alur kerja
+
+**Isian yang dapat diubah:**
+
+| Peran | Isian |
+|-------|-------|
+| PIC P3DE & Admin P3DE | Isian perekaman: periode/tahun, surat pengantar, bentuk & cara penyampaian, baris diterima, tanggal terima vertikal/DIP |
+| Admin P3DE saja | **Hasil penelitian**: `tgl_teliti`, `baris_lengkap`, `baris_tidak_lengkap` — `status_penelitian` dihitung ulang otomatis dengan aturan yang sama seperti Rekam Hasil Penelitian (lihat tabel pada bagian 2)<br>**Pengiriman ke PIDE**: `tgl_nadine`, `nomor_nd_nadine`, `tgl_kirim_pide` |
+
+**Bagian khusus admin hanya muncul untuk tahap yang sudah dilalui tiket**, agar isian yang diubah tidak bertentangan dengan status tiket:
+
+| Bagian | Ditampilkan pada status |
+|--------|-------------------------|
+| Hasil penelitian | Selain **Direkam (1)** |
+| Pengiriman ke PIDE | Selain **Direkam (1)**, **Diteliti (2)**, dan **Dikembalikan (3)** |
+
+Bagian yang tidak ditampilkan bukan sekadar disembunyikan di tampilan: field-nya dikeluarkan dari form, sehingga tidak dapat dikirim lewat POST **dan** tidak ikut terkosongkan saat form disimpan tanpa field tersebut. Hal yang sama berlaku untuk PIC, yang tidak pernah mendapat field khusus admin. `status_penelitian` pun hanya dihitung ulang bila bagian hasil penelitian ikut ditampilkan.
+
+**Perlindungan terhadap pengosongan (nulling).** Pada bagian yang ditampilkan, isian yang **sudah tersimpan** tidak boleh dikosongkan — tiket berstatus "Dikirim ke PIDE" tanpa ND Nadine akan bertentangan dengan statusnya sendiri. Nilainya tetap boleh dikoreksi (diganti), hanya tidak boleh dikosongkan. Field yang memang tidak pernah terekam tidak dipaksa untuk diisi — banyak tiket hasil migrasi (`old_db`) berada pada status lanjut tanpa `tgl_teliti` atau dengan data ND Nadine yang tidak lengkap.
+
+**Konsistensi baris.** `baris_diterima` wajib sama dengan `baris_lengkap + baris_tidak_lengkap`, dan kedua baris tersebut diisi/dikosongkan berpasangan. Pada status **Direkam (1)** hasil penelitian belum ada — nilai nol yang dibawa data lama bukan hasil penelitian — sehingga `baris_diterima` masih bebas dikoreksi.
+
+**Validasi kronologi** (`tgl_teliti` ≥ `tgl_terima_dip`, `tgl_nadine`/`tgl_kirim_pide` ≥ `tgl_teliti`, `tgl_kirim_pide` ≥ `tgl_nadine`) hanya diperiksa untuk pasangan tanggal yang benar-benar diubah oleh edit tersebut. Data migrasi memuat kombinasi yang melanggar aturan ini, dan admin yang mengoreksi field lain tidak boleh terhalang oleh data yang bukan tulisannya.
 
 ### Special Request
 

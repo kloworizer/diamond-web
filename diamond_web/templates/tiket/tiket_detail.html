@@ -3129,6 +3129,75 @@
 
                 if (periodeSelect) periodeSelect.addEventListener('change', updatePenyampaian);
                 if (tahunSelect) tahunSelect.addEventListener('change', updatePenyampaian);
+
+                initEditTiketPenelitianFields(container);
+            }
+
+            // Hasil penelitian block of the edit modal (admin only): mirrors the
+            // Rekam Hasil Penelitian form by showing the calculated status
+            // penelitian and the baris hint. Unlike that form the submit button
+            // stays enabled — the block is optional here and the server does the
+            // authoritative validation.
+            function initEditTiketPenelitianFields(container) {
+                const barisDiterimaInput = container.querySelector('#id_edit_baris_diterima');
+                const barisLengkapInput = container.querySelector('#id_edit_baris_lengkap');
+                const barisTidakLengkapInput = container.querySelector('#id_edit_baris_tidak_lengkap');
+                if (!barisLengkapInput || !barisTidakLengkapInput) return;
+
+                const statusLengkap = container.querySelector('#edit-status-lengkap');
+                const statusLengkapSebagian = container.querySelector('#edit-status-lengkap-sebagian');
+                const statusTidakLengkap = container.querySelector('#edit-status-tidak-lengkap');
+                const hintEl = container.querySelector('#edit-baris-validation-hint');
+
+                function updateStatusPenelitian() {
+                    const hasBarisLengkap = barisLengkapInput.value !== '';
+                    const barisDiterima = parseInt(barisDiterimaInput ? barisDiterimaInput.value : '', 10);
+                    const barisLengkap = parseInt(barisLengkapInput.value, 10) || 0;
+                    const barisTidakLengkap = parseInt(barisTidakLengkapInput.value, 10) || 0;
+
+                    if (statusLengkap) statusLengkap.checked = false;
+                    if (statusLengkapSebagian) statusLengkapSebagian.checked = false;
+                    if (statusTidakLengkap) statusTidakLengkap.checked = false;
+
+                    if (hasBarisLengkap) {
+                        if (barisLengkap === barisDiterima) {
+                            if (statusLengkap) statusLengkap.checked = true;
+                        } else if (barisLengkap === 0) {
+                            if (statusTidakLengkap) statusTidakLengkap.checked = true;
+                        } else {
+                            if (statusLengkapSebagian) statusLengkapSebagian.checked = true;
+                        }
+                    }
+
+                    if (!hintEl) return;
+                    if (!hasBarisLengkap && barisTidakLengkapInput.value === '') {
+                        hintEl.innerHTML = '';
+                        return;
+                    }
+                    if (isNaN(barisDiterima)) {
+                        hintEl.innerHTML = '';
+                        return;
+                    }
+                    const total = barisLengkap + barisTidakLengkap;
+                    const sisa = barisDiterima - total;
+                    if (sisa === 0) {
+                        hintEl.innerHTML = '<span class="text-success"><i class="feather-check"></i> Jumlah baris sesuai.</span>';
+                    } else if (sisa > 0) {
+                        hintEl.innerHTML = `<span class="text-warning"><i class="feather-alert-triangle"></i> Kurang ${sisa} baris dari total ${barisDiterima}.</span>`;
+                    } else {
+                        hintEl.innerHTML = `<span class="text-danger"><i class="feather-x-circle"></i> Melebihi ${Math.abs(sisa)} baris dari total ${barisDiterima}.</span>`;
+                    }
+                }
+
+                [barisDiterimaInput, barisLengkapInput, barisTidakLengkapInput].forEach(input => {
+                    if (!input) return;
+                    input.addEventListener('input', updateStatusPenelitian);
+                    input.addEventListener('change', updateStatusPenelitian);
+                });
+
+                // Run once so a tiket that already has hasil penelitian opens
+                // with its status shown.
+                updateStatusPenelitian();
             }
 
             function initRekamHasilPenelitianForm(container) {

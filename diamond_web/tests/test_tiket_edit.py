@@ -16,6 +16,7 @@ from django.urls import reverse
 from diamond_web.models import Tiket, TiketPIC
 from diamond_web.models.tiket_action import TiketAction
 from diamond_web.constants.tiket_action_types import TiketActionType
+from diamond_web.constants.tiket_status import STATUS_LABELS
 from diamond_web.forms.edit_tiket import EditTiketForm
 from diamond_web.tests.conftest import (
     TiketFactory, TiketPICFactory, PICFactory, UserFactory,
@@ -46,6 +47,16 @@ def _valid_post(tiket, **overrides):
     }
     data.update(overrides)
     return data
+
+
+def _status_penelitian(deskripsi):
+    from diamond_web.models.status_penelitian import StatusPenelitian
+    status, _ = StatusPenelitian.objects.get_or_create(deskripsi=deskripsi)
+    return status
+
+
+def _days_ago(days):
+    return (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
 
 
 def _active_p3de_tiket(user, status=1, tanda_terima=False):
@@ -135,6 +146,462 @@ class TestEditTiketForm:
         data.update({'nomor_surat_pengantar': '', 'nama_pengirim': '', 'tanggal_surat_pengantar': ''})
         form = EditTiketForm(data=data, instance=tiket)
         assert form.is_valid(), form.errors
+
+
+# ============================================================
+# EditTiketForm — admin-only workflow isian
+# ============================================================
+
+@pytest.mark.django_db
+class TestEditTiketFormAdminFields:
+    """The later workflow isian is editable by P3DE admins only."""
+
+    ADMIN_FIELDS = [
+        'tgl_teliti', 'baris_lengkap', 'baris_tidak_lengkap',
+        'tgl_nadine', 'nomor_nd_nadine', 'tgl_kirim_pide',
+    ]
+
+    def _tiket(self, **kwargs):
+        # Dikirim ke PIDE by default: both admin sections are shown only for a
+        # tiket that has been through those steps.
+        kwargs.setdefault('status_tiket', 4)
+        kwargs.setdefault('id_periode_data', _editable_periode_data())
+        kwargs.setdefault('baris_diterima', 100)
+        kwargs.setdefault('tgl_terima_dip', datetime.now() - timedelta(days=10))
+        return TiketFactory(**kwargs)
+
+    def _penelitian_post(self, tiket, **overrides):
+        data = _valid_post(
+            tiket,
+            baris_diterima=tiket.baris_diterima,
+            # Older than every tgl_teliti used below, so only the case under
+            # test can trip the "teliti before terima DIP" rule.
+            tgl_terima_dip=(datetime.now() - timedelta(days=20)).strftime('%Y-%m-%dT%H:%M'),
+            tgl_teliti=_days_ago(5),
+            baris_lengkap=tiket.baris_diterima,
+            baris_tidak_lengkap=0,
+        )
+        data.update(overrides)
+        return data
+
+    def _full_post(self, tiket, **overrides):
+        """A post that fills both admin groups with consistent values."""
+        data = self._penelitian_post(
+            tiket,
+            tgl_nadine=_days_ago(3),
+            nomor_nd_nadine='ND-123',
+            tgl_kirim_pide=_days_ago(2),
+        )
+        data.update(overrides)
+        return data
+
+    def _recorded_tiket(self, status):
+        """A tiket that has been through penelitian and pengiriman ke PIDE."""
+        return self._tiket(
+            status_tiket=status,
+            tgl_teliti=datetime.now() - timedelta(days=5),
+            baris_lengkap=100,
+            baris_tidak_lengkap=0,
+            id_status_penelitian=_status_penelitian('Lengkap'),
+            tgl_nadine=datetime.now() - timedelta(days=3),
+            nomor_nd_nadine='ND-123',
+            tgl_kirim_pide=datetime.now() - timedelta(days=2),
+        )
+
+    def test_fields_hidden_for_pic(self):
+        form = EditTiketForm(instance=self._tiket())
+        for name in self.ADMIN_FIELDS:
+            assert name not in form.fields
+
+    def test_fields_present_for_admin(self):
+        form = EditTiketForm(instance=self._tiket(), is_admin=True)
+        assert form.show_penelitian is True
+        assert form.show_pengiriman_pide is True
+        for name in self.ADMIN_FIELDS:
+            assert name in form.fields
+            assert form.fields[name].required is False
+
+    @pytest.mark.parametrize('status,penelitian,pengiriman', [
+        (1, False, False),   # Direkam — neither step has happened
+        (2, True, False),    # Diteliti — penelitian only
+        (3, True, False),    # Dikembalikan — never sent to PIDE
+        (4, True, True),     # Dikirim ke PIDE
+        (5, True, True),
+        (6, True, True),
+        (7, True, True),
+        (8, True, True),
+    ])
+    def test_sections_follow_the_workflow_step(self, status, penelitian, pengiriman):
+        """A section only exists for a step the tiket has been through, so an
+        edit can never write isian that contradicts the status."""
+        form = EditTiketForm(instance=self._tiket(status_tiket=status), is_admin=True)
+        assert form.show_penelitian is penelitian
+        assert form.show_pengiriman_pide is pengiriman
+        for name in ('tgl_teliti', 'baris_lengkap', 'baris_tidak_lengkap'):
+            assert (name in form.fields) is penelitian
+        for name in ('tgl_nadine', 'nomor_nd_nadine', 'tgl_kirim_pide'):
+            assert (name in form.fields) is pengiriman
+
+    def test_direkam_edit_keeps_hasil_penelitian_untouched(self):
+        """The hidden fields are absent, so a save must not null them."""
+        tiket = self._tiket(
+            status_tiket=1,
+            baris_lengkap=100,
+            baris_tidak_lengkap=0,
+            tgl_teliti=datetime.now() - timedelta(days=5),
+            id_status_penelitian=_status_penelitian('Lengkap'),
+        )
+        form = EditTiketForm(
+            data=self._full_post(tiket, nama_pengirim='Dikoreksi'),
+            instance=tiket,
+            is_admin=True,
+        )
+        assert form.is_valid(), form.errors
+        saved = form.save()
+        assert saved.baris_lengkap == 100
+        assert saved.tgl_teliti is not None
+        assert saved.id_status_penelitian.deskripsi == 'Lengkap'
+
+    def test_diteliti_edit_keeps_pengiriman_pide_untouched(self):
+        tiket = self._tiket(
+            status_tiket=2,
+            baris_lengkap=100,
+            baris_tidak_lengkap=0,
+            tgl_teliti=datetime.now() - timedelta(days=5),
+            tgl_nadine=datetime.now() - timedelta(days=3),
+            nomor_nd_nadine='ND-123',
+            tgl_kirim_pide=datetime.now() - timedelta(days=2),
+        )
+        form = EditTiketForm(
+            data=self._full_post(tiket, nama_pengirim='Dikoreksi'),
+            instance=tiket,
+            is_admin=True,
+        )
+        assert form.is_valid(), form.errors
+        saved = form.save()
+        assert saved.nomor_nd_nadine == 'ND-123'
+        assert saved.tgl_nadine is not None
+        assert saved.tgl_kirim_pide is not None
+
+    def test_pic_post_cannot_set_admin_fields(self):
+        """Posting the extra isian as a PIC is ignored, not applied."""
+        tiket = self._tiket()
+        form = EditTiketForm(data=self._penelitian_post(tiket), instance=tiket)
+        assert form.is_valid(), form.errors
+        saved = form.save()
+        assert saved.tgl_teliti is None
+        assert saved.baris_lengkap is None
+        assert saved.id_status_penelitian is None
+
+    def test_admin_saves_hasil_penelitian(self):
+        _status_penelitian('Lengkap')
+        tiket = self._tiket()
+        form = EditTiketForm(data=self._penelitian_post(tiket), instance=tiket, is_admin=True)
+        assert form.is_valid(), form.errors
+        saved = form.save()
+        assert saved.tgl_teliti is not None
+        assert saved.baris_lengkap == 100
+        assert saved.baris_tidak_lengkap == 0
+        assert saved.id_status_penelitian.deskripsi == 'Lengkap'
+
+    @pytest.mark.parametrize('baris_lengkap,deskripsi', [
+        (100, 'Lengkap'),
+        (40, 'Lengkap Sebagian'),
+        (0, 'Tidak Lengkap'),
+    ])
+    def test_status_penelitian_auto_calculated(self, baris_lengkap, deskripsi):
+        _status_penelitian(deskripsi)
+        tiket = self._tiket()
+        form = EditTiketForm(
+            data=self._penelitian_post(
+                tiket,
+                baris_lengkap=baris_lengkap,
+                baris_tidak_lengkap=tiket.baris_diterima - baris_lengkap,
+            ),
+            instance=tiket,
+            is_admin=True,
+        )
+        assert form.is_valid(), form.errors
+        assert form.save().id_status_penelitian.deskripsi == deskripsi
+
+    def test_status_penelitian_follows_edited_baris_diterima(self):
+        """The check uses the submitted baris diterima, not the stored one."""
+        _status_penelitian('Lengkap')
+        tiket = self._tiket()
+        form = EditTiketForm(
+            data=self._penelitian_post(
+                tiket, baris_diterima=60, baris_lengkap=60, baris_tidak_lengkap=0
+            ),
+            instance=tiket,
+            is_admin=True,
+        )
+        assert form.is_valid(), form.errors
+        saved = form.save()
+        assert saved.baris_diterima == 60
+        assert saved.id_status_penelitian.deskripsi == 'Lengkap'
+
+    def test_baris_sum_must_match_baris_diterima(self):
+        tiket = self._tiket()
+        form = EditTiketForm(
+            data=self._penelitian_post(tiket, baris_lengkap=30, baris_tidak_lengkap=30),
+            instance=tiket,
+            is_admin=True,
+        )
+        assert not form.is_valid()
+        assert 'baris_diterima' in form.errors
+
+    def test_edited_baris_diterima_must_match_baris_sum(self):
+        """Changing baris diterima alone breaks the identity."""
+        tiket = self._tiket()
+        form = EditTiketForm(
+            data=self._penelitian_post(tiket, baris_diterima=80),
+            instance=tiket,
+            is_admin=True,
+        )
+        assert not form.is_valid()
+        assert 'baris_diterima' in form.errors
+
+    def test_pic_edit_keeps_baris_diterima_identity(self):
+        """A PIC has no baris lengkap fields but still cannot break the sum."""
+        tiket = self._tiket(status_tiket=2, baris_lengkap=60, baris_tidak_lengkap=40)
+        form = EditTiketForm(data=_valid_post(tiket, baris_diterima=90), instance=tiket)
+        assert not form.is_valid()
+        assert 'baris_diterima' in form.errors
+
+        form = EditTiketForm(data=_valid_post(tiket, baris_diterima=100), instance=tiket)
+        assert form.is_valid(), form.errors
+
+    def test_baris_values_without_tgl_teliti_accepted(self):
+        """Old-DB tikets carry baris lengkap values with no tanggal teliti."""
+        tiket = self._tiket()
+        data = self._penelitian_post(tiket)
+        data['tgl_teliti'] = ''
+        form = EditTiketForm(data=data, instance=tiket, is_admin=True)
+        assert form.is_valid(), form.errors
+        saved = form.save()
+        assert saved.tgl_teliti is None
+        assert saved.baris_lengkap == tiket.baris_diterima
+
+    def test_baris_values_must_be_filled_as_a_pair(self):
+        """Either half alone cannot add up to baris diterima."""
+        tiket = self._tiket()
+        data = self._penelitian_post(tiket)
+        data['baris_tidak_lengkap'] = ''
+        form = EditTiketForm(data=data, instance=tiket, is_admin=True)
+        assert not form.is_valid()
+        assert 'baris_tidak_lengkap' in form.errors
+
+    def test_tgl_teliti_before_tgl_terima_dip_rejected(self):
+        tiket = self._tiket()
+        form = EditTiketForm(
+            data=self._penelitian_post(tiket, tgl_teliti=_days_ago(30)),
+            instance=tiket,
+            is_admin=True,
+        )
+        assert not form.is_valid()
+        assert 'tgl_teliti' in form.errors
+
+    def test_future_tgl_teliti_rejected(self):
+        tiket = self._tiket()
+        future = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+        form = EditTiketForm(
+            data=self._penelitian_post(tiket, tgl_teliti=future),
+            instance=tiket,
+            is_admin=True,
+        )
+        assert not form.is_valid()
+        assert 'tgl_teliti' in form.errors
+
+    def test_admin_saves_pengiriman_pide(self):
+        _status_penelitian('Lengkap')
+        tiket = self._tiket()
+        form = EditTiketForm(
+            data=self._penelitian_post(
+                tiket,
+                tgl_nadine=_days_ago(3),
+                nomor_nd_nadine='ND-123',
+                tgl_kirim_pide=_days_ago(2),
+            ),
+            instance=tiket,
+            is_admin=True,
+        )
+        assert form.is_valid(), form.errors
+        saved = form.save()
+        assert saved.nomor_nd_nadine == 'ND-123'
+        assert saved.tgl_nadine is not None
+        assert saved.tgl_kirim_pide is not None
+
+    def test_partial_pengiriman_pide_accepted(self):
+        """Migrated tikets carry the trio partially; an edit must not demand
+        values the workflow never recorded."""
+        tiket = self._tiket()
+        form = EditTiketForm(
+            data=self._penelitian_post(tiket, nomor_nd_nadine='ND-123'),
+            instance=tiket,
+            is_admin=True,
+        )
+        assert form.is_valid(), form.errors
+        saved = form.save()
+        assert saved.nomor_nd_nadine == 'ND-123'
+        assert saved.tgl_nadine is None
+
+    def test_tgl_nadine_before_tgl_teliti_rejected(self):
+        tiket = self._tiket()
+        form = EditTiketForm(
+            data=self._penelitian_post(
+                tiket,
+                tgl_teliti=_days_ago(3),
+                tgl_nadine=_days_ago(4),
+                nomor_nd_nadine='ND-123',
+                tgl_kirim_pide=_days_ago(1),
+            ),
+            instance=tiket,
+            is_admin=True,
+        )
+        assert not form.is_valid()
+        assert 'tgl_nadine' in form.errors
+
+    @pytest.mark.parametrize('status', [2, 4, 5, 6])
+    def test_hasil_penelitian_cannot_be_nulled_by_status(self, status):
+        tiket = self._recorded_tiket(status)
+        form = EditTiketForm(
+            data=self._full_post(
+                tiket, tgl_teliti='', baris_lengkap='', baris_tidak_lengkap=''
+            ),
+            instance=tiket,
+            is_admin=True,
+        )
+        assert not form.is_valid()
+        for name in ('tgl_teliti', 'baris_lengkap', 'baris_tidak_lengkap'):
+            assert 'tidak boleh dikosongkan' in str(form.errors[name])
+
+    @pytest.mark.parametrize('status', [4, 5, 6])
+    def test_pengiriman_pide_cannot_be_nulled_by_status(self, status):
+        tiket = self._recorded_tiket(status)
+        form = EditTiketForm(
+            data=self._full_post(
+                tiket, tgl_nadine='', nomor_nd_nadine='', tgl_kirim_pide=''
+            ),
+            instance=tiket,
+            is_admin=True,
+        )
+        assert not form.is_valid()
+        for name in ('tgl_nadine', 'nomor_nd_nadine', 'tgl_kirim_pide'):
+            assert 'tidak boleh dikosongkan' in str(form.errors[name])
+        # The message names the status that blocks the change.
+        assert STATUS_LABELS[status] in str(form.errors['tgl_nadine'])
+
+    def test_locked_isian_can_still_be_corrected(self):
+        tiket = self._recorded_tiket(4)
+        form = EditTiketForm(
+            data=self._full_post(tiket, nomor_nd_nadine='ND-KOREKSI'),
+            instance=tiket,
+            is_admin=True,
+        )
+        assert form.is_valid(), form.errors
+        assert form.save().nomor_nd_nadine == 'ND-KOREKSI'
+
+    @pytest.mark.parametrize('status', [4, 5, 6, 7, 8])
+    def test_only_recorded_isian_is_protected(self, status):
+        """The guard blocks nulling, it never demands a value that was never
+        recorded — plenty of migrated tikets are past a step without one."""
+        recorded = self._recorded_tiket(status)
+        form = EditTiketForm(
+            data=self._full_post(
+                recorded, tgl_nadine='', nomor_nd_nadine='', tgl_kirim_pide=''
+            ),
+            instance=recorded,
+            is_admin=True,
+        )
+        assert not form.is_valid()
+        assert 'tgl_nadine' in form.errors
+
+        # Same status, but the tiket never recorded a pengiriman or a tgl
+        # teliti: the edit must go through without inventing them.
+        incomplete = self._tiket(status_tiket=status, baris_lengkap=100, baris_tidak_lengkap=0)
+        form = EditTiketForm(
+            data=self._penelitian_post(incomplete, tgl_teliti=''),
+            instance=incomplete,
+            is_admin=True,
+        )
+        assert form.is_valid(), form.errors
+
+    def test_old_db_direkam_tiket_saves_unchanged(self):
+        """Regression: old-DB tikets sit in Direkam with zeroed baris values
+        and no tanggal teliti, which must not be read as a hasil penelitian."""
+        tiket = self._tiket(
+            status_tiket=1, baris_diterima=0, baris_lengkap=0, baris_tidak_lengkap=0,
+            old_db=True,
+        )
+        form = EditTiketForm(
+            data=_valid_post(tiket, baris_diterima=0, baris_lengkap=0, baris_tidak_lengkap=0),
+            instance=tiket,
+            is_admin=True,
+        )
+        assert form.is_valid(), form.errors
+
+    def test_direkam_baris_diterima_correctable(self):
+        """At Direkam there is no hasil penelitian to stay consistent with, so
+        baris diterima may be corrected on its own."""
+        tiket = self._tiket(
+            status_tiket=1, baris_diterima=0, baris_lengkap=0, baris_tidak_lengkap=0,
+            old_db=True,
+        )
+        for form in (
+            EditTiketForm(data=_valid_post(tiket, baris_diterima=500), instance=tiket),
+            EditTiketForm(
+                data=_valid_post(
+                    tiket, baris_diterima=500, baris_lengkap=0, baris_tidak_lengkap=0
+                ),
+                instance=tiket,
+                is_admin=True,
+            ),
+        ):
+            assert form.is_valid(), form.errors
+
+    def test_untouched_legacy_chronology_does_not_block_edit(self):
+        """Migrated tikets carry tgl nadine before tgl teliti; correcting an
+        unrelated field must not be blocked by data the admin did not write."""
+        tiket = self._tiket(
+            status_tiket=4,
+            tgl_teliti=datetime.now() - timedelta(days=3),
+            baris_lengkap=100,
+            baris_tidak_lengkap=0,
+            tgl_nadine=datetime.now() - timedelta(days=9),
+            nomor_nd_nadine='ND-LAMA',
+            tgl_kirim_pide=datetime.now() - timedelta(days=8),
+        )
+        data = self._full_post(
+            tiket,
+            tgl_teliti=_days_ago(3),
+            tgl_nadine=_days_ago(9),
+            nomor_nd_nadine='ND-BARU',
+            tgl_kirim_pide=_days_ago(8),
+        )
+        form = EditTiketForm(data=data, instance=tiket, is_admin=True)
+        assert form.is_valid(), form.errors
+        assert form.save().nomor_nd_nadine == 'ND-BARU'
+
+        # Touching one of the two dates does subject the pair to the rule.
+        data['tgl_nadine'] = _days_ago(10)
+        form = EditTiketForm(data=data, instance=tiket, is_admin=True)
+        assert not form.is_valid()
+        assert 'tgl_nadine' in form.errors
+
+    def test_tgl_kirim_pide_before_tgl_nadine_rejected(self):
+        tiket = self._tiket()
+        form = EditTiketForm(
+            data=self._penelitian_post(
+                tiket,
+                tgl_nadine=_days_ago(2),
+                nomor_nd_nadine='ND-123',
+                tgl_kirim_pide=_days_ago(3),
+            ),
+            instance=tiket,
+            is_admin=True,
+        )
+        assert not form.is_valid()
+        assert 'tgl_kirim_pide' in form.errors
 
 
 # ============================================================
@@ -231,7 +698,7 @@ class TestEditTiketViewAdminP3DEAccess:
     def test_edit_is_logged_as_diubah_action(self, client, p3de_admin_user):
         """An admin edit lands in the audit trail exactly like a PIC edit."""
         tiket = TiketFactory(
-            status_tiket=4, tanda_terima=True, id_periode_data=_editable_periode_data()
+            status_tiket=1, tanda_terima=True, id_periode_data=_editable_periode_data()
         )
         old_pengirim = tiket.nama_pengirim
         client.force_login(p3de_admin_user)
@@ -250,15 +717,125 @@ class TestEditTiketViewAdminP3DEAccess:
         assert action.catatan.startswith('isian tiket diubah')
         assert f'{old_pengirim} → Dikoreksi Admin' in action.catatan
 
+    def test_form_shows_workflow_isian(self, client, p3de_admin_user):
+        tiket = TiketFactory(status_tiket=6, id_periode_data=_editable_periode_data())
+        client.force_login(p3de_admin_user)
+        resp = client.get(reverse('edit_tiket', args=[tiket.pk]))
+        assert b'id_edit_tgl_teliti' in resp.content
+        assert b'id_edit_baris_lengkap' in resp.content
+        assert b'id_edit_tgl_nadine' in resp.content
+        assert b'name="nomor_nd_nadine"' in resp.content
+        assert b'id_edit_tgl_kirim_pide' in resp.content
+        assert b'edit-status-lengkap-sebagian' in resp.content
+
+    @pytest.mark.parametrize('status,penelitian,pengiriman', [
+        (1, False, False),
+        (2, True, False),
+        (4, True, True),
+    ])
+    def test_sections_rendered_per_status(self, client, p3de_admin_user, status,
+                                          penelitian, pengiriman):
+        tiket = TiketFactory(status_tiket=status, id_periode_data=_editable_periode_data())
+        client.force_login(p3de_admin_user)
+        resp = client.get(reverse('edit_tiket', args=[tiket.pk]))
+        assert (b'Hasil Penelitian' in resp.content) is penelitian
+        assert (b'id_edit_tgl_teliti' in resp.content) is penelitian
+        assert (b'Pengiriman ke PIDE' in resp.content) is pengiriman
+        assert (b'id_edit_tgl_nadine' in resp.content) is pengiriman
+
+    def test_pic_form_hides_workflow_isian(self, client, authenticated_user):
+        tiket = _active_p3de_tiket(authenticated_user)
+        client.force_login(authenticated_user)
+        resp = client.get(reverse('edit_tiket', args=[tiket.pk]))
+        assert b'id_edit_tgl_teliti' not in resp.content
+        assert b'id_edit_tgl_nadine' not in resp.content
+
+    def test_admin_updates_workflow_isian(self, client, p3de_admin_user):
+        _status_penelitian('Lengkap Sebagian')
+        tiket = TiketFactory(
+            status_tiket=6,
+            baris_diterima=100,
+            tgl_terima_dip=datetime.now() - timedelta(days=20),
+            id_periode_data=_editable_periode_data(),
+        )
+        client.force_login(p3de_admin_user)
+        resp = client.post(
+            reverse('edit_tiket', args=[tiket.pk]),
+            _valid_post(
+                tiket,
+                baris_diterima=100,
+                tgl_terima_dip=(datetime.now() - timedelta(days=20)).strftime('%Y-%m-%dT%H:%M'),
+                tgl_teliti=_days_ago(5),
+                baris_lengkap=60,
+                baris_tidak_lengkap=40,
+                tgl_nadine=_days_ago(3),
+                nomor_nd_nadine='ND-999',
+                tgl_kirim_pide=_days_ago(2),
+            ),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        assert resp.status_code == 200, resp.content
+        tiket.refresh_from_db()
+        assert tiket.baris_lengkap == 60
+        assert tiket.baris_tidak_lengkap == 40
+        assert tiket.nomor_nd_nadine == 'ND-999'
+        assert tiket.tgl_teliti is not None
+        assert tiket.tgl_kirim_pide is not None
+        assert tiket.id_status_penelitian.deskripsi == 'Lengkap Sebagian'
+        # An isian edit never moves the tiket through the workflow.
+        assert tiket.status_tiket == 6
+        action = TiketAction.objects.filter(
+            id_tiket=tiket, action=TiketActionType.DIUBAH
+        ).latest('id')
+        assert 'Tanggal Teliti' in action.catatan
+
+    def test_pic_cannot_post_workflow_isian(self, client, authenticated_user):
+        tiket = _active_p3de_tiket(authenticated_user)
+        client.force_login(authenticated_user)
+        client.post(
+            reverse('edit_tiket', args=[tiket.pk]),
+            _valid_post(tiket, tgl_teliti=_days_ago(1), baris_lengkap=1, nomor_nd_nadine='ND-1'),
+        )
+        tiket.refresh_from_db()
+        assert tiket.tgl_teliti is None
+        assert tiket.baris_lengkap is None
+        assert tiket.nomor_nd_nadine is None
+
     def test_edit_does_not_change_status(self, client, p3de_admin_user):
-        tiket = TiketFactory(status_tiket=4, id_periode_data=_editable_periode_data())
+        tiket = TiketFactory(status_tiket=1, id_periode_data=_editable_periode_data())
         client.force_login(p3de_admin_user)
         client.post(
             reverse('edit_tiket', args=[tiket.pk]),
-            _valid_post(tiket, nama_pengirim='Tetap 4', status_tiket=1),
+            _valid_post(tiket, nama_pengirim='Tetap Direkam', status_tiket=4),
         )
         tiket.refresh_from_db()
-        assert tiket.status_tiket == 4
+        assert tiket.status_tiket == 1
+
+    def test_workflow_isian_cannot_be_nulled_by_status(self, client, p3de_admin_user):
+        """The status guard also applies to a posted request, not just the form."""
+        tiket = TiketFactory(
+            status_tiket=4,
+            baris_diterima=100,
+            baris_lengkap=100,
+            baris_tidak_lengkap=0,
+            tgl_terima_dip=datetime.now() - timedelta(days=20),
+            tgl_teliti=datetime.now() - timedelta(days=5),
+            tgl_nadine=datetime.now() - timedelta(days=3),
+            nomor_nd_nadine='ND-123',
+            tgl_kirim_pide=datetime.now() - timedelta(days=2),
+            id_periode_data=_editable_periode_data(),
+        )
+        client.force_login(p3de_admin_user)
+        resp = client.post(
+            reverse('edit_tiket', args=[tiket.pk]),
+            _valid_post(tiket, baris_diterima=100),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        assert resp.status_code == 400
+        assert 'tidak boleh dikosongkan' in resp.json()['message']
+        tiket.refresh_from_db()
+        assert tiket.nomor_nd_nadine == 'ND-123'
+        assert tiket.tgl_teliti is not None
 
 
 # ============================================================
