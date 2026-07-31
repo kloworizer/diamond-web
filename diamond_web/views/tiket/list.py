@@ -1383,6 +1383,9 @@ def tiket_data(request):
             'status': STATUS_LABELS.get(obj.status_tiket, '-'),
             'status_ketersediaan_data': 'Ya' if obj.status_ketersediaan_data else 'Tidak',
             'special_request': 'Ya' if obj.special_request else 'Tidak',
+            'tgl_special_request': (
+                obj.tgl_special_request.strftime('%d-%m-%Y') if obj.tgl_special_request else '-'
+            ),
             'actions': actions_html
         })
 

@@ -190,6 +190,7 @@ erDiagram
         bool backup
         bool tanda_terima
         bool special_request
+        datetime tgl_special_request
         int id_status_penelitian FK
         datetime tgl_teliti
         int baris_lengkap
@@ -742,6 +743,7 @@ Tiket — Inti sistem pelacakan pengajuan data.
 | `backup` | `BooleanField` | | | `default=False` | | Status backup direkam |
 | `tanda_terima` | `BooleanField` | | | `default=False` | | Status tanda terima dibuat |
 | `special_request` | `BooleanField` | | | `default=False` | | Penanda special request |
+| `tgl_special_request` | `DateTimeField` | | | `null=True, blank=True` | | Jatuh tempo special request |
 | `id_status_penelitian` | `ForeignKey` | | ✅ → `StatusPenelitian` | `on_delete=PROTECT, null=True, blank=True` | | Status penelitian |
 | `tgl_teliti` | `DateTimeField` | | | `null=True, blank=True` | | Tanggal diteliti |
 | `baris_lengkap` | `IntegerField` | | | `null=True, blank=True` | | Baris data lengkap |

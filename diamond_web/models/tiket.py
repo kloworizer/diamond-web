@@ -20,6 +20,7 @@ class Tiket(models.Model):
     nomor_tiket = models.CharField(max_length=17, unique=True, verbose_name="Nomor Tiket")
     old_db = models.BooleanField(default=False, verbose_name="Old DB")
     special_request = models.BooleanField(default=False, verbose_name="Special Request")
+    tgl_special_request = models.DateTimeField(null=True, blank=True, verbose_name="Tanggal Jatuh Tempo Permintaan Khusus")
     status_tiket = models.IntegerField(choices=STATUS_CHOICES, verbose_name="Status Tiket")
     id_periode_data = models.ForeignKey(
         PeriodeJenisData,

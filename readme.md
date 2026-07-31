@@ -178,7 +178,7 @@ diamond-web/
 │   │   │   ├── transfer_ke_pmde.py         # Modal: Transfer ke PMDE
 │   │   │   ├── selesaikan_tiket.py         # Modal: Selesaikan tiket
 │   │   │   ├── edit_tiket.py               # Modal: Edit isian tiket (PIC P3DE / Admin P3DE)
-│   │   │   ├── special_request.py          # Modal: Toggle penanda special request
+│   │   │   ├── special_request.py          # Modal: Toggle penanda + jatuh tempo special request
 │   │   │   └── documents.py  # Download dokumen tiket
 │   │   ├── backup_data.py, tanda_terima_data.py, monitoring_penyampaian_data.py
 │   │   ├── ilap.py, jenis_data_ilap.py, profil_ilap.py, periode_jenis_data.py

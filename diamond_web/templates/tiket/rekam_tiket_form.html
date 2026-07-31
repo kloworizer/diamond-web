@@ -79,6 +79,16 @@
                                 <div class="invalid-feedback d-block">{{ form.alasan_ketidaktersediaan.errors }}</div>
                             {% endif %}
                         </div>
+                        <div class="mb-3" id="special-request-due-date-group" style="display: none;">
+                            <label for="{{ form.tgl_special_request.id_for_label }}" class="form-label">{{ form.tgl_special_request.label }}<span class="text-danger">*</span></label>
+                            {{ form.tgl_special_request }}
+                            {% if form.tgl_special_request.errors %}
+                                <div class="invalid-feedback d-block">{{ form.tgl_special_request.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted d-block">
+                                <i class="feather-info me-1"></i>Batas waktu penyelesaian permintaan khusus ini. Wajib diisi selama Permintaan Khusus aktif.
+                            </small>
+                        </div>
                     </div>
                 </div>
 
@@ -533,6 +543,10 @@
                                 <tr>
                                     <th>Permintaan Khusus</th>
                                     <td id="confirm-special-request">-</td>
+                                </tr>
+                                <tr id="confirm-row-tgl-special-request" style="display: none;">
+                                    <th>Jatuh Tempo Permintaan Khusus</th>
+                                    <td id="confirm-tgl-special-request">-</td>
                                 </tr>
                                 <!-- Status Penelitian removed from create form confirmation -->
                                 <tr id="confirm-row-backup" style="display: none;">
@@ -1054,10 +1068,34 @@
                 statusTidakTersedia.addEventListener('change', updateKetersediaanDependents);
             }
             
+            // The special request due date only applies while the switch is on.
+            const specialRequestCheckbox = document.getElementById('id_special_request');
+            const specialRequestDueDateGroup = document.getElementById('special-request-due-date-group');
+            const dueDateInput = document.getElementById('id_tgl_special_request');
+
+            function updateSpecialRequestDueDate() {
+                if (!specialRequestCheckbox || !specialRequestDueDateGroup) return;
+                const enabled = specialRequestCheckbox.checked;
+                specialRequestDueDateGroup.style.display = enabled ? '' : 'none';
+                if (dueDateInput) {
+                    // Only required while visible — a hidden required input would
+                    // block submission with a validation bubble nobody can see.
+                    dueDateInput.required = enabled;
+                    if (!enabled) {
+                        dueDateInput.value = '';
+                    }
+                }
+            }
+
+            if (specialRequestCheckbox) {
+                specialRequestCheckbox.addEventListener('change', updateSpecialRequestDueDate);
+            }
+
             // Apply on page load
             hideDataTidakTersediaOptions();
             updateKetersediaanDependents();
             updateTanggalTerimaVertikal();
+            updateSpecialRequestDueDate();
             
             // Bound via jQuery (not addEventListener) because Select2 notifies
             // selection changes with $element.trigger('change'), which only
@@ -1125,6 +1163,22 @@
                     const tglVertikalInput = document.getElementById('id_tgl_terima_vertikal');
                     const tglDipInput = document.getElementById('id_tgl_terima_dip');
                     const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+
+                    // 0. Jatuh tempo wajib diisi selama Permintaan Khusus aktif
+                    const srCheckbox = document.getElementById('id_special_request');
+                    const srDueDateInput = document.getElementById('id_tgl_special_request');
+                    if (srCheckbox?.checked && !srDueDateInput?.value) {
+                        showValidationModal(
+                            'Tanggal Jatuh Tempo Permintaan Khusus belum diisi!',
+                            [
+                                { label: 'Permintaan Khusus', value: 'Aktif' },
+                                { label: 'Tanggal Jatuh Tempo', value: 'Belum diisi', danger: true },
+                            ],
+                            'Tanggal Jatuh Tempo wajib diisi ketika Permintaan Khusus diaktifkan. ' +
+                            'Silakan isi tanggal jatuh tempo atau nonaktifkan Permintaan Khusus.'
+                        );
+                        return;
+                    }
 
                     // 1. Cek future date: tgl_terima_vertikal
                     if (tglVertikalInput?.value) {
@@ -1365,8 +1419,18 @@
             document.getElementById('confirm-satuan-data').textContent =
                 document.getElementById('id_satuan_data')?.options[document.getElementById('id_satuan_data')?.selectedIndex]?.text || '-';
 
+            const specialRequestChecked = document.getElementById('id_special_request')?.checked;
             document.getElementById('confirm-special-request').textContent =
-                document.getElementById('id_special_request')?.checked ? 'Ya' : 'Tidak';
+                specialRequestChecked ? 'Ya' : 'Tidak';
+
+            // Jatuh tempo is only part of the summary for a special request tiket.
+            const confirmDueDateRow = document.getElementById('confirm-row-tgl-special-request');
+            if (confirmDueDateRow) {
+                confirmDueDateRow.style.display = specialRequestChecked ? '' : 'none';
+            }
+            const dueDateValue = document.getElementById('id_tgl_special_request')?.value;
+            document.getElementById('confirm-tgl-special-request').textContent =
+                dueDateValue ? formatDateTime(dueDateValue) : 'Belum ditentukan';
 
             // Backup Data (Bagian C)
             const backupChecked = document.getElementById('rekam-backup-checkbox')?.checked;

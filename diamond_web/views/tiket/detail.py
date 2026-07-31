@@ -264,6 +264,7 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
             'backup': 'Ya' if self.object.backup else 'Tidak',
             'tanda_terima': 'Ya' if self.object.tanda_terima else 'Tidak',
             'special_request': 'Ya' if self.object.special_request else 'Tidak',
+            'tgl_special_request': self.object.tgl_special_request,
         }
         
         # NOTE: workflow_step mapping removed — templates do not use it.
