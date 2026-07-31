@@ -27,7 +27,8 @@ class SpecialRequestView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     """Allow the active PIC that owns the tiket to toggle its special request flag.
 
     Model: Tiket
-    Form: SpecialRequestForm (special_request checkbox + optional catatan)
+    Form: SpecialRequestForm (special_request checkbox + tgl_special_request
+          due date + optional catatan)
     Template: tiket/special_request_modal_form.html (AJAX modal)
 
     Access Control:
@@ -41,9 +42,11 @@ class SpecialRequestView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 
     Side Effects on Form Submission:
     - Tiket.special_request updated to the submitted value
-    - TiketAction created only when the value actually changed:
+    - Tiket.tgl_special_request updated to the submitted due date (cleared by
+      the form whenever special_request is off)
+    - TiketAction created only when the flag or the due date actually changed:
         - action: SpecialRequestActionType.DIAKTIFKAN / DINONAKTIFKAN
-        - catatan: user note, or a default description
+        - catatan: user note, or a default description naming the due date
     """
     model = Tiket
     form_class = SpecialRequestForm
@@ -87,33 +90,44 @@ class SpecialRequestView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         context['tiket'] = self.object
         return context
 
+    @staticmethod
+    def _format_due_date(value):
+        """Render the due date for the audit note / toast message."""
+        return value.strftime('%d-%m-%Y') if value else 'tidak ditentukan'
+
     def form_valid(self, form):
         """Handle form submission: update the flag and record the audit trail.
 
         Within transaction:
-        1. Compare submitted value with the stored one
-        2. Save tiket with the new special_request value
-        3. Create a TiketAction only when the value changed
+        1. Compare submitted flag and due date with the stored ones
+        2. Save tiket with the new special_request / tgl_special_request values
+        3. Create a TiketAction only when either of them changed
         4. Return JsonResponse (AJAX) or redirect with success message
         """
         try:
             with transaction.atomic():
                 now = datetime.now()
 
-                previous_value = Tiket.objects.filter(pk=self.object.pk).values_list(
-                    'special_request', flat=True
-                ).first()
+                previous = Tiket.objects.filter(pk=self.object.pk).values(
+                    'special_request', 'tgl_special_request'
+                ).first() or {}
 
                 self.object = form.save(commit=False)
                 new_value = self.object.special_request
-                self.object.save(update_fields=['special_request'])
+                new_due_date = self.object.tgl_special_request
+                self.object.save(update_fields=['special_request', 'tgl_special_request'])
 
-                changed = previous_value != new_value
-                if changed:
+                flag_changed = previous.get('special_request') != new_value
+                due_date_changed = previous.get('tgl_special_request') != new_due_date
+                if flag_changed or due_date_changed:
                     catatan = (form.cleaned_data.get('catatan') or '').strip()
+                    due_date_text = self._format_due_date(new_due_date)
                     if new_value:
                         action = SpecialRequestActionType.DIAKTIFKAN
-                        default_catatan = 'permintaan khusus diaktifkan'
+                        if flag_changed:
+                            default_catatan = f'permintaan khusus diaktifkan, jatuh tempo {due_date_text}'
+                        else:
+                            default_catatan = f'jatuh tempo permintaan khusus diubah menjadi {due_date_text}'
                     else:
                         action = SpecialRequestActionType.DINONAKTIFKAN
                         default_catatan = 'permintaan khusus dinonaktifkan'
@@ -126,8 +140,14 @@ class SpecialRequestView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
                         catatan=catatan or default_catatan
                     )
 
-                    status_text = 'diaktifkan' if new_value else 'dinonaktifkan'
-                    message = f'Permintaan Khusus tiket "{self.object.nomor_tiket}" telah {status_text}.'
+                    if flag_changed:
+                        status_text = 'diaktifkan' if new_value else 'dinonaktifkan'
+                        message = f'Permintaan Khusus tiket "{self.object.nomor_tiket}" telah {status_text}.'
+                    else:
+                        message = (
+                            f'Jatuh tempo Permintaan Khusus tiket "{self.object.nomor_tiket}" '
+                            f'telah diubah menjadi {due_date_text}.'
+                        )
                 else:
                     message = f'Permintaan Khusus tiket "{self.object.nomor_tiket}" tidak berubah.'
 
@@ -135,7 +155,10 @@ class SpecialRequestView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
                     return JsonResponse({
                         'success': True,
                         'message': message,
-                        'special_request': new_value
+                        'special_request': new_value,
+                        'tgl_special_request': (
+                            new_due_date.strftime('%d-%m-%Y') if new_due_date else None
+                        ),
                     })
 
                 messages.success(self.request, message)

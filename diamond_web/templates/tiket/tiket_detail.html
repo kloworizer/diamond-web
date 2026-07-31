@@ -384,6 +384,18 @@
                                             {% endif %}
                                         </span>
                                     </div>
+                                    {% if tiket.special_request %}
+                                    <div class="meta-item">
+                                        <span class="meta-label">Jatuh Tempo Permintaan Khusus</span>
+                                        <span class="meta-value" id="tgl-special-request-value">
+                                            {% if tiket.tgl_special_request %}
+                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_special_request|date:"d-m-Y" }}
+                                            {% else %}
+                                            <i class="feather-minus me-1"></i>Belum ditentukan
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    {% endif %}
                                     {% if not tiket.status_ketersediaan_data %}
                                     <div class="meta-item">
                                         <span class="meta-label">Alasan Ketidaktersediaan</span>
@@ -2655,6 +2667,29 @@
                         .then(response => response.text())
                         .then(html => {
                             formContainer.innerHTML = html;
+
+                            // The due date only applies while the tiket is flagged
+                            // as a special request; hide it when the switch is off.
+                            const srCheckbox = formContainer.querySelector('#id_special_request');
+                            const dueDateGroup = formContainer.querySelector('#special-request-due-date-group');
+                            if (srCheckbox && dueDateGroup) {
+                                const dueDateInput = dueDateGroup.querySelector('#id_tgl_special_request');
+                                const syncDueDateGroup = function () {
+                                    const enabled = srCheckbox.checked;
+                                    dueDateGroup.style.display = enabled ? '' : 'none';
+                                    if (dueDateInput) {
+                                        // Only required while visible — a hidden required
+                                        // input would block submission with a validation
+                                        // bubble nobody can see.
+                                        dueDateInput.required = enabled;
+                                        if (!enabled) {
+                                            dueDateInput.value = '';
+                                        }
+                                    }
+                                };
+                                srCheckbox.addEventListener('change', syncDueDateGroup);
+                                syncDueDateGroup();
+                            }
 
                             const form = formContainer.querySelector('form');
                             if (form) {

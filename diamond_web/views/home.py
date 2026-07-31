@@ -628,7 +628,7 @@ def home_data(request):
         elif category == 'periode_tiket_null_p3de':
             columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode', 'tahun', 'status_tiket']
         elif category == 'special_request':
-            columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'status_tiket']
+            columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'status_tiket', 'tgl_special_request']
 
         if order_col_index is not None:
             try:
@@ -750,6 +750,12 @@ def home_data(request):
                     'nama_ilap': nama_ilap,
                     'nama_sub_jenis_data': nama_sub_jenis,
                     'status_tiket': STATUS_LABELS.get(obj.status_tiket, ''),
+                    'tgl_special_request': (
+                        obj.tgl_special_request.strftime('%d-%m-%Y') if obj.tgl_special_request else ''
+                    ),
+                    'tgl_special_request_order': (
+                        obj.tgl_special_request.strftime('%Y-%m-%d') if obj.tgl_special_request else ''
+                    ),
                     'actions': action_html,
                 })
             else:

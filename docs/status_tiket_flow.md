@@ -209,7 +209,9 @@ Koreksi isian tiket melalui modal **Edit Tiket** (`/tiket/<pk>/edit/`), tercatat
 
 ### Special Request
 
-Mengaktifkan/menonaktifkan penanda `special_request` melalui modal (`/tiket/<pk>/special-request/`), tercatat sebagai aksi **`401` — Special Request Diaktifkan** atau **`402` — Special Request Dinonaktifkan**. Aksi hanya dicatat bila nilainya benar-benar berubah.
+Mengaktifkan/menonaktifkan penanda `special_request` melalui modal (`/tiket/<pk>/special-request/`), tercatat sebagai aksi **`401` — Special Request Diaktifkan** atau **`402` — Special Request Dinonaktifkan**. Aksi hanya dicatat bila penandanya atau jatuh temponya benar-benar berubah.
+
+Modal yang sama merekam **jatuh tempo** permintaan khusus pada `tgl_special_request` (disimpan pada pukul 23:59:59 tanggal terpilih). Jatuh tempo **wajib diisi** selama penanda aktif dan hanya berlaku selama penanda aktif — mematikan penanda ikut mengosongkannya. Aturan yang sama berlaku pada form rekam tiket.
 
 **Ketentuan:** hanya dapat dilakukan oleh **PIC aktif pemilik tiket** sesuai statusnya.
 
