@@ -499,6 +499,84 @@ def profil_form_rejection(page, rep):
         rep.ok(sc, "no uncaught JS on profil")
 
 
+def profil_password_rules(page, rep):
+    """The three password rules ProfilForm owns beyond the confirmation match:
+    the current password must be right, a new password requires it, and
+    Django's own validators apply. None of them may change the password."""
+    sc = "pages_profil_rules"
+    FORM = "#profile-form"
+    page.goto(f"{H.BASE_URL}/profil/", wait_until="domcontentloaded")
+    if not page.locator(FORM).count():
+        rep.info(sc, "no #profile-form on profil page", "skipped")
+        return
+
+    def submit_profil(fields):
+        page.goto(f"{H.BASE_URL}/profil/", wait_until="domcontentloaded")
+        for name, value in fields.items():
+            if page.locator(f'{FORM} [name="{name}"]').count():
+                page.fill(f'{FORM} [name="{name}"]', value)
+        page.evaluate(
+            """(sel) => {
+                const f = document.querySelector(sel);
+                f.setAttribute('novalidate', 'novalidate');
+                const btn = f.querySelector('button[type=submit], input[type=submit]');
+                if (btn) { btn.removeAttribute('disabled'); btn.click(); }
+                else f.submit();
+            }""", FORM)
+        page.wait_for_load_state("domcontentloaded")
+        page.wait_for_timeout(1500)
+        # Form-scoped only: a stray page-level alert would make the
+        # "any error at all" check for the weak-password case pass for free.
+        return " ".join(H.inline_error_texts(page, FORM))
+
+    cases = (
+        ("wrong current password rejected",
+         {"old_password": "DefinitelyNotThePassword1!",
+          "new_password1": "AnotherPass123!", "new_password2": "AnotherPass123!"},
+         "kata sandi saat ini salah",
+         ("profil: a new password is accepted with the wrong current password", "HIGH",
+          "clean_old_password() checks the submitted current password against the "
+          "stored hash; submitting a wrong one still went through.")),
+        ("new password without the current one rejected",
+         {"old_password": "", "new_password1": "AnotherPass123!",
+          "new_password2": "AnotherPass123!"},
+         "harus memasukkan kata sandi saat ini",
+         ("profil: a password change is accepted with no current password", "HIGH",
+          "ProfilForm.clean() requires old_password whenever new_password1 is "
+          "filled, but an empty current password was accepted.")),
+        ("weak new password rejected",
+         {"old_password": H.PASS, "new_password1": "12345678", "new_password2": "12345678"},
+         "",   # Django's validator messages are localised; any error will do
+         ("profil: Django's password validators are not applied", "MEDIUM",
+          "clean_new_password1() calls validate_password(), but '12345678' -- too "
+          "common and entirely numeric -- was accepted as a new password.")),
+    )
+
+    for step, fields, needle, bug in cases:
+        errors = submit_profil(fields)
+        if needle:
+            ok = needle in errors.lower()
+        else:
+            ok = bool(errors.strip())
+        if ok:
+            rep.ok(sc, step, errors[:140])
+        else:
+            rep.fail(sc, step, f"no matching error (got {errors[:140] or 'none'})")
+            rep.bug(*bug)
+
+    # Whatever those submits did, the password must be untouched.
+    page.goto(f"{H.BASE_URL}/accounts/login/")
+    try:
+        H.login(page)
+        rep.ok(sc, "password unchanged by the rejected submits")
+    except Exception:
+        rep.fail(sc, "password CHANGED by a rejected submit", "cannot log back in")
+        rep.bug("profil: a rejected password change still took effect", "HIGH",
+                "After the invalid password-change submits above, the original "
+                "password no longer works.")
+    H.shot(page, sc)
+
+
 # --------------------------------------------------------------------------- #
 def run(page, rep):
     H.login(page)
@@ -510,7 +588,7 @@ def run(page, rep):
             H.shot(page, f"{sc}_EXCEPTION")
             rep.fail(sc, "exception", str(e))
 
-    for fn in (filter_reset_restores, profil_form_rejection,
+    for fn in (filter_reset_restores, profil_form_rejection, profil_password_rules,
                tiket_cancel_modals, tiket_workflow_modals):
         try:
             fn(page, rep)

@@ -297,6 +297,139 @@ def clear_overlays(page):
         pass
 
 
+def force_close_modal(page, modal_id):
+    """Hide a modal + its backdrop via JS regardless of how it got there.
+
+    A server-rejected submit deliberately leaves its modal open; the next
+    interaction then clicks into an intercepting backdrop. clear_overlays()
+    only removes success/toast modals, so a rejection probe has to close its
+    own modal explicitly."""
+    try:
+        page.evaluate(
+            """(id) => {
+                const m = document.getElementById(id);
+                if (m) {
+                    if (window.bootstrap) { const i = bootstrap.Modal.getInstance(m); if (i) i.hide(); }
+                    m.classList.remove('show'); m.style.display = 'none';
+                    m.setAttribute('aria-hidden', 'true');
+                }
+                document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = ''; document.body.style.paddingRight = '';
+            }""",
+            modal_id,
+        )
+    except Exception:
+        pass
+
+
+def toast_texts(page, kind="danger"):
+    """Text of every currently rendered toast of `kind` (see base.html showToast).
+
+    Several workflow modals (Identifikasi, Kirim ke PIDE, Special Request)
+    report a server rejection *only* through a danger toast -- there is no
+    inline error to look for -- and bootstrap removes the node ~5s after it is
+    shown, so read this straight after the submit."""
+    try:
+        return page.eval_on_selector_all(
+            f".toast.toast-{kind}",
+            "els => els.map(e => (e.querySelector('.toast-message') || e).textContent.trim())",
+        )
+    except Exception:
+        return []
+
+
+def dismiss_toasts(page):
+    """Remove every toast so the next probe can't read a stale message."""
+    try:
+        page.evaluate("() => document.querySelectorAll('.toast').forEach(t => t.remove())")
+    except Exception:
+        pass
+
+
+def inline_error_texts(page, container_selector):
+    """Text of the inline validation errors rendered inside a form container."""
+    try:
+        return page.eval_on_selector_all(
+            f"{container_selector} .text-danger, {container_selector} .invalid-feedback, "
+            f"{container_selector} .alert-danger, {container_selector} .errorlist",
+            """els => els.map(e => e.textContent.trim())
+                        .filter(t => t && !/^\\*$/.test(t))""",
+        )
+    except Exception:
+        return []
+
+
+def disable_client_validation(page, form_selector):
+    """Set novalidate + strip `required` so a submit reaches the server.
+
+    HTML5 constraint validation kills the submit event before any JS handler
+    runs, so an intentionally-empty field never exercises the server-side rule
+    it is meant to prove."""
+    page.eval_on_selector(
+        form_selector,
+        """(f) => {
+            f.setAttribute('novalidate', 'novalidate');
+            f.querySelectorAll('[required]').forEach(el => el.removeAttribute('required'));
+        }""",
+    )
+
+
+def probe_modal_rejection(page, container_selector, *, submit_selector=None,
+                          modal_id=None, force=False, reload_after=True):
+    """Submit a modal expected to be REJECTED and report what the server said.
+
+    Returns (evidence, status) where `evidence` is the combined danger-toast +
+    inline-error text and `status` is the tiket status badge re-read from the
+    server afterwards. A rule that fired leaves evidence non-empty *and* the
+    status unchanged -- assert both, because a modal that silently swallows
+    the error also produces empty evidence.
+    """
+    dismiss_toasts(page)
+    sel = submit_selector or f'{container_selector} button[type="submit"]'
+    page.locator(sel).first.click(force=force)
+    page.wait_for_timeout(1800)
+    evidence = " ".join(toast_texts(page, "danger") + inline_error_texts(page, container_selector)).strip()
+    if modal_id:
+        force_close_modal(page, modal_id)
+    dismiss_toasts(page)
+    status = ""
+    if reload_after:
+        try:
+            page.reload(wait_until="networkidle")
+        except Exception:
+            pass
+        clear_overlays(page)
+        status = status_label(page)
+    return evidence, status
+
+
+def check_rejected(rep, scenario, step, evidence, status, *, expect_status,
+                   expect_text=None, bug=None):
+    """Assert a rejection probe: an error was shown AND the state didn't move.
+
+    `expect_text` is a substring of the rule's own message -- matching it is
+    what makes this a test of *that rule* rather than of "something failed".
+    `bug` is an optional (title, severity, detail) tuple recorded when the
+    server accepted the invalid data.
+    """
+    advanced = expect_status.lower() not in (status or "").lower()
+    matched = (expect_text is None) or (expect_text.lower() in evidence.lower())
+    if evidence and not advanced and matched:
+        rep.ok(scenario, step, evidence[:160] or status)
+        return True
+    if advanced:
+        detail = f"accepted: status -> {status or '(unknown)'}"
+    elif not evidence:
+        detail = f"no error surfaced (status stayed {status})"
+    else:
+        detail = f"wrong error: {evidence[:160]}"
+    rep.fail(scenario, step, detail)
+    if bug and advanced:
+        rep.bug(*bug)
+    return False
+
+
 def _select_first_real_option(page, select_id):
     """Select the first <option> that has a non-empty value and isn't a
     'tidak tersedia' placeholder. Returns the chosen visible text."""
@@ -446,19 +579,22 @@ def open_modal(page, trigger_selector, container_selector, *, force_enable=False
     page.wait_for_timeout(400)
 
 
-def do_tanda_terima(page, rep, scenario):
+def do_tanda_terima(page, rep, scenario, tanggal=None):
     open_modal(page, '[data-bs-target="#createTandaTerimaModal"]',
                "#tanda-terima-form-container")
-    fill_date(page, "#tanda-terima-form-container #id_tanggal_tanda_terima", date_ago(44))
+    fill_date(page, "#tanda-terima-form-container #id_tanggal_tanda_terima",
+              tanggal or date_ago(44))
     ok = _wait_reload_after(
         page, lambda: page.click('#tanda-terima-form-container button[type="submit"]'))
     rep.ok(scenario, "buat tanda terima", "reloaded" if ok else "no-reload")
 
 
-def do_rekam_penelitian(page, rep, scenario, baris_lengkap, baris_tidak_lengkap):
+def do_rekam_penelitian(page, rep, scenario, baris_lengkap, baris_tidak_lengkap,
+                        tgl_teliti=None):
     open_modal(page, '[data-bs-target="#rekamHasilPenelitianModal"]',
                "#rekam-hasil-penelitian-form-container")
-    fill_date(page, "#rekam-hasil-penelitian-form-container #id_tgl_teliti", date_ago(40))
+    fill_date(page, "#rekam-hasil-penelitian-form-container #id_tgl_teliti",
+              tgl_teliti or date_ago(40))
     page.fill("#id_baris_lengkap", str(baris_lengkap))
     page.fill("#id_baris_tidak_lengkap", str(baris_tidak_lengkap))
     page.wait_for_timeout(300)
@@ -477,31 +613,47 @@ def do_generate_nd(page, rep, scenario):
     rep.ok(scenario, "generate ND pengantar", "reloaded" if ok else "no-reload (check toast)")
 
 
-def do_kirim_ke_pide(page, rep, scenario):
-    # After generate, the sidebar shows 'Kirim Tiket ke PIDE' with data-id-temp.
+def open_kirim_ke_pide(page, *, tgl_nadine=None, tgl_kirim_pide=None,
+                       nomor_nd="ND-E2E-001"):
+    """Open the 'Kirim Tiket ke PIDE' modal and fill it (no submit).
+
+    Only available after Generate ND Pengantar: the sidebar button carries the
+    data-id-temp the modal needs to fetch its form."""
     clear_overlays(page)
     trigger = '[data-bs-target="#kirimTiketKePideModal"]'
     page.wait_for_selector(trigger, timeout=8000)
     page.click(trigger)
     page.wait_for_selector("#kirim-tiket-ke-pide-form-container form", timeout=12000)
-    fill_date(page, '#kirim-tiket-ke-pide-form-container [name="tgl_nadine"]', date_ago(36))
-    page.fill('#kirim-tiket-ke-pide-form-container [name="nomor_nd_nadine"]', "ND-E2E-001")
-    fill_date(page, '#kirim-tiket-ke-pide-form-container [name="tgl_kirim_pide"]', date_ago(32))
+    fill_date(page, '#kirim-tiket-ke-pide-form-container [name="tgl_nadine"]',
+              tgl_nadine or date_ago(36))
+    page.fill('#kirim-tiket-ke-pide-form-container [name="nomor_nd_nadine"]', nomor_nd)
+    fill_date(page, '#kirim-tiket-ke-pide-form-container [name="tgl_kirim_pide"]',
+              tgl_kirim_pide or date_ago(32))
+
+
+def do_kirim_ke_pide(page, rep, scenario, tgl_nadine=None, tgl_kirim_pide=None):
+    open_kirim_ke_pide(page, tgl_nadine=tgl_nadine, tgl_kirim_pide=tgl_kirim_pide)
     ok = _wait_reload_after(
         page, lambda: page.click('#kirim-tiket-ke-pide-form-container button[type="submit"]'))
     rep.ok(scenario, "kirim ke PIDE", f"-> {status_label(page)}" if ok else "no-reload")
 
 
-def do_identifikasi(page, rep, scenario):
+def do_identifikasi(page, rep, scenario, tgl_rekam_pide=None):
     open_modal(page, '[data-bs-target="#identifikasiTiketModal"]',
                "#identifikasi-tiket-form-container")
-    fill_date(page, '#identifikasi-tiket-form-container [name="tgl_rekam_pide"]', date_ago(24))
+    fill_date(page, '#identifikasi-tiket-form-container [name="tgl_rekam_pide"]',
+              tgl_rekam_pide or date_ago(24))
     ok = _wait_reload_after(
         page, lambda: page.click('#identifikasi-tiket-form-container button[type="submit"]'))
     rep.ok(scenario, "identifikasi", f"-> {status_label(page)}" if ok else "no-reload")
 
 
-def do_transfer_pmde(page, rep, scenario, i, u, res, cde):
+def open_transfer_pmde(page, i, u, res, cde, tgl_transfer=None):
+    """Open + fill the Transfer ke PMDE modal (no submit) and enable Simpan.
+
+    The open button is hardcoded `disabled` in the template (open bug) and the
+    submit button is JS-disabled until the row totals match, so both are
+    force-enabled here."""
     trigger = '[data-bs-target="#transferKePMDEModal"]'
     disabled = page.locator(trigger).is_disabled()
     open_modal(page, trigger, "#transfer-ke-pmde-form-container", force_enable=True)
@@ -509,9 +661,15 @@ def do_transfer_pmde(page, rep, scenario, i, u, res, cde):
     page.fill('#transfer-ke-pmde-form-container [name="baris_u"]', str(u))
     page.fill('#transfer-ke-pmde-form-container [name="baris_res"]', str(res))
     page.fill('#transfer-ke-pmde-form-container [name="baris_cde"]', str(cde))
-    fill_date(page, '#transfer-ke-pmde-form-container [name="tgl_transfer"]', date_ago(12))
+    fill_date(page, '#transfer-ke-pmde-form-container [name="tgl_transfer"]',
+              tgl_transfer or date_ago(12))
     page.wait_for_timeout(300)
     page.eval_on_selector("#transfer-submit-btn", "el => el.removeAttribute('disabled')")
+    return disabled
+
+
+def do_transfer_pmde(page, rep, scenario, i, u, res, cde, tgl_transfer=None):
+    disabled = open_transfer_pmde(page, i, u, res, cde, tgl_transfer)
     ok = _wait_reload_after(
         page, lambda: page.locator("#transfer-submit-btn").click(force=True))
     rep.ok(scenario, "transfer ke PMDE",
