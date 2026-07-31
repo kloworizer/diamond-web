@@ -34,6 +34,169 @@
 
     <div class="main-content">
 
+    <!-- Filter card above table with 3 internal columns -->
+    <div class="card mb-3 overflow-hidden">
+        <div class="accordion" id="filterAccordion">
+            <div class="accordion-item border-0 rounded-0">
+                <h2 class="accordion-header" id="headingFilters">
+                    {# Rendered expanded so Select2 can measure its widths, then folded shut on load. #}
+                    <button class="accordion-button accordion-button-premium" type="button" id="filter-toggle"
+                        data-bs-toggle="collapse" data-bs-target="#filter-collapse"
+                        aria-expanded="true" aria-controls="filter-collapse">
+                        <i class="feather-filter me-2 text-primary"></i>Filter Data
+                        <span class="badge bg-primary ms-2 d-none" id="filter-active-count">0</span>
+                    </button>
+                </h2>
+                <div id="filter-collapse" class="accordion-collapse collapse show" aria-labelledby="headingFilters">
+                    <div class="accordion-body filter-section-premium">
+                        <div class="d-flex justify-content-end mb-3">
+                            <button type="reset" class="btn btn-secondary btn-sm" id="btn-reset-filter"><i class="feather-refresh-cw me-1"></i>Atur Ulang</button>
+                        </div>
+                        <form id="filter-form">
+                            {% csrf_token %}
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <div class="mb-2">
+                                        <label for="filter-nomor-tiket" class="form-label">Nomor Tiket</label>
+                                        <select class="form-select form-select-sm" id="filter-nomor-tiket" name="nomor_tiket" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-2">
+                                        <label for="filter-tahun" class="form-label">Tahun</label>
+                                        <select class="form-select form-select-sm" id="filter-tahun" name="tahun" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="filter-periode" class="form-label">Periode</label>
+                                        <select class="form-select form-select-sm" id="filter-periode" name="periode" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="filter-periode-pengiriman" class="form-label">Periode Pengiriman</label>
+                                        <select class="form-select form-select-sm" id="filter-periode-pengiriman" name="periode_pengiriman" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="filter-periode-penerimaan" class="form-label">Periode Penerimaan</label>
+                                        <select class="form-select form-select-sm" id="filter-periode-penerimaan" name="periode_penerimaan" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="filter-pic-p3de" class="form-label">PIC P3DE</label>
+                                        <select class="form-select form-select-sm" id="filter-pic-p3de" name="pic_p3de" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="filter-pic-pide" class="form-label">PIC PIDE</label>
+                                        <select class="form-select form-select-sm" id="filter-pic-pide" name="pic_pide" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="filter-pic-pmde" class="form-label">PIC PMDE</label>
+                                        <select class="form-select form-select-sm" id="filter-pic-pmde" name="pic_pmde" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-2">
+                                        <label for="filter-kategori-ilap" class="form-label">Kategori ILAP</label>
+                                        <select class="form-select form-select-sm" id="filter-kategori-ilap" name="kategori_ilap" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="filter-ilap" class="form-label">ILAP</label>
+                                        <select class="form-select form-select-sm" id="filter-ilap" name="ilap" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="filter-jenis-data" class="form-label">Jenis Data</label>
+                                        <select class="form-select form-select-sm" id="filter-jenis-data" name="jenis_data" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="filter-sub-jenis-data" class="form-label">Sub Jenis Data</label>
+                                        <select class="form-select form-select-sm" id="filter-sub-jenis-data" name="sub_jenis_data" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="filter-kanwil" class="form-label">Kanwil</label>
+                                        <select class="form-select form-select-sm" id="filter-kanwil" name="kanwil" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="filter-kpp" class="form-label">KPP</label>
+                                        <select class="form-select form-select-sm" id="filter-kpp" name="kpp" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="filter-kategori-wilayah" class="form-label">Kategori Wilayah</label>
+                                        <select class="form-select form-select-sm" id="filter-kategori-wilayah" name="kategori_wilayah" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-2">
+                                        <label for="filter-jenis-tabel" class="form-label">Jenis Tabel</label>
+                                        <select class="form-select form-select-sm" id="filter-jenis-tabel" name="jenis_tabel" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="filter-dasar-hukum" class="form-label">Dasar Hukum</label>
+                                        <select class="form-select form-select-sm" id="filter-dasar-hukum" name="dasar_hukum" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="filter-status-penelitian" class="form-label">Status Penelitian</label>
+                                        <select class="form-select form-select-sm" id="filter-status-penelitian" name="status_penelitian" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="filter-status-ketersediaan-data" class="form-label">Status Ketersediaan Data</label>
+                                        <select class="form-select form-select-sm" id="filter-status-ketersediaan-data" name="status_ketersediaan_data" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="filter-special-request" class="form-label">Permintaan Khusus</label>
+                                        <select class="form-select form-select-sm" id="filter-special-request" name="special_request" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="filter-prioritas" class="form-label">Prioritas</label>
+                                        <select class="form-select form-select-sm" id="filter-prioritas" name="prioritas" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Data Table Card -->
     <div class="card stretch stretch-full datatable-card">
         <div class="card-header">
@@ -52,7 +215,6 @@
                         <th>Nama ILAP</th>
                         <th>Sub Jenis Data</th>
                         <th>Jenis Tabel</th>
-                        <th>Klasifikasi</th>
                         <th>Tgl Transfer</th>
                         <th>Tgl Rematch</th>
                         <th>Deadline</th>
@@ -62,24 +224,6 @@
                         <th>Jml Selesai</th>
                         <th>Jml Progress</th>
                         <th class="no-sort">Aksi</th>
-                    </tr>
-                    <tr id="column-search-row">
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Nama Tabel" data-column="0" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari PIC PMDE" data-column="1" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Nomor Tiket" data-column="2" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Nama ILAP" data-column="3" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Sub Jenis Data" data-column="4" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Jenis Tabel" data-column="5" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Klasifikasi" data-column="6" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Tgl Transfer" data-column="7" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Tgl Rematch" data-column="8" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Deadline" data-column="9" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Jatuh Tempo" data-column="10" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Prioritas" data-column="11" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Jml Baris I" data-column="12" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Jml Selesai" data-column="13" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Jml Progress" data-column="14" /></th>
-                        <th></th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -92,6 +236,44 @@
 {% endblock %}
 {% block extra_head %}
 <style>
+    /* Collapsible filter panel — same accordion banner the Tiket and Backup
+       Data pages use (see tiket/list.html), so the affordance reads the same
+       everywhere: grey bar, blue text when open, Bootstrap's own caret. */
+    .accordion-button-premium {
+        background-color: #f8fafc !important;
+        color: #475569 !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        padding: 14px 28px !important;
+        border: none !important;
+        box-shadow: none !important;
+        transition: all 0.2s ease !important;
+        cursor: pointer;
+    }
+
+    .accordion-button-premium:hover {
+        background-color: #f1f5f9 !important;
+        color: #0c92ff !important;
+    }
+
+    .accordion-button-premium:not(.collapsed) {
+        background-color: #f1f5f9 !important;
+        color: #0c92ff !important;
+        border-bottom: none !important;
+    }
+
+    #filterAccordion,
+    #filterAccordion .accordion-item {
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    .filter-section-premium {
+        background-color: #ffffff !important;
+        padding: 24px 28px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+    }
+
     /* Subtle row coloring for jatuh tempo indicators */
     table.dataTable tr.row-green td {
         background-color: rgba(40, 167, 69, 0.12) !important;
@@ -117,23 +299,182 @@
 <script>
     (function () {
         const ajaxUrl = "{% url 'quality_control_data' %}";
+        const urlParams = new URLSearchParams(window.location.search);
+        const FILTER_PANEL_KEY = 'diamond-quality-control-filter-panel';
+
+        // Every dropdown, in the order the backend returns its options. The id
+        // of each <select> is the key with underscores swapped for dashes, so
+        // adding a filter means adding it here and in the markup above.
+        const FILTER_KEYS = [
+            'nomor_tiket', 'tahun', 'periode', 'periode_pengiriman', 'periode_penerimaan',
+            'pic_p3de', 'pic_pide', 'pic_pmde', 'kategori_ilap', 'ilap', 'jenis_data',
+            'sub_jenis_data', 'kanwil', 'kpp', 'kategori_wilayah', 'jenis_tabel',
+            'dasar_hukum', 'status_penelitian', 'status_ketersediaan_data',
+            'special_request', 'prioritas'
+        ];
+
+        let table;
+        let initialFiltersApplied = false;
+
+        function selectorFor(key) {
+            return '#filter-' + key.replace(/_/g, '-');
+        }
+
+        function getMultiSelectValue(selector) {
+            const val = $(selector).val();
+            return (val && val.length > 0) ? val.join(',') : '';
+        }
+
+        function getCurrentFilterValues() {
+            const values = {};
+            FILTER_KEYS.forEach(function (key) {
+                values[key] = getMultiSelectValue(selectorFor(key));
+            });
+            return values;
+        }
+
+        // ---- Collapsible filter panel ----
+        function countActiveFilters() {
+            let n = 0;
+            $('#filter-form select').each(function () {
+                const val = $(this).val();
+                const values = Array.isArray(val) ? val : (val ? [val] : []);
+                if (values.filter(function (v) { return v !== '' && v != null; }).length > 0) n += 1;
+            });
+            return n;
+        }
+
+        function updateFilterBadge() {
+            const n = countActiveFilters();
+            $('#filter-active-count').text(n).toggleClass('d-none', n === 0);
+        }
+
+        // Called once the dropdowns exist and Select2 has measured itself. The
+        // panel is rendered open so Select2 can resolve its widths against a
+        // visible container; only then is it folded shut, by dropping the class
+        // directly so there is no opening-then-closing animation on load.
+        function applyInitialFilterPanelState(hasUrlFilters) {
+            updateFilterBadge();
+            let open;
+            if (hasUrlFilters || countActiveFilters() > 0) {
+                open = true;   // never hide a filter the user arrived with
+            } else {
+                open = localStorage.getItem(FILTER_PANEL_KEY) === 'open';
+            }
+            if (!open) {
+                $('#filter-collapse').removeClass('show');
+                $('#filter-toggle').addClass('collapsed').attr('aria-expanded', 'false');
+            }
+        }
+
+        function applyInitialFiltersFromUrl() {
+            let hasInitialFilter = false;
+
+            FILTER_KEYS.forEach(function (key) {
+                const raw = (urlParams.get(key) || '').trim();
+                if (!raw) return;
+                const values = raw.split(',').map(function (v) { return v.trim(); }).filter(function (v) { return v; });
+                if (values.length === 0) return;
+                hasInitialFilter = true;
+
+                const $select = $(selectorFor(key));
+                values.forEach(function (v) {
+                    if ($select.find('option[value="' + v + '"]').length === 0) {
+                        $select.append($('<option>').attr('value', v).text(v));
+                    }
+                });
+                $select.val(values).trigger('change.select2');
+            });
+
+            return hasInitialFilter;
+        }
+
+        function initSelect2($selects) {
+            if (typeof $.fn.select2 !== 'function') return;
+            $selects.each(function () {
+                if (!$(this).hasClass('select2-hidden-accessible')) {
+                    $(this).select2({
+                        theme: 'bootstrap-5',
+                        closeOnSelect: false,
+                        placeholder: '-- Pilih --',
+                        allowClear: true
+                    });
+                }
+            });
+        }
+
+        function destroySelect2($selects) {
+            if (typeof $.fn.select2 !== 'function') return;
+            $selects.each(function () {
+                if ($(this).hasClass('select2-hidden-accessible')) {
+                    $(this).select2('destroy');
+                }
+            });
+        }
+
+        // Rewrites every dropdown from the server's option lists, keeping the
+        // selections that are still offered. A value that the other filters
+        // have narrowed away is dropped, which is what makes the panel
+        // self-correcting rather than able to hold an impossible combination.
+        function renderFilterOptions(opts) {
+            FILTER_KEYS.forEach(function (key) {
+                if (!opts[key]) return;
+                const $select = $(selectorFor(key));
+                const previous = $select.val() || [];
+
+                destroySelect2($select);
+                $select.find('option:not(:first)').remove();
+                opts[key].forEach(function (item) {
+                    $select.append($('<option>').attr('value', item.id).text(item.name));
+                });
+
+                const stillValid = previous.filter(function (v) {
+                    return $select.find('option[value="' + v + '"]').length > 0;
+                });
+                $select.val(stillValid);
+                initSelect2($select);
+            });
+        }
+
+        function loadFilterOptions(onDone) {
+            $.ajax({
+                url: ajaxUrl,
+                type: 'GET',
+                data: Object.assign({ get_filter_options: '1' }, getCurrentFilterValues()),
+                success: function (response) {
+                    if (response.filter_options) {
+                        renderFilterOptions(response.filter_options);
+                    }
+                    if (onDone) onDone();
+                },
+                error: function () {
+                    // Leave whatever options are already there, but make sure
+                    // the dropdowns stay usable.
+                    initSelect2($('#filter-form select'));
+                    if (onDone) onDone();
+                }
+            });
+        }
 
         $(document).ready(function () {
-            const csrfToken = $('[name=csrfmiddlewaretoken]').val();
+            // select2-active.min.js may not have run if jQuery wasn't ready yet.
+            initSelect2($('#filter-form select'));
 
-            const table = $('#quality-control-table').DataTable({
+            table = $('#quality-control-table').DataTable({
                 serverSide: true,
                 processing: true,
+                searching: false,
+                layout: {
+                    topStart: 'pageLength',
+                    topEnd: null
+                },
                 ajax: {
                     url: ajaxUrl,
                     type: 'POST',
-                    headers: { 'X-CSRFToken': csrfToken },
+                    headers: { 'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val() },
                     data: function (d) {
-                        d.csrfmiddlewaretoken = csrfToken;
-                        d.columns_search = [];
-                        $('#column-search-row input').each(function () {
-                            d.columns_search.push($(this).val());
-                        });
+                        d.csrfmiddlewaretoken = $('[name=csrfmiddlewaretoken]').val();
+                        return Object.assign(d, getCurrentFilterValues());
                     }
                 },
                 columns: [
@@ -143,7 +484,6 @@
                     { data: 'nama_ilap' },
                     { data: 'sub_jenis_data' },
                     { data: 'jenis_tabel' },
-                    { data: 'klasifikasi' },
                     {
                         data: 'tgl_transfer',
                         render: { _: 'display', sort: 'sort' }
@@ -167,18 +507,11 @@
                     { data: 'action', orderable: false, searchable: false },
                 ],
                 columnDefs: [
-                    { orderable: false, targets: [1, 6, 15] }
+                    { orderable: false, targets: [1, 14] }
                 ],
                 pageLength: 10,
-                order: [[10, 'asc']],
-                // Same feature set as 'lrtip' (no global search box), but laid
-                // out in the wrapper rows the Duralux table skin styles.
-                dom: "<'row'<'col-sm-12'l>>" +
-                     "<'row'<'col-sm-12'tr>>" +
-                     "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+                order: [[9, 'asc']],
                 language: {
-                    search: 'Cari:',
-                    searchPlaceholder: 'Cari...',
                     lengthMenu: 'Tampilkan _MENU_ entri',
                     info: 'Menampilkan _START_ hingga _END_ dari _TOTAL_ entri',
                     infoEmpty: 'Menampilkan 0 hingga 0 dari 0 entri',
@@ -192,12 +525,6 @@
                         sortDescending: ': aktifkan untuk mengurutkan kolom turun'
                     },
                 },
-                initComplete: function () {
-                    // Column search on keyup → reloads server-side
-                    $('#column-search-row input').on('keyup change', function () {
-                        table.ajax.reload();
-                    });
-                },
                 createdRow: function (row, data) {
                     const days = data.sisa_hari;
                     if (days === null || days === undefined || days === '') return;
@@ -209,6 +536,46 @@
                         $(row).addClass('row-green');
                     }
                 }
+            });
+
+            // Filter dropdowns — dynamic, reload on change
+            $('#filter-form').on('change', 'select', function () {
+                loadFilterOptions();
+                table.ajax.reload();
+                updateFilterBadge();
+            });
+
+            // Remember whether the panel was left open, so the choice survives
+            // navigation instead of snapping back on every visit.
+            $('#filter-collapse')
+                .on('shown.bs.collapse', function () {
+                    localStorage.setItem(FILTER_PANEL_KEY, 'open');
+                })
+                .on('hidden.bs.collapse', function () {
+                    localStorage.setItem(FILTER_PANEL_KEY, 'closed');
+                });
+
+            // Reset button — clear form then reload
+            $('#btn-reset-filter').on('click', function () {
+                destroySelect2($('#filter-form select'));
+                $('#filter-form')[0].reset();
+                // For multi-select, explicitly set empty array on each select
+                $('#filter-form select').val([]);
+                initSelect2($('#filter-form select'));
+                loadFilterOptions();
+                table.ajax.reload();
+                updateFilterBadge();
+            });
+
+            loadFilterOptions(function () {
+                if (initialFiltersApplied) return;
+                initialFiltersApplied = true;
+                const fromUrl = applyInitialFiltersFromUrl();
+                if (fromUrl) {
+                    loadFilterOptions();
+                    table.ajax.reload();
+                }
+                applyInitialFilterPanelState(fromUrl);
             });
         });
     })();
