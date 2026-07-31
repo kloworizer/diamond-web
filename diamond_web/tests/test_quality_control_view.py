@@ -13,20 +13,29 @@ from diamond_web.tests.conftest import (
     JenisPrioritasDataFactory,
     JenisTabelFactory,
     PeriodeJenisDataFactory,
+    PeriodePengirimanFactory,
     TiketFactory,
     TiketPICFactory,
     UserFactory,
 )
+from diamond_web.views.quality_control import FILTER_APPLIERS, FILTER_OPTIONS
 
 
 def _pmde_admin_user():
     return UserFactory(is_superuser=True)
 
 
-def _qc_bundle(with_durasi=True, with_prioritas=False, tgl_transfer=None):
+def _qc_bundle(with_durasi=True, with_prioritas=False, tgl_transfer=None,
+               pmde_user=None, periode_penerimaan=None):
     jenis_tabel = JenisTabelFactory()
     jenis_data = JenisDataILAPFactory(id_jenis_tabel=jenis_tabel)
-    periode_data = PeriodeJenisDataFactory(id_sub_jenis_data_ilap=jenis_data)
+    pengiriman_kwargs = {}
+    if periode_penerimaan is not None:
+        pengiriman_kwargs['periode_penerimaan'] = periode_penerimaan
+    periode_data = PeriodeJenisDataFactory(
+        id_sub_jenis_data_ilap=jenis_data,
+        id_periode_pengiriman=PeriodePengirimanFactory(**pengiriman_kwargs),
+    )
     tgl_transfer = tgl_transfer or datetime.now() - timedelta(days=5)
     tiket = TiketFactory(
         id_periode_data=periode_data,
@@ -37,8 +46,9 @@ def _qc_bundle(with_durasi=True, with_prioritas=False, tgl_transfer=None):
         sudah_qc=40,
         belum_qc=60,
     )
-    pmde_user = UserFactory()
     group, _ = Group.objects.get_or_create(name='user_pmde')
+    if pmde_user is None:
+        pmde_user = UserFactory()
     pmde_user.groups.add(group)
     TiketPICFactory(id_tiket=tiket, id_user=pmde_user, role=TiketPIC.Role.PMDE, active=True)
 
@@ -58,7 +68,8 @@ def _qc_bundle(with_durasi=True, with_prioritas=False, tgl_transfer=None):
             end_date=(tiket.tgl_terima_dip + timedelta(days=30)).date(),
         )
 
-    dasar_hukum = DasarHukum.objects.create(deskripsi='DH QC', kategori='PKS')
+    # deskripsi is unique, so bundles created side by side need distinct ones.
+    dasar_hukum = DasarHukum.objects.create(deskripsi=f'DH QC {tiket.pk}', kategori='PKS')
     KlasifikasiJenisData.objects.create(id_sub_jenis_data=jenis_data, id_klasifikasi_tabel=dasar_hukum)
 
     return {
@@ -102,7 +113,6 @@ class TestQualityControlData:
         assert row['jml_progress'] == 60
         assert row['deadline']['display'] != '-'
         assert row['sisa_hari'] is not None
-        assert row['klasifikasi'] == 'PKS'
 
     def test_data_endpoint_no_durasi_no_prioritas(self, client):
         bundle = _qc_bundle(with_durasi=False, with_prioritas=False)
@@ -113,6 +123,25 @@ class TestQualityControlData:
         assert row['prioritas'] == 'Tidak'
         assert row['deadline']['display'] == '-'
         assert row['sisa_hari'] is None
+
+    def test_deadline_does_not_bleed_between_rows(self, client):
+        """A tiket with no durasi must not inherit the previous row's deadline."""
+        with_durasi = _qc_bundle(with_durasi=True)
+        without_durasi = _qc_bundle(with_durasi=False, pmde_user=with_durasi['pmde_user'])
+        client.force_login(with_durasi['pmde_user'])
+
+        # Ascending id, so the row that *has* a deadline is rendered first.
+        resp = client.get(reverse(self.url), {
+            'draw': '1', 'start': '0', 'length': '10',
+            'order[0][column]': '1', 'order[0][dir]': 'asc',
+        })
+        rows = {row['nomor_tiket']: row for row in resp.json()['data']}
+
+        assert rows[with_durasi['tiket'].nomor_tiket]['sisa_hari'] is not None
+        blank = rows[without_durasi['tiket'].nomor_tiket]
+        assert blank['sisa_hari'] is None
+        assert blank['deadline'] == {'display': '-', 'sort': ''}
+        assert blank['jatuh_tempo'] == {'display': '-', 'sort': ''}
 
     def test_data_endpoint_post_method(self, client):
         bundle = _qc_bundle()
@@ -129,89 +158,6 @@ class TestQualityControlData:
         client.force_login(other_pmde)
         resp = client.get(reverse(self.url), {'draw': '1', 'start': '0', 'length': '10'})
         assert resp.json()['recordsFiltered'] == 0
-
-    @pytest.mark.parametrize('idx,key', [
-        (0, 'nama_tabel_I'),
-        (2, 'nomor_tiket'),
-        (3, 'nama_ilap'),
-        (4, 'nama_sub_jenis_data'),
-        (5, 'jenis_tabel'),
-    ])
-    def test_columns_search_text_fields(self, client, idx, key):
-        bundle = _qc_bundle()
-        columns_search = ['' for _ in range(16)]
-        if key == 'nomor_tiket':
-            value = bundle['tiket'].nomor_tiket
-        elif key == 'nama_ilap':
-            value = bundle['jenis_data'].id_ilap.nama_ilap
-        elif key == 'nama_sub_jenis_data':
-            value = bundle['jenis_data'].nama_sub_jenis_data
-        elif key == 'jenis_tabel':
-            value = bundle['jenis_tabel'].deskripsi
-        else:
-            value = bundle['jenis_data'].nama_tabel_I
-        columns_search[idx] = value
-        client.force_login(bundle['pmde_user'])
-        resp = client.get(
-            reverse(self.url),
-            {'draw': '1', 'start': '0', 'length': '10', 'columns_search[]': columns_search},
-        )
-        assert resp.status_code == 200
-        assert resp.json()['recordsFiltered'] == 1
-
-    def test_columns_search_tgl_transfer_and_rematch(self, client):
-        bundle = _qc_bundle()
-        year = str(bundle['tiket'].tgl_transfer.year)
-        columns_search = ['' for _ in range(16)]
-        columns_search[7] = year
-        client.force_login(bundle['pmde_user'])
-        resp = client.get(
-            reverse(self.url),
-            {'draw': '1', 'start': '0', 'length': '10', 'columns_search[]': columns_search},
-        )
-        assert resp.status_code == 200
-
-        columns_search = ['' for _ in range(16)]
-        columns_search[8] = year
-        resp = client.get(
-            reverse(self.url),
-            {'draw': '1', 'start': '0', 'length': '10', 'columns_search[]': columns_search},
-        )
-        assert resp.status_code == 200
-
-    def test_columns_search_prioritas_ya(self, client):
-        bundle = _qc_bundle(with_prioritas=True)
-        columns_search = ['' for _ in range(16)]
-        columns_search[10] = 'ya'
-        client.force_login(bundle['pmde_user'])
-        resp = client.get(
-            reverse(self.url),
-            {'draw': '1', 'start': '0', 'length': '10', 'columns_search[]': columns_search},
-        )
-        assert resp.json()['recordsFiltered'] == 1
-
-    def test_columns_search_prioritas_tidak(self, client):
-        bundle = _qc_bundle(with_prioritas=False)
-        columns_search = ['' for _ in range(16)]
-        columns_search[10] = 'tidak'
-        client.force_login(bundle['pmde_user'])
-        resp = client.get(
-            reverse(self.url),
-            {'draw': '1', 'start': '0', 'length': '10', 'columns_search[]': columns_search},
-        )
-        assert resp.json()['recordsFiltered'] == 1
-
-    def test_columns_search_baris_i_qc_fields(self, client):
-        bundle = _qc_bundle()
-        for idx in (12, 13, 14):
-            columns_search = ['' for _ in range(16)]
-            columns_search[idx] = '100' if idx == 12 else ('40' if idx == 13 else '60')
-            client.force_login(bundle['pmde_user'])
-            resp = client.get(
-                reverse(self.url),
-                {'draw': '1', 'start': '0', 'length': '10', 'columns_search[]': columns_search},
-            )
-            assert resp.status_code == 200
 
     @pytest.mark.parametrize('order_col,order_dir', [
         (0, 'asc'), (1, 'desc'), (9, 'asc'), (10, 'desc'), (11, 'asc'), (99, 'asc'),
@@ -240,3 +186,168 @@ class TestQualityControlData:
         client.force_login(UserFactory())
         resp = client.get(reverse(self.url))
         assert resp.status_code == 302
+
+
+@pytest.mark.django_db
+class TestQualityControlFilters:
+    """The filter panel shared in shape with the tiket list page."""
+
+    url = 'quality_control_data'
+
+    def _rows(self, client, **filters):
+        params = {'draw': '1', 'start': '0', 'length': '10'}
+        params.update(filters)
+        resp = client.get(reverse(self.url), params)
+        assert resp.status_code == 200
+        return resp.json()
+
+    def _options(self, client, **filters):
+        params = {'get_filter_options': '1'}
+        params.update(filters)
+        resp = client.get(reverse(self.url), params)
+        assert resp.status_code == 200
+        return resp.json()['filter_options']
+
+    def test_filter_options_cover_every_dropdown(self, client):
+        bundle = _qc_bundle()
+        client.force_login(bundle['pmde_user'])
+        options = self._options(client)
+        # Each filter the backend accepts must also offer options, otherwise
+        # the panel would render a dropdown nothing can ever be picked from.
+        assert set(options) == set(FILTER_APPLIERS) == set(FILTER_OPTIONS)
+
+    def test_filter_options_reflect_the_scoped_tikets(self, client):
+        bundle = _qc_bundle(with_prioritas=True)
+        client.force_login(bundle['pmde_user'])
+        options = self._options(client)
+
+        assert [o['id'] for o in options['nomor_tiket']] == [bundle['tiket'].nomor_tiket]
+        assert [o['id'] for o in options['ilap']] == [str(bundle['jenis_data'].id_ilap.id)]
+        assert [o['id'] for o in options['jenis_tabel']] == [str(bundle['jenis_tabel'].id)]
+        assert [o['id'] for o in options['prioritas']] == ['1']
+
+    def test_filter_options_narrow_each_other(self, client):
+        first = _qc_bundle()
+        second = _qc_bundle(pmde_user=first['pmde_user'])
+        client.force_login(first['pmde_user'])
+
+        assert len(self._options(client)['ilap']) == 2
+
+        narrowed = self._options(client, nomor_tiket=second['tiket'].nomor_tiket)
+        assert [o['id'] for o in narrowed['ilap']] == [str(second['jenis_data'].id_ilap.id)]
+        # A dropdown never narrows itself, or its own selection would vanish.
+        assert len(narrowed['nomor_tiket']) == 2
+
+    def test_filter_by_nomor_tiket(self, client):
+        first = _qc_bundle()
+        second = _qc_bundle(pmde_user=first['pmde_user'])
+        client.force_login(first['pmde_user'])
+
+        payload = self._rows(client, nomor_tiket=first['tiket'].nomor_tiket)
+        assert payload['recordsTotal'] == 2
+        assert payload['recordsFiltered'] == 1
+        assert payload['data'][0]['nomor_tiket'] == first['tiket'].nomor_tiket
+
+    def test_filter_accepts_multiple_values(self, client):
+        first = _qc_bundle()
+        second = _qc_bundle(pmde_user=first['pmde_user'])
+        client.force_login(first['pmde_user'])
+
+        payload = self._rows(
+            client,
+            nomor_tiket=f"{first['tiket'].nomor_tiket},{second['tiket'].nomor_tiket}",
+        )
+        assert payload['recordsFiltered'] == 2
+
+    @pytest.mark.parametrize('with_prioritas,selected,expected', [
+        (True, '1', 1),
+        (True, '0', 0),
+        (False, '0', 1),
+        (False, '1', 0),
+    ])
+    def test_filter_prioritas(self, client, with_prioritas, selected, expected):
+        bundle = _qc_bundle(with_prioritas=with_prioritas)
+        client.force_login(bundle['pmde_user'])
+        assert self._rows(client, prioritas=selected)['recordsFiltered'] == expected
+
+    def test_filter_prioritas_both_values_matches_everything(self, client):
+        first = _qc_bundle(with_prioritas=True)
+        _qc_bundle(with_prioritas=False, pmde_user=first['pmde_user'])
+        client.force_login(first['pmde_user'])
+        assert self._rows(client, prioritas='1,0')['recordsFiltered'] == 2
+
+    def test_filter_by_ilap_and_sub_jenis_data(self, client):
+        first = _qc_bundle()
+        second = _qc_bundle(pmde_user=first['pmde_user'])
+        client.force_login(first['pmde_user'])
+
+        assert self._rows(client, ilap=str(first['jenis_data'].id_ilap.id))['recordsFiltered'] == 1
+        assert self._rows(
+            client, sub_jenis_data=second['jenis_data'].id_sub_jenis_data
+        )['recordsFiltered'] == 1
+
+    def test_filter_by_jenis_tabel_and_dasar_hukum(self, client):
+        first = _qc_bundle()
+        _qc_bundle(pmde_user=first['pmde_user'])
+        client.force_login(first['pmde_user'])
+
+        assert self._rows(client, jenis_tabel=str(first['jenis_tabel'].id))['recordsFiltered'] == 1
+        assert self._rows(
+            client, dasar_hukum=str(first['dasar_hukum'].id)
+        )['recordsFiltered'] == 1
+
+    def test_filter_by_pic_pmde(self, client):
+        bundle = _qc_bundle()
+        client.force_login(bundle['pmde_user'])
+        assert self._rows(client, pic_pmde=str(bundle['pmde_user'].id))['recordsFiltered'] == 1
+        assert self._rows(client, pic_pmde=str(UserFactory().id))['recordsFiltered'] == 0
+
+    def test_filter_by_tahun(self, client):
+        bundle = _qc_bundle()
+        client.force_login(bundle['pmde_user'])
+        tahun = bundle['tiket'].tahun
+        assert self._rows(client, tahun=str(tahun))['recordsFiltered'] == 1
+        assert self._rows(client, tahun=str(tahun + 1))['recordsFiltered'] == 0
+
+    def test_filter_tahun_ignores_non_numeric_input(self, client):
+        bundle = _qc_bundle()
+        client.force_login(bundle['pmde_user'])
+        assert self._rows(client, tahun='bukan-angka')['recordsFiltered'] == 0
+
+    def test_filter_by_periode_with_type_prefix(self, client):
+        bundle = _qc_bundle(periode_penerimaan='Bulanan')
+        client.force_login(bundle['pmde_user'])
+        periode = bundle['tiket'].periode
+        assert self._rows(client, periode=f'bulanan:{periode}')['recordsFiltered'] == 1
+        # Same number, wrong periode type — a monthly tiket is not a quarterly one.
+        assert self._rows(client, periode=f'triwulanan:{periode}')['recordsFiltered'] == 0
+
+    def test_filter_by_status_ketersediaan_data(self, client):
+        bundle = _qc_bundle()
+        client.force_login(bundle['pmde_user'])
+        available = '1' if bundle['tiket'].status_ketersediaan_data else '0'
+        assert self._rows(client, status_ketersediaan_data=available)['recordsFiltered'] == 1
+
+    def test_filters_combine(self, client):
+        first = _qc_bundle(with_prioritas=True)
+        second = _qc_bundle(pmde_user=first['pmde_user'], with_prioritas=False)
+        client.force_login(first['pmde_user'])
+
+        payload = self._rows(
+            client,
+            nomor_tiket=f"{first['tiket'].nomor_tiket},{second['tiket'].nomor_tiket}",
+            prioritas='1',
+        )
+        assert payload['recordsFiltered'] == 1
+        assert payload['data'][0]['nomor_tiket'] == first['tiket'].nomor_tiket
+
+    def test_filters_apply_to_post_requests_too(self, client):
+        first = _qc_bundle()
+        _qc_bundle(pmde_user=first['pmde_user'])
+        client.force_login(first['pmde_user'])
+
+        resp = client.post(reverse(self.url), {
+            'draw': '1', 'start': '0', 'length': '10',
+            'nomor_tiket': first['tiket'].nomor_tiket,
+        })
+        assert resp.json()['recordsFiltered'] == 1
