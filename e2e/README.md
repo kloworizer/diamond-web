@@ -13,9 +13,48 @@ Full workflow, exhausting the documented paths (see `docs/status_tiket_flow.md`)
 |---|---|
 | `test_happy_path.py` | Direkam → Diteliti → Dikirim ke PIDE → Identifikasi → Pengendalian Mutu → Selesai |
 | `test_alt_paths.py`  | Data Tidak Tersedia → Selesai; Penelitian baris_lengkap==0 → Selesai; Batalkan (P3DE); Dikembalikan (PIDE) |
-| `test_form_validation.py` | Negative / boundary inputs on the rekam form and the penelitian / transfer / selesaikan modals |
+| `test_form_validation.py` | Negative / boundary inputs on the rekam form and the penelitian / transfer / selesaikan modals, plus the full chronological chain (see below) |
+| `test_tiket_extra_actions.py` | Ubah Isian Tiket and Ubah Permintaan Khusus, including the due date that is mandatory while the switch is on |
 | `test_form_interactions.py` | Every AJAX CRUD form (Tambah **and** Edit): does the form still *work* after the server rejects it? |
-| `test_form_interactions_pages.py` | Same question for the non-CRUD surfaces: tiket detail workflow modals, the 12 `#filter-form` report pages, and the full-page profil form |
+| `test_form_interactions_pages.py` | Same question for the non-CRUD surfaces: tiket detail workflow modals, the 12 `#filter-form` report pages, and the full-page profil form — plus ProfilForm's password rules |
+| `test_master_data_crud.py` | CRUD for the master-data pages, and the rule-specific negatives each of their forms owns |
+
+### Validation rules
+
+Two different questions are asked, and they are not interchangeable:
+
+- *Is something rejected?* — the CRUD/interaction sweeps force an arbitrary
+  rejection and check the form survives it. They say nothing about which rule
+  fired.
+- *Is *this rule* enforced?* — the `rule_*` / `val_*` scenarios submit data that
+  violates exactly one documented rule and assert the rule's **own message**
+  comes back and that nothing moved: no tiket advanced, no row saved.
+
+Covered by the second kind: the whole date chain (`dip ≤ tanda terima ≤ teliti
+≤ nadine ≤ kirim PIDE ≤ rekam PIDE ≤ transfer`, each pair tested from both
+sides where the form checks both), baris/QC totals, the special-request due
+date on both the rekam form and the detail modal, and — on the master-data
+side — end-before-start, duplicate keys and overlapping date ranges for PIC,
+Periode Jenis Data, Jenis Prioritas Data, Dasar Hukum and Durasi Jatuh Tempo,
+the Sequence Tanda Terima year bounds, the Tanda Terima scope rules
+(regional⇒Kanwil, nasional⇒ILAP, at least one tiket) and ProfilForm's password
+rules.
+
+Rules that need a precondition the dev DB may not have (a periode with an end
+date, a sequence row for the current year) report `INFO … skipped` rather than
+inventing a pass.
+
+Two harness rules these depend on:
+
+- **A client-side guard is not the rule.** Where the page's JS blocks the
+  submit (rekam's future-date modal, HTML5 `required`, a disabled Simpan
+  button), the test bypasses it — `novalidate` + stripped `required`, or a
+  native `HTMLFormElement.prototype.submit.call(form)` — so the server's own
+  answer is what gets asserted.
+- **Arm the wait around the submit, not after it.** `form.submit()` navigates
+  asynchronously: waiting for `networkidle` afterwards returns immediately
+  because the *current* page is already idle, and every assertion then runs
+  against the pre-submit DOM, which of course shows no errors.
 
 Every workflow modal is exercised through the actual AJAX UI: rekam form,
 rekam backup (Bagian C at rekam-time), buat tanda terima, rekam hasil
@@ -94,3 +133,12 @@ Output:
 - The detail-page **Transfer ke PMDE** and **Selesaikan Tiket** buttons render
   with a hardcoded `disabled` attribute; the tests force-enable them to keep
   exercising the downstream flow and separately report the disabled state.
+- The rule scenarios only submit data the server is expected to reject, so they
+  leave no master-data rows behind. A row appearing is itself the bug being
+  reported.
+- `tahun` on the rekam form only offers the last 21 years, so the scenarios'
+  hardcoded years have to stay inside that window (2006–2026 as of 2026).
+- Force-closing a bootstrap modal must `dispose()` the instance, not just strip
+  its classes: a half-hidden modal keeps `_isShown` set and the page's next
+  `$('#crudModal').modal('show')` silently does nothing, so the following form
+  loads into a modal that never becomes visible.

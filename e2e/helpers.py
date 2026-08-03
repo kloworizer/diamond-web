@@ -309,7 +309,13 @@ def force_close_modal(page, modal_id):
             """(id) => {
                 const m = document.getElementById(id);
                 if (m) {
-                    if (window.bootstrap) { const i = bootstrap.Modal.getInstance(m); if (i) i.hide(); }
+                    // dispose(), not hide(): stripping the classes mid-transition
+                    // leaves bootstrap's _isShown set, and a later show() on the
+                    // same element silently does nothing.
+                    if (window.bootstrap) {
+                        const i = bootstrap.Modal.getInstance(m);
+                        if (i) i.dispose();
+                    }
                     m.classList.remove('show'); m.style.display = 'none';
                     m.setAttribute('aria-hidden', 'true');
                 }

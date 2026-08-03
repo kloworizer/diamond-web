@@ -25,6 +25,14 @@ def _pmde_admin_user():
     return UserFactory(is_superuser=True)
 
 
+def _kasi_pmde_user():
+    """A supervisor, who sees every tiket in QC rather than only their own."""
+    user = UserFactory()
+    group, _ = Group.objects.get_or_create(name='kasi_pmde')
+    user.groups.add(group)
+    return user
+
+
 def _qc_bundle(with_durasi=True, with_prioritas=False, tgl_transfer=None,
                pmde_user=None, periode_penerimaan=None):
     jenis_tabel = JenisTabelFactory()
@@ -351,3 +359,115 @@ class TestQualityControlFilters:
             'nomor_tiket': first['tiket'].nomor_tiket,
         })
         assert resp.json()['recordsFiltered'] == 1
+
+
+@pytest.mark.django_db
+class TestQualityControlChart:
+    """The progress chart: Jml Progress per jatuh tempo, one line per PIC PMDE."""
+
+    url = 'quality_control_data'
+
+    def _chart(self, client, **filters):
+        params = {'get_chart_data': '1'}
+        params.update(filters)
+        resp = client.get(reverse(self.url), params)
+        assert resp.status_code == 200
+        return resp.json()
+
+    def test_series_are_grouped_per_pic_pmde(self, client):
+        kasi = _kasi_pmde_user()
+        first = _qc_bundle()
+        second = _qc_bundle()
+        client.force_login(kasi)
+
+        payload = self._chart(client)
+        names = {s['name'] for s in payload['series']}
+        assert names == {
+            first['pmde_user'].get_full_name() or first['pmde_user'].username,
+            second['pmde_user'].get_full_name() or second['pmde_user'].username,
+        }
+        # Both bundles transfer on the same day with the same durasi, so they
+        # land on one jatuh tempo carrying each PIC's own Jml Progress.
+        assert len(payload['categories']) == 1
+        assert [s['data'] for s in payload['series']] == [[60], [60]]
+
+    def test_progress_of_the_same_pic_is_summed_per_jatuh_tempo(self, client):
+        first = _qc_bundle()
+        _qc_bundle(pmde_user=first['pmde_user'])
+        client.force_login(first['pmde_user'])
+
+        payload = self._chart(client)
+        assert len(payload['series']) == 1
+        assert payload['series'][0]['data'] == [120]
+
+    def test_categories_are_the_jatuh_tempo_in_ascending_order(self, client):
+        recent = _qc_bundle(tgl_transfer=datetime.now() - timedelta(days=5))
+        older = _qc_bundle(
+            pmde_user=recent['pmde_user'],
+            tgl_transfer=datetime.now() - timedelta(days=40),
+        )
+        client.force_login(recent['pmde_user'])
+
+        payload = self._chart(client)
+        # durasi is 10 days, so 40 days ago is well past due and 5 days ago
+        # still has time left — the overdue one sorts first.
+        assert payload['categories'] == ['-30 hari', '5 hari']
+        assert payload['series'][0]['data'] == [60, 60]
+        assert older['tiket'].pk != recent['tiket'].pk
+
+    def test_tiket_without_a_deadline_is_left_out(self, client):
+        bundle = _qc_bundle(with_durasi=False)
+        client.force_login(bundle['pmde_user'])
+
+        payload = self._chart(client)
+        assert payload == {'categories': [], 'series': []}
+
+    def test_tiket_without_an_active_pic_pmde_gets_its_own_series(self, client):
+        bundle = _qc_bundle()
+        TiketPIC.objects.filter(id_tiket=bundle['tiket']).update(active=False)
+        client.force_login(_kasi_pmde_user())
+
+        payload = self._chart(client)
+        assert [s['name'] for s in payload['series']] == ['Tanpa PIC PMDE']
+
+    def test_colours_survive_a_filter(self, client):
+        """A PIC keeps its colour when a filter drops the other PIC's tikets."""
+        kasi = _kasi_pmde_user()
+        first = _qc_bundle()
+        second = _qc_bundle()
+        client.force_login(kasi)
+
+        unfiltered = {s['name']: s['color'] for s in self._chart(client)['series']}
+        assert len(set(unfiltered.values())) == 2
+
+        for bundle in (first, second):
+            narrowed = self._chart(client, nomor_tiket=bundle['tiket'].nomor_tiket)
+            assert len(narrowed['series']) == 1
+            series = narrowed['series'][0]
+            assert series['color'] == unfiltered[series['name']]
+
+    def test_filters_narrow_the_chart(self, client):
+        first = _qc_bundle()
+        _qc_bundle(pmde_user=first['pmde_user'])
+        client.force_login(first['pmde_user'])
+
+        payload = self._chart(client, nomor_tiket=first['tiket'].nomor_tiket)
+        assert payload['series'][0]['data'] == [60]
+
+    def test_ninth_pic_repeats_a_colour_with_a_dashed_line(self, client):
+        """Past the eighth PIC identity rests on the dash, not on a new hue."""
+        kasi = _kasi_pmde_user()
+        bundles = [_qc_bundle() for _ in range(9)]
+        client.force_login(kasi)
+
+        series = self._chart(client)['series']
+        assert len(series) == 9
+        assert [s['dashed'] for s in series] == [False] * 8 + [True]
+        assert series[8]['color'] == series[0]['color']
+        assert len({s['color'] for s in series[:8]}) == 8
+        assert len(bundles) == 9
+
+    def test_denied_for_non_pmde(self, client):
+        client.force_login(UserFactory())
+        resp = client.get(reverse(self.url), {'get_chart_data': '1'})
+        assert resp.status_code == 302

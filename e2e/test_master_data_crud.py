@@ -26,8 +26,16 @@ def _force_close_modal(page):
             """() => {
                 const m = document.getElementById('crudModal');
                 if (m) {
-                    if (window.bootstrap) { const i = bootstrap.Modal.getInstance(m); if (i) i.hide(); }
+                    // dispose(), not hide(): tearing the classes off mid-transition
+                    // leaves bootstrap's own _isShown flag set, and the page's
+                    // $('#crudModal').modal('show') then returns early -- the next
+                    // form loads into a modal that never becomes visible.
+                    if (window.bootstrap) {
+                        const i = bootstrap.Modal.getInstance(m);
+                        if (i) i.dispose();
+                    }
                     m.classList.remove('show'); m.style.display = 'none';
+                    m.setAttribute('aria-hidden', 'true');
                 }
                 document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
                 document.body.classList.remove('modal-open');
@@ -558,16 +566,22 @@ def protected_delete_guard(page, rep):
 # wrongly accepted the data (which is itself the bug being reported).
 # --------------------------------------------------------------------------- #
 def _first_row_cells(page, table_id):
-    """Text of the first data row's cells; [] when the table is empty."""
+    """Text of the first data row's cells; [] when the table has no data.
+
+    Waiting for `tbody tr` is not enough: DataTables paints a single
+    full-width "Loading/No data" row first, so a naive read races the AJAX and
+    always comes back empty. Wait for a row that actually has columns."""
     try:
-        page.wait_for_selector(f"#{table_id} tbody tr", timeout=8000)
+        page.wait_for_function(
+            """(id) => {
+                const tr = document.querySelector(`#${id} tbody tr`);
+                return !!tr && tr.children.length > 2;
+            }""", arg=table_id, timeout=10000)
     except Exception:
         return []
-    cells = page.eval_on_selector_all(
+    return page.eval_on_selector_all(
         f"#{table_id} tbody tr:first-child td",
         "tds => tds.map(td => td.textContent.trim())")
-    # DataTables renders "no data" as a single full-width cell.
-    return cells if len(cells) > 2 else []
 
 
 def _select_option_containing(page, select_selector, needle):
@@ -585,10 +599,27 @@ def _select_option_containing(page, select_selector, needle):
         }""", [select_selector, needle])
 
 
+def _wait_for_modal_errors(page, timeout=4000):
+    """Wait for the re-rendered form's error nodes, then return their text.
+
+    The AJAX round-trip + innerHTML swap lands after _submit_and_wait()'s own
+    900ms, so reading straight away sees the pre-submit markup and reports a
+    rejection with 'no visible error'."""
+    step = 400
+    waited = 0
+    while waited < timeout:
+        errors = H.inline_error_texts(page, "#crudModal")
+        if errors:
+            return " ".join(errors)
+        page.wait_for_timeout(step)
+        waited += step
+    return " ".join(H.inline_error_texts(page, "#crudModal"))
+
+
 def _submit_expect_rejected(page, rep, sc, step, expect_text, *, bug=None):
     """Submit #crudModal expecting a rejection carrying `expect_text`."""
     closed = _submit_and_wait(page, rep, sc, step)
-    errors = " ".join(H.inline_error_texts(page, "#crudModal"))
+    errors = _wait_for_modal_errors(page) if not closed else ""
     if closed:
         rep.fail(sc, f"{step} NOT rejected", "modal closed -> the row was saved")
         if bug:
@@ -631,7 +662,14 @@ def rule_pic_duplicate_and_overlap(page, rep):
     sc = "rule_pic"
     table_id = "pic-p3de-table"
     page.goto(f"{H.BASE_URL}/pic-p3de/")
+    # Prefer the e2e user's own PIC row (setup_test_data guarantees one): the
+    # create form filters id_user to the user_p3de group, so an arbitrary
+    # first row may name a user this form cannot even offer.
+    _search_column(page, table_id, 3, H.USER)
     cells = _first_row_cells(page, table_id)
+    if not cells:
+        _search_column(page, table_id, 3, "")
+        cells = _first_row_cells(page, table_id)
     if not cells:
         rep.info(sc, "no existing PIC row to collide with", "skipped")
         return
@@ -818,7 +856,7 @@ def rule_sequence_tanda_terima(page, rep):
     page.wait_for_timeout(300)
     page.fill("#id_nomor_terakhir", "999")
     closed = _submit_and_wait(page, rep, sc, "edit sequence with existing receipts")
-    errors = " ".join(H.inline_error_texts(page, "#crudModal"))
+    errors = _wait_for_modal_errors(page) if not closed else ""
     if not closed and "tanda terima" in errors.lower():
         rep.ok(sc, "edit blocked once the year has receipts", errors[:140])
     elif closed:
@@ -866,11 +904,8 @@ def rule_tanda_terima_scope(page, rep):
         _open_create(page, table_id)
         H.fill_date(page, "#crudModal #id_tanggal_tanda_terima", H.date_ago(24))
 
-    def errors_now():
-        return " ".join(H.inline_error_texts(page, "#crudModal"))
-
     def expect(step, needle, bug=None):
-        errs = errors_now()
+        errs = _wait_for_modal_errors(page)
         if not page.locator("#crudModal.show").count():
             rep.fail(sc, f"{step} NOT rejected", "modal closed -> the receipt was saved")
             if bug:

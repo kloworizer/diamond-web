@@ -197,6 +197,21 @@
         </div>
     </div>
 
+    <!-- Progress per Jatuh Tempo, one line per PIC PMDE -->
+    <div class="card stretch stretch-full mb-3">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="feather-trending-up me-2"></i>Jml Progress per Jatuh Tempo
+            </h5>
+        </div>
+        <div class="card-body custom-card-action">
+            <div id="qc-progress-chart"></div>
+            <div id="qc-progress-chart-empty" class="text-center text-muted py-5 d-none">
+                Tidak Ada Data yang Tersedia
+            </div>
+        </div>
+    </div>
+
     <!-- Data Table Card -->
     <div class="card stretch stretch-full datatable-card">
         <div class="card-header">
@@ -274,6 +289,16 @@
         border-bottom: 1px solid #f1f5f9 !important;
     }
 
+    /* Refetching the chart holds the previous render at reduced opacity rather
+       than blanking the card, so changing a filter never jumps the layout. */
+    #qc-progress-chart {
+        transition: opacity 0.15s ease;
+    }
+
+    #qc-progress-chart.is-loading {
+        opacity: 0.45;
+    }
+
     /* Subtle row coloring for jatuh tempo indicators */
     table.dataTable tr.row-green td {
         background-color: rgba(40, 167, 69, 0.12) !important;
@@ -314,6 +339,7 @@
         ];
 
         let table;
+        let chart = null;
         let initialFiltersApplied = false;
 
         function selectorFor(key) {
@@ -456,6 +482,194 @@
             });
         }
 
+        // ---- Progress chart ----
+        // One line per PIC PMDE over the Jatuh Tempo axis. Colours and dash
+        // patterns come from the server so a PIC keeps the same line whichever
+        // filters are applied; the table below is the chart's table view.
+        function escapeHtml(text) {
+            return $('<div>').text(text == null ? '' : text).html();
+        }
+
+        function tooltipHtml(title, opts) {
+            const globals = opts.w.globals;
+            const rows = opts.series.map(function (values, index) {
+                return {
+                    name: globals.seriesNames[index],
+                    color: globals.colors[index],
+                    value: values[opts.dataPointIndex] || 0
+                };
+            }).filter(function (row) {
+                return row.value > 0;
+            }).sort(function (a, b) {
+                return b.value - a.value;
+            });
+
+            let html = '<div class="apexcharts-tooltip-title" style="font-size:12px;font-family:Inter">'
+                + escapeHtml(title) + '</div>';
+            if (rows.length === 0) {
+                return html + '<div class="apexcharts-tooltip-series-group apexcharts-active"'
+                    + ' style="display:block;padding:6px 10px;font-size:12px;color:#64748b">'
+                    + 'Tidak ada progress</div>';
+            }
+            rows.forEach(function (row) {
+                html += '<div class="apexcharts-tooltip-series-group apexcharts-active" style="display:flex">'
+                    + '<span class="apexcharts-tooltip-marker" style="background-color:' + row.color + '"></span>'
+                    + '<div class="apexcharts-tooltip-text" style="font-size:12px;font-family:Inter">'
+                    + '<span class="apexcharts-tooltip-text-y-label">' + escapeHtml(row.name) + ': </span>'
+                    + '<span class="apexcharts-tooltip-text-y-value">' + row.value.toLocaleString('id-ID') + '</span>'
+                    + '</div></div>';
+            });
+            return html;
+        }
+
+        function chartOptions(payload) {
+            // Every jatuh tempo value is plotted, but only about a dozen carry a
+            // tick label — the rest would overlap into noise. The tooltip below
+            // reads the real value back out of `labels`, so nothing is lost.
+            const labels = payload.categories;
+            const step = Math.max(1, Math.ceil(labels.length / 12));
+            const axisLabels = labels.map(function (label, index) {
+                return index % step === 0 ? label : '';
+            });
+
+            return {
+                chart: {
+                    id: 'qc-progress',
+                    type: 'line',
+                    height: 400,
+                    fontFamily: 'Inter',
+                    toolbar: { show: false },
+                    zoom: { enabled: false },
+                    animations: { enabled: false }
+                },
+                series: payload.series.map(function (s) {
+                    return { name: s.name, data: s.data };
+                }),
+                colors: payload.series.map(function (s) { return s.color; }),
+                stroke: {
+                    curve: 'straight',
+                    width: 2,
+                    lineCap: 'round',
+                    // Past the eighth PIC the hues start over, so those lines
+                    // are dashed — the identity never rests on colour alone.
+                    dashArray: payload.series.map(function (s) { return s.dashed ? 5 : 0; })
+                },
+                xaxis: {
+                    categories: axisLabels,
+                    axisBorder: { show: false },
+                    axisTicks: { show: false },
+                    labels: {
+                        rotate: -45,
+                        rotateAlways: true,
+                        trim: false,
+                        style: { fontSize: '10px', colors: '#64748b' }
+                    },
+                    // No axis title: the rotated tick labels already read
+                    // "<n> hari", and an axis caption underneath them collides
+                    // with the longest of them. The card header names the axis.
+                    tooltip: { enabled: false }
+                },
+                yaxis: {
+                    min: 0,
+                    forceNiceScale: true,
+                    labels: {
+                        formatter: function (value) {
+                            return Math.round(value).toLocaleString('id-ID');
+                        },
+                        offsetX: -12,
+                        style: { fontSize: '10px', colors: '#64748b' }
+                    },
+                    title: {
+                        text: 'Jml Progress',
+                        style: { fontSize: '11px', color: '#64748b', fontWeight: 500 }
+                    }
+                },
+                grid: {
+                    // Bottom padding is what keeps the rotated tick labels clear
+                    // of the legend beneath them.
+                    padding: { left: 0, right: 0, bottom: 30 },
+                    borderColor: '#ebebf3'
+                },
+                dataLabels: { enabled: false },
+                markers: { size: 0, strokeWidth: 2, hover: { size: 6 } },
+                legend: {
+                    show: true,
+                    showForSingleSeries: true,
+                    position: 'bottom',
+                    horizontalAlign: 'center',
+                    fontSize: '11px',
+                    labels: { colors: '#64748b' },
+                    itemMargin: { horizontal: 8, vertical: 4 },
+                    markers: {
+                        // Apex draws its own dot around the custom marker, so
+                        // the dot is collapsed to nothing and the swatch below
+                        // is what shows: a line rather than a dot, dashed when
+                        // the line is, so the two PICs sharing a hue stay
+                        // tellable apart in the legend as well as in the plot.
+                        width: 0,
+                        height: 0,
+                        radius: 0,
+                        customHTML: payload.series.map(function (s) {
+                            return function () {
+                                const fill = s.dashed
+                                    ? 'repeating-linear-gradient(90deg,' + s.color + ' 0 5px,transparent 5px 9px)'
+                                    : s.color;
+                                return '<span style="display:inline-block;width:16px;height:3px;'
+                                    + 'border-radius:2px;background:' + fill + ';vertical-align:middle;"></span>';
+                            };
+                        })
+                    }
+                },
+                tooltip: {
+                    shared: true,
+                    intersect: false,
+                    style: { fontSize: '12px', fontFamily: 'Inter' },
+                    // Most PIC have nothing falling due on any given day, so the
+                    // default shared tooltip would be a column of zeros. This one
+                    // lists only the PIC with progress there, largest first, and
+                    // titles itself from the unabbreviated jatuh tempo.
+                    custom: function (opts) {
+                        return tooltipHtml(labels[opts.dataPointIndex], opts);
+                    }
+                },
+                noData: { text: 'Tidak Ada Data yang Tersedia' }
+            };
+        }
+
+        function renderChart(payload) {
+            const hasData = payload && payload.series && payload.series.length > 0;
+            $('#qc-progress-chart').toggleClass('d-none', !hasData);
+            $('#qc-progress-chart-empty').toggleClass('d-none', hasData);
+            if (!hasData) {
+                if (chart) {
+                    chart.destroy();
+                    chart = null;
+                }
+                return;
+            }
+
+            const options = chartOptions(payload);
+            if (chart) {
+                chart.updateOptions(options, false, false);
+            } else {
+                chart = new ApexCharts(document.querySelector('#qc-progress-chart'), options);
+                chart.render();
+            }
+        }
+
+        function loadChartData() {
+            $('#qc-progress-chart').addClass('is-loading');
+            $.ajax({
+                url: ajaxUrl,
+                type: 'GET',
+                data: Object.assign({ get_chart_data: '1' }, getCurrentFilterValues()),
+                success: renderChart,
+                complete: function () {
+                    $('#qc-progress-chart').removeClass('is-loading');
+                }
+            });
+        }
+
         $(document).ready(function () {
             // select2-active.min.js may not have run if jQuery wasn't ready yet.
             initSelect2($('#filter-form select'));
@@ -542,6 +756,7 @@
             $('#filter-form').on('change', 'select', function () {
                 loadFilterOptions();
                 table.ajax.reload();
+                loadChartData();
                 updateFilterBadge();
             });
 
@@ -564,6 +779,7 @@
                 initSelect2($('#filter-form select'));
                 loadFilterOptions();
                 table.ajax.reload();
+                loadChartData();
                 updateFilterBadge();
             });
 
@@ -576,6 +792,9 @@
                     table.ajax.reload();
                 }
                 applyInitialFilterPanelState(fromUrl);
+                // Drawn once the URL filters are in place, so the first render
+                // already matches the table rather than flashing the full set.
+                loadChartData();
             });
         });
     })();

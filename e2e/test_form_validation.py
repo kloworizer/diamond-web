@@ -319,7 +319,7 @@ def datepicker_icon_and_flatpickr_consistency(page, rep):
 # --------------------------------------------------------------------------- #
 def workflow_date_chain_rules(page, rep):
     sc = "val_workflow_date_chain"
-    H.rekam_tiket(page, rep, sc, tahun="2005", baris_diterima=BARIS, backup=True)
+    H.rekam_tiket(page, rep, sc, tahun="2020", baris_diterima=BARIS, backup=True)
     # dip = today-2 (rekam_tiket hardcodes date_ago(48))
     H.do_tanda_terima(page, rep, sc, tanggal=H.date_ago(48))          # today-2
     H.do_rekam_penelitian(page, rep, sc, baris_lengkap=BARIS,
@@ -415,7 +415,18 @@ def workflow_date_chain_rules(page, rep):
 # listeners and HTML5 constraint validation.
 # --------------------------------------------------------------------------- #
 def _native_submit_rekam(page):
-    page.eval_on_selector("#tiket-rekam-form", "f => f.submit()")
+    """POST the rekam form the way no JS can intercept.
+
+    form.submit() fires the navigation asynchronously, so the wait has to be
+    armed *around* the call: waiting for 'networkidle' afterwards returns
+    immediately (the current page is already idle) and every assertion then
+    runs against the pre-submit DOM, which of course carries no errors.
+    HTMLFormElement.prototype.submit.call() is used because a control named
+    'submit' would shadow the method on the element itself.
+    """
+    with page.expect_navigation(timeout=20000):
+        page.eval_on_selector("#tiket-rekam-form",
+                              "f => HTMLFormElement.prototype.submit.call(f)")
     try:
         page.wait_for_load_state("networkidle", timeout=15000)
     except Exception:
@@ -442,7 +453,7 @@ def rekam_server_side_rules(page, rep):
         H.dismiss_duplicate_modal(page)
 
     # 1) Future Tanggal Terima DIP, client guard bypassed.
-    fill_valid_base("2004")
+    fill_valid_base("2021")
     if not page.is_disabled("#id_tgl_terima_vertikal"):
         H.fill_date(page, "#id_tgl_terima_vertikal", H.date_ago(52))
     H.fill_date(page, "#id_tgl_terima_dip", H.future_date(3))
@@ -467,7 +478,7 @@ def rekam_server_side_rules(page, rep):
     H.shot(page, f"{sc}_future_dip")
 
     # 2) Special request switched on with no due date (TiketForm.clean()).
-    fill_valid_base("2002")
+    fill_valid_base("2022")
     if not page.is_disabled("#id_tgl_terima_vertikal"):
         H.fill_date(page, "#id_tgl_terima_vertikal", H.date_ago(52))
     H.fill_date(page, "#id_tgl_terima_dip", H.date_ago(48))
@@ -494,7 +505,7 @@ def rekam_server_side_rules(page, rep):
     #    the selected periode actually has one -- the label carries it in
     #    parentheses (see TiketForm._format_periode_data_label).
     page.goto(f"{H.BASE_URL}/tiket/rekam/")
-    H.select_ilap_periode(page, tahun="2003")
+    H.select_ilap_periode(page, tahun="2023")
     end_date = page.eval_on_selector(
         "#id_periode_data",
         """(sel) => {
