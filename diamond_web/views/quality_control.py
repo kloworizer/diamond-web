@@ -29,6 +29,7 @@ from django.db.models import (
 from django.db.models.expressions import RawSQL
 from django.db.models.functions import Coalesce
 from django.utils import timezone
+from collections import defaultdict
 from datetime import date
 
 from ..models.tiket import Tiket
@@ -111,6 +112,34 @@ def _prioritas_exists():
             end_date__gte=Cast(OuterRef('tgl_terima_dip'), DateField()),
         )
     )
+
+
+def _durasi_subquery():
+    """Subquery yielding the DurasiJatuhTempo that was active at tgl_transfer.
+
+    A tiket's deadline is its tgl_transfer plus the PMDE durasi that applied on
+    that date, so the row is picked by the transfer date rather than by today.
+    """
+    return DurasiJatuhTempo.objects.filter(
+        id_sub_jenis_data=OuterRef(f'{_SUB}'),
+        seksi__name='user_pmde',
+        start_date__lte=Cast(OuterRef('tgl_transfer'), DateField()),
+    ).filter(
+        Q(end_date__isnull=True) | Q(end_date__gte=Cast(OuterRef('tgl_transfer'), DateField()))
+    ).order_by('-start_date').values('durasi')[:1]
+
+
+def _deadline_day(tgl_transfer, durasi):
+    """The deadline date, or None when there is no deadline to count.
+
+    A durasi of 0 means no active DurasiJatuhTempo covers this tiket's
+    tgl_transfer, so there is nothing to count from — the '-' the table shows
+    in its Deadline and Jatuh Tempo columns, not a deadline of "today".
+    """
+    if not tgl_transfer or not durasi:
+        return None
+    deadline = tgl_transfer + timezone.timedelta(days=durasi)
+    return deadline.date() if hasattr(deadline, 'date') else deadline
 
 
 def _split(value):
@@ -445,6 +474,116 @@ def _filter_options(scoped_qs, selected):
     }
 
 
+# ---------------------------------------------------------------------------
+# Chart: Jml Progress per Jatuh Tempo, one line per PIC PMDE
+# ---------------------------------------------------------------------------
+
+# Eight categorical hues, in this fixed order. Past the eighth PIC the hues
+# start over with a dashed stroke instead of a ninth colour, because a
+# generated hue would be indistinguishable from an existing one for a
+# colourblind reader while a dash pattern is legible to everyone.
+_CHART_COLORS = [
+    '#2a78d6', '#eb6834', '#1baf7a', '#eda100',
+    '#e87ba4', '#008300', '#4a3aa7', '#e34948',
+]
+
+# Tikets in QC with no active PIC PMDE still carry progress, so they get their
+# own line — deliberately a neutral grey, since "nobody" is not an identity.
+_CHART_NO_PIC_COLOR = '#94a3b8'
+_CHART_NO_PIC_LABEL = 'Tanpa PIC PMDE'
+
+
+def _pmde_pic_styles(scoped_qs):
+    """Assign each PIC PMDE a stable colour and stroke, keyed by user id.
+
+    The assignment is made over the *unfiltered* scope, so narrowing the filter
+    panel never repaints the lines that survive: a reader who learned that a
+    given PIC is the blue line keeps that reading across every filter.
+    """
+    rows = TiketPIC.objects.filter(
+        id_tiket__in=scoped_qs, role=TiketPIC.Role.PMDE, active=True,
+        id_user__isnull=False,
+    ).values_list(
+        'id_user__id', 'id_user__username',
+        'id_user__first_name', 'id_user__last_name',
+    ).distinct()
+
+    names = {}
+    for user_id, username, first_name, last_name in rows:
+        full_name = f'{first_name or ""} {last_name or ""}'.strip()
+        names[user_id] = full_name or username
+
+    styles = {}
+    for index, user_id in enumerate(sorted(names, key=lambda uid: names[uid])):
+        styles[user_id] = {
+            'name': names[user_id],
+            'color': _CHART_COLORS[index % len(_CHART_COLORS)],
+            'dashed': index >= len(_CHART_COLORS),
+        }
+    styles[None] = {'name': _CHART_NO_PIC_LABEL, 'color': _CHART_NO_PIC_COLOR, 'dashed': True}
+    return styles
+
+
+def _chart_data(scoped_qs, selected):
+    """Jml Progress summed per jatuh tempo, split into one series per PIC PMDE.
+
+    The x axis is the Jatuh Tempo column of the table — days left until the
+    deadline, negative once it has passed — and the y axis is the Jml Progress
+    of every tiket sharing that value. Tikets without a deadline are left out,
+    matching the '-' the table shows for them.
+    """
+    styles = _pmde_pic_styles(scoped_qs)
+
+    rows = _apply_filters(scoped_qs, selected).annotate(
+        active_durasi=Coalesce(
+            Subquery(_durasi_subquery(), output_field=IntegerField()),
+            Value(0),
+        ),
+        pic_pmde_id=Subquery(
+            TiketPIC.objects.filter(
+                id_tiket=OuterRef('pk'), role=TiketPIC.Role.PMDE, active=True,
+            ).values('id_user_id')[:1],
+            output_field=IntegerField(),
+        ),
+        # `id` keeps DISTINCT (added by the to-many filters) from collapsing two
+        # different tikets that happen to agree on every other column here.
+    ).values_list('id', 'pic_pmde_id', 'tgl_transfer', 'active_durasi', 'belum_qc')
+
+    totals = defaultdict(int)
+    days = set()
+    today = date.today()
+    for _tiket_id, pic_id, tgl_transfer, durasi, progress in rows:
+        deadline_day = _deadline_day(tgl_transfer, durasi)
+        if deadline_day is None:
+            continue
+        sisa = (deadline_day - today).days
+        days.add(sisa)
+        totals[(pic_id, sisa)] += progress or 0
+
+    categories = sorted(days)
+    pic_ids = {pic_id for pic_id, _sisa in totals}
+
+    # Series follow the palette order rather than their totals, so the legend
+    # reads the same way from one filter to the next.
+    ordered = [pic_id for pic_id in styles if pic_id in pic_ids]
+    series = []
+    for pic_id in ordered:
+        style = styles[pic_id]
+        series.append({
+            'name': style['name'],
+            'color': style['color'],
+            'dashed': style['dashed'],
+            # A missing (pic, day) pair is a real zero — that PIC has no tiket
+            # falling due then — so the line stays continuous instead of broken.
+            'data': [totals.get((pic_id, day), 0) for day in categories],
+        })
+
+    return {
+        'categories': [f'{day} hari' for day in categories],
+        'series': series,
+    }
+
+
 @login_required
 @user_passes_test(_is_pmde_user)
 @require_http_methods(["POST", "GET"])
@@ -453,8 +592,9 @@ def quality_control_data(request):
     """DataTables server-side endpoint for Quality Control page.
 
     With ``get_filter_options=1`` it returns the option lists for the filter
-    panel instead of table rows; every other request returns a page of rows
-    narrowed by the same filter parameters.
+    panel, and with ``get_chart_data=1`` the series behind the progress chart;
+    every other request returns a page of rows. All three read the same filter
+    parameters, so the panel scopes the chart and the table together.
     """
     params = request.POST if request.method == 'POST' else request.GET
 
@@ -464,6 +604,9 @@ def quality_control_data(request):
     if params.get('get_filter_options'):
         return JsonResponse({'filter_options': _filter_options(scoped, selected)})
 
+    if params.get('get_chart_data'):
+        return JsonResponse(_chart_data(scoped, selected))
+
     draw = int(params.get('draw', '1'))
     start = int(params.get('start', '0'))
     length = int(params.get('length', '10'))
@@ -471,13 +614,7 @@ def quality_control_data(request):
     records_total = scoped.count()
 
     # Subquery: active durasi for each ticket's sub_jenis_data & tgl_transfer range
-    durasi_subq = DurasiJatuhTempo.objects.filter(
-        id_sub_jenis_data=OuterRef(f'{_SUB}'),
-        seksi__name='user_pmde',
-        start_date__lte=Cast(OuterRef('tgl_transfer'), DateField()),
-    ).filter(
-        Q(end_date__isnull=True) | Q(end_date__gte=Cast(OuterRef('tgl_transfer'), DateField()))
-    ).order_by('-start_date').values('durasi')[:1]
+    durasi_subq = _durasi_subquery()
 
     tikets = _apply_filters(scoped, selected).select_related(
         f'{_ILAP}',
@@ -594,9 +731,8 @@ def quality_control_data(request):
         jatuh_tempo = '-'
         deadline_sort_iso = ''
         sisa_hari = None
-        if tiket.tgl_transfer and tiket.active_durasi:
-            deadline_dt = tiket.tgl_transfer + timezone.timedelta(days=tiket.active_durasi)
-            deadline_day = deadline_dt.date() if hasattr(deadline_dt, 'date') else deadline_dt
+        deadline_day = _deadline_day(tiket.tgl_transfer, tiket.active_durasi)
+        if deadline_day is not None:
             deadline = deadline_day.strftime('%d/%m/%Y')
             deadline_sort_iso = deadline_day.strftime('%Y-%m-%d')
             sisa_hari = (deadline_day - date.today()).days
