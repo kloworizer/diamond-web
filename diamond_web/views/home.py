@@ -733,8 +733,9 @@ def home_data(request):
             elif category == 'belum_diteliti':
                 action_html = (
                     f'<div class="d-flex justify-content-center gap-1">'
-                    f'<a href="{view_url}?action=teliti" class="btn btn-sm btn-warning text-white" title="Rekam Hasil Penelitian">'
-                    f'<i class="feather-search"></i></a>'
+                    f'<button type="button" class="btn btn-sm btn-warning text-white btn-quick-rekam-penelitian" '
+                    f'data-tiket-id="{obj.id}" data-nomor-tiket="{obj.nomor_tiket}" title="Rekam Hasil Penelitian">'
+                    f'<i class="feather-search"></i></button>'
                     f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat">'
                     f'<i class="feather-eye"></i></a>'
                     f'</div>'

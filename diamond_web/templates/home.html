@@ -2291,6 +2291,29 @@
     </div>
 </div>
 
+<!-- Quick Rekam Hasil Penelitian Modal (Home) -->
+<div class="modal fade" id="homeRekamPenelitianModal" tabindex="-1" aria-labelledby="homeRekamPenelitianModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #fef3c7; color: #d97706; flex-shrink: 0;">
+                        <i class="feather-edit-3" style="font-size: 16px;"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="homeRekamPenelitianModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Rekam Hasil Penelitian</h5>
+                        <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;" id="home-rekam-penelitian-subtitle">Tiket</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div id="home-rekam-penelitian-form-container">
+                <!-- Form loaded via AJAX -->
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
 
@@ -3894,6 +3917,170 @@
                 submitBtn.innerHTML = '<i class="feather-user-plus me-1"></i> ASSIGN';
                 errorBox.textContent = 'Gagal menghubungi server. Periksa koneksi Anda.';
                 errorBox.style.display = 'block';
+            });
+        });
+
+        // Handle Quick Rekam Hasil Penelitian Modal on Home page
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.btn-quick-rekam-penelitian');
+            if (!btn) return;
+
+            const tiketId = btn.getAttribute('data-tiket-id');
+            const nomorTiket = btn.getAttribute('data-nomor-tiket');
+
+            const modalEl = document.getElementById('homeRekamPenelitianModal');
+            if (!modalEl) return;
+
+            document.getElementById('home-rekam-penelitian-subtitle').textContent = 'Tiket ' + (nomorTiket || '');
+            const container = document.getElementById('home-rekam-penelitian-form-container');
+            container.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-warning" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+            const bsModal = new bootstrap.Modal(modalEl);
+            bsModal.show();
+
+            fetch(`/tiket/${tiketId}/rekam-penelitian/`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.text())
+            .then(html => {
+                container.innerHTML = html;
+                initHomeRekamPenelitianForm(container, bsModal, tiketId);
+            })
+            .catch(err => {
+                console.error(err);
+                container.innerHTML = '<div class="alert alert-danger m-3">Gagal memuat form penelitian.</div>';
+            });
+        });
+
+        function initHomeRekamPenelitianForm(container, bsModal, tiketId) {
+            const form = container.querySelector('form[data-baris-diterima]');
+            if (!form) return;
+
+            const barisDiterima = parseInt(form.dataset.barisDiterima, 10);
+            const tglTerimaDip = form.dataset.tglTerimaDip || null;
+            const barisLengkapInput = container.querySelector('#id_baris_lengkap');
+            const barisTidakLengkapInput = container.querySelector('#id_baris_tidak_lengkap');
+            const tglTeliti = container.querySelector('#id_tgl_teliti');
+            const simpanBtn = container.querySelector('#rekam-hasil-penelitian-simpan-btn');
+            const statusLengkap = container.querySelector('#status-lengkap');
+            const statusLengkapSebagian = container.querySelector('#status-lengkap-sebagian');
+            const statusTidakLengkap = container.querySelector('#status-tidak-lengkap');
+            const hintEl = container.querySelector('#baris-validation-hint');
+
+            const tglTerimaDipDateOnly = tglTerimaDip ? tglTerimaDip.substring(0, 10) : null;
+            if (tglTeliti && tglTerimaDipDateOnly) {
+                tglTeliti.setAttribute('min', tglTerimaDipDateOnly);
+            }
+
+            function isTglTelitValid() {
+                if (!tglTeliti || !tglTerimaDipDateOnly) return true;
+                const val = tglTeliti.value;
+                if (!val) return false;
+                return val >= tglTerimaDipDateOnly;
+            }
+
+            function updateTglTelitHint() {
+                let hintTgl = container.querySelector('#tgl-teliti-hint');
+                if (!hintTgl && tglTeliti) {
+                    hintTgl = document.createElement('small');
+                    hintTgl.id = 'tgl-teliti-hint';
+                    hintTgl.className = 'text-danger d-block mt-1';
+                    tglTeliti.parentNode.insertBefore(hintTgl, tglTeliti.nextSibling);
+                }
+                if (tglTeliti && tglTeliti.value && !isTglTelitValid()) {
+                    const minFormatted = tglTerimaDip.replace('T', ' ').substring(0, 16);
+                    if (hintTgl) hintTgl.textContent = `Tanggal Teliti tidak boleh sebelum Tanggal Terima DIP (${minFormatted}).`;
+                } else if (hintTgl) {
+                    hintTgl.textContent = '';
+                }
+            }
+
+            function updateStatusAndButton() {
+                const barisLengkap = parseInt(barisLengkapInput ? barisLengkapInput.value : '0', 10) || 0;
+                const barisTidakLengkap = parseInt(barisTidakLengkapInput ? barisTidakLengkapInput.value : '0', 10) || 0;
+                const total = barisLengkap + barisTidakLengkap;
+                const barisValid = total === barisDiterima;
+                const dateValid = isTglTelitValid();
+
+                if (statusLengkap) statusLengkap.checked = false;
+                if (statusLengkapSebagian) statusLengkapSebagian.checked = false;
+                if (statusTidakLengkap) statusTidakLengkap.checked = false;
+
+                if (barisLengkap === barisDiterima) {
+                    if (statusLengkap) statusLengkap.checked = true;
+                } else if (barisLengkap === 0) {
+                    if (statusTidakLengkap) statusTidakLengkap.checked = true;
+                } else {
+                    if (statusLengkapSebagian) statusLengkapSebagian.checked = true;
+                }
+
+                if (hintEl) {
+                    const sisa = barisDiterima - total;
+                    if (total === barisDiterima) {
+                        hintEl.innerHTML = '<span class="text-success"><i class="feather-check"></i> Jumlah baris sesuai.</span>';
+                    } else if (total < barisDiterima) {
+                        hintEl.innerHTML = `<span class="text-warning"><i class="feather-alert-triangle"></i> Kurang ${sisa} baris dari total ${barisDiterima}.</span>`;
+                    } else {
+                        hintEl.innerHTML = `<span class="text-danger"><i class="feather-x-circle"></i> Melebihi ${Math.abs(sisa)} baris dari total ${barisDiterima}.</span>`;
+                    }
+                }
+
+                if (simpanBtn) {
+                    simpanBtn.disabled = !barisValid || !dateValid;
+                }
+            }
+
+            if (tglTeliti) {
+                tglTeliti.addEventListener('input', () => { updateTglTelitHint(); updateStatusAndButton(); });
+                tglTeliti.addEventListener('change', () => { updateTglTelitHint(); updateStatusAndButton(); });
+            }
+            if (barisLengkapInput) {
+                barisLengkapInput.addEventListener('input', updateStatusAndButton);
+                barisLengkapInput.addEventListener('change', updateStatusAndButton);
+            }
+            if (barisTidakLengkapInput) {
+                barisTidakLengkapInput.addEventListener('input', updateStatusAndButton);
+                barisTidakLengkapInput.addEventListener('change', updateStatusAndButton);
+            }
+
+            updateTglTelitHint();
+            updateStatusAndButton();
+
+            // Intercept form submit via AJAX
+            form.addEventListener('submit', function(ev) {
+                ev.preventDefault();
+                const formData = new FormData(form);
+                if (simpanBtn) {
+                    simpanBtn.disabled = true;
+                    simpanBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...';
+                }
+
+                fetch(form.action || `/tiket/${tiketId}/rekam-penelitian/`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(r => r.json())
+                .then(resData => {
+                    if (resData.success) {
+                        bsModal.hide();
+                        if (typeof showSuccessToast === 'function') {
+                            showSuccessToast('Berhasil', 'Hasil penelitian berhasil disimpan!');
+                        }
+                        if (datatableTables['belum_diteliti']) {
+                            datatableTables['belum_diteliti'].ajax.reload();
+                        }
+                    } else if (resData.html) {
+                        container.innerHTML = resData.html;
+                        initHomeRekamPenelitianForm(container, bsModal, tiketId);
+                    }
+                })
+                .catch(err => {
+                    console.error('Submit error:', err);
+                    if (simpanBtn) simpanBtn.disabled = false;
+                });
+            });
+        }
             });
         });
 
