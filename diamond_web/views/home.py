@@ -459,9 +459,18 @@ def home_data(request):
 
     Returns JSON with draw, recordsTotal, recordsFiltered, data.
     """
-    draw = int(request.GET.get('draw', '1'))
-    start = int(request.GET.get('start', '0'))
-    length = int(request.GET.get('length', '10'))
+    try:
+        draw = int(request.GET.get('draw', '1'))
+    except (ValueError, TypeError):
+        draw = 1
+    try:
+        start = int(request.GET.get('start', '0'))
+    except (ValueError, TypeError):
+        start = 0
+    try:
+        length = int(request.GET.get('length', '10'))
+    except (ValueError, TypeError):
+        length = 10
     category = request.GET.get('category', '')
     search_value = request.GET.get('search[value]', '')
 
@@ -683,7 +692,10 @@ def home_data(request):
         else:
             qs = qs.order_by('id_sub_jenis_data')
 
-    qs_page = qs[start:start + length]
+    if length < 0:
+        qs_page = qs[start:]
+    else:
+        qs_page = qs[start:start + length]
 
     # Build data rows
     data = []
