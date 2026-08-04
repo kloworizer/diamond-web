@@ -1,5 +1,6 @@
 """Tests for views/quality_control.py (view + data endpoint)."""
 from datetime import date, datetime, timedelta
+from itertools import count
 
 import pytest
 from django.contrib.auth.models import Group
@@ -33,11 +34,18 @@ def _kasi_pmde_user():
     return user
 
 
+_UNSET = object()
+_PENYAMPAIAN_SEQ = count()
+
+
 def _qc_bundle(with_durasi=True, with_prioritas=False, tgl_transfer=None,
-               pmde_user=None, periode_penerimaan=None):
+               pmde_user=None, periode_penerimaan=None, tgl_rematch=_UNSET,
+               durasi=10):
     jenis_tabel = JenisTabelFactory()
     jenis_data = JenisDataILAPFactory(id_jenis_tabel=jenis_tabel)
-    pengiriman_kwargs = {}
+    # periode_penyampaian is unique and the factory draws it from a small word
+    # list, so bundles created side by side collide unless it is spelled out.
+    pengiriman_kwargs = {'periode_penyampaian': f'QC {next(_PENYAMPAIAN_SEQ)}'}
     if periode_penerimaan is not None:
         pengiriman_kwargs['periode_penerimaan'] = periode_penerimaan
     periode_data = PeriodeJenisDataFactory(
@@ -45,11 +53,16 @@ def _qc_bundle(with_durasi=True, with_prioritas=False, tgl_transfer=None,
         id_periode_pengiriman=PeriodePengirimanFactory(**pengiriman_kwargs),
     )
     tgl_transfer = tgl_transfer or datetime.now() - timedelta(days=5)
+    # Anchored to mid-morning: the deadline counts from tgl_rematch, so a run
+    # late in the evening would otherwise push it onto the following day.
+    tgl_transfer = tgl_transfer.replace(hour=9, minute=0, second=0, microsecond=0)
+    if tgl_rematch is _UNSET:
+        tgl_rematch = tgl_transfer + timedelta(hours=2)
     tiket = TiketFactory(
         id_periode_data=periode_data,
         status_tiket=STATUS_PENGENDALIAN_MUTU,
         tgl_transfer=tgl_transfer,
-        tgl_rematch=tgl_transfer + timedelta(hours=2),
+        tgl_rematch=tgl_rematch,
         baris_i=100,
         sudah_qc=40,
         belum_qc=60,
@@ -64,7 +77,7 @@ def _qc_bundle(with_durasi=True, with_prioritas=False, tgl_transfer=None,
         DurasiJatuhTempoFactory(
             id_sub_jenis_data=jenis_data,
             seksi=group,
-            durasi=10,
+            durasi=durasi,
             start_date=date(2000, 1, 1),
             end_date=None,
         )
@@ -150,6 +163,79 @@ class TestQualityControlData:
         assert blank['sisa_hari'] is None
         assert blank['deadline'] == {'display': '-', 'sort': ''}
         assert blank['jatuh_tempo'] == {'display': '-', 'sort': ''}
+
+    def test_deadline_counts_from_tgl_rematch_when_it_is_set(self, client):
+        """A rematched tiket starts its count again from tgl_rematch."""
+        transfer = datetime.now() - timedelta(days=30)
+        rematch = datetime.now() - timedelta(days=4)
+        bundle = _qc_bundle(tgl_transfer=transfer, tgl_rematch=rematch)
+        client.force_login(bundle['pmde_user'])
+
+        resp = client.get(reverse(self.url), {'draw': '1', 'start': '0', 'length': '10'})
+        row = next(r for r in resp.json()['data']
+                   if r['nomor_tiket'] == bundle['tiket'].nomor_tiket)
+
+        expected = (rematch + timedelta(days=10)).date()
+        assert row['deadline']['display'] == expected.strftime('%d/%m/%Y')
+        assert row['sisa_hari'] == (expected - date.today()).days
+
+    def test_deadline_falls_back_to_tgl_transfer_without_a_rematch(self, client):
+        bundle = _qc_bundle(tgl_transfer=datetime.now() - timedelta(days=30),
+                            tgl_rematch=None)
+        client.force_login(bundle['pmde_user'])
+
+        resp = client.get(reverse(self.url), {'draw': '1', 'start': '0', 'length': '10'})
+        row = next(r for r in resp.json()['data']
+                   if r['nomor_tiket'] == bundle['tiket'].nomor_tiket)
+
+        expected = (bundle['tiket'].tgl_transfer + timedelta(days=10)).date()
+        assert row['deadline']['display'] == expected.strftime('%d/%m/%Y')
+
+    def test_durasi_is_the_one_active_at_the_rematch_date(self, client):
+        """The durasi row is picked by tgl_rematch, not by the older transfer."""
+        transfer = datetime.now() - timedelta(days=60)
+        rematch = datetime.now() - timedelta(days=3)
+        bundle = _qc_bundle(tgl_transfer=transfer, tgl_rematch=rematch, with_durasi=False)
+        # Closed before the rematch: it covers tgl_transfer only, so it must lose.
+        DurasiJatuhTempoFactory(
+            id_sub_jenis_data=bundle['jenis_data'],
+            seksi=bundle['group'],
+            durasi=99,
+            start_date=date(2000, 1, 1),
+            end_date=(transfer + timedelta(days=1)).date(),
+        )
+        DurasiJatuhTempoFactory(
+            id_sub_jenis_data=bundle['jenis_data'],
+            seksi=bundle['group'],
+            durasi=7,
+            start_date=(transfer + timedelta(days=2)).date(),
+            end_date=None,
+        )
+        client.force_login(bundle['pmde_user'])
+
+        resp = client.get(reverse(self.url), {'draw': '1', 'start': '0', 'length': '10'})
+        row = next(r for r in resp.json()['data']
+                   if r['nomor_tiket'] == bundle['tiket'].nomor_tiket)
+
+        expected = (rematch + timedelta(days=7)).date()
+        assert row['deadline']['display'] == expected.strftime('%d/%m/%Y')
+
+    def test_deadline_sorting_follows_the_rematch_date(self, client):
+        """The SQL used for sorting counts from the same date the display does."""
+        # Transferred earlier but rematched later, so the two orders disagree.
+        early = _qc_bundle(tgl_transfer=datetime.now() - timedelta(days=40),
+                           tgl_rematch=datetime.now() - timedelta(days=2))
+        late = _qc_bundle(tgl_transfer=datetime.now() - timedelta(days=20),
+                          tgl_rematch=datetime.now() - timedelta(days=10),
+                          pmde_user=early['pmde_user'])
+        client.force_login(early['pmde_user'])
+
+        resp = client.get(reverse(self.url), {
+            'draw': '1', 'start': '0', 'length': '10',
+            'order[0][column]': '8', 'order[0][dir]': 'asc',
+        })
+        nomor = [row['nomor_tiket'] for row in resp.json()['data']]
+        assert nomor == [late['tiket'].nomor_tiket, early['tiket'].nomor_tiket]
 
     def test_data_endpoint_post_method(self, client):
         bundle = _qc_bundle()

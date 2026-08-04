@@ -114,31 +114,51 @@ def _prioritas_exists():
     )
 
 
-def _durasi_subquery():
-    """Subquery yielding the DurasiJatuhTempo that was active at tgl_transfer.
+def _base_date_expr():
+    """The date the deadline counts from, as a query expression.
 
-    A tiket's deadline is its tgl_transfer plus the PMDE durasi that applied on
-    that date, so the row is picked by the transfer date rather than by today.
+    A rematched tiket starts its count again from tgl_rematch, so that date
+    wins over tgl_transfer whenever it is set. Each side is cast separately so
+    Coalesce resolves to a DateField despite the OuterRefs.
+    """
+    return Coalesce(
+        Cast(OuterRef('tgl_rematch'), DateField()),
+        Cast(OuterRef('tgl_transfer'), DateField()),
+    )
+
+
+# The same base date in raw SQL, for the deadline_date annotation below.
+_BASE_DATE_SQL = 'COALESCE("tiket"."tgl_rematch", "tiket"."tgl_transfer")'
+
+
+def _durasi_subquery():
+    """Subquery yielding the DurasiJatuhTempo that was active at the base date.
+
+    A tiket's deadline is its base date (tgl_rematch when set, otherwise
+    tgl_transfer) plus the PMDE durasi that applied on that date, so the row is
+    picked by that date rather than by today.
     """
     return DurasiJatuhTempo.objects.filter(
         id_sub_jenis_data=OuterRef(f'{_SUB}'),
         seksi__name='user_pmde',
-        start_date__lte=Cast(OuterRef('tgl_transfer'), DateField()),
+        start_date__lte=_base_date_expr(),
     ).filter(
-        Q(end_date__isnull=True) | Q(end_date__gte=Cast(OuterRef('tgl_transfer'), DateField()))
+        Q(end_date__isnull=True) | Q(end_date__gte=_base_date_expr())
     ).order_by('-start_date').values('durasi')[:1]
 
 
-def _deadline_day(tgl_transfer, durasi):
+def _deadline_day(tgl_transfer, tgl_rematch, durasi):
     """The deadline date, or None when there is no deadline to count.
 
-    A durasi of 0 means no active DurasiJatuhTempo covers this tiket's
-    tgl_transfer, so there is nothing to count from — the '-' the table shows
-    in its Deadline and Jatuh Tempo columns, not a deadline of "today".
+    Counting starts from tgl_rematch when the tiket has been rematched, and
+    from tgl_transfer otherwise. A durasi of 0 means no active DurasiJatuhTempo
+    covers that date, so there is nothing to count from — the '-' the table
+    shows in its Deadline and Jatuh Tempo columns, not a deadline of "today".
     """
-    if not tgl_transfer or not durasi:
+    base_date = tgl_rematch or tgl_transfer
+    if not base_date or not durasi:
         return None
-    deadline = tgl_transfer + timezone.timedelta(days=durasi)
+    deadline = base_date + timezone.timedelta(days=durasi)
     return deadline.date() if hasattr(deadline, 'date') else deadline
 
 
@@ -547,13 +567,15 @@ def _chart_data(scoped_qs, selected):
         ),
         # `id` keeps DISTINCT (added by the to-many filters) from collapsing two
         # different tikets that happen to agree on every other column here.
-    ).values_list('id', 'pic_pmde_id', 'tgl_transfer', 'active_durasi', 'belum_qc')
+    ).values_list(
+        'id', 'pic_pmde_id', 'tgl_transfer', 'tgl_rematch', 'active_durasi', 'belum_qc',
+    )
 
     totals = defaultdict(int)
     days = set()
     today = date.today()
-    for _tiket_id, pic_id, tgl_transfer, durasi, progress in rows:
-        deadline_day = _deadline_day(tgl_transfer, durasi)
+    for _tiket_id, pic_id, tgl_transfer, tgl_rematch, durasi, progress in rows:
+        deadline_day = _deadline_day(tgl_transfer, tgl_rematch, durasi)
         if deadline_day is None:
             continue
         sisa = (deadline_day - today).days
@@ -632,35 +654,36 @@ def quality_control_data(request):
     ).annotate(
         is_prioritas=_prioritas_exists(),
     ).annotate(
-        # Compute deadline date = tgl_transfer + active_durasi days.
+        # Compute deadline date = base date + active_durasi days, where the base
+        # date is tgl_rematch when set and tgl_transfer otherwise.
         # Correlated subquery embedded in RawSQL (no params) to avoid
         # parameter-binding issues with nested expressions.
         # SQLite (dev): DATE(date, '+' || days || ' days')
         # PostgreSQL (prod): (date::date + days * INTERVAL '1 day')::date
         deadline_date=RawSQL(
-            """
-            DATE("tiket"."tgl_transfer", '+' || CAST(COALESCE(
+            f"""
+            DATE({_BASE_DATE_SQL}, '+' || CAST(COALESCE(
                 (SELECT "durasi_jatuh_tempo"."durasi"
                  FROM "durasi_jatuh_tempo"
                  INNER JOIN "auth_group" ON ("durasi_jatuh_tempo"."seksi" = "auth_group"."id")
                  WHERE ("durasi_jatuh_tempo"."id_sub_jenis_data" = "periode_jenis_data"."id_sub_jenis_data_ilap"
                    AND "auth_group"."name" = 'user_pmde'
-                   AND "durasi_jatuh_tempo"."start_date" <= DATE("tiket"."tgl_transfer")
+                   AND "durasi_jatuh_tempo"."start_date" <= DATE({_BASE_DATE_SQL})
                    AND ("durasi_jatuh_tempo"."end_date" IS NULL
-                        OR "durasi_jatuh_tempo"."end_date" >= DATE("tiket"."tgl_transfer")))
+                        OR "durasi_jatuh_tempo"."end_date" >= DATE({_BASE_DATE_SQL})))
                  ORDER BY "durasi_jatuh_tempo"."start_date" DESC LIMIT 1
             ), 0) AS TEXT) || ' days')
             """ if db_connection.vendor == 'sqlite' else
-            """
-            ("tiket"."tgl_transfer"::date + COALESCE(
+            f"""
+            ({_BASE_DATE_SQL}::date + COALESCE(
                 (SELECT "durasi_jatuh_tempo"."durasi"
                  FROM "durasi_jatuh_tempo"
                  INNER JOIN "auth_group" ON ("durasi_jatuh_tempo"."seksi" = "auth_group"."id")
                  WHERE ("durasi_jatuh_tempo"."id_sub_jenis_data" = "periode_jenis_data"."id_sub_jenis_data_ilap"
                    AND "auth_group"."name" = 'user_pmde'
-                   AND "durasi_jatuh_tempo"."start_date" <= "tiket"."tgl_transfer"::date
+                   AND "durasi_jatuh_tempo"."start_date" <= {_BASE_DATE_SQL}::date
                    AND ("durasi_jatuh_tempo"."end_date" IS NULL
-                        OR "durasi_jatuh_tempo"."end_date" >= "tiket"."tgl_transfer"::date))
+                        OR "durasi_jatuh_tempo"."end_date" >= {_BASE_DATE_SQL}::date))
                  ORDER BY "durasi_jatuh_tempo"."start_date" DESC LIMIT 1
             ), 0) * INTERVAL '1 day')::date
             """,
@@ -726,12 +749,14 @@ def quality_control_data(request):
             pic_pmde_name = pic_pmde.id_user.get_full_name() or pic_pmde.id_user.username
 
         # Deadline from the annotated durasi — 0 means no active DurasiJatuhTempo
-        # covers this tiket's tgl_transfer, so there is nothing to count from.
+        # covers this tiket's base date, so there is nothing to count from.
         deadline = '-'
         jatuh_tempo = '-'
         deadline_sort_iso = ''
         sisa_hari = None
-        deadline_day = _deadline_day(tiket.tgl_transfer, tiket.active_durasi)
+        deadline_day = _deadline_day(
+            tiket.tgl_transfer, tiket.tgl_rematch, tiket.active_durasi,
+        )
         if deadline_day is not None:
             deadline = deadline_day.strftime('%d/%m/%Y')
             deadline_sort_iso = deadline_day.strftime('%Y-%m-%d')
