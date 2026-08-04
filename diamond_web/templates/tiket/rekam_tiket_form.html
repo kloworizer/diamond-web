@@ -610,6 +610,14 @@
                     </div>
                     <div class="row g-2" style="font-size: 12.5px;">
                         <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Tgl Terima Vertikal</span>
+                            <span id="confirm-tgl-vertikal" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Tgl Terima DIP</span>
+                            <span id="confirm-tgl-dip" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
                             <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Bentuk Data</span>
                             <span id="confirm-bentuk-data" class="fw-semibold text-dark">-</span>
                         </div>
@@ -618,6 +626,25 @@
                             <span id="confirm-cara-penyampaian" class="fw-semibold text-dark">-</span>
                         </div>
                         <div class="col-12">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Nomor Surat Pengantar</span>
+                            <span id="confirm-nomor-surat-pengantar" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-12 border-top mt-2 pt-2">
+                            <span style="font-size: 10.5px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 4px;">Periode Data</span>
+                        </div>
+                        <div class="col-12">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Deskripsi Periode</span>
+                            <span id="confirm-deskripsi-periode" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Periode</span>
+                            <span id="confirm-periode" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Tahun</span>
+                            <span id="confirm-tahun" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-12 border-top mt-2 pt-2">
                             <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Penyampaian</span>
                             <span id="confirm-penyampaian" class="fw-semibold text-dark">-</span>
                         </div>
@@ -1760,23 +1787,12 @@
             const specialReq = document.getElementById('id_special_request');
             setConfirm('confirm-special-request', specialReq?.checked ? 'Ya' : 'Tidak');
             
-            document.getElementById('confirm-deskripsi-periode').textContent = 
-                document.getElementById('info-deskripsi-periode').textContent || '-';
-            
-            document.getElementById('confirm-periode').textContent = 
-                periodeSelect.options[periodeSelect.selectedIndex]?.text || '-';
-            
-            document.getElementById('confirm-tahun').textContent = 
-                tahunSelect.options[tahunSelect.selectedIndex]?.text || '-';
-            
-            document.getElementById('confirm-tgl-vertikal').textContent = 
-                formatDateTime(tglVertikalInput.value) || '-';
-            
-            document.getElementById('confirm-tgl-dip').textContent = 
-                formatDateTime(tglDipInput.value) || '-';
-
-            document.getElementById('confirm-nomor-surat-pengantar').textContent = 
-                document.getElementById('id_nomor_surat_pengantar')?.value || '-';
+            setConfirm('confirm-deskripsi-periode', document.getElementById('info-deskripsi-periode')?.textContent || '-');
+            setConfirm('confirm-periode', periodeSelect.options[periodeSelect.selectedIndex]?.text || '-');
+            setConfirm('confirm-tahun', tahunSelect.options[tahunSelect.selectedIndex]?.text || '-');
+            setConfirm('confirm-tgl-vertikal', formatDateTime(tglVertikalInput.value) || '-');
+            setConfirm('confirm-tgl-dip', formatDateTime(tglDipInput.value) || '-');
+            setConfirm('confirm-nomor-surat-pengantar', document.getElementById('id_nomor_surat_pengantar')?.value || '-');
 
             // Backup Data (Bagian C)
             const backupChecked = document.getElementById('rekam-backup-checkbox')?.checked;
