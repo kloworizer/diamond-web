@@ -437,8 +437,10 @@
                                         <span class="meta-value">
                                             {% if tiket.id_status_penelitian.deskripsi == 'Lengkap' or tiket.id_status_penelitian.nama_status_penelitian == 'Lengkap' %}
                                                 <span class="premium-badge premium-badge-success"><i class="feather-check-square me-1"></i>Lengkap</span>
+                                            {% elif tiket.id_status_penelitian.deskripsi == 'Lengkap Sebagian' or tiket.id_status_penelitian.nama_status_penelitian == 'Lengkap Sebagian' %}
+                                                <span class="premium-badge premium-badge-warning"><i class="feather-alert-triangle me-1"></i>Lengkap Sebagian</span>
                                             {% elif tiket.id_status_penelitian.deskripsi == 'Tidak Lengkap' or tiket.id_status_penelitian.nama_status_penelitian == 'Tidak Lengkap' %}
-                                                <span class="premium-badge premium-badge-warning"><i class="feather-alert-triangle me-1"></i>Tidak Lengkap</span>
+                                                <span class="premium-badge premium-badge-danger"><i class="feather-x-circle me-1"></i>Tidak Lengkap</span>
                                             {% else %}
                                                 <span class="premium-badge premium-badge-secondary">{{ tiket.id_status_penelitian.nama_status_penelitian|default:tiket_details.status_penelitian|default:'-' }}</span>
                                             {% endif %}
@@ -694,14 +696,14 @@
                         {% endif %}
 
                         {% if not tiket.backup %}
-                        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
+                        <button type="button" class="btn btn-primary shadow-sm fw-semibold" data-bs-toggle="modal"
                             data-bs-target="#rekamBackupDataModal">
                             <i class="feather-save me-1"></i>Rekam Backup Data
                         </button>
                         {% endif %}
 
                         {% if not tiket.tanda_terima %}
-                        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
+                        <button type="button" class="btn btn-info shadow-sm fw-semibold text-white" data-bs-toggle="modal"
                             data-bs-target="#createTandaTerimaModal">
                             <i class="feather-file-text me-1"></i>Buat Tanda Terima
                         </button>
@@ -1308,7 +1310,15 @@
                                             </td>
                                             <td>
                                                 {% if rt.id_status_penelitian %}
-                                                <span class="premium-badge premium-badge-indigo">{{ rt.status_penelitian_label }}</span>
+                                                {% if rt.status_penelitian_label == 'Lengkap' %}
+                                                <span class="premium-badge premium-badge-success">{{ rt.status_penelitian_label }}</span>
+                                                {% elif rt.status_penelitian_label == 'Lengkap Sebagian' %}
+                                                <span class="premium-badge premium-badge-warning">{{ rt.status_penelitian_label }}</span>
+                                                {% elif rt.status_penelitian_label == 'Tidak Lengkap' %}
+                                                <span class="premium-badge premium-badge-danger">{{ rt.status_penelitian_label }}</span>
+                                                {% else %}
+                                                <span class="premium-badge premium-badge-secondary">{{ rt.status_penelitian_label }}</span>
+                                                {% endif %}
                                                 {% else %}
                                                 <span class="text-muted">-</span>
                                                 {% endif %}
@@ -2341,13 +2351,13 @@
             transform: translateY(-1px);
         }
 
-        .main-content .btn-warning, .main-content .btn-outline-warning {
+        .main-content .btn-warning {
             background-color: #f59e0b !important;
             border-color: #f59e0b !important;
             color: #ffffff !important;
         }
 
-        .main-content .btn-warning:hover, .main-content .btn-outline-warning:hover {
+        .main-content .btn-warning:hover {
             background-color: #d97706 !important;
             border-color: #d97706 !important;
             box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2) !important;
@@ -2380,13 +2390,13 @@
             transform: translateY(-1px);
         }
 
-        .main-content .btn-secondary, .main-content .btn-outline-secondary {
+        .main-content .btn-secondary {
             background-color: #64748b !important;
             border-color: #64748b !important;
             color: #ffffff !important;
         }
 
-        .main-content .btn-secondary:hover, .main-content .btn-outline-secondary:hover {
+        .main-content .btn-secondary:hover {
             background-color: #475569 !important;
             border-color: #475569 !important;
             box-shadow: 0 4px 12px rgba(100, 116, 139, 0.2) !important;
