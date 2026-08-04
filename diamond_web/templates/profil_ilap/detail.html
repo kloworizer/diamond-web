@@ -1,46 +1,24 @@
 {% extends "base.html" %}
-{% load auth_extras %}
 
 {% block content %}
 <style>
-    /* Table row compactness */
-    .table th, 
-    .table td {
-        padding: 10px 12px !important;
-        font-size: 13px !important;
-        vertical-align: middle !important;
-    }
-
-    /* Table frame: only body scrolls, header stays sticky */
-    .table-frame {
-        overflow-x: auto;
-        border-top: 1px solid #e2e8f0;
-        position: relative;
-    }
-
-    .table-frame thead th {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        background-color: #f8fafc !important;
-        box-shadow: inset 0 -1px 0 #dee2e6;
-    }
-
-    /* Premium Card Padding rules */
-    .card.stretch {
+    /* Premium Card Padding rules. Scoped to the instansi card: the Jenis Data
+       card is a .datatable-card and takes its frame, padding and cell metrics
+       from the shared table skin in base.html, like every other table. */
+    .card.stretch.info-card {
         border-radius: 16px !important;
         overflow: hidden;
     }
-    
-    .card.stretch .card-header {
+
+    .card.stretch.info-card .card-header {
         padding-top: 20px !important;
         padding-bottom: 20px !important;
         padding-left: 28px !important;
         padding-right: 28px !important;
         border-bottom: none !important;
     }
-    
-    .card.stretch .card-body {
+
+    .card.stretch.info-card .card-body {
         padding-bottom: 36px !important;
         padding-left: 28px !important;
         padding-right: 28px !important;
@@ -106,13 +84,14 @@
 
 <div class="main-content">
     <!-- ILAP Information Card -->
-    <div class="card stretch stretch-full mb-3">
+    <div class="card stretch stretch-full info-card mb-3">
         <div class="card-header border-bottom-0 pb-0 bg-transparent">
             <h5 class="card-title mb-0"><i class="feather-info me-2 text-primary"></i>Informasi Instansi ILAP</h5>
         </div>
         <div class="card-body">
+            <!-- Profil instansi, spread over two columns -->
+            <h6 class="text-muted fw-bold mb-3 small" style="text-transform: uppercase; letter-spacing: 0.5px;">Profil Instansi</h6>
             <div class="row">
-                <!-- Left Column: Profil Instansi -->
                 <div class="col-md-6 border-end-md">
                     <div class="info-item">
                         <div class="info-item-icon bg-soft-primary text-primary">
@@ -137,8 +116,37 @@
                             <i class="feather-grid"></i>
                         </div>
                         <div class="info-item-content">
-                            <span class="info-item-label text-muted">Kategori / Wilayah</span>
-                            <p class="info-item-value">{{ ilap.id_kategori.nama_kategori }} ({{ ilap.id_kategori_wilayah.deskripsi|default:"---" }})</p>
+                            <span class="info-item-label text-muted">Kategori ILAP</span>
+                            <p class="info-item-value">{{ ilap.id_kategori.nama_kategori }}</p>
+                        </div>
+                    </div>
+                    <div class="info-item mb-0">
+                        <div class="info-item-icon bg-soft-primary text-primary">
+                            <i class="feather-globe"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">Kategori Wilayah</span>
+                            <p class="info-item-value">{{ ilap.id_kategori_wilayah.deskripsi|default:"---" }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 ps-md-4">
+                    <div class="info-item">
+                        <div class="info-item-icon bg-soft-primary text-primary">
+                            <i class="feather-map-pin"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">Alamat ILAP</span>
+                            <p class="info-item-value">{{ ilap.alamat_ilap|default:"---"|linebreaksbr }}</p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-icon bg-soft-primary text-primary">
+                            <i class="feather-map"></i>
+                        </div>
+                        <div class="info-item-content">
+                            <span class="info-item-label text-muted">Kota</span>
+                            <p class="info-item-value">{{ ilap.kota_ilap|default:"---" }}</p>
                         </div>
                     </div>
                     <div class="info-item">
@@ -146,76 +154,134 @@
                             <i class="feather-award"></i>
                         </div>
                         <div class="info-item-content">
-                            <span class="info-item-label text-muted">KPP Administrasi</span>
-                            <p class="info-item-value">{{ ilap.id_kpp.nama_kpp|default:"---" }}</p>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">KPP</label>
-                        <p>
-                            {% for rel in ilap.ilap_kpp_relations.all %}
-                                {{ rel.id_kpp.nama_kpp }}{% if not forloop.last %}, {% endif %}
-                            {% empty %}
-                                ---
-                            {% endfor %}
-                        </p>
-                    </div>
-                </div>
-                
-                <!-- Right Column: Kontak & PIC -->
-                <div class="col-md-6 ps-md-4">
-                    <h6 class="text-muted fw-bold mb-3 small" style="text-transform: uppercase; letter-spacing: 0.5px;">Informasi PIC & Kontak</h6>
-                    <div class="info-item">
-                        <div class="info-item-icon bg-soft-success text-success">
-                            <i class="feather-user"></i>
-                        </div>
-                        <div class="info-item-content">
-                            <span class="info-item-label text-muted">Nama PIC</span>
-                            <p class="info-item-value">{{ ilap.namapic_ilap|default:"---" }}</p>
-                        </div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-item-icon bg-soft-success text-success">
-                            <i class="feather-mail"></i>
-                        </div>
-                        <div class="info-item-content">
-                            <span class="info-item-label text-muted">Email PIC</span>
+                            <span class="info-item-label text-muted">KPP</span>
                             <p class="info-item-value">
-                                {% if ilap.email_picilap %}
-                                <a href="mailto:{{ ilap.email_picilap }}" class="text-primary text-decoration-none">{{ ilap.email_picilap }}</a>
-                                {% else %}
-                                ---
-                                {% endif %}
+                                {% for kpp in ilap.kpp_list %}{{ kpp.nama_kpp }}{% if not forloop.last %}, {% endif %}{% empty %}---{% endfor %}
                             </p>
                         </div>
                     </div>
                     <div class="info-item mb-0">
-                        <div class="info-item-icon bg-soft-success text-success">
-                            <i class="feather-phone"></i>
+                        <div class="info-item-icon bg-soft-primary text-primary">
+                            <i class="feather-home"></i>
                         </div>
                         <div class="info-item-content">
-                            <span class="info-item-label text-muted">Telepon Kantor</span>
-                            <p class="info-item-value">{{ ilap.telp_kantor|default:"---" }}</p>
+                            <span class="info-item-label text-muted">Kanwil</span>
+                            <p class="info-item-value">
+                                {% for kanwil in ilap.kanwil_list %}{{ kanwil.nama_kanwil }}{% if not forloop.last %}, {% endif %}{% empty %}---{% endfor %}
+                            </p>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Kontak & PIC, two columns of its own below the profile.
+                 Reserved for the people who correspond with this ILAP, see
+                 can_view_ilap_kontak. -->
+            {% if can_view_kontak %}
+            <div class="pt-4 mt-4" style="border-top: 1px solid #e2e8f0;">
+                <h6 class="text-muted fw-bold mb-3 small" style="text-transform: uppercase; letter-spacing: 0.5px;">Informasi PIC &amp; Kontak</h6>
+                <div class="row">
+                    <div class="col-md-6 border-end-md">
+                        <div class="info-item">
+                            <div class="info-item-icon bg-soft-success text-success">
+                                <i class="feather-user"></i>
+                            </div>
+                            <div class="info-item-content">
+                                <span class="info-item-label text-muted">Nama PIC</span>
+                                <p class="info-item-value">{{ ilap.namapic_ilap|default:"---" }}</p>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-item-icon bg-soft-success text-success">
+                                <i class="feather-briefcase"></i>
+                            </div>
+                            <div class="info-item-content">
+                                <span class="info-item-label text-muted">Jabatan PIC</span>
+                                <p class="info-item-value">{{ ilap.jabatan_picilap|default:"---" }}</p>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-item-icon bg-soft-success text-success">
+                                <i class="feather-mail"></i>
+                            </div>
+                            <div class="info-item-content">
+                                <span class="info-item-label text-muted">Email PIC</span>
+                                <p class="info-item-value">
+                                    {% if ilap.email_picilap %}
+                                    <a href="mailto:{{ ilap.email_picilap }}" class="text-primary text-decoration-none">{{ ilap.email_picilap }}</a>
+                                    {% else %}
+                                    ---
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="info-item mb-0">
+                            <div class="info-item-icon bg-soft-success text-success">
+                                <i class="feather-smartphone"></i>
+                            </div>
+                            <div class="info-item-content">
+                                <span class="info-item-label text-muted">Telepon PIC</span>
+                                <p class="info-item-value">{{ ilap.telp_pic|default:"---" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 ps-md-4">
+                        <div class="info-item">
+                            <div class="info-item-icon bg-soft-success text-success">
+                                <i class="feather-phone"></i>
+                            </div>
+                            <div class="info-item-content">
+                                <span class="info-item-label text-muted">Telepon Kantor</span>
+                                <p class="info-item-value">{{ ilap.telp_kantor|default:"---" }}</p>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-item-icon bg-soft-success text-success">
+                                <i class="feather-printer"></i>
+                            </div>
+                            <div class="info-item-content">
+                                <span class="info-item-label text-muted">Fax</span>
+                                <p class="info-item-value">{{ ilap.fax_ilap|default:"---" }}</p>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-item-icon bg-soft-success text-success">
+                                <i class="feather-send"></i>
+                            </div>
+                            <div class="info-item-content">
+                                <span class="info-item-label text-muted">Tujuan Surat</span>
+                                <p class="info-item-value">{{ ilap.tujuan_surat|default:"---" }}</p>
+                            </div>
+                        </div>
+                        <div class="info-item mb-0">
+                            <div class="info-item-icon bg-soft-success text-success">
+                                <i class="feather-copy"></i>
+                            </div>
+                            <div class="info-item-content">
+                                <span class="info-item-label text-muted">Tembusan</span>
+                                <p class="info-item-value">{{ ilap.tembusan|default:"---" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 
     <!-- Jenis Data ILAP Card -->
-    <div class="card stretch stretch-full">
-        <div class="card-header border-bottom-0 pb-0 bg-transparent">
-            <h5 class="card-title mb-0"><i class="feather-table me-2 text-primary"></i>Jenis Data ILAP</h5>
+    <div class="card stretch stretch-full datatable-card">
+        <div class="card-header">
+            <h5 class="card-title"><i class="feather-table me-2 text-primary"></i>Jenis Data ILAP</h5>
         </div>
-        <div class="card-body custom-card-action">
-            {% if jenis_data_details %}
-            <div class="table-frame">
-                <table class="table table-hover mb-0" style="width:100%">
+        <div class="card-body custom-card-action p-0">
+            <div class="table-responsive">
+                <table id="jenis-data-table" class="table table-hover mb-0" style="width:100%">
                     <thead>
                         <tr>
                             <th>ID Sub Jenis Data</th>
                             <th>Nama Sub Jenis Data</th>
+                            <th>Nama Tabel I</th>
                             <th>Dasar Hukum</th>
                             <th>Periode Penyampaian - Periode Penerimaan</th>
                             {% for year in years %}
@@ -223,46 +289,60 @@
                             {% endfor %}
                         </tr>
                     </thead>
-                    <tbody>
-                        {% for detail in jenis_data_details %}
-                        <tr>
-                            <td>
-                                <a href="{% url 'jenis_data_ilap_profil' detail.jenis_data.id_sub_jenis_data %}"
-                                   class="fw-semibold text-primary text-decoration-none">
-                                    {{ detail.jenis_data.id_sub_jenis_data }}
-                                </a>
-                            </td>
-                            <td>{{ detail.jenis_data.nama_sub_jenis_data }}</td>
-                            <td>
-                                <small class="text-muted">{{ detail.dasar_hukum|default:"---" }}</small>
-                            </td>
-                            <td><span class="badge bg-soft-secondary text-secondary">{{ detail.periode_label }}</span></td>
-                            {% for year in years %}
-                            <td class="text-center">
-                                {% with cell=detail.year_data|get_item:year %}
-                                    {% if cell.label %}
-                                        <span class="badge fw-bold {% if cell.complete %}bg-soft-success text-success{% else %}bg-soft-primary text-primary{% endif %}"
-                                              style="font-size: 11px; padding: 4px 8px;"
-                                              title="{{ cell.count }} tiket dari {{ cell.total }} periode">
-                                            {{ cell.label }}
-                                        </span>
-                                    {% else %}
-                                        <span class="text-muted" style="font-size: 11px;">&ndash;</span>
-                                    {% endif %}
-                                {% endwith %}
-                            </td>
-                            {% endfor %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
+                    <tbody></tbody>
                 </table>
             </div>
-            {% else %}
-            <div class="p-4 text-center">
-                <p class="text-muted">Tidak ada data jenis ILAP untuk ILAP ini.</p>
-            </div>
-            {% endif %}
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function () {
+        $('#jenis-data-table').DataTable({
+            serverSide: true,
+            processing: true,
+            ajax: {
+                url: "{% url 'profil_ilap_jenis_data_data' ilap.id_ilap %}",
+                type: 'GET',
+                // DataTables sends six parameters per column by default, which
+                // an ILAP with a long history turns into a request line past
+                // gunicorn's 4094 byte limit_request_line — a 400 before the
+                // view is ever reached. Only what the endpoint reads is sent,
+                // so the request stays a fixed size however many years the
+                // matrix grows to.
+                data: function (d) {
+                    var order = d.order && d.order.length ? d.order[0] : null;
+                    return {
+                        draw: d.draw,
+                        start: d.start,
+                        length: d.length,
+                        'search[value]': d.search ? d.search.value : '',
+                        'order[0][column]': order ? order.column : 0,
+                        'order[0][dir]': order ? order.dir : 'asc'
+                    };
+                }
+            },
+            columns: [
+                { data: 'id_sub_jenis_data' },
+                { data: 'nama_sub_jenis_data' },
+                { data: 'nama_tabel_I' },
+                // Both read from related rows, so the server cannot sort on them.
+                { data: 'dasar_hukum', orderable: false },
+                { data: 'periode', orderable: false },
+                {% for year in years %}
+                { data: 'y{{ year }}', orderable: false, searchable: false, className: 'text-center' },
+                {% endfor %}
+            ],
+            order: [[0, 'asc']],
+            // Paging, the control layout and the Indonesian labels are the
+            // app-wide DataTables defaults set in base.html; only the empty
+            // message is specific to this table.
+            language: {
+                emptyTable: 'Tidak ada data jenis ILAP untuk ILAP ini.'
+            }
+        });
+    });
+</script>
 {% endblock %}

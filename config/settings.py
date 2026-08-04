@@ -255,6 +255,12 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE_SECURE", "False").lower() == "true"
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
+    # Browsers ignore Cross-Origin-Opener-Policy on non-HTTPS origins and log a
+    # console warning on every page. Set SECURE_CROSS_ORIGIN_OPENER_POLICY=none
+    # for plain-HTTP deployments (e.g. an internal IP) to suppress it; drop the
+    # env var once TLS is in front of the app and the header does something.
+    if os.getenv("SECURE_CROSS_ORIGIN_OPENER_POLICY", "").lower() == "none":
+        SECURE_CROSS_ORIGIN_OPENER_POLICY = None
     X_FRAME_OPTIONS = "DENY"
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     USE_X_FORWARDED_HOST = True

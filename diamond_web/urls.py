@@ -84,6 +84,7 @@ urlpatterns = [
     path('ilap/<str:pk>/delete/', views.ILAPDeleteView.as_view(), name='ilap_delete'),
     # Profil ILAP URLs
     path('profil-ilap/', views.ProfilILAPListView.as_view(), name='profil_ilap_list'),
+    path('profil-ilap/<str:id_ilap>/jenis-data/', views.profil_ilap_jenis_data_data, name='profil_ilap_jenis_data_data'),
     path('profil-ilap/<str:id_ilap>/', views.ProfilILAPDetailView.as_view(), name='profil_ilap_detail'),
     # Jenis Tabel URLs
     path('jenis-tabel/', views.JenisTabelListView.as_view(), name='jenis_tabel_list'),
@@ -302,6 +303,8 @@ urlpatterns = [
     # Durasi Jatuh Tempo PMDE URLs
     path('durasi-jatuh-tempo-pmde/', views.DurasiJatuhTempoPMDEListView.as_view(), name='durasi_jatuh_tempo_pmde_list'),
     path('durasi-jatuh-tempo-pmde/data/', views.durasi_jatuh_tempo_pmde_data, name='durasi_jatuh_tempo_pmde_data'),
+    path('durasi-jatuh-tempo-pmde/generate/preview/', views.durasi_jatuh_tempo_pmde_generate_preview, name='durasi_jatuh_tempo_pmde_generate_preview'),
+    path('durasi-jatuh-tempo-pmde/generate/', views.durasi_jatuh_tempo_pmde_generate, name='durasi_jatuh_tempo_pmde_generate'),
     path('durasi-jatuh-tempo-pmde/create/', views.DurasiJatuhTempoPMDECreateView.as_view(), name='durasi_jatuh_tempo_pmde_create'),
     path('durasi-jatuh-tempo-pmde/<int:pk>/update/', views.DurasiJatuhTempoPMDEUpdateView.as_view(), name='durasi_jatuh_tempo_pmde_update'),
     path('durasi-jatuh-tempo-pmde/<int:pk>/delete/', views.DurasiJatuhTempoPMDEDeleteView.as_view(), name='durasi_jatuh_tempo_pmde_delete'),

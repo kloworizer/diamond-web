@@ -26,8 +26,16 @@ def _force_close_modal(page):
             """() => {
                 const m = document.getElementById('crudModal');
                 if (m) {
-                    if (window.bootstrap) { const i = bootstrap.Modal.getInstance(m); if (i) i.hide(); }
+                    // dispose(), not hide(): tearing the classes off mid-transition
+                    // leaves bootstrap's own _isShown flag set, and the page's
+                    // $('#crudModal').modal('show') then returns early -- the next
+                    // form loads into a modal that never becomes visible.
+                    if (window.bootstrap) {
+                        const i = bootstrap.Modal.getInstance(m);
+                        if (i) i.dispose();
+                    }
                     m.classList.remove('show'); m.style.display = 'none';
+                    m.setAttribute('aria-hidden', 'true');
                 }
                 document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
                 document.body.classList.remove('modal-open');
@@ -548,6 +556,411 @@ def protected_delete_guard(page, rep):
     H.clear_overlays(page)
 
 
+# --------------------------------------------------------------------------- #
+# Rule-specific negatives.
+#
+# The CRUD sweeps above only prove that *some* rejection happens. These prove
+# that the rule the form actually documents is the one that fired, by matching
+# its own message. Every submission here is expected to be rejected, so none
+# of them leaves a row behind -- the cleanup path only runs if the server
+# wrongly accepted the data (which is itself the bug being reported).
+# --------------------------------------------------------------------------- #
+def _first_row_cells(page, table_id):
+    """Text of the first data row's cells; [] when the table has no data.
+
+    Waiting for `tbody tr` is not enough: DataTables paints a single
+    full-width "Loading/No data" row first, so a naive read races the AJAX and
+    always comes back empty. Wait for a row that actually has columns."""
+    try:
+        page.wait_for_function(
+            """(id) => {
+                const tr = document.querySelector(`#${id} tbody tr`);
+                return !!tr && tr.children.length > 2;
+            }""", arg=table_id, timeout=10000)
+    except Exception:
+        return []
+    return page.eval_on_selector_all(
+        f"#{table_id} tbody tr:first-child td",
+        "tds => tds.map(td => td.textContent.trim())")
+
+
+def _select_option_containing(page, select_selector, needle):
+    """Select the first option whose label contains `needle`. '' if none."""
+    return page.evaluate(
+        """([sel, needle]) => {
+            const s = document.querySelector(sel);
+            if (!s) return '';
+            const o = [...s.options].find(o => o.value && o.textContent.includes(needle));
+            if (!o) return '';
+            s.value = o.value;
+            s.dispatchEvent(new Event('change', {bubbles: true}));
+            if (window.jQuery) jQuery(s).trigger('change');
+            return o.value;
+        }""", [select_selector, needle])
+
+
+def _wait_for_modal_errors(page, timeout=4000):
+    """Wait for the re-rendered form's error nodes, then return their text.
+
+    The AJAX round-trip + innerHTML swap lands after _submit_and_wait()'s own
+    900ms, so reading straight away sees the pre-submit markup and reports a
+    rejection with 'no visible error'."""
+    step = 400
+    waited = 0
+    while waited < timeout:
+        errors = H.inline_error_texts(page, "#crudModal")
+        if errors:
+            return " ".join(errors)
+        page.wait_for_timeout(step)
+        waited += step
+    return " ".join(H.inline_error_texts(page, "#crudModal"))
+
+
+def _submit_expect_rejected(page, rep, sc, step, expect_text, *, bug=None):
+    """Submit #crudModal expecting a rejection carrying `expect_text`."""
+    closed = _submit_and_wait(page, rep, sc, step)
+    errors = _wait_for_modal_errors(page) if not closed else ""
+    if closed:
+        rep.fail(sc, f"{step} NOT rejected", "modal closed -> the row was saved")
+        if bug:
+            rep.bug(*bug)
+        _force_close_modal(page)
+        return False
+    if expect_text.lower() in errors.lower():
+        rep.ok(sc, step, errors[:140])
+        _force_close_modal(page)
+        return True
+    rep.fail(sc, f"{step}: wrong error",
+             f"expected '{expect_text}', got '{errors[:140] or 'no visible error'}'")
+    _force_close_modal(page)
+    return False
+
+
+def rule_durasi_jatuh_tempo(page, rep):
+    """DurasiJatuhTempoForm.clean(): end_date must not precede start_date."""
+    sc = "rule_durasi_jatuh_tempo"
+    table_id = "durasi-jatuh-tempo-pide-table"
+    page.goto(f"{H.BASE_URL}/durasi-jatuh-tempo-pide/")
+    _open_create(page, table_id)
+    page.select_option("#id_id_sub_jenis_data", index=1)
+    page.fill("#id_durasi", "5")
+    H.fill_date(page, "#id_start_date", H.date_ago(0))
+    H.fill_date(page, "#id_end_date", H.date_ago(240))   # 10 days before start
+    _submit_expect_rejected(
+        page, rep, sc, "end_date before start_date rejected",
+        "tidak boleh sebelum Tanggal Mulai",
+        bug=("Durasi Jatuh Tempo accepts an end_date before start_date", "LOW",
+             "DurasiJatuhTempoForm.clean() rejects end_date < start_date, but the row "
+             "was saved anyway."))
+    H.clear_overlays(page)
+    H.shot(page, sc)
+
+
+def rule_pic_duplicate_and_overlap(page, rep):
+    """PICForm.clean(): no duplicate (user, sub jenis, start) and no second
+    active PIC while an open-ended one exists."""
+    sc = "rule_pic"
+    table_id = "pic-p3de-table"
+    page.goto(f"{H.BASE_URL}/pic-p3de/")
+    # Prefer the e2e user's own PIC row (setup_test_data guarantees one): the
+    # create form filters id_user to the user_p3de group, so an arbitrary
+    # first row may name a user this form cannot even offer.
+    _search_column(page, table_id, 3, H.USER)
+    cells = _first_row_cells(page, table_id)
+    if not cells:
+        _search_column(page, table_id, 3, "")
+        cells = _first_row_cells(page, table_id)
+    if not cells:
+        rep.info(sc, "no existing PIC row to collide with", "skipped")
+        return
+    # Columns: ILAP | ID Sub Jenis Data | Nama | Username | Full Name | Start | End
+    sub_jenis, username, start_date, end_date = cells[1], cells[3], cells[5], cells[6]
+
+    def open_and_fill(start):
+        _open_create(page, table_id)
+        picked_sub = _select_option_containing(page, "#id_id_sub_jenis_data_ilap", sub_jenis)
+        picked_user = _select_option_containing(page, "#id_id_user", f"({username})")
+        if not picked_sub or not picked_user:
+            _force_close_modal(page)
+            return False
+        page.wait_for_timeout(400)
+        H.fill_date(page, "#id_start_date", start)
+        return True
+
+    # 1) Exact duplicate of the existing row.
+    if not open_and_fill(start_date):
+        rep.info(sc, "duplicate PIC", f"sub jenis '{sub_jenis}' or user '{username}' "
+                                      "not selectable in this form; skipped")
+        return
+    _submit_expect_rejected(
+        page, rep, sc, "duplicate PIC (same user/sub jenis/start) rejected", "sudah ada",
+        bug=("PIC accepts a duplicate user + sub jenis data + start date", "MEDIUM",
+             f"A second PIC row for user '{username}' on '{sub_jenis}' starting "
+             f"{start_date} was saved; PICForm.clean() is supposed to reject it."))
+    H.clear_overlays(page)
+
+    # 2) A second PIC while the existing one is still open-ended.
+    if end_date:
+        rep.info(sc, "overlapping PIC", f"first row already ends {end_date}; skipped")
+    else:
+        if open_and_fill(H.date_ago(0)):
+            _submit_expect_rejected(
+                page, rep, sc, "second active PIC rejected", "Sudah ada PIC aktif",
+                bug=("PIC allows a second active PIC for the same user + sub jenis data",
+                     "MEDIUM",
+                     f"'{username}' already has an open-ended P3DE PIC row for "
+                     f"'{sub_jenis}', but a second active one was accepted."))
+    H.clear_overlays(page)
+    H.shot(page, sc)
+
+
+def rule_periode_jenis_data(page, rep):
+    """PeriodeJenisDataForm.clean(): end<start, duplicate start, overlap."""
+    sc = "rule_periode_jenis_data"
+    table_id = "periode-jenis-data-table"
+    page.goto(f"{H.BASE_URL}/periode-jenis-data/")
+    cells = _first_row_cells(page, table_id)
+    # Columns: ID Sub Jenis | Nama | Periode Pengiriman | Akhir | Start | End
+    sub_jenis = cells[0] if cells else ""
+    start_date = cells[4] if cells else ""
+    end_date = cells[5] if cells else ""
+
+    def open_and_fill(start, end=None):
+        _open_create(page, table_id)
+        if sub_jenis:
+            _select_option_containing(page, "#id_id_sub_jenis_data_ilap", sub_jenis)
+        else:
+            page.select_option("#id_id_sub_jenis_data_ilap", index=1)
+        page.select_option("#id_id_periode_pengiriman", index=1)
+        page.fill("#id_akhir_penyampaian", "30")
+        H.fill_date(page, "#id_start_date", start)
+        if end:
+            H.fill_date(page, "#id_end_date", end)
+
+    # 1) end_date before start_date (independent of what's in the table).
+    open_and_fill(H.date_ago(0), H.date_ago(240))
+    _submit_expect_rejected(
+        page, rep, sc, "end_date before start_date rejected",
+        "tidak boleh sebelum Tanggal Mulai",
+        bug=("Periode Jenis Data accepts an end_date before start_date", "LOW",
+             "PeriodeJenisDataForm.clean() rejects end_date < start_date."))
+    H.clear_overlays(page)
+
+    if not cells:
+        rep.info(sc, "no existing periode row to collide with", "duplicate/overlap skipped")
+        return
+
+    # 2) Same sub jenis + same start date.
+    open_and_fill(start_date)
+    _submit_expect_rejected(
+        page, rep, sc, "duplicate start_date rejected", "sudah ada",
+        bug=("Periode Jenis Data accepts a duplicate sub jenis + start date", "MEDIUM",
+             f"A second periode for '{sub_jenis}' starting {start_date} was saved."))
+    H.clear_overlays(page)
+
+    # 3) A new open-ended range that intersects the existing one. With no end
+    #    date on either side the ranges always intersect; when the existing row
+    #    does end, the new start has to fall on/before that end to overlap.
+    new_start = H.date_ago(0)
+    if end_date and end_date < new_start:
+        rep.info(sc, "overlapping range", f"first row ended {end_date}; skipped")
+    else:
+        open_and_fill(new_start)
+        _submit_expect_rejected(
+            page, rep, sc, "overlapping range rejected", "bertumpuk",
+            bug=("Periode Jenis Data accepts overlapping date ranges", "MEDIUM",
+                 f"An open-ended periode starting {new_start} was accepted even though "
+                 f"'{sub_jenis}' already has a range it intersects."))
+    H.clear_overlays(page)
+    H.shot(page, sc)
+
+
+def rule_jenis_prioritas_data(page, rep):
+    """JenisPrioritasDataForm.clean(): end<start and one entry per (sub, tahun)."""
+    sc = "rule_jenis_prioritas_data"
+    table_id = "jenis-prioritas-data-table"
+    page.goto(f"{H.BASE_URL}/jenis-prioritas-data/")
+    cells = _first_row_cells(page, table_id)
+    # Columns: ID Sub Jenis | Nama | No ND | Tahun | Start | End
+    sub_jenis = cells[0] if cells else ""
+    tahun = cells[3] if cells else ""
+    start_date = cells[4] if cells else ""
+
+    def open_and_fill(tahun_value, start, end=None):
+        _open_create(page, table_id)
+        if sub_jenis:
+            _select_option_containing(page, "#id_id_sub_jenis_data_ilap", sub_jenis)
+        else:
+            page.select_option("#id_id_sub_jenis_data_ilap", index=1)
+        page.fill("#id_no_nd", "ND-E2E-PRIORITAS")
+        page.fill("#id_tahun", str(tahun_value))
+        H.fill_date(page, "#id_start_date", start)
+        if end:
+            H.fill_date(page, "#id_end_date", end)
+
+    open_and_fill(H.date_ago(0)[:4], H.date_ago(0), H.date_ago(240))
+    _submit_expect_rejected(
+        page, rep, sc, "end_date before start_date rejected",
+        "tidak boleh sebelum Tanggal Mulai",
+        bug=("Jenis Prioritas Data accepts an end_date before start_date", "LOW",
+             "JenisPrioritasDataForm.clean() rejects end_date < start_date."))
+    H.clear_overlays(page)
+
+    if not cells or not tahun:
+        rep.info(sc, "no existing prioritas row to collide with", "duplicate skipped")
+        return
+
+    # Same sub jenis + same tahun -- the rule that shields the DB's own
+    # UniqueConstraint, so the alternative to rejecting is a 500.
+    open_and_fill(tahun, start_date)
+    _submit_expect_rejected(
+        page, rep, sc, "duplicate (sub jenis, tahun) rejected", "sudah ada",
+        bug=("Jenis Prioritas Data accepts a duplicate sub jenis + tahun", "MEDIUM",
+             f"A second entry for '{sub_jenis}' in {tahun} was accepted; the form check "
+             "exists to keep the DB UniqueConstraint from surfacing as a 500."))
+    H.clear_overlays(page)
+    H.shot(page, sc)
+
+
+def rule_sequence_tanda_terima(page, rep):
+    """SequenceTandaTerimaForm: tahun bounds, and no edit once the year has
+    already issued receipts."""
+    sc = "rule_sequence_tanda_terima"
+    table_id = "sequence-table"
+    page.goto(f"{H.BASE_URL}/sequence-tanda-terima/")
+
+    # 1) tahun outside 1900..2100. The widget's own min/max (2020..2099) would
+    #    block this in the browser, so strip HTML5 validation to reach the rule.
+    _open_create(page, table_id)
+    page.fill("#id_tahun", "1899")
+    page.fill("#id_nomor_terakhir", "1")
+    H.disable_client_validation(page, "#crudModal form")
+    _submit_expect_rejected(
+        page, rep, sc, "tahun below 1900 rejected", "Tahun harus antara 1900 dan 2100",
+        bug=("Sequence Tanda Terima accepts a tahun outside 1900-2100", "LOW",
+             "clean_tahun() bounds tahun to 1900..2100, but 1899 was saved."))
+    H.clear_overlays(page)
+
+    # 2) Editing the year of a sequence that already numbered receipts.
+    #    Only assertable when such a row exists -- the e2e run creates tanda
+    #    terima dated today, so the current year qualifies once it has a row.
+    this_year = H.date_ago(0)[:4]
+    _search_column(page, table_id, 0, this_year)
+    edit_btn = page.locator(f"#{table_id} tbody tr [data-action='edit']").first
+    if not edit_btn.count():
+        rep.info(sc, "edit-locked check", f"no sequence row for {this_year}; skipped")
+        H.shot(page, sc)
+        return
+    edit_btn.click()
+    page.wait_for_selector("#crudModal form", timeout=8000)
+    page.wait_for_timeout(300)
+    page.fill("#id_nomor_terakhir", "999")
+    closed = _submit_and_wait(page, rep, sc, "edit sequence with existing receipts")
+    errors = _wait_for_modal_errors(page) if not closed else ""
+    if not closed and "tanda terima" in errors.lower():
+        rep.ok(sc, "edit blocked once the year has receipts", errors[:140])
+    elif closed:
+        rep.fail(sc, "edit allowed despite existing receipts for that year",
+                 f"tahun={this_year}")
+        rep.bug("Sequence Tanda Terima can be edited after receipts exist for that year",
+                "MEDIUM",
+                f"SequenceTandaTerimaForm.clean() refuses to update a sequence once "
+                f"TandaTerimaData rows exist for its tahun. The {this_year} row was "
+                "updated even though this run created receipts dated today, so the "
+                "numbering of already-issued receipts can drift.")
+    else:
+        rep.fail(sc, "edit rejected for the wrong reason", errors[:140] or "no visible error")
+    _force_close_modal(page)
+    H.clear_overlays(page)
+    H.shot(page, sc)
+
+
+def _jquery_submit_crud_modal(page):
+    """Submit #crudModal through the page's own delegated jQuery handler.
+
+    Needed where the Simpan button is JS-gated (Tanda Terima disables it until
+    a scope + tikets are chosen): clicking a disabled button does nothing, and
+    HTML5 validation would stop an incomplete payload before the handler runs.
+    """
+    page.evaluate(
+        """() => {
+            const f = document.querySelector('#crudModal form');
+            f.setAttribute('novalidate', 'novalidate');
+            f.querySelectorAll('[required]').forEach(e => e.removeAttribute('required'));
+            if (window.jQuery) jQuery(f).trigger('submit');
+            else f.dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}));
+        }""")
+    page.wait_for_timeout(2600)
+
+
+def rule_tanda_terima_scope(page, rep):
+    """TandaTerimaDataForm.clean(): the scope field the chosen Lingkup needs
+    is mandatory, and a receipt must cover at least one tiket."""
+    sc = "rule_tanda_terima_scope"
+    table_id = "tanda-terima-data-table"
+    page.goto(f"{H.BASE_URL}/tanda-terima-data/")
+
+    def open_form():
+        _open_create(page, table_id)
+        H.fill_date(page, "#crudModal #id_tanggal_tanda_terima", H.date_ago(24))
+
+    def expect(step, needle, bug=None):
+        errs = _wait_for_modal_errors(page)
+        if not page.locator("#crudModal.show").count():
+            rep.fail(sc, f"{step} NOT rejected", "modal closed -> the receipt was saved")
+            if bug:
+                rep.bug(*bug)
+            return
+        if needle.lower() in errs.lower():
+            rep.ok(sc, step, errs[:140])
+        else:
+            rep.fail(sc, f"{step}: wrong error",
+                     f"expected '{needle}', got '{errs[:140] or 'no visible error'}'")
+
+    # Regional (the default) with no Kanwil, and nothing selected to receipt.
+    open_form()
+    _tt_set_scope(page, "regional")
+    _jquery_submit_crud_modal(page)
+    expect("regional without Kanwil rejected", "Kanwil harus dipilih",
+           bug=("Tanda Terima accepts a regional receipt with no Kanwil", "MEDIUM",
+                "TandaTerimaDataForm.clean() requires id_kanwil when lingkup is "
+                "regional, but the receipt was saved without one."))
+    expect("receipt with no tiket rejected", "Minimal satu tiket",
+           bug=("Tanda Terima accepts a receipt covering no tiket at all", "MEDIUM",
+                "clean_tiket_ids() requires at least one tiket, but an empty "
+                "selection was saved."))
+    _force_close_modal(page)
+    H.clear_overlays(page)
+
+    # Nasional with no ILAP.
+    open_form()
+    _tt_set_scope(page, "nasional")
+    page.evaluate("""() => {
+        const s = document.querySelector('#id_id_ilap');
+        if (s) { s.value = ''; s.dispatchEvent(new Event('change', {bubbles: true})); }
+    }""")
+    _jquery_submit_crud_modal(page)
+    expect("nasional without ILAP rejected", "ILAP harus dipilih",
+           bug=("Tanda Terima accepts a nasional receipt with no ILAP", "MEDIUM",
+                "TandaTerimaDataForm.clean() requires id_ilap when lingkup is "
+                "nasional/internasional, but the receipt was saved without one."))
+    _force_close_modal(page)
+    H.clear_overlays(page)
+    H.shot(page, sc)
+
+
+def _tt_set_scope(page, value):
+    page.evaluate(
+        """(v) => {
+            const s = document.querySelector('#id_lingkup');
+            if (!s) return;
+            s.value = v;
+            s.dispatchEvent(new Event('change', {bubbles: true}));
+            if (window.jQuery) jQuery(s).trigger('change');
+        }""", value)
+    page.wait_for_timeout(900)
+
+
 SIMPLE_MODELS = [
     ("crud_kategori_wilayah", "kategori-wilayah", "kategori-table", 50),
     ("crud_jenis_tabel", "jenis-tabel", "jenis-tabel-table", 50),
@@ -569,7 +982,10 @@ def run(page, rep):
             rep.fail(sc, "exception", str(e))
 
     for fn in (crud_kanwil, crud_kategori_ilap, crud_periode_pengiriman,
-               crud_dasar_hukum, crud_kpp, protected_delete_guard):
+               crud_dasar_hukum, crud_kpp, protected_delete_guard,
+               rule_durasi_jatuh_tempo, rule_pic_duplicate_and_overlap,
+               rule_periode_jenis_data, rule_jenis_prioritas_data,
+               rule_sequence_tanda_terima, rule_tanda_terima_scope):
         try:
             fn(page, rep)
         except Exception as e:

@@ -42,8 +42,15 @@ class EditTiketView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         * the active P3DE PIC that owns the tiket, but only while
           tiket.status_tiket == STATUS_DIREKAM and tiket.tanda_terima is False
 
+    Editable fields:
+    - Everyone: the isian recorded at rekam time (periode/tahun, surat
+      pengantar, bentuk & cara penyampaian, baris diterima, tanggal terima)
+    - P3DE admins additionally: hasil penelitian (tgl teliti, baris lengkap /
+      tidak lengkap, with status penelitian recalculated from them) and
+      pengiriman ke PIDE (tgl nadine, nomor ND nadine, tgl kirim PIDE)
+
     Side Effects on Form Submission:
-    - Tiket editable fields are updated
+    - Tiket editable fields are updated (status_tiket is never changed)
     - A TiketAction (TiketActionType.DIUBAH) is recorded for the audit trail,
       for admin and PIC edits alike
     """
@@ -87,6 +94,12 @@ class EditTiketView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
             return JsonResponse({'success': False, 'message': 'Forbidden'}, status=403)
         return super().handle_no_permission()
 
+    def get_form_kwargs(self):
+        """Expose the later workflow isian to P3DE admins only."""
+        kwargs = super().get_form_kwargs()
+        kwargs['is_admin'] = is_admin_p3de(self.request.user)
+        return kwargs
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         tiket = self.object
@@ -101,6 +114,9 @@ class EditTiketView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         # Whether tgl_terima_vertikal applies (regional ILAP), mirroring the rekam form.
         kategori_wilayah = ilap.id_kategori_wilayah.deskripsi if ilap.id_kategori_wilayah else ''
         context['is_regional'] = 'regional' in (kategori_wilayah or '').lower()
+        # Drives the admin-only section of the modal (hasil penelitian and
+        # pengiriman ke PIDE); the form drops those fields for a PIC.
+        context['is_admin_p3de'] = is_admin_p3de(self.request.user)
         return context
 
     def _build_catatan(self, form, original):

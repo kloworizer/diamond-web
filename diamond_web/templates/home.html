@@ -1854,6 +1854,7 @@
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
                                         <th>Status Tiket</th>
+                                        <th>Jatuh Tempo</th>
                                         <th>Aksi</th>
                                     </tr>
                                 </thead>
@@ -2477,6 +2478,16 @@
             { data: 'nama_ilap', title: 'Nama ILAP' },
             { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
             { data: 'status_tiket', title: 'Status Tiket' },
+            {
+                data: 'tgl_special_request',
+                title: 'Jatuh Tempo',
+                render: function(data, type, row) {
+                    if (type === 'order' || type === 'type') {
+                        return row.tgl_special_request_order || '';
+                    }
+                    return data || '-';
+                }
+            },
             { data: 'actions', title: 'Aksi', orderable: false, searchable: false }
         ];
 

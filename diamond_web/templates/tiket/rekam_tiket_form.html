@@ -92,6 +92,16 @@
                             {% endif %}
                             <small class="text-muted mt-2 d-block" style="font-size: 11.5px;">Tuliskan penjelasan mengenai ketidaktersediaan data yang diterima.</small>
                         </div>
+                        <div class="mb-3" id="special-request-due-date-group" style="display: none;">
+                            <label for="{{ form.tgl_special_request.id_for_label }}" class="form-label">{{ form.tgl_special_request.label }}<span class="text-danger">*</span></label>
+                            {{ form.tgl_special_request }}
+                            {% if form.tgl_special_request.errors %}
+                                <div class="invalid-feedback d-block">{{ form.tgl_special_request.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted d-block">
+                                <i class="feather-info me-1"></i>Batas waktu penyelesaian permintaan khusus ini. Wajib diisi selama Permintaan Khusus aktif.
+                            </small>
+                        </div>
                     </div>
                 </div>
 
@@ -983,45 +993,27 @@
             const ilapId = ilapSelect.value;
             const ilapisRegional = {{ ilaps_regional_ids|safe }};
             
+            // setDateInputState (base.html) rather than .disabled directly: the
+            // field is a flatpickr, so the element the user types into is not
+            // this one.
             if (!ilapId) {
                 // No ILAP selected, reset to normal (not required, editable)
-                tglTerimaVertikalInput.required = false;
-                tglTerimaVertikalInput.disabled = false;
-                tglTerimaVertikalInput.style.opacity = '1';
-                if (tglTerimaVertikalInput._flatpickr && tglTerimaVertikalInput._flatpickr.altInput) {
-                    tglTerimaVertikalInput._flatpickr.altInput.disabled = false;
-                    tglTerimaVertikalInput._flatpickr.altInput.style.opacity = '1';
-                }
+                setDateInputState(tglTerimaVertikalInput, { disabled: false, required: false });
                 if (requiredIndicator) requiredIndicator.style.display = 'none';
                 if (hintText) hintText.style.display = 'none';
             } else {
                 const numIlapId = parseInt(ilapId);
                 const isRegional = ilapisRegional.includes(numIlapId);
-                
+
                 if (isRegional) {
                     // Regional: Make required and editable
-                    tglTerimaVertikalInput.required = true;
-                    tglTerimaVertikalInput.disabled = false;
-                    tglTerimaVertikalInput.style.opacity = '1';
-                    if (tglTerimaVertikalInput._flatpickr && tglTerimaVertikalInput._flatpickr.altInput) {
-                        tglTerimaVertikalInput._flatpickr.altInput.disabled = false;
-                        tglTerimaVertikalInput._flatpickr.altInput.style.opacity = '1';
-                    }
+                    setDateInputState(tglTerimaVertikalInput, { disabled: false, required: true });
                     if (requiredIndicator) requiredIndicator.style.display = 'inline';
                     if (hintText) hintText.style.display = 'none';
                 } else {
-                    // Non-Regional: Make readonly (disabled)
-                    tglTerimaVertikalInput.required = false;
-                    tglTerimaVertikalInput.disabled = true;
-                    tglTerimaVertikalInput.style.opacity = '0.6';
-                    tglTerimaVertikalInput.value = '';
-                    if (tglTerimaVertikalInput._flatpickr) {
-                        tglTerimaVertikalInput._flatpickr.clear();
-                        if (tglTerimaVertikalInput._flatpickr.altInput) {
-                            tglTerimaVertikalInput._flatpickr.altInput.disabled = true;
-                            tglTerimaVertikalInput._flatpickr.altInput.style.opacity = '0.6';
-                        }
-                    }
+                    // Non-Regional: Make readonly (disabled), dropping any date
+                    // already picked for a previously selected regional ILAP.
+                    setDateInputState(tglTerimaVertikalInput, { disabled: true });
                     if (requiredIndicator) requiredIndicator.style.display = 'none';
                     if (hintText) hintText.style.display = 'block';
                 }
@@ -1193,10 +1185,34 @@
                 statusTidakTersedia.addEventListener('change', updateKetersediaanDependents);
             }
             
+            // The special request due date only applies while the switch is on.
+            const specialRequestCheckbox = document.getElementById('id_special_request');
+            const specialRequestDueDateGroup = document.getElementById('special-request-due-date-group');
+            const dueDateInput = document.getElementById('id_tgl_special_request');
+
+            function updateSpecialRequestDueDate() {
+                if (!specialRequestCheckbox || !specialRequestDueDateGroup) return;
+                const enabled = specialRequestCheckbox.checked;
+                specialRequestDueDateGroup.style.display = enabled ? '' : 'none';
+                if (dueDateInput) {
+                    // Only required while visible — a hidden required input would
+                    // block submission with a validation bubble nobody can see.
+                    dueDateInput.required = enabled;
+                    if (!enabled) {
+                        dueDateInput.value = '';
+                    }
+                }
+            }
+
+            if (specialRequestCheckbox) {
+                specialRequestCheckbox.addEventListener('change', updateSpecialRequestDueDate);
+            }
+
             // Apply on page load
             hideDataTidakTersediaOptions();
             updateKetersediaanDependents();
             updateTanggalTerimaVertikal();
+            updateSpecialRequestDueDate();
             
             // Bound via jQuery (not addEventListener) because Select2 notifies
             // selection changes with $element.trigger('change'), which only
@@ -1422,6 +1438,22 @@
                     const tglVertikalInput = document.getElementById('id_tgl_terima_vertikal');
                     const tglDipInput = document.getElementById('id_tgl_terima_dip');
                     const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+
+                    // 0. Jatuh tempo wajib diisi selama Permintaan Khusus aktif
+                    const srCheckbox = document.getElementById('id_special_request');
+                    const srDueDateInput = document.getElementById('id_tgl_special_request');
+                    if (srCheckbox?.checked && !srDueDateInput?.value) {
+                        showValidationModal(
+                            'Tanggal Jatuh Tempo Permintaan Khusus belum diisi!',
+                            [
+                                { label: 'Permintaan Khusus', value: 'Aktif' },
+                                { label: 'Tanggal Jatuh Tempo', value: 'Belum diisi', danger: true },
+                            ],
+                            'Tanggal Jatuh Tempo wajib diisi ketika Permintaan Khusus diaktifkan. ' +
+                            'Silakan isi tanggal jatuh tempo atau nonaktifkan Permintaan Khusus.'
+                        );
+                        return;
+                    }
 
                     // 1. Cek future date: tgl_terima_vertikal
                     if (tglVertikalInput?.value) {
@@ -1727,6 +1759,24 @@
             
             const specialReq = document.getElementById('id_special_request');
             setConfirm('confirm-special-request', specialReq?.checked ? 'Ya' : 'Tidak');
+            
+            document.getElementById('confirm-deskripsi-periode').textContent = 
+                document.getElementById('info-deskripsi-periode').textContent || '-';
+            
+            document.getElementById('confirm-periode').textContent = 
+                periodeSelect.options[periodeSelect.selectedIndex]?.text || '-';
+            
+            document.getElementById('confirm-tahun').textContent = 
+                tahunSelect.options[tahunSelect.selectedIndex]?.text || '-';
+            
+            document.getElementById('confirm-tgl-vertikal').textContent = 
+                formatDateTime(tglVertikalInput.value) || '-';
+            
+            document.getElementById('confirm-tgl-dip').textContent = 
+                formatDateTime(tglDipInput.value) || '-';
+
+            document.getElementById('confirm-nomor-surat-pengantar').textContent = 
+                document.getElementById('id_nomor_surat_pengantar')?.value || '-';
 
             // Backup Data (Bagian C)
             const backupChecked = document.getElementById('rekam-backup-checkbox')?.checked;

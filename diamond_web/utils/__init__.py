@@ -75,6 +75,27 @@ def combine_date_with_current_time(value):
     )
 
 
+def end_of_day(value):
+    """Return *value* with its time-of-day set to the last second of the day.
+
+    Due dates are picked as a date only while the underlying column is a
+    DateTimeField. Stamping the end of the day (instead of midnight, or the
+    capture time used by :func:`combine_date_with_current_time`) keeps a
+    deadline valid for the whole day it falls on when compared against other
+    timestamps.
+
+    Args:
+        value: A :class:`datetime` object (already parsed from the date-only
+            widget). ``None`` is returned unchanged.
+
+    Returns:
+        *value* at 23:59:59 of the same date.
+    """
+    if value is None:
+        return value
+    return value.replace(hour=23, minute=59, second=59, microsecond=0)
+
+
 def format_number_with_separator(value):
     """Format a number with thousand separator using dot as per Indonesian convention.
     

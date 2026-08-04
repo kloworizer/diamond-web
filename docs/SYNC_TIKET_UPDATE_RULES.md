@@ -1,7 +1,7 @@
 # Sinkronisasi Oracle — Aturan Transisi Status Tiket
 
 **File**: `diamond_web/views/sync_tiket_update.py`
-**Terakhir diperbarui**: 9 Juli 2026
+**Terakhir diperbarui**: 29 Juli 2026
 
 ---
 
@@ -12,14 +12,34 @@ flowchart TD
     ORACLE[Data dari Oracle<br/>PVPTD.ZA_REKAP_TARIKAN] --> FIELD_CHECK{Ada perubahan<br/>data kolom?}
     FIELD_CHECK -->|Tidak| NO_CHANGE[Tidak Berubah<br/>skip]
     FIELD_CHECK -->|Ya| CHECK_STATUS{Status Tiket?}
+    CHECK_STATUS -->|4 - Dikirim ke PIDE| KE_DIAGRAM_1[Lihat Diagram 1 ⬇]
     CHECK_STATUS -->|5 - Identifikasi| KE_DIAGRAM_2[Lihat Diagram 2a-2d ⬇]
     CHECK_STATUS -->|6 - Pengendalian Mutu| KE_DIAGRAM_3[Lihat Diagram 3 ⬇]
     CHECK_STATUS -->|Lainnya| UPDATE_ONLY[Update field saja<br/>tanpa transisi status]
     UPDATE_ONLY --> DONE[(Selesai)]
     NO_CHANGE --> DONE
 
+    style KE_DIAGRAM_1 fill:#e8eaf6,stroke:#5c6bc0
     style KE_DIAGRAM_2 fill:#e8eaf6,stroke:#5c6bc0
     style KE_DIAGRAM_3 fill:#e8eaf6,stroke:#5c6bc0
+```
+
+### Diagram 1 — Aturan 6 & 7: Dikirim ke PIDE (4) → Identifikasi (5) / Pengendalian Mutu (6)
+
+```mermaid
+flowchart TD
+    START[Status: 4 - Dikirim ke PIDE] --> C1{tiket.tgl_rekam_pide<br/>== null?}
+    C1 -->|Ya| C2{tgl_rekam_pide Oracle<br/>tgl_load != null?}
+    C2 -->|Ya| C3{tgl_transfer<br/>== null?}
+    C3 -->|Ya| R6[ATURAN 6<br/>Status Tiket: 4 → 5<br/>IDENTIFIKASI<br/>isi tgl_rekam_pide]
+    C3 -->|Tidak| R7[ATURAN 7<br/>Status Tiket: 4 → 6<br/>PENGENDALIAN_MUTU<br/>isi tgl_rekam_pide + tgl_transfer]
+
+    style R6 fill:#e3f2fd,stroke:#1565c0,stroke-width:3px
+    style R7 fill:#e3f2fd,stroke:#1565c0,stroke-width:3px
+    style START fill:#fff3e0,stroke:#e65100
+    style C1 fill:#fff9c4,stroke:#f9a825
+    style C2 fill:#fff9c4,stroke:#f9a825
+    style C3 fill:#fff9c4,stroke:#f9a825
 ```
 
 ### Diagram 2a — Aturan 3: Identifikasi (5) → Selesai (8) — QC Lengkap
@@ -128,6 +148,8 @@ flowchart TD
    - [Aturan 3: Identifikasi (5) → Selesai (8) — QC Lengkap](#aturan-3-identifikasi-5--selesai-8--qc-lengkap)
    - [Aturan 4: Identifikasi (5) → Dikembalikan (3)](#aturan-4-identifikasi-5--dikembalikan-3)
    - [Aturan 5: Identifikasi (5) → Selesai (8) — Berbasis Baris](#aturan-5-identifikasi-5--selesai-8--berbasis-baris)
+   - [Aturan 6: Dikirim ke PIDE (4) → Identifikasi (5)](#aturan-6-dikirim-ke-pide-4--identifikasi-5)
+   - [Aturan 7: Dikirim ke PIDE (4) → Pengendalian Mutu (6)](#aturan-7-dikirim-ke-pide-4--pengendalian-mutu-6)
 5. [Diagram Alur Keputusan di Status 5](#diagram-alur-keputusan-di-status-5)
 6. [Ringkasan Jejak Audit TiketAction](#ringkasan-jejak-audit-tiketaction)
 7. [Penugasan Peran PIC](#penugasan-peran-pic)
@@ -158,6 +180,7 @@ Query Oracle `_TIKET_UPDATE_ORACLE_SQL` mengambil data agregat dari `PVPTD.ZA_RE
 | Kolom | Sumber | Deskripsi |
 |-------|--------|-----------|
 | `nomor_tiket` | `no_tiket` (dengan transformasi prefiks `EI`) | Identifikator tiket |
+| `tgl_rekam_pide` | `MIN(tgl_load)` | Tanggal data mulai direkam PIDE |
 | `baris_i` | `SUM(JML_LOG)` | Jumlah baris identifikasi |
 | `baris_u` | `SUM(JML_LOG_U)` | Jumlah baris *update* |
 | `baris_res` | `SUM(JML_RES)` | Jumlah baris residual |
@@ -193,6 +216,8 @@ Sebelum logika transisi status, field berikut dibandingkan dan diperbarui jika b
 - `qc_y`, `qc_z`, `qc_u`, `qc_e`, `qc_v`, `qc_r`, `qc_d`
 
 Suatu tiket dianggap "berubah" hanya jika setidaknya satu field berbeda **atau** ada transisi status yang berlaku. Jika tidak ada yang berubah, akan dicatat sebagai "Tidak Berubah" dan dilewati.
+
+> **Catatan**: `tgl_rekam_pide` **tidak** termasuk dalam pembaruan field umum. Field ini hanya ditulis oleh Aturan 6 & 7 (saat masih kosong di tiket lokal) dan dikosongkan oleh Aturan 4, sehingga tanggal yang diinput manual oleh PIDE tidak pernah ditimpa.
 
 ### Penanganan *Timestamp*
 
@@ -445,6 +470,95 @@ Sama seperti Aturan 3 — setiap peran diselesaikan secara independen.
 
 ---
 
+### Aturan 6: Dikirim ke PIDE (4) → Identifikasi (5)
+
+**Nama variabel**: `needs_identifikasi` / `needs_identifikasi_transition`
+
+Aturan ini mem-*backfill* tiket yang datanya sudah direkam PIDE di Oracle (`tgl_load` terisi) tetapi belum pernah ditandai identifikasi di DIAMOND.
+
+#### Kondisi (semua harus benar)
+
+| Kondisi | Deskripsi |
+|---------|-----------|
+| `tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE` (4) | Status saat ini adalah Dikirim ke PIDE |
+| `tiket.tgl_rekam_pide is None` | Belum ada tanggal rekam PIDE di tiket lokal |
+| `tgl_rekam_pide is not None` | Oracle memiliki `tgl_load` |
+| `tgl_transfer is None` | Belum ditransfer ke PMDE |
+
+#### Perubahan Status & Field
+
+| Field | Nilai |
+|-------|-------|
+| `status_tiket` | `STATUS_IDENTIFIKASI` (5) |
+| `tgl_rekam_pide` | `tgl_rekam_pide` dari Oracle (`MIN(tgl_load)`) |
+
+#### TiketAction yang Dibuat
+
+| Field | Nilai |
+|-------|-------|
+| **Aksi** | `TiketActionType.IDENTIFIKASI` |
+| **Pengguna** | PIC **PIDE** aktif pertama untuk tiket ini |
+| **Waktu** | `tgl_rekam_pide or timezone.now()` |
+| **Catatan** | `'Mulai proses identifikasi'` |
+
+#### Fallback
+
+Jika tidak ada PIC PIDE aktif, status dan `tgl_rekam_pide` tetap diperbarui tetapi peringatan dicatat dan tidak ada `TiketAction` yang dibuat.
+
+Jika `tgl_load` di Oracle NULL, **tidak ada transisi** — tiket tetap di status 4 (hanya field lain yang diperbarui).
+
+#### Pencatatan (CSV)
+
+- **Kategori**: `'Status → Identifikasi'`
+- **Detail**: `'Dari DIKIRIM_KE_PIDE ke IDENTIFIKASI (Tgl Rekam PIDE:{tgl_rekam_pide})'`
+
+---
+
+### Aturan 7: Dikirim ke PIDE (4) → Pengendalian Mutu (6)
+
+**Nama variabel**: `needs_pmde_from_4` / `needs_pmde_from_4_transition`
+
+Sama seperti Aturan 6, tetapi Oracle sudah mencatat transfer ke PMDE — tiket melompati status 5 dan langsung ke 6 dengan kedua jejak audit dibuat.
+
+#### Kondisi (semua harus benar)
+
+| Kondisi | Deskripsi |
+|---------|-----------|
+| `tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE` (4) | Status saat ini adalah Dikirim ke PIDE |
+| `tiket.tgl_rekam_pide is None` | Belum ada tanggal rekam PIDE di tiket lokal |
+| `tgl_rekam_pide is not None` | Oracle memiliki `tgl_load` |
+| `tgl_transfer is not None` | Oracle memiliki tanggal transfer |
+
+#### Perubahan Status & Field
+
+| Field | Nilai |
+|-------|-------|
+| `status_tiket` | `STATUS_PENGENDALIAN_MUTU` (6) |
+| `tgl_rekam_pide` | `tgl_rekam_pide` dari Oracle (`MIN(tgl_load)`) |
+| `tgl_transfer` | `tgl_transfer` dari Oracle (`MIN(tgl_transfer)`) |
+
+#### TiketAction yang Dibuat (2 aksi)
+
+| Aksi | Peran PIC | Waktu | Catatan |
+|------|-----------|-------|---------|
+| `IDENTIFIKASI` | PIDE | `tgl_rekam_pide` | `'Mulai proses identifikasi'` |
+| `DITRANSFER_KE_PMDE` | PIDE | `tgl_transfer` | `'Tiket ditransfer ke PMDE'` |
+
+#### Fallback
+
+Jika tidak ada PIC PIDE aktif, status dan field tetap diperbarui tetapi peringatan dicatat dan **kedua** aksi dilewati.
+
+Jika `tgl_load` di Oracle NULL, **tidak ada transisi** — tiket tetap di status 4.
+
+#### Pencatatan (CSV)
+
+- **Kategori**: `'Status → Pengendalian Mutu'`
+- **Detail**: `'Dari DIKIRIM_KE_PIDE ke PENGENDALIAN_MUTU (Tgl Rekam PIDE:{tgl_rekam_pide}, Tgl Transfer:{tgl_transfer})'`
+
+> **Catatan**: Transisi lanjutan (misalnya 6 → 8 saat `belum_qc == 0`) **tidak** dievaluasi pada eksekusi yang sama, karena semua kondisi transisi dihitung dari status tiket **sebelum** perubahan. Tiket akan berpindah lebih lanjut pada sinkronisasi berikutnya.
+
+---
+
 ## Diagram Alur Keputusan di Status 5
 
 Karena beberapa aturan menargetkan status 5, berikut adalah urutan prioritasnya (semua blok `if` independen, tetapi kondisi dirancang agar saling eksklusif):
@@ -509,6 +623,9 @@ Karena beberapa aturan menargetkan status 5, berikut adalah urutan prioritasnya 
 | 5 (5→8 baris) | `DITRANSFER_KE_PMDE` | PIDE | `tgl_transfer` |
 | 5 (5→8 baris) | `PENGENDALIAN_MUTU` | PMDE | `tgl_close_tiket` |
 | 5 (5→8 baris) | `SELESAI` | PMDE | `tgl_close_tiket` |
+| 6 (4→5) | `IDENTIFIKASI` | PIDE | `tgl_rekam_pide` |
+| 7 (4→6) | `IDENTIFIKASI` | PIDE | `tgl_rekam_pide` |
+| 7 (4→6) | `DITRANSFER_KE_PMDE` | PIDE | `tgl_transfer` |
 
 ---
 
@@ -516,7 +633,7 @@ Karena beberapa aturan menargetkan status 5, berikut adalah urutan prioritasnya 
 
 | Peran | Digunakan di | Tujuan |
 |-------|-------------|--------|
-| **PIDE** | Aturan 1, 3, 4, 5 | Membuat aksi `DITRANSFER_KE_PMDE` atau `DIKEMBALIKAN` |
+| **PIDE** | Aturan 1, 3, 4, 5, 6, 7 | Membuat aksi `IDENTIFIKASI`, `DITRANSFER_KE_PMDE`, atau `DIKEMBALIKAN` |
 | **PMDE** | Aturan 2, 3, 5 | Membuat aksi `PENGENDALIAN_MUTU` dan `SELESAI` |
 | **P3DE** | Aturan 4 | Membuat aksi `DIBATALKAN` dan menerima notifikasi |
 
@@ -556,8 +673,8 @@ PIC diambil sebagai record `TiketPIC` dengan `active=True` untuk setiap tiket. H
 ```json
 {
   "current": 0, "total": 0, "percentage": 0,
-  "would_update": 0, "would_pmde": 0, "would_selesai": 0,
-  "would_dikembalikan": 0, "would_unchanged": 0,
+  "would_update": 0, "would_identifikasi": 0, "would_pmde": 0,
+  "would_selesai": 0, "would_dikembalikan": 0, "would_unchanged": 0,
   "not_found": 0, "errors": 0
 }
 ```
@@ -566,8 +683,9 @@ PIC diambil sebagai record `TiketPIC` dengan `active=True` untuk setiap tiket. H
 ```json
 {
   "current": 0, "total": 0, "percentage": 0,
-  "updated_rows": 0, "status_to_pmde": 0, "status_to_selesai": 0,
-  "status_to_dikembalikan": 0, "not_found": 0, "unchanged": 0, "errors": 0
+  "updated_rows": 0, "status_to_identifikasi": 0, "status_to_pmde": 0,
+  "status_to_selesai": 0, "status_to_dikembalikan": 0,
+  "not_found": 0, "unchanged": 0, "errors": 0
 }
 ```
 
@@ -596,7 +714,7 @@ Semua log CSV disimpan di direktori `sync_logs/` di root proyek.
 |-------|-----------|
 | `Timestamp` | Kapan baris dicatat |
 | `Nomor Tiket` | Identifikator tiket |
-| `Kategori` | Salah satu dari: `Baris Diupdate`, `Belum Disinkronisasi`, `Status → Pengendalian Mutu`, `Status → Selesai`, `Status → Dikembalikan`, `Tidak Berubah`, `Error` |
+| `Kategori` | Salah satu dari: `Baris Diupdate`, `Belum Disinkronisasi`, `Status → Identifikasi`, `Status → Pengendalian Mutu`, `Status → Selesai`, `Status → Dikembalikan`, `Tidak Berubah`, `Error` |
 | `Detail` | Konteks tambahan |
 
 Setiap tiket dapat muncul **beberapa kali** jika termasuk dalam beberapa kategori (misalnya, "Baris Diupdate" + "Status → Pengendalian Mutu").

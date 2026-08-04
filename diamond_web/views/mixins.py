@@ -478,6 +478,54 @@ def get_active_p3de_jenis_data_ilap_ids(user):
     ).distinct()
 
 
+def is_active_ilap_pic(user, ilap):
+    """Return True when `user` is an active PIC on any jenis data of `ilap`.
+
+    Every tipe counts (P3DE, PIDE and PMDE), and active means the assignment
+    has started and has not ended yet — the same window
+    :func:`get_active_p3de_ilap_ids` applies.
+
+    Args:
+        user (User): The user to test.
+        ilap (ILAP): The ILAP whose jenis data are checked.
+
+    Returns:
+        bool: True when at least one active assignment exists.
+    """
+    if not user or not user.is_authenticated:
+        return False
+
+    from datetime import datetime
+    from django.db.models import Q
+    from ..models.pic import PIC
+
+    today = datetime.now().date()
+
+    return PIC.objects.filter(
+        id_sub_jenis_data_ilap__id_ilap=ilap,
+        id_user=user,
+        start_date__lte=today,
+    ).filter(
+        Q(end_date__isnull=True) | Q(end_date__gte=today)
+    ).exists()
+
+
+def can_view_ilap_kontak(user, ilap):
+    """Return True when `user` may see the PIC and contact details of `ilap`.
+
+    The profil ILAP pages themselves are open to every logged in user, but
+    the institution's contact person is not: it belongs to the people who
+    correspond with the ILAP. Admins and kasi P3DE oversee that
+    correspondence for the whole catalogue, so they always see it. Everyone
+    else needs an active PIC assignment on at least one of the ILAP's jenis
+    data — including kasi PIDE and kasi PMDE, who supervise the processing of
+    the data rather than the correspondence with its source.
+    """
+    if is_admin_p3de(user) or is_kasi_p3de(user):
+        return True
+    return is_active_ilap_pic(user, ilap)
+
+
 def can_access_tiket_list(user):
     """Return True when `user` should be allowed to view tiket listings.
 

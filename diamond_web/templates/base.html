@@ -20,7 +20,7 @@
     <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/select2-theme.min.css' %}" />
     <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/datatables.min.css' %}" />
     <link rel="stylesheet" type="text/css" href="{% static 'assets/css/theme.min.css' %}" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/flatpickr.min.css' %}" />
 
     <style>
         /* Disable uppercase and left align on tooltips for readability */
@@ -1330,8 +1330,8 @@
     <script src="{% static 'assets/js/common-init.min.js' %}"></script>
     <script src="{% static 'assets/js/theme-customizer-init.min.js' %}"></script>
     <script src="{% static 'assets/vendors/js/dataTables.min.js' %}"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
+    <script src="{% static 'assets/vendors/js/flatpickr.min.js' %}"></script>
+    <script src="{% static 'assets/vendors/js/flatpickr-l10n-id.js' %}"></script>
     <script>
         // Initialize Flatpickr + a calendar icon on every date input, globally.
         //
@@ -1355,6 +1355,10 @@
                         const icon = document.createElement('i');
                         icon.className = 'feather-calendar';
                         wrapper.insertBefore(icon, input);
+                        // A field that arrived already disabled has to look it:
+                        // the input itself is about to become hidden, so the
+                        // dimming belongs on the wrapper.
+                        if (input.disabled) wrapper.style.opacity = '0.6';
                     }
                     if (input._flatpickr) return; // already initialized
                     flatpickr(input, {
@@ -1383,6 +1387,42 @@
                 observer.observe(document.body, { childList: true, subtree: true });
             });
         })();
+
+        // Enable/disable a date input the way the *user* sees it.
+        //
+        // flatpickr's altInput mode leaves the original <input> as type=hidden
+        // and puts a separate text input in front of it. It copies `disabled`
+        // and `required` across once, when it initializes -- so any later
+        // `input.disabled = true` only reaches the hidden element: the visible
+        // field stays typeable while its value is silently dropped on submit
+        // (a disabled control is not posted). Go through this helper instead of
+        // touching `.disabled` directly, so both elements stay in step.
+        //
+        // Safe to call before flatpickr has run (AJAX modals init their form
+        // before the MutationObserver fires): the state lands on the original
+        // input, which is exactly what flatpickr then copies to its altInput.
+        window.setDateInputState = function (input, state) {
+            if (!input) return;
+            const fp = input._flatpickr;
+            const visible = (fp && fp.altInput) || input;
+            const disabled = !!(state && state.disabled);
+            const required = !disabled && !!(state && state.required);
+
+            input.disabled = disabled;
+            visible.disabled = disabled;
+            input.required = required;
+            visible.required = required;
+
+            if (disabled) {
+                // Clearing through the instance also blanks the visible field;
+                // setting .value alone would leave the old date on screen.
+                if (fp) fp.clear();
+                else input.value = '';
+            }
+
+            const dimmed = input.closest('.input-icon-wrapper') || visible;
+            dimmed.style.opacity = disabled ? '0.6' : '1';
+        };
 
         // Cleanup stale modal backdrops that can block interaction on AJAX-heavy pages.
         document.addEventListener('hidden.bs.modal', function () {

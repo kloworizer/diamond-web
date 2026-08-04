@@ -1385,6 +1385,9 @@ def tiket_data(request):
             'special_request': 'Ya' if obj.special_request else 'Tidak',
             'baris_lengkap': obj.baris_lengkap,
             'baris_diterima': obj.baris_diterima,
+            'tgl_special_request': (
+                obj.tgl_special_request.strftime('%d-%m-%Y') if obj.tgl_special_request else '-'
+            ),
             'actions': actions_html
         })
 

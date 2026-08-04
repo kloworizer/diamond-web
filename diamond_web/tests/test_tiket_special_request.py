@@ -5,6 +5,8 @@ the tiket detail page rendering of the flag/button, and the daftar tiket
 list filter.
 """
 import json
+from datetime import datetime
+
 import pytest
 from django.urls import reverse
 
@@ -45,6 +47,32 @@ class TestTiketSpecialRequestField:
         assert field.default is False
 
 
+@pytest.mark.django_db
+class TestTiketTglSpecialRequestField:
+    """Tiket.tgl_special_request – due date of the special request.
+
+    Nullable at the database level (tikets without a special request have
+    none); the forms require it whenever the flag is switched on.
+    """
+
+    def test_defaults_to_none(self):
+        tiket = TiketFactory()
+        tiket.refresh_from_db()
+        assert tiket.tgl_special_request is None
+
+    def test_can_be_set(self):
+        due = datetime(2026, 8, 20, 23, 59, 59)
+        tiket = TiketFactory(special_request=True, tgl_special_request=due)
+        tiket.refresh_from_db()
+        assert tiket.tgl_special_request == due
+
+    def test_field_is_optional_datetime(self):
+        field = Tiket._meta.get_field('tgl_special_request')
+        assert field.get_internal_type() == 'DateTimeField'
+        assert field.null is True
+        assert field.blank is True
+
+
 # ============================================================
 # SpecialRequestForm
 # ============================================================
@@ -61,7 +89,10 @@ class TestSpecialRequestForm:
 
     def test_valid_when_checked(self):
         tiket = TiketFactory()
-        form = SpecialRequestForm(data={'special_request': 'on'}, instance=tiket)
+        form = SpecialRequestForm(
+            data={'special_request': 'on', 'tgl_special_request': '2026-08-20'},
+            instance=tiket,
+        )
         assert form.is_valid(), form.errors
         assert form.cleaned_data['special_request'] is True
 
@@ -69,6 +100,35 @@ class TestSpecialRequestForm:
         tiket = TiketFactory(special_request=True)
         form = SpecialRequestForm(instance=tiket)
         assert form.initial['special_request'] is True
+
+    def test_due_date_required_when_checked(self):
+        tiket = TiketFactory()
+        form = SpecialRequestForm(data={'special_request': 'on'}, instance=tiket)
+        assert not form.is_valid()
+        assert 'tgl_special_request' in form.errors
+
+    def test_due_date_not_required_when_unchecked(self):
+        tiket = TiketFactory()
+        form = SpecialRequestForm(data={}, instance=tiket)
+        assert form.is_valid(), form.errors
+        assert form.cleaned_data['tgl_special_request'] is None
+
+    def test_due_date_stored_at_end_of_day(self):
+        tiket = TiketFactory()
+        form = SpecialRequestForm(
+            data={'special_request': 'on', 'tgl_special_request': '2026-08-20'},
+            instance=tiket,
+        )
+        assert form.is_valid(), form.errors
+        assert form.cleaned_data['tgl_special_request'] == datetime(2026, 8, 20, 23, 59, 59)
+
+    def test_due_date_cleared_when_unchecked(self):
+        tiket = TiketFactory(special_request=True,
+                             tgl_special_request=datetime(2026, 8, 20, 23, 59, 59))
+        form = SpecialRequestForm(data={'tgl_special_request': '2026-08-20'}, instance=tiket)
+        assert form.is_valid(), form.errors
+        assert form.cleaned_data['special_request'] is False
+        assert form.cleaned_data['tgl_special_request'] is None
 
 
 # ============================================================
@@ -90,6 +150,7 @@ class TestSpecialRequestOnRekamTiket:
         post_data = _build_tiket_post_data(pd)
         post_data['status_ketersediaan_data'] = '1'
         post_data['special_request'] = 'on'
+        post_data['tgl_special_request'] = '2026-08-20'
 
         client.force_login(admin)
         resp = client.post(reverse('tiket_rekam_create'), post_data, follow=True)
@@ -98,6 +159,51 @@ class TestSpecialRequestOnRekamTiket:
         created = Tiket.objects.filter(id_periode_data=pd).first()
         assert created is not None
         assert created.special_request is True
+
+    def test_checked_without_due_date_is_rejected(self, client):
+        admin = self._admin()
+        _, pd = _create_full_tiket_setup()
+        post_data = _build_tiket_post_data(pd)
+        post_data['status_ketersediaan_data'] = '1'
+        post_data['special_request'] = 'on'
+
+        client.force_login(admin)
+        resp = client.post(reverse('tiket_rekam_create'), post_data, follow=True)
+        assert resp.status_code == 200
+        assert 'tgl_special_request' in resp.context['form'].errors
+        assert Tiket.objects.filter(id_periode_data=pd).first() is None
+
+    def test_checked_persists_due_date(self, client):
+        admin = self._admin()
+        _, pd = _create_full_tiket_setup()
+        post_data = _build_tiket_post_data(pd)
+        post_data['status_ketersediaan_data'] = '1'
+        post_data['special_request'] = 'on'
+        post_data['tgl_special_request'] = '2026-08-20'
+
+        client.force_login(admin)
+        resp = client.post(reverse('tiket_rekam_create'), post_data, follow=True)
+        assert resp.status_code == 200
+
+        created = Tiket.objects.filter(id_periode_data=pd).first()
+        assert created is not None
+        assert created.tgl_special_request == datetime(2026, 8, 20, 23, 59, 59)
+
+    def test_due_date_ignored_when_not_special_request(self, client):
+        admin = self._admin()
+        _, pd = _create_full_tiket_setup()
+        post_data = _build_tiket_post_data(pd)
+        post_data['status_ketersediaan_data'] = '1'
+        post_data['tgl_special_request'] = '2026-08-20'
+
+        client.force_login(admin)
+        resp = client.post(reverse('tiket_rekam_create'), post_data, follow=True)
+        assert resp.status_code == 200
+
+        created = Tiket.objects.filter(id_periode_data=pd).first()
+        assert created is not None
+        assert created.special_request is False
+        assert created.tgl_special_request is None
 
     def test_unchecked_creates_tiket_without_special_request(self, client):
         admin = self._admin()
@@ -166,7 +272,7 @@ class TestSpecialRequestView:
         client.force_login(pmde_user)
         resp = client.post(
             reverse('special_request_tiket', args=[tiket.pk]),
-            {'special_request': 'on'},
+            {'special_request': 'on', 'tgl_special_request': '2026-08-20'},
             follow=True,
         )
         assert resp.status_code == 200
@@ -229,7 +335,8 @@ class TestSpecialRequestView:
         client.force_login(authenticated_user)
         resp = client.post(
             reverse('special_request_tiket', args=[tiket.pk]),
-            {'special_request': 'on', 'catatan': 'Permintaan mendesak'},
+            {'special_request': 'on', 'tgl_special_request': '2026-08-20',
+             'catatan': 'Permintaan mendesak'},
             follow=True,
         )
         assert resp.status_code == 200
@@ -241,7 +348,7 @@ class TestSpecialRequestView:
         client.force_login(pide_user)
         resp = client.post(
             reverse('special_request_tiket', args=[tiket.pk]),
-            {'special_request': 'on'},
+            {'special_request': 'on', 'tgl_special_request': '2026-08-20'},
             follow=True,
         )
         assert resp.status_code == 200
@@ -265,7 +372,7 @@ class TestSpecialRequestView:
         client.force_login(authenticated_user)
         resp = client.post(
             reverse('special_request_tiket', args=[tiket.pk]),
-            {'special_request': 'on'},
+            {'special_request': 'on', 'tgl_special_request': '2026-08-20'},
             HTTP_X_REQUESTED_WITH='XMLHttpRequest',
         )
         assert resp.status_code == 200
@@ -280,7 +387,8 @@ class TestSpecialRequestView:
         client.force_login(authenticated_user)
         client.post(
             reverse('special_request_tiket', args=[tiket.pk]),
-            {'special_request': 'on', 'catatan': 'Permintaan Direktur'},
+            {'special_request': 'on', 'tgl_special_request': '2026-08-20',
+             'catatan': 'Permintaan Direktur'},
         )
         action = TiketAction.objects.filter(
             id_tiket=tiket, action=SpecialRequestActionType.DIAKTIFKAN
@@ -298,11 +406,14 @@ class TestSpecialRequestView:
         ).exists()
 
     def test_no_action_when_value_unchanged(self, client, authenticated_user):
-        tiket = self._setup_p3de(authenticated_user, special_request=True)
+        tiket = self._setup_p3de(
+            authenticated_user, special_request=True,
+            tgl_special_request=datetime(2026, 8, 20, 23, 59, 59),
+        )
         client.force_login(authenticated_user)
         client.post(
             reverse('special_request_tiket', args=[tiket.pk]),
-            {'special_request': 'on'},
+            {'special_request': 'on', 'tgl_special_request': '2026-08-20'},
         )
         tiket.refresh_from_db()
         assert tiket.special_request is True
@@ -319,12 +430,98 @@ class TestSpecialRequestView:
         client.force_login(authenticated_user)
         client.post(
             reverse('special_request_tiket', args=[tiket.pk]),
-            {'special_request': 'on', 'status_tiket': 7, 'baris_diterima': 999999},
+            {'special_request': 'on', 'tgl_special_request': '2026-08-20',
+             'status_tiket': 7, 'baris_diterima': 999999},
         )
         tiket.refresh_from_db()
         assert tiket.special_request is True
         assert tiket.status_tiket == original_status
         assert tiket.baris_diterima == original_baris
+
+    def test_enabling_persists_due_date(self, client, authenticated_user):
+        tiket = self._setup_p3de(authenticated_user)
+        client.force_login(authenticated_user)
+        resp = client.post(
+            reverse('special_request_tiket', args=[tiket.pk]),
+            {'special_request': 'on', 'tgl_special_request': '2026-08-20'},
+            follow=True,
+        )
+        assert resp.status_code == 200
+        tiket.refresh_from_db()
+        assert tiket.special_request is True
+        assert tiket.tgl_special_request == datetime(2026, 8, 20, 23, 59, 59)
+
+    def test_enabling_without_due_date_is_rejected(self, client, authenticated_user):
+        tiket = self._setup_p3de(authenticated_user)
+        client.force_login(authenticated_user)
+        resp = client.post(
+            reverse('special_request_tiket', args=[tiket.pk]),
+            {'special_request': 'on'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        assert resp.status_code == 400
+        payload = resp.json()
+        assert payload['success'] is False
+        assert 'tgl_special_request' in payload['errors']
+        tiket.refresh_from_db()
+        assert tiket.special_request is False
+        assert tiket.tgl_special_request is None
+
+    def test_disabling_clears_due_date(self, client, authenticated_user):
+        tiket = self._setup_p3de(
+            authenticated_user, special_request=True,
+            tgl_special_request=datetime(2026, 8, 20, 23, 59, 59),
+        )
+        client.force_login(authenticated_user)
+        client.post(reverse('special_request_tiket', args=[tiket.pk]), {})
+        tiket.refresh_from_db()
+        assert tiket.special_request is False
+        assert tiket.tgl_special_request is None
+
+    def test_changing_only_due_date_records_action(self, client, authenticated_user):
+        tiket = self._setup_p3de(
+            authenticated_user, special_request=True,
+            tgl_special_request=datetime(2026, 8, 20, 23, 59, 59),
+        )
+        client.force_login(authenticated_user)
+        client.post(
+            reverse('special_request_tiket', args=[tiket.pk]),
+            {'special_request': 'on', 'tgl_special_request': '2026-09-30'},
+        )
+        tiket.refresh_from_db()
+        assert tiket.tgl_special_request == datetime(2026, 9, 30, 23, 59, 59)
+        action = TiketAction.objects.filter(
+            id_tiket=tiket, action=SpecialRequestActionType.DIAKTIFKAN
+        ).first()
+        assert action is not None
+        assert '30-09-2026' in action.catatan
+
+    def test_no_action_when_flag_and_due_date_unchanged(self, client, authenticated_user):
+        tiket = self._setup_p3de(
+            authenticated_user, special_request=True,
+            tgl_special_request=datetime(2026, 8, 20, 23, 59, 59),
+        )
+        client.force_login(authenticated_user)
+        client.post(
+            reverse('special_request_tiket', args=[tiket.pk]),
+            {'special_request': 'on', 'tgl_special_request': '2026-08-20'},
+        )
+        assert not TiketAction.objects.filter(
+            id_tiket=tiket,
+            action__in=[SpecialRequestActionType.DIAKTIFKAN,
+                        SpecialRequestActionType.DINONAKTIFKAN],
+        ).exists()
+
+    def test_ajax_post_returns_due_date(self, client, authenticated_user):
+        tiket = self._setup_p3de(authenticated_user)
+        client.force_login(authenticated_user)
+        resp = client.post(
+            reverse('special_request_tiket', args=[tiket.pk]),
+            {'special_request': 'on', 'tgl_special_request': '2026-08-20'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        assert resp.status_code == 200
+        assert resp.json()['tgl_special_request'] == '20-08-2026'
 
     def test_other_user_cannot_toggle(self, client, authenticated_user):
         """A P3DE PIC of another tiket cannot toggle this one."""
@@ -372,6 +569,24 @@ class TestSpecialRequestOnDetailPage:
         assert resp.status_code == 200
         assert resp.context['tiket_details']['special_request'] == 'Ya'
         assert b'Permintaan Khusus' in resp.content
+
+    def test_detail_shows_due_date(self, client, authenticated_user):
+        tiket = self._active_p3de_tiket(authenticated_user)
+        tiket.special_request = True
+        tiket.tgl_special_request = datetime(2026, 8, 20, 23, 59, 59)
+        tiket.save(update_fields=['special_request', 'tgl_special_request'])
+        client.force_login(authenticated_user)
+        resp = client.get(reverse('tiket_detail', args=[tiket.pk]))
+        assert resp.status_code == 200
+        assert resp.context['tiket_details']['tgl_special_request'] == tiket.tgl_special_request
+        assert b'Jatuh Tempo Permintaan Khusus' in resp.content
+
+    def test_detail_hides_due_date_when_not_special_request(self, client, authenticated_user):
+        tiket = self._active_p3de_tiket(authenticated_user)
+        client.force_login(authenticated_user)
+        resp = client.get(reverse('tiket_detail', args=[tiket.pk]))
+        assert resp.status_code == 200
+        assert b'Jatuh Tempo Permintaan Khusus' not in resp.content
 
     def test_button_visible_for_active_p3de(self, client, authenticated_user):
         tiket = self._active_p3de_tiket(authenticated_user)
@@ -558,5 +773,38 @@ class TestSpecialRequestHomeTask:
         data = json.loads(resp.content)
         assert data['data']
         row = data['data'][0]
-        for key in ('nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'status_tiket', 'actions'):
+        for key in ('nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'status_tiket',
+                    'tgl_special_request', 'actions'):
             assert key in row
+
+    def test_data_row_formats_due_date(self, client, authenticated_user):
+        special = TiketFactory(special_request=True,
+                               tgl_special_request=datetime(2026, 8, 20, 23, 59, 59))
+        TiketPICFactory(id_tiket=special, id_user=authenticated_user,
+                        role=TiketPIC.Role.P3DE, active=True)
+        client.force_login(authenticated_user)
+        resp = client.get(reverse('home_data'), {
+            'draw': '1', 'start': '0', 'length': '10',
+            'category': 'special_request',
+        })
+        row = json.loads(resp.content)['data'][0]
+        assert row['tgl_special_request'] == '20-08-2026'
+        assert row['tgl_special_request_order'] == '2026-08-20'
+
+    def test_data_can_be_ordered_by_due_date(self, client, authenticated_user):
+        pjd = PeriodeJenisDataFactory()
+        later = TiketFactory(special_request=True, id_periode_data=pjd,
+                             tgl_special_request=datetime(2026, 9, 30, 23, 59, 59))
+        earlier = TiketFactory(special_request=True, id_periode_data=pjd,
+                               tgl_special_request=datetime(2026, 8, 20, 23, 59, 59))
+        for t in (later, earlier):
+            TiketPICFactory(id_tiket=t, id_user=authenticated_user,
+                            role=TiketPIC.Role.P3DE, active=True)
+        client.force_login(authenticated_user)
+        resp = client.get(reverse('home_data'), {
+            'draw': '1', 'start': '0', 'length': '10',
+            'category': 'special_request',
+            'order[0][column]': '4', 'order[0][dir]': 'asc',
+        })
+        rows = json.loads(resp.content)['data']
+        assert [r['nomor_tiket'] for r in rows] == [earlier.nomor_tiket, later.nomor_tiket]

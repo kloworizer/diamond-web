@@ -1,5 +1,35 @@
 # Catatan Rilis & Perubahan
 
+## [1.2.1] — 2026-08-04
+
+### Ditambahkan
+- **Jatuh Tempo Permintaan Khusus** — Field baru `tgl_special_request` pada tiket untuk mencatat batas waktu permintaan khusus. Jatuh tempo **wajib diisi** selama penanda `special_request` aktif dan otomatis dikosongkan saat penanda dimatikan; aturan yang sama berlaku pada formulir Rekam Tiket maupun modal Special Request. Tanggal dipilih sebagai tanggal saja lalu disimpan pada pukul 23:59:59 (helper `end_of_day`) agar batas waktu tetap berlaku sepanjang hari tersebut. Kolom **Jatuh Tempo** ikut tampil pada daftar tiket dan pada kartu Special Request di dashboard.
+- **Grafik Jml Progress per Jatuh Tempo (Quality Control)** — Grafik garis pada halaman Quality Control dengan satu garis per PIC PMDE, sumbu-X berupa sisa hari menuju jatuh tempo dan sumbu-Y berupa total Jml Progress. Warna dan pola garis ditetapkan di sisi server atas lingkup penuh sehingga seorang PIC selalu memakai garis yang sama pada filter apa pun; tiket tanpa PIC PMDE aktif memakai garis abu-abu terpisah. Grafik dan tabel dibaca dari parameter filter yang sama melalui endpoint `get_chart_data=1`.
+- **Edit Tiket oleh Admin: Hasil Penelitian & Pengiriman ke PIDE** — Modal Edit Tiket kini menampilkan bagian khusus Admin P3DE untuk mengoreksi `tgl_teliti`, `baris_lengkap`, `baris_tidak_lengkap` (dengan `status_penelitian` dihitung ulang otomatis) serta `tgl_nadine`, `nomor_nd_nadine`, dan `tgl_kirim_pide`. Bagian tersebut hanya muncul untuk tahap yang sudah dilalui tiket, dan field-nya dikeluarkan dari form — bukan sekadar disembunyikan — sehingga tidak dapat dikirim lewat POST maupun ikut terkosongkan saat penyimpanan.
+- **Pengujian Validasi End-to-End** — Skenario `rule_*` / `val_*` baru yang memverifikasi pesan galat milik masing-masing aturan, mencakup rantai kronologi tanggal penuh (`dip ≤ tanda terima ≤ teliti ≤ nadine ≤ kirim PIDE ≤ rekam PIDE ≤ transfer`), total baris/QC, jatuh tempo permintaan khusus, aturan kata sandi pada Profil, serta aturan form data master (rentang tanggal tumpang tindih, kunci ganda, batas tahun Sequence Tanda Terima, dan lingkup Tanda Terima). Ditambah pengujian unit untuk grafik Quality Control dan bagian khusus admin pada Edit Tiket.
+
+### Diubah
+- **Riwayat & Notifikasi Special Request** — Aksi `401/402` kini juga dicatat ketika hanya jatuh temponya yang berubah, dengan catatan otomatis yang menyebutkan tanggal jatuh tempo dan pesan toast yang membedakan perubahan penanda dari perubahan jatuh tempo.
+- **Edit Tiket Tidak Pernah Memindahkan Status** — `status_tiket` dipastikan tidak berubah oleh aksi Edit Tiket; perpindahan status tetap hanya melalui aksi alur kerja masing-masing.
+- **Perlindungan Pengosongan & Validasi Bersyarat pada Edit Tiket** — Isian yang sudah tersimpan tidak boleh dikosongkan (masih boleh dikoreksi), `baris_diterima` wajib sama dengan `baris_lengkap + baris_tidak_lengkap`, dan validasi kronologi hanya diperiksa untuk pasangan tanggal yang benar-benar diubah — agar tiket hasil migrasi (`old_db`) yang datanya sudah melanggar aturan tidak menghalangi koreksi field lain.
+- **Refaktor Perhitungan Jatuh Tempo Quality Control** — Subquery durasi dan perhitungan tanggal deadline dipindahkan ke helper `_durasi_subquery()` dan `_deadline_day()` agar tabel dan grafik memakai satu sumber perhitungan yang sama.
+- **Deadline & Jatuh Tempo Dihitung dari Tanggal Rematch** — Tiket yang sudah di-*rematch* memulai hitungannya kembali dari `tgl_rematch`; `tgl_transfer` hanya dipakai bila `tgl_rematch` kosong. Tanggal acuan ini berlaku seragam untuk pemilihan baris `DurasiJatuhTempo` yang aktif, kolom **Deadline** dan **Jatuh Tempo** pada tabel, pengurutan kolom tersebut, serta grafik Jml Progress per Jatuh Tempo.
+- **Dokumentasi Alur Tiket** — `docs/status_tiket_flow.md` diperluas dengan tabel isian yang dapat diubah per peran, syarat tampil bagian khusus admin, aturan perlindungan pengosongan, dan ketentuan jatuh tempo permintaan khusus.
+
+### Diperbaiki
+- **Tanggal Terima Vertikal tidak ikut dinonaktifkan untuk ILAP non-Regional** — Sejak pemasangan datepicker global (flatpickr), field tanggal yang tampak di layar bukan lagi `<input type="date">` aslinya: flatpickr menyembunyikan input asli dan menaruh input teks terpisah di depannya, serta hanya menyalin `disabled`/`required` satu kali saat inisialisasi. Akibatnya, `disabled` yang diset saat ILAP berubah hanya mengenai input tersembunyi — hanya keterangan *"Tidak dapat diisi untuk kategori ILAP non-Regional"* yang muncul, sementara field tetap dapat diisi dan nilainya justru hilang diam-diam saat disimpan (kontrol `disabled` tidak ikut terkirim). Ditambahkan helper global `setDateInputState()` pada `base.html` yang menyelaraskan status kedua elemen sekaligus mengosongkan nilai melalui instance flatpickr; dipakai pada formulir **Rekam Tiket** dan modal **Edit Tiket**.
+
+### Known Issues
+- Pemetaan wilayah baru mencakup ILAP kategori `PV` (Pemda Provinsi) yang di-seed langsung ke Kanwil. Data KPP dan pemetaan ILAP kategori `PD` (Pemda Kabupaten/Kota) ke KPP masih perlu dilengkapi.
+- Template dokumen (DOCX) belum sempurna — beberapa placeholder masih perlu penyesuaian.
+- Flow sinkronisasi ke bankdata untuk tiket baru belum lengkap.
+
+### Rencana
+- Pengembangan halaman Dashboard dengan Power BI.
+- Penyempurnaan template dokumen (Tanda Terima, ND Pengantar, Surat Klarifikasi, PKDI).
+- Penyempurnaan flow sinkronisasi tiket new Diamond dari bankdata.
+- Melengkapi data KPP dan pemetaan ILAP kategori `PD` ke KPP.
+
 ## [1.2.0] — 2026-07-28
 
 ### Ditambahkan

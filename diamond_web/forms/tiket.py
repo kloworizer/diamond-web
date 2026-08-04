@@ -7,7 +7,8 @@ from ..models.ilap import ILAP
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from datetime import datetime
 from .base import AutoRequiredFormMixin
-from ..utils import validate_not_future_datetime, normalize_server_datetime, combine_date_with_current_time
+from .special_request import DUE_DATE_REQUIRED_ERROR
+from ..utils import validate_not_future_datetime, normalize_server_datetime, combine_date_with_current_time, end_of_day
 
 class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
     satuan_data = forms.ChoiceField(
@@ -23,6 +24,16 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
         label='Permintaan Khusus',
         required=False
     )
+    # Due date of the special request — only meaningful while the switch above
+    # is on, and cleared in clean() when it is not.
+    tgl_special_request = forms.DateTimeField(
+        widget=forms.DateInput(
+            attrs={'type': 'date', 'class': 'form-control'},
+            format='%Y-%m-%d',
+        ),
+        label='Jatuh Tempo Permintaan Khusus',
+        required=False
+    )
     id_ilap = forms.ModelChoiceField(
         queryset=ILAP.objects.all().order_by('nama_ilap'),
         empty_label="Pilih ILAP",
@@ -36,7 +47,7 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
 
     class Meta:
         model = Tiket
-        fields = ['id_ilap', 'id_periode_data', 'periode', 'tahun', 'penyampaian', 'tgl_terima_vertikal', 'tgl_terima_dip', 'nomor_surat_pengantar', 'tanggal_surat_pengantar', 'nama_pengirim', 'id_bentuk_data', 'id_cara_penyampaian', 'baris_diterima', 'satuan_data', 'status_ketersediaan_data', 'alasan_ketidaktersediaan', 'special_request']
+        fields = ['id_ilap', 'id_periode_data', 'periode', 'tahun', 'penyampaian', 'tgl_terima_vertikal', 'tgl_terima_dip', 'nomor_surat_pengantar', 'tanggal_surat_pengantar', 'nama_pengirim', 'id_bentuk_data', 'id_cara_penyampaian', 'baris_diterima', 'satuan_data', 'status_ketersediaan_data', 'alasan_ketidaktersediaan', 'special_request', 'tgl_special_request']
         widgets = {
             'id_periode_data': forms.Select(attrs={'class': 'form-select', 'id': 'id_periode_data'}),
             'periode': forms.Select(attrs={'class': 'form-select', 'id': 'id_periode'}),
@@ -182,8 +193,19 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
         value = combine_date_with_current_time(value)
         return validate_not_future_datetime(value, "Tanggal Terima DIP")
 
+    def clean_tgl_special_request(self):
+        # A due date stays valid for the whole day it falls on.
+        return end_of_day(self.cleaned_data.get('tgl_special_request'))
+
     def clean(self):
         cleaned_data = super().clean()
+        # The due date is mandatory for a special request tiket, and irrelevant
+        # for any other one.
+        if cleaned_data.get('special_request'):
+            if not cleaned_data.get('tgl_special_request'):
+                self.add_error('tgl_special_request', DUE_DATE_REQUIRED_ERROR)
+        else:
+            cleaned_data['tgl_special_request'] = None
         tgl_vertikal = cleaned_data.get('tgl_terima_vertikal')
         tgl_dip = cleaned_data.get('tgl_terima_dip')
         if tgl_vertikal and tgl_dip:

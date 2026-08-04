@@ -5,7 +5,8 @@ Tiket" (Edit Tiket, P3DE-only, only while status is Direkam and no tanda
 terima yet) and "Ubah Special Request" (P3DE/PIDE/PMDE depending on status).
 
 Exhausts: missing/invalid dates, tgl_terima_dip before tgl_terima_vertikal,
-future dates, a valid edit, special-request toggle on/off, and the
+future dates, a valid edit, special-request toggle on/off (including the
+mandatory due date that comes with switching it on), and the
 post-tanda-terima regression check that Edit Tiket disappears once it is no
 longer allowed.
 """
@@ -120,8 +121,14 @@ def edit_tiket_flow(page, rep):
 
 
 def special_request_flow(page, rep):
+    """Toggle + the due-date rule that came with it.
+
+    Since the due date was added (SpecialRequestForm.clean()), turning the
+    switch ON without one is a server-side error -- the toggle no longer
+    persists on its own."""
     sc = "special_request"
     detail_url, nomor = H.rekam_tiket(page, rep, sc, tahun="2006", baris_diterima=BARIS, backup=False)
+    due_date = H.date_ago(0)
 
     def open_sr():
         H.clear_overlays(page)
@@ -133,30 +140,73 @@ def special_request_flow(page, rep):
         page.click('#special-request-form-container button[type="submit"]')
         page.wait_for_timeout(1200)
 
-    # 1) Turn ON with a catatan
+    def badge():
+        loc = page.locator("#special-request-value")
+        return loc.inner_text().strip().lower() if loc.count() else ""
+
+    # 1) Switch ON with NO due date -> must be rejected. The due-date input is
+    #    marked required by the modal's own JS, so HTML5 would swallow the
+    #    submit before it ever reaches the server; strip that to test the rule.
     open_sr()
     cb = page.locator("#id_special_request")
     if not cb.is_checked():
         cb.check()
+    page.wait_for_timeout(200)
+    H.disable_client_validation(page, "#special-request-form-container form")
+    page.eval_on_selector("#id_tgl_special_request",
+                          "el => { if (el._flatpickr) el._flatpickr.clear(); el.value = ''; }")
+    ev, _ = H.probe_modal_rejection(page, "#special-request-form-container",
+                                    modal_id="specialRequestModal", reload_after=False)
+    page.reload(wait_until="networkidle")
+    H.clear_overlays(page)
+    val = badge()
+    if ev and "wajib diisi" in ev.lower() and "tidak" in val:
+        rep.ok(sc, "special request without due date rejected", ev[:120])
+    elif "ya" in val:
+        rep.fail(sc, "special request without due date accepted", f"badge={val}")
+        rep.bug("Special Request can be switched on without a due date", "MEDIUM",
+                "SpecialRequestForm.clean() marks Tanggal Jatuh Tempo mandatory as soon "
+                "as the switch is on, but submitting with an empty due date still "
+                "flagged the tiket as a special request.")
+    else:
+        rep.fail(sc, "special request without due date: wrong rejection",
+                 f"evidence={ev[:120] or 'none'} badge={val}")
+    H.shot(page, f"{sc}_no_due_date")
+
+    # 2) Turn ON with a due date + catatan -> persists, and the due date shows.
+    open_sr()
+    cb = page.locator("#id_special_request")
+    if not cb.is_checked():
+        cb.check()
+    page.wait_for_timeout(200)
+    H.fill_date(page, "#id_tgl_special_request", due_date)
     page.fill("#id_catatan", "E2E: marked as special request")
     H._wait_reload_after(page, submit_sr)
-    val = page.locator("#special-request-value").inner_text().strip().lower() if page.locator("#special-request-value").count() else ""
+    val = badge()
     if "ya" in val:
         rep.ok(sc, "toggle ON persisted", val)
     else:
         rep.fail(sc, "toggle ON NOT persisted", val)
         rep.bug("Special Request toggle-ON does not persist", "LOW",
-                f"After checking the switch and submitting, the detail page badge read "
-                f"'{val}' instead of 'Ya'.")
+                f"After checking the switch, setting a due date and submitting, the "
+                f"detail page badge read '{val}' instead of 'Ya'.")
+    shown_due = page.locator("#tgl-special-request-value")
+    expected_due = "-".join(reversed(due_date.split("-")))  # d-m-Y on the detail page
+    if shown_due.count() and expected_due in shown_due.inner_text():
+        rep.ok(sc, "due date persisted", expected_due)
+    else:
+        rep.fail(sc, "due date NOT shown on detail page",
+                 shown_due.inner_text().strip() if shown_due.count() else "element missing")
     H.shot(page, f"{sc}_on")
 
-    # 2) Turn back OFF, no catatan (optional field)
+    # 3) Turn back OFF, no catatan (optional field). The due date is dropped
+    #    server-side, so its row disappears from the detail page.
     open_sr()
     cb = page.locator("#id_special_request")
     if cb.is_checked():
         cb.uncheck()
     H._wait_reload_after(page, submit_sr)
-    val = page.locator("#special-request-value").inner_text().strip().lower() if page.locator("#special-request-value").count() else ""
+    val = badge()
     if "tidak" in val:
         rep.ok(sc, "toggle OFF persisted", val)
     else:
@@ -164,6 +214,11 @@ def special_request_flow(page, rep):
         rep.bug("Special Request toggle-OFF does not persist", "LOW",
                 f"After unchecking the switch and submitting, the detail page badge read "
                 f"'{val}' instead of 'Tidak'.")
+    if page.locator("#tgl-special-request-value").count():
+        rep.fail(sc, "due date still shown after switching off",
+                 "tgl_special_request should be cleared when special_request is off")
+    else:
+        rep.ok(sc, "due date cleared with the switch")
     H.shot(page, f"{sc}_off")
 
 
