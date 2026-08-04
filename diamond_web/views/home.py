@@ -584,6 +584,11 @@ def home_data(request):
             elif age_group == 'new':
                 qs = qs.filter(**{f"{date_field}__gte": cutoff_warning})
 
+        # Apply priority filter for tiket categories
+        if is_tiket_category:
+            priority_only = request.GET.get('priority_only')
+            if priority_only == '1':
+                qs = qs.filter(id_jenis_prioritas_data__isnull=False)
 
     elif is_jenis_data_category:
         total_ilap = qs.values('id_ilap').distinct().count()
@@ -611,6 +616,13 @@ def home_data(request):
             Q(nama_jenis_data__icontains=search_value) |
             Q(nama_sub_jenis_data__icontains=search_value)
         )
+
+    # Filter by Starred (Watchlist)
+    starred_only = request.GET.get('starred_only') == 'true'
+    if starred_only and is_tiket_category:
+        session_key = f'starred_tikets_{request.user.id}'
+        starred_list = request.session.get(session_key, [])
+        qs = qs.filter(nomor_tiket__in=starred_list)
 
     records_filtered = qs.count()
 
@@ -767,6 +779,7 @@ def home_data(request):
                     'lolos_qc': obj.lolos_qc or 0,
                     'tanggal': date_val,
                     'tanggal_order': date_order,
+                    'is_prioritas': obj.id_jenis_prioritas_data_id is not None,
                     'actions': action_html,
                 })
         elif is_jenis_data_category:
@@ -905,3 +918,74 @@ def home_pic_pmde_users(request):
         for u in users
     ]
     return JsonResponse({'users': data})
+
+
+@login_required
+def toggle_starred_tiket(request):
+    """Toggle bintang (watchlist) tiket menggunakan Django session.
+    Tidak memerlukan perubahan model atau migrasi DB.
+    Session disimpan per-user di tabel django_session yang sudah ada.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    nomor_tiket = request.POST.get('nomor_tiket', '').strip()
+    if not nomor_tiket:
+        return JsonResponse({'error': 'nomor_tiket diperlukan'}, status=400)
+
+    # Session key per-user agar tidak tercampur antar akun
+    session_key = f'starred_tikets_{request.user.id}'
+    starred = request.session.get(session_key, [])
+
+    if nomor_tiket in starred:
+        starred.remove(nomor_tiket)
+        is_starred = False
+    else:
+        starred.append(nomor_tiket)
+        is_starred = True
+
+    request.session[session_key] = starred
+    # Tandai session sebagai modified agar Django menyimpannya
+    request.session.modified = True
+
+    return JsonResponse({
+        'starred': is_starred,
+        'nomor_tiket': nomor_tiket,
+        'total': len(starred),
+    })
+
+
+@login_required
+@require_GET
+def get_starred_tikets(request):
+    """Ambil daftar nomor tiket yang dipantau (watchlist) beserta detailnya."""
+    session_key = f'starred_tikets_{request.user.id}'
+    starred = request.session.get(session_key, [])
+    
+    details = []
+    if starred:
+        qs = Tiket.objects.filter(nomor_tiket__in=starred).select_related(
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap'
+        )
+        for t in qs:
+            try:
+                nama_ilap = t.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap
+                nama_sub_jenis_data = t.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data
+            except AttributeError:
+                nama_ilap = "-"
+                nama_sub_jenis_data = "-"
+            
+            details.append({
+                'nomor_tiket': t.nomor_tiket,
+                'ilap': nama_ilap,
+                'jenis_data': nama_sub_jenis_data,
+                'status': t.get_status_tiket_display(),
+                'status_code': t.status_tiket,
+                'url': reverse('tiket_detail', args=[t.id])
+            })
+            
+    return JsonResponse({
+        'starred': starred,
+        'details': details,
+        'total': len(starred)
+    })

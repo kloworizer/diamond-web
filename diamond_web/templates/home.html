@@ -930,6 +930,7 @@
                                         <th>Jenis Data</th>
                                         <th>Jml Baris Data<br>Diterima</th>
                                         <th>Tgl Terima DIP</th>
+                                        <th>Prioritas</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
@@ -1015,6 +1016,7 @@
                                         <th>Jenis Data</th>
                                         <th>Jml Baris Data<br>Diterima</th>
                                         <th>Tgl Terima DIP</th>
+                                        <th>Prioritas</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
@@ -1099,6 +1101,7 @@
                                         <th>Jenis Data</th>
                                         <th>Jml Baris Data<br>Diterima</th>
                                         <th>Tgl Terima DIP</th>
+                                        <th>Prioritas</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
@@ -1184,6 +1187,7 @@
                                         <th>Jml Baris Data<br>Diterima</th>
                                         <th>Jml Baris Data<br>Lengkap</th>
                                         <th>Tgl Terima DIP</th>
+                                        <th>Prioritas</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
@@ -1271,6 +1275,7 @@
                                         <th>Jml Baris Data<br>Tidak Lengkap</th>
                                         <th>Baris CDE</th>
                                         <th>Tgl Terima DIP</th>
+                                        <th>Prioritas</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
@@ -1358,6 +1363,7 @@
                                         <th>Jml Baris Data<br>Tidak Lengkap</th>
                                         <th>Baris CDE</th>
                                         <th>Tgl Terima DIP</th>
+                                        <th>Prioritas</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
@@ -1441,6 +1447,7 @@
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
                                         <th>Tgl Terima DIP</th>
+                                        <th>Prioritas</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
@@ -1487,6 +1494,7 @@
                                         <th>Periode</th>
                                         <th>Tahun</th>
                                         <th>Status</th>
+                                        <th>Prioritas</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
@@ -1576,6 +1584,7 @@
                                         <th>Jenis Data</th>
                                         <th>Jml Baris Data<br>Lengkap</th>
                                         <th>Tgl Kirim PIDE</th>
+                                        <th>Prioritas</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
@@ -1658,6 +1667,7 @@
                                         <th>Jml Baris Data<br>Lengkap</th>
                                         <th>Baris CDE</th>
                                         <th>Tgl Rekam PIDE</th>
+                                        <th>Prioritas</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
@@ -1758,6 +1768,7 @@
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
                                         <th>Tgl Kirim PIDE</th>
+                                        <th>Prioritas</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
@@ -1927,6 +1938,7 @@
                                         <th>Belum QC</th>
                                         <th>Lolos QC</th>
                                         <th>Tgl Transfer</th>
+                                        <th>Prioritas</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
@@ -2027,6 +2039,7 @@
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
                                         <th>Tgl Transfer</th>
+                                        <th>Prioritas</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
                                 </thead>
@@ -2661,39 +2674,352 @@
         // Map category to column config
         function getColumnsForCategory(category) {
             if (category === 'belum_rekam_backup_data' || category === 'belum_dibuat_tanda_terima' || category === 'belum_diteliti') {
-                return p3deBarisDiterimaColumns;
+                let cols = p3deBarisDiterimaColumns;
+            // Clone columns so we don't modify the global ones (important since they are shared)
+            cols = cols.slice();
+            
+            // Inject Prioritas column if it's a tiket category
+            if (!category.startsWith('jenis_data_tanpa_pic')) {
+                const actionIdx = cols.findIndex(c => c.data === 'actions');
+                const prioritasCol = {
+                    data: 'is_prioritas',
+                    title: 'Prioritas',
+                    width: '80px',
+                    orderable: false,
+                    searchable: false,
+                    render: function(data, type) {
+                        if (type === 'display') {
+                            return data ? '<span class="badge bg-soft-danger text-danger border border-danger">Ya</span>' : '<span class="badge bg-soft-secondary text-secondary border border-secondary">Tidak</span>';
+                        }
+                        return data;
+                    }
+                };
+                if (actionIdx !== -1) {
+                    cols.splice(actionIdx, 0, prioritasCol);
+                } else {
+                    cols.push(prioritasCol);
+                }
+            }
+            return cols;
             }
             if (category === 'belum_dikirim_ke_pide') {
-                return p3deBelumDikirimPideColumns;
+                let cols = p3deBelumDikirimPideColumns;
+            // Clone columns so we don't modify the global ones (important since they are shared)
+            cols = cols.slice();
+            
+            // Inject Prioritas column if it's a tiket category
+            if (!category.startsWith('jenis_data_tanpa_pic')) {
+                const actionIdx = cols.findIndex(c => c.data === 'actions');
+                const prioritasCol = {
+                    data: 'is_prioritas',
+                    title: 'Prioritas',
+                    width: '80px',
+                    orderable: false,
+                    searchable: false,
+                    render: function(data, type) {
+                        if (type === 'display') {
+                            return data ? '<span class="badge bg-soft-danger text-danger border border-danger">Ya</span>' : '<span class="badge bg-soft-secondary text-secondary border border-secondary">Tidak</span>';
+                        }
+                        return data;
+                    }
+                };
+                if (actionIdx !== -1) {
+                    cols.splice(actionIdx, 0, prioritasCol);
+                } else {
+                    cols.push(prioritasCol);
+                }
+            }
+            return cols;
             }
             if (category === 'pengembalian_seluruhnya_dari_pide' || category === 'pengembalian_sebagian_dari_pide') {
-                return pengembalianP3deColumns;
+                let cols = pengembalianP3deColumns;
+            // Clone columns so we don't modify the global ones (important since they are shared)
+            cols = cols.slice();
+            
+            // Inject Prioritas column if it's a tiket category
+            if (!category.startsWith('jenis_data_tanpa_pic')) {
+                const actionIdx = cols.findIndex(c => c.data === 'actions');
+                const prioritasCol = {
+                    data: 'is_prioritas',
+                    title: 'Prioritas',
+                    width: '80px',
+                    orderable: false,
+                    searchable: false,
+                    render: function(data, type) {
+                        if (type === 'display') {
+                            return data ? '<span class="badge bg-soft-danger text-danger border border-danger">Ya</span>' : '<span class="badge bg-soft-secondary text-secondary border border-secondary">Tidak</span>';
+                        }
+                        return data;
+                    }
+                };
+                if (actionIdx !== -1) {
+                    cols.splice(actionIdx, 0, prioritasCol);
+                } else {
+                    cols.push(prioritasCol);
+                }
+            }
+            return cols;
             }
             if (category === 'belum_mulai_proses_identifikasi') {
-                return pideBelumMulaiColumns;
+                let cols = pideBelumMulaiColumns;
+            // Clone columns so we don't modify the global ones (important since they are shared)
+            cols = cols.slice();
+            
+            // Inject Prioritas column if it's a tiket category
+            if (!category.startsWith('jenis_data_tanpa_pic')) {
+                const actionIdx = cols.findIndex(c => c.data === 'actions');
+                const prioritasCol = {
+                    data: 'is_prioritas',
+                    title: 'Prioritas',
+                    width: '80px',
+                    orderable: false,
+                    searchable: false,
+                    render: function(data, type) {
+                        if (type === 'display') {
+                            return data ? '<span class="badge bg-soft-danger text-danger border border-danger">Ya</span>' : '<span class="badge bg-soft-secondary text-secondary border border-secondary">Tidak</span>';
+                        }
+                        return data;
+                    }
+                };
+                if (actionIdx !== -1) {
+                    cols.splice(actionIdx, 0, prioritasCol);
+                } else {
+                    cols.push(prioritasCol);
+                }
+            }
+            return cols;
             }
             if (category === 'dalam_proses_identifikasi') {
-                return pideDalamProsesColumns;
+                let cols = pideDalamProsesColumns;
+            // Clone columns so we don't modify the global ones (important since they are shared)
+            cols = cols.slice();
+            
+            // Inject Prioritas column if it's a tiket category
+            if (!category.startsWith('jenis_data_tanpa_pic')) {
+                const actionIdx = cols.findIndex(c => c.data === 'actions');
+                const prioritasCol = {
+                    data: 'is_prioritas',
+                    title: 'Prioritas',
+                    width: '80px',
+                    orderable: false,
+                    searchable: false,
+                    render: function(data, type) {
+                        if (type === 'display') {
+                            return data ? '<span class="badge bg-soft-danger text-danger border border-danger">Ya</span>' : '<span class="badge bg-soft-secondary text-secondary border border-secondary">Tidak</span>';
+                        }
+                        return data;
+                    }
+                };
+                if (actionIdx !== -1) {
+                    cols.splice(actionIdx, 0, prioritasCol);
+                } else {
+                    cols.push(prioritasCol);
+                }
+            }
+            return cols;
             }
             if (category === 'dalam_proses_pengendalian_mutu') {
-                return pmdeDalamProsesColumns;
+                let cols = pmdeDalamProsesColumns;
+            // Clone columns so we don't modify the global ones (important since they are shared)
+            cols = cols.slice();
+            
+            // Inject Prioritas column if it's a tiket category
+            if (!category.startsWith('jenis_data_tanpa_pic')) {
+                const actionIdx = cols.findIndex(c => c.data === 'actions');
+                const prioritasCol = {
+                    data: 'is_prioritas',
+                    title: 'Prioritas',
+                    width: '80px',
+                    orderable: false,
+                    searchable: false,
+                    render: function(data, type) {
+                        if (type === 'display') {
+                            return data ? '<span class="badge bg-soft-danger text-danger border border-danger">Ya</span>' : '<span class="badge bg-soft-secondary text-secondary border border-secondary">Tidak</span>';
+                        }
+                        return data;
+                    }
+                };
+                if (actionIdx !== -1) {
+                    cols.splice(actionIdx, 0, prioritasCol);
+                } else {
+                    cols.push(prioritasCol);
+                }
+            }
+            return cols;
             }
             if (category === 'periode_tiket_null_p3de') {
-                return periodeTiketNullColumns;
+                let cols = periodeTiketNullColumns;
+            // Clone columns so we don't modify the global ones (important since they are shared)
+            cols = cols.slice();
+            
+            // Inject Prioritas column if it's a tiket category
+            if (!category.startsWith('jenis_data_tanpa_pic')) {
+                const actionIdx = cols.findIndex(c => c.data === 'actions');
+                const prioritasCol = {
+                    data: 'is_prioritas',
+                    title: 'Prioritas',
+                    width: '80px',
+                    orderable: false,
+                    searchable: false,
+                    render: function(data, type) {
+                        if (type === 'display') {
+                            return data ? '<span class="badge bg-soft-danger text-danger border border-danger">Ya</span>' : '<span class="badge bg-soft-secondary text-secondary border border-secondary">Tidak</span>';
+                        }
+                        return data;
+                    }
+                };
+                if (actionIdx !== -1) {
+                    cols.splice(actionIdx, 0, prioritasCol);
+                } else {
+                    cols.push(prioritasCol);
+                }
+            }
+            return cols;
             }
             if (category === 'special_request') {
-                return specialRequestColumns;
+                let cols = specialRequestColumns;
+            // Clone columns so we don't modify the global ones (important since they are shared)
+            cols = cols.slice();
+            
+            // Inject Prioritas column if it's a tiket category
+            if (!category.startsWith('jenis_data_tanpa_pic')) {
+                const actionIdx = cols.findIndex(c => c.data === 'actions');
+                const prioritasCol = {
+                    data: 'is_prioritas',
+                    title: 'Prioritas',
+                    width: '80px',
+                    orderable: false,
+                    searchable: false,
+                    render: function(data, type) {
+                        if (type === 'display') {
+                            return data ? '<span class="badge bg-soft-danger text-danger border border-danger">Ya</span>' : '<span class="badge bg-soft-secondary text-secondary border border-secondary">Tidak</span>';
+                        }
+                        return data;
+                    }
+                };
+                if (actionIdx !== -1) {
+                    cols.splice(actionIdx, 0, prioritasCol);
+                } else {
+                    cols.push(prioritasCol);
+                }
+            }
+            return cols;
             }
             if (category === 'tiket_pengendalian_mutu_tanpa_pic') {
-                return tiketPengendalianMutuTanpaPicColumns;
+                let cols = tiketPengendalianMutuTanpaPicColumns;
+            // Clone columns so we don't modify the global ones (important since they are shared)
+            cols = cols.slice();
+            
+            // Inject Prioritas column if it's a tiket category
+            if (!category.startsWith('jenis_data_tanpa_pic')) {
+                const actionIdx = cols.findIndex(c => c.data === 'actions');
+                const prioritasCol = {
+                    data: 'is_prioritas',
+                    title: 'Prioritas',
+                    width: '80px',
+                    orderable: false,
+                    searchable: false,
+                    render: function(data, type) {
+                        if (type === 'display') {
+                            return data ? '<span class="badge bg-soft-danger text-danger border border-danger">Ya</span>' : '<span class="badge bg-soft-secondary text-secondary border border-secondary">Tidak</span>';
+                        }
+                        return data;
+                    }
+                };
+                if (actionIdx !== -1) {
+                    cols.splice(actionIdx, 0, prioritasCol);
+                } else {
+                    cols.push(prioritasCol);
+                }
+            }
+            return cols;
             }
             if (category === 'tiket_dikirim_ke_pide_tanpa_pic') {
-                return tiketDikirimKePideTanpaPicColumns;
+                let cols = tiketDikirimKePideTanpaPicColumns;
+            // Clone columns so we don't modify the global ones (important since they are shared)
+            cols = cols.slice();
+            
+            // Inject Prioritas column if it's a tiket category
+            if (!category.startsWith('jenis_data_tanpa_pic')) {
+                const actionIdx = cols.findIndex(c => c.data === 'actions');
+                const prioritasCol = {
+                    data: 'is_prioritas',
+                    title: 'Prioritas',
+                    width: '80px',
+                    orderable: false,
+                    searchable: false,
+                    render: function(data, type) {
+                        if (type === 'display') {
+                            return data ? '<span class="badge bg-soft-danger text-danger border border-danger">Ya</span>' : '<span class="badge bg-soft-secondary text-secondary border border-secondary">Tidak</span>';
+                        }
+                        return data;
+                    }
+                };
+                if (actionIdx !== -1) {
+                    cols.splice(actionIdx, 0, prioritasCol);
+                } else {
+                    cols.push(prioritasCol);
+                }
+            }
+            return cols;
             }
             if (category.startsWith('jenis_data_tanpa_pic')) {
-                return jenisDataTanpaPicColumns;
+                let cols = jenisDataTanpaPicColumns;
+            // Clone columns so we don't modify the global ones (important since they are shared)
+            cols = cols.slice();
+            
+            // Inject Prioritas column if it's a tiket category
+            if (!category.startsWith('jenis_data_tanpa_pic')) {
+                const actionIdx = cols.findIndex(c => c.data === 'actions');
+                const prioritasCol = {
+                    data: 'is_prioritas',
+                    title: 'Prioritas',
+                    width: '80px',
+                    orderable: false,
+                    searchable: false,
+                    render: function(data, type) {
+                        if (type === 'display') {
+                            return data ? '<span class="badge bg-soft-danger text-danger border border-danger">Ya</span>' : '<span class="badge bg-soft-secondary text-secondary border border-secondary">Tidak</span>';
+                        }
+                        return data;
+                    }
+                };
+                if (actionIdx !== -1) {
+                    cols.splice(actionIdx, 0, prioritasCol);
+                } else {
+                    cols.push(prioritasCol);
+                }
             }
-            return tiketCategoryColumns;
+            return cols;
+            }
+            let cols = tiketCategoryColumns;
+            // fallback
+            // Clone columns so we don't modify the global ones (important since they are shared)
+            cols = cols.slice();
+            
+            // Inject Prioritas column if it's a tiket category
+            if (!category.startsWith('jenis_data_tanpa_pic')) {
+                const actionIdx = cols.findIndex(c => c.data === 'actions');
+                const prioritasCol = {
+                    data: 'is_prioritas',
+                    title: 'Prioritas',
+                    width: '80px',
+                    orderable: false,
+                    searchable: false,
+                    render: function(data, type) {
+                        if (type === 'display') {
+                            return data ? '<span class="badge bg-soft-danger text-danger border border-danger">Ya</span>' : '<span class="badge bg-soft-secondary text-secondary border border-secondary">Tidak</span>';
+                        }
+                        return data;
+                    }
+                };
+                if (actionIdx !== -1) {
+                    cols.splice(actionIdx, 0, prioritasCol);
+                } else {
+                    cols.push(prioritasCol);
+                }
+            }
+            return cols;
         }
 
         const activeAgeGroups = {};
@@ -3603,6 +3929,477 @@
             });
         });
 
+// --- START FAB LOGIC ---
+    const STARRED_TOGGLE_URL = "{% url 'toggle_starred_tiket' %}";
+    const STARRED_LIST_URL = "{% url 'get_starred_tikets' %}";
+    var starredSet = new Set();
+    let pantauanDetailsData = [];
+    let currentPantauanSearch = '';
+    let currentPantauanFilter = 'all';
+
+    const wlStyle = document.createElement('style');
+    wlStyle.textContent = 
+        '#pantauan-panel{position:fixed;bottom:28px;right:28px;z-index:1090;font-family:inherit;}' +
+        '#pantauan-fab{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);' +
+            'color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;' +
+            'box-shadow:0 4px 18px rgba(245,158,11,.45);position:relative;transition:transform .2s;}' +
+        '#pantauan-fab:hover{transform:scale(1.08);}' +
+        '#pantauan-fab i{width:22px;height:22px;font-size:20px;}' +
+        '#pantauan-badge{position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:10px;' +
+            'font-weight:700;border-radius:50%;min-width:18px;height:18px;display:flex;' +
+            'align-items:center;justify-content:center;padding:0 3px;border:2px solid #fff;}' +
+        '#pantauan-drawer{display:none;position:absolute;bottom:58px;right:0;width:300px;background:#fff;' +
+            'border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,.18);border:1px solid #e2e8f0;overflow:hidden;}' +
+        '#pantauan-drawer.open{display:block;}' +
+        '.wl-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;' +
+            'background:#fffbeb;border-bottom:1px solid #fde68a;font-weight:600;font-size:13px;color:#92400e;}' +
+        '#wl-close{background:none;border:none;font-size:20px;cursor:pointer;color:#92400e;line-height:1;padding:0;}' +
+        '#pantauan-list{list-style:none;padding:0;margin:0;max-height:350px;overflow-y:auto;}' +
+        '#pantauan-list li{display:flex;align-items:center;justify-content:space-between;' +
+            'padding:9px 16px;border-bottom:1px solid #f1f5f9;font-size:12.5px;transition:background .15s;}' +
+        '#pantauan-list li:hover{background:#fffbeb;}' +
+        '#pantauan-list li .wl-nomor{font-weight:600;color:#1e293b;}' +
+        '#pantauan-list li .wl-remove{background:none;border:none;cursor:pointer;color:#94a3b8;font-size:15px;' +
+            'padding:0;line-height:1;transition:color .15s;}' +
+        '#pantauan-list li .wl-remove:hover{color:#ef4444;}' +
+        '#wl-empty-msg{padding:20px 16px;text-align:center;color:#94a3b8;font-size:12.5px;margin:0;}' +
+        '#star-toast{position:fixed;bottom:90px;right:28px;z-index:1100;background:#1e293b;color:#f8fafc;' +
+            'padding:9px 16px;border-radius:10px;font-size:12.5px;box-shadow:0 4px 18px rgba(0,0,0,.25);' +
+            'opacity:0;transition:opacity .25s;pointer-events:none;}' +
+        '#star-toast.show{opacity:1;}';
+    document.head.appendChild(wlStyle);
+
+    const starToast = document.createElement('div');
+    starToast.id = 'star-toast';
+    document.body.appendChild(starToast);
+    let starToastTimer;
+    function showStarToast(nomor, isStarred) {
+        starToast.textContent = isStarred 
+            ? '⭐ ' + nomor + ' ditambahkan ke Pantauan (' + starredSet.size + ')' 
+            : '✕ ' + nomor + ' dihapus dari Pantauan';
+        starToast.classList.add('show');
+        clearTimeout(starToastTimer);
+        starToastTimer = setTimeout(function() { starToast.classList.remove('show'); }, 2600);
+    }
+
+    async function toggleStar(nomor) {
+        var formData = new FormData();
+        formData.append('nomor_tiket', nomor);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+        
+        try {
+            const res = await fetch(STARRED_TOGGLE_URL, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.starred) {
+                starredSet.add(nomor);
+            } else {
+                starredSet.delete(nomor);
+            }
+            
+            // Sync all active datatable buttons
+            document.querySelectorAll('.btn-star-tiket[data-nomor="' + nomor + '"]').forEach(btn => {
+                syncStarBtnVisual(btn, nomor);
+            });
+            
+            showStarToast(nomor, data.starred);
+            
+            // Refresh details
+            const refRes = await fetch(STARRED_LIST_URL);
+            const refData = await refRes.json();
+            updatePantauanPanel(refData.details);
+            
+        } catch(e) {}
+    }
+
+    function createStarBtn(nomor) {
+        const isStarred = starredSet.has(nomor);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-sm btn-star-tiket' + (isStarred ? ' starred' : '');
+        btn.setAttribute('data-nomor', nomor);
+        btn.title = isStarred ? 'Hapus dari Pantauan' : 'Tambah ke Pantauan';
+        btn.style.cssText = 'background:transparent;border:1px solid #e2e8f0;padding:2px 5px;border-radius:6px;margin-right:3px;' +
+            (isStarred ? 'color:#f59e0b;border-color:#fde68a;' : 'color:#cbd5e1;');
+        btn.innerHTML = '<i class="feather-star" style="width:13px;height:13px;font-size:13px;' +
+            (isStarred ? 'fill:#f59e0b;' : '') + '"></i>';
+        return btn;
+    }
+
+    function syncStarBtnVisual(btn, nomor) {
+        const isStarred = starredSet.has(nomor);
+        btn.classList.toggle('starred', isStarred);
+        btn.title = isStarred ? 'Hapus dari Pantauan' : 'Tambah ke Pantauan';
+        btn.style.color = isStarred ? '#f59e0b' : '#cbd5e1';
+        btn.style.borderColor = isStarred ? '#fde68a' : '#e2e8f0';
+        const icon = btn.querySelector('i');
+        if (icon) icon.style.fill = isStarred ? '#f59e0b' : '';
+    }
+
+    // Add FAB Panel
+    const pantauanPanel = document.createElement('div');
+    pantauanPanel.id = 'pantauan-panel';
+    pantauanPanel.innerHTML = `
+        <div id="pantauan-fab" title="Pantauan Tiket">
+            <i class="feather-star"></i>
+            <span id="pantauan-badge" style="display:none;">0</span>
+        </div>
+        <div id="pantauan-drawer">
+            <div class="wl-header">
+                <span><i class="feather-star" style="color:#f59e0b;margin-right:6px;"></i>Daftar Pantauan</span>
+                <button id="wl-close" title="Tutup">&times;</button>
+            </div>
+            <div id="pantauan-controls" style="padding:10px 16px; border-bottom:1px solid #f1f5f9; background:#f8fafc;">
+                <div style="position:relative; margin-bottom:8px;">
+                    <i class="feather-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:13px;"></i>
+                    <input type="text" id="pantauan-search" placeholder="Cari tiket, ILAP..." autocomplete="off" style="width:100%; padding:6px 10px 6px 30px; font-size:12px; border:1px solid #e2e8f0; border-radius:6px; outline:none; background:#fff;">
+                </div>
+                <div id="pantauan-chips" style="display:flex; overflow-x:auto; gap:6px; padding-bottom:4px; scrollbar-width:none; -ms-overflow-style:none;">
+                </div>
+                <style>
+                    #pantauan-chips::-webkit-scrollbar { display: none; }
+                    .pantauan-chip { padding:3px 10px; border-radius:12px; font-size:11px; font-weight:500; cursor:pointer; white-space:nowrap; background:#e2e8f0; color:#475569; transition:all .2s; border:1px solid transparent; }
+                    .pantauan-chip:hover { background:#cbd5e1; }
+                    .pantauan-chip.active-all { background:#1e293b; color:#fff; border-color:#1e293b; }
+                    .pantauan-item { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); opacity: 1; max-height: 150px; overflow: hidden; }
+                    .pantauan-item.removing { opacity: 0; transform: translateX(30px); max-height: 0; padding-top: 0 !important; padding-bottom: 0 !important; margin: 0; border: none !important; }
+                </style>
+            </div>
+            <div id="pantauan-list" style="padding-bottom:40px;"></div>
+            <button id="wl-clear-all" title="Hapus Semua Pantauan" style="position:absolute; bottom:16px; right:16px; font-size:11px; font-weight:600; color:#ef4444; background:#fee2e2; border:none; border-radius:20px; padding:6px 14px; cursor:pointer; box-shadow:0 4px 12px rgba(239, 68, 68, 0.2); transition:all 0.2s; z-index:10; display:none;"><i class="feather-trash-2" style="margin-right:4px;"></i> Hapus Semua</button>
+        </div>`;
+    document.body.appendChild(pantauanPanel);
+
+    function renderPantauanChips(details) {
+        var chipsContainer = document.getElementById('pantauan-chips');
+        if (!chipsContainer) return;
+        
+        var statusesMap = new Map();
+        if (details) {
+            details.forEach(item => {
+                if (!statusesMap.has(item.status)) {
+                    statusesMap.set(item.status, item.status_code);
+                }
+            });
+        }
+        
+        var html = `<div class="pantauan-chip ${currentPantauanFilter === 'all' ? 'active-all' : ''}" data-filter="all" style="${currentPantauanFilter === 'all' ? 'background:#1e293b; color:#fff; border-color:#1e293b;' : ''}">Semua</div>`;
+        
+        statusesMap.forEach((code, status) => {
+            let badgeClass = '';
+            switch(code) {
+                case 1: badgeClass = 'status-perekaman'; break;
+                case 2: badgeClass = 'status-diteliti'; break;
+                case 3: badgeClass = 'status-dikembalikan'; break;
+                case 4: badgeClass = 'status-belum-diterima'; break;
+                case 5: badgeClass = 'status-identifikasi'; break;
+                case 6: badgeClass = 'status-qc'; break;
+                case 7: badgeClass = 'status-dibatalkan'; break;
+                case 8: badgeClass = 'status-selesai'; break;
+                case 9: badgeClass = 'status-tidak-direkam'; break;
+            }
+            let isActive = currentPantauanFilter === status;
+            html += `<div class="pantauan-chip ${isActive ? 'badge ' + badgeClass : ''}" data-filter="${status}" style="${isActive ? 'border-radius:12px; font-size:11px; padding:3px 10px; cursor:pointer;' : ''}">${status}</div>`;
+        });
+        chipsContainer.innerHTML = html;
+        
+        chipsContainer.querySelectorAll('.pantauan-chip').forEach(chip => {
+            chip.addEventListener('click', function() {
+                currentPantauanFilter = this.getAttribute('data-filter');
+                renderPantauanList();
+                renderPantauanChips(pantauanDetailsData);
+            });
+        });
+    }
+
+    function renderPantauanList() {
+        var list = document.getElementById('pantauan-list');
+        var count = starredSet.size;
+        
+        list.innerHTML = '';
+        if (count === 0) {
+            list.innerHTML = '<div style="padding:16px;text-align:center;color:#6b7280;font-size:12px;">Tidak ada tiket pantauan</div>';
+            return;
+        }
+
+        var filteredDetails = pantauanDetailsData;
+        
+        if (currentPantauanSearch.trim() !== '') {
+            var s = currentPantauanSearch.toLowerCase();
+            filteredDetails = filteredDetails.filter(item => 
+                (item.nomor_tiket && item.nomor_tiket.toLowerCase().includes(s)) ||
+                (item.ilap && item.ilap.toLowerCase().includes(s)) ||
+                (item.jenis_data && item.jenis_data.toLowerCase().includes(s))
+            );
+        }
+        
+        if (currentPantauanFilter !== 'all') {
+            filteredDetails = filteredDetails.filter(item => item.status === currentPantauanFilter);
+        }
+
+        if (filteredDetails && filteredDetails.length > 0) {
+            filteredDetails.forEach(function(item) {
+                var div = document.createElement('div');
+                div.className = 'pantauan-item';
+                div.style.padding = '12px';
+                div.style.borderBottom = '1px solid #f3f4f6';
+                div.style.fontSize = '12px';
+                
+                let badgeClass = 'bg-secondary';
+                let iconClass = 'feather-info';
+                switch(item.status_code) {
+                    case 1: badgeClass = 'status-perekaman'; iconClass = 'feather-edit-2'; break;
+                    case 2: badgeClass = 'status-diteliti'; iconClass = 'feather-search'; break;
+                    case 3: badgeClass = 'status-dikembalikan'; iconClass = 'feather-corner-up-left'; break;
+                    case 4: badgeClass = 'status-belum-diterima'; iconClass = 'feather-clock'; break;
+                    case 5: badgeClass = 'status-identifikasi'; iconClass = 'feather-info'; break;
+                    case 6: badgeClass = 'status-qc'; iconClass = 'feather-shield'; break;
+                    case 7: badgeClass = 'status-dibatalkan'; iconClass = 'feather-x-circle'; break;
+                    case 8: badgeClass = 'status-selesai'; iconClass = 'feather-check-circle'; break;
+                    case 9: badgeClass = 'status-tidak-direkam'; iconClass = 'feather-slash'; break;
+                }
+                
+                div.innerHTML = `
+                    <div style="font-weight:600;color:#111827;display:flex;justify-content:space-between;align-items:center;">
+                        <a href="${item.url}" target="_blank" style="color:#0ea5e9;text-decoration:none;">${item.nomor_tiket}</a>
+                        <div style="display:flex;align-items:center;">
+                            <span class="badge ${badgeClass}" style="font-size:10px;padding:3px 6px;margin-right:6px;display:inline-flex;align-items:center;gap:3px;font-weight:600;">
+                                <i class="${iconClass}" style="font-size:10px;"></i> ${item.status}
+                            </span>
+                            <button type="button" class="wl-remove" data-nomor="${item.nomor_tiket}" title="Hapus dari Pantauan" style="background:transparent;border:none;color:#9ca3af;cursor:pointer;padding:0;font-size:15px;line-height:1;">&times;</button>
+                        </div>
+                    </div>
+                    <div style="color:#6b7280;margin-top:4px;">${item.ilap} - ${item.jenis_data}</div>
+                `;
+                list.appendChild(div);
+            });
+        } else if (pantauanDetailsData.length > 0) {
+            list.innerHTML = '<div style="padding:16px;text-align:center;color:#6b7280;font-size:12px;">Pencarian tidak ditemukan</div>';
+        } else {
+            starredSet.forEach(function(nomor) {
+                var div = document.createElement('div');
+                div.className = 'pantauan-item';
+                div.style.padding = '12px';
+                div.style.borderBottom = '1px solid #f3f4f6';
+                div.style.fontSize = '12px';
+                div.style.fontWeight = '500';
+                div.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span>${nomor}</span>
+                        <button type="button" class="wl-remove" data-nomor="${nomor}" title="Hapus dari Pantauan" style="background:transparent;border:none;color:#9ca3af;cursor:pointer;padding:0;font-size:14px;">&times;</button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+    }
+
+    function updatePantauanPanel(details) {
+        if (details !== undefined) {
+            pantauanDetailsData = details || [];
+        }
+        
+        var badge = document.getElementById('pantauan-badge');
+        var clearBtn = document.getElementById('wl-clear-all');
+        var count = starredSet.size;
+        
+        if (count > 0) {
+            badge.textContent = count;
+            badge.style.display = 'block';
+            if (clearBtn) clearBtn.style.display = 'inline-block';
+            document.getElementById('pantauan-controls').style.display = 'block';
+        } else {
+            badge.style.display = 'none';
+            if (clearBtn) clearBtn.style.display = 'none';
+            document.getElementById('pantauan-controls').style.display = 'none';
+        }
+        
+        renderPantauanChips(pantauanDetailsData);
+        renderPantauanList();
+    }
+
+    document.getElementById('pantauan-fab').addEventListener('click', function() {
+        document.getElementById('pantauan-drawer').classList.toggle('open');
+    });
+    
+    document.getElementById('pantauan-search').addEventListener('input', function(e) {
+        currentPantauanSearch = e.target.value;
+        renderPantauanList();
+    });
+
+    document.getElementById('wl-close').addEventListener('click', function() {
+        document.getElementById('pantauan-drawer').classList.remove('open');
+    });
+    
+    document.getElementById('pantauan-list').addEventListener('click', function(e) {
+        var btn = e.target.closest('.wl-remove');
+        if (btn) {
+            var nomor = btn.getAttribute('data-nomor');
+            var itemDiv = btn.closest('.pantauan-item');
+            if (itemDiv) {
+                itemDiv.classList.add('removing');
+                setTimeout(() => {
+                    toggleStar(nomor);
+                }, 300);
+            } else {
+                toggleStar(nomor);
+            }
+        }
+    });
+    
+    document.getElementById('wl-clear-all').addEventListener('click', async function() {
+        if (confirm('Hapus semua tiket dari pantauan?')) {
+            const items = document.querySelectorAll('#pantauan-list .pantauan-item');
+            items.forEach((item, index) => {
+                setTimeout(() => {
+                    item.classList.add('removing');
+                }, index * 30);
+            });
+            
+            setTimeout(async () => {
+                var list = [...starredSet];
+                for (var nomor of list) await toggleStar(nomor);
+            }, items.length * 30 + 300);
+        }
+    });
+
+    // Event delegation on table body to handle dynamic star clicks
+    $(document).on('click', '.btn-star-tiket', function(e) {
+        // Prevent default datatables row click (if any)
+        e.stopPropagation();
+        var nomor = $(this).attr('data-nomor');
+        toggleStar(nomor);
+    });
+
+    // Intercept DataTables draw to inject stars
+    $(document).on('draw.dt', function(e, settings) {
+        const tableEl = settings.nTable;
+        if (!tableEl) return;
+        
+        try {
+            const dt = $(tableEl).DataTable();
+            dt.rows({ page: 'current' }).every(function() {
+                const data = this.data();
+                const nomor = data && data.nomor_tiket;
+                if (!nomor) return;
+                const tr = this.node();
+                if (!tr) return;
+                
+                const firstTd = tr.querySelector('td:first-child');
+                if (!firstTd) return;
+                
+                const existing = firstTd.querySelector('.btn-star-tiket');
+                if (existing) {
+                    syncStarBtnVisual(existing, nomor);
+                    return;
+                }
+                
+                const btn = createStarBtn(nomor);
+                
+                if (!firstTd.querySelector('.d-flex')) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'd-flex align-items-center gap-2';
+                    while (firstTd.firstChild) {
+                        wrapper.appendChild(firstTd.firstChild);
+                    }
+                    wrapper.prepend(btn);
+                    firstTd.appendChild(wrapper);
+                } else {
+                    firstTd.querySelector('.d-flex').prepend(btn);
+                }
+            });
+        } catch(err) {
+            console.error("Error drawing stars:", err);
+        }
+    });
+
+    // Load data from server
+    async function loadStarredFromServer() {
+        try {
+            var res = await fetch(STARRED_LIST_URL, { credentials: 'same-origin' });
+            var json = await res.json();
+            starredSet = new Set(json.starred || []);
+            updatePantauanPanel(json.details);
+        } catch(e) {}
+        document.querySelectorAll('.tiket-datatable').forEach(function(tbl) {
+            if (tbl.id && $.fn.DataTable.isDataTable('#' + tbl.id)) {
+                try { $(tbl).DataTable().draw(false); } catch(e) {}
+            }
+        });
+    }
+
+        function injectStarSwitches() {
+        document.querySelectorAll('[id^="filter-group-"]').forEach(function(group) {
+            if (group.querySelector('.switch-starred')) return;
+            const category = group.id.replace('filter-group-', '');
+            
+            // Container for both switches
+            const switchContainer = document.createElement('div');
+            switchContainer.className = 'd-flex align-items-center gap-3 ms-2 mb-0';
+            switchContainer.style.marginTop = '2px';
+            
+            // Priority Switch
+            const prioWrapper = document.createElement('div');
+            prioWrapper.className = 'form-check form-switch mb-0';
+            prioWrapper.innerHTML =
+                '<input class="form-check-input switch-priority" type="checkbox" ' +
+                    'id="switch-priority-' + category + '" data-category="' + category + '">' +
+                '<label class="form-check-label text-muted small fw-semibold d-inline-flex align-items-center gap-1" ' +
+                    'for="switch-priority-' + category + '">' +
+                    '<i class="feather-alert-octagon" style="font-size:11px;color:#ef4444;"></i> Prioritas' +
+                '</label>';
+            
+            // Starred Switch
+            const starWrapper = document.createElement('div');
+            starWrapper.className = 'form-check form-switch mb-0';
+            starWrapper.innerHTML =
+                '<input class="form-check-input switch-starred" type="checkbox" ' +
+                    'id="switch-starred-' + category + '" data-category="' + category + '">' +
+                '<label class="form-check-label text-muted small fw-semibold d-inline-flex align-items-center gap-1" ' +
+                    'for="switch-starred-' + category + '">' +
+                    '<i class="feather-star" style="font-size:11px;color:#f59e0b;"></i> Pantauan' +
+                '</label>';
+            
+            switchContainer.appendChild(prioWrapper);
+            switchContainer.appendChild(starWrapper);
+            group.appendChild(switchContainer);
+            
+            // Event listeners
+            prioWrapper.querySelector('input').addEventListener('change', function() {
+                const cat = this.getAttribute('data-category');
+                const dt = datatableTables[cat];
+                if (dt) {
+                    const url = new URL(dt.ajax.url(), window.location.origin);
+                    if (this.checked) {
+                        url.searchParams.set('priority_only', '1');
+                    } else {
+                        url.searchParams.delete('priority_only');
+                    }
+                    dt.ajax.url(url.pathname + url.search).load();
+                }
+            });
+            
+            starWrapper.querySelector('input').addEventListener('change', function() {
+                const cat = this.getAttribute('data-category');
+                const dt = datatableTables[cat];
+                if (dt) {
+                    const url = new URL(dt.ajax.url(), window.location.origin);
+                    if (this.checked) {
+                        url.searchParams.set('starred_only', 'true');
+                    } else {
+                        url.searchParams.delete('starred_only');
+                    }
+                    dt.ajax.url(url.pathname + url.search).load();
+                }
+            });
+        });
+    }
+
+    // Call init
+    injectStarSwitches();
+    loadStarredFromServer();
         // Reverted to use native DataTables search box per user request
     });
 </script>
