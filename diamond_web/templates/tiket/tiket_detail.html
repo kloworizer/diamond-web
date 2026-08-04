@@ -731,14 +731,6 @@
                     {% if user_is_active_pic_pide %}
                     {% if tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE or tiket.status_tiket == STATUS_IDENTIFIKASI %}
                     <div class="d-grid gap-2 mt-2">
-                        <!-- Dikembalikan button: show if status 4 or 5 -->
-                        {% if tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE or tiket.status_tiket == STATUS_IDENTIFIKASI %}
-                        <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal"
-                            data-bs-target="#dikembalikanTiketModal">
-                            <i class="feather-corner-up-left me-1"></i>Kembalikan ke P3DE
-                        </button>
-                        {% endif %}
-
                         <!-- Identifikasi button: show if status 4 (Dikirim ke PIDE) -->
                         {% if tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE %}
                         <button type="button" class="btn btn-primary shadow-sm fw-semibold" data-bs-toggle="modal"
@@ -752,6 +744,14 @@
                         <button type="button" class="btn btn-primary shadow-sm fw-semibold" data-bs-toggle="modal"
                             data-bs-target="#transferKePMDEModal" disabled>
                             <i class="feather-send me-1"></i>Transfer ke PMDE
+                        </button>
+                        {% endif %}
+                        
+                        <!-- Dikembalikan button: show if status 4 or 5 -->
+                        {% if tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE or tiket.status_tiket == STATUS_IDENTIFIKASI %}
+                        <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal"
+                            data-bs-target="#dikembalikanTiketModal">
+                            <i class="feather-corner-up-left me-1"></i>Kembalikan ke P3DE
                         </button>
                         {% endif %}
                     </div>
@@ -2290,7 +2290,127 @@
         }
 
 
+        
+        /* Premium Button styling */
+        .main-content .btn {
+            border-radius: 8px !important;
+            font-weight: 550 !important;
+            padding: 0.55rem 1.1rem !important;
+            font-size: 0.875rem !important;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            border-width: 1px !important;
+            cursor: pointer !important;
+        }
+
+        .main-content .btn-sm {
+            padding: 0.4rem 0.85rem !important;
+            font-size: 0.785rem !important;
+        }
+
+        .main-content .btn i {
+            font-size: 0.9rem;
+        }
+
+        .main-content .btn-primary {
+            background-color: #3b82f6 !important;
+            border-color: #3b82f6 !important;
+            color: #ffffff !important;
+        }
+
+        .main-content .btn-primary:hover {
+            background-color: #2563eb !important;
+            border-color: #2563eb !important;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2) !important;
+            transform: translateY(-1px);
+        }
+
+        .main-content .btn-success {
+            background-color: #10b981 !important;
+            border-color: #10b981 !important;
+            color: #ffffff !important;
+        }
+
+        .main-content .btn-success:hover {
+            background-color: #059669 !important;
+            border-color: #059669 !important;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2) !important;
+            transform: translateY(-1px);
+        }
+
+        .main-content .btn-warning, .main-content .btn-outline-warning {
+            background-color: #f59e0b !important;
+            border-color: #f59e0b !important;
+            color: #ffffff !important;
+        }
+
+        .main-content .btn-warning:hover, .main-content .btn-outline-warning:hover {
+            background-color: #d97706 !important;
+            border-color: #d97706 !important;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2) !important;
+            transform: translateY(-1px);
+        }
+
+        .main-content .btn-info {
+            background-color: #06b6d4 !important;
+            border-color: #06b6d4 !important;
+            color: #ffffff !important;
+        }
+
+        .main-content .btn-info:hover {
+            background-color: #0891b2 !important;
+            border-color: #0891b2 !important;
+            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2) !important;
+            transform: translateY(-1px);
+        }
+
+        .main-content .btn-danger {
+            background-color: #ef4444 !important;
+            border-color: #ef4444 !important;
+            color: #ffffff !important;
+        }
+
+        .main-content .btn-danger:hover {
+            background-color: #dc2626 !important;
+            border-color: #dc2626 !important;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2) !important;
+            transform: translateY(-1px);
+        }
+
+        .main-content .btn-secondary, .main-content .btn-outline-secondary {
+            background-color: #64748b !important;
+            border-color: #64748b !important;
+            color: #ffffff !important;
+        }
+
+        .main-content .btn-secondary:hover, .main-content .btn-outline-secondary:hover {
+            background-color: #475569 !important;
+            border-color: #475569 !important;
+            box-shadow: 0 4px 12px rgba(100, 116, 139, 0.2) !important;
+            transform: translateY(-1px);
+        }
+
+        /* Action buttons premium styles */
+        .card-body .btn {
+            text-transform: none !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.3px !important;
+            padding: 0.55rem 1rem !important;
+            font-size: 13px !important;
+            border-radius: 8px !important;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        
+        .card-body .btn:hover {
+            transform: translateY(-1px) !important;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08) !important;
+        }
+        
         /* Modal Styling Improvements */
+
         .modal-content {
             border-radius: 14px !important;
             border: 1px solid #e2e8f0 !important;
