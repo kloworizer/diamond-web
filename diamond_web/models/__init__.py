@@ -27,3 +27,4 @@ from .tiket_action import TiketAction
 from .tiket_pic import TiketPIC
 from .kirim_pide_temp import KirimPideTemp
 from .ilap_kpp import ILAPKPP
+from .user_starred_tiket import UserStarredTiket

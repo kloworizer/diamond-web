@@ -16,6 +16,7 @@ from diamond_web.views.task_to_do import (
 )
 from diamond_web.models.tiket import Tiket
 from diamond_web.models.tiket_pic import TiketPIC
+from diamond_web.models.user_starred_tiket import UserStarredTiket
 from diamond_web.models.tiket_action import TiketAction
 from diamond_web.models.pic import PIC
 from diamond_web.models.jenis_data_ilap import JenisDataILAP
