@@ -3085,18 +3085,16 @@
                 }
 
                 // Tanggal Terima Vertikal only applies to Regional ILAPs (same as rekam).
+                // setDateInputState (base.html) rather than .disabled directly:
+                // the field is a flatpickr, so the element the user types into
+                // is not this one.
                 if (tglVertikalInput) {
                     if (isRegional) {
-                        tglVertikalInput.disabled = false;
-                        tglVertikalInput.required = true;
-                        tglVertikalInput.style.opacity = '1';
+                        setDateInputState(tglVertikalInput, { disabled: false, required: true });
                         if (vertikalRequired) vertikalRequired.style.display = 'inline';
                         if (vertikalHint) vertikalHint.style.display = 'none';
                     } else {
-                        tglVertikalInput.required = false;
-                        tglVertikalInput.disabled = true;
-                        tglVertikalInput.value = '';
-                        tglVertikalInput.style.opacity = '0.6';
+                        setDateInputState(tglVertikalInput, { disabled: true });
                         if (vertikalRequired) vertikalRequired.style.display = 'none';
                         if (vertikalHint) vertikalHint.style.display = 'block';
                     }

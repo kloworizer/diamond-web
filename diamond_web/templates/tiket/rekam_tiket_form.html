@@ -885,30 +885,27 @@
             const ilapId = ilapSelect.value;
             const ilapisRegional = {{ ilaps_regional_ids|safe }};
             
+            // setDateInputState (base.html) rather than .disabled directly: the
+            // field is a flatpickr, so the element the user types into is not
+            // this one.
             if (!ilapId) {
                 // No ILAP selected, reset to normal (not required, editable)
-                tglTerimaVertikalInput.required = false;
-                tglTerimaVertikalInput.disabled = false;
-                tglTerimaVertikalInput.style.opacity = '1';
+                setDateInputState(tglTerimaVertikalInput, { disabled: false, required: false });
                 if (requiredIndicator) requiredIndicator.style.display = 'none';
                 if (hintText) hintText.style.display = 'none';
             } else {
                 const numIlapId = parseInt(ilapId);
                 const isRegional = ilapisRegional.includes(numIlapId);
-                
+
                 if (isRegional) {
                     // Regional: Make required and editable
-                    tglTerimaVertikalInput.required = true;
-                    tglTerimaVertikalInput.disabled = false;
-                    tglTerimaVertikalInput.style.opacity = '1';
+                    setDateInputState(tglTerimaVertikalInput, { disabled: false, required: true });
                     if (requiredIndicator) requiredIndicator.style.display = 'inline';
                     if (hintText) hintText.style.display = 'none';
                 } else {
-                    // Non-Regional: Make readonly (disabled)
-                    tglTerimaVertikalInput.required = false;
-                    tglTerimaVertikalInput.disabled = true;
-                    tglTerimaVertikalInput.style.opacity = '0.6';
-                    tglTerimaVertikalInput.value = '';
+                    // Non-Regional: Make readonly (disabled), dropping any date
+                    // already picked for a previously selected regional ILAP.
+                    setDateInputState(tglTerimaVertikalInput, { disabled: true });
                     if (requiredIndicator) requiredIndicator.style.display = 'none';
                     if (hintText) hintText.style.display = 'block';
                 }
