@@ -4098,7 +4098,10 @@
         
         var html = `<div class="pantauan-chip ${currentPantauanFilter === 'all' ? 'active-all' : ''}" data-filter="all" style="${currentPantauanFilter === 'all' ? 'background:#1e293b; color:#fff; border-color:#1e293b;' : ''}">Semua</div>`;
         
-        statusesMap.forEach((code, status) => {
+        // Urutkan status berdasarkan kode status (1=Direkam ... 8=Selesai)
+        var sortedStatuses = Array.from(statusesMap.entries()).sort((a, b) => a[1] - b[1]);
+        
+        sortedStatuses.forEach(([status, code]) => {
             let badgeClass = '';
             switch(code) {
                 case 1: badgeClass = 'status-perekaman'; break;

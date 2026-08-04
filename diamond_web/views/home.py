@@ -990,6 +990,9 @@ def get_starred_tikets(request):
                 'status_code': t.status_tiket,
                 'url': reverse('tiket_detail', args=[t.id])
             })
+        
+        # Urutkan list berdasarkan kapan tiket di-assign ke pantauan (sesuai urutan `starred`)
+        details.sort(key=lambda x: starred.index(x['nomor_tiket']))
             
     return JsonResponse({
         'starred': starred,
