@@ -966,8 +966,8 @@ def toggle_starred_tiket(request):
 @require_GET
 def get_starred_tikets(request):
     """Ambil daftar nomor tiket yang dipantau (watchlist) beserta detailnya."""
-    session_key = f'starred_tikets_{request.user.id}'
-    starred = request.session.get(session_key, [])
+    starred_records = UserStarredTiket.objects.filter(id_user=request.user).values_list('nomor_tiket', flat=True)
+    starred = list(starred_records)
     
     details = []
     if starred:
