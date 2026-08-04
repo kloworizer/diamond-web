@@ -1,13 +1,16 @@
 """Tests for backup_data, durasi_jatuh_tempo, and nama_tabel views."""
 import json
 import pytest
+from datetime import date
 from django.urls import reverse
+from django.utils import timezone
 from django.contrib.auth.models import Group
 
 from diamond_web.models import BackupData, DurasiJatuhTempo, JenisDataILAP, TiketPIC
 from diamond_web.tests.conftest import (
     TiketFactory, TiketPICFactory, UserFactory,
     JenisDataILAPFactory, DurasiJatuhTempoFactory, MediaBackupFactory,
+    JenisPrioritasDataFactory,
 )
 
 
@@ -629,6 +632,152 @@ class TestDurasiJatuhTempoPMDEViews:
         )
         assert resp.status_code == 200
         assert not DurasiJatuhTempo.objects.filter(pk=pk).exists()
+
+    def test_generate_denied_non_admin(self, client, authenticated_user):
+        client.force_login(authenticated_user)
+        resp = client.post(reverse('durasi_jatuh_tempo_pmde_generate'))
+        assert resp.status_code in (302, 403)
+
+    def test_generate_requires_post(self, client, pmde_admin_user):
+        client.force_login(pmde_admin_user)
+        resp = client.get(reverse('durasi_jatuh_tempo_pmde_generate'))
+        assert resp.status_code == 405
+
+    def test_generate_preview_denied_non_admin(self, client, authenticated_user):
+        client.force_login(authenticated_user)
+        resp = client.get(reverse('durasi_jatuh_tempo_pmde_generate_preview'))
+        assert resp.status_code in (302, 403)
+
+    def test_generate_preview_summarises_without_inserting(self, client, pmde_admin_user):
+        """The preview reports what would be written and saves nothing."""
+        self._ensure_user_pmde_group()
+        prioritas = JenisDataILAPFactory()
+        biasa = JenisDataILAPFactory()
+        JenisPrioritasDataFactory(id_sub_jenis_data_ilap=prioritas)
+        current_year = timezone.now().date().year
+        years = list(range(2022, current_year + 1))
+
+        client.force_login(pmde_admin_user)
+        resp = client.get(reverse('durasi_jatuh_tempo_pmde_generate_preview'))
+        assert resp.status_code == 200
+        payload = json.loads(resp.content)
+        assert payload['success'] is True
+        assert payload['tahun_awal'] == 2022
+        assert payload['tahun_akhir'] == current_year
+        assert payload['total_jenis_data'] == 2
+        assert payload['total_rows'] == 2 * len(years)
+        assert payload['prioritas'] == 1
+        assert payload['non_prioritas'] == 1
+
+        by_kode = {item['id_sub_jenis_data']: item for item in payload['items']}
+        assert by_kode[prioritas.id_sub_jenis_data]['durasi'] == 45
+        assert by_kode[biasa.id_sub_jenis_data]['durasi'] == 85
+        assert by_kode[biasa.id_sub_jenis_data]['jumlah_baris'] == len(years)
+        assert by_kode[biasa.id_sub_jenis_data]['periode'][0] == '01-01-2022 s.d. 31-12-2022'
+
+        # Nothing was written
+        assert not DurasiJatuhTempo.objects.filter(seksi__name='user_pmde').exists()
+
+    def test_generate_preview_matches_generate_result(self, client, pmde_admin_user):
+        self._ensure_user_pmde_group()
+        JenisDataILAPFactory()
+        JenisDataILAPFactory()
+        client.force_login(pmde_admin_user)
+
+        preview = json.loads(client.get(reverse('durasi_jatuh_tempo_pmde_generate_preview')).content)
+        result = json.loads(client.post(reverse('durasi_jatuh_tempo_pmde_generate')).content)
+        assert result['created'] == preview['total_rows']
+        assert result['jenis_data'] == preview['total_jenis_data']
+
+    def test_generate_preview_empty_when_nothing_to_do(self, client, pmde_admin_user):
+        self._ensure_user_pmde_group()
+        client.force_login(pmde_admin_user)
+        payload = json.loads(client.get(reverse('durasi_jatuh_tempo_pmde_generate_preview')).content)
+        assert payload['total_rows'] == 0
+        assert payload['items'] == []
+
+    def test_generate_creates_one_row_per_year(self, client, pmde_admin_user):
+        """Non-prioritas Sub Jenis Data get durasi 85 for every year since 2022."""
+        self._ensure_user_pmde_group()
+        jenis = JenisDataILAPFactory()
+        current_year = timezone.now().date().year
+        years = list(range(2022, current_year + 1))
+
+        client.force_login(pmde_admin_user)
+        resp = client.post(reverse('durasi_jatuh_tempo_pmde_generate'))
+        assert resp.status_code == 200
+        payload = json.loads(resp.content)
+        assert payload['success'] is True
+        assert payload['created'] == len(years)
+
+        rows = DurasiJatuhTempo.objects.filter(
+            id_sub_jenis_data=jenis, seksi__name='user_pmde'
+        ).order_by('start_date')
+        assert [r.start_date for r in rows] == [date(y, 1, 1) for y in years]
+        assert [r.end_date for r in rows] == [date(y, 12, 31) for y in years]
+        assert {r.durasi for r in rows} == {85}
+        assert rows[0].create_by == pmde_admin_user.username[:9]
+
+    def test_generate_uses_45_for_prioritas(self, client, pmde_admin_user):
+        self._ensure_user_pmde_group()
+        prioritas = JenisDataILAPFactory()
+        biasa = JenisDataILAPFactory()
+        JenisPrioritasDataFactory(id_sub_jenis_data_ilap=prioritas)
+
+        client.force_login(pmde_admin_user)
+        resp = client.post(reverse('durasi_jatuh_tempo_pmde_generate'))
+        assert resp.status_code == 200
+        assert {
+            r.durasi for r in DurasiJatuhTempo.objects.filter(id_sub_jenis_data=prioritas)
+        } == {45}
+        assert {
+            r.durasi for r in DurasiJatuhTempo.objects.filter(id_sub_jenis_data=biasa)
+        } == {85}
+
+    def test_generate_skips_jenis_data_that_already_has_a_pmde_row(self, client, pmde_admin_user):
+        pmde_group = self._ensure_user_pmde_group()
+        sudah_ada = JenisDataILAPFactory()
+        DurasiJatuhTempo.objects.create(
+            id_sub_jenis_data=sudah_ada, seksi=pmde_group, durasi=30, start_date='2023-05-01'
+        )
+        client.force_login(pmde_admin_user)
+        resp = client.post(reverse('durasi_jatuh_tempo_pmde_generate'))
+        assert resp.status_code == 200
+        assert json.loads(resp.content)['created'] == 0
+        assert DurasiJatuhTempo.objects.filter(id_sub_jenis_data=sudah_ada).count() == 1
+
+    def test_generate_is_idempotent_and_never_overlaps(self, client, pmde_admin_user):
+        """Running twice writes nothing new and leaves no overlapping ranges."""
+        self._ensure_user_pmde_group()
+        JenisDataILAPFactory()
+        client.force_login(pmde_admin_user)
+
+        first = json.loads(client.post(reverse('durasi_jatuh_tempo_pmde_generate')).content)
+        second = json.loads(client.post(reverse('durasi_jatuh_tempo_pmde_generate')).content)
+        assert first['created'] > 0
+        assert second['created'] == 0
+
+        rows = list(DurasiJatuhTempo.objects.filter(seksi__name='user_pmde').order_by('start_date'))
+        assert len({(r.id_sub_jenis_data_id, r.start_date, r.end_date) for r in rows}) == len(rows)
+        for earlier, later in zip(rows, rows[1:]):
+            assert earlier.end_date < later.start_date
+
+    def test_generate_reports_when_nothing_to_do(self, client, pmde_admin_user):
+        self._ensure_user_pmde_group()
+        client.force_login(pmde_admin_user)
+        resp = client.post(reverse('durasi_jatuh_tempo_pmde_generate'))
+        assert resp.status_code == 200
+        payload = json.loads(resp.content)
+        assert payload['created'] == 0
+        assert 'Tidak ada Jenis Data' in payload['message']
+
+    def test_generate_without_pmde_group_returns_error(self, client, pmde_admin_user):
+        Group.objects.filter(name='user_pmde').delete()
+        JenisDataILAPFactory()
+        client.force_login(pmde_admin_user)
+        resp = client.post(reverse('durasi_jatuh_tempo_pmde_generate'))
+        assert resp.status_code == 400
+        assert json.loads(resp.content)['success'] is False
 
 
 # ============================================================
