@@ -730,6 +730,33 @@ def home_data(request):
                     f'<i class="feather-user-plus"></i></button>'
                     f'</div>'
                 )
+            elif category == 'belum_diteliti':
+                action_html = (
+                    f'<div class="d-flex justify-content-center gap-1">'
+                    f'<a href="{view_url}?action=teliti" class="btn btn-sm btn-warning text-white" title="Rekam Hasil Penelitian">'
+                    f'<i class="feather-search"></i></a>'
+                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat">'
+                    f'<i class="feather-eye"></i></a>'
+                    f'</div>'
+                )
+            elif category == 'belum_rekam_backup_data':
+                action_html = (
+                    f'<div class="d-flex justify-content-center gap-1">'
+                    f'<a href="{view_url}?action=backup" class="btn btn-sm btn-primary" title="Rekam Backup Data">'
+                    f'<i class="feather-save"></i></a>'
+                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat">'
+                    f'<i class="feather-eye"></i></a>'
+                    f'</div>'
+                )
+            elif category == 'belum_dibuat_tanda_terima':
+                action_html = (
+                    f'<div class="d-flex justify-content-center gap-1">'
+                    f'<a href="{view_url}?action=tanda_terima" class="btn btn-sm btn-info text-white" title="Buat Tanda Terima">'
+                    f'<i class="feather-file-text"></i></a>'
+                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat">'
+                    f'<i class="feather-eye"></i></a>'
+                    f'</div>'
+                )
             else:
                 action_html = f'<div class="d-flex justify-content-center gap-1"><a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a></div>'
 

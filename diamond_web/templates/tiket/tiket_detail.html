@@ -2447,6 +2447,25 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            // Auto open modal if action query param is specified
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const actionParam = urlParams.get('action');
+                let targetModalId = null;
+                if (actionParam === 'teliti') targetModalId = 'rekamHasilPenelitianModal';
+                else if (actionParam === 'backup') targetModalId = 'rekamBackupDataModal';
+                else if (actionParam === 'tanda_terima') targetModalId = 'createTandaTerimaModal';
+
+                if (targetModalId) {
+                    const targetEl = document.getElementById(targetModalId);
+                    if (targetEl && typeof bootstrap !== 'undefined') {
+                        setTimeout(() => {
+                            const modal = new bootstrap.Modal(targetEl);
+                            modal.show();
+                        }, 200);
+                    }
+                }
+            } catch(e) { console.error('Auto modal trigger error:', e); }
             const setupModalAria = (modalEl) => {
                 if (!modalEl) {
                     return;
