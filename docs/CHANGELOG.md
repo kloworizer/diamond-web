@@ -13,6 +13,7 @@
 - **Edit Tiket Tidak Pernah Memindahkan Status** — `status_tiket` dipastikan tidak berubah oleh aksi Edit Tiket; perpindahan status tetap hanya melalui aksi alur kerja masing-masing.
 - **Perlindungan Pengosongan & Validasi Bersyarat pada Edit Tiket** — Isian yang sudah tersimpan tidak boleh dikosongkan (masih boleh dikoreksi), `baris_diterima` wajib sama dengan `baris_lengkap + baris_tidak_lengkap`, dan validasi kronologi hanya diperiksa untuk pasangan tanggal yang benar-benar diubah — agar tiket hasil migrasi (`old_db`) yang datanya sudah melanggar aturan tidak menghalangi koreksi field lain.
 - **Refaktor Perhitungan Jatuh Tempo Quality Control** — Subquery durasi dan perhitungan tanggal deadline dipindahkan ke helper `_durasi_subquery()` dan `_deadline_day()` agar tabel dan grafik memakai satu sumber perhitungan yang sama.
+- **Deadline & Jatuh Tempo Dihitung dari Tanggal Rematch** — Tiket yang sudah di-*rematch* memulai hitungannya kembali dari `tgl_rematch`; `tgl_transfer` hanya dipakai bila `tgl_rematch` kosong. Tanggal acuan ini berlaku seragam untuk pemilihan baris `DurasiJatuhTempo` yang aktif, kolom **Deadline** dan **Jatuh Tempo** pada tabel, pengurutan kolom tersebut, serta grafik Jml Progress per Jatuh Tempo.
 - **Dokumentasi Alur Tiket** — `docs/status_tiket_flow.md` diperluas dengan tabel isian yang dapat diubah per peran, syarat tampil bagian khusus admin, aturan perlindungan pengosongan, dan ketentuan jatuh tempo permintaan khusus.
 
 ### Diperbaiki
