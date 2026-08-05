@@ -4,9 +4,13 @@
 
 {% block extra_head %}
 <style>
+    /* The chat card owns the viewport height so the message list is the only
+       thing that scrolls — the header and composer stay pinned. */
+    .chat-card { display: flex; flex-direction: column; height: calc(100vh - 200px); min-height: 460px; }
+    .chat-card .card-body { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
     .chat-window {
-        height: calc(100vh - 340px);
-        min-height: 320px;
+        flex: 1 1 auto;
+        min-height: 0;
         overflow-y: auto;
         background: #f8f9fa;
         border-radius: .5rem;
@@ -46,7 +50,12 @@
     .chat-typing span:nth-child(2) { animation-delay: .2s; }
     .chat-typing span:nth-child(3) { animation-delay: .4s; }
     @keyframes chat-blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
-    .chat-suggestion { cursor: pointer; }
+
+    /* Starter prompts sit under the composer and retire once the chat starts. */
+    .chat-suggestion { cursor: pointer; font-size: .78rem; border-radius: 2rem; }
+
+    #chat-info-col { max-height: calc(100vh - 200px); overflow-y: auto; }
+    .chat-table-badge { font-size: .7rem; }
 </style>
 {% endblock %}
 
@@ -64,16 +73,20 @@
 </div>
 
 <div class="main-content">
-    <div class="row">
+    <div class="row g-3">
         <!-- [ Chat ] start -->
-        <div class="col-lg-8">
-            <div class="card stretch stretch-full">
-                <div class="card-header d-flex align-items-center justify-content-between">
+        <div class="col-12" id="chat-main-col">
+            <div class="card stretch stretch-full chat-card">
+                <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                     <div>
                         <h5 class="card-title mb-0">Asisten Data Diamond</h5>
                         <small class="text-muted">Model: <code>{{ ollama_model }}</code></small>
                     </div>
                     <div class="d-flex gap-2">
+                        <button id="btn-info" class="btn btn-sm btn-outline-primary" type="button"
+                                aria-controls="chat-info-col" aria-expanded="false">
+                            <i class="feather-info me-1"></i><span id="btn-info-label">Info</span>
+                        </button>
                         <button id="btn-test" class="btn btn-sm btn-secondary" type="button">
                             <i class="feather-wifi me-1"></i>Test Koneksi
                         </button>
@@ -114,52 +127,90 @@
                             </button>
                         </div>
                     </form>
+
+                    <div id="chat-starters" class="d-flex flex-wrap gap-2 mt-2">
+                        <span class="text-muted" style="font-size:.78rem;line-height:1.7;">Coba:</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary chat-suggestion">Berapa jumlah tiket per status tiket?</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary chat-suggestion">Tampilkan 10 ILAP dengan tiket terbanyak</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary chat-suggestion">Berapa tanda terima yang dibuat tahun ini?</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary chat-suggestion">Daftar KPP di kanwil Jakarta Pusat</button>
+                    </div>
                 </div>
             </div>
         </div>
         <!-- [ Chat ] end -->
 
-        <!-- [ Info panel ] start -->
-        <div class="col-lg-4">
-            <div class="card stretch stretch-full mb-3">
-                <div class="card-header">
-                    <h6 class="card-title mb-0"><i class="feather-shield me-1"></i>Batasan Akses</h6>
-                </div>
-                <div class="card-body">
-                    <ul class="mb-0 ps-3" style="font-size:.85rem;">
-                        <li>Chatbot <strong>hanya menjalankan SELECT</strong>; perintah yang mengubah
-                            data (INSERT/UPDATE/DELETE/DROP) ditolak validator.</li>
-                        <li>Query dijalankan pada koneksi <strong>read-only</strong>.</li>
-                        <li>Tabel kredensial dan hak akses (<code>auth_user</code>, <code>auth_group</code>,
-                            <code>django_session</code>) <strong>tidak dapat diakses</strong>, sehingga
-                            password dan grup pengguna tidak bisa dibaca.</li>
-                        <li>Hasil dibatasi maksimal <strong>{{ max_rows }} baris</strong> per query.</li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="card stretch stretch-full mb-3">
-                <div class="card-header">
-                    <h6 class="card-title mb-0"><i class="feather-help-circle me-1"></i>Contoh Pertanyaan</h6>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <button type="button" class="btn btn-sm btn-outline-primary text-start chat-suggestion">Berapa jumlah tiket per status tiket?</button>
-                        <button type="button" class="btn btn-sm btn-outline-primary text-start chat-suggestion">Tampilkan 10 ILAP dengan tiket terbanyak</button>
-                        <button type="button" class="btn btn-sm btn-outline-primary text-start chat-suggestion">Berapa tanda terima yang dibuat tahun ini?</button>
-                        <button type="button" class="btn btn-sm btn-outline-primary text-start chat-suggestion">Daftar KPP di kanwil Jakarta Pusat</button>
-                    </div>
-                </div>
-            </div>
-
+        <!-- [ Info panel — hidden by default, toggled from the header ] start -->
+        <div class="col-12 col-lg-4 d-none" id="chat-info-col">
             <div class="card stretch stretch-full">
-                <div class="card-header">
-                    <h6 class="card-title mb-0"><i class="feather-database me-1"></i>Tabel yang Dapat Dibaca</h6>
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <h6 class="card-title mb-0"><i class="feather-info me-1"></i>Informasi</h6>
+                    <button type="button" class="btn-close" id="btn-info-close" aria-label="Tutup info"></button>
                 </div>
-                <div class="card-body" style="max-height:220px;overflow:auto;">
-                    {% for table in allowed_tables %}
-                    <span class="badge bg-light text-dark border mb-1"><code>{{ table }}</code></span>
-                    {% endfor %}
+                <div class="card-body p-0">
+                    <div class="accordion accordion-flush" id="chat-info-accordion">
+
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                                        data-bs-target="#info-batasan" aria-expanded="true">
+                                    <i class="feather-shield me-2"></i>Batasan Akses
+                                </button>
+                            </h2>
+                            <div id="info-batasan" class="accordion-collapse collapse show"
+                                 data-bs-parent="#chat-info-accordion">
+                                <div class="accordion-body">
+                                    <ul class="mb-0 ps-3" style="font-size:.85rem;">
+                                        <li>Chatbot <strong>hanya menjalankan SELECT</strong>; perintah yang mengubah
+                                            data (INSERT/UPDATE/DELETE/DROP) ditolak validator.</li>
+                                        <li>Query dijalankan pada koneksi <strong>read-only</strong>.</li>
+                                        <li>Tabel kredensial dan hak akses (<code>auth_user</code>, <code>auth_group</code>,
+                                            <code>django_session</code>) <strong>tidak dapat diakses</strong>, sehingga
+                                            password dan grup pengguna tidak bisa dibaca.</li>
+                                        <li>Hasil dibatasi maksimal <strong>{{ max_rows }} baris</strong> per query.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                        data-bs-target="#info-tabel" aria-expanded="false">
+                                    <i class="feather-database me-2"></i>Tabel yang Dapat Dibaca
+                                </button>
+                            </h2>
+                            <div id="info-tabel" class="accordion-collapse collapse"
+                                 data-bs-parent="#chat-info-accordion">
+                                <div class="accordion-body">
+                                    {% for table in allowed_tables %}
+                                    <span class="badge bg-light text-dark border mb-1 chat-table-badge"><code>{{ table }}</code></span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                        data-bs-target="#info-koneksi" aria-expanded="false">
+                                    <i class="feather-cpu me-2"></i>Koneksi
+                                </button>
+                            </h2>
+                            <div id="info-koneksi" class="accordion-collapse collapse"
+                                 data-bs-parent="#chat-info-accordion">
+                                <div class="accordion-body" style="font-size:.85rem;">
+                                    <div class="mb-1"><span class="text-muted">Server:</span> <code>{{ ollama_base_url }}</code></div>
+                                    <div class="mb-2"><span class="text-muted">Model:</span> <code>{{ ollama_model }}</code></div>
+                                    <p class="text-muted mb-0" style="font-size:.8rem;">
+                                        Jawaban pertama setelah server idle lebih lambat karena model
+                                        harus dimuat lebih dulu.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
             </div>
         </div>
@@ -179,6 +230,7 @@
     var chatInput = document.getElementById('chat-input');
     var chatSend = document.getElementById('chat-send');
     var chatStatus = document.getElementById('chat-status');
+    var chatStarters = document.getElementById('chat-starters');
 
     // Conversation sent back to the server for context. Kept separate from the
     // DOM so SQL/result blocks are not fed into the model prompt.
@@ -257,6 +309,9 @@
     }
 
     function ask(question) {
+        // Starter chips have served their purpose once a question is asked.
+        chatStarters.classList.add('d-none');
+
         appendMessage('user', escapeHtml(question));
         history.push({ role: 'user', content: question });
 
@@ -310,9 +365,43 @@
     document.getElementById('btn-clear').addEventListener('click', function () {
         history = [];
         chatWindow.innerHTML = '';
+        chatStarters.classList.remove('d-none');
         appendMessage('bot', 'Riwayat percakapan dibersihkan. Silakan bertanya lagi.');
     });
 
+    // --- Info panel toggle -------------------------------------------------
+    // Chat gets the full width by default; the info panel is opt-in and its
+    // state is remembered so it does not have to be reopened every visit.
+    var STORAGE_KEY = 'diamond.chat.infoVisible';
+    var mainCol = document.getElementById('chat-main-col');
+    var infoCol = document.getElementById('chat-info-col');
+    var btnInfo = document.getElementById('btn-info');
+    var btnInfoLabel = document.getElementById('btn-info-label');
+
+    function setInfoVisible(visible, persist) {
+        infoCol.classList.toggle('d-none', !visible);
+        mainCol.classList.toggle('col-lg-8', visible);
+        btnInfo.classList.toggle('active', visible);
+        btnInfo.setAttribute('aria-expanded', visible ? 'true' : 'false');
+        btnInfoLabel.textContent = visible ? 'Tutup Info' : 'Info';
+        if (persist) {
+            try { localStorage.setItem(STORAGE_KEY, visible ? '1' : '0'); } catch (e) { /* private mode */ }
+        }
+        scrollToBottom();
+    }
+
+    btnInfo.addEventListener('click', function () {
+        setInfoVisible(infoCol.classList.contains('d-none'), true);
+    });
+    document.getElementById('btn-info-close').addEventListener('click', function () {
+        setInfoVisible(false, true);
+    });
+
+    var stored = null;
+    try { stored = localStorage.getItem(STORAGE_KEY); } catch (e) { /* private mode */ }
+    setInfoVisible(stored === '1', false);
+
+    // --- Connection test ---------------------------------------------------
     document.getElementById('btn-test').addEventListener('click', function () {
         var button = this;
         button.disabled = true;

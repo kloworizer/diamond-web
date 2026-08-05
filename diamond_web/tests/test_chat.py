@@ -198,6 +198,13 @@ class TestChatIndex:
         assert 'allowed_tables' in resp.context
         assert 'auth_user' not in resp.context['allowed_tables']
 
+    def test_info_panel_starts_hidden_behind_a_toggle(self, logged_client):
+        """The page leads with the chat; info is opt-in via the header toggle."""
+        html = logged_client.get(reverse('chat_index')).content.decode()
+        assert 'col-12 col-lg-4 d-none" id="chat-info-col"' in html
+        assert 'id="btn-info"' in html
+        assert 'id="btn-info-close"' in html
+
 
 @pytest.mark.django_db
 class TestChatAsk:
