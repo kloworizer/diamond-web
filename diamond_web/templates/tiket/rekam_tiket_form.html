@@ -765,10 +765,9 @@
                             const tId = data.tiket_ids[idx];
                             const tDate = data.tiket_dates[idx] || '-';
                             const url = tiketUrlBase.replace('/0/', '/' + tId + '/');
-                            const borderClass = idx === data.nomor_tiket.length - 1 ? '' : 'border-bottom';
                             
                             tiketLinksHTML += `
-                                <div class="px-3 py-2 ${borderClass}">
+                                <div class="px-3 py-2">
                                     <div class="d-flex justify-content-between align-items-center mb-1">
                                         <a href="${url}" target="_blank" class="fw-bold text-primary text-decoration-none" style="font-size: 12px; letter-spacing: 0.3px;">
                                             ${nomor}
@@ -780,6 +779,10 @@
                                     </div>
                                 </div>
                             `;
+                            
+                            if (idx < data.nomor_tiket.length - 1) {
+                                tiketLinksHTML += `<hr class="my-0 mx-3" style="border-color: #e2e8f0; opacity: 1;">`;
+                            }
                         });
                         tiketLinksHTML += '</div>';
                         
@@ -829,7 +832,7 @@
                                     sanitize: false,
                                     html: true,
                                     trigger: 'click', // Changed to click to allow interaction inside
-                                    template: '<div class="popover border-0 shadow" role="tooltip" style="border-radius: 12px; overflow: hidden; min-width: 220px;"><div class="popover-arrow"></div><h3 class="popover-header bg-light border-bottom fw-bold" style="font-size: 10px; text-transform: uppercase; color: #64748b; padding: 10px 16px; letter-spacing: 0.5px;"></h3><div class="popover-body bg-white p-0"></div></div>'
+                                    template: '<div class="popover border-0 shadow" role="tooltip" style="border-radius: 12px; overflow: hidden; min-width: 220px;"><div class="popover-arrow"></div><h3 class="popover-header bg-white fw-bold" style="border-bottom: 1px solid #cbd5e1; font-size: 10px; text-transform: uppercase; color: #64748b; padding: 10px 16px; letter-spacing: 0.5px;"></h3><div class="popover-body bg-white p-0"></div></div>'
                                 });
                                 
                                 // Close popover when clicking outside
