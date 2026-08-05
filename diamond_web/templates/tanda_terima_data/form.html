@@ -276,15 +276,15 @@
     <div class="modal-footer pt-0 px-4 pb-4 border-top-0 d-flex justify-content-between align-items-center" style="background: transparent !important;">
         {% if not tanda_terima_id %}
         {# Only meaningful while creating: it marks tikets as processed *instead* of issuing a Tanda Terima. #}
-        <button type="button" class="btn btn-outline-danger btn-sm px-3" id="tidak-terbit-tt-btn"{% if tiket %} data-tiket-pk="{{ tiket.pk }}"{% endif %} style="height: 38px; font-weight: 600;">
+        <button type="button" class="btn btn-outline-danger px-3" id="tidak-terbit-tt-btn"{% if tiket %} data-tiket-pk="{{ tiket.pk }}"{% endif %} style="font-weight: 500; text-transform: none;">
             <i class="feather-x-circle me-1"></i>Tidak Diterbitkan
         </button>
         {% else %}
         <span></span>
         {% endif %}
         <div class="d-flex gap-2">
-            <button type="button" class="btn btn-light btn-sm px-4" data-bs-dismiss="modal" style="height: 38px; font-weight: 600;">Batal</button>
-            <button type="submit" class="btn btn-primary btn-sm px-4" style="height: 38px; font-weight: 600; background: #0c92ff; border-color: #0c92ff;">
+            <button type="button" class="btn btn-light text-secondary px-4" data-bs-dismiss="modal" style="font-weight: 500; text-transform: none; background-color: #f1f5f9; border-color: #e2e8f0;">Batal</button>
+            <button type="submit" class="btn btn-primary px-4" style="font-weight: 500; text-transform: none; background: #0c92ff; border-color: #0c92ff;">
                 <i class="feather-save me-1"></i>Simpan
             </button>
         </div>

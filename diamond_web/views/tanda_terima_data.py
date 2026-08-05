@@ -483,22 +483,6 @@ class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMix
         """
         return reverse('tiket_detail', kwargs={'pk': self.kwargs['tiket_pk']})
     
-    def test_func(self):
-        """Check if user is active PIC for this tiket"""
-        tiket_pk = self.kwargs.get('tiket_pk')
-        if not tiket_pk:
-            return False
-        try:
-            tiket = Tiket.objects.get(pk=tiket_pk)
-            return TiketPIC.objects.filter(
-                id_tiket=tiket,
-                id_user=self.request.user,
-                    active=True,
-                    role=TiketPIC.Role.P3DE
-            ).exists()
-        except Tiket.DoesNotExist:
-            return False
-
     def get_form_kwargs(self):
         """Pass the current user and tiket primary key to the form class.
 

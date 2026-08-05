@@ -227,6 +227,12 @@
                                 <option value="">-- Semua --</option>
                             </select>
                         </div>
+                        <div class="mb-2">
+                            <label for="filter-nomor-nd-nadine" class="form-label">Nomor ND Nadine</label>
+                            <select class="form-select form-select-sm" id="filter-nomor-nd-nadine" name="nomor_nd_nadine" data-select2-selector="default" multiple="multiple">
+                                <option value="">-- Semua --</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </form>
@@ -353,7 +359,8 @@
                 status: '#filter-status',
                 status_penelitian: '#filter-status-penelitian',
                 status_ketersediaan_data: '#filter-status-ketersediaan-data',
-                special_request: '#filter-special-request'
+                special_request: '#filter-special-request',
+                nomor_nd_nadine: '#filter-nomor-nd-nadine'
             };
 
             let hasInitialFilter = false;
@@ -361,7 +368,6 @@
             Object.entries(paramToSelectMap).forEach(([param, selector]) => {
                 const raw = (urlParams.get(param) || '').trim();
                 if (!raw) return;
-                // Support comma-separated values in URL params
                 const values = raw.split(',').map(function(v) { return v.trim(); }).filter(function(v) { return v; });
                 if (values.length === 0) return;
                 hasInitialFilter = true;
@@ -413,7 +419,8 @@
                 status: getMultiSelectValue('#filter-status'),
                 status_penelitian: getMultiSelectValue('#filter-status-penelitian'),
                 status_ketersediaan_data: getMultiSelectValue('#filter-status-ketersediaan-data'),
-                special_request: getMultiSelectValue('#filter-special-request')
+                special_request: getMultiSelectValue('#filter-special-request'),
+                nomor_nd_nadine: getMultiSelectValue('#filter-nomor-nd-nadine')
             };
         }
 
@@ -465,7 +472,8 @@
                         'status': '#filter-status',
                         'status_penelitian': '#filter-status-penelitian',
                         'status_ketersediaan_data': '#filter-status-ketersediaan-data',
-                        'special_request': '#filter-special-request'
+                        'special_request': '#filter-special-request',
+                        'nomor_nd_nadine': '#filter-nomor-nd-nadine'
                     };
 
                     Object.entries(dropdownMap).forEach(([key, selector]) => {
@@ -537,6 +545,7 @@
                     updateDropdown('status_penelitian', '#filter-status-penelitian');
                     updateDropdown('status_ketersediaan_data', '#filter-status-ketersediaan-data');
                     updateDropdown('special_request', '#filter-special-request');
+                    updateDropdown('nomor_nd_nadine', '#filter-nomor-nd-nadine');
                 },
                 error: function () {
                     // Ensure Select2 is initialized even if AJAX fails
@@ -583,6 +592,7 @@
                         d.status_penelitian = getMultiSelectValue('#filter-status-penelitian');
                         d.status_ketersediaan_data = getMultiSelectValue('#filter-status-ketersediaan-data');
                         d.special_request = getMultiSelectValue('#filter-special-request');
+                        d.nomor_nd_nadine = getMultiSelectValue('#filter-nomor-nd-nadine');
                         return d;
                     }
                 },
@@ -704,6 +714,7 @@
                     if (opts.status_penelitian) opts.status_penelitian.forEach(item => $('#filter-status-penelitian').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.status_ketersediaan_data) opts.status_ketersediaan_data.forEach(item => $('#filter-status-ketersediaan-data').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.special_request) opts.special_request.forEach(item => $('#filter-special-request').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.nomor_nd_nadine) opts.nomor_nd_nadine.forEach(item => $('#filter-nomor-nd-nadine').append(`<option value="${item.id}">${item.name}</option>`));
 
                     // Re-initialize Select2 on all filter selects
                     if (typeof $.fn.select2 === 'function') {

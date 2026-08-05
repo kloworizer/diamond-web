@@ -661,134 +661,133 @@
                 </div>
                 <div class="card-body">
                     {# Edit button sits outside the PIC blocks: an Admin P3DE may edit without being a PIC. #}
-                    {% if user_can_edit_tiket %}
-                    <div class="d-grid gap-2 mb-2">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
-                            data-bs-target="#editTiketModal">
-                            <i class="feather-edit-3 me-1"></i>Ubah Isian Tiket
-                        </button>
-                    </div>
-                    {% endif %}
-
                     {% if not user_is_active_pic %}
-                    <div class="alert alert-info mb-0">
-                        <i class="feather-info me-2"></i>Anda bukan PIC aktif untuk tiket ini.
-                        {% if user_is_admin_p3de %}Sebagai Admin P3DE Anda hanya dapat mengubah isian
-                        tiket.{% else %}Anda hanya dapat melihat, tidak dapat melakukan perubahan.{% endif %}
-                    </div>
+                        <div class="alert alert-info mb-0">
+                            <i class="feather-info me-2"></i>Anda bukan PIC aktif untuk tiket ini.
+                            {% if user_is_admin_p3de %}Sebagai Admin P3DE Anda hanya dapat mengubah isian
+                            tiket.{% else %}Anda hanya dapat melihat, tidak dapat melakukan perubahan.{% endif %}
+                        </div>
+                        {% if user_can_edit_tiket %}
+                        <div class="d-grid gap-2 mt-2">
+                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
+                                data-bs-target="#editTiketModal">
+                                <i class="feather-edit-3 me-1"></i>Ubah Isian Tiket
+                            </button>
+                        </div>
+                        {% endif %}
                     {% else %}
-                    <!-- P3DE actions (existing) -->
-                    {% if user_is_active_pic_p3de %}
-                    {% if tiket.status_tiket < STATUS_DIKIRIM_KE_PIDE and tiket.status_tiket != STATUS_DIBATALKAN and tiket.status_tiket != STATUS_SELESAI and tiket.status_tiket != STATUS_DIKEMBALIKAN %} <div
-                        class="d-grid gap-2">
-                        {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti and tiket.id_status_penelitian.deskripsi != 'Tidak Lengkap' %}
-                        {% if has_kirim_pide_temp %}
-                        <button type="button" class="btn btn-primary shadow-sm fw-semibold" data-bs-toggle="modal"
-                            data-bs-target="#kirimTiketKePideModal" data-id-temp="{{ kirim_pide_id_temp }}">
-                            <i class="feather-send me-1"></i>Kirim Tiket ke PIDE
-                        </button>
-                        {% else %}
-                        <button type="button" class="btn btn-primary shadow-sm fw-semibold" data-bs-toggle="modal"
-                            data-bs-target="#kirimTiketModal">
-                            <i class="feather-file-text me-1"></i>Generate ND Pengantar PIDE
-                        </button>
-                        {% endif %}
-                        {% endif %}
+                        <div class="d-grid gap-2">
+                            <!-- P3DE Primary Actions (Top) -->
+                            {% if user_is_active_pic_p3de and tiket.status_tiket < STATUS_DIKIRIM_KE_PIDE and tiket.status_tiket != STATUS_DIBATALKAN and tiket.status_tiket != STATUS_SELESAI and tiket.status_tiket != STATUS_DIKEMBALIKAN %}
+                                {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti and tiket.id_status_penelitian.deskripsi != 'Tidak Lengkap' %}
+                                    {% if has_kirim_pide_temp %}
+                                    <button type="button" class="btn btn-primary shadow-sm fw-semibold" data-bs-toggle="modal"
+                                        data-bs-target="#kirimTiketKePideModal" data-id-temp="{{ kirim_pide_id_temp }}">
+                                        <i class="feather-send me-1"></i>Kirim Tiket ke PIDE
+                                    </button>
+                                    {% else %}
+                                    <button type="button" class="btn btn-primary shadow-sm fw-semibold" data-bs-toggle="modal"
+                                        data-bs-target="#kirimTiketModal">
+                                        <i class="feather-file-text me-1"></i>Generate ND Pengantar PIDE
+                                    </button>
+                                    {% endif %}
+                                {% elif tiket.backup and tiket.tanda_terima %}
+                                    <button type="button" class="btn btn-primary shadow-sm fw-semibold" data-bs-toggle="modal"
+                                        data-bs-target="#rekamHasilPenelitianModal" data-action="edit">
+                                        <i class="feather-edit-3 me-1"></i>{% if tiket.tgl_teliti %}Ubah Hasil Penelitian{% else %}Rekam Hasil Penelitian{% endif %}
+                                    </button>
+                                {% endif %}
+                            {% endif %}
 
-                        {% if not tiket.backup %}
-                        <button type="button" class="btn btn-primary shadow-sm fw-semibold" data-bs-toggle="modal"
-                            data-bs-target="#rekamBackupDataModal">
-                            <i class="feather-save me-1"></i>Rekam Backup Data
-                        </button>
-                        {% endif %}
+                            <!-- PIDE Primary Actions (Top) -->
+                            {% if user_is_active_pic_pide %}
+                                {% if tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE %}
+                                <button type="button" class="btn btn-primary shadow-sm fw-semibold" data-bs-toggle="modal"
+                                    data-bs-target="#identifikasiTiketModal">
+                                    <i class="feather-check-circle me-1"></i>Proses Identifikasi
+                                </button>
+                                {% elif tiket.status_tiket == STATUS_IDENTIFIKASI %}
+                                <button type="button" class="btn btn-primary shadow-sm fw-semibold" data-bs-toggle="modal"
+                                    data-bs-target="#transferKePMDEModal" disabled>
+                                    <i class="feather-send me-1"></i>Transfer ke PMDE
+                                </button>
+                                {% endif %}
+                            {% endif %}
 
-                        {% if not tiket.tanda_terima %}
-                        <button type="button" class="btn btn-info shadow-sm fw-semibold text-white" data-bs-toggle="modal"
-                            data-bs-target="#createTandaTerimaModal">
-                            <i class="feather-file-text me-1"></i>Buat Tanda Terima
-                        </button>
-                        {% endif %}
+                            <!-- PMDE Primary Actions (Top) -->
+                            {% if user_is_active_pic_pmde and tiket.status_tiket == STATUS_PENGENDALIAN_MUTU %}
+                                <button type="button" class="btn btn-success shadow-sm fw-semibold" data-bs-toggle="modal"
+                                    data-bs-target="#selesaikanTiketModal" disabled>
+                                    <i class="feather-check me-1"></i>Selesaikan Tiket
+                                </button>
+                            {% endif %}
 
-                        {% if tiket.backup and tiket.tanda_terima %}
-                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
-                            data-bs-target="#rekamHasilPenelitianModal" data-action="edit">
-                            <i class="feather-edit-3 me-1"></i>{% if tiket.tgl_teliti %}Ubah Hasil Penelitian{% else %}Rekam Hasil Penelitian{% endif %}
-                        </button>
-                        {% endif %}
-                </div>
-                {% elif tiket.status_tiket >= STATUS_DIKIRIM_KE_PIDE or tiket.status_tiket == STATUS_DIBATALKAN or tiket.status_tiket == STATUS_SELESAI %}
-                <div class="text-center text-muted py-2">
-                    <i class="feather-info me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
-                </div>
-                {% endif %}
+                            <!-- P3DE Secondary Actions -->
+                            {% if user_is_active_pic_p3de and tiket.status_tiket < STATUS_DIKIRIM_KE_PIDE and tiket.status_tiket != STATUS_DIBATALKAN and tiket.status_tiket != STATUS_SELESAI and tiket.status_tiket != STATUS_DIKEMBALIKAN %}
+                                {% if not tiket.backup %}
+                                <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                                    data-bs-target="#rekamBackupDataModal">
+                                    <i class="feather-save me-1"></i>Rekam Backup Data
+                                </button>
+                                {% endif %}
+                                {% if not tiket.tanda_terima %}
+                                <button type="button" class="btn btn-info" data-bs-toggle="modal"
+                                    data-bs-target="#createTandaTerimaModal">
+                                    <i class="feather-file-text me-1"></i>Buat Tanda Terima
+                                </button>
+                                {% endif %}
+                            {% endif %}
+                            
+                            <!-- General Secondary Actions -->
+                            {% if user_can_edit_tiket %}
+                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
+                                data-bs-target="#editTiketModal">
+                                <i class="feather-edit-3 me-1"></i>Ubah Isian Tiket
+                            </button>
+                            {% endif %}
 
-                {% if tiket.status_tiket < STATUS_DIKIRIM_KE_PIDE %} <button type="button"
-                    class="btn btn-outline-danger mt-2 w-100" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
-                    <i class="feather-x-circle me-1"></i>Batalkan Tiket
-                    </button>
-                    {% endif %}
-                    {% endif %}
+                            <!-- PIDE Secondary Actions -->
+                            {% if user_is_active_pic_pide and tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE or user_is_active_pic_pide and tiket.status_tiket == STATUS_IDENTIFIKASI %}
+                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
+                                data-bs-target="#dikembalikanTiketModal">
+                                <i class="feather-corner-up-left me-1"></i>Kembalikan ke P3DE
+                            </button>
+                            {% endif %}
 
-                    <!-- PIDE actions -->
-                    {% if user_is_active_pic_pide %}
-                    {% if tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE or tiket.status_tiket == STATUS_IDENTIFIKASI %}
-                    <div class="d-grid gap-2 mt-2">
-                        <!-- Identifikasi button: show if status 4 (Dikirim ke PIDE) -->
-                        {% if tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE %}
-                        <button type="button" class="btn btn-primary shadow-sm fw-semibold" data-bs-toggle="modal"
-                            data-bs-target="#identifikasiTiketModal">
-                            <i class="feather-check-circle me-1"></i>Proses Identifikasi
-                        </button>
-                        {% endif %}
+                            <!-- Special Request Secondary -->
+                            {% if user_can_edit_special_request %}
+                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
+                                data-bs-target="#specialRequestModal">
+                                <i class="feather-star me-1"></i>Ubah Permintaan Khusus
+                            </button>
+                            {% endif %}
 
-                        <!-- Transfer ke PMDE button: show if status 5 (Diidentifikasi) -->
-                        {% if tiket.status_tiket == STATUS_IDENTIFIKASI %}
-                        <button type="button" class="btn btn-primary shadow-sm fw-semibold" data-bs-toggle="modal"
-                            data-bs-target="#transferKePMDEModal" disabled>
-                            <i class="feather-send me-1"></i>Transfer ke PMDE
-                        </button>
-                        {% endif %}
-                        
-                        <!-- Dikembalikan button: show if status 4 or 5 -->
-                        {% if tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE or tiket.status_tiket == STATUS_IDENTIFIKASI %}
-                        <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal"
-                            data-bs-target="#dikembalikanTiketModal">
-                            <i class="feather-corner-up-left me-1"></i>Kembalikan ke P3DE
-                        </button>
-                        {% endif %}
-                    </div>
-                    {% else %}
-                    <div class="text-center text-muted py-2 mt-2">
-                        <i class="feather-info me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
-                    </div>
-                    {% endif %}
-                    {% endif %}
+                            <!-- Empty States / Messages -->
+                            {% if user_is_active_pic_p3de and tiket.status_tiket >= STATUS_DIKIRIM_KE_PIDE or user_is_active_pic_p3de and tiket.status_tiket == STATUS_DIBATALKAN or user_is_active_pic_p3de and tiket.status_tiket == STATUS_SELESAI %}
+                            <div class="text-center text-muted py-2">
+                                <i class="feather-info me-1"></i>Tidak ada aksi utama yang tersedia untuk tiket ini.
+                            </div>
+                            {% endif %}
+                            
+                            {% if user_is_active_pic_pide and tiket.status_tiket != STATUS_DIKIRIM_KE_PIDE and tiket.status_tiket != STATUS_IDENTIFIKASI %}
+                            <div class="text-center text-muted py-2">
+                                <i class="feather-info me-1"></i>Tidak ada aksi utama yang tersedia untuk tiket ini.
+                            </div>
+                            {% endif %}
+                            
+                            {% if user_is_active_pic_pmde and tiket.status_tiket != STATUS_PENGENDALIAN_MUTU %}
+                            <div class="text-center text-muted py-2">
+                                <i class="feather-info me-1"></i>Tidak ada aksi utama yang tersedia untuk tiket ini.
+                            </div>
+                            {% endif %}
 
-                    <!-- PMDE actions -->
-                    {% if user_is_active_pic_pmde %}
-                    {% if tiket.status_tiket == STATUS_PENGENDALIAN_MUTU %}
-                    <div class="d-grid gap-2 mt-2">
-                        <button type="button" class="btn btn-success shadow-sm fw-semibold" data-bs-toggle="modal"
-                            data-bs-target="#selesaikanTiketModal" disabled>
-                            <i class="feather-check me-1"></i>Selesaikan Tiket
-                        </button>
-                    </div>
-                    {% else %}
-                    <div class="text-center text-muted py-2 mt-2">
-                        <i class="feather-info me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
-                    </div>
-                    {% endif %}
-                    {% endif %}
-
-                    <!-- Special Request (P3DE / PIDE) -->
-                    {% if user_can_edit_special_request %}
-                    <div class="d-grid gap-2 mt-2">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
-                            data-bs-target="#specialRequestModal">
-                            <i class="feather-star me-1"></i>Ubah Permintaan Khusus
-                        </button>
-                    </div>
-                    {% endif %}
+                            <!-- Danger Actions (Bottom) -->
+                            {% if user_is_active_pic_p3de and tiket.status_tiket < STATUS_DIKIRIM_KE_PIDE and tiket.status_tiket != STATUS_DIBATALKAN and tiket.status_tiket != STATUS_SELESAI and tiket.status_tiket != STATUS_DIKEMBALIKAN %}
+                            <button type="button" class="btn btn-outline-danger mt-1" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
+                                <i class="feather-x-circle me-1"></i>Batalkan Tiket
+                            </button>
+                            {% endif %}
+                        </div>
                     {% endif %}
 
                     <!-- Document Download Section (folded back into Aksi, inline) -->
@@ -847,7 +846,7 @@
                                         <div class="text-muted" style="font-size: 10px;">Format: DOCX</div>
                                     </div>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline-warning btn-download-pkdi-sebagian py-1 px-2"
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-download-pkdi-sebagian py-1 px-2"
                                     data-id="{{ tiket.pk }}" style="font-size: 11px;">
                                     <i class="feather-download me-1"></i>Unduh
                                 </button>
@@ -866,7 +865,7 @@
                                         <div class="text-muted" style="font-size: 10px;">Format: DOCX</div>
                                     </div>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline-warning btn-download-klarifikasi py-1 px-2"
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-download-klarifikasi py-1 px-2"
                                     data-id="{{ tiket.pk }}" style="font-size: 11px;">
                                     <i class="feather-download me-1"></i>Unduh
                                 </button>
@@ -905,7 +904,7 @@
                                         <div class="text-muted" style="font-size: 10px;">Format: DOCX</div>
                                     </div>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline-info btn-download-doc py-1 px-2"
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-download-doc py-1 px-2"
                                     data-id="{{ tiket.pk }}" data-type="nd_pengantar" style="font-size: 11px;">
                                     <i class="feather-download me-1"></i>Unduh
                                 </button>
@@ -2325,82 +2324,70 @@
             font-size: 0.9rem;
         }
 
+                /* Action Buttons Premium Colors - Robust Override */
+        /* Primary Button (Main Flow) */
         .main-content .btn-primary {
-            background-color: #3b82f6 !important;
-            border-color: #3b82f6 !important;
+            background-color: #0c92ff !important;
+            border: 1px solid #0c92ff !important;
             color: #ffffff !important;
         }
-
-        .main-content .btn-primary:hover {
-            background-color: #2563eb !important;
-            border-color: #2563eb !important;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2) !important;
-            transform: translateY(-1px);
-        }
-
-        .main-content .btn-success {
-            background-color: #10b981 !important;
-            border-color: #10b981 !important;
+        .main-content .btn-primary:hover, .main-content .btn-primary:active, .main-content .btn-primary:focus {
+            background-color: #0284c7 !important;
+            border: 1px solid #0284c7 !important;
             color: #ffffff !important;
+            box-shadow: 0 0 0 0.25rem rgba(12, 146, 255, 0.25) !important;
         }
 
-        .main-content .btn-success:hover {
-            background-color: #059669 !important;
-            border-color: #059669 !important;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2) !important;
-            transform: translateY(-1px);
-        }
-
-        .main-content .btn-warning {
-            background-color: #f59e0b !important;
-            border-color: #f59e0b !important;
-            color: #ffffff !important;
-        }
-
-        .main-content .btn-warning:hover {
-            background-color: #d97706 !important;
-            border-color: #d97706 !important;
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2) !important;
-            transform: translateY(-1px);
-        }
-
+        /* Info Button (Cyan Primary) */
         .main-content .btn-info {
             background-color: #06b6d4 !important;
-            border-color: #06b6d4 !important;
+            border: 1px solid #06b6d4 !important;
             color: #ffffff !important;
         }
-
-        .main-content .btn-info:hover {
+        .main-content .btn-info:hover, .main-content .btn-info:active, .main-content .btn-info:focus {
             background-color: #0891b2 !important;
-            border-color: #0891b2 !important;
-            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2) !important;
-            transform: translateY(-1px);
-        }
-
-        .main-content .btn-danger {
-            background-color: #ef4444 !important;
-            border-color: #ef4444 !important;
+            border: 1px solid #0891b2 !important;
             color: #ffffff !important;
+            box-shadow: 0 0 0 0.25rem rgba(6, 182, 212, 0.25) !important;
         }
 
-        .main-content .btn-danger:hover {
-            background-color: #dc2626 !important;
-            border-color: #dc2626 !important;
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2) !important;
-            transform: translateY(-1px);
+        /* Outline Primary (Secondary Flow - Blue Outline) */
+        .main-content .btn-outline-primary {
+            background-color: transparent !important;
+            border: 1px solid #0c92ff !important;
+            color: #0c92ff !important;
+        }
+        .main-content .btn-outline-primary:hover, .main-content .btn-outline-primary:active, .main-content .btn-outline-primary:focus {
+            background-color: #f0f9ff !important;
+            border: 1px solid #0c92ff !important;
+            color: #0c92ff !important;
+            box-shadow: 0 0 0 0.25rem rgba(12, 146, 255, 0.25) !important;
         }
 
-        .main-content .btn-secondary {
-            background-color: #64748b !important;
-            border-color: #64748b !important;
-            color: #ffffff !important;
+        /* Outline Secondary (For purely neutral/gray needs) */
+        .main-content .btn-outline-secondary {
+            background-color: transparent !important;
+            border: 1px solid #cbd5e1 !important;
+            color: #475569 !important;
+        }
+        .main-content .btn-outline-secondary:hover, .main-content .btn-outline-secondary:active, .main-content .btn-outline-secondary:focus {
+            background-color: #f8fafc !important;
+            border: 1px solid #cbd5e1 !important;
+            color: #334155 !important;
+            box-shadow: 0 0 0 0.25rem rgba(100, 116, 139, 0.15) !important;
         }
 
-        .main-content .btn-secondary:hover {
-            background-color: #475569 !important;
-            border-color: #475569 !important;
-            box-shadow: 0 4px 12px rgba(100, 116, 139, 0.2) !important;
-            transform: translateY(-1px);
+        /* Outline Danger (For destructive actions) */
+        .main-content .btn-outline-danger {
+            background-color: transparent !important;
+            border: 1px solid #ef4444 !important;
+            color: #ef4444 !important;
+        }
+        .main-content .btn-outline-danger:hover, .main-content .btn-outline-danger:active, .main-content .btn-outline-danger:focus {
+            background-color: #fef2f2 !important;
+            border: 1px solid #ef4444 !important;
+            color: #ef4444 !important;
+            box-shadow: 0 0 0 0.25rem rgba(239, 68, 68, 0.25) !important;
         }
 
         /* Action buttons premium styles */

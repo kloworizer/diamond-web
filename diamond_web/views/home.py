@@ -630,8 +630,8 @@ def home_data(request):
     # Filter by Starred (Watchlist)
     starred_only = request.GET.get('starred_only') == 'true'
     if starred_only and is_tiket_category:
-        session_key = f'starred_tikets_{request.user.id}'
-        starred_list = request.session.get(session_key, [])
+        from diamond_web.models.user_starred_tiket import UserStarredTiket
+        starred_list = UserStarredTiket.objects.filter(id_user=request.user).values_list('nomor_tiket', flat=True)
         qs = qs.filter(nomor_tiket__in=starred_list)
 
     records_filtered = qs.count()
@@ -753,19 +753,21 @@ def home_data(request):
                     f'</div>'
                 )
             elif category == 'belum_rekam_backup_data':
+                backup_url = reverse('backup_data_from_tiket_create', kwargs={'tiket_pk': obj.id})
                 action_html = (
                     f'<div class="d-flex justify-content-center gap-1">'
-                    f'<a href="{view_url}?action=backup" class="btn btn-sm btn-primary" title="Rekam Backup Data">'
-                    f'<i class="feather-save"></i></a>'
+                    f'<button type="button" class="btn btn-sm btn-warning text-white btn-home-ajax-modal" data-url="{backup_url}" data-target="#homeRekamBackupModal" data-tiket="{obj.nomor_tiket}" title="Rekam Backup Data">'
+                    f'<i class="feather-save"></i></button>'
                     f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat">'
                     f'<i class="feather-eye"></i></a>'
                     f'</div>'
                 )
             elif category == 'belum_dibuat_tanda_terima':
+                tanda_terima_url = reverse('tanda_terima_data_from_tiket_create', kwargs={'tiket_pk': obj.id})
                 action_html = (
                     f'<div class="d-flex justify-content-center gap-1">'
-                    f'<a href="{view_url}?action=tanda_terima" class="btn btn-sm btn-info text-white" title="Buat Tanda Terima">'
-                    f'<i class="feather-file-text"></i></a>'
+                    f'<button type="button" class="btn btn-sm btn-info text-white btn-home-ajax-modal" data-url="{tanda_terima_url}" data-target="#homeTandaTerimaModal" data-tiket="{obj.nomor_tiket}" title="Buat Tanda Terima">'
+                    f'<i class="feather-file-text"></i></button>'
                     f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat">'
                     f'<i class="feather-eye"></i></a>'
                     f'</div>'
@@ -969,10 +971,7 @@ def home_pic_pmde_users(request):
 
 @login_required
 def toggle_starred_tiket(request):
-    """Toggle bintang (watchlist) tiket menggunakan Django session.
-    Tidak memerlukan perubahan model atau migrasi DB.
-    Session disimpan per-user di tabel django_session yang sudah ada.
-    """
+    """Toggle bintang (watchlist) tiket menggunakan database UserStarredTiket."""
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
@@ -980,27 +979,25 @@ def toggle_starred_tiket(request):
     if not nomor_tiket:
         return JsonResponse({'error': 'nomor_tiket diperlukan'}, status=400)
 
-    # Session key per-user agar tidak tercampur antar akun
-    session_key = f'starred_tikets_{request.user.id}'
-    starred = request.session.get(session_key, [])
-
-    if nomor_tiket in starred:
-        starred.remove(nomor_tiket)
+    from diamond_web.models.user_starred_tiket import UserStarredTiket
+    
+    # Check if it exists in DB
+    existing = UserStarredTiket.objects.filter(id_user=request.user, nomor_tiket=nomor_tiket).first()
+    
+    if existing:
+        existing.delete()
         is_starred = False
     else:
-        starred.append(nomor_tiket)
+        UserStarredTiket.objects.create(id_user=request.user, nomor_tiket=nomor_tiket)
         is_starred = True
 
-    request.session[session_key] = starred
-    # Tandai session sebagai modified agar Django menyimpannya
-    request.session.modified = True
+    total = UserStarredTiket.objects.filter(id_user=request.user).count()
 
     return JsonResponse({
         'starred': is_starred,
         'nomor_tiket': nomor_tiket,
-        'total': len(starred),
+        'total': total,
     })
-
 
 @login_required
 @require_GET

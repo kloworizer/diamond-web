@@ -2146,7 +2146,7 @@
             </div>
             <!-- Footer -->
             <div class="modal-footer border-top-0 pt-0 px-4 pb-4" style="background: transparent !important;">
-                <button type="button" class="btn btn-figma-outline" data-bs-dismiss="modal">BATAL</button>
+                <button type="button" class="btn btn-figma-outline" data-bs-dismiss="modal">Batal</button>
                 <button type="button" class="btn btn-figma-primary" id="qa-submit-btn">
                     <i class="feather-user-plus me-1"></i> ASSIGN
                 </button>
@@ -2214,7 +2214,7 @@
             </div>
             <!-- Footer -->
             <div class="modal-footer border-top-0 pt-0 px-4 pb-4" style="background: transparent !important;">
-                <button type="button" class="btn btn-figma-outline" data-bs-dismiss="modal">BATAL</button>
+                <button type="button" class="btn btn-figma-outline" data-bs-dismiss="modal">Batal</button>
                 <button type="button" class="btn btn-figma-primary" id="qa-pmde-submit-btn">
                     <i class="feather-user-plus me-1"></i> ASSIGN
                 </button>
@@ -2282,7 +2282,7 @@
             </div>
             <!-- Footer -->
             <div class="modal-footer border-top-0 pt-0 px-4 pb-4" style="background: transparent !important;">
-                <button type="button" class="btn btn-figma-outline" data-bs-dismiss="modal">BATAL</button>
+                <button type="button" class="btn btn-figma-outline" data-bs-dismiss="modal">Batal</button>
                 <button type="button" class="btn btn-figma-primary" id="qa-p3de-submit-btn">
                     <i class="feather-user-plus me-1"></i> ASSIGN
                 </button>
@@ -2308,6 +2308,52 @@
                 <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div id="home-rekam-penelitian-form-container">
+                <!-- Form loaded via AJAX -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Home Rekam Backup Modal -->
+<div class="modal fade" id="homeRekamBackupModal" tabindex="-1" aria-labelledby="homeRekamBackupModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #fef3c7; color: #d97706; flex-shrink: 0;">
+                        <i class="feather-save" style="font-size: 16px;"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="homeRekamBackupModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Rekam Backup Data</h5>
+                        <span class="text-muted fw-semibold text-uppercase modal-subtitle" style="font-size: 10px; letter-spacing: 0.5px;">Tiket</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-form-container" id="home-rekam-backup-form-container">
+                <!-- Form loaded via AJAX -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Home Tanda Terima Modal -->
+<div class="modal fade" id="homeTandaTerimaModal" tabindex="-1" aria-labelledby="homeTandaTerimaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #e0f2fe; color: #0284c7; flex-shrink: 0;">
+                        <i class="feather-file-text" style="font-size: 16px;"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="homeTandaTerimaModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Buat Tanda Terima</h5>
+                        <span class="text-muted fw-semibold text-uppercase modal-subtitle" style="font-size: 10px; letter-spacing: 0.5px;">Tiket</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-form-container" id="home-tanda-terima-form-container">
                 <!-- Form loaded via AJAX -->
             </div>
         </div>
@@ -3938,10 +3984,15 @@
             const bsModal = new bootstrap.Modal(modalEl);
             bsModal.show();
 
-            fetch(`/tiket/${tiketId}/rekam-penelitian/`, {
+            fetch(`/tiket/${tiketId}/rekam-hasil-penelitian/`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
-            .then(r => r.text())
+            .then(r => {
+                if (!r.ok) {
+                    throw new Error(`HTTP error! status: ${r.status}`);
+                }
+                return r.text();
+            })
             .then(html => {
                 container.innerHTML = html;
                 initHomeRekamPenelitianForm(container, bsModal, tiketId);
@@ -4055,7 +4106,7 @@
                     simpanBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...';
                 }
 
-                fetch(form.action || `/tiket/${tiketId}/rekam-penelitian/`, {
+                fetch(form.action || `/tiket/${tiketId}/rekam-hasil-penelitian/`, {
                     method: 'POST',
                     body: formData,
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -4081,8 +4132,6 @@
                 });
             });
         }
-            });
-        });
 
         // Set first category as default visible
         if (cards.length > 0) {
@@ -4137,7 +4186,7 @@
 
     const wlStyle = document.createElement('style');
     wlStyle.textContent = 
-        '#pantauan-panel{position:fixed;bottom:28px;right:28px;z-index:1090;font-family:inherit;}' +
+        '#pantauan-panel{position:fixed;bottom:64px;right:28px;z-index:1090;font-family:inherit;}' +
         '#pantauan-fab{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);' +
             'color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;' +
             'box-shadow:0 4px 18px rgba(245,158,11,.45);position:relative;transition:transform .2s;}' +
@@ -4161,7 +4210,7 @@
             'padding:0;line-height:1;transition:color .15s;}' +
         '#pantauan-list li .wl-remove:hover{color:#ef4444;}' +
         '#wl-empty-msg{padding:20px 16px;text-align:center;color:#94a3b8;font-size:12.5px;margin:0;}' +
-        '#star-toast{position:fixed;bottom:90px;right:28px;z-index:1100;background:#1e293b;color:#f8fafc;' +
+        '#star-toast{position:fixed;bottom:124px;right:28px;z-index:1100;background:#1e293b;color:#f8fafc;' +
             'padding:9px 16px;border-radius:10px;font-size:12.5px;box-shadow:0 4px 18px rgba(0,0,0,.25);' +
             'opacity:0;transition:opacity .25s;pointer-events:none;}' +
         '#star-toast.show{opacity:1;}';
@@ -4601,6 +4650,93 @@
     // Call init
     injectStarSwitches();
     loadStarredFromServer();
+
+        // Handle generic AJAX Modals for Home page (Backup Data & Tanda Terima)
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.btn-home-ajax-modal');
+            if (!btn) return;
+            
+            const targetId = btn.getAttribute('data-target');
+            const url = btn.getAttribute('data-url');
+            const nomorTiket = btn.getAttribute('data-tiket') || '';
+            
+            const modalEl = document.querySelector(targetId);
+            if (!modalEl || !url) return;
+            
+            const subtitleEl = modalEl.querySelector('.modal-subtitle');
+            if (subtitleEl) subtitleEl.textContent = 'Tiket ' + nomorTiket;
+            
+            const container = modalEl.querySelector('.modal-form-container');
+            if (!container) return;
+            
+            container.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-warning" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+            
+            const bsModal = new bootstrap.Modal(modalEl);
+            bsModal.show();
+            
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => {
+                if (!r.ok) throw new Error(`HTTP error! status: ${r.status}`);
+                return r.text();
+            })
+            .then(html => {
+                container.innerHTML = html;
+                initGenericHomeModalForm(container, bsModal, targetId);
+            })
+            .catch(err => {
+                console.error(err);
+                container.innerHTML = '<div class="alert alert-danger m-3">Gagal memuat form.</div>';
+            });
+        });
+
+        function initGenericHomeModalForm(container, bsModal, targetId) {
+            const form = container.querySelector('form');
+            if (!form) return;
+            
+            form.addEventListener('submit', function(ev) {
+                ev.preventDefault();
+                const formData = new FormData(form);
+                const submitBtn = form.querySelector('button[type="submit"]');
+                const originalHtml = submitBtn ? submitBtn.innerHTML : '';
+                
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...';
+                }
+                
+                fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(r => r.json())
+                .then(resData => {
+                    if (resData.success) {
+                        bsModal.hide();
+                        if (typeof showSuccessToast === 'function') {
+                            showSuccessToast('Berhasil', 'Data berhasil disimpan!');
+                        }
+                        // Refresh active table
+                        if (targetId === '#homeRekamBackupModal' && datatableTables['belum_rekam_backup_data']) {
+                            datatableTables['belum_rekam_backup_data'].ajax.reload();
+                        } else if (targetId === '#homeTandaTerimaModal' && datatableTables['belum_dibuat_tanda_terima']) {
+                            datatableTables['belum_dibuat_tanda_terima'].ajax.reload();
+                        }
+                    } else if (resData.html) {
+                        container.innerHTML = resData.html;
+                        initGenericHomeModalForm(container, bsModal, targetId);
+                    }
+                })
+                .catch(err => {
+                    console.error('Submit error:', err);
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalHtml;
+                    }
+                });
+            });
+        }
+
         // Reverted to use native DataTables search box per user request
     });
 </script>
