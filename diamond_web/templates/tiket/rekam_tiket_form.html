@@ -205,6 +205,9 @@
                             <label for="{{ form.penyampaian.id_for_label }}" class="form-label">PENYAMPAIAN KE-</label>
                             <div class="pt-1">
                                 <span id="text_penyampaian" class="d-inline-block text-dark pt-1" style="font-weight: 400 !important; font-size: 15px;">0</span>
+                                <small id="link-tiket-sebelumnya-wrapper" class="d-block" style="display: none !important;">
+                                    <a href="#" id="link-tiket-sebelumnya" class="text-primary text-decoration-none" style="font-size: 11.5px;">Lihat tiket sebelumnya</a>
+                                </small>
                             </div>
                             <input type="hidden" id="id_penyampaian" name="penyampaian" value="0">
                         </div>
@@ -724,32 +727,7 @@
         const penyampaianInput = document.getElementById('id_penyampaian');
         const duplicateModalEl = document.getElementById('duplicateTiketModal');
 
-        const updatePenyampaian = async (periodeDataId, periode, tahun) => {
-            if (!penyampaianInput) return;
-            
-            try {
-                const response = await fetch(`{% url "check_tiket_exists" %}?periode_data_id=${encodeURIComponent(periodeDataId)}&periode=${encodeURIComponent(periode)}&tahun=${encodeURIComponent(tahun)}`);
-                const data = await response.json();
-                
-                if (data && data.success) {
-                    if (data.tiket_count !== undefined && data.tiket_count !== null) {
-                        // Set penyampaian = count + 1 (starts from 1)
-                        penyampaianInput.value = data.tiket_count + 1;
-                        if (document.getElementById('text_penyampaian')) document.getElementById('text_penyampaian').textContent = data.tiket_count + 1;
-                    } else {
-                        // Default to 1
-                        penyampaianInput.value = 1;
-                        if (document.getElementById('text_penyampaian')) document.getElementById('text_penyampaian').textContent = 1;
-                    }
-                }
-            } catch (error) {
-                console.error('Error updating penyampaian:', error);
-                penyampaianInput.value = 1;
-                if (document.getElementById('text_penyampaian')) document.getElementById('text_penyampaian').textContent = 1;
-            }
-        };
-
-        const checkTiketExists = () => {
+        const checkTiketExists = async () => {
             if (!periodeDataSelect || !periodeSelect || !tahunSelect) {
                 return;
             }
@@ -760,32 +738,59 @@
                 return;
             }
 
-            // Update penyampaian value
-            updatePenyampaian(periodeDataId, periode, tahun);
-
-            fetch(`{% url "check_tiket_exists" %}?periode_data_id=${encodeURIComponent(periodeDataId)}&periode=${encodeURIComponent(periode)}&tahun=${encodeURIComponent(tahun)}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data && data.success && data.exists) {
+            try {
+                const response = await fetch(`{% url "check_tiket_exists" %}?periode_data_id=${encodeURIComponent(periodeDataId)}&periode=${encodeURIComponent(periode)}&tahun=${encodeURIComponent(tahun)}`);
+                const data = await response.json();
+                
+                if (data && data.success) {
+                    let prevCount = 0;
+                    if (data.tiket_count !== undefined && data.tiket_count !== null) {
+                        prevCount = data.tiket_count;
+                    }
+                    
+                    if (penyampaianInput) penyampaianInput.value = prevCount + 1;
+                    if (document.getElementById('text_penyampaian')) document.getElementById('text_penyampaian').textContent = prevCount + 1;
+                    
+                    const linkWrapper = document.getElementById('link-tiket-sebelumnya-wrapper');
+                    const linkElement = document.getElementById('link-tiket-sebelumnya');
+                    
+                    if (data.exists && prevCount > 0) {
+                        const nomorList = Array.isArray(data.nomor_tiket) ? data.nomor_tiket.filter(Boolean) : [];
+                        const nomorText = nomorList.length ? ` Nomor tiket: ${nomorList.join(', ')}` : '';
+                        
                         const modalEl = document.getElementById('duplicateTiketModal');
                         if (modalEl) {
                             const modalBody = document.getElementById('duplicateTiketModalBody');
                             if (modalBody) {
-                                const nomorList = Array.isArray(data.nomor_tiket) ? data.nomor_tiket.filter(Boolean) : [];
-                                const nomorText = nomorList.length ? ` Nomor tiket: ${nomorList.join(', ')}` : '';
                                 modalBody.textContent = `Tiket sudah ada untuk jenis data, periode, dan tahun ini.${nomorText}`;
                             }
-                            modalEl.removeAttribute('aria-hidden');
-                            modalEl.setAttribute('aria-hidden', 'false');
-                            modalEl.inert = false;
-                            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-                            modal.show();
+                            
+                            // Setup link UI to show modal
+                            if (linkWrapper && linkElement) {
+                                linkElement.textContent = `Lihat tiket sebelumnya (${prevCount})`;
+                                linkWrapper.style.setProperty('display', 'block', 'important');
+                                linkElement.onclick = function(e) {
+                                    e.preventDefault();
+                                    modalEl.removeAttribute('aria-hidden');
+                                    modalEl.setAttribute('aria-hidden', 'false');
+                                    modalEl.inert = false;
+                                    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                                    modal.show();
+                                };
+                            }
                         }
+                    } else {
+                        // hide link if no previous tickets
+                        if (linkWrapper) linkWrapper.style.setProperty('display', 'none', 'important');
                     }
-                })
-                .catch(() => {
-                    // ignore
-                });
+                }
+            } catch (error) {
+                console.error('Error checking tiket exists:', error);
+                if (penyampaianInput) penyampaianInput.value = 1;
+                if (document.getElementById('text_penyampaian')) document.getElementById('text_penyampaian').textContent = 1;
+                const linkWrapper = document.getElementById('link-tiket-sebelumnya-wrapper');
+                if (linkWrapper) linkWrapper.style.setProperty('display', 'none', 'important');
+            }
         };
 
         if (periodeDataSelect) {
