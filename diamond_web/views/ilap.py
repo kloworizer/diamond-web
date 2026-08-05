@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils import timezone
 
 from ..models.ilap import ILAP
-from ..forms.ilap import ILAPForm
+from ..forms.ilap import ILAPForm, KATEGORI_KANWIL
 from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, SafeDeleteMixin
 
 
@@ -97,7 +97,8 @@ def ilap_data(request):
     - Filters and orders queryset according to DataTables parameters.
 
     Returns JSON with `draw`, `recordsTotal`, `recordsFiltered`, and `data`.
-    Each `data` row contains: `kategori_wilayah`, `id_ilap`, `id_kategori`, `nama_ilap`, `kpp_list`, and `actions` HTML.
+    Each `data` row contains: `kategori_wilayah`, `id_ilap`, `id_kategori`, `nama_ilap`, `id_kpp`, and `actions` HTML.
+    `id_kpp` holds the mapped KPP names, or the mapped Kanwil names for ILAP of kategori PV.
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
@@ -142,7 +143,7 @@ def ilap_data(request):
     data = []
     for obj in qs_page:
         # ILAP kategori PV have no KPP, so their Kanwil is shown instead.
-        kpp_names = ', '.join(
+        wilayah_names = ', '.join(
             rel.id_kpp.nama_kpp if rel.id_kpp else rel.id_kanwil.nama_kanwil
             for rel in obj.ilap_kpp_relations.all()
             if rel.id_kpp or rel.id_kanwil
@@ -152,7 +153,7 @@ def ilap_data(request):
             'id_ilap': obj.id_ilap,
             'id_kategori': str(obj.id_kategori),
             'nama_ilap': obj.nama_ilap,
-            'id_kpp': kpp_names,
+            'id_kpp': wilayah_names,
             'actions': f"<button class='btn btn-sm btn-primary me-1' data-action='edit' data-url='{reverse('ilap_update', args=[obj.pk])}' title='Edit'><i class='feather-edit-2'></i></button>"
                        f"<button class='btn btn-sm btn-danger' data-action='delete' data-url='{reverse('ilap_delete', args=[obj.pk])}' title='Delete'><i class='feather-trash-2'></i></button>"
         })
@@ -185,6 +186,7 @@ class ILAPCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('ilap_create')
+        context['kategori_kanwil'] = KATEGORI_KANWIL
         return context
 
     def get(self, request, *args, **kwargs):
@@ -225,6 +227,7 @@ class ILAPUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, 
         context['form_action'] = reverse('ilap_update', args=[self.object.pk])
         context['original_id_ilap'] = self.object.id_ilap
         context['original_id_kategori'] = self.object.id_kategori.id_kategori
+        context['kategori_kanwil'] = KATEGORI_KANWIL
         return context
 
     def get(self, request, *args, **kwargs):
