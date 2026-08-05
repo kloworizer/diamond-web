@@ -56,36 +56,50 @@
     const ilapInput = document.querySelector('#id_id_ilap');
     const wilayahSelect = document.querySelector('#id_id_kategori_wilayah');
     const kppContainer = document.querySelector('#div_id_kpp_list');
-    
+    const kanwilContainer = document.querySelector('#div_id_kanwil_list');
+
+    // Kategori whose ILAP have no KPP counterpart and map straight to a Kanwil
+    const kategoriKanwil = '{{ kategori_kanwil|default:"PV" }}';
+
     // Get original values for edit mode
     const originalIdIlap = '{{ original_id_ilap|default:"" }}';
     const originalIdKategori = '{{ original_id_kategori|default:"" }}';
     const isEditMode = originalIdIlap !== '';
-    
-    function toggleKppVisibility() {
-        if (!wilayahSelect || !kppContainer) return;
-        
-        const selectedText = wilayahSelect.options[wilayahSelect.selectedIndex]?.text || '';
-        const isRegional = selectedText.toLowerCase().indexOf('regional') !== -1;
-        
-        if (isRegional) {
-            kppContainer.style.display = '';
-        } else {
-            kppContainer.style.display = 'none';
-            // Uncheck all KPP checkboxes
-            kppContainer.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+
+    function setContainerVisible(container, visible) {
+        if (!container) return;
+        container.style.display = visible ? '' : 'none';
+        if (!visible) {
+            // Uncheck everything on the side that does not apply, so the POST
+            // matches what the user can actually see
+            container.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
                 cb.checked = false;
             });
         }
     }
-    
+
+    function toggleWilayahVisibility() {
+        if (!wilayahSelect) return;
+
+        const selectedText = wilayahSelect.options[wilayahSelect.selectedIndex]?.text || '';
+        const isRegional = selectedText.toLowerCase().indexOf('regional') !== -1;
+        // A disabled select still reports its selected value, so this holds in edit mode too
+        const mapsToKanwil = (kategoriSelect ? kategoriSelect.value : '') === kategoriKanwil;
+
+        setContainerVisible(kppContainer, isRegional && !mapsToKanwil);
+        setContainerVisible(kanwilContainer, isRegional && mapsToKanwil);
+    }
+
     // Listen for changes on kategori_wilayah select
     if (wilayahSelect) {
-        wilayahSelect.addEventListener('change', toggleKppVisibility);
-        // Run on page load to set initial state
-        toggleKppVisibility();
+        wilayahSelect.addEventListener('change', toggleWilayahVisibility);
     }
-    
+    if (kategoriSelect) {
+        kategoriSelect.addEventListener('change', toggleWilayahVisibility);
+    }
+    // Run on page load to set initial state
+    toggleWilayahVisibility();
+
     if (kategoriSelect && ilapInput) {
         kategoriSelect.addEventListener('change', function() {
             const kategoriId = this.value;
