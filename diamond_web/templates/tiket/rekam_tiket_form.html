@@ -1894,12 +1894,6 @@
             const specialReq = document.getElementById('id_special_request');
             setConfirm('confirm-special-request', specialReq?.checked ? 'Ya' : 'Tidak');
             
-            setConfirm('confirm-deskripsi-periode', document.getElementById('info-deskripsi-periode')?.textContent || '-');
-            setConfirm('confirm-periode', periodeSelect.options[periodeSelect.selectedIndex]?.text || '-');
-            setConfirm('confirm-tahun', tahunSelect.options[tahunSelect.selectedIndex]?.text || '-');
-            setConfirm('confirm-tgl-vertikal', formatDateTime(tglVertikalInput.value) || '-');
-            setConfirm('confirm-tgl-dip', formatDateTime(tglDipInput.value) || '-');
-            setConfirm('confirm-nomor-surat-pengantar', document.getElementById('id_nomor_surat_pengantar')?.value || '-');
 
             // Backup Data (Bagian C)
             const backupChecked = document.getElementById('rekam-backup-checkbox')?.checked;
@@ -1914,9 +1908,10 @@
                 setConfirm('confirm-media-backup', getSelectText('backup_id_media_backup'));
             }
 
-            if (nomorTiketCell && periodeDataSelect?.value) {
+            const periodeDataValue = getVal('id_periode_data');
+            if (nomorTiketCell && periodeDataValue) {
                 nomorTiketCell.textContent = 'Loading...';
-                fetch(`{% url "preview_nomor_tiket" %}?periode_data_id=${encodeURIComponent(periodeDataSelect.value)}`)
+                fetch(`{% url "preview_nomor_tiket" %}?periode_data_id=${encodeURIComponent(periodeDataValue)}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data && data.success && data.nomor_tiket) {
