@@ -359,7 +359,16 @@
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label for="backup_nama_file" class="form-label">Nama File <span class="text-danger">*</span></label>
+                                <div class="d-flex justify-content-between align-items-end mb-1">
+                                    <label for="backup_nama_file" class="form-label mb-0">Nama File <span class="text-danger">*</span></label>
+                                    <button type="button" class="btn btn-sm btn-light border p-1 px-2 d-inline-flex align-items-center text-primary copy-filename-btn" 
+                                            id="btn-auto-filename"
+                                            title="Gunakan format standar penamaan file" 
+                                            data-bs-toggle="tooltip" 
+                                            style="font-size: 10px; font-weight: 600; background: #f8fafc; border-color: #cbd5e1 !important; display: none !important;">
+                                        <i class="feather-edit-3 me-1" style="font-size: 0.8rem;"></i> Auto-format
+                                    </button>
+                                </div>
                                 <input type="text" class="form-control" id="backup_nama_file" name="backup_nama_file" maxlength="100" placeholder="Contoh: backup_tiket_123.zip">
                             </div>
                         </div>
@@ -860,6 +869,25 @@
                 if (document.getElementById('text_penyampaian')) document.getElementById('text_penyampaian').textContent = 1;
                 const linkWrapper = document.getElementById('link-tiket-sebelumnya-wrapper');
                 if (linkWrapper) linkWrapper.style.setProperty('display', 'none', 'important');
+            }
+            
+            // Generate ticket preview for Auto-format Filename button
+            try {
+                if (periodeDataId) {
+                    const previewResp = await fetch(`{% url "preview_nomor_tiket" %}?periode_data_id=${encodeURIComponent(periodeDataId)}`);
+                    const previewData = await previewResp.json();
+                    const btnAutoFilename = document.getElementById('btn-auto-filename');
+                    
+                    if (previewData && previewData.success && previewData.nomor_tiket) {
+                        window.currentNomorTiketPreview = previewData.nomor_tiket;
+                        if (btnAutoFilename) btnAutoFilename.style.setProperty('display', 'inline-flex', 'important');
+                    } else {
+                        window.currentNomorTiketPreview = '';
+                        if (btnAutoFilename) btnAutoFilename.style.setProperty('display', 'none', 'important');
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching preview tiket:', err);
             }
         };
 
