@@ -66,7 +66,7 @@
 
                             <!-- Simple Permintaan Khusus Switch -->
                             <div class="row mt-3 mb-2">
-                                <div class="col-sm-6 mb-3 mb-sm-0">
+                                <div id="special-request-switch-col" class="col-sm-6 mb-3 mb-sm-0">
                                     <div class="form-check form-switch mb-1">
                                         {{ form.special_request }}
                                         <label class="form-check-label text-muted cursor-pointer" for="{{ form.special_request.id_for_label }}">
@@ -1139,19 +1139,19 @@
                 });
             }
 
-            // Hide "data tidak tersedia" options from bentuk_data and cara_penyampaian dropdowns
-            function hideDataTidakTersediaOptions() {
+            // Toggle "data tidak tersedia" options from bentuk_data and cara_penyampaian dropdowns
+            function toggleDataTidakTersediaOptions(show) {
                 if (bentukDataSelect) {
                     Array.from(bentukDataSelect.options).forEach(opt => {
-                        if (opt.text.toLowerCase().includes('tidak tersedia')) {
-                            opt.style.display = 'none';
+                        if (opt.text.toLowerCase().includes('tidak tersedia') || opt.textContent.toLowerCase().includes('tidak tersedia')) {
+                            opt.style.display = show ? '' : 'none';
                         }
                     });
                 }
                 if (caraPenyampaianSelect) {
                     Array.from(caraPenyampaianSelect.options).forEach(opt => {
-                        if (opt.text.toLowerCase().includes('tidak tersedia')) {
-                            opt.style.display = 'none';
+                        if (opt.text.toLowerCase().includes('tidak tersedia') || opt.textContent.toLowerCase().includes('tidak tersedia')) {
+                            opt.style.display = show ? '' : 'none';
                         }
                     });
                 }
@@ -1164,6 +1164,8 @@
                 if (statusTidakTersedia && statusTidakTersedia.checked) {
                     // Data Tidak Tersedia selected
                     if (wrapper) wrapper.style.display = '';
+                    
+                    toggleDataTidakTersediaOptions(true);
                     
                     // Enable Alasan Ketidaktersediaan
                     if (alasanKetidaktersedianInput) {
@@ -1219,6 +1221,8 @@
                     // Data Tersedia selected
                     if (wrapper) wrapper.style.display = 'none';
                     
+                    toggleDataTidakTersediaOptions(false);
+                    
                     // Disable Alasan Ketidaktersediaan
                     if (alasanKetidaktersedianInput) {
                         alasanKetidaktersedianInput.disabled = true;
@@ -1269,6 +1273,18 @@
                 if (!specialRequestCheckbox || !specialRequestDueDateGroup) return;
                 const enabled = specialRequestCheckbox.checked;
                 specialRequestDueDateGroup.style.display = enabled ? '' : 'none';
+                
+                const switchCol = document.getElementById('special-request-switch-col');
+                if (switchCol) {
+                    if (enabled) {
+                        switchCol.classList.remove('col-sm-12');
+                        switchCol.classList.add('col-sm-6');
+                    } else {
+                        switchCol.classList.remove('col-sm-6');
+                        switchCol.classList.add('col-sm-12');
+                    }
+                }
+                
                 // Use the global setDateInputState helper (base.html) so the
                 // flatpickr altInput is properly disabled/cleared in sync with
                 // the underlying input.  Plain .value / .required assignment
@@ -1286,7 +1302,6 @@
             }
 
             // Apply on page load
-            hideDataTidakTersediaOptions();
             updateKetersediaanDependents();
             updateTanggalTerimaVertikal();
             updateSpecialRequestDueDate();
