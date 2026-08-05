@@ -929,6 +929,78 @@
                 duplicateModalEl.inert = true;
             });
         }
+        
+        // Auto-format Filename Logic
+        const btnAutoFilename = document.getElementById('btn-auto-filename');
+        if (btnAutoFilename) {
+            btnAutoFilename.addEventListener('click', function() {
+                if (!window.currentNomorTiketPreview) return;
+                
+                let sanitize = (str) => {
+                    if (!str) return '';
+                    return str.replace(/\s+/g, ' ').replace(/[\/\\:*?"<>|]+/g, '_').trim();
+                };
+                
+                // Get ILAP name
+                const ilapSelect = document.getElementById('id_ilap');
+                let ilap = '';
+                if (ilapSelect && ilapSelect.selectedIndex >= 0) {
+                    ilap = ilapSelect.options[ilapSelect.selectedIndex].text;
+                }
+                // Jika select2, kita bisa ambil dari textContent nya atau info panel
+                const infoIlap = document.getElementById('info-nama-ilap');
+                if (infoIlap && infoIlap.textContent && infoIlap.textContent !== '-') {
+                    ilap = infoIlap.textContent;
+                }
+                
+                // Get Jenis Data name (Sub Jenis Data)
+                let jenis = '';
+                const infoJenis = document.getElementById('info-nama-sub-jenis-data');
+                if (infoJenis && infoJenis.textContent && infoJenis.textContent !== '-') {
+                    jenis = infoJenis.textContent;
+                } else {
+                    const jenisSelect = document.getElementById('id_periode_data');
+                    if (jenisSelect && jenisSelect.selectedIndex >= 0) {
+                        let text = jenisSelect.options[jenisSelect.selectedIndex].text;
+                        if (text.includes(' - ')) {
+                            text = text.split(' - ').slice(1).join(' - ');
+                        }
+                        jenis = text;
+                    }
+                }
+                
+                // Get Periode
+                const periodeSelectEl = document.getElementById('id_periode');
+                const tahunSelectEl = document.getElementById('id_tahun');
+                const periodeText = periodeSelectEl && periodeSelectEl.selectedIndex >= 0 ? periodeSelectEl.options[periodeSelectEl.selectedIndex].text : '';
+                const tahunText = tahunSelectEl && tahunSelectEl.selectedIndex >= 0 ? tahunSelectEl.options[tahunSelectEl.selectedIndex].text : '';
+                const periode = (periodeText && tahunText) ? `${periodeText} ${tahunText}` : '';
+                
+                let filename = [window.currentNomorTiketPreview, ilap, jenis, periode]
+                    .map(s => sanitize(s))
+                    .filter(s => s.length > 0)
+                    .join('_')
+                    .toUpperCase();
+                    
+                const backupNamaFile = document.getElementById('backup_nama_file');
+                if (backupNamaFile) {
+                    backupNamaFile.value = filename;
+                    
+                    // Visual feedback
+                    const icon = btnAutoFilename.querySelector('i');
+                    if (icon) {
+                        const oldClass = icon.className;
+                        icon.className = 'feather-check text-success me-1';
+                        const oldText = btnAutoFilename.lastChild.nodeValue;
+                        btnAutoFilename.lastChild.nodeValue = ' Terisi!';
+                        setTimeout(() => {
+                            icon.className = oldClass;
+                            btnAutoFilename.lastChild.nodeValue = ' Auto-format';
+                        }, 2000);
+                    }
+                }
+            });
+        }
     })();
 </script>
 {% endblock %}
