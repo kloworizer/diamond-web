@@ -1221,13 +1221,15 @@
                 if (!specialRequestCheckbox || !specialRequestDueDateGroup) return;
                 const enabled = specialRequestCheckbox.checked;
                 specialRequestDueDateGroup.style.display = enabled ? '' : 'none';
+                // Use the global setDateInputState helper (base.html) so the
+                // flatpickr altInput is properly disabled/cleared in sync with
+                // the underlying input.  Plain .value / .required assignment
+                // would leave the old date visible on screen after unchecking.
                 if (dueDateInput) {
-                    // Only required while visible — a hidden required input would
-                    // block submission with a validation bubble nobody can see.
-                    dueDateInput.required = enabled;
-                    if (!enabled) {
-                        dueDateInput.value = '';
-                    }
+                    setDateInputState(dueDateInput, {
+                        disabled: !enabled,
+                        required: enabled,
+                    });
                 }
             }
 

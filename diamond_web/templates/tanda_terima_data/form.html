@@ -199,6 +199,9 @@
                     <i class="feather-map-pin"></i>
                     {{ form.id_kanwil }}
                 </div>
+                <div id="kanwil-hint" class="text-muted fs-11 mt-1" style="display: none;">
+                    <i class="feather-info me-1"></i>Kanwil hanya diisi untuk ILAP Regional / Pemda.
+                </div>
                 {% if form.id_kanwil.errors %}
                     <div class="text-danger fs-11 mt-1">{{ form.id_kanwil.errors.as_text }}</div>
                 {% endif %}
@@ -290,3 +293,51 @@
         </div>
     </div>
 </form>
+
+<script>
+(function () {
+    'use strict';
+    // Values must match LINGKUP_REGIONAL / LINGKUP_NASIONAL in tanda_terima_scope.py
+    const LINGKUP_REGIONAL = 'regional';
+
+    const lingkupSelect  = document.getElementById('id_lingkup');
+    const kanwilSelect   = document.getElementById('id_id_kanwil');
+    const kanwilWrapper  = document.getElementById('scope-kanwil-wrapper');
+    const kanwilHint     = document.getElementById('kanwil-hint');
+
+    function updateKanwilState() {
+        if (!lingkupSelect || !kanwilSelect) return;
+        const isRegional = lingkupSelect.value === LINGKUP_REGIONAL;
+
+        // Toggle disabled state
+        kanwilSelect.disabled = !isRegional;
+
+        // Visual opacity on the wrapper
+        if (kanwilWrapper) {
+            kanwilWrapper.style.opacity = isRegional ? '1' : '0.55';
+        }
+
+        // Show/hide the hint text
+        if (kanwilHint) {
+            kanwilHint.style.display = isRegional ? 'none' : 'block';
+        }
+
+        // Clear selection when Kanwil becomes irrelevant to avoid
+        // submitting a stale value for a non-regional tanda terima.
+        if (!isRegional) {
+            // For Select2, reset via jQuery if available; fall back to native.
+            if (typeof $ !== 'undefined' && $(kanwilSelect).data('select2')) {
+                $(kanwilSelect).val(null).trigger('change');
+            } else {
+                kanwilSelect.value = '';
+            }
+        }
+    }
+
+    if (lingkupSelect) {
+        lingkupSelect.addEventListener('change', updateKanwilState);
+        // Apply immediately on modal load
+        updateKanwilState();
+    }
+})();
+</script>
