@@ -305,8 +305,8 @@
             </div>
 
             {% if user|has_group:"admin_p3de" or user|has_group:"user_p3de" %}
-            <a href="{% url 'tiket_rekam_create' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1 ms-2 px-3 py-2">
-                <i class="feather-plus" style="font-size: 14px;"></i>
+            <a href="{% url 'tiket_rekam_create' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1 ms-2 px-3 py-2 fw-bold" style="font-weight: 700;">
+                <i class="feather-plus" style="font-size: 14px; stroke-width: 2.5;"></i>
                 <span class="d-none d-sm-inline">Rekam Tiket</span>
             </a>
             {% endif %}
