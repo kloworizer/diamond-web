@@ -2360,6 +2360,29 @@
     </div>
 </div>
 
+<!-- Home Proses Identifikasi Modal -->
+<div class="modal fade" id="homeIdentifikasiModal" tabindex="-1" aria-labelledby="homeIdentifikasiModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #e0f2fe; color: #0284c7; flex-shrink: 0;">
+                        <i class="feather-check-circle" style="font-size: 16px;"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="homeIdentifikasiModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Proses Identifikasi</h5>
+                        <span class="text-muted fw-semibold text-uppercase modal-subtitle" style="font-size: 10px; letter-spacing: 0.5px;">Tiket</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-form-container" id="home-identifikasi-form-container">
+                <!-- Form loaded via AJAX -->
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
 
@@ -4714,17 +4737,30 @@
                     if (resData.success) {
                         bsModal.hide();
                         if (typeof showSuccessToast === 'function') {
-                            showSuccessToast('Berhasil', 'Data berhasil disimpan!');
+                            showSuccessToast('Berhasil', resData.message || 'Data berhasil disimpan!');
                         }
                         // Refresh active table
                         if (targetId === '#homeRekamBackupModal' && datatableTables['belum_rekam_backup_data']) {
                             datatableTables['belum_rekam_backup_data'].ajax.reload();
                         } else if (targetId === '#homeTandaTerimaModal' && datatableTables['belum_dibuat_tanda_terima']) {
                             datatableTables['belum_dibuat_tanda_terima'].ajax.reload();
+                        } else if (targetId === '#homeIdentifikasiModal' && datatableTables['belum_mulai_proses_identifikasi']) {
+                            datatableTables['belum_mulai_proses_identifikasi'].ajax.reload();
                         }
                     } else if (resData.html) {
                         container.innerHTML = resData.html;
                         initGenericHomeModalForm(container, bsModal, targetId);
+                    } else {
+                        // Re-enable button and show alert if there is a JSON error message
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = originalHtml;
+                        }
+                        if (resData.message && typeof showErrorToast === 'function') {
+                            showErrorToast('Gagal', resData.message);
+                        } else if (resData.message) {
+                            alert(resData.message);
+                        }
                     }
                 })
                 .catch(err => {
