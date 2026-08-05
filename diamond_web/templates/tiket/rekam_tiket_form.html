@@ -1095,6 +1095,46 @@
             const caraPenyampaianSelect = document.getElementById('id_id_cara_penyampaian');
             const barisDiterimaInput = document.getElementById('id_baris_diterima');
             
+            if (barisDiterimaInput) {
+                // Prevent negative numbers and add thousand separators
+                barisDiterimaInput.type = 'text';
+                barisDiterimaInput.inputMode = 'numeric';
+                
+                const originalName = barisDiterimaInput.name;
+                barisDiterimaInput.removeAttribute('name');
+                
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = originalName;
+                hiddenInput.id = 'hidden_baris_diterima';
+                hiddenInput.value = barisDiterimaInput.value;
+                barisDiterimaInput.parentNode.insertBefore(hiddenInput, barisDiterimaInput);
+                
+                const formatNum = (val) => {
+                    let num = val.toString().replace(/\D/g, ''); // Only digits, prevents negatives
+                    if (!num) return '';
+                    return parseInt(num, 10).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                };
+                
+                if (barisDiterimaInput.value) {
+                    hiddenInput.value = barisDiterimaInput.value.replace(/\D/g, '');
+                    barisDiterimaInput.value = formatNum(barisDiterimaInput.value);
+                }
+                
+                barisDiterimaInput.addEventListener('input', function(e) {
+                    let raw = this.value.replace(/\D/g, '');
+                    if (raw) {
+                        raw = parseInt(raw, 10).toString();
+                    }
+                    hiddenInput.value = raw;
+                    
+                    const formatted = formatNum(raw);
+                    if (this.value !== formatted) {
+                        this.value = formatted;
+                    }
+                });
+            }
+
             // Hide "data tidak tersedia" options from bentuk_data and cara_penyampaian dropdowns
             function hideDataTidakTersediaOptions() {
                 if (bentukDataSelect) {
