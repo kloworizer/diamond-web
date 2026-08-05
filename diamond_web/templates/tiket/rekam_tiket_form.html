@@ -2145,6 +2145,19 @@
             
             return date.toLocaleDateString('id-ID', options);
         }
+
+        // Clear form when accessed via browser back button
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                const form = document.getElementById('tiket-rekam-form');
+                if (form) {
+                    form.reset();
+                    if (typeof $ !== 'undefined') {
+                        $('.select2').trigger('change');
+                    }
+                }
+            }
+        });
     })();
 </script>
 

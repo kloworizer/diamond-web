@@ -2538,7 +2538,7 @@
                                 }
                                 showToast(data.message || opts.successMessage
                                     || 'Data berhasil disimpan.', 'success');
-                                setTimeout(() => location.reload(), 800);
+                                location.reload();
                             } else {
                                 showToast(data.message || opts.errorMessage
                                     || 'Gagal menyimpan data.', 'danger');
