@@ -4700,6 +4700,10 @@
             fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(r => {
                 if (!r.ok) throw new Error(`HTTP error! status: ${r.status}`);
+                const contentType = r.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return r.json().then(data => data.html || '');
+                }
                 return r.text();
             })
             .then(html => {
