@@ -1236,6 +1236,13 @@
                         if (backupSection) {
                             backupSection.style.display = 'none';
                         }
+                        // Clear required properties and values so it doesn't fail native validation
+                        const bLokasi = document.getElementById('backup_lokasi_backup');
+                        const bMedia = document.getElementById('backup_id_media_backup');
+                        const bNama = document.getElementById('backup_nama_file');
+                        if (bLokasi) { bLokasi.required = false; bLokasi.value = ''; }
+                        if (bMedia) { bMedia.required = false; bMedia.value = ''; }
+                        if (bNama) { bNama.required = false; bNama.value = ''; }
                     }
                 } else {
                     // Data Tersedia selected
