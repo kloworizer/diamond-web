@@ -1372,7 +1372,6 @@
                     { id: 'id_periode_data', guide: 'Pilih jenis data ILAP yang sesuai dengan data yang Anda terima.' },
                     { id: 'id_periode', guide: 'Pilih periode penyampaian data.' },
                     { id: 'id_tahun', guide: 'Isi tahun penyampaian data dengan format yang benar.' },
-                    { id: 'id_tgl_terima_vertikal', guide: 'Pilih tanggal kapan data ini diterima secara vertikal.' },
                     { id: 'id_tgl_terima_dip', guide: 'Pilih tanggal kapan data ini diterima oleh DIP.' },
                     { id: 'id_id_bentuk_data', guide: 'Pilih format bentuk data yang diterima.' },
                     { id: 'id_id_cara_penyampaian', guide: 'Pilih cara data ini disampaikan/dikirimkan.' },
@@ -1388,6 +1387,11 @@
                 const specialRequestInput = document.getElementById('id_special_request');
                 if (specialRequestInput && specialRequestInput.checked) {
                     mandatoryConfigs.push({ id: 'id_tgl_special_request', guide: 'Tentukan batas waktu penyelesaian permintaan khusus ini.' });
+                }
+
+                const tglVertikalInput = document.getElementById('id_tgl_terima_vertikal');
+                if (tglVertikalInput && tglVertikalInput.required) {
+                    mandatoryConfigs.push({ id: 'id_tgl_terima_vertikal', guide: 'Pilih tanggal kapan data ini diterima secara vertikal.' });
                 }
 
                 const backupCheckbox = document.getElementById('rekam-backup-checkbox');
