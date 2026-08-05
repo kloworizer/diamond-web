@@ -713,7 +713,7 @@ def home_data(request):
                 nama_ilap_esc = nama_ilap.replace('"', '&quot;').replace("'", '&#39;')
                 action_html = (
                     f'<div class="d-flex justify-content-center gap-1">'
-                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat">'
+                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat" target="_blank">'
                     f'<i class="feather-eye"></i></a> '
                     f'<button type="button" class="btn btn-sm btn-success btn-quick-assign-pide" '
                     f'data-subjenis-id="{sub_jenis_id}" '
@@ -731,7 +731,7 @@ def home_data(request):
                 nama_ilap_esc = nama_ilap.replace('"', '&quot;').replace("'", '&#39;')
                 action_html = (
                     f'<div class="d-flex justify-content-center gap-1">'
-                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat">'
+                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat" target="_blank">'
                     f'<i class="feather-eye"></i></a> '
                     f'<button type="button" class="btn btn-sm btn-success btn-quick-assign-pmde" '
                     f'data-subjenis-id="{sub_jenis_id}" '
@@ -748,7 +748,7 @@ def home_data(request):
                     f'<button type="button" class="btn btn-sm btn-warning text-white btn-quick-rekam-penelitian" '
                     f'data-tiket-id="{obj.id}" data-nomor-tiket="{obj.nomor_tiket}" title="Rekam Hasil Penelitian">'
                     f'<i class="feather-search"></i></button>'
-                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat">'
+                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat" target="_blank">'
                     f'<i class="feather-eye"></i></a>'
                     f'</div>'
                 )
@@ -758,7 +758,7 @@ def home_data(request):
                     f'<div class="d-flex justify-content-center gap-1">'
                     f'<button type="button" class="btn btn-sm btn-warning text-white btn-home-ajax-modal" data-url="{backup_url}" data-target="#homeRekamBackupModal" data-tiket="{obj.nomor_tiket}" title="Rekam Backup Data">'
                     f'<i class="feather-save"></i></button>'
-                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat">'
+                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat" target="_blank">'
                     f'<i class="feather-eye"></i></a>'
                     f'</div>'
                 )
@@ -768,7 +768,7 @@ def home_data(request):
                     f'<div class="d-flex justify-content-center gap-1">'
                     f'<button type="button" class="btn btn-sm btn-info text-white btn-home-ajax-modal" data-url="{tanda_terima_url}" data-target="#homeTandaTerimaModal" data-tiket="{obj.nomor_tiket}" title="Buat Tanda Terima">'
                     f'<i class="feather-file-text"></i></button>'
-                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat">'
+                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat" target="_blank">'
                     f'<i class="feather-eye"></i></a>'
                     f'</div>'
                 )
@@ -778,12 +778,12 @@ def home_data(request):
                     f'<div class="d-flex justify-content-center gap-1">'
                     f'<button type="button" class="btn btn-sm btn-info text-white btn-home-ajax-modal" data-url="{identifikasi_url}" data-target="#homeIdentifikasiModal" data-tiket="{obj.nomor_tiket}" title="Proses Identifikasi">'
                     f'<i class="feather-check-circle"></i></button>'
-                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat">'
+                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat" target="_blank">'
                     f'<i class="feather-eye"></i></a>'
                     f'</div>'
                 )
             else:
-                action_html = f'<div class="d-flex justify-content-center gap-1"><a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a></div>'
+                action_html = f'<div class="d-flex justify-content-center gap-1"><a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat" target="_blank"><i class="feather-eye"></i></a></div>'
 
             if category in ('belum_mulai_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic'):
                 date_val = obj.tgl_kirim_pide.strftime('%d-%m-%Y') if obj.tgl_kirim_pide else ''
