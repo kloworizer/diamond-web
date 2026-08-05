@@ -85,7 +85,9 @@
                                 <div class="col-sm-6">
                                     <div id="special-request-due-date-group" class="mb-3" style="display: none;">
                                         <label for="{{ form.tgl_special_request.id_for_label }}" class="form-label">{{ form.tgl_special_request.label }}<span class="text-danger">*</span></label>
-                                        {{ form.tgl_special_request }}
+                                        <div style="max-width: 250px;">
+                                            {{ form.tgl_special_request }}
+                                        </div>
                                         {% if form.tgl_special_request.errors %}
                                             <div class="invalid-feedback d-block">{{ form.tgl_special_request.errors }}</div>
                                         {% endif %}
@@ -297,7 +299,9 @@
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="{{ form.satuan_data.id_for_label }}" class="form-label">{{ form.satuan_data.label }}{% if form.satuan_data.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                            {{ form.satuan_data }}
+                            <div style="max-width: 250px;">
+                                {{ form.satuan_data }}
+                            </div>
                             {% if form.satuan_data.errors %}
                                 <div class="invalid-feedback d-block">{{ form.satuan_data.errors }}</div>
                             {% endif %}
