@@ -963,7 +963,9 @@
                     if (jenisSelect && jenisSelect.selectedIndex >= 0) {
                         let text = jenisSelect.options[jenisSelect.selectedIndex].text;
                         if (text.includes(' - ')) {
-                            text = text.split(' - ').slice(1).join(' - ');
+                            // Format Select2 is: [Kode] - [Nama Sub Jenis] - [Format] - [Frekuensi]
+                            // We only want [Nama Sub Jenis] which is at index 1
+                            text = text.split(' - ')[1].trim();
                         }
                         jenis = text;
                     }
