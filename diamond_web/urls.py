@@ -19,6 +19,10 @@ urlpatterns = [
     path('home/pic-p3de-users/', views.home_pic_p3de_users, name='home_pic_p3de_users'),
         path('docs/', views.docs_index, name='docs_index'),
     path('docs/<slug:slug>/', views.docs_detail, name='docs_detail'),
+    # === Chat (asisten database read-only via Ollama) ===
+    path('chat/', views.chat_index, name='chat_index'),
+    path('chat/ask/', views.chat_ask, name='chat_ask'),
+    path('chat/test-connection/', views.chat_test_connection, name='chat_test_connection'),
     path('keep-alive/', keep_alive, name='keep_alive'),
     path('session-expired/', session_expired, name='session_expired'),
     path('notifications/', views.notification_list, name='notification_list'),

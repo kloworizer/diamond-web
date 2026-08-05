@@ -51,3 +51,4 @@ from .profil import *
 from .profil_ilap import *
 from .quality_control import *
 from .docs import *
+from .chat import *

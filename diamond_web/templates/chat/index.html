@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+
+{% block title %}Chat - Diamond Web{% endblock %}
+
+{% block extra_head %}
+<style>
+    .chat-window {
+        height: calc(100vh - 340px);
+        min-height: 320px;
+        overflow-y: auto;
+        background: #f8f9fa;
+        border-radius: .5rem;
+        padding: 1rem;
+    }
+    .chat-msg { display: flex; margin-bottom: 1rem; }
+    .chat-msg.user { justify-content: flex-end; }
+    .chat-bubble {
+        max-width: 82%;
+        padding: .65rem .9rem;
+        border-radius: .75rem;
+        white-space: pre-wrap;
+        word-break: break-word;
+        line-height: 1.5;
+    }
+    .chat-msg.user .chat-bubble { background: #0C92FF; color: #fff; border-bottom-right-radius: .15rem; }
+    .chat-msg.bot .chat-bubble { background: #fff; border: 1px solid #e5e7eb; border-bottom-left-radius: .15rem; }
+    .chat-msg.error .chat-bubble { background: #fff5f5; border: 1px solid #f5c2c7; color: #842029; }
+    .chat-sql {
+        margin-top: .6rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: .78rem;
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: .6rem .75rem;
+        border-radius: .35rem;
+        overflow-x: auto;
+        white-space: pre;
+    }
+    .chat-result { margin-top: .6rem; max-height: 320px; overflow: auto; }
+    .chat-result table { font-size: .78rem; margin-bottom: 0; }
+    .chat-result th { position: sticky; top: 0; background: #f1f5f9; z-index: 1; }
+    .chat-typing span {
+        display: inline-block; width: 6px; height: 6px; margin-right: 3px;
+        background: #94a3b8; border-radius: 50%; animation: chat-blink 1.2s infinite;
+    }
+    .chat-typing span:nth-child(2) { animation-delay: .2s; }
+    .chat-typing span:nth-child(3) { animation-delay: .4s; }
+    @keyframes chat-blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+    .chat-suggestion { cursor: pointer; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+            <h5 class="m-b-10"><i class="feather-message-square me-2"></i>Chat</h5>
+        </div>
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item active">Chat</li>
+        </ul>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="row">
+        <!-- [ Chat ] start -->
+        <div class="col-lg-8">
+            <div class="card stretch stretch-full">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <div>
+                        <h5 class="card-title mb-0">Asisten Data Diamond</h5>
+                        <small class="text-muted">Model: <code>{{ ollama_model }}</code></small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button id="btn-test" class="btn btn-sm btn-secondary" type="button">
+                            <i class="feather-wifi me-1"></i>Test Koneksi
+                        </button>
+                        <button id="btn-clear" class="btn btn-sm btn-outline-secondary" type="button">
+                            <i class="feather-trash-2 me-1"></i>Bersihkan
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if not ollama_enabled %}
+                    <div class="alert alert-warning mb-3">
+                        <i class="feather-alert-triangle me-1"></i>
+                        Fitur Chat dinonaktifkan. Set <code>OLLAMA_ENABLED=True</code> pada file <code>.env</code>.
+                    </div>
+                    {% endif %}
+
+                    <div id="chat-status"></div>
+
+                    <div id="chat-window" class="chat-window">
+                        <div class="chat-msg bot">
+                            <div class="chat-bubble">
+                                Halo! Saya asisten data Diamond. Tanyakan apa saja tentang data tiket,
+                                ILAP, tanda terima, atau data referensi lainnya — saya akan membacanya
+                                langsung dari database (hanya baca, tidak mengubah apa pun).
+                            </div>
+                        </div>
+                    </div>
+
+                    <form id="chat-form" class="mt-3">
+                        <div class="input-group">
+                            <input type="text" id="chat-input" class="form-control"
+                                   placeholder="Contoh: Berapa jumlah tiket per status tahun 2026?"
+                                   maxlength="1000" autocomplete="off"
+                                   {% if not ollama_enabled %}disabled{% endif %}>
+                            <button class="btn btn-primary" type="submit" id="chat-send"
+                                    {% if not ollama_enabled %}disabled{% endif %}>
+                                <i class="feather-send me-1"></i>Kirim
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <!-- [ Chat ] end -->
+
+        <!-- [ Info panel ] start -->
+        <div class="col-lg-4">
+            <div class="card stretch stretch-full mb-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0"><i class="feather-shield me-1"></i>Batasan Akses</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0 ps-3" style="font-size:.85rem;">
+                        <li>Chatbot <strong>hanya menjalankan SELECT</strong>; perintah yang mengubah
+                            data (INSERT/UPDATE/DELETE/DROP) ditolak validator.</li>
+                        <li>Query dijalankan pada koneksi <strong>read-only</strong>.</li>
+                        <li>Tabel kredensial dan hak akses (<code>auth_user</code>, <code>auth_group</code>,
+                            <code>django_session</code>) <strong>tidak dapat diakses</strong>, sehingga
+                            password dan grup pengguna tidak bisa dibaca.</li>
+                        <li>Hasil dibatasi maksimal <strong>{{ max_rows }} baris</strong> per query.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card stretch stretch-full mb-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0"><i class="feather-help-circle me-1"></i>Contoh Pertanyaan</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary text-start chat-suggestion">Berapa jumlah tiket per status tiket?</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary text-start chat-suggestion">Tampilkan 10 ILAP dengan tiket terbanyak</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary text-start chat-suggestion">Berapa tanda terima yang dibuat tahun ini?</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary text-start chat-suggestion">Daftar KPP di kanwil Jakarta Pusat</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card stretch stretch-full">
+                <div class="card-header">
+                    <h6 class="card-title mb-0"><i class="feather-database me-1"></i>Tabel yang Dapat Dibaca</h6>
+                </div>
+                <div class="card-body" style="max-height:220px;overflow:auto;">
+                    {% for table in allowed_tables %}
+                    <span class="badge bg-light text-dark border mb-1"><code>{{ table }}</code></span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <!-- [ Info panel ] end -->
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    'use strict';
+
+    var csrfToken = '{{ csrf_token }}';
+    var chatWindow = document.getElementById('chat-window');
+    var chatForm = document.getElementById('chat-form');
+    var chatInput = document.getElementById('chat-input');
+    var chatSend = document.getElementById('chat-send');
+    var chatStatus = document.getElementById('chat-status');
+
+    // Conversation sent back to the server for context. Kept separate from the
+    // DOM so SQL/result blocks are not fed into the model prompt.
+    var history = [];
+
+    function escapeHtml(value) {
+        var div = document.createElement('div');
+        div.textContent = value === null || value === undefined ? '' : String(value);
+        return div.innerHTML;
+    }
+
+    function scrollToBottom() {
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    function appendMessage(role, html) {
+        var wrapper = document.createElement('div');
+        wrapper.className = 'chat-msg ' + role;
+        var bubble = document.createElement('div');
+        bubble.className = 'chat-bubble';
+        bubble.innerHTML = html;
+        wrapper.appendChild(bubble);
+        chatWindow.appendChild(wrapper);
+        scrollToBottom();
+        return wrapper;
+    }
+
+    function buildResultTable(data) {
+        if (!data.columns || !data.columns.length || !data.rows || !data.rows.length) {
+            return '';
+        }
+        var html = '<div class="chat-result"><table class="table table-sm table-bordered mb-0"><thead><tr>';
+        data.columns.forEach(function (col) {
+            html += '<th>' + escapeHtml(col) + '</th>';
+        });
+        html += '</tr></thead><tbody>';
+        data.rows.forEach(function (row) {
+            html += '<tr>';
+            row.forEach(function (cell) {
+                html += '<td>' + escapeHtml(cell === null ? '' : cell) + '</td>';
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+        if (data.truncated) {
+            html += '<small class="text-muted d-block mt-1">Hasil dipotong pada {{ max_rows }} baris pertama.</small>';
+        }
+        return html;
+    }
+
+    function appendAnswer(data) {
+        var html = escapeHtml(data.answer);
+
+        if (data.sql) {
+            var detailId = 'sql-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+            html += '<div class="mt-2">'
+                 + '<a class="small text-decoration-none" data-bs-toggle="collapse" href="#' + detailId + '" role="button">'
+                 + '<i class="feather-code me-1"></i>Lihat query &amp; hasil (' + data.row_count + ' baris)</a>'
+                 + '<div class="collapse" id="' + detailId + '">'
+                 + '<div class="chat-sql">' + escapeHtml(data.sql) + '</div>'
+                 + buildResultTable(data)
+                 + '</div></div>';
+        }
+
+        appendMessage('bot', html);
+    }
+
+    function setBusy(busy) {
+        chatSend.disabled = busy;
+        chatInput.disabled = busy;
+        if (!busy) { chatInput.focus(); }
+    }
+
+    function showTyping() {
+        return appendMessage('bot', '<span class="chat-typing"><span></span><span></span><span></span></span>');
+    }
+
+    function ask(question) {
+        appendMessage('user', escapeHtml(question));
+        history.push({ role: 'user', content: question });
+
+        setBusy(true);
+        var typing = showTyping();
+
+        fetch('{% url "chat_ask" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ question: question, history: history.slice(0, -1) })
+        })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+            typing.remove();
+            if (data.ok) {
+                appendAnswer(data);
+                history.push({ role: 'assistant', content: data.answer });
+            } else {
+                appendMessage('error', '<i class="feather-alert-circle me-1"></i>' + escapeHtml(data.message));
+                // Drop the failed turn so it does not poison later context.
+                history.pop();
+            }
+        })
+        .catch(function (error) {
+            typing.remove();
+            appendMessage('error', '<i class="feather-alert-circle me-1"></i>Gagal menghubungi server: ' + escapeHtml(error.message));
+            history.pop();
+        })
+        .finally(function () { setBusy(false); });
+    }
+
+    chatForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        var question = chatInput.value.trim();
+        if (!question) { return; }
+        chatInput.value = '';
+        ask(question);
+    });
+
+    document.querySelectorAll('.chat-suggestion').forEach(function (button) {
+        button.addEventListener('click', function () {
+            if (chatInput.disabled) { return; }
+            ask(button.textContent.trim());
+        });
+    });
+
+    document.getElementById('btn-clear').addEventListener('click', function () {
+        history = [];
+        chatWindow.innerHTML = '';
+        appendMessage('bot', 'Riwayat percakapan dibersihkan. Silakan bertanya lagi.');
+    });
+
+    document.getElementById('btn-test').addEventListener('click', function () {
+        var button = this;
+        button.disabled = true;
+        chatStatus.innerHTML = '<div class="alert alert-info py-2 mb-3">Menguji koneksi ke Ollama…</div>';
+
+        fetch('{% url "chat_test_connection" %}', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+            chatStatus.innerHTML = '<div class="alert py-2 mb-3 ' + (data.ok ? 'alert-success' : 'alert-danger') + '">'
+                + escapeHtml(data.message) + '</div>';
+        })
+        .catch(function (error) {
+            chatStatus.innerHTML = '<div class="alert alert-danger py-2 mb-3">' + escapeHtml(error.message) + '</div>';
+        })
+        .finally(function () { button.disabled = false; });
+    });
+})();
+</script>
+{% endblock %}

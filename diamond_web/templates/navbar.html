@@ -31,6 +31,13 @@
                         <span class="nxl-mtext">Daftar Tiket</span>
                     </a>
                 </li>
+
+                <li class="nxl-item">
+                    <a class="nxl-link" href="{% url 'chat_index' %}">
+                        <span class="nxl-micon"><i class="feather-message-square"></i></span>
+                        <span class="nxl-mtext">Chat</span>
+                    </a>
+                </li>
                 {% endif %}
 
                 {% if user|has_group:"admin_p3de" or user|has_group:"user_p3de" %}

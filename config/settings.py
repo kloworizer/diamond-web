@@ -353,6 +353,34 @@ else:
         }
     }
 
+# ---------------------------------------------------------------------------
+# Ollama — local LLM backing the Chat (asisten database) menu.
+# The assistant may only run validated read-only SELECT queries against an
+# allowlist of business tables; see diamond_web/utils/sql_guard.py.
+# ---------------------------------------------------------------------------
+OLLAMA_ENABLED = os.getenv("OLLAMA_ENABLED", "True").lower() == "true"
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
+# The first request after a cold start pays model-load plus full prompt
+# processing; on a CPU-only host that can take ~2-3 minutes. Later requests
+# reuse the cached prompt prefix and land in the 10-15s range.
+OLLAMA_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "300"))
+OLLAMA_TEMPERATURE = float(os.getenv("OLLAMA_TEMPERATURE", "0"))
+# Ollama allocates the KV cache for num_ctx * OLLAMA_NUM_PARALLEL (2 by
+# default), in one contiguous block: 4096 needs ~1 GiB, 8192 needs ~2 GiB on
+# top of the ~4.7 GiB model and ~1.1 GiB compute buffer. Raising this on a
+# host without spare RAM makes the runner abort with "exit status 2".
+OLLAMA_NUM_CTX = int(os.getenv("OLLAMA_NUM_CTX", "4096"))
+
+# Chat guardrails
+CHAT_MAX_ROWS = int(os.getenv("CHAT_MAX_ROWS", "200"))          # rows shown in the UI table
+# Only a sample of the rows is fed back to the model to phrase an answer;
+# sending all CHAT_MAX_ROWS would overflow the context window and make every
+# answer slow. The full result set is still returned to the browser.
+CHAT_MAX_ROWS_TO_MODEL = int(os.getenv("CHAT_MAX_ROWS_TO_MODEL", "30"))
+CHAT_QUERY_TIMEOUT = int(os.getenv("CHAT_QUERY_TIMEOUT", "15"))  # seconds a generated query may run
+CHAT_HISTORY_TURNS = int(os.getenv("CHAT_HISTORY_TURNS", "6"))   # prior turns kept for context
+
 # Logging configuration
 LOGGING = {
     "version": 1,
