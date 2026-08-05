@@ -3696,8 +3696,42 @@
                         });
                     }
                 }
+
+                // Kanwil state logic
+                const lingkupSelect = container.querySelector('#id_lingkup');
+                const kanwilSelect = container.querySelector('#id_id_kanwil');
+                const kanwilWrapper = container.querySelector('#scope-kanwil-wrapper');
+                const kanwilHint = container.querySelector('#kanwil-hint');
+                const LINGKUP_REGIONAL = 'regional';
+
+                if (lingkupSelect && kanwilSelect) {
+                    const updateKanwilState = () => {
+                        const isRegional = lingkupSelect.value === LINGKUP_REGIONAL;
+                        
+                        kanwilSelect.disabled = !isRegional;
+                        
+                        if (kanwilWrapper) {
+                            kanwilWrapper.style.opacity = isRegional ? '1' : '0.55';
+                        }
+                        if (kanwilHint) {
+                            kanwilHint.style.display = isRegional ? 'none' : 'block';
+                        }
+                        
+                        if (!isRegional) {
+                            if (typeof $ !== 'undefined' && $(kanwilSelect).data('select2')) {
+                                $(kanwilSelect).val(null).trigger('change');
+                            } else {
+                                kanwilSelect.value = '';
+                            }
+                        }
+                    };
+
+                    lingkupSelect.addEventListener('change', updateKanwilState);
+                    updateKanwilState();
+                }
             }
         });
+
 
         // Document download functions
         function downloadTiketDoc(pk, docType) {
