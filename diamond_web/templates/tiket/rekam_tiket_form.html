@@ -767,15 +767,20 @@
                             const url = tiketUrlBase.replace('/0/', '/' + tId + '/');
                             
                             tiketLinksHTML += `
-                                <div class="px-3 py-2">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <a href="${url}" target="_blank" class="fw-bold text-primary text-decoration-none" style="font-size: 12px; letter-spacing: 0.3px;">
-                                            ${nomor}
-                                        </a>
-                                        <a href="${url}" target="_blank" class="text-muted"><i class="feather-external-link" style="font-size: 11px;"></i></a>
+                                <div class="px-3 py-2 d-flex align-items-start gap-2">
+                                    <div class="d-flex align-items-center justify-content-center bg-light text-secondary rounded-circle" style="width: 20px; height: 20px; font-size: 10px; font-weight: 700; flex-shrink: 0; margin-top: 1px; border: 1px solid #e2e8f0;">
+                                        ${idx + 1}
                                     </div>
-                                    <div style="font-size: 11px; color: #64748b; line-height: 1.2;">
-                                        Terima DIP: <span style="font-weight: 600; color: #334155;">${tDate}</span>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <a href="${url}" target="_blank" class="fw-bold text-primary text-decoration-none" style="font-size: 12px; letter-spacing: 0.3px;">
+                                                ${nomor}
+                                            </a>
+                                            <a href="${url}" target="_blank" class="text-muted"><i class="feather-external-link" style="font-size: 11px;"></i></a>
+                                        </div>
+                                        <div style="font-size: 11px; color: #64748b; line-height: 1.2;">
+                                            Terima DIP: <span style="font-weight: 600; color: #334155;">${tDate}</span>
+                                        </div>
                                     </div>
                                 </div>
                             `;
