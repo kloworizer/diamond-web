@@ -134,3 +134,29 @@ def git_commit(request):
         "branch": branch or "",
     }
     return {"git_commit": info["short"], "git_commit_info": info}
+
+
+def auto_page_title(request):
+    """
+    Automatically injects a user-friendly auto_page_title based on the url_name 
+    if one hasn't been set by the view.
+    """
+    if hasattr(request, 'resolver_match') and request.resolver_match:
+        url_name = request.resolver_match.url_name
+        if url_name:
+            words = url_name.replace('_', ' ').split()
+            title_words = []
+            for w in words:
+                if w.lower() in ('pide', 'pmde', 'p3de', 'ilap', 'kpp', 'pic', 'sla'):
+                    title_words.append(w.upper())
+                else:
+                    title_words.append(w.capitalize())
+            
+            if title_words and title_words[-1] == 'List':
+                title_words.pop()
+            if title_words and title_words[-1] == 'Data':
+                title_words.pop()
+            
+            title = ' '.join(title_words)
+            return {'auto_page_title': title}
+    return {}

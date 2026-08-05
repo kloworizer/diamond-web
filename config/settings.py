@@ -102,6 +102,7 @@ TEMPLATES = [
                 "diamond_web.context_processors.notifications",
                 "diamond_web.context_processors.git_commit",
                 "diamond_web.context_processors.environment",
+                "diamond_web.context_processors.auto_page_title",
             ],
         },
     },

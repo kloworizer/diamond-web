@@ -9,7 +9,7 @@
     <meta name="description" content="" />
     <meta name="keyword" content="" />
     <meta name="author" content="Diamond Web" />
-    <title>{% block title %}{% if page_title %}{{ page_title }} - {% endif %}Diamond Web{% endblock %}</title>
+    <title>{% block title %}{% if page_title %}{{ page_title }} - {% elif auto_page_title %}{{ auto_page_title }} - {% endif %}Diamond Web{% endblock %}</title>
 
     <link rel="shortcut icon" type="image/x-icon" href="{% static 'assets/images/logo-abbr-1.png' %}" />
     <link rel="stylesheet" type="text/css" href="{% static 'assets/css/bootstrap.min.css' %}" />
