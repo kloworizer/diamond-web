@@ -1145,6 +1145,8 @@
                     Array.from(bentukDataSelect.options).forEach(opt => {
                         if (opt.text.toLowerCase().includes('tidak tersedia') || opt.textContent.toLowerCase().includes('tidak tersedia')) {
                             opt.style.display = show ? '' : 'none';
+                            opt.hidden = !show;
+                            opt.disabled = !show;
                         }
                     });
                 }
@@ -1152,6 +1154,8 @@
                     Array.from(caraPenyampaianSelect.options).forEach(opt => {
                         if (opt.text.toLowerCase().includes('tidak tersedia') || opt.textContent.toLowerCase().includes('tidak tersedia')) {
                             opt.style.display = show ? '' : 'none';
+                            opt.hidden = !show;
+                            opt.disabled = !show;
                         }
                     });
                 }
