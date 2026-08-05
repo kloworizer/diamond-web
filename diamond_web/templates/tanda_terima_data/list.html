@@ -580,6 +580,14 @@
                     }
                 });
 
+                // What the user had ticked before a rejected submit. The table
+                // is refetched on every render, so without this the selection
+                // is lost the moment the server sends the form back. Consumed
+                // once — changing the scope afterwards starts clean.
+                let pendingSelection = new Set(
+                    (tiketContainer.dataset.preselected || '').split(',').filter(Boolean)
+                );
+
                 const renderTikets = (items) => {
                     const tbody = container.querySelector('#tiket-table-body');
                     if (!tbody) return;
@@ -598,7 +606,8 @@
                     }
                     tbody.innerHTML = items.map((item) => {
                         const disabledAttr = item.disabled ? 'disabled' : '';
-                        const checkedAttr = item.selected ? 'checked' : '';
+                        const checkedAttr = (item.selected || pendingSelection.has(String(item.id)))
+                            ? 'checked' : '';
                         const opacityStyle = item.disabled ? 'style="opacity: 0.6; cursor: not-allowed;"' : '';
                         return `
                             <tr ${opacityStyle}>
@@ -618,6 +627,7 @@
                             </tr>
                         `;
                     }).join('');
+                    pendingSelection = new Set();
                     updateTiketSelectionUI();
                 };
 

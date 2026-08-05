@@ -103,6 +103,16 @@ def _qc_bundle(with_durasi=True, with_prioritas=False, tgl_transfer=None,
     }
 
 
+def _jatuh_tempo_bundle(days, **kwargs):
+    """A bundle whose jatuh tempo is `days` days from today, negative allowed.
+
+    The deadline counts the durasi from tgl_transfer, which `_qc_bundle` puts
+    five days back, so the durasi that lands the deadline on the wanted day is
+    that gap plus those five days.
+    """
+    return _qc_bundle(durasi=days + 5, **kwargs)
+
+
 @pytest.mark.django_db
 class TestQualityControlView:
     def test_get_denied_for_non_pmde(self, client):
@@ -434,6 +444,69 @@ class TestQualityControlFilters:
         )
         assert payload['recordsFiltered'] == 1
         assert payload['data'][0]['nomor_tiket'] == first['tiket'].nomor_tiket
+
+    def test_filter_jatuh_tempo_thresholds(self, client):
+        near = _jatuh_tempo_bundle(5)
+        _jatuh_tempo_bundle(20, pmde_user=near['pmde_user'])
+        _jatuh_tempo_bundle(50, pmde_user=near['pmde_user'])
+        client.force_login(near['pmde_user'])
+
+        assert self._rows(client)['recordsFiltered'] == 3           # -- Semua --
+        assert self._rows(client, jatuh_tempo='10')['recordsFiltered'] == 1
+        assert self._rows(client, jatuh_tempo='30')['recordsFiltered'] == 2
+        assert self._rows(client, jatuh_tempo='60')['recordsFiltered'] == 3
+
+        under_ten = self._rows(client, jatuh_tempo='10')['data']
+        assert [row['nomor_tiket'] for row in under_ten] == [near['tiket'].nomor_tiket]
+        assert under_ten[0]['jatuh_tempo']['display'] == '5 hari'
+
+    def test_filter_jatuh_tempo_takes_the_widest_threshold(self, client):
+        first = _jatuh_tempo_bundle(5)
+        _jatuh_tempo_bundle(50, pmde_user=first['pmde_user'])
+        client.force_login(first['pmde_user'])
+
+        # The thresholds nest, so picking several is the union of them.
+        assert self._rows(client, jatuh_tempo='10,60')['recordsFiltered'] == 2
+
+    def test_filter_jatuh_tempo_includes_an_overdue_tiket(self, client):
+        bundle = _jatuh_tempo_bundle(-3)
+        client.force_login(bundle['pmde_user'])
+        # Its jatuh tempo is negative, which is under every threshold.
+        assert self._rows(client, jatuh_tempo='10')['recordsFiltered'] == 1
+
+    def test_filter_jatuh_tempo_excludes_a_tiket_without_a_deadline(self, client):
+        bundle = _qc_bundle(with_durasi=False)
+        client.force_login(bundle['pmde_user'])
+
+        assert self._rows(client)['recordsFiltered'] == 1
+        assert self._rows(client, jatuh_tempo='60')['recordsFiltered'] == 0
+
+    @pytest.mark.parametrize('selected', ['bukan-angka', '15'])
+    def test_filter_jatuh_tempo_rejects_a_value_it_does_not_offer(self, client, selected):
+        bundle = _jatuh_tempo_bundle(5)
+        client.force_login(bundle['pmde_user'])
+        assert self._rows(client, jatuh_tempo=selected)['recordsFiltered'] == 0
+
+    def test_jatuh_tempo_options_are_the_fixed_thresholds(self, client):
+        bundle = _jatuh_tempo_bundle(5)
+        client.force_login(bundle['pmde_user'])
+
+        # Offered whether or not anything currently falls in them, unlike every
+        # other dropdown, which is read off the result set.
+        options = self._options(client)['jatuh_tempo']
+        assert [o['id'] for o in options] == ['10', '30', '60']
+        assert [o['name'] for o in options] == ['< 10 hari', '< 30 hari', '< 60 hari']
+        assert self._options(client, jatuh_tempo='10')['jatuh_tempo'] == options
+
+    def test_jatuh_tempo_narrows_the_other_dropdowns(self, client):
+        near = _jatuh_tempo_bundle(5)
+        far = _jatuh_tempo_bundle(50, pmde_user=near['pmde_user'])
+        client.force_login(near['pmde_user'])
+
+        assert len(self._options(client)['nomor_tiket']) == 2
+        narrowed = self._options(client, jatuh_tempo='10')
+        assert [o['id'] for o in narrowed['nomor_tiket']] == [near['tiket'].nomor_tiket]
+        assert far['tiket'].nomor_tiket not in [o['id'] for o in narrowed['nomor_tiket']]
 
     def test_filters_apply_to_post_requests_too(self, client):
         first = _qc_bundle()
