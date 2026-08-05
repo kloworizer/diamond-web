@@ -84,7 +84,7 @@
                                 </div>
                                 <div class="col-sm-6">
                                     <div id="special-request-due-date-group" class="mb-3" style="display: none;">
-                                        <label for="{{ form.tgl_special_request.id_for_label }}" class="form-label">{{ form.tgl_special_request.label }}<span class="text-danger">*</span></label>
+                                        <label for="{{ form.tgl_special_request.id_for_label }}" class="form-label">{{ form.tgl_special_request.label }}</label>
                                         <div style="max-width: 250px;">
                                             {{ form.tgl_special_request }}
                                         </div>
@@ -92,7 +92,7 @@
                                             <div class="invalid-feedback d-block">{{ form.tgl_special_request.errors }}</div>
                                         {% endif %}
                                         <small class="form-text text-muted d-block mt-1" style="font-size: 11.5px;">
-                                            <i class="feather-info me-1"></i>Batas waktu penyelesaian permintaan khusus ini. Wajib diisi selama Permintaan Khusus aktif.
+                                            <i class="feather-info me-1"></i>Batas waktu penyelesaian permintaan khusus ini. Bersifat opsional.
                                         </small>
                                     </div>
                                 </div>
@@ -1276,7 +1276,7 @@
                 if (dueDateInput) {
                     setDateInputState(dueDateInput, {
                         disabled: !enabled,
-                        required: enabled,
+                        required: false,
                     });
                 }
             }
@@ -1389,9 +1389,7 @@
                 }
 
                 const specialRequestInput = document.getElementById('id_special_request');
-                if (specialRequestInput && specialRequestInput.checked) {
-                    mandatoryConfigs.push({ id: 'id_tgl_special_request', guide: 'Tentukan batas waktu penyelesaian permintaan khusus ini.' });
-                }
+                // Removed id_tgl_special_request from mandatory validation since it's optional
 
                 const tglVertikalInput = document.getElementById('id_tgl_terima_vertikal');
                 if (tglVertikalInput && tglVertikalInput.required) {
