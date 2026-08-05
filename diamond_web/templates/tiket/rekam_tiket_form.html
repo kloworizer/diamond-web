@@ -43,6 +43,32 @@
                 {% csrf_token %}
                 <input type="hidden" name="old_db" value="0">
                 
+                <!-- LIVE TICKET SUMMARY CARD -->
+                <div id="live-ticket-summary" class="card shadow-sm mb-4 sticky-top" style="top: 80px; z-index: 99; border: 1px solid rgba(13, 110, 253, 0.2); background: rgba(248, 250, 252, 0.95); backdrop-filter: blur(8px); display: block;">
+                    <div class="card-body py-2 px-3">
+                        <div class="row align-items-center g-2" style="font-size: 11.5px;">
+                            <div class="col-md-3 border-end border-light">
+                                <span class="text-muted d-block mb-1" style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Baris Diterima</span>
+                                <div class="fw-bold text-dark d-flex align-items-center">
+                                    <i class="feather-database text-primary me-1"></i> <span id="summary-row-diterima" style="font-size: 13px;">-</span>
+                                </div>
+                            </div>
+                            <div class="col-md-5 border-end border-light">
+                                <span class="text-muted d-block mb-1" style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Periode Tiket</span>
+                                <div class="fw-bold text-dark d-flex align-items-center">
+                                    <i class="feather-calendar text-success me-1"></i> <span id="summary-periode" style="font-size: 13px;">-</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <span class="text-muted d-block mb-1" style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Tanggal Terima (DIP)</span>
+                                <div class="fw-bold text-dark d-flex align-items-center">
+                                    <i class="feather-clock text-warning me-1"></i> <span id="summary-diterima-dip" style="font-size: 13px;">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- SECTION A: Data Utama -->
                 <div class="alert alert-light border-start border-primary border-3 mb-4" role="alert">
                     <h6 class="mb-0"><i class="feather-check-square me-2"></i><strong>Bagian A: Data Utama</strong></h6>
@@ -1003,6 +1029,66 @@
                 }
             });
         }
+        
+        // Live Ticket Summary Logic
+        function updateLiveSummary() {
+            // Row Diterima
+            const barisDiterima = document.getElementById('id_baris_diterima');
+            const summaryRow = document.getElementById('summary-row-diterima');
+            if (barisDiterima && summaryRow) {
+                const valStr = barisDiterima.value.replace(/\D/g, '');
+                const val = parseInt(valStr) || 0;
+                summaryRow.textContent = val > 0 ? val.toLocaleString('id-ID') + ' Baris' : '-';
+            }
+            
+            // Periode Tiket
+            const periodeSelectEl = document.getElementById('id_periode');
+            const tahunSelectEl = document.getElementById('id_tahun');
+            const summaryPeriode = document.getElementById('summary-periode');
+            if (periodeSelectEl && tahunSelectEl && summaryPeriode) {
+                const periodeText = periodeSelectEl.selectedIndex > 0 ? periodeSelectEl.options[periodeSelectEl.selectedIndex].text : '';
+                const tahunText = tahunSelectEl.selectedIndex > 0 ? tahunSelectEl.options[tahunSelectEl.selectedIndex].text : '';
+                if (periodeText && tahunText) {
+                    summaryPeriode.textContent = `${periodeText} ${tahunText}`;
+                } else {
+                    summaryPeriode.textContent = '-';
+                }
+            }
+            
+            // Tanggal Terima DIP
+            const tglDip = document.getElementById('id_tgl_terima_dip');
+            const summaryTglDip = document.getElementById('summary-diterima-dip');
+            if (tglDip && summaryTglDip) {
+                if (tglDip.value) {
+                    try {
+                        const date = new Date(tglDip.value);
+                        if (!isNaN(date)) {
+                            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                            summaryTglDip.textContent = date.toLocaleDateString('id-ID', options);
+                        } else {
+                            summaryTglDip.textContent = tglDip.value;
+                        }
+                    } catch(e) {
+                        summaryTglDip.textContent = tglDip.value;
+                    }
+                } else {
+                    summaryTglDip.textContent = '-';
+                }
+            }
+        }
+
+        const inputsToWatch = ['id_baris_diterima', 'id_periode', 'id_tahun', 'id_tgl_terima_dip'];
+        inputsToWatch.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', updateLiveSummary);
+                el.addEventListener('change', updateLiveSummary);
+            }
+        });
+        
+        // Init summary on load
+        updateLiveSummary();
+        
     })();
 </script>
 {% endblock %}
