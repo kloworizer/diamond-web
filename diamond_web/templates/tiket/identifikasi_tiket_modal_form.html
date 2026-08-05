@@ -9,9 +9,11 @@
 
         <div class="mb-3">
             {{ form.tgl_rekam_pide.label_tag }}
-            {{ form.tgl_rekam_pide }}
+            <div style="max-width: 200px;">
+                {{ form.tgl_rekam_pide }}
+            </div>
             {% if form.tgl_rekam_pide.errors %}
-            <div class="text-danger">{{ form.tgl_rekam_pide.errors }}</div>
+            <div class="text-danger mt-1">{{ form.tgl_rekam_pide.errors }}</div>
             {% endif %}
         </div>
     </div>
