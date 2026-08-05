@@ -1139,25 +1139,41 @@
                 });
             }
 
+            // Cache to store removed options so they can be restored
+            const hiddenOptionsCache = {
+                bentukData: null,
+                caraPenyampaian: null
+            };
+
             // Toggle "data tidak tersedia" options from bentuk_data and cara_penyampaian dropdowns
             function toggleDataTidakTersediaOptions(show) {
                 if (bentukDataSelect) {
-                    Array.from(bentukDataSelect.options).forEach(opt => {
-                        if (opt.text.toLowerCase().includes('tidak tersedia') || opt.textContent.toLowerCase().includes('tidak tersedia')) {
-                            opt.style.display = show ? '' : 'none';
-                            opt.hidden = !show;
-                            opt.disabled = !show;
+                    if (show) {
+                        if (hiddenOptionsCache.bentukData) {
+                            bentukDataSelect.appendChild(hiddenOptionsCache.bentukData);
+                            hiddenOptionsCache.bentukData = null;
                         }
-                    });
+                    } else {
+                        const opt = Array.from(bentukDataSelect.options).find(o => o.text.toLowerCase().includes('tidak tersedia') || o.textContent.toLowerCase().includes('tidak tersedia'));
+                        if (opt) {
+                            hiddenOptionsCache.bentukData = opt;
+                            bentukDataSelect.removeChild(opt);
+                        }
+                    }
                 }
                 if (caraPenyampaianSelect) {
-                    Array.from(caraPenyampaianSelect.options).forEach(opt => {
-                        if (opt.text.toLowerCase().includes('tidak tersedia') || opt.textContent.toLowerCase().includes('tidak tersedia')) {
-                            opt.style.display = show ? '' : 'none';
-                            opt.hidden = !show;
-                            opt.disabled = !show;
+                    if (show) {
+                        if (hiddenOptionsCache.caraPenyampaian) {
+                            caraPenyampaianSelect.appendChild(hiddenOptionsCache.caraPenyampaian);
+                            hiddenOptionsCache.caraPenyampaian = null;
                         }
-                    });
+                    } else {
+                        const opt = Array.from(caraPenyampaianSelect.options).find(o => o.text.toLowerCase().includes('tidak tersedia') || o.textContent.toLowerCase().includes('tidak tersedia'));
+                        if (opt) {
+                            hiddenOptionsCache.caraPenyampaian = opt;
+                            caraPenyampaianSelect.removeChild(opt);
+                        }
+                    }
                 }
             }
             
