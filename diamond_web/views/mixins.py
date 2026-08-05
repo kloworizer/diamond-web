@@ -1,10 +1,42 @@
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponseForbidden
 from django.template.loader import render_to_string
-from django.contrib.auth.mixins import UserPassesTestMixin
+from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
 from django.utils import timezone
 from ..models.tiket_pic import TiketPIC
 
+
+class AjaxLoginRequiredMixin(LoginRequiredMixin):
+    """Extend ``LoginRequiredMixin`` to return a proper 401 JSON response
+    for AJAX (``X-Requested-With: XMLHttpRequest``) requests.
+
+    Django's default ``LoginRequiredMixin`` always returns a 302 redirect to
+    the login page, even for AJAX requests.  This causes the front-end fetch
+    wrapper to receive a 302 \u2192 HTML redirect body instead of a JSON
+    response, which in turn makes "modal gagal muat form" appear when the
+    session has expired mid-page.
+
+    By returning **401** for AJAX calls, the global fetch wrapper in
+    ``base.html`` can correctly detect session expiry (401 = unauthenticated)
+    and trigger the session-expired UI instead of silently failing.
+    """
+
+    def handle_no_permission(self):
+        """Return 401 JSON for AJAX requests; redirect for regular page loads.
+
+        Returns:
+            JsonResponse: 401 with ``{\"error\": \"Sesi telah berakhir. Silakan login kembali.\"}``
+            for AJAX requests.
+            HttpResponseRedirect: Redirect to the login page for non-AJAX
+            requests (standard Django behaviour).
+        """
+        request = getattr(self, 'request', None)
+        if request is not None and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse(
+                {'error': 'Sesi telah berakhir. Silakan login kembali.'},
+                status=401
+            )
+        return super().handle_no_permission()
 
 class AdminRequiredMixin(UserPassesTestMixin):
     """Require membership in the `admin` group.
