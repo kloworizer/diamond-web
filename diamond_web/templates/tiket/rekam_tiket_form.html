@@ -75,7 +75,7 @@
                                     </div>
                                     <div class="ps-4 ms-1">
                                         <small class="text-muted d-block lh-sm" style="font-size: 11.5px;">
-                                            <i class="feather-info me-1"></i>Tandai sebagai tiket prioritas tinggi.
+                                            <i class="feather-info me-1"></i>Opsi ini untuk menandai tiket sebagai tiket permintaan khusus dengan prioritas pengolahan lebih tinggi dari tiket biasa.
                                         </small>
                                     </div>
                                     {% if form.special_request.errors %}
@@ -83,14 +83,14 @@
                                     {% endif %}
                                 </div>
                                 <div class="col-sm-6">
-                                    <div id="special-request-due-date-group" style="display: none;">
+                                    <div id="special-request-due-date-group" class="mb-3" style="display: none;">
                                         <label for="{{ form.tgl_special_request.id_for_label }}" class="form-label">{{ form.tgl_special_request.label }}<span class="text-danger">*</span></label>
                                         {{ form.tgl_special_request }}
                                         {% if form.tgl_special_request.errors %}
                                             <div class="invalid-feedback d-block">{{ form.tgl_special_request.errors }}</div>
                                         {% endif %}
                                         <small class="form-text text-muted d-block mt-1" style="font-size: 11.5px;">
-                                            <i class="feather-info me-1"></i>Batas waktu khusus. Wajib diisi.
+                                            <i class="feather-info me-1"></i>Batas waktu penyelesaian permintaan khusus ini. Wajib diisi selama Permintaan Khusus aktif.
                                         </small>
                                     </div>
                                 </div>
@@ -1345,6 +1345,18 @@
                     mandatoryConfigs.push({ id: 'id_baris_diterima', guide: 'Isi jumlah baris data yang diterima menggunakan angka.' });
                 }
 
+                const specialRequestInput = document.getElementById('id_special_request');
+                if (specialRequestInput && specialRequestInput.checked) {
+                    mandatoryConfigs.push({ id: 'id_tgl_special_request', guide: 'Tentukan batas waktu penyelesaian permintaan khusus ini.' });
+                }
+
+                const backupCheckbox = document.getElementById('rekam-backup-checkbox');
+                if (backupCheckbox && backupCheckbox.checked) {
+                    mandatoryConfigs.push({ id: 'backup_id_media_backup', guide: 'Pilih media backup yang digunakan.' });
+                    mandatoryConfigs.push({ id: 'backup_nama_file', guide: 'Isi nama file dari backup.' });
+                    mandatoryConfigs.push({ id: 'backup_lokasi_backup', guide: 'Isi lokasi fisik atau path backup tersebut disimpan.' });
+                }
+
                 mandatoryConfigs.forEach(cfg => {
                     const el = document.getElementById(cfg.id);
                     if (el) {
@@ -1646,17 +1658,18 @@
             const backupSection = document.getElementById('backup-data-section');
             const backupLokasiInput = document.getElementById('backup_lokasi_backup');
             const backupMediaSelect = document.getElementById('backup_id_media_backup');
+            const backupNamaFileInput = document.getElementById('backup_nama_file');
 
             function toggleBackupSection() {
                 const checked = backupCheckbox.checked;
                 backupSection.style.display = checked ? '' : 'none';
                 if (backupLokasiInput) backupLokasiInput.required = checked;
                 if (backupMediaSelect) backupMediaSelect.required = checked;
+                if (backupNamaFileInput) backupNamaFileInput.required = checked;
                 if (!checked) {
                     if (backupLokasiInput) backupLokasiInput.value = '';
                     if (backupMediaSelect) backupMediaSelect.value = '';
-                    const namaFileInput = document.getElementById('backup_nama_file');
-                    if (namaFileInput) namaFileInput.value = '';
+                    if (backupNamaFileInput) backupNamaFileInput.value = '';
                 }
             }
 
