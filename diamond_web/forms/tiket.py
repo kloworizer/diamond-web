@@ -7,7 +7,6 @@ from ..models.ilap import ILAP
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from datetime import datetime
 from .base import AutoRequiredFormMixin
-from .special_request import DUE_DATE_REQUIRED_ERROR
 from ..utils import validate_not_future_datetime, normalize_server_datetime, combine_date_with_current_time, end_of_day
 
 class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
@@ -199,12 +198,9 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        # The due date is mandatory for a special request tiket, and irrelevant
-        # for any other one.
-        if cleaned_data.get('special_request'):
-            if not cleaned_data.get('tgl_special_request'):
-                self.add_error('tgl_special_request', DUE_DATE_REQUIRED_ERROR)
-        else:
+        # The due date is optional for a special request tiket.
+        # If special_request is not checked, clear any accidental due date value.
+        if not cleaned_data.get('special_request'):
             cleaned_data['tgl_special_request'] = None
         tgl_vertikal = cleaned_data.get('tgl_terima_vertikal')
         tgl_dip = cleaned_data.get('tgl_terima_dip')
