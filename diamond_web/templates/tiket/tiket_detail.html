@@ -102,7 +102,7 @@
 
             <!-- Info Utama: Tiket Identity Bar (sticky, full width, premium horizontal layout) -->
             <div class="card border-0 shadow-sm mb-4" id="sticky-identity-card"
-                style="background: linear-gradient(135deg, #f8fffe 0%, #f0f8ff 100%); border-left: 4px solid #00BDFB !important; transition: box-shadow 0.2s; overflow: visible;">
+                style="{% if not tiket.status_ketersediaan_data %}background: linear-gradient(135deg, #fef2f2 0%, #fff1f2 100%); border-left: 4px solid #ef4444 !important;{% else %}background: linear-gradient(135deg, #f8fffe 0%, #f0f8ff 100%); border-left: 4px solid #00BDFB !important;{% endif %} transition: box-shadow 0.2s; overflow: visible;">
                 <div class="card-body py-3 px-4">
                     <div class="d-flex align-items-stretch gap-0">
 
@@ -126,18 +126,27 @@
                                     <i class="feather-copy" style="font-size: 0.85rem;"></i>
                                 </button>
                             </div>
-                            <!-- Priority chip kecil di bawah nomor tiket -->
-                            {% if tiket.id_jenis_prioritas_data %}
-                            <span class="badge d-inline-flex align-items-center justify-content-center"
-                                style="font-size: 10px; padding: 4px 8px; width: fit-content; font-weight: 600; background-color: #fee2e2 !important; color: #ef4444 !important; border: 1px solid #fecaca !important;">
-                                Data Prioritas
-                            </span>
-                            {% else %}
-                            <span class="badge d-inline-flex align-items-center justify-content-center"
-                                style="font-size: 10px; padding: 4px 8px; width: fit-content; font-weight: 600; background-color: #f1f5f9 !important; color: #64748b !important; border: 1px solid #cbd5e1 !important;">
-                                Tidak Prioritas
-                            </span>
-                            {% endif %}
+                            <!-- Priority & Ketersediaan chips di bawah nomor tiket -->
+                            <div class="d-flex flex-wrap gap-1 mt-1">
+                                {% if tiket.id_jenis_prioritas_data %}
+                                <span class="badge d-inline-flex align-items-center justify-content-center"
+                                    style="font-size: 10px; padding: 4px 8px; width: fit-content; font-weight: 600; background-color: #fee2e2 !important; color: #ef4444 !important; border: 1px solid #fecaca !important;">
+                                    Data Prioritas
+                                </span>
+                                {% else %}
+                                <span class="badge d-inline-flex align-items-center justify-content-center"
+                                    style="font-size: 10px; padding: 4px 8px; width: fit-content; font-weight: 600; background-color: #f1f5f9 !important; color: #64748b !important; border: 1px solid #cbd5e1 !important;">
+                                    Tidak Prioritas
+                                </span>
+                                {% endif %}
+
+                                {% if not tiket.status_ketersediaan_data %}
+                                <span class="badge d-inline-flex align-items-center justify-content-center"
+                                    style="font-size: 10px; padding: 4px 8px; font-weight: 700; background-color: #ef4444 !important; color: #ffffff !important; border: 1px solid #dc2626 !important; text-transform: uppercase;">
+                                    <i class="feather-alert-octagon me-1" style="font-size: 10px;"></i>Data Tidak Tersedia
+                                </span>
+                                {% endif %}
+                            </div>
                         </div>
 
                         <!-- Thin Blue Separator -->
@@ -231,6 +240,21 @@
             </div>
         </div>
     </div>
+
+    <!-- Alert for Data Tidak Tersedia -->
+    {% if not tiket.status_ketersediaan_data %}
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-danger d-flex align-items-start shadow-sm border-0 mb-4" role="alert" style="border-left: 4px solid #dc2626 !important; background-color: #fef2f2; color: #991b1b;">
+                <i class="feather-alert-triangle fs-4 me-3 mt-1" style="color: #dc2626;"></i>
+                <div>
+                    <h6 class="fw-bold mb-1" style="color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px;">Tiket Ditutup karena Data Tidak Tersedia</h6>
+                    <p class="mb-0 fs-13" style="line-height: 1.5;"><strong>Alasan Ketidaktersediaan:</strong> {% if tiket.alasan_ketidaktersediaan %}{{ tiket.alasan_ketidaktersediaan }}{% else %}<em>Tidak ada alasan yang disertakan.</em>{% endif %}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Top section: main info + actions + PIC, side by side (inverted-pyramid: most critical content first) -->
     <div class="row">
