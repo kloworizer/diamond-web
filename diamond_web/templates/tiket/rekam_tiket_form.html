@@ -1315,6 +1315,12 @@
                     let raw = this.value.replace(/\D/g, '');
                     if (raw) {
                         raw = parseInt(raw, 10).toString();
+                        
+                        // Live Validation: Prevent '0' if Data Tersedia
+                        const statusTersedia = document.getElementById('status_tersedia');
+                        if (statusTersedia && statusTersedia.checked && raw === '0') {
+                            raw = ''; // Clear it out to prevent '0'
+                        }
                     }
                     hiddenInput.value = raw;
                     
@@ -1461,6 +1467,11 @@
                     if (barisDiterimaInput) {
                         barisDiterimaInput.disabled = false;
                         barisDiterimaInput.style.opacity = '1';
+                        if (barisDiterimaInput.value === '0') {
+                            barisDiterimaInput.value = '';
+                            const hiddenBaris = document.getElementById('hidden_baris_diterima');
+                            if (hiddenBaris) hiddenBaris.value = '';
+                        }
                     }
                     
                     // Enable Rekam Backup Data toggle
@@ -1758,7 +1769,22 @@
                     const tglDipInput = document.getElementById('id_tgl_terima_dip');
                     const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
 
-
+                    // 0. Cek Baris Diterima tidak boleh 0 atau kosong jika Data Tersedia
+                    const statusTersedia = document.getElementById('status_tersedia');
+                    if (statusTersedia && statusTersedia.checked) {
+                        const rawBaris = document.getElementById('hidden_baris_diterima')?.value || document.getElementById('id_baris_diterima')?.value;
+                        if (!rawBaris || rawBaris === '0') {
+                            showValidationModal(
+                                'Formulir Tidak Valid!',
+                                [
+                                    { label: 'Status Ketersediaan', value: 'Data Tersedia' },
+                                    { label: 'Baris Diterima', value: (!rawBaris) ? 'Kosong' : '0', danger: true },
+                                ],
+                                'Jumlah Baris Diterima tidak boleh 0 atau kosong apabila Data Tersedia.'
+                            );
+                            return;
+                        }
+                    }
 
                     // 1. Cek future date: tgl_terima_vertikal
                     if (tglVertikalInput?.value) {
