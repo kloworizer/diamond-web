@@ -322,12 +322,6 @@
                                             </span>
                                         </span>
                                     </div>
-                                    {% if periode_formatted %}
-                                    <div class="meta-item">
-                                        <span class="meta-label">Periode</span>
-                                        <span class="meta-value">{{ periode_formatted }}</span>
-                                    </div>
-                                    {% endif %}
                                     <div class="meta-item">
                                         <span class="meta-label">Data Prioritas</span>
                                         <span class="meta-value">
@@ -338,6 +332,28 @@
                                             {% endif %}
                                         </span>
                                     </div>
+                                    <div class="meta-item">
+                                        <span class="meta-label">Permintaan Khusus</span>
+                                        <span class="meta-value" id="special-request-value">
+                                            {% if tiket.special_request %}
+                                            <i class="feather-star me-1 text-warning"></i>Ya
+                                            {% else %}
+                                            <i class="feather-minus me-1 text-muted"></i>Tidak
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    {% if tiket.special_request %}
+                                    <div class="meta-item">
+                                        <span class="meta-label">Jatuh Tempo Permintaan Khusus</span>
+                                        <span class="meta-value" id="tgl-special-request-value">
+                                            {% if tiket.tgl_special_request %}
+                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_special_request|date:"d/m/Y" }}
+                                            {% else %}
+                                            <i class="feather-minus me-1 text-muted"></i>Belum ditentukan
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    {% endif %}
                                     <div class="meta-item">
                                         <span class="meta-label">Tanggal Terima DIP</span>
                                         <span class="meta-value">
@@ -418,28 +434,6 @@
                                             {% endif %}
                                         </span>
                                     </div>
-                                    <div class="meta-item">
-                                        <span class="meta-label">Permintaan Khusus</span>
-                                        <span class="meta-value" id="special-request-value">
-                                            {% if tiket.special_request %}
-                                            <i class="feather-star me-1"></i>Ya
-                                            {% else %}
-                                            <i class="feather-minus me-1"></i>Tidak
-                                            {% endif %}
-                                        </span>
-                                    </div>
-                                    {% if tiket.special_request %}
-                                    <div class="meta-item">
-                                        <span class="meta-label">Jatuh Tempo Permintaan Khusus</span>
-                                        <span class="meta-value" id="tgl-special-request-value">
-                                            {% if tiket.tgl_special_request %}
-                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_special_request|date:"d-m-Y" }}
-                                            {% else %}
-                                            <i class="feather-minus me-1"></i>Belum ditentukan
-                                            {% endif %}
-                                        </span>
-                                    </div>
-                                    {% endif %}
                                     {% if not tiket.status_ketersediaan_data %}
                                     <div class="meta-item">
                                         <span class="meta-label">Alasan Ketidaktersediaan</span>
@@ -611,6 +605,12 @@
                                     <i class="feather-clock"></i>Periode & Klasifikasi
                                 </div>
                                 <div class="meta-list">
+                                    {% if periode_formatted %}
+                                    <div class="meta-item">
+                                        <span class="meta-label">Periode</span>
+                                        <span class="meta-value">{{ periode_formatted }}</span>
+                                    </div>
+                                    {% endif %}
                                     <div class="meta-item">
                                         <span class="meta-label">Periode Penyampaian - Penerimaan</span>
                                         <span class="meta-value">{{ ilap_info.deskripsi_periode }} - {{ ilap_info.periode_penerimaan }}</span>
