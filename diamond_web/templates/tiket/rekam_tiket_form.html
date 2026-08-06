@@ -346,12 +346,12 @@
                     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
                         <h6 class="mb-0"><i class="feather-database me-2"></i><strong>Bagian C: Rekam Backup Data</strong></h6>
                         <div class="form-check form-switch mb-0">
-                            <input class="form-check-input" type="checkbox" role="switch" id="rekam-backup-checkbox" name="rekam_backup" value="1" checked>
+                            <input class="form-check-input" type="checkbox" role="switch" id="rekam-backup-checkbox" name="rekam_backup" value="1">
                             <label class="form-check-label" for="rekam-backup-checkbox">Rekam Backup Data Sekarang</label>
                         </div>
                     </div>
                 </div>
-                <div id="backup-data-section" style="display: block;">
+                <div id="backup-data-section" style="display: none;">
                     <div class="row">
                         <div class="col-md-4">
                             <div class="mb-3">
@@ -1415,6 +1415,10 @@
                     // Set Baris Diterima to 0 and disable
                     if (barisDiterimaInput) {
                         barisDiterimaInput.value = 0;
+                        // The visible input carries no name; #hidden_baris_diterima is
+                        // what gets POSTed, and it only syncs on a real 'input' event.
+                        const hiddenBaris = document.getElementById('hidden_baris_diterima');
+                        if (hiddenBaris) hiddenBaris.value = '0';
                         barisDiterimaInput.disabled = true;
                         barisDiterimaInput.style.opacity = '0.6';
                     }
