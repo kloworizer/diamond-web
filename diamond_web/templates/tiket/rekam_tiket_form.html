@@ -598,7 +598,15 @@
                             <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Tahun Tiket</span>
                             <span id="confirm-tahun" class="fw-bold text-dark">-</span>
                         </div>
+                        <div class="col-4">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Penyampaian ke-</span>
+                            <span id="confirm-penyampaian" class="fw-bold text-dark">-</span>
+                        </div>
                         <div class="col-12 mt-1">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Deskripsi Periode</span>
+                            <span id="confirm-deskripsi-periode" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-12 mt-2">
                             <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 4px;">Frekuensi Periode ILAP</span>
                             <div class="d-flex flex-wrap gap-2">
                                 <span class="badge bg-white text-dark border fw-normal me-1 d-inline-flex align-items-center">
@@ -634,46 +642,52 @@
                             <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Cara Penyampaian</span>
                             <span id="confirm-cara-penyampaian" class="fw-semibold text-dark">-</span>
                         </div>
-                        <div class="col-12 border-top mt-2 pt-2">
-                            <span style="font-size: 10.5px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 4px;">Surat Pengantar</span>
-                        </div>
-                        <div class="col-5">
-                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">No. Surat</span>
-                            <span id="confirm-nomor-surat-pengantar" class="fw-semibold text-dark">-</span>
-                        </div>
-                        <div class="col-4">
-                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Tgl Surat</span>
-                            <span id="confirm-tanggal-surat-pengantar" class="fw-semibold text-dark">-</span>
-                        </div>
-                        <div class="col-3">
-                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Nama Pengirim</span>
-                            <span id="confirm-nama-pengirim" class="fw-semibold text-dark">-</span>
-                        </div>
-                        <div class="col-12 border-top mt-2 pt-2">
-                            <span style="font-size: 10.5px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 4px;">Periode Data</span>
-                        </div>
-                        <div class="col-12">
-                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Deskripsi Periode</span>
-                            <span id="confirm-deskripsi-periode" class="fw-semibold text-dark">-</span>
-                        </div>
+                    </div>
 
-                        <div class="col-12 border-top mt-2 pt-2">
-                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Penyampaian</span>
-                            <span id="confirm-penyampaian" class="fw-semibold text-dark">-</span>
+                    <!-- Surat Pengantar -->
+                    <div class="pt-2 mt-3" style="border-top: 1px dashed #e2e8f0;">
+                        <div class="modal-cluster-title">
+                            <i class="feather-mail me-1" style="font-size:10px;"></i>Surat Pengantar
+                        </div>
+                        <div class="row g-2" style="font-size: 12.5px;">
+                            <div class="col-5">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">No. Surat</span>
+                                <span id="confirm-nomor-surat-pengantar" class="fw-semibold text-dark">-</span>
+                            </div>
+                            <div class="col-4">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Tgl Surat</span>
+                                <span id="confirm-tanggal-surat-pengantar" class="fw-semibold text-dark">-</span>
+                            </div>
+                            <div class="col-3">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Nama Pengirim</span>
+                                <span id="confirm-nama-pengirim" class="fw-semibold text-dark">-</span>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Volume data strip -->
                     <div class="pt-2 mt-3" style="border-top: 1px dashed #e2e8f0;">
+                        <div class="modal-cluster-title">
+                            <i class="feather-database me-1" style="font-size:10px;"></i>Volume Data
+                        </div>
                         <div class="row g-2 align-items-center" style="font-size: 12.5px;">
-                            <div class="col-4">
+                            <div class="col-6">
                                 <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 4px;">Baris Diterima</span>
                                 <span id="confirm-baris-diterima" class="badge d-inline-flex align-items-center" style="background-color: #e0f2fe; color: #0284c7; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px; border: none; font-variant-numeric: tabular-nums;">-</span>
                             </div>
-                            <div class="col-4">
+                            <div class="col-6">
                                 <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Satuan Data</span>
                                 <span id="confirm-satuan-data" class="fw-semibold text-dark">-</span>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Permintaan Khusus -->
+                    <div class="pt-2 mt-3" style="border-top: 1px dashed #e2e8f0;">
+                        <div class="modal-cluster-title">
+                            <i class="feather-star me-1" style="font-size:10px;"></i>Status Permintaan Khusus
+                        </div>
+                        <div class="row g-2" style="font-size: 12.5px;">
                             <div class="col-4">
                                 <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Permintaan Khusus</span>
                                 <span id="confirm-special-request" class="fw-semibold text-dark">-</span>
