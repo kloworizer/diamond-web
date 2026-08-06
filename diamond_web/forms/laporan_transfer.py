@@ -122,6 +122,7 @@ class LaporanTransferExportResource(resources.ModelResource):
     subjenis_data = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data')
     tabel_bank_data = fields.Field(attribute='id_periode_data__id_sub_jenis_data_ilap__nama_tabel_I')
     nomor_tiket = fields.Field(attribute='nomor_tiket')
+    tgl_transfer = fields.Field()
     jumlah_data_masuk = fields.Field(attribute='baris_diterima')
     jumlah_data_tidak_teridentifikasi = fields.Field(attribute='baris_u')
 
@@ -137,7 +138,7 @@ class LaporanTransferExportResource(resources.ModelResource):
         model = Tiket
         fields = (
             'nama_ilap', 'jenis_data', 'subjenis_data', 
-            'tabel_bank_data', 'nomor_tiket', 
+            'tabel_bank_data', 'nomor_tiket', 'tgl_transfer',
             'jumlah_data_teridentifikasi', 
             'jumlah_data_tidak_teridentifikasi', 
             'jumlah_data_tidak_diidentifikasi', 
@@ -146,6 +147,10 @@ class LaporanTransferExportResource(resources.ModelResource):
         )
         export_order = fields
     
+    def dehydrate_tgl_transfer(self, obj):
+        """Return tgl_transfer formatted as dd/mm/yyyy, or '-' if null."""
+        return obj.tgl_transfer.strftime('%d/%m/%Y') if obj.tgl_transfer else '-'
+
     def dehydrate_jumlah_data_masuk(self, obj):
         """Return null values as 0."""
         return obj.baris_diterima or 0

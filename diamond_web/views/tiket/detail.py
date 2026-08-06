@@ -226,8 +226,14 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         context['tanda_terima_items'] = tanda_terima_items
         context['status_label'] = STATUS_LABELS.get(self.object.status_tiket, '-')
         context['status_badge_class'] = STATUS_BADGE_CLASSES.get(self.object.status_tiket, 'bg-secondary')
-        context['page_title'] = f'Detail Tiket {self.object.nomor_tiket}'
-        
+        try:
+            nama_ilap = self.object.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap
+            sub_jenis = self.object.id_periode_data.id_sub_jenis_data_ilap.id_sub_jenis_data.nama_sub_jenis
+            periode = self.object.id_periode_data.periode
+            tahun = self.object.id_periode_data.tahun
+            context['page_title'] = f'{self.object.nomor_tiket} - {nama_ilap} - {sub_jenis} ({periode} {tahun})'
+        except AttributeError:
+            context['page_title'] = f'Detail Tiket {self.object.nomor_tiket}'
         # Add tiket field details - only include numeric fields if they have values (not 0)
         context['tiket_details'] = {
             'nomor_tiket': self.object.nomor_tiket,

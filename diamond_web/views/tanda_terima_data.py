@@ -482,9 +482,18 @@ class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMix
                  URL kwargs.
         """
         return reverse('tiket_detail', kwargs={'pk': self.kwargs['tiket_pk']})
-    
+
     def test_func(self):
-        """Check if user is active PIC for this tiket"""
+        """Check if user is active PIC for this tiket.
+
+        This override is required: both ``UserP3DERequiredMixin`` and
+        ``ActiveTiketP3DERequiredForEditMixin`` define ``test_func``, and the
+        former wins the MRO, so without this method the per-tiket PIC check
+        never runs and any P3DE group member can open the form for any tiket.
+
+        Returns:
+            bool: True if the user is an active P3DE ``TiketPIC`` for the tiket.
+        """
         tiket_pk = self.kwargs.get('tiket_pk')
         if not tiket_pk:
             return False
@@ -493,8 +502,8 @@ class TandaTerimaDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMix
             return TiketPIC.objects.filter(
                 id_tiket=tiket,
                 id_user=self.request.user,
-                    active=True,
-                    role=TiketPIC.Role.P3DE
+                active=True,
+                role=TiketPIC.Role.P3DE
             ).exists()
         except Tiket.DoesNotExist:
             return False

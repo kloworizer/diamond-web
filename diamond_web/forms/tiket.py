@@ -7,7 +7,6 @@ from ..models.ilap import ILAP
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from datetime import datetime
 from .base import AutoRequiredFormMixin
-from .special_request import DUE_DATE_REQUIRED_ERROR
 from ..utils import validate_not_future_datetime, normalize_server_datetime, combine_date_with_current_time, end_of_day
 
 class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
@@ -35,7 +34,7 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
         required=False
     )
     id_ilap = forms.ModelChoiceField(
-        queryset=ILAP.objects.all(),
+        queryset=ILAP.objects.all().order_by('nama_ilap'),
         empty_label="Pilih ILAP",
         widget=forms.Select(attrs={
             'class': 'form-select',
@@ -62,7 +61,7 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
             'penyampaian': forms.NumberInput(attrs={'class': 'form-control', 'id': 'id_penyampaian', 'type': 'number', 'min': '0'}),
             'baris_diterima': forms.NumberInput(attrs={'class': 'form-control'}),
             'status_ketersediaan_data': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'alasan_ketidaktersediaan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Alasan jika data tidak tersedia'}),
+            'alasan_ketidaktersediaan': forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Alasan jika data tidak tersedia', 'rows': 3}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -117,7 +116,7 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
             jenisdatailap__periodejenisdata__id__in=valid_periode_ids
         ).select_related(
             'id_kategori', 'id_kategori_wilayah'
-        ).distinct()
+        ).distinct().order_by('nama_ilap')
 
         # Initialize id_periode_data with empty queryset
         self.fields['id_periode_data'].queryset = PeriodeJenisData.objects.none()
@@ -199,12 +198,9 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        # The due date is mandatory for a special request tiket, and irrelevant
-        # for any other one.
-        if cleaned_data.get('special_request'):
-            if not cleaned_data.get('tgl_special_request'):
-                self.add_error('tgl_special_request', DUE_DATE_REQUIRED_ERROR)
-        else:
+        # The due date is optional for a special request tiket.
+        # If special_request is not checked, clear any accidental due date value.
+        if not cleaned_data.get('special_request'):
             cleaned_data['tgl_special_request'] = None
         tgl_vertikal = cleaned_data.get('tgl_terima_vertikal')
         tgl_dip = cleaned_data.get('tgl_terima_dip')

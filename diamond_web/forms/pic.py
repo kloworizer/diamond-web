@@ -19,10 +19,10 @@ class PICForm(AutoRequiredFormMixin, forms.ModelForm):
         # Order dropdown by id_sub_jenis_data (e.g., AS0010101, AS0010102)
         self.fields['id_sub_jenis_data_ilap'].queryset = JenisDataILAP.objects.all().order_by('id_sub_jenis_data')
 
-        # If editing (instance exists), disable all fields except start_date and end_date
+        # If editing (instance exists), disable only tipe and id_sub_jenis_data_ilap
         if self.instance.pk:
-            for field_name in self.fields:
-                if field_name not in ['start_date', 'end_date']:
+            for field_name in ['tipe', 'id_sub_jenis_data_ilap']:
+                if field_name in self.fields:
                     self.fields[field_name].disabled = True
 
         # If tipe is provided (for specific PIC type views), filter users by group

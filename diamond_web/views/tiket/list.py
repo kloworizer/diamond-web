@@ -149,6 +149,7 @@ def tiket_data(request):
         raw_status_penelitian = request.GET.get('status_penelitian', '')
         raw_status_ketersediaan_data = request.GET.get('status_ketersediaan_data', '')
         raw_special_request = request.GET.get('special_request', '')
+        raw_nomor_nd_nadine = request.GET.get('nomor_nd_nadine', '')
 
         filter_nomor_tiket = _split_filter_options(raw_nomor_tiket)
         filter_tahun = _split_filter_options(raw_tahun)
@@ -171,6 +172,7 @@ def tiket_data(request):
         filter_status_penelitian = _split_filter_options(raw_status_penelitian)
         filter_status_ketersediaan_data = _split_filter_options(raw_status_ketersediaan_data)
         filter_special_request = _split_filter_options(raw_special_request)
+        filter_nomor_nd_nadine = _split_filter_options(raw_nomor_nd_nadine)
 
         # Build a fully filtered queryset based on ALL current selections (except each dropdown's own filter)
         # This ensures changing any dropdown dynamically narrows down the options in all others.
@@ -178,6 +180,9 @@ def tiket_data(request):
         
         if filter_nomor_tiket:
             filtered_qs = filtered_qs.filter(nomor_tiket__in=filter_nomor_tiket)
+        
+        if filter_nomor_nd_nadine:
+            filtered_qs = filtered_qs.filter(nomor_nd_nadine__in=filter_nomor_nd_nadine)
         
         if filter_tahun:
             int_years = []
@@ -1102,6 +1107,9 @@ def tiket_data(request):
             if bool_vals:
                 status_filter_qs = status_filter_qs.filter(special_request__in=bool_vals)
 
+        if filter_nomor_nd_nadine:
+            status_filter_qs = status_filter_qs.filter(nomor_nd_nadine__in=filter_nomor_nd_nadine)
+
         # Get distinct status_tiket values from filtered data
         available_status_ids = set(
             status_filter_qs.values_list('status_tiket', flat=True).distinct()
@@ -1144,6 +1152,14 @@ def tiket_data(request):
         if False in special_request_ids:
             special_request_options.append({'id': '0', 'name': 'Tidak'})
 
+        # Get distinct nomor_nd_nadine options
+        nomor_nd_nadine_options = []
+        nd_seen = set()
+        for nd in filtered_qs.exclude(nomor_nd_nadine__isnull=True).exclude(nomor_nd_nadine='').values_list('nomor_nd_nadine', flat=True).distinct():
+            if nd not in nd_seen:
+                nd_seen.add(nd)
+                nomor_nd_nadine_options.append({'id': nd, 'name': nd})
+
         return JsonResponse({
             'filter_options': {
                 'nomor_tiket': nomor_options,
@@ -1167,6 +1183,7 @@ def tiket_data(request):
                 'status_penelitian': status_penelitian_options,
                 'status_ketersediaan_data': status_ketersediaan_data_options,
                 'special_request': special_request_options,
+                'nomor_nd_nadine': nomor_nd_nadine_options,
             }
         })
 
@@ -1213,6 +1230,7 @@ def tiket_data(request):
     filter_status_penelitian = _split(request.GET.get('status_penelitian', ''))
     filter_status_ketersediaan_data = _split(request.GET.get('status_ketersediaan_data', ''))
     filter_special_request = _split(request.GET.get('special_request', ''))
+    filter_nomor_nd_nadine = _split(request.GET.get('nomor_nd_nadine', ''))
 
     if filter_nomor_tiket:
         qs = qs.filter(nomor_tiket__in=filter_nomor_tiket)
@@ -1317,6 +1335,9 @@ def tiket_data(request):
         if bool_vals:
             qs = qs.filter(special_request__in=bool_vals)
 
+    if filter_nomor_nd_nadine:
+        qs = qs.filter(nomor_nd_nadine__in=filter_nomor_nd_nadine)
+
     qs = qs.distinct()
 
     records_filtered = qs.count()
@@ -1383,6 +1404,8 @@ def tiket_data(request):
             'status': STATUS_LABELS.get(obj.status_tiket, '-'),
             'status_ketersediaan_data': 'Ya' if obj.status_ketersediaan_data else 'Tidak',
             'special_request': 'Ya' if obj.special_request else 'Tidak',
+            'baris_lengkap': obj.baris_lengkap,
+            'baris_diterima': obj.baris_diterima,
             'tgl_special_request': (
                 obj.tgl_special_request.strftime('%d-%m-%Y') if obj.tgl_special_request else '-'
             ),

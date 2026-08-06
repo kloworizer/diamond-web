@@ -127,7 +127,7 @@ class NamaTabelDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminPIDERequired
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(lambda u: u.is_superuser or u.groups.filter(name__in=['admin', 'admin_pide']).exists())
 @require_GET
 def nama_tabel_data(request):
     """Server-side DataTables endpoint for `JenisDataILAP` (Nama Tabel).

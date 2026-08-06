@@ -14,7 +14,7 @@ from ...models.tiket_pic import TiketPIC
 from ...constants.tiket_action_types import TiketActionType
 from ...constants.tiket_status import STATUS_IDENTIFIKASI
 from ...forms.identifikasi_tiket import IdentifikasiTiketForm
-from ..mixins import UserPIDERequiredMixin
+from ..mixins import UserPIDERequiredMixin, is_kasi_pide
 
 
 class IdentifikasiTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateView):
@@ -49,28 +49,26 @@ class IdentifikasiTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
     form_class = IdentifikasiTiketForm
     
     def test_func(self):
-        """Verify user is ACTIVE PIDE PIC and tiket is in DIKIRIM_KE_PIDE status.
+        """Verify user is ACTIVE PIDE PIC or Kasi PIDE, and tiket is in DIKIRIM_KE_PIDE status.
 
         Returns True only if:
-        1. User is actively assigned to this tiket with PIDE role
+        1. User is actively assigned to this tiket with PIDE role, OR user is Kasi PIDE
         2. Tiket.status == 4 (STATUS_DIKIRIM_KE_PIDE)
 
         False otherwise (blocks non-PIC or wrong status tikets from being updated).
-
-        Queries:
-        - TiketPIC for active PIDE assignment
-        - Checks tiket.status on get_object()
         """
         tiket = self.get_object()
-        return (
-            TiketPIC.objects.filter(
-                id_tiket=tiket,
-                id_user=self.request.user,
-                active=True,
-                role=TiketPIC.Role.PIDE
-            ).exists()
-            and tiket.status_tiket == 4  # STATUS_DIKIRIM_KE_PIDE
-        )
+        user = self.request.user
+        is_authorized_pic = TiketPIC.objects.filter(
+            id_tiket=tiket,
+            id_user=user,
+            active=True,
+            role=TiketPIC.Role.PIDE
+        ).exists()
+        
+        is_kasi = is_kasi_pide(user)
+        
+        return (is_authorized_pic or is_kasi) and tiket.status_tiket == 4  # STATUS_DIKIRIM_KE_PIDE
 
     def get(self, request, *args, **kwargs):
         """Handle GET request: return form HTML for AJAX modal.

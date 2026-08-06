@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{% block title %}Rekam Penerimaan Data - Diamond Web{% endblock %}
+
 {% load crispy_forms_tags %}
 
 {% block content %}
@@ -49,45 +51,64 @@
                 </div>
 
                 <!-- Status Ketersediaan Data and Alasan Ketidaktersediaan side-by-side -->
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">{{ form.status_ketersediaan_data.label }}{% if form.status_ketersediaan_data.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="status_ketersediaan_data" id="status_tersedia" value="1" checked>
-                            <label class="form-check-label" for="status_tersedia">Data Tersedia</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="status_ketersediaan_data" id="status_tidak_tersedia" value="0">
-                            <label class="form-check-label" for="status_tidak_tersedia">Data Tidak Tersedia</label>
-                        </div>
-                        <div class="form-check form-switch mt-3">
-                            {{ form.special_request }}
-                            <label class="form-check-label" for="{{ form.special_request.id_for_label }}">{{ form.special_request.label }}</label>
-                            {% if form.special_request.errors %}
-                                <div class="invalid-feedback d-block">{{ form.special_request.errors }}</div>
-                            {% endif %}
-                            <small class="form-text text-muted d-block">
-                                <i class="feather-info me-1"></i>Opsi ini untuk menandai tiket sebagai tiket permintaan khusus dengan prioritas pengolahan lebih tinggi dari tiket biasa.
-                            </small>
+                <div class="row mb-3 align-items-stretch">
+                    <div class="col-md-6 d-flex flex-column justify-content-between">
+                        <div class="h-100">
+                            <label class="form-label">{{ form.status_ketersediaan_data.label }}{% if form.status_ketersediaan_data.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                            <div class="d-flex gap-4 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="status_ketersediaan_data" id="status_tersedia" value="1" checked>
+                                    <label class="form-check-label" for="status_tersedia">Data Tersedia</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="status_ketersediaan_data" id="status_tidak_tersedia" value="0">
+                                    <label class="form-check-label" for="status_tidak_tersedia">Data Tidak Tersedia</label>
+                                </div>
+                            </div>
+
+                            <!-- Simple Permintaan Khusus Switch -->
+                            <div class="row mt-3 mb-2">
+                                <div id="special-request-switch-col" class="col-sm-6 mb-3 mb-sm-0">
+                                    <div class="form-check form-switch mb-1">
+                                        {{ form.special_request }}
+                                        <label class="form-check-label text-muted cursor-pointer" for="{{ form.special_request.id_for_label }}">
+                                            {{ form.special_request.label }}
+                                        </label>
+                                    </div>
+                                    <div class="ps-4 ms-1">
+                                        <small class="text-muted d-block lh-sm" style="font-size: 11.5px;">
+                                            <i class="feather-info me-1"></i>Opsi ini untuk menandai tiket sebagai tiket permintaan khusus dengan prioritas pengolahan lebih tinggi dari tiket biasa.
+                                        </small>
+                                    </div>
+                                    {% if form.special_request.errors %}
+                                        <div class="invalid-feedback d-block mt-1">{{ form.special_request.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-sm-6">
+                                    <div id="special-request-due-date-group" class="mb-3" style="display: none;">
+                                        <label for="{{ form.tgl_special_request.id_for_label }}" class="form-label">{{ form.tgl_special_request.label }}</label>
+                                        <div style="max-width: 250px;">
+                                            {{ form.tgl_special_request }}
+                                        </div>
+                                        {% if form.tgl_special_request.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.tgl_special_request.errors }}</div>
+                                        {% endif %}
+                                        <small class="form-text text-muted d-block mt-1" style="font-size: 11.5px;">
+                                            <i class="feather-info me-1"></i>Batas waktu penyelesaian permintaan khusus ini. Bersifat opsional.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="{{ form.alasan_ketidaktersediaan.id_for_label }}" class="form-label">{{ form.alasan_ketidaktersediaan.label }}</label>
+                    <div class="col-md-6" id="alasan-ketidaktersediaan-wrapper" style="display: none;">
+                        <div class="h-100">
+                            <label for="{{ form.alasan_ketidaktersediaan.id_for_label }}" class="form-label">{{ form.alasan_ketidaktersediaan.label }} <span class="text-danger">*</span></label>
                             {{ form.alasan_ketidaktersediaan }}
                             {% if form.alasan_ketidaktersediaan.errors %}
                                 <div class="invalid-feedback d-block">{{ form.alasan_ketidaktersediaan.errors }}</div>
                             {% endif %}
-                        </div>
-                        <div class="mb-3" id="special-request-due-date-group" style="display: none;">
-                            <label for="{{ form.tgl_special_request.id_for_label }}" class="form-label">{{ form.tgl_special_request.label }}<span class="text-danger">*</span></label>
-                            {{ form.tgl_special_request }}
-                            {% if form.tgl_special_request.errors %}
-                                <div class="invalid-feedback d-block">{{ form.tgl_special_request.errors }}</div>
-                            {% endif %}
-                            <small class="form-text text-muted d-block">
-                                <i class="feather-info me-1"></i>Batas waktu penyelesaian permintaan khusus ini. Wajib diisi selama Permintaan Khusus aktif.
-                            </small>
+                            <small class="text-muted mt-2 d-block" style="font-size: 11.5px;">Tuliskan penjelasan mengenai ketidaktersediaan data yang diterima.</small>
                         </div>
                     </div>
                 </div>
@@ -97,7 +118,7 @@
                     <div class="col-md-6">
                         {% if form.id_ilap %}
                             <div class="mb-3">
-                                <label for="{{ form.id_ilap.id_for_label }}" class="form-label">{{ form.id_ilap.label }}{% if form.id_ilap.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                                <label for="{{ form.id_ilap.id_for_label }}" class="form-label fw-bold">{{ form.id_ilap.label }}{% if form.id_ilap.field.required %}<span class="text-danger">*</span>{% endif %}</label>
                                 {{ form.id_ilap }}
                                 {% if form.id_ilap.errors %}
                                     <div class="invalid-feedback d-block">{{ form.id_ilap.errors }}</div>
@@ -108,7 +129,7 @@
                     <div class="col-md-6">
                         {% if form.id_periode_data %}
                             <div class="mb-3">
-                                <label for="{{ form.id_periode_data.id_for_label }}" class="form-label">{{ form.id_periode_data.label }}{% if form.id_periode_data.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                                <label for="{{ form.id_periode_data.id_for_label }}" class="form-label fw-bold">{{ form.id_periode_data.label }}{% if form.id_periode_data.field.required %}<span class="text-danger">*</span>{% endif %}</label>
                                 {{ form.id_periode_data }}
                                 {% if form.id_periode_data.errors %}
                                     <div class="invalid-feedback d-block">{{ form.id_periode_data.errors }}</div>
@@ -118,67 +139,40 @@
                     </div>
                 </div>
 
-                <!-- Jenis Data Information Section -->
-                <div id="jenis-data-info" class="card border-primary mb-4" style="display: none;">
-                    <div class="card-header bg-light">
-                        <h6 class="mb-0"><i class="feather-info me-2"></i>Informasi Jenis Data ILAP</h6>
+                <div id="jenis-data-info" class="card shadow-sm mb-4" style="display: none; border: 1px solid rgba(13, 110, 253, 0.3) !important;">
+                    <div class="card-header bg-transparent py-2 d-flex justify-content-between align-items-center" style="border-bottom: 1px solid rgba(13, 110, 253, 0.2) !important;">
+                        <h6 class="mb-0 text-dark fw-bold" style="color: #333333 !important;"><i class="feather-info me-2 text-primary"></i>Informasi Jenis Data ILAP</h6>
                     </div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <div class="info-group mb-2">
-                                    <label class="text-muted small mb-1">ILAP</label>
-                                    <p class="fw-semibold mb-0" id="info-nama-ilap">-</p>
-                                </div>
-                                <div class="info-group mb-2">
-                                    <label class="text-muted small mb-1">Kategori ILAP</label>
-                                    <p class="fw-semibold mb-0" id="info-kategori-ilap">-</p>
-                                </div>
-                                <div class="info-group mb-2">
-                                    <label class="text-muted small mb-1">Kategori Wilayah</label>
-                                    <p class="fw-semibold mb-0" id="info-kategori-wilayah">-</p>
-                                </div>
-                                <div class="info-group mb-2">
-                                    <label class="text-muted small mb-1">Jenis Tabel</label>
-                                    <p class="fw-semibold mb-0" id="info-jenis-tabel">-</p>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="info-group mb-2">
-                                    <label class="text-muted small mb-1">Klasifikasi Jenis Data</label>
-                                    <p class="fw-semibold mb-0" id="info-klasifikasi">-</p>
-                                </div>
-                                <div class="info-group mb-2">
-                                    <label class="text-muted small mb-1">Periode Penyampaian</label>
-                                    <p class="fw-semibold mb-0" id="info-deskripsi-periode">-</p>
-                                </div>
-                                <div class="info-group mb-2">
-                                    <label class="text-muted small mb-1">Periode Penerimaan</label>
-                                    <p class="fw-semibold mb-0" id="info-periode-penerimaan">-</p>
-                                </div>
+                    <div class="card-body py-2">
+                        <div class="row g-2 align-items-center mb-2">
+                            <div class="col-md-2 text-muted small">ILAP</div>
+                            <div class="col-md-10"><span class="badge bg-white text-dark border" id="info-nama-ilap">-</span></div>
+                        </div>
+                        <div class="row g-2 align-items-center mb-2">
+                            <div class="col-md-2 text-muted small">Kategori</div>
+                            <div class="col-md-10">
+                                <span class="badge bg-white text-dark border me-1"><span class="fw-normal">Kategori ILAP:</span> <span id="info-kategori-ilap">-</span></span>
+                                <span class="badge bg-white text-dark border me-1"><span class="fw-normal">Wilayah:</span> <span id="info-kategori-wilayah">-</span></span>
+                                <span class="badge bg-white text-dark border"><span class="fw-normal">Klasifikasi:</span> <span id="info-klasifikasi">-</span></span>
                             </div>
                         </div>
-                    </div>
-                    <div class="card-footer bg-light">
-                        <strong><i class="feather-users me-2"></i>PIC (Penanggung Jawab)</strong>
-                        <div class="row g-2 mt-2">
-                            <div class="col-md-4">
-                                <div class="info-group">
-                                    <label class="text-muted small mb-1">P3DE</label>
-                                    <p class="fw-semibold mb-0" id="info-pic-p3de">-</p>
-                                </div>
+                        <div class="row g-2 align-items-center mb-2">
+                            <div class="col-md-2 text-muted small">Jenis Tabel</div>
+                            <div class="col-md-10"><span class="badge bg-white text-dark border" id="info-jenis-tabel">-</span></div>
+                        </div>
+                        <div class="row g-2 align-items-center mb-2">
+                            <div class="col-md-2 text-muted small">Periode</div>
+                            <div class="col-md-10">
+                                <span class="badge bg-white text-dark border me-1"><i class="feather-send me-1 text-primary"></i><span class="fw-normal">Penyampaian:</span> <span id="info-deskripsi-periode">-</span></span>
+                                <span class="badge bg-white text-dark border"><i class="feather-inbox me-1 text-primary"></i><span class="fw-normal">Penerimaan:</span> <span id="info-periode-penerimaan">-</span></span>
                             </div>
-                            <div class="col-md-4">
-                                <div class="info-group">
-                                    <label class="text-muted small mb-1">PIDE</label>
-                                    <p class="fw-semibold mb-0" id="info-pic-pide">-</p>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="info-group">
-                                    <label class="text-muted small mb-1">PMDE</label>
-                                    <p class="fw-semibold mb-0" id="info-pic-pmde">-</p>
-                                </div>
+                        </div>
+                        <div class="row g-2 align-items-center">
+                            <div class="col-md-2 text-muted small">PIC Data</div>
+                            <div class="col-md-10">
+                                <span class="badge me-1" style="background-color: rgba(47, 84, 196, 0.1); color: #2f54c4; border: 1px solid #2f54c4;"><i class="feather-user me-1"></i>P3DE: <span id="info-pic-p3de">-</span></span>
+                                <span class="badge me-1" style="background-color: rgba(6, 196, 210, 0.1); color: #06C4D2; border: 1px solid #06C4D2;"><i class="feather-user me-1"></i>PIDE: <span id="info-pic-pide">-</span></span>
+                                <span class="badge" style="background-color: rgba(12, 146, 255, 0.1); color: #0C92FF; border: 1px solid #0C92FF;"><i class="feather-user me-1"></i>PMDE: <span id="info-pic-pmde">-</span></span>
                             </div>
                         </div>
                     </div>
@@ -189,7 +183,9 @@
                     <div class="col-md-3">
                         <div class="mb-3">
                             <label for="{{ form.periode.id_for_label }}" class="form-label">{{ form.periode.label }}{% if form.periode.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                            {{ form.periode }}
+                            <div style="max-width: 250px;">
+                                {{ form.periode }}
+                            </div>
                             {% if form.periode.errors %}
                                 <div class="invalid-feedback d-block">{{ form.periode.errors }}</div>
                             {% endif %}
@@ -198,7 +194,9 @@
                     <div class="col-md-3">
                         <div class="mb-3">
                             <label for="{{ form.tahun.id_for_label }}" class="form-label">{{ form.tahun.label }}{% if form.tahun.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                            {{ form.tahun }}
+                            <div style="max-width: 250px;">
+                                {{ form.tahun }}
+                            </div>
                             {% if form.tahun.errors %}
                                 <div class="invalid-feedback d-block">{{ form.tahun.errors }}</div>
                             {% endif %}
@@ -206,18 +204,23 @@
                     </div>
                     <div class="col-md-3">
                         <div class="mb-3">
-                            <label for="{{ form.penyampaian.id_for_label }}" class="form-label">{{ form.penyampaian.label }}{% if form.penyampaian.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                            <input type="text" class="form-control" id="id_penyampaian" name="penyampaian" readonly style="background-color: #e9ecef;" value="0">
-                            {% if form.penyampaian.errors %}
-                                <div class="invalid-feedback d-block">{{ form.penyampaian.errors }}</div>
-                            {% endif %}
+                            <label for="{{ form.penyampaian.id_for_label }}" class="form-label">PENYAMPAIAN KE-</label>
+                            <div class="pt-1 d-flex align-items-center">
+                                <span id="text_penyampaian" class="text-dark" style="font-weight: 500 !important; font-size: 15px;">0</span>
+                                <span id="link-tiket-sebelumnya-wrapper" class="ms-2" style="display: none !important;">
+                                    <button type="button" tabindex="0" id="btn-tiket-sebelumnya" class="btn btn-sm py-0 px-2 rounded-pill" style="font-size: 11px; font-weight: 600; border: 1px solid rgba(14,165,233,0.3); color: #0ea5e9; background-color: rgba(14,165,233,0.05); box-shadow: none;" data-bs-toggle="popover" data-bs-placement="right" title="Riwayat Tiket" data-bs-content="Memuat...">
+                                        Riwayat
+                                    </button>
+                                </span>
+                            </div>
+                            <input type="hidden" id="id_penyampaian" name="penyampaian" value="0">
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="mb-3">
                             <label class="form-label">Data Prioritas</label>
-                            <div class="info-group d-flex align-items-center justify-content-center" style="height: 38px;">
-                                <span id="info-jenis-prioritas" class="badge bg-secondary">-</span>
+                            <div class="pt-1">
+                                <span id="info-jenis-prioritas" class="badge bg-soft-secondary text-secondary border border-secondary fw-normal">-</span>
                             </div>
                         </div>
                     </div>
@@ -242,7 +245,9 @@
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="{{ form.tanggal_surat_pengantar.id_for_label }}" class="form-label">{{ form.tanggal_surat_pengantar.label }}</label>
-                            {{ form.tanggal_surat_pengantar }}
+                            <div style="max-width: 250px;">
+                                {{ form.tanggal_surat_pengantar }}
+                            </div>
                             {% if form.tanggal_surat_pengantar.errors %}
                                 <div class="invalid-feedback d-block">{{ form.tanggal_surat_pengantar.errors }}</div>
                             {% endif %}
@@ -264,7 +269,9 @@
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="{{ form.id_bentuk_data.id_for_label }}" class="form-label">{{ form.id_bentuk_data.label }}{% if form.id_bentuk_data.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                            {{ form.id_bentuk_data }}
+                            <div style="max-width: 250px;">
+                                {{ form.id_bentuk_data }}
+                            </div>
                             {% if form.id_bentuk_data.errors %}
                                 <div class="invalid-feedback d-block">{{ form.id_bentuk_data.errors }}</div>
                             {% endif %}
@@ -273,7 +280,9 @@
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="{{ form.id_cara_penyampaian.id_for_label }}" class="form-label">{{ form.id_cara_penyampaian.label }}{% if form.id_cara_penyampaian.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                            {{ form.id_cara_penyampaian }}
+                            <div style="max-width: 250px;">
+                                {{ form.id_cara_penyampaian }}
+                            </div>
                             {% if form.id_cara_penyampaian.errors %}
                                 <div class="invalid-feedback d-block">{{ form.id_cara_penyampaian.errors }}</div>
                             {% endif %}
@@ -282,7 +291,9 @@
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="{{ form.baris_diterima.id_for_label }}" class="form-label">{{ form.baris_diterima.label }}{% if form.baris_diterima.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                            {{ form.baris_diterima }}
+                            <div style="max-width: 250px;">
+                                {{ form.baris_diterima }}
+                            </div>
                             {% if form.baris_diterima.errors %}
                                 <div class="invalid-feedback d-block">{{ form.baris_diterima.errors }}</div>
                             {% endif %}
@@ -295,7 +306,9 @@
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="{{ form.satuan_data.id_for_label }}" class="form-label">{{ form.satuan_data.label }}{% if form.satuan_data.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                            {{ form.satuan_data }}
+                            <div style="max-width: 250px;">
+                                {{ form.satuan_data }}
+                            </div>
                             {% if form.satuan_data.errors %}
                                 <div class="invalid-feedback d-block">{{ form.satuan_data.errors }}</div>
                             {% endif %}
@@ -304,7 +317,9 @@
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="{{ form.tgl_terima_vertikal.id_for_label }}" class="form-label">{{ form.tgl_terima_vertikal.label }}<span class="text-danger" id="tgl-terima-vertikal-required" style="display: none;">*</span></label>
-                            {{ form.tgl_terima_vertikal }}
+                            <div style="max-width: 250px;">
+                                {{ form.tgl_terima_vertikal }}
+                            </div>
                             <small class="form-text text-muted" id="tgl-terima-vertikal-hint" style="display: none;">Tidak dapat diisi untuk kategori ILAP non-Regional</small>
                             {% if form.tgl_terima_vertikal.errors %}
                                 <div class="invalid-feedback d-block">{{ form.tgl_terima_vertikal.errors }}</div>
@@ -314,7 +329,9 @@
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="{{ form.tgl_terima_dip.id_for_label }}" class="form-label">{{ form.tgl_terima_dip.label }}{% if form.tgl_terima_dip.field.required %}<span class="text-danger">*</span>{% endif %}</label>
-                            {{ form.tgl_terima_dip }}
+                            <div style="max-width: 250px;">
+                                {{ form.tgl_terima_dip }}
+                            </div>
                             {% if form.tgl_terima_dip.errors %}
                                 <div class="invalid-feedback d-block">{{ form.tgl_terima_dip.errors }}</div>
                             {% endif %}
@@ -344,28 +361,41 @@
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label for="backup_nama_file" class="form-label">Nama File <span class="text-danger">*</span></label>
+                                <div class="d-flex justify-content-between align-items-end mb-1">
+                                    <label for="backup_nama_file" class="form-label mb-0">Nama File <span class="text-danger">*</span></label>
+                                    <button type="button" class="btn btn-sm btn-light border p-1 px-2 d-inline-flex align-items-center text-primary copy-filename-btn" 
+                                            id="btn-auto-filename"
+                                            title="Gunakan format standar penamaan file" 
+                                            data-bs-toggle="tooltip" 
+                                            style="font-size: 10px; font-weight: 600; background: #f8fafc; border-color: #cbd5e1 !important; display: none !important;">
+                                        <i class="feather-edit-3 me-1" style="font-size: 0.8rem;"></i> Auto-format
+                                    </button>
+                                </div>
                                 <input type="text" class="form-control" id="backup_nama_file" name="backup_nama_file" maxlength="100" placeholder="Contoh: backup_tiket_123.zip">
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label for="backup_id_media_backup" class="form-label">Media Backup <span class="text-danger">*</span></label>
-                                <select class="form-select" id="backup_id_media_backup" name="backup_id_media_backup">
-                                    <option value="">---------</option>
-                                    {% for mb in media_backup_list %}
-                                    <option value="{{ mb.pk }}">{{ mb.deskripsi }}</option>
-                                    {% endfor %}
-                                </select>
+                                <div style="max-width: 250px;">
+                                    <select class="form-select" id="backup_id_media_backup" name="backup_id_media_backup">
+                                        <option value="">---------</option>
+                                        {% for mb in media_backup_list %}
+                                        <option value="{{ mb.pk }}">{{ mb.deskripsi }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="mt-3">
-                    <div class="d-flex justify-content-end gap-2">
-                        <a href="{% url 'tiket_list' %}" class="btn btn-secondary">Batal</a>
-                        <button type="button" class="btn btn-success" id="btn-confirm-save">Simpan</button>
+                <div class="mt-4 mb-2">
+                    <div class="d-flex justify-content-end gap-3">
+                        <a href="{% url 'tiket_list' %}" class="btn btn-light border px-4 fw-semibold text-secondary">Batal</a>
+                        <button type="button" class="btn btn-primary px-4 fw-semibold shadow-sm d-inline-flex align-items-center" id="btn-confirm-save">
+                            <i class="feather-save me-2"></i>Simpan
+                        </button>
                     </div>
                 </div>
             </form>
@@ -374,35 +404,58 @@
 </div>
 
 <div class="modal fade" id="duplicateTiketModal" tabindex="-1" aria-labelledby="duplicateTiketModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title" id="duplicateTiketModalLabel">Peringatan</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #fef3c7; color: #d97706; flex-shrink: 0;">
+                        <i class="feather-alert-circle" style="font-size: 16px;"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="duplicateTiketModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Peringatan Duplikasi</h5>
+                        <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Periksa Data Serupa</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" id="duplicateTiketModalBody">
-                Tiket sudah ada untuk jenis data, periode, dan tahun ini.
+            <div class="modal-body px-4 pt-3 pb-2" id="duplicateTiketModalBody">
+                <div class="alert alert-warning py-2 px-3 mb-1" style="font-size: 13px; border-radius: 8px;">
+                    <i class="feather-info me-1"></i> Tiket sudah ada untuk jenis data, periode, dan tahun ini.
+                </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4 mt-2" style="background: transparent !important;">
+                <button type="button" class="btn btn-warning w-100 fw-bold text-dark" data-bs-dismiss="modal" style="border-radius: 8px;">Saya Mengerti</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Validation Error Modal for Tanggal Terima DIP > End Date -->
+<!-- Validation Error Modal -->
 <div class="modal fade" id="endDateValidationModal" tabindex="-1" aria-labelledby="endDateValidationModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="endDateValidationModalLabel">Validasi Gagal</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+            <!-- Header -->
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #fee2e2; color: #dc3545; flex-shrink: 0;">
+                        <i class="feather-alert-triangle" style="font-size: 16px;"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="endDateValidationModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Validasi Gagal</h5>
+                        <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Peringatan Sistem</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" id="endDateValidationModalBody">
-                Tanggal Terima DIP tidak boleh melebihi end date periode.
+            <!-- Body -->
+            <div class="modal-body px-4 pt-3 pb-2" id="endDateValidationModalBody">
+                <div class="alert alert-danger py-2 px-3 mb-1" style="font-size: 13px; border-radius: 8px;">
+                    <i class="feather-info me-1"></i> Tanggal Terima DIP tidak boleh melebihi end date periode.
+                </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
+            <!-- Footer -->
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4 mt-2" style="background: transparent !important;">
+                <button type="button" class="btn btn-danger w-100 fw-bold" data-bs-dismiss="modal" style="border-radius: 8px;">Mengerti</button>
             </div>
         </div>
     </div>
@@ -410,172 +463,281 @@
 
 <!-- Confirmation Modal -->
 <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="confirmModalLabel">Konfirmasi Data</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
-                <p class="mb-3">Pastikan data berikut sudah benar sebelum disimpan:</p>
-                <div class="row">
-                    <div class="col-md-6">
-                        <table class="table table-sm mb-0">
-                            <tbody>
-                                <tr>
-                                    <th style="width: 50%;">Nomor Tiket</th>
-                                    <td id="confirm-nomor-tiket">-</td>
-                                </tr>
-                                <tr>
-                                    <th>ILAP</th>
-                                    <td id="confirm-nama-ilap">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Kategori ILAP</th>
-                                    <td id="confirm-kategori-ilap">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Kategori Wilayah</th>
-                                    <td id="confirm-kategori-wilayah">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Jenis Tabel</th>
-                                    <td id="confirm-jenis-tabel">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Jenis Prioritas Data</th>
-                                    <td id="confirm-jenis-prioritas">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Klasifikasi Jenis Data</th>
-                                    <td id="confirm-klasifikasi">-</td>
-                                </tr>
-                                <tr>
-                                    <th>ID Sub Jenis Data</th>
-                                    <td id="confirm-id-sub-jenis-data">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Nama Sub Jenis Data</th>
-                                    <td id="confirm-nama-sub-jenis-data">-</td>
-                                </tr>
-                                <tr>
-                                    <th colspan="2"><strong>PIC</strong></th>
-                                </tr>
-                                <tr>
-                                    <th>PIC P3DE</th>
-                                    <td id="confirm-pic-p3de">-</td>
-                                </tr>
-                                <tr>
-                                    <th>PIC PIDE</th>
-                                    <td id="confirm-pic-pide">-</td>
-                                </tr>
-                                <tr>
-                                    <th>PIC PMDE</th>
-                                    <td id="confirm-pic-pmde">-</td>
-                                </tr>
-                                <tr>
-                                    <th colspan="2"><strong>Periode</strong></th>
-                                </tr>
-                                <tr>
-                                    <th>Deskripsi Periode</th>
-                                    <td id="confirm-deskripsi-periode">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Periode</th>
-                                    <td id="confirm-periode">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Tahun</th>
-                                    <td id="confirm-tahun">-</td>
-                                </tr>
-                            </tbody>
-                        </table>
+    <div class="modal-dialog modal-lg modal-dialog-centered" style="max-width: 740px;">
+        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+
+            <!-- Modal Header -->
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #dbeafe; color: #2563eb; flex-shrink: 0;">
+                        <i class="feather-file-text" style="font-size: 16px;"></i>
                     </div>
-                    <div class="col-md-6">
-                        <table class="table table-sm mb-0">
-                            <tbody>
-                                <tr>
-                                    <th style="width: 50%;" colspan="2"><strong>Tanggal Penerimaan</strong></th>
-                                </tr>
-                                <tr>
-                                    <th>Tanggal Terima Vertikal</th>
-                                    <td id="confirm-tgl-vertikal">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Tanggal Terima DIP</th>
-                                    <td id="confirm-tgl-dip">-</td>
-                                </tr>
-                                <tr>
-                                    <th colspan="2"><strong>Surat Pengantar</strong></th>
-                                </tr>
-                                <tr>
-                                    <th>Nomor Surat Pengantar</th>
-                                    <td id="confirm-nomor-surat-pengantar">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Tanggal Surat Pengantar</th>
-                                    <td id="confirm-tanggal-surat-pengantar">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Nama Pengirim</th>
-                                    <td id="confirm-nama-pengirim">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Bentuk Data</th>
-                                    <td id="confirm-bentuk-data">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Cara Penyampaian</th>
-                                    <td id="confirm-cara-penyampaian">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Penyampaian</th>
-                                    <td id="confirm-penyampaian">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Baris Diterima</th>
-                                    <td id="confirm-baris-diterima">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Satuan Data</th>
-                                    <td id="confirm-satuan-data">-</td>
-                                </tr>
-                                <tr>
-                                    <th>Permintaan Khusus</th>
-                                    <td id="confirm-special-request">-</td>
-                                </tr>
-                                <tr id="confirm-row-tgl-special-request" style="display: none;">
-                                    <th>Jatuh Tempo Permintaan Khusus</th>
-                                    <td id="confirm-tgl-special-request">-</td>
-                                </tr>
-                                <!-- Status Penelitian removed from create form confirmation -->
-                                <tr id="confirm-row-backup" style="display: none;">
-                                    <th colspan="2">Backup Data</th>
-                                </tr>
-                                <tr id="confirm-row-lokasi-backup" style="display: none;">
-                                    <th>Lokasi Backup</th>
-                                    <td id="confirm-lokasi-backup">-</td>
-                                </tr>
-                                <tr id="confirm-row-nama-file" style="display: none;">
-                                    <th>Nama File</th>
-                                    <td id="confirm-nama-file">-</td>
-                                </tr>
-                                <tr id="confirm-row-media-backup" style="display: none;">
-                                    <th>Media Backup</th>
-                                    <td id="confirm-media-backup">-</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="confirmModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Konfirmasi Perekaman Tiket</h5>
+                        <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Tinjau Data Sebelum Simpan</span>
                     </div>
                 </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="button" class="btn btn-success" id="btn-submit-form">Simpan</button>
+
+            <!-- Modal Body -->
+            <div class="modal-body px-4 pt-3 pb-2" style="max-height: 72vh; overflow-y: auto;">
+
+                <!-- Nomor Tiket -->
+                <div class="p-3 rounded mb-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <span style="font-size: 10px; color: #94a3b8; display: block; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Nomor Tiket</span>
+                            <div class="d-flex align-items-center gap-2">
+                                <span id="confirm-nomor-tiket" style="font-size: 15px; font-weight: 700; color: #0f172a; font-family: 'Courier New', monospace; letter-spacing: 0.5px;">-</span>
+                                <button type="button" class="btn btn-sm btn-light border py-0 px-2 d-inline-flex align-items-center" id="btn-copy-nomor-tiket" title="Salin Nomor Tiket" style="font-size: 11px; height: 24px; border-radius: 4px; color: #475569;">
+                                    <i class="feather-copy me-1" id="icon-copy-nomor-tiket" style="font-size: 12px;"></i><span id="text-copy-nomor-tiket">Salin</span>
+                                </button>
+                            </div>
+                        </div>
+                        <i class="feather-tag" style="color: #94a3b8; font-size: 18px;"></i>
+                    </div>
+                    
+                    <div class="pt-2 mt-2" style="border-top: 1px dashed #cbd5e1;">
+                        <div class="row g-2" style="font-size: 11px;">
+                            <div class="col-4 border-end border-light">
+                                <span class="text-muted d-block" style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 1px;">Baris Diterima</span>
+                                <div class="fw-bold text-dark d-flex align-items-center">
+                                    <i class="feather-database text-primary me-1" style="font-size: 10px;"></i> <span id="modal-summary-baris">-</span>
+                                </div>
+                            </div>
+                            <div class="col-4 border-end border-light">
+                                <span class="text-muted d-block" style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 1px;">Periode Tiket</span>
+                                <div class="fw-bold text-dark d-flex align-items-center">
+                                    <i class="feather-calendar text-success me-1" style="font-size: 10px;"></i> <span id="modal-summary-periode">-</span>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <span class="text-muted d-block" style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 1px;">Diterima DIP</span>
+                                <div class="fw-bold text-dark d-flex align-items-center">
+                                    <i class="feather-clock text-warning me-1" style="font-size: 10px;"></i> <span id="modal-summary-dip">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CLUSTER A: Identitas ILAP & Data -->
+                <div class="p-3 rounded mb-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;">
+                        <i class="feather-layers me-1" style="font-size: 10px;"></i>Identitas ILAP &amp; Data
+                    </div>
+                    <div class="row g-2" style="font-size: 12.5px;">
+                        <div class="col-12">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">ILAP</span>
+                            <span id="confirm-nama-ilap" class="fw-bold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Kategori ILAP</span>
+                            <span id="confirm-kategori-ilap" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Kategori Wilayah</span>
+                            <span id="confirm-kategori-wilayah" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Jenis Tabel</span>
+                            <span id="confirm-jenis-tabel" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Sub Jenis Data</span>
+                            <span id="confirm-nama-sub-jenis-data" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Data Prioritas</span>
+                            <span id="confirm-jenis-prioritas" class="badge bg-soft-secondary text-secondary border border-secondary fw-normal">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Klasifikasi Data</span>
+                            <span id="confirm-klasifikasi" class="badge bg-white text-dark border fw-normal me-1">-</span>
+                        </div>
+                        <div class="col-12 mt-2">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Status Ketersediaan Data</span>
+                            <span id="confirm-status-ketersediaan" class="badge bg-soft-success text-success border border-success fw-normal">Data Tersedia</span>
+                            <div id="confirm-container-alasan" style="display: none;" class="mt-1 p-2 rounded bg-light border text-danger small">
+                                <strong>Alasan Ketidaktersediaan:</strong> <span id="confirm-alasan-ketidaktersediaan">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PIC strip -->
+                    <div class="pt-2 mt-3" style="border-top: 1px dashed #e2e8f0;">
+                        <div class="modal-cluster-title">
+                            <i class="feather-users me-1" style="font-size:10px;"></i>PIC Data
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            <span class="badge d-inline-flex align-items-center" style="background-color: rgba(47, 84, 196, 0.08); color: #2f54c4; border: 1px solid #2f54c4; font-weight: 500; font-size: 11.5px; padding: 6px 10px; border-radius: 6px;">
+                                <i class="feather-user me-1" style="font-size: 12px;"></i>P3DE:&nbsp;<span id="confirm-pic-p3de" class="fw-semibold">-</span>
+                            </span>
+                            <span class="badge d-inline-flex align-items-center" style="background-color: rgba(6, 196, 210, 0.08); color: #06C4D2; border: 1px solid #06C4D2; font-weight: 500; font-size: 11.5px; padding: 6px 10px; border-radius: 6px;">
+                                <i class="feather-user me-1" style="font-size: 12px;"></i>PIDE:&nbsp;<span id="confirm-pic-pide" class="fw-semibold">-</span>
+                            </span>
+                            <span class="badge d-inline-flex align-items-center" style="background-color: rgba(12, 146, 255, 0.08); color: #0C92FF; border: 1px solid #0C92FF; font-weight: 500; font-size: 11.5px; padding: 6px 10px; border-radius: 6px;">
+                                <i class="feather-user me-1" style="font-size: 12px;"></i>PMDE:&nbsp;<span id="confirm-pic-pmde" class="fw-semibold">-</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CLUSTER B: Periode & Waktu -->
+                <div class="p-3 rounded mb-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;">
+                        <i class="feather-calendar me-1" style="font-size: 10px;"></i>Periode &amp; Waktu
+                    </div>
+                    <div class="row g-2" style="font-size: 12.5px;">
+                        <div class="col-4">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Periode Tiket</span>
+                            <span id="confirm-periode" class="fw-bold text-dark">-</span>
+                        </div>
+                        <div class="col-4">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Tahun Tiket</span>
+                            <span id="confirm-tahun" class="fw-bold text-dark">-</span>
+                        </div>
+                        <div class="col-4">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Penyampaian ke-</span>
+                            <span id="confirm-penyampaian" class="fw-bold text-dark">-</span>
+                        </div>
+                        <div class="col-12 mt-1">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Deskripsi Periode</span>
+                            <span id="confirm-deskripsi-periode" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-12 mt-2">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 4px;">Frekuensi Periode ILAP</span>
+                            <div class="d-flex flex-wrap gap-2">
+                                <span class="badge bg-white text-dark border fw-normal me-1 d-inline-flex align-items-center">
+                                    <i class="feather-send me-1 text-primary"></i>Penyampaian:&nbsp;<strong id="confirm-periode-penyampaian">-</strong>
+                                </span>
+                                <span class="badge bg-white text-dark border fw-normal d-inline-flex align-items-center">
+                                    <i class="feather-inbox me-1 text-info"></i>Penerimaan:&nbsp;<strong id="confirm-periode-penerimaan">-</strong>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CLUSTER C: Detail Penerimaan Data -->
+                <div class="p-3 rounded mb-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;">
+                        <i class="feather-package me-1" style="font-size: 10px;"></i>Detail Penerimaan Data
+                    </div>
+                    <div class="row g-2" style="font-size: 12.5px;">
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Tgl Terima Vertikal</span>
+                            <span id="confirm-tgl-vertikal" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Tgl Terima DIP</span>
+                            <span id="confirm-tgl-dip" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Bentuk Data</span>
+                            <span id="confirm-bentuk-data" class="fw-semibold text-dark">-</span>
+                        </div>
+                        <div class="col-6">
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Cara Penyampaian</span>
+                            <span id="confirm-cara-penyampaian" class="fw-semibold text-dark">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Surat Pengantar -->
+                    <div class="pt-2 mt-3" style="border-top: 1px dashed #e2e8f0;">
+                        <div class="modal-cluster-title">
+                            <i class="feather-mail me-1" style="font-size:10px;"></i>Surat Pengantar
+                        </div>
+                        <div class="row g-2" style="font-size: 12.5px;">
+                            <div class="col-5">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">No. Surat</span>
+                                <span id="confirm-nomor-surat-pengantar" class="fw-semibold text-dark">-</span>
+                            </div>
+                            <div class="col-4">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Tgl Surat</span>
+                                <span id="confirm-tanggal-surat-pengantar" class="fw-semibold text-dark">-</span>
+                            </div>
+                            <div class="col-3">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Nama Pengirim</span>
+                                <span id="confirm-nama-pengirim" class="fw-semibold text-dark">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Volume data strip -->
+                    <div class="pt-2 mt-3" style="border-top: 1px dashed #e2e8f0;">
+                        <div class="modal-cluster-title">
+                            <i class="feather-database me-1" style="font-size:10px;"></i>Volume Data
+                        </div>
+                        <div class="row g-2 align-items-center" style="font-size: 12.5px;">
+                            <div class="col-6">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 4px;">Baris Diterima</span>
+                                <span id="confirm-baris-diterima" class="badge d-inline-flex align-items-center" style="background-color: #e0f2fe; color: #0284c7; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px; border: none; font-variant-numeric: tabular-nums;">-</span>
+                            </div>
+                            <div class="col-6">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Satuan Data</span>
+                                <span id="confirm-satuan-data" class="fw-semibold text-dark">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Permintaan Khusus -->
+                    <div class="pt-2 mt-3" style="border-top: 1px dashed #e2e8f0;">
+                        <div class="modal-cluster-title">
+                            <i class="feather-star me-1" style="font-size:10px;"></i>Status Permintaan Khusus
+                        </div>
+                        <div class="row g-2" style="font-size: 12.5px;">
+                            <div class="col-4">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Permintaan Khusus</span>
+                                <span id="confirm-special-request" class="fw-semibold text-dark">-</span>
+                            </div>
+                            <div class="col-8" id="confirm-row-tgl-special-request" style="display: none;">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Jatuh Tempo Permintaan Khusus</span>
+                                <span id="confirm-tgl-special-request" class="fw-semibold text-dark">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CLUSTER D: Backup Data (conditional) -->
+                <div id="confirm-row-backup" style="display: none;">
+                    <div class="p-3 rounded mb-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                        <div class="modal-cluster-title">
+                            <i class="feather-hard-drive me-1" style="font-size: 10px;"></i>Rekam Backup Data
+                        </div>
+                        <div class="row g-2" style="font-size: 12.5px;">
+                            <div class="col-12" id="confirm-row-lokasi-backup" style="display: none;">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Lokasi Backup</span>
+                                <span id="confirm-lokasi-backup" class="fw-semibold text-dark">-</span>
+                            </div>
+                            <div class="col-6" id="confirm-row-nama-file" style="display: none;">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Nama File</span>
+                                <span id="confirm-nama-file" class="fw-semibold text-dark">-</span>
+                            </div>
+                            <div class="col-6" id="confirm-row-media-backup" style="display: none;">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Media Backup</span>
+                                <span id="confirm-media-backup" class="fw-semibold text-dark">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4" style="background: transparent !important;">
+                <button type="button" class="btn btn-figma-outline" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-figma-primary fw-bold" id="btn-submit-form">
+                    <i class="feather-check-circle me-1"></i> Simpan Tiket
+                </button>
+            </div>
+
         </div>
     </div>
 </div>
+
+
 
 <script>
     (function () {
@@ -585,29 +747,7 @@
         const penyampaianInput = document.getElementById('id_penyampaian');
         const duplicateModalEl = document.getElementById('duplicateTiketModal');
 
-        const updatePenyampaian = async (periodeDataId, periode, tahun) => {
-            if (!penyampaianInput) return;
-            
-            try {
-                const response = await fetch(`{% url "check_tiket_exists" %}?periode_data_id=${encodeURIComponent(periodeDataId)}&periode=${encodeURIComponent(periode)}&tahun=${encodeURIComponent(tahun)}`);
-                const data = await response.json();
-                
-                if (data && data.success) {
-                    if (data.tiket_count !== undefined && data.tiket_count !== null) {
-                        // Set penyampaian = count + 1 (starts from 1)
-                        penyampaianInput.value = data.tiket_count + 1;
-                    } else {
-                        // Default to 1
-                        penyampaianInput.value = 1;
-                    }
-                }
-            } catch (error) {
-                console.error('Error updating penyampaian:', error);
-                penyampaianInput.value = 1;
-            }
-        };
-
-        const checkTiketExists = () => {
+        const checkTiketExists = async () => {
             if (!periodeDataSelect || !periodeSelect || !tahunSelect) {
                 return;
             }
@@ -618,32 +758,146 @@
                 return;
             }
 
-            // Update penyampaian value
-            updatePenyampaian(periodeDataId, periode, tahun);
-
-            fetch(`{% url "check_tiket_exists" %}?periode_data_id=${encodeURIComponent(periodeDataId)}&periode=${encodeURIComponent(periode)}&tahun=${encodeURIComponent(tahun)}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data && data.success && data.exists) {
+            try {
+                const response = await fetch(`{% url "check_tiket_exists" %}?periode_data_id=${encodeURIComponent(periodeDataId)}&periode=${encodeURIComponent(periode)}&tahun=${encodeURIComponent(tahun)}`);
+                const data = await response.json();
+                
+                if (data && data.success) {
+                    let prevCount = 0;
+                    if (data.tiket_count !== undefined && data.tiket_count !== null) {
+                        prevCount = data.tiket_count;
+                    }
+                    
+                    if (penyampaianInput) penyampaianInput.value = prevCount + 1;
+                    if (document.getElementById('text_penyampaian')) document.getElementById('text_penyampaian').textContent = prevCount + 1;
+                    
+                    const linkWrapper = document.getElementById('link-tiket-sebelumnya-wrapper');
+                    const btnElement = document.getElementById('btn-tiket-sebelumnya');
+                    
+                    if (data.exists && prevCount > 0) {
+                        const tiketUrlBase = "{% url 'tiket_detail' 0 %}";
+                        let tiketLinksHTML = '<div class="d-flex flex-column">';
+                        const nomorList = Array.isArray(data.nomor_tiket) ? data.nomor_tiket.filter(Boolean) : [];
+                        
+                        data.nomor_tiket.forEach((nomor, idx) => {
+                            const tId = data.tiket_ids[idx];
+                            const tDate = data.tiket_dates[idx] || '-';
+                            const url = tiketUrlBase.replace('/0/', '/' + tId + '/');
+                            
+                            tiketLinksHTML += `
+                                <div class="px-3 py-2 d-flex align-items-start gap-2">
+                                    <div class="d-flex align-items-center justify-content-center bg-light text-secondary rounded-circle" style="width: 20px; height: 20px; font-size: 10px; font-weight: 700; flex-shrink: 0; margin-top: 1px; border: 1px solid #e2e8f0;">
+                                        ${idx + 1}
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <a href="${url}" target="_blank" class="fw-bold text-primary text-decoration-none" style="font-size: 12px; letter-spacing: 0.3px;">
+                                                ${nomor}
+                                            </a>
+                                            <a href="${url}" target="_blank" class="text-muted"><i class="feather-external-link" style="font-size: 11px;"></i></a>
+                                        </div>
+                                        <div style="font-size: 11px; color: #64748b; line-height: 1.2;">
+                                            Terima DIP: <span style="font-weight: 600; color: #334155;">${tDate}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            if (idx < data.nomor_tiket.length - 1) {
+                                tiketLinksHTML += `<hr class="my-0 mx-3" style="border-color: #e2e8f0; opacity: 1;">`;
+                            }
+                        });
+                        tiketLinksHTML += '</div>';
+                        
                         const modalEl = document.getElementById('duplicateTiketModal');
                         if (modalEl) {
                             const modalBody = document.getElementById('duplicateTiketModalBody');
                             if (modalBody) {
-                                const nomorList = Array.isArray(data.nomor_tiket) ? data.nomor_tiket.filter(Boolean) : [];
-                                const nomorText = nomorList.length ? ` Nomor tiket: ${nomorList.join(', ')}` : '';
-                                modalBody.textContent = `Tiket sudah ada untuk jenis data, periode, dan tahun ini.${nomorText}`;
+                                // Add clickable links inside modal too
+                                let modalLinksHTML = '<ul class="mb-0 ps-3 mt-2" style="list-style-type: disc;">';
+                                data.nomor_tiket.forEach((nomor, idx) => {
+                                    const tId = data.tiket_ids[idx];
+                                    const tDate = data.tiket_dates[idx] || '-';
+                                    const url = tiketUrlBase.replace('/0/', '/' + tId + '/');
+                                    modalLinksHTML += `<li class="mb-1"><a href="${url}" target="_blank" class="fw-bold text-primary text-decoration-none" style="font-size: 13px;">${nomor}</a><br><small class="text-muted" style="font-size: 11px;">Tgl Terima DIP: <span class="text-dark fw-medium">${tDate}</span></small></li>`;
+                                });
+                                modalLinksHTML += '</ul>';
+
+                                modalBody.innerHTML = `
+                                    <div class="alert alert-warning py-2 px-3 mb-1" style="font-size: 13px; border-radius: 8px;">
+                                        <div class="mb-1"><i class="feather-info me-1"></i> Tiket sudah ada untuk jenis data, periode, dan tahun ini:</div>
+                                        ${modalLinksHTML}
+                                    </div>
+                                `;
                             }
+                            
+                            // Auto show modal
                             modalEl.removeAttribute('aria-hidden');
                             modalEl.setAttribute('aria-hidden', 'false');
                             modalEl.inert = false;
                             const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
                             modal.show();
                         }
+                        
+                        // Setup popover button
+                        if (linkWrapper && btnElement) {
+                            btnElement.innerHTML = `<i class="feather-clock me-1"></i>Riwayat (${prevCount})`;
+                            linkWrapper.style.setProperty('display', 'inline-block', 'important');
+                            
+                            // Initialize popover
+                            btnElement.setAttribute('data-bs-content', tiketLinksHTML);
+                            if (window.bootstrap && bootstrap.Popover) {
+                                const existingPopover = bootstrap.Popover.getInstance(btnElement);
+                                if (existingPopover) {
+                                    existingPopover.dispose();
+                                }
+                                const popover = new bootstrap.Popover(btnElement, {
+                                    sanitize: false,
+                                    html: true,
+                                    trigger: 'click', // Changed to click to allow interaction inside
+                                    template: '<div class="popover border-0 shadow" role="tooltip" style="border-radius: 12px; overflow: hidden; min-width: 220px;"><div class="popover-arrow"></div><h3 class="popover-header bg-white fw-bold" style="border-bottom: 1px solid #cbd5e1; font-size: 10px; text-transform: uppercase; color: #64748b; padding: 10px 16px; letter-spacing: 0.5px;"></h3><div class="popover-body bg-white p-0"></div></div>'
+                                });
+                                
+                                // Close popover when clicking outside
+                                document.addEventListener('click', function (e) {
+                                    if (btnElement && !btnElement.contains(e.target) && !e.target.closest('.popover')) {
+                                        const p = bootstrap.Popover.getInstance(btnElement);
+                                        if (p) p.hide();
+                                    }
+                                });
+                            }
+                        }
+                    } else {
+                        // hide link if no previous tickets
+                        if (linkWrapper) linkWrapper.style.setProperty('display', 'none', 'important');
                     }
-                })
-                .catch(() => {
-                    // ignore
-                });
+                }
+            } catch (error) {
+                console.error('Error checking tiket exists:', error);
+                if (penyampaianInput) penyampaianInput.value = 1;
+                if (document.getElementById('text_penyampaian')) document.getElementById('text_penyampaian').textContent = 1;
+                const linkWrapper = document.getElementById('link-tiket-sebelumnya-wrapper');
+                if (linkWrapper) linkWrapper.style.setProperty('display', 'none', 'important');
+            }
+            
+            // Generate ticket preview for Auto-format Filename button
+            try {
+                if (periodeDataId) {
+                    const previewResp = await fetch(`{% url "preview_nomor_tiket" %}?periode_data_id=${encodeURIComponent(periodeDataId)}`);
+                    const previewData = await previewResp.json();
+                    const btnAutoFilename = document.getElementById('btn-auto-filename');
+                    
+                    if (previewData && previewData.success && previewData.nomor_tiket) {
+                        window.currentNomorTiketPreview = previewData.nomor_tiket;
+                        if (btnAutoFilename) btnAutoFilename.style.setProperty('display', 'inline-flex', 'important');
+                    } else {
+                        window.currentNomorTiketPreview = '';
+                        if (btnAutoFilename) btnAutoFilename.style.setProperty('display', 'none', 'important');
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching preview tiket:', err);
+            }
         };
 
         if (periodeDataSelect) {
@@ -684,11 +938,86 @@
                 duplicateModalEl.inert = true;
             });
         }
+        
+        // Auto-format Filename Logic
+        const btnAutoFilename = document.getElementById('btn-auto-filename');
+        if (btnAutoFilename) {
+            btnAutoFilename.addEventListener('click', function() {
+                if (!window.currentNomorTiketPreview) return;
+                
+                let sanitize = (str) => {
+                    if (!str) return '';
+                    return str.replace(/\s+/g, ' ').replace(/[\/\\:*?"<>|]+/g, '_').trim();
+                };
+                
+                // Get ILAP name
+                const ilapSelect = document.getElementById('id_ilap');
+                let ilap = '';
+                if (ilapSelect && ilapSelect.selectedIndex >= 0) {
+                    ilap = ilapSelect.options[ilapSelect.selectedIndex].text;
+                }
+                // Jika select2, kita bisa ambil dari textContent nya atau info panel
+                const infoIlap = document.getElementById('info-nama-ilap');
+                if (infoIlap && infoIlap.textContent && infoIlap.textContent !== '-') {
+                    ilap = infoIlap.textContent;
+                }
+                
+                // Get Jenis Data name (Sub Jenis Data)
+                let jenis = '';
+                const infoJenis = document.getElementById('info-nama-sub-jenis-data');
+                if (infoJenis && infoJenis.textContent && infoJenis.textContent !== '-') {
+                    jenis = infoJenis.textContent;
+                } else {
+                    const jenisSelect = document.getElementById('id_periode_data');
+                    if (jenisSelect && jenisSelect.selectedIndex >= 0) {
+                        let text = jenisSelect.options[jenisSelect.selectedIndex].text;
+                        if (text.includes(' - ')) {
+                            // Format Select2 is: [Kode] - [Nama Sub Jenis] - [Format] - [Frekuensi]
+                            // We only want [Nama Sub Jenis] which is at index 1
+                            text = text.split(' - ')[1].trim();
+                        }
+                        jenis = text;
+                    }
+                }
+                
+                // Get Periode
+                const periodeSelectEl = document.getElementById('id_periode');
+                const tahunSelectEl = document.getElementById('id_tahun');
+                const periodeText = periodeSelectEl && periodeSelectEl.selectedIndex >= 0 ? periodeSelectEl.options[periodeSelectEl.selectedIndex].text : '';
+                const tahunText = tahunSelectEl && tahunSelectEl.selectedIndex >= 0 ? tahunSelectEl.options[tahunSelectEl.selectedIndex].text : '';
+                const periode = (periodeText && tahunText) ? `${periodeText} ${tahunText}` : '';
+                
+                let filename = [window.currentNomorTiketPreview, ilap, jenis, periode]
+                    .map(s => sanitize(s))
+                    .filter(s => s.length > 0)
+                    .join('_')
+                    .toUpperCase();
+                    
+                const backupNamaFile = document.getElementById('backup_nama_file');
+                if (backupNamaFile) {
+                    backupNamaFile.value = filename;
+                    
+                    // Visual feedback
+                    const icon = btnAutoFilename.querySelector('i');
+                    if (icon) {
+                        const oldClass = icon.className;
+                        icon.className = 'feather-check text-success me-1';
+                        const oldText = btnAutoFilename.lastChild.nodeValue;
+                        btnAutoFilename.lastChild.nodeValue = ' Terisi!';
+                        setTimeout(() => {
+                            icon.className = oldClass;
+                            btnAutoFilename.lastChild.nodeValue = ' Auto-format';
+                        }, 2000);
+                    }
+                }
+            });
+        }
     })();
 </script>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 <script>
     (function() {
         // Mapping for periode options based on deskripsi
@@ -865,12 +1194,12 @@
                 .then(data => {
                     prioritasSpan.textContent = data.has_prioritas ? 'Ya' : 'Tidak';
                     // Update badge styling
-                    prioritasSpan.className = 'badge ' + (data.has_prioritas ? 'bg-success' : 'bg-secondary');
+                    prioritasSpan.className = 'badge ' + (data.has_prioritas ? 'bg-soft-success text-success border border-success' : 'bg-soft-secondary text-secondary border border-secondary');
                 })
                 .catch(error => {
                     console.error('Error checking jenis prioritas:', error);
                     prioritasSpan.textContent = '-';
-                    prioritasSpan.className = 'badge bg-secondary';
+                    prioritasSpan.className = 'badge bg-soft-secondary text-secondary border border-secondary';
                 });
         }
 
@@ -938,6 +1267,14 @@
                         placeholder.style.display = 'none';
                     }
                 }
+                
+                // Animasi GSAP untuk item modal (Cluster A, B, C, D)
+                if (typeof gsap !== 'undefined') {
+                    gsap.fromTo('#confirmModal .p-3.rounded.mb-3', 
+                        { y: 25, opacity: 0 },
+                        { y: 0, opacity: 1, duration: 0.4, stagger: 0.08, ease: "back.out(1.4)", delay: 0.1 }
+                    );
+                }
             });
             
             // Handle Status Ketersediaan Data logic
@@ -948,33 +1285,104 @@
             const caraPenyampaianSelect = document.getElementById('id_id_cara_penyampaian');
             const barisDiterimaInput = document.getElementById('id_baris_diterima');
             
-            // Hide "data tidak tersedia" options from bentuk_data and cara_penyampaian dropdowns
-            function hideDataTidakTersediaOptions() {
-                if (bentukDataSelect) {
-                    Array.from(bentukDataSelect.options).forEach(opt => {
-                        if (opt.text.toLowerCase().includes('tidak tersedia')) {
-                            opt.style.display = 'none';
+            if (barisDiterimaInput) {
+                // Prevent negative numbers and add thousand separators
+                barisDiterimaInput.type = 'text';
+                barisDiterimaInput.inputMode = 'numeric';
+                
+                const originalName = barisDiterimaInput.name;
+                barisDiterimaInput.removeAttribute('name');
+                
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = originalName;
+                hiddenInput.id = 'hidden_baris_diterima';
+                hiddenInput.value = barisDiterimaInput.value;
+                barisDiterimaInput.parentNode.insertBefore(hiddenInput, barisDiterimaInput);
+                
+                const formatNum = (val) => {
+                    let num = val.toString().replace(/\D/g, ''); // Only digits, prevents negatives
+                    if (!num) return '';
+                    return parseInt(num, 10).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                };
+                
+                if (barisDiterimaInput.value) {
+                    hiddenInput.value = barisDiterimaInput.value.replace(/\D/g, '');
+                    barisDiterimaInput.value = formatNum(barisDiterimaInput.value);
+                }
+                
+                barisDiterimaInput.addEventListener('input', function(e) {
+                    let raw = this.value.replace(/\D/g, '');
+                    if (raw) {
+                        raw = parseInt(raw, 10).toString();
+                        
+                        // Live Validation: Prevent '0' if Data Tersedia
+                        const statusTersedia = document.getElementById('status_tersedia');
+                        if (statusTersedia && statusTersedia.checked && raw === '0') {
+                            raw = ''; // Clear it out to prevent '0'
                         }
-                    });
+                    }
+                    hiddenInput.value = raw;
+                    
+                    const formatted = formatNum(raw);
+                    if (this.value !== formatted) {
+                        this.value = formatted;
+                    }
+                });
+            }
+
+            // Cache to store removed options so they can be restored
+            const hiddenOptionsCache = {
+                bentukData: null,
+                caraPenyampaian: null
+            };
+
+            // Toggle "data tidak tersedia" options from bentuk_data and cara_penyampaian dropdowns
+            function toggleDataTidakTersediaOptions(show) {
+                if (bentukDataSelect) {
+                    if (show) {
+                        if (hiddenOptionsCache.bentukData) {
+                            bentukDataSelect.appendChild(hiddenOptionsCache.bentukData);
+                            hiddenOptionsCache.bentukData = null;
+                        }
+                    } else {
+                        const opt = Array.from(bentukDataSelect.options).find(o => o.text.toLowerCase().includes('tidak tersedia') || o.textContent.toLowerCase().includes('tidak tersedia'));
+                        if (opt) {
+                            hiddenOptionsCache.bentukData = opt;
+                            bentukDataSelect.removeChild(opt);
+                        }
+                    }
                 }
                 if (caraPenyampaianSelect) {
-                    Array.from(caraPenyampaianSelect.options).forEach(opt => {
-                        if (opt.text.toLowerCase().includes('tidak tersedia')) {
-                            opt.style.display = 'none';
+                    if (show) {
+                        if (hiddenOptionsCache.caraPenyampaian) {
+                            caraPenyampaianSelect.appendChild(hiddenOptionsCache.caraPenyampaian);
+                            hiddenOptionsCache.caraPenyampaian = null;
                         }
-                    });
+                    } else {
+                        const opt = Array.from(caraPenyampaianSelect.options).find(o => o.text.toLowerCase().includes('tidak tersedia') || o.textContent.toLowerCase().includes('tidak tersedia'));
+                        if (opt) {
+                            hiddenOptionsCache.caraPenyampaian = opt;
+                            caraPenyampaianSelect.removeChild(opt);
+                        }
+                    }
                 }
             }
             
             function updateKetersediaanDependents() {
                 const backupCheckbox = document.getElementById('rekam-backup-checkbox');
+                const wrapper = document.getElementById('alasan-ketidaktersediaan-wrapper');
                 
                 if (statusTidakTersedia && statusTidakTersedia.checked) {
                     // Data Tidak Tersedia selected
+                    if (wrapper) wrapper.style.display = '';
+                    
+                    toggleDataTidakTersediaOptions(true);
                     
                     // Enable Alasan Ketidaktersediaan
                     if (alasanKetidaktersedianInput) {
                         alasanKetidaktersedianInput.disabled = false;
+                        alasanKetidaktersedianInput.required = true;
                         alasanKetidaktersedianInput.style.opacity = '1';
                     }
                     
@@ -1007,6 +1415,10 @@
                     // Set Baris Diterima to 0 and disable
                     if (barisDiterimaInput) {
                         barisDiterimaInput.value = 0;
+                        // The visible input carries no name; #hidden_baris_diterima is
+                        // what gets POSTed, and it only syncs on a real 'input' event.
+                        const hiddenBaris = document.getElementById('hidden_baris_diterima');
+                        if (hiddenBaris) hiddenBaris.value = '0';
                         barisDiterimaInput.disabled = true;
                         barisDiterimaInput.style.opacity = '0.6';
                     }
@@ -1020,15 +1432,25 @@
                         if (backupSection) {
                             backupSection.style.display = 'none';
                         }
+                        // Clear required properties and values so it doesn't fail native validation
+                        const bLokasi = document.getElementById('backup_lokasi_backup');
+                        const bMedia = document.getElementById('backup_id_media_backup');
+                        const bNama = document.getElementById('backup_nama_file');
+                        if (bLokasi) { bLokasi.required = false; bLokasi.value = ''; }
+                        if (bMedia) { bMedia.required = false; bMedia.value = ''; }
+                        if (bNama) { bNama.required = false; bNama.value = ''; }
                     }
                 } else {
                     // Data Tersedia selected
+                    if (wrapper) wrapper.style.display = 'none';
+                    
+                    toggleDataTidakTersediaOptions(false);
                     
                     // Disable Alasan Ketidaktersediaan
                     if (alasanKetidaktersedianInput) {
                         alasanKetidaktersedianInput.disabled = true;
+                        alasanKetidaktersedianInput.required = false;
                         alasanKetidaktersedianInput.value = '';
-                        alasanKetidaktersedianInput.style.opacity = '0.6';
                     }
                     
                     // Clear and enable Bentuk Data
@@ -1049,6 +1471,11 @@
                     if (barisDiterimaInput) {
                         barisDiterimaInput.disabled = false;
                         barisDiterimaInput.style.opacity = '1';
+                        if (barisDiterimaInput.value === '0') {
+                            barisDiterimaInput.value = '';
+                            const hiddenBaris = document.getElementById('hidden_baris_diterima');
+                            if (hiddenBaris) hiddenBaris.value = '';
+                        }
                     }
                     
                     // Enable Rekam Backup Data toggle
@@ -1074,13 +1501,27 @@
                 if (!specialRequestCheckbox || !specialRequestDueDateGroup) return;
                 const enabled = specialRequestCheckbox.checked;
                 specialRequestDueDateGroup.style.display = enabled ? '' : 'none';
-                if (dueDateInput) {
-                    // Only required while visible — a hidden required input would
-                    // block submission with a validation bubble nobody can see.
-                    dueDateInput.required = enabled;
-                    if (!enabled) {
-                        dueDateInput.value = '';
+                
+                const switchCol = document.getElementById('special-request-switch-col');
+                if (switchCol) {
+                    if (enabled) {
+                        switchCol.classList.remove('col-sm-12');
+                        switchCol.classList.add('col-sm-6');
+                    } else {
+                        switchCol.classList.remove('col-sm-6');
+                        switchCol.classList.add('col-sm-12');
                     }
+                }
+                
+                // Use the global setDateInputState helper (base.html) so the
+                // flatpickr altInput is properly disabled/cleared in sync with
+                // the underlying input.  Plain .value / .required assignment
+                // would leave the old date visible on screen after unchecking.
+                if (dueDateInput) {
+                    setDateInputState(dueDateInput, {
+                        disabled: !enabled,
+                        required: false,
+                    });
                 }
             }
 
@@ -1089,7 +1530,6 @@
             }
 
             // Apply on page load
-            hideDataTidakTersediaOptions();
             updateKetersediaanDependents();
             updateTanggalTerimaVertikal();
             updateSpecialRequestDueDate();
@@ -1126,55 +1566,228 @@
             function showValidationModal(title, rows, message) {
                 const modalBody = document.getElementById('endDateValidationModalBody');
                 if (!modalBody) return;
-                let rowsHtml = '';
-                rows.forEach(r => {
-                    rowsHtml += `<tr><td class="text-muted">${r.label}</td><td class="fw-semibold${r.danger ? ' text-danger' : ''}">${r.value}</td></tr>`;
-                });
-                modalBody.innerHTML = `
-                    <div class="d-flex align-items-start gap-3">
-                        <i class="feather-alert-circle fs-1 text-danger"></i>
-                        <div>
-                            <strong>${title}</strong><br><br>
-                            <table class="table table-sm table-borderless mb-0">${rowsHtml}</table>
-                            <br>
-                            <p class="mb-0">${message}</p>
-                        </div>
-                    </div>
-                `;
+                
+                let contentHtml = '';
+                if (title) {
+                    contentHtml += `<p class="fw-bold text-dark mb-1" style="font-size: 13.5px;">${title}</p>`;
+                    contentHtml += `<p class="text-muted mb-3" style="font-size: 12.5px;">Mohon lengkapi seluruh kolom wajib bertanda (*) yang ditandai berwarna merah sebelum melanjutkan.</p>`;
+                }
+                
+                if (rows && rows.length > 0) {
+                    let rowsHtml = '';
+                    rows.forEach(r => {
+                        rowsHtml += `<tr><td class="text-muted py-1" style="width: 40%;">${r.label}</td><td class="fw-semibold py-1${r.danger ? ' text-danger' : ' text-dark'}">${r.value}</td></tr>`;
+                    });
+                    contentHtml += `<div class="p-3 rounded mb-3" style="background: #f8fafc; border: 1px solid #e2e8f0;"><table class="table table-sm table-borderless mb-0" style="font-size: 12.5px;">${rowsHtml}</table></div>`;
+                }
+                
+                if (message) {
+                    contentHtml += `<div class="alert alert-danger py-2 px-3 mb-1" style="font-size: 12.5px; border-radius: 8px;"><i class="feather-info me-1"></i> ${message}</div>`;
+                }
+                
+                modalBody.innerHTML = contentHtml;
                 const modal = new bootstrap.Modal(document.getElementById('endDateValidationModal'));
                 modal.show();
+            }
+
+            // Special Request Card highlight listener
+            const specialRequestInput = document.getElementById('id_special_request');
+            const specialRequestCard = document.getElementById('special-request-card');
+            function updateSpecialRequestCard() {
+                if (specialRequestInput && specialRequestCard) {
+                    if (specialRequestInput.checked) {
+                        specialRequestCard.style.backgroundColor = 'rgba(245, 158, 11, 0.08)';
+                        specialRequestCard.style.borderColor = '#f59e0b';
+                    } else {
+                        specialRequestCard.style.backgroundColor = '#ffffff';
+                        specialRequestCard.style.borderColor = '#e2e8f0';
+                    }
+                }
+            }
+            if (specialRequestInput) {
+                specialRequestInput.addEventListener('change', updateSpecialRequestCard);
+                updateSpecialRequestCard();
+            }
+
+            // Helper: validate mandatory form fields
+            function validateMandatoryForm() {
+                let isValid = true;
+                let firstInvalid = null;
+
+                const mandatoryConfigs = [
+                    { id: 'id_ilap', guide: 'Pilih Nama ILAP (Instansi/Lembaga/Asosiasi/Pihak Lain) sumber data ini' },
+                    { id: 'id_periode_data', guide: 'Pilih jenis data ILAP yang sesuai dengan data yang Anda terima.' },
+                    { id: 'id_periode', guide: 'Pilih periode penyampaian data.' },
+                    { id: 'id_tahun', guide: 'Isi tahun penyampaian data dengan format yang benar.' },
+                    { id: 'id_tgl_terima_dip', guide: 'Pilih tanggal kapan data ini diterima oleh DIP.' },
+                    { id: 'id_id_bentuk_data', guide: 'Pilih format bentuk data yang diterima.' },
+                    { id: 'id_id_cara_penyampaian', guide: 'Pilih cara data ini disampaikan/dikirimkan.' },
+                    { id: 'id_satuan_data', guide: 'Isi dengan satuan unit untuk data yang Anda terima.' },
+                ];
+
+                if (statusTidakTersedia && statusTidakTersedia.checked) {
+                    mandatoryConfigs.push({ id: 'id_alasan_ketidaktersediaan', guide: 'Isi penjelasan mengapa data tidak tersedia.' });
+                } else {
+                    mandatoryConfigs.push({ id: 'id_baris_diterima', guide: 'Isi jumlah baris data yang diterima menggunakan angka.' });
+                }
+
+                const specialRequestInput = document.getElementById('id_special_request');
+                // Removed id_tgl_special_request from mandatory validation since it's optional
+
+                const tglVertikalInput = document.getElementById('id_tgl_terima_vertikal');
+                if (tglVertikalInput && tglVertikalInput.required) {
+                    mandatoryConfigs.push({ id: 'id_tgl_terima_vertikal', guide: 'Pilih tanggal kapan data ini diterima secara vertikal.' });
+                }
+
+                const backupCheckbox = document.getElementById('rekam-backup-checkbox');
+                if (backupCheckbox && backupCheckbox.checked) {
+                    mandatoryConfigs.push({ id: 'backup_id_media_backup', guide: 'Pilih media backup yang digunakan.' });
+                    mandatoryConfigs.push({ id: 'backup_nama_file', guide: 'Isi nama file dari backup.' });
+                    mandatoryConfigs.push({ id: 'backup_lokasi_backup', guide: 'Isi lokasi fisik atau path backup tersebut disimpan.' });
+                }
+
+                mandatoryConfigs.forEach(cfg => {
+                    const el = document.getElementById(cfg.id);
+                    if (el) {
+                        el.classList.remove('is-invalid');
+                        const wrapper = el.closest('.mb-3');
+                        if (wrapper) {
+                            wrapper.classList.remove('border', 'border-danger', 'rounded', 'p-2', 'client-side-error-wrapper');
+                            let fb = wrapper.querySelector('.invalid-feedback.client-side-error');
+                            if (fb) fb.remove();
+                        } else {
+                            let fb = el.parentNode.querySelector('.invalid-feedback.client-side-error');
+                            if (fb) fb.remove();
+                        }
+                        
+                        if (el.disabled) {
+                            return; // Skip validation for disabled fields
+                        }
+
+                        const val = el.value ? el.value.trim() : '';
+                        if (!val || val === '' || val === null) {
+                            isValid = false;
+                            el.classList.add('is-invalid');
+                            
+                            const feedbackHtml = `<div class="invalid-feedback d-block client-side-error mt-2"><i class="feather-alert-circle me-1"></i> ${cfg.guide}</div>`;
+                            
+                            const wrapper = el.closest('.mb-3');
+                            if (wrapper) {
+                                wrapper.classList.add('border', 'border-danger', 'rounded', 'p-2', 'client-side-error-wrapper');
+                                $(feedbackHtml).appendTo(wrapper);
+                            } else {
+                                if ($(el).hasClass('select2-hidden-accessible')) {
+                                    $(feedbackHtml).insertAfter($(el).next('.select2-container'));
+                                } else {
+                                    $(feedbackHtml).insertAfter(el);
+                                }
+                            }
+                            
+                            if (!firstInvalid) firstInvalid = el;
+                        }
+                    }
+                });
+
+                if (!window._validationListenersAdded) {
+                    mandatoryConfigs.forEach(cfg => {
+                        const el = document.getElementById(cfg.id);
+                        if (el) {
+                            $(el).on('change input', function() {
+                                if (this.value && this.value.trim() !== '') {
+                                    this.classList.remove('is-invalid');
+                                    const wrapper = this.closest('.mb-3');
+                                    if (wrapper) {
+                                        wrapper.classList.remove('border', 'border-danger', 'rounded', 'p-2', 'client-side-error-wrapper');
+                                        let fb = wrapper.querySelector('.invalid-feedback.client-side-error');
+                                        if (fb) fb.remove();
+                                    } else {
+                                        let fb = this.parentNode.querySelector('.invalid-feedback.client-side-error');
+                                        if (fb) fb.remove();
+                                    }
+                                }
+                            });
+                        }
+                    });
+                    window._validationListenersAdded = true;
+                }
+
+                if (!isValid && firstInvalid) {
+                    firstInvalid.focus();
+                    if (firstInvalid.scrollIntoView) {
+                        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    showValidationModal(
+                        'Formulir Belum Lengkap!',
+                        []
+                    );
+                }
+                return isValid;
             }
 
             // Handle confirmation button click
             if (btnConfirm) {
                 btnConfirm.addEventListener('click', function(e) {
                     e.preventDefault();
-                    
-                    // Validate form first
-                    if (!form.checkValidity()) {
-                        form.reportValidity();
-                        return;
-                    }
+                    try {
+                        // Custom mandatory validation first
+                        if (!validateMandatoryForm()) {
+                            return;
+                        }
+                        
+                        // Validate form standard HTML5 rules
+                        if (!form.checkValidity()) {
+                            let errorRows = [];
+                            const invalidElements = form.querySelectorAll(':invalid');
+                            invalidElements.forEach(el => {
+                                // Skip disabled elements
+                                if (el.disabled) return;
+                                
+                                let labelText = 'Field';
+                                if (el.id) {
+                                    const label = document.querySelector(`label[for="${el.id}"]`);
+                                    if (label) {
+                                        // Remove asterisk if any
+                                        labelText = label.textContent.replace('*', '').trim();
+                                    } else {
+                                        labelText = el.name || el.id;
+                                    }
+                                } else {
+                                    labelText = el.name || 'Kolom Wajib';
+                                }
+                                
+                                errorRows.push({ label: labelText, value: 'Belum diisi / Tidak valid', danger: true });
+                                
+                                // Add visual cue
+                                el.classList.add('is-invalid');
+                            });
+                            
+                            showValidationModal(
+                                'Formulir Belum Lengkap / Tidak Valid!',
+                                errorRows
+                            );
+                            return;
+                        }
 
                     const now = new Date();
                     const tglVertikalInput = document.getElementById('id_tgl_terima_vertikal');
                     const tglDipInput = document.getElementById('id_tgl_terima_dip');
                     const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
 
-                    // 0. Jatuh tempo wajib diisi selama Permintaan Khusus aktif
-                    const srCheckbox = document.getElementById('id_special_request');
-                    const srDueDateInput = document.getElementById('id_tgl_special_request');
-                    if (srCheckbox?.checked && !srDueDateInput?.value) {
-                        showValidationModal(
-                            'Tanggal Jatuh Tempo Permintaan Khusus belum diisi!',
-                            [
-                                { label: 'Permintaan Khusus', value: 'Aktif' },
-                                { label: 'Tanggal Jatuh Tempo', value: 'Belum diisi', danger: true },
-                            ],
-                            'Tanggal Jatuh Tempo wajib diisi ketika Permintaan Khusus diaktifkan. ' +
-                            'Silakan isi tanggal jatuh tempo atau nonaktifkan Permintaan Khusus.'
-                        );
-                        return;
+                    // 0. Cek Baris Diterima tidak boleh 0 atau kosong jika Data Tersedia
+                    const statusTersedia = document.getElementById('status_tersedia');
+                    if (statusTersedia && statusTersedia.checked) {
+                        const rawBaris = document.getElementById('hidden_baris_diterima')?.value || document.getElementById('id_baris_diterima')?.value;
+                        if (!rawBaris || rawBaris === '0') {
+                            showValidationModal(
+                                'Formulir Tidak Valid!',
+                                [
+                                    { label: 'Status Ketersediaan', value: 'Data Tersedia' },
+                                    { label: 'Baris Diterima', value: (!rawBaris) ? 'Kosong' : '0', danger: true },
+                                ],
+                                'Jumlah Baris Diterima tidak boleh 0 atau kosong apabila Data Tersedia.'
+                            );
+                            return;
+                        }
                     }
 
                     // 1. Cek future date: tgl_terima_vertikal
@@ -1250,6 +1863,10 @@
                     
                     // Show modal
                     confirmModal.show();
+                    } catch(err) {
+                        alert("JS Error pada btnSimpan: " + err.message);
+                        console.error(err);
+                    }
                 });
             }
 
@@ -1268,22 +1885,81 @@
                 });
             }
 
+            // Copy Nomor Tiket Handler
+            const btnCopyNomorTiket = document.getElementById('btn-copy-nomor-tiket');
+            if (btnCopyNomorTiket) {
+                btnCopyNomorTiket.addEventListener('click', function () {
+                    const nomorTiket = document.getElementById('confirm-nomor-tiket')?.textContent?.trim();
+                    if (!nomorTiket || nomorTiket === '-') return;
+
+                    const copyText = () => {
+                        const icon = document.getElementById('icon-copy-nomor-tiket');
+                        const text = document.getElementById('text-copy-nomor-tiket');
+                        if (icon && text) {
+                            icon.className = 'feather-check me-1 text-success';
+                            text.textContent = 'Tersalin!';
+                            text.className = 'text-success fw-semibold';
+                            
+                            // Animasi GSAP untuk tombol saat diklik
+                            if (typeof gsap !== 'undefined') {
+                                gsap.fromTo(btnCopyNomorTiket, 
+                                    { scale: 0.9 }, 
+                                    { scale: 1, duration: 0.4, ease: "back.out(2)" }
+                                );
+                            }
+
+                            setTimeout(() => {
+                                icon.className = 'feather-copy me-1';
+                                text.textContent = 'Salin';
+                                text.className = '';
+                            }, 2000);
+                        }
+                    };
+
+                    if (navigator.clipboard && window.isSecureContext) {
+                        navigator.clipboard.writeText(nomorTiket).then(copyText).catch(() => {
+                            fallbackCopyTextToClipboard(nomorTiket, copyText);
+                        });
+                    } else {
+                        fallbackCopyTextToClipboard(nomorTiket, copyText);
+                    }
+                });
+            }
+
+            function fallbackCopyTextToClipboard(text, onSuccess) {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-999999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    if (onSuccess) onSuccess();
+                } catch (err) {
+                    console.error('Fallback copy failed', err);
+                }
+                document.body.removeChild(textArea);
+            }
+
             // Bagian C: Backup Data toggle
             const backupCheckbox = document.getElementById('rekam-backup-checkbox');
             const backupSection = document.getElementById('backup-data-section');
             const backupLokasiInput = document.getElementById('backup_lokasi_backup');
             const backupMediaSelect = document.getElementById('backup_id_media_backup');
+            const backupNamaFileInput = document.getElementById('backup_nama_file');
 
             function toggleBackupSection() {
                 const checked = backupCheckbox.checked;
                 backupSection.style.display = checked ? '' : 'none';
                 if (backupLokasiInput) backupLokasiInput.required = checked;
                 if (backupMediaSelect) backupMediaSelect.required = checked;
+                if (backupNamaFileInput) backupNamaFileInput.required = checked;
                 if (!checked) {
                     if (backupLokasiInput) backupLokasiInput.value = '';
                     if (backupMediaSelect) backupMediaSelect.value = '';
-                    const namaFileInput = document.getElementById('backup_nama_file');
-                    if (namaFileInput) namaFileInput.value = '';
+                    if (backupNamaFileInput) backupNamaFileInput.value = '';
                 }
             }
 
@@ -1334,100 +2010,102 @@
         });
 
         function populateConfirmationModal() {
+            // Helper to safely set text content
+            const setConfirm = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = val || '-';
+            };
+            const getVal = (id) => document.getElementById(id)?.value;
+            const getText = (id) => document.getElementById(id)?.textContent;
+            const getSelectText = (id) => {
+                const el = document.getElementById(id);
+                return el && el.selectedIndex >= 0 ? el.options[el.selectedIndex].text : '';
+            };
+
             // Get form values
             const periodeDataSelect = document.getElementById('id_periode_data');
-            const periodeSelect = document.getElementById('id_periode');
-            const tahunSelect = document.getElementById('id_tahun');
-            const tglVertikalInput = document.getElementById('id_tgl_terima_vertikal');
-            const tglDipInput = document.getElementById('id_tgl_terima_dip');
             const nomorTiketCell = document.getElementById('confirm-nomor-tiket');
 
             // Set all confirmation values from info section and form
-            document.getElementById('confirm-nama-ilap').textContent = 
-                document.getElementById('info-nama-ilap').textContent || '-';
+            setConfirm('confirm-nama-ilap', getText('info-nama-ilap'));
+            setConfirm('confirm-kategori-ilap', getText('info-kategori-ilap'));
+            setConfirm('confirm-kategori-wilayah', getText('info-kategori-wilayah'));
+            setConfirm('confirm-jenis-tabel', getText('info-jenis-tabel'));
+            // Prioritas badge
+            const prioritasVal = getText('info-jenis-prioritas') || '-';
+            const prioritasEl = document.getElementById('confirm-jenis-prioritas');
+            if (prioritasEl) {
+                prioritasEl.textContent = prioritasVal;
+                const hasPrioritas = prioritasVal.toLowerCase() === 'ya' || prioritasVal.toLowerCase() === 'true';
+                prioritasEl.className = 'badge ' + (hasPrioritas ? 'bg-soft-success text-success border border-success' : 'bg-soft-secondary text-secondary border border-secondary');
+            }
+
+            // Klasifikasi badge
+            setConfirm('confirm-klasifikasi', getText('info-klasifikasi'));
+
+            // Status Ketersediaan & Alasan
+            const statusKetersediaanRadio = document.querySelector('input[name="status_ketersediaan_data"]:checked');
+            const statusVal = statusKetersediaanRadio ? statusKetersediaanRadio.value : '1';
+            const statusEl = document.getElementById('confirm-status-ketersediaan');
+            const alasanContainer = document.getElementById('confirm-container-alasan');
+            const alasanInput = document.getElementById('id_alasan_ketidaktersediaan');
             
-            document.getElementById('confirm-kategori-ilap').textContent = 
-                document.getElementById('info-kategori-ilap').textContent || '-';
-            
-            document.getElementById('confirm-kategori-wilayah').textContent = 
-                document.getElementById('info-kategori-wilayah').textContent || '-';
-            
-            document.getElementById('confirm-jenis-tabel').textContent = 
-                document.getElementById('info-jenis-tabel').textContent || '-';
-            
-            document.getElementById('confirm-jenis-prioritas').textContent = 
-                document.getElementById('info-jenis-prioritas').textContent || '-';
-            
-            document.getElementById('confirm-klasifikasi').textContent = 
-                document.getElementById('info-klasifikasi').textContent || '-';
+            if (statusEl) {
+                if (statusVal === '0') { // Tidak Tersedia
+                    statusEl.textContent = 'Data Tidak Tersedia';
+                    statusEl.className = 'badge bg-soft-danger text-danger border border-danger fw-normal';
+                    if (alasanContainer) alasanContainer.style.display = 'block';
+                    setConfirm('confirm-alasan-ketidaktersediaan', alasanInput?.value);
+                } else { // Tersedia
+                    statusEl.textContent = 'Data Tersedia';
+                    statusEl.className = 'badge bg-soft-success text-success border border-success fw-normal';
+                    if (alasanContainer) alasanContainer.style.display = 'none';
+                }
+            }
+
+            // Frekuensi Periode
+            setConfirm('confirm-periode-penyampaian', getText('info-deskripsi-periode'));
+            setConfirm('confirm-periode-penerimaan', getText('info-periode-penerimaan'));
             
             // Get selected periode data for id/nama sub jenis
-            const selectedPeriodeData = periodeDataCache[periodeDataSelect?.value];
-            document.getElementById('confirm-id-sub-jenis-data').textContent = 
-                selectedPeriodeData?.id_sub_jenis_data || '-';
-            document.getElementById('confirm-nama-sub-jenis-data').textContent = 
-                selectedPeriodeData?.nama_sub_jenis_data || '-';
+            const selectedPeriodeData = typeof periodeDataCache !== 'undefined' ? periodeDataCache[periodeDataSelect?.value] : null;
+            setConfirm('confirm-id-sub-jenis-data', selectedPeriodeData?.id_sub_jenis_data);
+            setConfirm('confirm-nama-sub-jenis-data', selectedPeriodeData?.nama_sub_jenis_data);
             
-            document.getElementById('confirm-pic-p3de').textContent = 
-                document.getElementById('info-pic-p3de').textContent || '-';
+            setConfirm('confirm-pic-p3de', getText('info-pic-p3de'));
+            setConfirm('confirm-pic-pide', getText('info-pic-pide'));
+            setConfirm('confirm-pic-pmde', getText('info-pic-pmde'));
+            setConfirm('confirm-deskripsi-periode', getText('info-deskripsi-periode'));
             
-            document.getElementById('confirm-pic-pide').textContent = 
-                document.getElementById('info-pic-pide').textContent || '-';
+            setConfirm('confirm-periode', getSelectText('id_periode'));
+            setConfirm('confirm-tahun', getSelectText('id_tahun'));
+            setConfirm('confirm-tgl-vertikal', formatDateTime(getVal('id_tgl_terima_vertikal')));
+            setConfirm('confirm-tgl-dip', formatDateTime(getVal('id_tgl_terima_dip')));
             
-            document.getElementById('confirm-pic-pmde').textContent = 
-                document.getElementById('info-pic-pmde').textContent || '-';
+            // Populate mini summary in Nomor Tiket card
+            const periodeText = getSelectText('id_periode');
+            const tahunText = getSelectText('id_tahun');
+            setConfirm('modal-summary-periode', (periodeText && tahunText) ? `${periodeText} ${tahunText}` : '-');
+            setConfirm('modal-summary-dip', formatDateTime(getVal('id_tgl_terima_dip')));
+            setConfirm('confirm-nomor-surat-pengantar', getVal('id_nomor_surat_pengantar'));
+            setConfirm('confirm-tanggal-surat-pengantar', formatDateTime(getVal('id_tanggal_surat_pengantar')));
+            setConfirm('confirm-nama-pengirim', getVal('id_nama_pengirim'));
             
-            document.getElementById('confirm-deskripsi-periode').textContent = 
-                document.getElementById('info-deskripsi-periode').textContent || '-';
+            setConfirm('confirm-bentuk-data', getSelectText('id_id_bentuk_data'));
+            setConfirm('confirm-cara-penyampaian', getSelectText('id_id_cara_penyampaian'));
+            setConfirm('confirm-penyampaian', getVal('id_penyampaian'));
+            const rawBaris = getVal('id_baris_diterima');
+            const numBaris = (rawBaris === null || rawBaris === undefined || rawBaris === '' || isNaN(rawBaris)) ? null : Number(rawBaris);
+            setConfirm('confirm-baris-diterima', numBaris !== null ? numBaris.toLocaleString('id-ID') : '-');
+            setConfirm('modal-summary-baris', numBaris !== null ? numBaris.toLocaleString('id-ID') + ' Baris' : '-');
+            setConfirm('confirm-satuan-data', getSelectText('id_satuan_data'));
             
-            document.getElementById('confirm-periode').textContent = 
-                periodeSelect.options[periodeSelect.selectedIndex]?.text || '-';
-            
-            document.getElementById('confirm-tahun').textContent = 
-                tahunSelect.options[tahunSelect.selectedIndex]?.text || '-';
-            
-            document.getElementById('confirm-tgl-vertikal').textContent = 
-                formatDateTime(tglVertikalInput.value) || '-';
-            
-            document.getElementById('confirm-tgl-dip').textContent = 
-                formatDateTime(tglDipInput.value) || '-';
-
-            document.getElementById('confirm-nomor-surat-pengantar').textContent = 
-                document.getElementById('id_nomor_surat_pengantar')?.value || '-';
-            
-            document.getElementById('confirm-tanggal-surat-pengantar').textContent = 
-                formatDateTime(document.getElementById('id_tanggal_surat_pengantar')?.value) || '-';
-            
-            document.getElementById('confirm-nama-pengirim').textContent = 
-                document.getElementById('id_nama_pengirim')?.value || '-';
-            
-            document.getElementById('confirm-bentuk-data').textContent = 
-                document.getElementById('id_id_bentuk_data')?.options[document.getElementById('id_id_bentuk_data')?.selectedIndex]?.text || '-';
-            
-            document.getElementById('confirm-cara-penyampaian').textContent = 
-                document.getElementById('id_id_cara_penyampaian')?.options[document.getElementById('id_id_cara_penyampaian')?.selectedIndex]?.text || '-';
-
-            document.getElementById('confirm-penyampaian').textContent = 
-                document.getElementById('id_penyampaian')?.value || '-';
-            
-            document.getElementById('confirm-baris-diterima').textContent = 
-                document.getElementById('id_baris_diterima')?.value || '-';
-            
-            document.getElementById('confirm-satuan-data').textContent =
-                document.getElementById('id_satuan_data')?.options[document.getElementById('id_satuan_data')?.selectedIndex]?.text || '-';
-
-            const specialRequestChecked = document.getElementById('id_special_request')?.checked;
-            document.getElementById('confirm-special-request').textContent =
-                specialRequestChecked ? 'Ya' : 'Tidak';
-
-            // Jatuh tempo is only part of the summary for a special request tiket.
-            const confirmDueDateRow = document.getElementById('confirm-row-tgl-special-request');
-            if (confirmDueDateRow) {
-                confirmDueDateRow.style.display = specialRequestChecked ? '' : 'none';
-            }
-            const dueDateValue = document.getElementById('id_tgl_special_request')?.value;
-            document.getElementById('confirm-tgl-special-request').textContent =
-                dueDateValue ? formatDateTime(dueDateValue) : 'Belum ditentukan';
+            const specialReq = document.getElementById('id_special_request');
+            const isSpecialReq = specialReq?.checked;
+            setConfirm('confirm-special-request', isSpecialReq ? 'Ya' : 'Tidak');
+            const rowTglSr = document.getElementById('confirm-row-tgl-special-request');
+            if (rowTglSr) rowTglSr.style.display = isSpecialReq ? '' : 'none';
+            setConfirm('confirm-tgl-special-request', formatDateTime(getVal('id_tgl_special_request')));
 
             // Backup Data (Bagian C)
             const backupChecked = document.getElementById('rekam-backup-checkbox')?.checked;
@@ -1437,18 +2115,15 @@
                 if (el) el.style.display = backupChecked ? '' : 'none';
             });
             if (backupChecked) {
-                document.getElementById('confirm-lokasi-backup').textContent =
-                    document.getElementById('backup_lokasi_backup')?.value || '-';
-                document.getElementById('confirm-nama-file').textContent =
-                    document.getElementById('backup_nama_file')?.value || '-';
-                const mediaSelect = document.getElementById('backup_id_media_backup');
-                document.getElementById('confirm-media-backup').textContent =
-                    mediaSelect?.options[mediaSelect?.selectedIndex]?.text || '-';
+                setConfirm('confirm-lokasi-backup', getVal('backup_lokasi_backup'));
+                setConfirm('confirm-nama-file', getVal('backup_nama_file'));
+                setConfirm('confirm-media-backup', getSelectText('backup_id_media_backup'));
             }
 
-            if (nomorTiketCell && periodeDataSelect?.value) {
+            const periodeDataValue = getVal('id_periode_data');
+            if (nomorTiketCell && periodeDataValue) {
                 nomorTiketCell.textContent = 'Loading...';
-                fetch(`{% url "preview_nomor_tiket" %}?periode_data_id=${encodeURIComponent(periodeDataSelect.value)}`)
+                fetch(`{% url "preview_nomor_tiket" %}?periode_data_id=${encodeURIComponent(periodeDataValue)}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data && data.success && data.nomor_tiket) {
@@ -1470,13 +2145,24 @@
             const options = { 
                 year: 'numeric', 
                 month: 'long', 
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
+                day: 'numeric'
             };
             
             return date.toLocaleDateString('id-ID', options);
         }
+
+        // Clear form when accessed via browser back button
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                const form = document.getElementById('tiket-rekam-form');
+                if (form) {
+                    form.reset();
+                    if (typeof $ !== 'undefined') {
+                        $('.select2').trigger('change');
+                    }
+                }
+            }
+        });
     })();
 </script>
 
@@ -1532,6 +2218,25 @@
 .btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 .25rem .5rem rgba(0,0,0,.15);
+}
+
+.modal-cluster-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 8px;
+}
+
+/* Select2 Invalid State Styling */
+.is-invalid + .select2-container .select2-selection,
+select.is-invalid ~ .select2-container .select2-selection {
+    border-color: #dc3545 !important;
+}
+.is-invalid + .select2-container .select2-selection:focus,
+select.is-invalid ~ .select2-container .select2-selection:focus {
+    box-shadow: 0 0 0 .25rem rgba(220,53,69,.25) !important;
 }
 </style>
 {% endblock %}
