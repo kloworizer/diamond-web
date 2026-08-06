@@ -782,16 +782,6 @@ def home_data(request):
                     f'<i class="feather-eye"></i></a>'
                     f'</div>'
                 )
-            elif category == 'dalam_proses_pengendalian_mutu':
-                pmde_url = reverse('rekam_pengendalian_mutu', kwargs={'pk': obj.id})
-                action_html = (
-                    f'<div class="d-flex justify-content-center gap-1">'
-                    f'<button type="button" class="btn btn-sm btn-info text-white btn-home-ajax-modal" data-url="{pmde_url}" data-target="#homeRekamPengendalianMutuModal" data-tiket="{obj.nomor_tiket}" title="Rekam Pengendalian Mutu">'
-                    f'<i class="feather-check-circle"></i></button>'
-                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat" target="_blank">'
-                    f'<i class="feather-eye"></i></a>'
-                    f'</div>'
-                )
             else:
                 action_html = f'<div class="d-flex justify-content-center gap-1"><a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat" target="_blank"><i class="feather-eye"></i></a></div>'
 
