@@ -160,7 +160,12 @@ class TestSpecialRequestOnRekamTiket:
         assert created is not None
         assert created.special_request is True
 
-    def test_checked_without_due_date_is_rejected(self, client):
+    def test_checked_without_due_date_is_accepted(self, client):
+        """The due date is optional for a special request tiket.
+
+        It was mandatory until the switch was made truly optional; the tiket
+        must now save with the switch on and no ``tgl_special_request``.
+        """
         admin = self._admin()
         _, pd = _create_full_tiket_setup()
         post_data = _build_tiket_post_data(pd)
@@ -170,8 +175,11 @@ class TestSpecialRequestOnRekamTiket:
         client.force_login(admin)
         resp = client.post(reverse('tiket_rekam_create'), post_data, follow=True)
         assert resp.status_code == 200
-        assert 'tgl_special_request' in resp.context['form'].errors
-        assert Tiket.objects.filter(id_periode_data=pd).first() is None
+
+        created = Tiket.objects.filter(id_periode_data=pd).first()
+        assert created is not None
+        assert created.special_request is True
+        assert created.tgl_special_request is None
 
     def test_checked_persists_due_date(self, client):
         admin = self._admin()

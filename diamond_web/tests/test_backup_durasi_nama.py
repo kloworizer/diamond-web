@@ -808,14 +808,21 @@ class TestNamaTabelViews:
         resp = client.get(reverse('nama_tabel_list'))
         assert resp.status_code == 200
 
-    def test_data_endpoint_requires_admin_p3de(self, client, authenticated_user):
-        """nama_tabel_data requires admin or admin_p3de group."""
+    def test_data_endpoint_requires_admin_pide(self, client, authenticated_user):
+        """nama_tabel_data requires admin or admin_pide group, matching the
+        AdminPIDERequiredMixin on every other NamaTabel view."""
         client.force_login(authenticated_user)
         resp = client.get(reverse('nama_tabel_data'), {'draw': '1', 'start': '0', 'length': '10'})
         assert resp.status_code in (302, 403)
 
-    def test_data_endpoint_returns_json(self, client, p3de_admin_user):
+    def test_data_endpoint_denied_for_admin_p3de(self, client, p3de_admin_user):
+        """admin_p3de cannot reach the list page, so it cannot reach its data either."""
         client.force_login(p3de_admin_user)
+        resp = client.get(reverse('nama_tabel_data'), {'draw': '1', 'start': '0', 'length': '10'})
+        assert resp.status_code in (302, 403)
+
+    def test_data_endpoint_returns_json(self, client, pide_admin_user):
+        client.force_login(pide_admin_user)
         resp = client.get(
             reverse('nama_tabel_data'),
             {'draw': '1', 'start': '0', 'length': '10'},
@@ -824,9 +831,9 @@ class TestNamaTabelViews:
         data = json.loads(resp.content)
         assert 'data' in data
 
-    def test_data_endpoint_with_records(self, client, p3de_admin_user):
+    def test_data_endpoint_with_records(self, client, pide_admin_user):
         JenisDataILAPFactory()
-        client.force_login(p3de_admin_user)
+        client.force_login(pide_admin_user)
         resp = client.get(
             reverse('nama_tabel_data'),
             {'draw': '1', 'start': '0', 'length': '10'},
@@ -835,9 +842,9 @@ class TestNamaTabelViews:
         data = json.loads(resp.content)
         assert data['recordsTotal'] >= 1
 
-    def test_data_endpoint_column_search(self, client, p3de_admin_user):
+    def test_data_endpoint_column_search(self, client, pide_admin_user):
         jenis = JenisDataILAPFactory(nama_tabel_I='my_table')
-        client.force_login(p3de_admin_user)
+        client.force_login(pide_admin_user)
         resp = client.get(
             reverse('nama_tabel_data'),
             {
