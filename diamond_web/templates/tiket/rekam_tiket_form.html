@@ -685,6 +685,10 @@
                                 <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Permintaan Khusus</span>
                                 <span id="confirm-special-request" class="fw-semibold text-dark">-</span>
                             </div>
+                            <div class="col-8" id="confirm-row-tgl-special-request" style="display: none;">
+                                <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Jatuh Tempo Permintaan Khusus</span>
+                                <span id="confirm-tgl-special-request" class="fw-semibold text-dark">-</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1747,21 +1751,7 @@
                     const tglDipInput = document.getElementById('id_tgl_terima_dip');
                     const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
 
-                    // 0. Jatuh tempo wajib diisi selama Permintaan Khusus aktif
-                    const srCheckbox = document.getElementById('id_special_request');
-                    const srDueDateInput = document.getElementById('id_tgl_special_request');
-                    if (srCheckbox?.checked && !srDueDateInput?.value) {
-                        showValidationModal(
-                            'Tanggal Jatuh Tempo Permintaan Khusus belum diisi!',
-                            [
-                                { label: 'Permintaan Khusus', value: 'Aktif' },
-                                { label: 'Tanggal Jatuh Tempo', value: 'Belum diisi', danger: true },
-                            ],
-                            'Tanggal Jatuh Tempo wajib diisi ketika Permintaan Khusus diaktifkan. ' +
-                            'Silakan isi tanggal jatuh tempo atau nonaktifkan Permintaan Khusus.'
-                        );
-                        return;
-                    }
+
 
                     // 1. Cek future date: tgl_terima_vertikal
                     if (tglVertikalInput?.value) {
@@ -2074,8 +2064,11 @@
             setConfirm('confirm-satuan-data', getSelectText('id_satuan_data'));
             
             const specialReq = document.getElementById('id_special_request');
-            setConfirm('confirm-special-request', specialReq?.checked ? 'Ya' : 'Tidak');
-            
+            const isSpecialReq = specialReq?.checked;
+            setConfirm('confirm-special-request', isSpecialReq ? 'Ya' : 'Tidak');
+            const rowTglSr = document.getElementById('confirm-row-tgl-special-request');
+            if (rowTglSr) rowTglSr.style.display = isSpecialReq ? '' : 'none';
+            setConfirm('confirm-tgl-special-request', formatDateTime(getVal('id_tgl_special_request')));
 
             // Backup Data (Bagian C)
             const backupChecked = document.getElementById('rekam-backup-checkbox')?.checked;
