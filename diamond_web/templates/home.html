@@ -3244,8 +3244,10 @@
         });
 
         // Initialize server-side datatables for each category
-        document.querySelectorAll('.tiket-datatable').forEach(table => {
-            const category = table.closest('[data-category]').getAttribute('data-category');
+        function initDatatable(table) {
+            const categoryCard = table.closest('[data-category]');
+            const category = categoryCard.getAttribute('data-category');
+            if (datatableTables[category]) return; // prevent double init
             let columns = getColumnsForCategory(category);
             
             // Apply stacked layout (Nama Tabel I on top of Jenis Data) and text truncation
@@ -3344,12 +3346,7 @@
                 columns: columns,
                 drawCallback: function(settings) {
                     const json = settings.json;
-                    if (json && json.summary && json.summary.total_jenis_data !== undefined) {
-                        const badgeEl = document.querySelector(`.tiket-filter-link[data-filter="${category}"] .badge`);
-                        if (badgeEl) {
-                            badgeEl.textContent = json.summary.total_jenis_data;
-                        }
-                    } else if (json && json.recordsTotal !== undefined) {
+                    if (json && json.recordsTotal !== undefined) {
                         const badgeEl = document.querySelector(`.tiket-filter-link[data-filter="${category}"] .badge`);
                         if (badgeEl) {
                             badgeEl.textContent = json.recordsTotal;
@@ -3387,7 +3384,6 @@
             });
 
             // Custom flat clear button (X) injection for default DataTables search input
-            const categoryCard = table.closest('[data-category]');
             if (categoryCard) {
                 // We use setTimeout to ensure DataTables has fully rendered the search DOM
                 setTimeout(() => {
@@ -3443,7 +3439,9 @@
                     }
                 }, 50);
             }
-        });
+        }
+
+        // Initialization loop moved down below the active tab setup
 
         // Smart Tooltip Event Delegation: Custom tooltip that follows cursor for truncated text
         $(document).on('mouseenter', '.cell-truncate', function(e) {
@@ -4162,7 +4160,14 @@
             const firstCategory = filterLinks[0]?.getAttribute('data-filter');
             if (firstCategory) {
                 const firstCard = document.querySelector(`[data-category="${firstCategory}"]`);
-                if (firstCard) firstCard.style.display = 'block';
+                if (firstCard) {
+                    firstCard.style.display = 'block';
+                    // Initialize the datatable for the active first card
+                    const table = firstCard.querySelector('.tiket-datatable');
+                    if (table) {
+                        initDatatable(table);
+                    }
+                }
                 // update breadcrumb/title for first active filter
                 const firstLabel = filterLinks[0]?.querySelector('span:not(.icon-bg-soft):not(.badge)')?.innerText?.trim() || filterLinks[0]?.textContent?.trim();
                 if (firstLabel) updateBreadcrumb(firstLabel);
@@ -4186,12 +4191,16 @@
                 cards.forEach(card => {
                     if (card.getAttribute('data-category') === filter) {
                         card.style.display = 'block';
-                        // Redraw datatable to adjust columns
-                        setTimeout(() => {
-                            if (datatableTables[filter]) {
+                        // Initialize datatable lazily if not already initialized
+                        const table = card.querySelector('.tiket-datatable');
+                        if (table && !datatableTables[filter]) {
+                            initDatatable(table);
+                        } else if (datatableTables[filter]) {
+                            // Redraw datatable to adjust columns
+                            setTimeout(() => {
                                 datatableTables[filter].columns.adjust().draw();
-                            }
-                        }, 100);
+                            }, 100);
+                        }
                     } else {
                         card.style.display = 'none';
                     }

@@ -132,7 +132,7 @@ def home(request):
         }
 
         context['p3de_category_counts'] = {
-            k: v['jenis_datas'] for k, v in context['p3de_category_metrics'].items()
+            k: v['tickets'] for k, v in context['p3de_category_metrics'].items()
         }
 
         # Admin: Jenis Data ILAP without active P3DE PIC
@@ -772,11 +772,21 @@ def home_data(request):
                     f'<i class="feather-eye"></i></a>'
                     f'</div>'
                 )
-            elif category == 'belum_mulai_proses_identifikasi':
+            elif category in ('belum_mulai_proses_identifikasi', 'dalam_proses_identifikasi'):
                 identifikasi_url = reverse('identifikasi_tiket', kwargs={'pk': obj.id})
                 action_html = (
                     f'<div class="d-flex justify-content-center gap-1">'
                     f'<button type="button" class="btn btn-sm btn-info text-white btn-home-ajax-modal" data-url="{identifikasi_url}" data-target="#homeIdentifikasiModal" data-tiket="{obj.nomor_tiket}" title="Proses Identifikasi">'
+                    f'<i class="feather-check-circle"></i></button>'
+                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat" target="_blank">'
+                    f'<i class="feather-eye"></i></a>'
+                    f'</div>'
+                )
+            elif category == 'dalam_proses_pengendalian_mutu':
+                pmde_url = reverse('rekam_pengendalian_mutu', kwargs={'pk': obj.id})
+                action_html = (
+                    f'<div class="d-flex justify-content-center gap-1">'
+                    f'<button type="button" class="btn btn-sm btn-info text-white btn-home-ajax-modal" data-url="{pmde_url}" data-target="#homeRekamPengendalianMutuModal" data-tiket="{obj.nomor_tiket}" title="Rekam Pengendalian Mutu">'
                     f'<i class="feather-check-circle"></i></button>'
                     f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat" target="_blank">'
                     f'<i class="feather-eye"></i></a>'
