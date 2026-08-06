@@ -3960,12 +3960,30 @@
             window.addEventListener('load', initStickyCard);
         })();
 
+        // Fungsi Fallback untuk Copy Text (Digunakan jika navigator.clipboard tidak tersedia/diblokir)
+        function fallbackCopyTextToClipboard(text, onSuccess, onError) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                const successful = document.execCommand('copy');
+                if (successful && onSuccess) onSuccess();
+                else if (!successful && onError) onError(new Error('execCommand failed'));
+            } catch (err) {
+                if (onError) onError(err);
+            }
+            document.body.removeChild(textArea);
+        }
+
         // Fitur Copy Format Penamaan File
         function copyFilename(btn, tiket, ilap, jenis, periode) {
             // Bersihkan string dari karakter yang dilarang di OS (/ \ : * ? " < > |)
             let sanitize = (str) => {
                 if (!str) return '';
-                // Hapus multiple spasi menjadi single spasi agar rapi, lalu hapus karakter terlarang
                 return str.replace(/\s+/g, ' ').replace(/[\/\\:*?"<>|]+/g, '_').trim();
             };
             
@@ -3975,58 +3993,86 @@
                 .join('_')
                 .toUpperCase();
                 
-            navigator.clipboard.writeText(filename).then(() => {
+            const onSuccess = () => {
                 let icon = btn.querySelector('i');
-                let oldClass = icon.className;
-                icon.className = 'feather-check text-success';
-                
-                // Ubah title tooltip
-                let tooltip = bootstrap.Tooltip.getInstance(btn);
-                let oldTitle = btn.getAttribute('data-bs-original-title') || btn.getAttribute('title');
-                if (tooltip) {
-                    btn.setAttribute('data-bs-original-title', 'Tersalin: ' + filename);
-                    tooltip.show();
+                if (icon) {
+                    let oldClass = icon.className;
+                    icon.className = 'feather-check text-success';
+                    setTimeout(() => { icon.className = oldClass; }, 3000);
                 }
                 
-                setTimeout(() => {
-                    icon.className = oldClass;
-                    if (tooltip) {
+                let tooltip = bootstrap.Tooltip.getInstance(btn);
+                if (tooltip) {
+                    let oldTitle = btn.getAttribute('data-bs-original-title') || btn.getAttribute('title');
+                    btn.setAttribute('data-bs-original-title', 'Tersalin: ' + filename);
+                    tooltip.show();
+                    setTimeout(() => {
                         btn.setAttribute('data-bs-original-title', oldTitle);
                         tooltip.hide();
+                    }, 3000);
+                } else {
+                    if (typeof showToast === 'function') {
+                        showToast('Format nama file berhasil disalin!', 'success');
                     }
-                }, 3000);
-            }).catch(err => {
+                }
+            };
+
+            const onError = (err) => {
                 console.error('Gagal menyalin teks: ', err);
-                alert('Gagal menyalin teks.');
-            });
+                if (typeof showToast === 'function') showToast('Gagal menyalin teks.', 'danger');
+                else alert('Gagal menyalin teks.');
+            };
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(filename).then(onSuccess).catch(() => {
+                    fallbackCopyTextToClipboard(filename, onSuccess, onError);
+                });
+            } else {
+                fallbackCopyTextToClipboard(filename, onSuccess, onError);
+            }
         }
 
         // Fitur Copy Teks Sederhana (misal: Nomor Tiket saja)
         function copySimpleText(btn, text) {
             if (!text) return;
-            navigator.clipboard.writeText(text).then(() => {
+            
+            const onSuccess = () => {
                 let icon = btn.querySelector('i');
-                let oldClass = icon.className;
-                icon.className = 'feather-check text-success';
-                
-                let tooltip = bootstrap.Tooltip.getInstance(btn);
-                let oldTitle = btn.getAttribute('data-bs-original-title') || btn.getAttribute('title');
-                if (tooltip) {
-                    btn.setAttribute('data-bs-original-title', 'Tersalin: ' + text);
-                    tooltip.show();
+                if (icon) {
+                    let oldClass = icon.className;
+                    icon.className = 'feather-check text-success';
+                    setTimeout(() => { icon.className = oldClass; }, 3000);
                 }
                 
-                setTimeout(() => {
-                    icon.className = oldClass;
-                    if (tooltip) {
+                let tooltip = bootstrap.Tooltip.getInstance(btn);
+                if (tooltip) {
+                    let oldTitle = btn.getAttribute('data-bs-original-title') || btn.getAttribute('title');
+                    btn.setAttribute('data-bs-original-title', 'Tersalin: ' + text);
+                    tooltip.show();
+                    setTimeout(() => {
                         btn.setAttribute('data-bs-original-title', oldTitle);
                         tooltip.hide();
+                    }, 3000);
+                } else {
+                    if (typeof showToast === 'function') {
+                        showToast('Nomor tiket berhasil disalin!', 'success');
                     }
-                }, 3000);
-            }).catch(err => {
+                }
+            };
+
+            const onError = (err) => {
                 console.error('Gagal menyalin teks: ', err);
-                alert('Gagal menyalin teks.');
-            });
+                if (typeof showToast === 'function') showToast('Gagal menyalin teks.', 'danger');
+                else alert('Gagal menyalin teks.');
+            };
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(onSuccess).catch(() => {
+                    fallbackCopyTextToClipboard(text, onSuccess, onError);
+                });
+            } else {
+                fallbackCopyTextToClipboard(text, onSuccess, onError);
+            }
         }
     </script>
     {% endblock %}
