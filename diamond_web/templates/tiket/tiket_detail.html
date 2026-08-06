@@ -118,13 +118,6 @@
                                 <i class="feather-tag text-primary" style="font-size: 15px; flex-shrink: 0;"></i>
                                 <span class="fw-bold text-primary ticket-number"
                                      style="letter-spacing: 0.4px; line-height: 1.2; white-space: nowrap;">{{ tiket.nomor_tiket }}</span>
-                                <button type="button" class="btn btn-sm btn-light border p-1 d-inline-flex align-items-center justify-content-center text-primary copy-filename-btn" 
-                                        title="Salin Format Penamaan File berupa [Nomor Tiket]_[Nama ILAP]_[Jenis Data]_[Periode Data]" 
-                                        data-bs-toggle="tooltip" 
-                                        style="background: transparent; border-color: rgba(0, 189, 251, 0.2) !important;"
-                                        onclick="copyFilename(this, '{{ tiket.nomor_tiket|escapejs }}', '{{ ilap_info.nama_ilap|escapejs }}', '{{ ilap_info.nama_sub_jenis_data|escapejs }}', '{{ periode_formatted|escapejs }}')">
-                                    <i class="feather-copy" style="font-size: 0.85rem;"></i>
-                                </button>
                             </div>
                             <!-- Priority & Ketersediaan chips di bawah nomor tiket -->
                             <div class="d-flex flex-wrap gap-1 mt-1">
@@ -234,6 +227,21 @@
                             </span>
                         </div>
 
+                        <!-- Thin Blue Separator -->
+                        <div class="status-separator"
+                            style="width: 1px; flex-shrink: 0; background: linear-gradient(180deg, #00BDFB 0%, #0c92ff 100%); margin: 2px 0 2px 18px; opacity: 0.5;">
+                        </div>
+
+                        <!-- SECTION 4: Copy All Info Button -->
+                        <div class="d-flex align-items-center justify-content-center ps-3" style="flex-shrink: 0;">
+                            <button type="button" class="btn btn-light border d-inline-flex align-items-center justify-content-center text-primary copy-filename-btn shadow-sm transition-all" 
+                                    title="Salin Format Penamaan File" 
+                                    data-bs-toggle="tooltip" 
+                                    style="padding: 10px; width: 44px; height: 44px; border-radius: 10px; border-color: rgba(0, 189, 251, 0.3) !important; background: #ffffff;"
+                                    onclick="copyFilename(this, '{{ tiket.nomor_tiket|escapejs }}', '{{ ilap_info.nama_ilap|escapejs }}', '{{ ilap_info.nama_sub_jenis_data|escapejs }}', '{{ periode_formatted|escapejs }}')">
+                                <i class="feather-copy" style="font-size: 1.25rem;"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
