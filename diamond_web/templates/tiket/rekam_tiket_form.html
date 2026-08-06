@@ -2014,7 +2014,7 @@
             const alasanInput = document.getElementById('id_alasan_ketidaktersediaan');
             
             if (statusEl) {
-                if (statusVal === '2') { // Tidak Tersedia
+                if (statusVal === '0') { // Tidak Tersedia
                     statusEl.textContent = 'Data Tidak Tersedia';
                     statusEl.className = 'badge bg-soft-danger text-danger border border-danger fw-normal';
                     if (alasanContainer) alasanContainer.style.display = 'block';
