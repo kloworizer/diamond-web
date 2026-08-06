@@ -528,8 +528,8 @@ class TestILAPDataTableColumnSearch:
 class TestNamaTabelDataTableColumnSearch:
     """Tests for nama_tabel_data column search (missing lines 159, 161, 163, 167, 176-183)."""
 
-    def test_column_search_by_id_sub_jenis(self, client, p3de_admin_user, jenis_data_ilap):
-        client.force_login(p3de_admin_user)
+    def test_column_search_by_id_sub_jenis(self, client, pide_admin_user, jenis_data_ilap):
+        client.force_login(pide_admin_user)
         response = client.get(
             reverse('nama_tabel_data'),
             {'draw': '1', 'start': '0', 'length': '10',
@@ -537,8 +537,8 @@ class TestNamaTabelDataTableColumnSearch:
         )
         assert response.status_code == 200
 
-    def test_column_search_by_nama_jenis(self, client, p3de_admin_user, jenis_data_ilap):
-        client.force_login(p3de_admin_user)
+    def test_column_search_by_nama_jenis(self, client, pide_admin_user, jenis_data_ilap):
+        client.force_login(pide_admin_user)
         response = client.get(
             reverse('nama_tabel_data'),
             {'draw': '1', 'start': '0', 'length': '10',
@@ -546,8 +546,8 @@ class TestNamaTabelDataTableColumnSearch:
         )
         assert response.status_code == 200
 
-    def test_column_search_by_nama_sub_jenis(self, client, p3de_admin_user, jenis_data_ilap):
-        client.force_login(p3de_admin_user)
+    def test_column_search_by_nama_sub_jenis(self, client, pide_admin_user, jenis_data_ilap):
+        client.force_login(pide_admin_user)
         response = client.get(
             reverse('nama_tabel_data'),
             {'draw': '1', 'start': '0', 'length': '10',
@@ -555,8 +555,8 @@ class TestNamaTabelDataTableColumnSearch:
         )
         assert response.status_code == 200
 
-    def test_column_search_by_nama_tabel_u(self, client, p3de_admin_user, jenis_data_ilap):
-        client.force_login(p3de_admin_user)
+    def test_column_search_by_nama_tabel_u(self, client, pide_admin_user, jenis_data_ilap):
+        client.force_login(pide_admin_user)
         response = client.get(
             reverse('nama_tabel_data'),
             {'draw': '1', 'start': '0', 'length': '10',
@@ -564,16 +564,16 @@ class TestNamaTabelDataTableColumnSearch:
         )
         assert response.status_code == 200
 
-    def test_ordering_desc(self, client, p3de_admin_user, jenis_data_ilap):
-        client.force_login(p3de_admin_user)
+    def test_ordering_desc(self, client, pide_admin_user, jenis_data_ilap):
+        client.force_login(pide_admin_user)
         response = client.get(
             reverse('nama_tabel_data'),
             {'draw': '1', 'start': '0', 'length': '10', 'order[0][column]': '0', 'order[0][dir]': 'desc'}
         )
         assert response.status_code == 200
 
-    def test_ordering_exception(self, client, p3de_admin_user, jenis_data_ilap):
-        client.force_login(p3de_admin_user)
+    def test_ordering_exception(self, client, pide_admin_user, jenis_data_ilap):
+        client.force_login(pide_admin_user)
         response = client.get(
             reverse('nama_tabel_data'),
             {'draw': '1', 'start': '0', 'length': '10', 'order[0][column]': 'bad', 'order[0][dir]': 'asc'}

@@ -16,6 +16,7 @@ from diamond_web.views.task_to_do import (
 )
 from diamond_web.models.tiket import Tiket
 from diamond_web.models.tiket_pic import TiketPIC
+from diamond_web.models.user_starred_tiket import UserStarredTiket
 from diamond_web.models.tiket_action import TiketAction
 from diamond_web.models.pic import PIC
 from diamond_web.models.jenis_data_ilap import JenisDataILAP
@@ -35,8 +36,8 @@ def _get_category_metrics(qs):
     if qs is None:
         return {'tickets': 0, 'ilaps': 0, 'jenis_datas': 0}
     tickets = qs.count()
-    ilaps = qs.values('id_periode_data__id_sub_jenis_data_ilap__id_ilap').distinct().count() if tickets > 0 else 0
-    jenis_datas = qs.values('id_periode_data__id_sub_jenis_data_ilap').distinct().count() if tickets > 0 else 0
+    ilaps = len({i for i in qs.values_list('id_periode_data__id_sub_jenis_data_ilap__id_ilap__nama_ilap', flat=True) if i}) if tickets > 0 else 0
+    jenis_datas = len({j for j in qs.values_list('id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data', flat=True) if j}) if tickets > 0 else 0
     return {
         'tickets': tickets,
         'ilaps': ilaps,
@@ -458,9 +459,18 @@ def home_data(request):
 
     Returns JSON with draw, recordsTotal, recordsFiltered, data.
     """
-    draw = int(request.GET.get('draw', '1'))
-    start = int(request.GET.get('start', '0'))
-    length = int(request.GET.get('length', '10'))
+    try:
+        draw = int(request.GET.get('draw', '1'))
+    except (ValueError, TypeError):
+        draw = 1
+    try:
+        start = int(request.GET.get('start', '0'))
+    except (ValueError, TypeError):
+        start = 0
+    try:
+        length = int(request.GET.get('length', '10'))
+    except (ValueError, TypeError):
+        length = 10
     category = request.GET.get('category', '')
     search_value = request.GET.get('search[value]', '')
 
@@ -508,12 +518,13 @@ def home_data(request):
     jenis_data_list = []
 
     if is_tiket_category:
-        total_ilap = qs.values('id_periode_data__id_sub_jenis_data_ilap__id_ilap').distinct().count()
-        total_jenis_data = qs.values('id_periode_data__id_sub_jenis_data_ilap__id_jenis_data').distinct().count()
-        
-        # Get actual distinct names
-        ilap_list = list(qs.values_list('id_periode_data__id_sub_jenis_data_ilap__id_ilap__nama_ilap', flat=True).distinct())
-        jenis_data_list = list(qs.values_list('id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data', flat=True).distinct())
+        raw_ilap_list = list(qs.values_list('id_periode_data__id_sub_jenis_data_ilap__id_ilap__nama_ilap', flat=True))
+        ilap_list = sorted(list({i for i in raw_ilap_list if i}))
+        total_ilap = len(ilap_list)
+
+        raw_jenis_list = list(qs.values_list('id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data', flat=True))
+        jenis_data_list = sorted(list({j for j in raw_jenis_list if j}))
+        total_jenis_data = len(jenis_data_list)
                 # Determine the correct date field for age tracking
         is_pide_belum_mulai = category in ('belum_mulai_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic')
         is_pide_dalam_proses = category == 'dalam_proses_identifikasi'
@@ -583,6 +594,11 @@ def home_data(request):
             elif age_group == 'new':
                 qs = qs.filter(**{f"{date_field}__gte": cutoff_warning})
 
+        # Apply priority filter for tiket categories
+        if is_tiket_category:
+            priority_only = request.GET.get('priority_only')
+            if priority_only == '1':
+                qs = qs.filter(id_jenis_prioritas_data__isnull=False)
 
     elif is_jenis_data_category:
         total_ilap = qs.values('id_ilap').distinct().count()
@@ -610,6 +626,13 @@ def home_data(request):
             Q(nama_jenis_data__icontains=search_value) |
             Q(nama_sub_jenis_data__icontains=search_value)
         )
+
+    # Filter by Starred (Watchlist)
+    starred_only = request.GET.get('starred_only') == 'true'
+    if starred_only and is_tiket_category:
+        from diamond_web.models.user_starred_tiket import UserStarredTiket
+        starred_list = UserStarredTiket.objects.filter(id_user=request.user).values_list('nomor_tiket', flat=True)
+        qs = qs.filter(nomor_tiket__in=starred_list)
 
     records_filtered = qs.count()
 
@@ -669,7 +692,10 @@ def home_data(request):
         else:
             qs = qs.order_by('id_sub_jenis_data')
 
-    qs_page = qs[start:start + length]
+    if length < 0:
+        qs_page = qs[start:]
+    else:
+        qs_page = qs[start:start + length]
 
     # Build data rows
     data = []
@@ -687,7 +713,7 @@ def home_data(request):
                 nama_ilap_esc = nama_ilap.replace('"', '&quot;').replace("'", '&#39;')
                 action_html = (
                     f'<div class="d-flex justify-content-center gap-1">'
-                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat">'
+                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat" target="_blank">'
                     f'<i class="feather-eye"></i></a> '
                     f'<button type="button" class="btn btn-sm btn-success btn-quick-assign-pide" '
                     f'data-subjenis-id="{sub_jenis_id}" '
@@ -705,7 +731,7 @@ def home_data(request):
                 nama_ilap_esc = nama_ilap.replace('"', '&quot;').replace("'", '&#39;')
                 action_html = (
                     f'<div class="d-flex justify-content-center gap-1">'
-                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat">'
+                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat" target="_blank">'
                     f'<i class="feather-eye"></i></a> '
                     f'<button type="button" class="btn btn-sm btn-success btn-quick-assign-pmde" '
                     f'data-subjenis-id="{sub_jenis_id}" '
@@ -716,8 +742,48 @@ def home_data(request):
                     f'<i class="feather-user-plus"></i></button>'
                     f'</div>'
                 )
+            elif category == 'belum_diteliti':
+                action_html = (
+                    f'<div class="d-flex justify-content-center gap-1">'
+                    f'<button type="button" class="btn btn-sm btn-warning text-white btn-quick-rekam-penelitian" '
+                    f'data-tiket-id="{obj.id}" data-nomor-tiket="{obj.nomor_tiket}" title="Rekam Hasil Penelitian">'
+                    f'<i class="feather-search"></i></button>'
+                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat" target="_blank">'
+                    f'<i class="feather-eye"></i></a>'
+                    f'</div>'
+                )
+            elif category == 'belum_rekam_backup_data':
+                backup_url = reverse('backup_data_from_tiket_create', kwargs={'tiket_pk': obj.id})
+                action_html = (
+                    f'<div class="d-flex justify-content-center gap-1">'
+                    f'<button type="button" class="btn btn-sm btn-warning text-white btn-home-ajax-modal" data-url="{backup_url}" data-target="#homeRekamBackupModal" data-tiket="{obj.nomor_tiket}" title="Rekam Backup Data">'
+                    f'<i class="feather-save"></i></button>'
+                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat" target="_blank">'
+                    f'<i class="feather-eye"></i></a>'
+                    f'</div>'
+                )
+            elif category == 'belum_dibuat_tanda_terima':
+                tanda_terima_url = reverse('tanda_terima_data_from_tiket_create', kwargs={'tiket_pk': obj.id})
+                action_html = (
+                    f'<div class="d-flex justify-content-center gap-1">'
+                    f'<button type="button" class="btn btn-sm btn-info text-white btn-home-ajax-modal" data-url="{tanda_terima_url}" data-target="#homeTandaTerimaModal" data-tiket="{obj.nomor_tiket}" title="Buat Tanda Terima">'
+                    f'<i class="feather-file-text"></i></button>'
+                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat" target="_blank">'
+                    f'<i class="feather-eye"></i></a>'
+                    f'</div>'
+                )
+            elif category in ('belum_mulai_proses_identifikasi', 'dalam_proses_identifikasi'):
+                identifikasi_url = reverse('identifikasi_tiket', kwargs={'pk': obj.id})
+                action_html = (
+                    f'<div class="d-flex justify-content-center gap-1">'
+                    f'<button type="button" class="btn btn-sm btn-info text-white btn-home-ajax-modal" data-url="{identifikasi_url}" data-target="#homeIdentifikasiModal" data-tiket="{obj.nomor_tiket}" title="Proses Identifikasi">'
+                    f'<i class="feather-check-circle"></i></button>'
+                    f'<a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat" target="_blank">'
+                    f'<i class="feather-eye"></i></a>'
+                    f'</div>'
+                )
             else:
-                action_html = f'<div class="d-flex justify-content-center gap-1"><a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat"><i class="feather-eye"></i></a></div>'
+                action_html = f'<div class="d-flex justify-content-center gap-1"><a href="{view_url}" class="btn btn-sm btn-primary" title="Lihat" target="_blank"><i class="feather-eye"></i></a></div>'
 
             if category in ('belum_mulai_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic'):
                 date_val = obj.tgl_kirim_pide.strftime('%d-%m-%Y') if obj.tgl_kirim_pide else ''
@@ -764,8 +830,15 @@ def home_data(request):
                     'nama_ilap': nama_ilap,
                     'nama_sub_jenis_data': nama_sub_jenis,
                     'nama_tabel_I': nama_tabel_I,
+                    'baris_diterima': obj.baris_diterima or 0,
+                    'baris_lengkap': obj.baris_lengkap or 0,
+                    'baris_tidak_lengkap': obj.baris_tidak_lengkap or 0,
+                    'baris_cde': obj.baris_cde or 0,
+                    'belum_qc': obj.belum_qc or 0,
+                    'lolos_qc': obj.lolos_qc or 0,
                     'tanggal': date_val,
                     'tanggal_order': date_order,
+                    'is_prioritas': obj.id_jenis_prioritas_data_id is not None,
                     'actions': action_html,
                 })
         elif is_jenis_data_category:
@@ -904,3 +977,72 @@ def home_pic_pmde_users(request):
         for u in users
     ]
     return JsonResponse({'users': data})
+
+
+@login_required
+def toggle_starred_tiket(request):
+    """Toggle bintang (watchlist) tiket menggunakan database UserStarredTiket."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    nomor_tiket = request.POST.get('nomor_tiket', '').strip()
+    if not nomor_tiket:
+        return JsonResponse({'error': 'nomor_tiket diperlukan'}, status=400)
+
+    from diamond_web.models.user_starred_tiket import UserStarredTiket
+    
+    # Check if it exists in DB
+    existing = UserStarredTiket.objects.filter(id_user=request.user, nomor_tiket=nomor_tiket).first()
+    
+    if existing:
+        existing.delete()
+        is_starred = False
+    else:
+        UserStarredTiket.objects.create(id_user=request.user, nomor_tiket=nomor_tiket)
+        is_starred = True
+
+    total = UserStarredTiket.objects.filter(id_user=request.user).count()
+
+    return JsonResponse({
+        'starred': is_starred,
+        'nomor_tiket': nomor_tiket,
+        'total': total,
+    })
+
+@login_required
+@require_GET
+def get_starred_tikets(request):
+    """Ambil daftar nomor tiket yang dipantau (watchlist) beserta detailnya."""
+    starred_records = UserStarredTiket.objects.filter(id_user=request.user).values_list('nomor_tiket', flat=True)
+    starred = list(starred_records)
+    
+    details = []
+    if starred:
+        qs = Tiket.objects.filter(nomor_tiket__in=starred).select_related(
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap'
+        )
+        for t in qs:
+            try:
+                nama_ilap = t.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap
+                nama_sub_jenis_data = t.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data
+            except AttributeError:
+                nama_ilap = "-"
+                nama_sub_jenis_data = "-"
+            
+            details.append({
+                'nomor_tiket': t.nomor_tiket,
+                'ilap': nama_ilap,
+                'jenis_data': nama_sub_jenis_data,
+                'status': t.get_status_tiket_display(),
+                'status_code': t.status_tiket,
+                'url': reverse('tiket_detail', args=[t.id])
+            })
+        
+        # Urutkan list berdasarkan kapan tiket di-assign ke pantauan (sesuai urutan `starred`)
+        details.sort(key=lambda x: starred.index(x['nomor_tiket']))
+            
+    return JsonResponse({
+        'starred': starred,
+        'details': details,
+        'total': len(starred)
+    })

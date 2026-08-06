@@ -477,7 +477,10 @@ def rekam_server_side_rules(page, rep):
                 "message, so the user cannot tell what went wrong or that nothing saved.")
     H.shot(page, f"{sc}_future_dip")
 
-    # 2) Special request switched on with no due date (TiketForm.clean()).
+    # 2) Special request switched on with no due date. The due date is
+    #    deliberately OPTIONAL -- TiketForm.clean() only clears it when the
+    #    switch is off -- so the tiket must save. (This rule has flipped twice;
+    #    it was mandatory between commits 0a62988 and dd9c881.)
     fill_valid_base("2022")
     if not page.is_disabled("#id_tgl_terima_vertikal"):
         H.fill_date(page, "#id_tgl_terima_vertikal", H.date_ago(52))
@@ -490,15 +493,14 @@ def rekam_server_side_rules(page, rep):
     errors = " ".join(_rekam_page_errors(page))
     created = "/tiket/rekam" not in page.url
     if created:
-        rep.fail(sc, "special request without due date accepted", f"navigated to {page.url}")
-        rep.bug("Rekam Tiket accepts a special request with no due date", "MEDIUM",
-                "TiketForm.clean() makes Tanggal Jatuh Tempo mandatory whenever the "
-                "Permintaan Khusus switch is on, but the tiket was created without one.")
-    elif "wajib diisi" in errors.lower():
-        rep.ok(sc, "special request without due date rejected", errors[:120])
+        rep.ok(sc, "special request without due date accepted (optional)", page.url)
     else:
-        rep.fail(sc, "special request without due date: wrong/invisible error",
-                 f"errors={errors[:120] or 'none'}")
+        rep.fail(sc, "special request without due date rejected",
+                 f"the due date is optional but the tiket was not created "
+                 f"(errors={errors[:120] or 'none'})")
+        rep.bug("Rekam Tiket rejects a special request with no due date", "MEDIUM",
+                "Tanggal Jatuh Tempo is optional when the Permintaan Khusus switch "
+                "is on, but the tiket was not created.")
     H.shot(page, f"{sc}_special_request_due_date")
 
     # 3) Tanggal Terima DIP after the periode's end date. Only meaningful when

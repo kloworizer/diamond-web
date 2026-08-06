@@ -105,16 +105,20 @@ def edit_tiket_flow(page, rep):
                 "on the reloaded detail page.")
     H.shot(page, f"{sc}_after_valid_edit")
 
-    # 4) Regression: after Buat Tanda Terima, Edit Tiket button must disappear.
+    # 4) After Buat Tanda Terima the Edit Tiket button must disappear -- but that
+    #    lock binds a plain P3DE PIC only. `is_admin_p3de()` (views/mixins.py)
+    #    exempts superusers, the `admin` group and `admin_p3de`, and
+    #    `user_can_edit_tiket` short-circuits on it (views/tiket/detail.py), so an
+    #    admin may still correct the isian at any point. The e2e account is a
+    #    superuser (see setup_test_data.py), so the button legitimately stays:
+    #    record the fact instead of inventing a bug. Covering the non-admin path
+    #    needs a second, non-superuser PIC account.
     H.do_tanda_terima(page, rep, sc)
     edit_btn_visible = page.locator('[data-bs-target="#editTiketModal"]').count() > 0
     if edit_btn_visible:
-        rep.fail(sc, "Edit Tiket button still visible after tanda terima created",
-                 "user_can_edit_tiket should turn False once tanda_terima=True")
-        rep.bug("Ubah Isian Tiket remains available after Tanda Terima has been created",
-                "MEDIUM", "Per the view's own rule (only editable while Direkam AND no "
-                "tanda terima yet), the button should disappear once Buat Tanda Terima "
-                "succeeds, but it was still present in the DOM.")
+        rep.info(sc, "Edit Tiket still offered after tanda terima",
+                 "expected for this account: is_admin_p3de() exempts superusers from "
+                 "the Direkam/no-tanda-terima lock")
     else:
         rep.ok(sc, "Edit Tiket correctly hidden after tanda terima")
     H.shot(page, f"{sc}_post_tanda_terima")
@@ -191,12 +195,19 @@ def special_request_flow(page, rep):
                 f"After checking the switch, setting a due date and submitting, the "
                 f"detail page badge read '{val}' instead of 'Ya'.")
     shown_due = page.locator("#tgl-special-request-value")
-    expected_due = "-".join(reversed(due_date.split("-")))  # d-m-Y on the detail page
-    if shown_due.count() and expected_due in shown_due.inner_text():
-        rep.ok(sc, "due date persisted", expected_due)
+    # The detail page renders the due date as 'd M Y' ("06 Agu 2026"); it used to
+    # render 'd-m-Y'. Accept either so a formatting change is not read as data loss.
+    y, m, d = due_date.split("-")
+    ID_MONTHS = ("Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+                 "Jul", "Agu", "Sep", "Okt", "Nov", "Des")
+    accepted = (f"{d}-{m}-{y}", f"{d} {ID_MONTHS[int(m) - 1]} {y}")
+    shown_text = shown_due.inner_text() if shown_due.count() else ""
+    if any(fmt in shown_text for fmt in accepted):
+        rep.ok(sc, "due date persisted", shown_text.strip())
     else:
         rep.fail(sc, "due date NOT shown on detail page",
-                 shown_due.inner_text().strip() if shown_due.count() else "element missing")
+                 f"got '{shown_text.strip()}', expected one of {accepted}"
+                 if shown_due.count() else "element missing")
     H.shot(page, f"{sc}_on")
 
     # 3) Turn back OFF, no catatan (optional field). The due date is dropped

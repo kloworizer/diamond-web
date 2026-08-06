@@ -179,6 +179,7 @@ def laporan_transfer_data(request):
             'nama_sub_jenis_data': sub_jenis_data.nama_sub_jenis_data,
             'nama_tabel_I': sub_jenis_data.nama_tabel_I,
             'nomor_tiket': tiket.nomor_tiket,
+            'tgl_transfer': tiket.tgl_transfer.strftime('%d/%m/%Y') if tiket.tgl_transfer else '-',
             'data_diterima': baris_diterima,
             'data_teridentifikasi_i': data_teridentifikasi_i,
             'data_tidak_teridentifikasi_u': baris_u,
@@ -247,12 +248,9 @@ def laporan_transfer_export(request):
     wb.save(excel_file)
     excel_data = excel_file.getvalue()
     
-    # Create filename
-    filename = "Laporan_Transfer"
-    tgl_mulai_str = request.GET.get('tgl_mulai')
-    tgl_akhir_str = request.GET.get('tgl_akhir')
-    if tgl_mulai_str and tgl_akhir_str:
-        filename += f"_{tgl_mulai_str[:10]}_ke_{tgl_akhir_str[:10]}"
+    # Create filename with timestamp
+    now_ts = datetime.now().strftime('%Y%m%d_%H%M')
+    filename = f"Laporan_Transfer_{now_ts}"
     
     # Create HTTP response
     response = HttpResponse(

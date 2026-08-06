@@ -2,10 +2,13 @@
 <form method="post" action="{{ form_action }}">
     {% csrf_token %}
     <div class="modal-body">
-        <div class="alert alert-warning">
-            <i class="ri-alert-line me-2"></i>
-            <strong>Perhatian:</strong> Anda akan membatalkan tiket <strong>{{ tiket.nomor_tiket }}</strong>. 
-            Tindakan ini tidak dapat dibatalkan.
+        <div class="alert alert-warning d-flex gap-2 align-items-start">
+            <i class="feather-alert-triangle flex-shrink-0 mt-1" style="font-size: 1.1rem; color: #b45309;"></i>
+            <div>
+                <strong>Perhatian</strong><br>
+                Anda akan membatalkan tiket <strong>{{ tiket.nomor_tiket }}</strong>.
+                Tindakan ini tidak dapat dibatalkan.
+            </div>
         </div>
         
         <div class="mb-3">
@@ -17,7 +20,7 @@
         </div>
     </div>
     <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="button" class="btn btn-light text-secondary" style="font-weight: 500; text-transform: none; background-color: #f1f5f9; border-color: #e2e8f0;" data-bs-dismiss="modal">Kembali</button>
         <button type="submit" class="btn btn-danger">
             <i class="ri-close-circle-line me-1"></i>Batalkan Tiket
         </button>

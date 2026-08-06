@@ -97,12 +97,22 @@
 
     <div class="row">
         <div class="col-12">
+            <style>
+                .identity-card-unavailable {
+                    background: #f8fafc !important;
+                    border-left: 4px solid #94a3b8 !important;
+                }
+                .identity-card-available {
+                    background: linear-gradient(135deg, #f8fffe 0%, #f0f8ff 100%) !important;
+                    border-left: 4px solid #00BDFB !important;
+                }
+            </style>
             <!-- Placeholder for sticky card -->
             <div id="sticky-card-placeholder" style="height: 0px; margin-bottom: 0; overflow: hidden;"></div>
 
             <!-- Info Utama: Tiket Identity Bar (sticky, full width, premium horizontal layout) -->
-            <div class="card border-0 shadow-sm mb-4" id="sticky-identity-card"
-                style="background: linear-gradient(135deg, #f8fffe 0%, #f0f8ff 100%); border-left: 4px solid #00BDFB !important; transition: box-shadow 0.2s; overflow: visible;">
+            <div class="card border-0 shadow-sm mb-4 {% if not tiket.status_ketersediaan_data %}identity-card-unavailable{% else %}identity-card-available{% endif %}" id="sticky-identity-card"
+                style="transition: box-shadow 0.2s; overflow: visible;">
                 <div class="card-body py-3 px-4">
                     <div class="d-flex align-items-stretch gap-0">
 
@@ -119,18 +129,26 @@
                                 <span class="fw-bold text-primary ticket-number"
                                      style="letter-spacing: 0.4px; line-height: 1.2; white-space: nowrap;">{{ tiket.nomor_tiket }}</span>
                             </div>
-                            <!-- Priority chip kecil di bawah nomor tiket -->
-                            {% if tiket.id_jenis_prioritas_data %}
-                            <span class="badge d-inline-flex align-items-center justify-content-center"
-                                style="font-size: 10px; padding: 4px 8px; width: fit-content; font-weight: 600; background-color: #fee2e2 !important; color: #ef4444 !important; border: 1px solid #fecaca !important;">
-                                Data Prioritas
-                            </span>
-                            {% else %}
-                            <span class="badge d-inline-flex align-items-center justify-content-center"
-                                style="font-size: 10px; padding: 4px 8px; width: fit-content; font-weight: 600; background-color: #f1f5f9 !important; color: #64748b !important; border: 1px solid #cbd5e1 !important;">
-                                Tidak Prioritas
-                            </span>
-                            {% endif %}
+                            <!-- Priority & Ketersediaan chips di bawah nomor tiket -->
+                            <div class="d-flex flex-wrap gap-1 mt-1">
+                                {% if tiket.id_jenis_prioritas_data %}
+                                <span class="badge d-inline-flex align-items-center justify-content-center"
+                                    style="font-size: 10px; padding: 4px 8px; width: fit-content; font-weight: 600; background-color: #fee2e2 !important; color: #ef4444 !important; border: 1px solid #fecaca !important;">
+                                    Data Prioritas
+                                </span>
+                                {% else %}
+                                <span class="badge d-inline-flex align-items-center justify-content-center"
+                                    style="font-size: 10px; padding: 4px 8px; width: fit-content; font-weight: 600; background-color: #f1f5f9 !important; color: #64748b !important; border: 1px solid #cbd5e1 !important;">
+                                    Tidak Prioritas
+                                </span>
+                                {% endif %}
+
+                                {% if not tiket.status_ketersediaan_data %}
+                                <span class="premium-badge premium-badge-danger d-inline-flex align-items-center justify-content-center" style="font-size: 10px; padding: 4px 8px;">
+                                    <i class="feather-x-circle me-1" style="font-size: 10px;"></i>Tidak Tersedia
+                                </span>
+                                {% endif %}
+                            </div>
                         </div>
 
                         <!-- Thin Blue Separator -->
@@ -219,11 +237,41 @@
                             </span>
                         </div>
 
+                        <!-- Thin Blue Separator -->
+                        <div class="status-separator"
+                            style="width: 1px; flex-shrink: 0; background: linear-gradient(180deg, #00BDFB 0%, #0c92ff 100%); margin: 2px 0 2px 18px; opacity: 0.5;">
+                        </div>
+
+                        <!-- SECTION 4: Copy All Info Button -->
+                        <div class="d-flex align-items-center justify-content-center ps-3" style="flex-shrink: 0;">
+                            <button type="button" class="btn btn-light border d-inline-flex align-items-center justify-content-center text-primary copy-filename-btn shadow-sm transition-all" 
+                                    title="Salin Format Penamaan File" 
+                                    data-bs-toggle="tooltip" 
+                                    style="padding: 10px; width: 44px; height: 44px; border-radius: 10px; border-color: rgba(0, 189, 251, 0.3) !important; background: #ffffff;"
+                                    onclick="copyFilename(this, '{{ tiket.nomor_tiket|escapejs }}', '{{ ilap_info.nama_ilap|escapejs }}', '{{ ilap_info.nama_sub_jenis_data|escapejs }}', '{{ periode_formatted|escapejs }}')">
+                                <i class="feather-copy" style="font-size: 1.25rem;"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Alert for Data Tidak Tersedia -->
+    {% if not tiket.status_ketersediaan_data %}
+    <div class="row">
+        <div class="col-12">
+            <div class="alert d-flex align-items-start shadow-sm border mb-4" role="alert" style="border-left: 4px solid #f59e0b !important; background-color: #fffbeb; border-color: #fef3c7 !important; color: #92400e;">
+                <i class="feather-info fs-4 me-3 mt-1" style="color: #f59e0b;"></i>
+                <div>
+                    <h6 class="fw-bold mb-1" style="color: #92400e; font-size: 14px;">Tiket Ditutup Karena Data Tidak Tersedia</h6>
+                    <p class="mb-0 fs-13" style="line-height: 1.5; color: #92400e;"><strong>Alasan Ketidaktersediaan:</strong> {% if tiket.alasan_ketidaktersediaan %}{{ tiket.alasan_ketidaktersediaan }}{% else %}<em>Tidak ada alasan yang disertakan.</em>{% endif %}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Top section: main info + actions + PIC, side by side (inverted-pyramid: most critical content first) -->
     <div class="row">
@@ -243,55 +291,86 @@
                             </h6>
 
                             <!-- Cluster 1: Identitas Tiket & Penerimaan DIP -->
-                            <div class="mb-3">
-                                <div class="fw-bold mb-2 pb-1 border-bottom"
-                                    style="font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; border-bottom-width: 2px !important; border-color: #e2e8f0 !important; color: #64748b !important;">
-                                    Identitas Tiket & Penerimaan DIP
+                            <div class="cluster-card">
+                                <div class="cluster-header">
+                                    <i class="feather-tag"></i>Identitas Tiket & Penerimaan DIP
                                 </div>
                                 <div class="meta-list">
                                     <div class="meta-item">
                                         <span class="meta-label">Nomor Tiket</span>
-                                        <span class="meta-value fw-bold">{{ tiket.nomor_tiket }}</span>
+                                        <span class="meta-value fw-bold d-flex align-items-center gap-2">
+                                            {{ tiket.nomor_tiket }}
+                                            <button type="button" class="btn btn-sm p-1 d-inline-flex align-items-center justify-content-center copy-filename-btn" 
+                                                    title="Salin Nomor Tiket" 
+                                                    data-bs-toggle="tooltip" 
+                                                    style="background: transparent; border: 1px solid #e2e8f0 !important; color: #64748b;"
+                                                    onclick="copySimpleText(this, '{{ tiket.nomor_tiket|escapejs }}')">
+                                                <i class="feather-copy" style="font-size: 0.85rem;"></i>
+                                            </button>
+                                        </span>
                                     </div>
                                     <div class="meta-item">
                                         <span class="meta-label">Status Tiket</span>
                                         <span class="meta-value">
-                                            {% if tiket.status_tiket == 1 %}
-                                            <i class="feather-edit-2 me-1"></i>
-                                            {% elif tiket.status_tiket == 2 %}
-                                            <i class="feather-search me-1"></i>
-                                            {% elif tiket.status_tiket == 3 %}
-                                            <i class="feather-corner-up-left me-1"></i>
-                                            {% elif tiket.status_tiket == 4 %}
-                                            <i class="feather-clock me-1"></i>
-                                            {% elif tiket.status_tiket == 5 %}
-                                            <i class="feather-info me-1"></i>
-                                            {% elif tiket.status_tiket == 6 %}
-                                            <i class="feather-shield me-1"></i>
-                                            {% elif tiket.status_tiket == 7 %}
-                                            <i class="feather-x-circle me-1"></i>
-                                            {% elif tiket.status_tiket == 8 %}
-                                            <i class="feather-check-circle me-1"></i>
-                                            {% elif tiket.status_tiket == 9 %}
-                                            <i class="feather-slash me-1"></i>
-                                            {% else %}
-                                            <i class="feather-info me-1"></i>
-                                            {% endif %}
-                                            {{ status_label }}
+                                            <span class="badge {% if tiket.status_tiket == 1 %}status-perekaman{% elif tiket.status_tiket == 2 %}status-diteliti{% elif tiket.status_tiket == 3 %}status-dikembalikan{% elif tiket.status_tiket == 4 %}status-belum-diterima{% elif tiket.status_tiket == 5 %}status-identifikasi{% elif tiket.status_tiket == 6 %}status-qc{% elif tiket.status_tiket == 7 %}status-dibatalkan{% elif tiket.status_tiket == 8 %}status-selesai{% elif tiket.status_tiket == 9 %}status-tidak-direkam{% else %}bg-secondary{% endif %} d-inline-flex align-items-center gap-1"
+                                                style="padding: 6px 12px; white-space: nowrap;">
+                                                {% if tiket.status_tiket == 1 %}
+                                                <i class="feather-edit-2" style="font-size: 13px;"></i>
+                                                {% elif tiket.status_tiket == 2 %}
+                                                <i class="feather-search" style="font-size: 13px;"></i>
+                                                {% elif tiket.status_tiket == 3 %}
+                                                <i class="feather-corner-up-left" style="font-size: 13px;"></i>
+                                                {% elif tiket.status_tiket == 4 %}
+                                                <i class="feather-clock" style="font-size: 13px;"></i>
+                                                {% elif tiket.status_tiket == 5 %}
+                                                <i class="feather-info" style="font-size: 13px;"></i>
+                                                {% elif tiket.status_tiket == 6 %}
+                                                <i class="feather-shield" style="font-size: 13px;"></i>
+                                                {% elif tiket.status_tiket == 7 %}
+                                                <i class="feather-x-circle" style="font-size: 13px;"></i>
+                                                {% elif tiket.status_tiket == 8 %}
+                                                <i class="feather-check-circle" style="font-size: 13px;"></i>
+                                                {% elif tiket.status_tiket == 9 %}
+                                                <i class="feather-slash" style="font-size: 13px;"></i>
+                                                {% else %}
+                                                <i class="feather-info" style="font-size: 13px;"></i>
+                                                {% endif %}
+                                                {{ status_label }}
+                                            </span>
                                         </span>
                                     </div>
-                                    {% if periode_formatted %}
-                                    <div class="meta-item">
-                                        <span class="meta-label">Periode</span>
-                                        <span class="meta-value">{{ periode_formatted }}</span>
-                                    </div>
-                                    {% endif %}
                                     <div class="meta-item">
                                         <span class="meta-label">Data Prioritas</span>
                                         <span class="meta-value">
-                                            {% if tiket.id_jenis_prioritas_data %}Ya{% else %}Tidak{% endif %}
+                                            {% if tiket.id_jenis_prioritas_data %}
+                                                <span class="premium-badge premium-badge-danger"><i class="feather-alert-circle me-1"></i>PRIORITAS</span>
+                                            {% else %}
+                                                <span class="text-muted fw-medium" style="font-size: 0.8rem;"><i class="feather-minus me-1"></i>Tidak Prioritas</span>
+                                            {% endif %}
                                         </span>
                                     </div>
+                                    <div class="meta-item">
+                                        <span class="meta-label">Permintaan Khusus</span>
+                                        <span class="meta-value" id="special-request-value">
+                                            {% if tiket.special_request %}
+                                            <span class="premium-badge premium-badge-warning"><i class="feather-star me-1"></i>YA</span>
+                                            {% else %}
+                                            <i class="feather-minus me-1 text-muted"></i>Tidak
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    {% if tiket.special_request %}
+                                    <div class="meta-item">
+                                        <span class="meta-label">Jatuh Tempo Permintaan Khusus</span>
+                                        <span class="meta-value" id="tgl-special-request-value">
+                                            {% if tiket.tgl_special_request %}
+                                            <span class="premium-badge premium-badge-danger"><i class="feather-calendar me-1"></i>{{ tiket.tgl_special_request|date:"d M Y" }}</span>
+                                            {% else %}
+                                            <span class="premium-badge premium-badge-danger"><i class="feather-alert-triangle me-1"></i>Belum ditentukan</span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    {% endif %}
                                     <div class="meta-item">
                                         <span class="meta-label">Tanggal Terima DIP</span>
                                         <span class="meta-value">
@@ -314,10 +393,9 @@
                             </div>
 
                             <!-- Cluster 2: Surat Pengantar & Pengirim -->
-                            <div class="mb-3">
-                                <div class="fw-bold mb-2 pb-1 border-bottom"
-                                    style="font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; border-bottom-width: 2px !important; border-color: #e2e8f0 !important; color: #64748b !important;">
-                                    Surat Pengantar & Pengirim
+                            <div class="cluster-card">
+                                <div class="cluster-header">
+                                    <i class="feather-mail"></i>Surat Pengantar & Pengirim
                                 </div>
                                 <div class="meta-list">
                                     {% if tiket.nomor_surat_pengantar %}
@@ -346,56 +424,33 @@
                             </div>
 
                             <!-- Cluster 3: Karakteristik & Ketersediaan Data -->
-                            <div class="mb-3">
-                                <div class="fw-bold mb-2 pb-1 border-bottom"
-                                    style="font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; border-bottom-width: 2px !important; border-color: #e2e8f0 !important; color: #64748b !important;">
-                                    Karakteristik & Ketersediaan Data
+                            <div class="cluster-card">
+                                <div class="cluster-header">
+                                    <i class="feather-layers"></i>Karakteristik & Ketersediaan Data
                                 </div>
                                 <div class="meta-list">
                                     {% if tiket.id_bentuk_data %}
                                     <div class="meta-item">
                                         <span class="meta-label">Bentuk Data</span>
-                                        <span class="meta-value">{{ tiket.id_bentuk_data.nama_bentuk_data|default:tiket.id_bentuk_data.deskripsi }}</span>
+                                        <span class="meta-value"><span class="premium-pill">{{ tiket.id_bentuk_data.nama_bentuk_data|default:tiket.id_bentuk_data.deskripsi }}</span></span>
                                     </div>
                                     {% endif %}
                                     {% if tiket.id_cara_penyampaian %}
                                     <div class="meta-item">
                                         <span class="meta-label">Cara Penyampaian</span>
-                                        <span class="meta-value">{{ tiket.id_cara_penyampaian.deskripsi }}</span>
+                                        <span class="meta-value"><span class="premium-pill">{{ tiket.id_cara_penyampaian.deskripsi }}</span></span>
                                     </div>
                                     {% endif %}
                                     <div class="meta-item">
                                         <span class="meta-label">Status Ketersediaan Data</span>
                                         <span class="meta-value">
                                             {% if tiket.status_ketersediaan_data %}
-                                            <i class="feather-check me-1"></i>Tersedia
+                                            <span class="premium-badge premium-badge-success"><i class="feather-check-circle me-1"></i>Tersedia</span>
                                             {% else %}
-                                            <i class="feather-x me-1"></i>Tidak Tersedia
+                                            <span class="premium-badge premium-badge-danger"><i class="feather-x-circle me-1"></i>Tidak Tersedia</span>
                                             {% endif %}
                                         </span>
                                     </div>
-                                    <div class="meta-item">
-                                        <span class="meta-label">Permintaan Khusus</span>
-                                        <span class="meta-value" id="special-request-value">
-                                            {% if tiket.special_request %}
-                                            <i class="feather-star me-1"></i>Ya
-                                            {% else %}
-                                            <i class="feather-minus me-1"></i>Tidak
-                                            {% endif %}
-                                        </span>
-                                    </div>
-                                    {% if tiket.special_request %}
-                                    <div class="meta-item">
-                                        <span class="meta-label">Jatuh Tempo Permintaan Khusus</span>
-                                        <span class="meta-value" id="tgl-special-request-value">
-                                            {% if tiket.tgl_special_request %}
-                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_special_request|date:"d-m-Y" }}
-                                            {% else %}
-                                            <i class="feather-minus me-1"></i>Belum ditentukan
-                                            {% endif %}
-                                        </span>
-                                    </div>
-                                    {% endif %}
                                     {% if not tiket.status_ketersediaan_data %}
                                     <div class="meta-item">
                                         <span class="meta-label">Alasan Ketidaktersediaan</span>
@@ -407,17 +462,24 @@
 
                             {% if tiket_details.status_penelitian or tiket.id_status_penelitian or tiket.tgl_teliti %}
                             <!-- Cluster 4: Verifikasi & Penelitian Data -->
-                            <div class="mb-3">
-                                <div class="fw-bold mb-2 pb-1 border-bottom"
-                                    style="font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; border-bottom-width: 2px !important; border-color: #e2e8f0 !important; color: #64748b !important;">
-                                    Verifikasi & Penelitian Data
+                            <div class="cluster-card">
+                                <div class="cluster-header">
+                                    <i class="feather-check-circle"></i>Verifikasi & Penelitian Data
                                 </div>
                                 <div class="meta-list">
                                     {% if tiket_details.status_penelitian or tiket.id_status_penelitian %}
                                     <div class="meta-item">
                                         <span class="meta-label">Status Penelitian</span>
                                         <span class="meta-value">
-                                            {{ tiket.id_status_penelitian.nama_status_penelitian|default:tiket_details.status_penelitian }}
+                                            {% if tiket.id_status_penelitian.deskripsi == 'Lengkap' or tiket.id_status_penelitian.nama_status_penelitian == 'Lengkap' %}
+                                                <span class="premium-badge premium-badge-success"><i class="feather-check-square me-1"></i>Lengkap</span>
+                                            {% elif tiket.id_status_penelitian.deskripsi == 'Lengkap Sebagian' or tiket.id_status_penelitian.nama_status_penelitian == 'Lengkap Sebagian' %}
+                                                <span class="premium-badge premium-badge-warning"><i class="feather-alert-triangle me-1"></i>Lengkap Sebagian</span>
+                                            {% elif tiket.id_status_penelitian.deskripsi == 'Tidak Lengkap' or tiket.id_status_penelitian.nama_status_penelitian == 'Tidak Lengkap' %}
+                                                <span class="premium-badge premium-badge-danger"><i class="feather-x-circle me-1"></i>Tidak Lengkap</span>
+                                            {% else %}
+                                                <span class="premium-badge premium-badge-secondary">{{ tiket.id_status_penelitian.nama_status_penelitian|default:tiket_details.status_penelitian|default:'-' }}</span>
+                                            {% endif %}
                                         </span>
                                     </div>
                                     {% endif %}
@@ -435,10 +497,9 @@
 
                             {% if tiket.nomor_nd_nadine or tiket.tgl_dibatalkan or tiket.tgl_dikembalikan or tiket.tgl_rekam_pide or tiket.tgl_transfer %}
                             <!-- Cluster 5: Alur ND Nadine & Kirim PIDE -->
-                            <div class="mb-3">
-                                <div class="fw-bold mb-2 pb-1 border-bottom"
-                                    style="font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; border-bottom-width: 2px !important; border-color: #e2e8f0 !important; color: #64748b !important;">
-                                    Alur ND Nadine & Kirim PIDE
+                            <div class="cluster-card">
+                                <div class="cluster-header">
+                                    <i class="feather-send"></i>Alur ND Nadine & Kirim PIDE
                                 </div>
                                 <div class="meta-list">
                                     {% if tiket.nomor_nd_nadine %}
@@ -511,10 +572,9 @@
                             </h6>
 
                             <!-- Cluster 1: Identitas & Kategori ILAP -->
-                            <div class="mb-3">
-                                <div class="fw-bold mb-2 pb-1 border-bottom"
-                                    style="font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; border-bottom-width: 2px !important; border-color: #e2e8f0 !important; color: #64748b !important;">
-                                    Identitas & Kategori ILAP
+                            <div class="cluster-card">
+                                <div class="cluster-header">
+                                    <i class="feather-database"></i>Identitas & Kategori ILAP
                                 </div>
                                 <div class="meta-list">
                                     <div class="meta-item">
@@ -523,19 +583,18 @@
                                     </div>
                                     <div class="meta-item">
                                         <span class="meta-label">Kategori ILAP</span>
-                                        <span class="meta-value">{{ ilap_info.kategori_ilap }}</span>
+                                        <span class="meta-value"><span class="premium-pill">{{ ilap_info.kategori_ilap }}</span></span>
                                     </div>
                                     <div class="meta-item">
                                         <span class="meta-label">Kategori Wilayah</span>
-                                        <span class="meta-value">{{ ilap_info.kategori_wilayah }}</span>
+                                        <span class="meta-value"><span class="premium-pill">{{ ilap_info.kategori_wilayah }}</span></span>
                                     </div>
                                 </div>
                             </div>
                             <!-- Cluster 2: Karakteristik & Jenis Data -->
-                            <div class="mb-3">
-                                <div class="fw-bold mb-2 pb-1 border-bottom"
-                                    style="font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; border-bottom-width: 2px !important; border-color: #e2e8f0 !important; color: #64748b !important;">
-                                    Karakteristik & Jenis Data
+                            <div class="cluster-card">
+                                <div class="cluster-header">
+                                    <i class="feather-grid"></i>Karakteristik & Jenis Data
                                 </div>
                                 <div class="meta-list">
                                     <div class="meta-item">
@@ -558,12 +617,17 @@
                             </div>
 
                             <!-- Cluster 3: Periode & Klasifikasi -->
-                            <div class="mb-3">
-                                <div class="fw-bold mb-2 pb-1 border-bottom"
-                                    style="font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; border-bottom-width: 2px !important; border-color: #e2e8f0 !important; color: #64748b !important;">
-                                    Periode & Klasifikasi
+                            <div class="cluster-card">
+                                <div class="cluster-header">
+                                    <i class="feather-clock"></i>Periode & Klasifikasi
                                 </div>
                                 <div class="meta-list">
+                                    {% if periode_formatted %}
+                                    <div class="meta-item">
+                                        <span class="meta-label">Periode</span>
+                                        <span class="meta-value">{{ periode_formatted }}</span>
+                                    </div>
+                                    {% endif %}
                                     <div class="meta-item">
                                         <span class="meta-label">Periode Penyampaian - Penerimaan</span>
                                         <span class="meta-value">{{ ilap_info.deskripsi_periode }} - {{ ilap_info.periode_penerimaan }}</span>
@@ -639,134 +703,133 @@
                 </div>
                 <div class="card-body">
                     {# Edit button sits outside the PIC blocks: an Admin P3DE may edit without being a PIC. #}
-                    {% if user_can_edit_tiket %}
-                    <div class="d-grid gap-2 mb-2">
-                        <button type="button" class="btn btn-secondary" data-bs-toggle="modal"
-                            data-bs-target="#editTiketModal">
-                            <i class="feather-edit-3 me-1"></i>Ubah Isian Tiket
-                        </button>
-                    </div>
-                    {% endif %}
-
                     {% if not user_is_active_pic %}
-                    <div class="alert alert-info mb-0">
-                        <i class="feather-info me-2"></i>Anda bukan PIC aktif untuk tiket ini.
-                        {% if user_is_admin_p3de %}Sebagai Admin P3DE Anda hanya dapat mengubah isian
-                        tiket.{% else %}Anda hanya dapat melihat, tidak dapat melakukan perubahan.{% endif %}
-                    </div>
+                        <div class="alert alert-info mb-0">
+                            <i class="feather-info me-2"></i>Anda bukan PIC aktif untuk tiket ini.
+                            {% if user_is_admin_p3de %}Sebagai Admin P3DE Anda hanya dapat mengubah isian
+                            tiket.{% else %}Anda hanya dapat melihat, tidak dapat melakukan perubahan.{% endif %}
+                        </div>
+                        {% if user_can_edit_tiket %}
+                        <div class="d-grid gap-2 mt-2">
+                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
+                                data-bs-target="#editTiketModal">
+                                <i class="feather-edit-3 me-1"></i>Ubah Isian Tiket
+                            </button>
+                        </div>
+                        {% endif %}
                     {% else %}
-                    <!-- P3DE actions (existing) -->
-                    {% if user_is_active_pic_p3de %}
-                    {% if tiket.status_tiket < STATUS_DIKIRIM_KE_PIDE and tiket.status_tiket != STATUS_DIBATALKAN and tiket.status_tiket != STATUS_SELESAI and tiket.status_tiket != STATUS_DIKEMBALIKAN %} <div
-                        class="d-grid gap-2">
-                        {% if not tiket.backup %}
-                        <button type="button" class="btn btn-warning" data-bs-toggle="modal"
-                            data-bs-target="#rekamBackupDataModal">
-                            <i class="feather-save me-1"></i>Rekam Backup Data
-                        </button>
-                        {% endif %}
+                        <div class="d-grid gap-2">
+                            <!-- P3DE Primary Actions (Top) -->
+                            {% if user_is_active_pic_p3de and tiket.status_tiket < STATUS_DIKIRIM_KE_PIDE and tiket.status_tiket != STATUS_DIBATALKAN and tiket.status_tiket != STATUS_SELESAI and tiket.status_tiket != STATUS_DIKEMBALIKAN %}
+                                {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti and tiket.id_status_penelitian.deskripsi != 'Tidak Lengkap' %}
+                                    {% if has_kirim_pide_temp %}
+                                    <button type="button" class="btn btn-primary shadow-sm fw-semibold" data-bs-toggle="modal"
+                                        data-bs-target="#kirimTiketKePideModal" data-id-temp="{{ kirim_pide_id_temp }}">
+                                        <i class="feather-send me-1"></i>Kirim Tiket ke PIDE
+                                    </button>
+                                    {% else %}
+                                    <button type="button" class="btn btn-primary shadow-sm fw-semibold" data-bs-toggle="modal"
+                                        data-bs-target="#kirimTiketModal">
+                                        <i class="feather-file-text me-1"></i>Generate ND Pengantar PIDE
+                                    </button>
+                                    {% endif %}
+                                {% elif tiket.backup and tiket.tanda_terima %}
+                                    <button type="button" class="btn btn-primary shadow-sm fw-semibold" data-bs-toggle="modal"
+                                        data-bs-target="#rekamHasilPenelitianModal" data-action="edit">
+                                        <i class="feather-edit-3 me-1"></i>{% if tiket.tgl_teliti %}Ubah Hasil Penelitian{% else %}Rekam Hasil Penelitian{% endif %}
+                                    </button>
+                                {% endif %}
+                            {% endif %}
 
-                        {% if not tiket.tanda_terima %}
-                        <button type="button" class="btn btn-info text-white" data-bs-toggle="modal"
-                            data-bs-target="#createTandaTerimaModal">
-                            <i class="feather-file-text me-1"></i>Buat Tanda Terima
-                        </button>
-                        {% endif %}
+                            <!-- PIDE Primary Actions (Top) -->
+                            {% if user_is_active_pic_pide %}
+                                {% if tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE %}
+                                <button type="button" class="btn btn-primary shadow-sm fw-semibold" data-bs-toggle="modal"
+                                    data-bs-target="#identifikasiTiketModal">
+                                    <i class="feather-check-circle me-1"></i>Proses Identifikasi
+                                </button>
+                                {% elif tiket.status_tiket == STATUS_IDENTIFIKASI %}
+                                <button type="button" class="btn btn-primary shadow-sm fw-semibold" data-bs-toggle="modal"
+                                    data-bs-target="#transferKePMDEModal" disabled>
+                                    <i class="feather-send me-1"></i>Transfer ke PMDE
+                                </button>
+                                {% endif %}
+                            {% endif %}
 
-                        {% if tiket.backup and tiket.tanda_terima %}
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal"
-                            data-bs-target="#rekamHasilPenelitianModal" data-action="edit">
-                            <i class="feather-edit-3 me-1"></i>{% if tiket.tgl_teliti %}Ubah Hasil Penelitian{% else %}Rekam Hasil Penelitian{% endif %}
-                        </button>
-                        {% endif %}
+                            <!-- PMDE Primary Actions (Top) -->
+                            {% if user_is_active_pic_pmde and tiket.status_tiket == STATUS_PENGENDALIAN_MUTU %}
+                                <button type="button" class="btn btn-success shadow-sm fw-semibold" data-bs-toggle="modal"
+                                    data-bs-target="#selesaikanTiketModal" disabled>
+                                    <i class="feather-check me-1"></i>Selesaikan Tiket
+                                </button>
+                            {% endif %}
 
-                        {% if tiket.backup and tiket.tanda_terima and tiket.tgl_teliti and tiket.id_status_penelitian.deskripsi != 'Tidak Lengkap' %}
-                        {% if has_kirim_pide_temp %}
-                        <button type="button" class="btn btn-success" data-bs-toggle="modal"
-                            data-bs-target="#kirimTiketKePideModal" data-id-temp="{{ kirim_pide_id_temp }}">
-                            <i class="feather-send me-1"></i>Kirim Tiket ke PIDE
-                        </button>
-                        {% else %}
-                        <button type="button" class="btn btn-success" data-bs-toggle="modal"
-                            data-bs-target="#kirimTiketModal">
-                            <i class="feather-file-text me-1"></i>Generate ND Pengantar PIDE
-                        </button>
-                        {% endif %}
-                        {% endif %}
-                </div>
-                {% elif tiket.status_tiket >= STATUS_DIKIRIM_KE_PIDE or tiket.status_tiket == STATUS_DIBATALKAN or tiket.status_tiket == STATUS_SELESAI %}
-                <div class="text-center text-muted py-2">
-                    <i class="feather-info me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
-                </div>
-                {% endif %}
+                            <!-- P3DE Secondary Actions -->
+                            {% if user_is_active_pic_p3de and tiket.status_tiket < STATUS_DIKIRIM_KE_PIDE and tiket.status_tiket != STATUS_DIBATALKAN and tiket.status_tiket != STATUS_SELESAI and tiket.status_tiket != STATUS_DIKEMBALIKAN %}
+                                {% if not tiket.backup %}
+                                <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                                    data-bs-target="#rekamBackupDataModal">
+                                    <i class="feather-save me-1"></i>Rekam Backup Data
+                                </button>
+                                {% endif %}
+                                {% if not tiket.tanda_terima %}
+                                <button type="button" class="btn btn-info" data-bs-toggle="modal"
+                                    data-bs-target="#createTandaTerimaModal">
+                                    <i class="feather-file-text me-1"></i>Buat Tanda Terima
+                                </button>
+                                {% endif %}
+                            {% endif %}
+                            
+                            <!-- General Secondary Actions -->
+                            {% if user_can_edit_tiket %}
+                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
+                                data-bs-target="#editTiketModal">
+                                <i class="feather-edit-3 me-1"></i>Ubah Isian Tiket
+                            </button>
+                            {% endif %}
 
-                {% if tiket.status_tiket < STATUS_DIKIRIM_KE_PIDE %} <button type="button"
-                    class="btn btn-danger mt-2 w-100" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
-                    <i class="feather-x-circle me-1"></i>Batalkan Tiket
-                    </button>
-                    {% endif %}
-                    {% endif %}
+                            <!-- PIDE Secondary Actions -->
+                            {% if user_is_active_pic_pide and tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE or user_is_active_pic_pide and tiket.status_tiket == STATUS_IDENTIFIKASI %}
+                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
+                                data-bs-target="#dikembalikanTiketModal">
+                                <i class="feather-corner-up-left me-1"></i>Kembalikan ke P3DE
+                            </button>
+                            {% endif %}
 
-                    <!-- PIDE actions -->
-                    {% if user_is_active_pic_pide %}
-                    {% if tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE or tiket.status_tiket == STATUS_IDENTIFIKASI %}
-                    <div class="d-grid gap-2 mt-2">
-                        <!-- Dikembalikan button: show if status 4 or 5 -->
-                        {% if tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE or tiket.status_tiket == STATUS_IDENTIFIKASI %}
-                        <button type="button" class="btn btn-warning" data-bs-toggle="modal"
-                            data-bs-target="#dikembalikanTiketModal">
-                            <i class="feather-corner-up-left me-1"></i>Kembalikan ke P3DE
-                        </button>
-                        {% endif %}
+                            <!-- Special Request Secondary -->
+                            {% if user_can_edit_special_request %}
+                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
+                                data-bs-target="#specialRequestModal">
+                                <i class="feather-star me-1"></i>Ubah Permintaan Khusus
+                            </button>
+                            {% endif %}
 
-                        <!-- Identifikasi button: show if status 4 (Dikirim ke PIDE) -->
-                        {% if tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE %}
-                        <button type="button" class="btn btn-info text-white" data-bs-toggle="modal"
-                            data-bs-target="#identifikasiTiketModal">
-                            <i class="feather-check-circle me-1"></i>Proses Identifikasi
-                        </button>
-                        {% endif %}
+                            <!-- Empty States / Messages -->
+                            {% if user_is_active_pic_p3de and tiket.status_tiket >= STATUS_DIKIRIM_KE_PIDE or user_is_active_pic_p3de and tiket.status_tiket == STATUS_DIBATALKAN or user_is_active_pic_p3de and tiket.status_tiket == STATUS_SELESAI %}
+                            <div class="text-center text-muted py-2">
+                                <i class="feather-info me-1"></i>Tidak ada aksi utama yang tersedia untuk tiket ini.
+                            </div>
+                            {% endif %}
+                            
+                            {% if user_is_active_pic_pide and tiket.status_tiket != STATUS_DIKIRIM_KE_PIDE and tiket.status_tiket != STATUS_IDENTIFIKASI %}
+                            <div class="text-center text-muted py-2">
+                                <i class="feather-info me-1"></i>Tidak ada aksi utama yang tersedia untuk tiket ini.
+                            </div>
+                            {% endif %}
+                            
+                            {% if user_is_active_pic_pmde and tiket.status_tiket != STATUS_PENGENDALIAN_MUTU %}
+                            <div class="text-center text-muted py-2">
+                                <i class="feather-info me-1"></i>Tidak ada aksi utama yang tersedia untuk tiket ini.
+                            </div>
+                            {% endif %}
 
-                        <!-- Transfer ke PMDE button: show if status 5 (Diidentifikasi) -->
-                        {% if tiket.status_tiket == STATUS_IDENTIFIKASI %}
-                        <button type="button" class="btn btn-success" data-bs-toggle="modal"
-                            data-bs-target="#transferKePMDEModal" disabled>
-                            <i class="feather-send me-1"></i>Transfer ke PMDE
-                        </button>
-                        {% endif %}
-                    </div>
-                    {% else %}
-                    <div class="text-center text-muted py-2 mt-2">
-                        <i class="feather-info me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
-                    </div>
-                    {% endif %}
-                    {% endif %}
-
-                    <!-- PMDE actions -->
-                    {% if user_is_active_pic_pmde %}
-                    {% if tiket.status_tiket == STATUS_PENGENDALIAN_MUTU %}
-                    <div class="d-grid gap-2 mt-2">
-                        <button type="button" class="btn btn-success" data-bs-toggle="modal"
-                            data-bs-target="#selesaikanTiketModal" disabled>
-                            <i class="feather-check me-1"></i>Selesaikan Tiket
-                        </button>
-                    </div>
-                    {% else %}
-                    <div class="text-center text-muted py-2 mt-2">
-                        <i class="feather-info me-1"></i>Tidak ada aksi yang tersedia untuk tiket ini.
-                    </div>
-                    {% endif %}
-                    {% endif %}
-
-                    <!-- Special Request (P3DE / PIDE) -->
-                    {% if user_can_edit_special_request %}
-                    <div class="d-grid gap-2 mt-2">
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal"
-                            data-bs-target="#specialRequestModal">
-                            <i class="feather-star me-1"></i>Ubah Permintaan Khusus
-                        </button>
-                    </div>
-                    {% endif %}
+                            <!-- Danger Actions (Bottom) -->
+                            {% if user_is_active_pic_p3de and tiket.status_tiket < STATUS_DIKIRIM_KE_PIDE and tiket.status_tiket != STATUS_DIBATALKAN and tiket.status_tiket != STATUS_SELESAI and tiket.status_tiket != STATUS_DIKEMBALIKAN %}
+                            <button type="button" class="btn btn-outline-danger mt-1" data-bs-toggle="modal" data-bs-target="#batalkanTiketModal">
+                                <i class="feather-x-circle me-1"></i>Batalkan Tiket
+                            </button>
+                            {% endif %}
+                        </div>
                     {% endif %}
 
                     <!-- Document Download Section (folded back into Aksi, inline) -->
@@ -825,7 +888,7 @@
                                         <div class="text-muted" style="font-size: 10px;">Format: DOCX</div>
                                     </div>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline-warning btn-download-pkdi-sebagian py-1 px-2"
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-download-pkdi-sebagian py-1 px-2"
                                     data-id="{{ tiket.pk }}" style="font-size: 11px;">
                                     <i class="feather-download me-1"></i>Unduh
                                 </button>
@@ -844,7 +907,7 @@
                                         <div class="text-muted" style="font-size: 10px;">Format: DOCX</div>
                                     </div>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline-warning btn-download-klarifikasi py-1 px-2"
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-download-klarifikasi py-1 px-2"
                                     data-id="{{ tiket.pk }}" style="font-size: 11px;">
                                     <i class="feather-download me-1"></i>Unduh
                                 </button>
@@ -883,7 +946,7 @@
                                         <div class="text-muted" style="font-size: 10px;">Format: DOCX</div>
                                     </div>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline-info btn-download-doc py-1 px-2"
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-download-doc py-1 px-2"
                                     data-id="{{ tiket.pk }}" data-type="nd_pengantar" style="font-size: 11px;">
                                     <i class="feather-download me-1"></i>Unduh
                                 </button>
@@ -905,57 +968,49 @@
         <div class="col-12">
 
             <!-- Metrik Kualitas & Hasil QC Data -->
-            {% if tiket_details.baris_diterima %}
             <div class="card shadow-sm mb-4">
-                <div
-                    class="card-header bg-success text-white d-flex justify-content-between align-items-center py-2 px-3">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center py-2 px-3">
                     <h5 class="mb-0"><i class="feather-bar-chart-2 me-2"></i>Metrik Kualitas & Hasil QC Data</h5>
                     <div class="d-flex align-items-center gap-2">
                         <span class="fw-normal"
                             style="font-size: 11px; letter-spacing: 0.02em; color: inherit; opacity: 0.7;">Satuan Data:</span>
                         <span class="badge bg-white text-success px-2.5 py-1 fw-bold shadow-sm"
                             style="font-size: 11px; border-radius: 6px; letter-spacing: 0.3px;">
-                            {% if tiket_details.satuan_data == 1 %}Baris{% else %}{{ tiket_details.satuan_data }}{% endif %}
+                            {% if tiket_details.satuan_data == 1 %}Baris{% else %}{{ tiket_details.satuan_data|default:"Baris" }}{% endif %}
                         </span>
                     </div>
                 </div>
                 <div class="card-body">
-                    <!-- Parallel Metric Counters Row -->
+                    <!-- Parallel Metric Counters Row (Always show all 4 metric cards!) -->
                     <div class="row g-3 mb-4">
                         <div class="col-md-3">
                             <div class="metric-card bg-light-primary d-flex flex-column align-items-center justify-content-center"
                                 style="height: 100%; min-height: 90px; padding: 1.25rem 1rem !important;">
                                 <span class="metric-label">Baris Diterima</span>
-                                <span class="metric-value text-primary">{{ tiket_details.baris_diterima }}</span>
+                                <span class="metric-value text-primary">{{ tiket_details.baris_diterima|default:"0" }}</span>
                             </div>
                         </div>
-                        {% if tiket_details.baris_lengkap is not null %}
                         <div class="col-md-3">
                             <div class="metric-card bg-light-success d-flex flex-column align-items-center justify-content-center"
                                 style="height: 100%; min-height: 90px; padding: 1.25rem 1rem !important;">
                                 <span class="metric-label">Baris Lengkap</span>
-                                <span class="metric-value text-success">{{ tiket_details.baris_lengkap }}</span>
+                                <span class="metric-value text-success">{{ tiket_details.baris_lengkap|default:"0" }}</span>
                             </div>
                         </div>
-                        {% endif %}
-                        {% if tiket_details.baris_tidak_lengkap is not null %}
                         <div class="col-md-3">
                             <div class="metric-card bg-light-danger d-flex flex-column align-items-center justify-content-center"
                                 style="height: 100%; min-height: 90px; padding: 1.25rem 1rem !important;">
                                 <span class="metric-label">Baris Tidak Lengkap</span>
-                                <span class="metric-value text-danger">{{ tiket_details.baris_tidak_lengkap }}</span>
+                                <span class="metric-value text-danger">{{ tiket_details.baris_tidak_lengkap|default:"0" }}</span>
                             </div>
                         </div>
-                        {% endif %}
-                        {% if tiket_details.baris_cde is not null %}
                         <div class="col-md-3">
                             <div class="metric-card bg-light-info d-flex flex-column align-items-center justify-content-center"
                                 style="height: 100%; min-height: 90px; padding: 1.25rem 1rem !important;">
                                 <span class="metric-label">Baris CDE</span>
-                                <span class="metric-value text-info">{{ tiket_details.baris_cde }}</span>
+                                <span class="metric-value text-info">{{ tiket_details.baris_cde|default:"0" }}</span>
                             </div>
                         </div>
-                        {% endif %}
                     </div>
 
                     <!-- Validation details and QC status split -->
@@ -988,7 +1043,10 @@
                                     </div>
                                     {% endif %}
                                     {% else %}
-                                    <div class="text-muted fs-8 py-2"><i class="feather-info me-1"></i>Tidak ada data validasi baris.</div>
+                                    <div class="text-center py-4 rounded-3 border border-dashed mt-2" style="border-color: #cbd5e1 !important; background-color: rgba(255,255,255,0.5);">
+                                        <i class="feather-info text-muted mb-2 fs-4 d-block"></i>
+                                        <span class="fw-medium text-secondary" style="font-size: 0.85rem;">Tidak ada data validasi baris.</span>
+                                    </div>
                                     {% endif %}
                                 </div>
                             </div>
@@ -1053,7 +1111,10 @@
                                     </div>
                                     {% endif %}
                                     {% else %}
-                                    <div class="text-muted fs-8 py-2"><i class="feather-info me-1"></i>Tidak ada data status Quality Control.</div>
+                                    <div class="text-center py-4 rounded-3 border border-dashed mt-2" style="border-color: #cbd5e1 !important; background-color: rgba(255,255,255,0.5);">
+                                        <i class="feather-shield text-muted mb-2 fs-4 d-block"></i>
+                                        <span class="fw-medium text-secondary" style="font-size: 0.85rem;">Tidak ada data status Quality Control.</span>
+                                    </div>
                                     {% endif %}
                                 </div>
                             </div>
@@ -1061,19 +1122,18 @@
                     </div>
                 </div>
             </div>
-            {% endif %}
         </div>
     </div>
 
     <div class="row">
         <div class="col-12">
             <!-- Riwayat & Dokumen Pendukung (tabbed: less-critical records grouped so they don't stack as separate cards) -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-secondary text-white">
-                    <h5 class="mb-0"><i class="feather-clock me-2"></i>Riwayat & Dokumen Pendukung</h5>
+            <div class="card shadow-sm mb-4 border-0" style="border-radius: 12px;">
+                <div class="card-header bg-white border-bottom pt-4 pb-3 px-4">
+                    <h5 class="mb-0 text-dark fw-bold" style="letter-spacing: -0.02em;"><i class="feather-clock text-primary me-2"></i>Riwayat & Dokumen Pendukung</h5>
                 </div>
-                <div class="card-body">
-                    <ul class="nav nav-tabs" id="riwayatTabs" role="tablist">
+                <div class="card-body p-4">
+                    <ul class="nav premium-tabs" id="riwayatTabs" role="tablist">
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active" id="riwayat-aksi-tab" data-bs-toggle="tab"
                                 data-bs-target="#riwayat-aksi-pane" type="button" role="tab"
@@ -1111,28 +1171,23 @@
                         <div class="tab-pane fade show active" id="riwayat-aksi-pane" role="tabpanel"
                             aria-labelledby="riwayat-aksi-tab">
                             {% if tiket_actions %}
-                            <div class="table-responsive" style="max-height: 320px; overflow-y: auto; position: relative;">
-                                <table class="table table-hover mb-0">
-                                    <thead class="table-light"
-                                        style="position: sticky; top: 0; z-index: 10; background-color: #f8fafc;">
+                            <div class="premium-table-wrapper" style="max-height: 350px; overflow-y: auto;">
+                                <table class="premium-table">
+                                    <thead>
                                         <tr>
-                                            <th style="background-color: #f8fafc;"><i
-                                                    class="feather-clock me-1"></i>Tanggal/Waktu</th>
-                                            <th style="background-color: #f8fafc;"><i class="feather-user me-1"></i>User</th>
-                                            <th style="background-color: #f8fafc;"><i class="feather-edit-2 me-1"></i>Status
-                                                Tiket</th>
-                                            <th style="background-color: #f8fafc;"><i class="feather-file-text me-1"></i>Catatan
-                                            </th>
+                                            <th><i class="feather-clock me-1"></i>Tanggal/Waktu</th>
+                                            <th><i class="feather-user me-1"></i>User</th>
+                                            <th><i class="feather-edit-2 me-1"></i>Status Tiket</th>
+                                            <th><i class="feather-file-text me-1"></i>Catatan</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {% for action in tiket_actions %}
                                         <tr>
-                                            <td class="text-nowrap">{{ action.timestamp|date:"d/m/Y H:i:s" }}</td>
-                                            <td>{{ action.user_display }}</td>
+                                            <td class="text-nowrap text-muted">{{ action.timestamp|date:"d/m/Y H:i" }}</td>
+                                            <td class="fw-bold text-dark">{{ action.user_display }}</td>
                                             <td>
-                                                <span
-                                                    class="badge {{ action.badge_class }} action-badge-{{ action.badge_label|slugify }}">{{ action.badge_label }}</span>
+                                                <span class="badge {{ action.badge_class }} action-badge-{{ action.badge_label|slugify }}">{{ action.badge_label }}</span>
                                             </td>
                                             <td>{{ action.catatan|default:"-" }}</td>
                                         </tr>
@@ -1141,9 +1196,12 @@
                                 </table>
                             </div>
                             {% else %}
-                            <div class="text-center py-4 text-muted">
-                                <i class="feather-info fs-1"></i>
-                                <p class="mb-0">Tidak ada riwayat aksi.</p>
+                            <div class="text-center py-5">
+                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light mb-3" style="width: 64px; height: 64px;">
+                                    <i class="feather-info text-muted fs-3"></i>
+                                </div>
+                                <h6 class="fw-bold text-dark mb-1">Belum Ada Riwayat</h6>
+                                <p class="text-muted small mb-0">Riwayat aksi tiket akan muncul di sini.</p>
                             </div>
                             {% endif %}
                         </div>
@@ -1151,9 +1209,9 @@
                         <div class="tab-pane fade" id="backup-data-pane" role="tabpanel"
                             aria-labelledby="backup-data-tab">
                             {% if backup_list %}
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead class="table-light">
+                            <div class="premium-table-wrapper">
+                                <table class="premium-table">
+                                    <thead>
                                         <tr>
                                             <th><i class="feather-folder me-1"></i>Lokasi Backup</th>
                                             <th><i class="feather-file-text me-1"></i>Nama File</th>
@@ -1164,12 +1222,15 @@
                                     <tbody>
                                         {% for backup in backup_list %}
                                         <tr>
-                                            <td>{{ backup.lokasi_backup }}</td>
+                                            <td class="fw-medium text-dark">{{ backup.lokasi_backup }}</td>
                                             <td>{{ backup.nama_file|default:"-" }}</td>
-                                            <td>{{ backup.id_media_backup.deskripsi|default:"-" }}</td>
+                                            <td><span class="premium-pill">{{ backup.id_media_backup.deskripsi|default:"-" }}</span></td>
                                             <td>
                                                 {% if backup.id_user %}
-                                                {{ backup.id_user.get_full_name|default:backup.id_user.username }}
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center" style="width: 24px; height: 24px;"><i class="feather-user text-muted fs-7"></i></div>
+                                                    <span class="fw-semibold text-dark">{{ backup.id_user.get_full_name|default:backup.id_user.username }}</span>
+                                                </div>
                                                 {% else %}
                                                 -
                                                 {% endif %}
@@ -1180,9 +1241,12 @@
                                 </table>
                             </div>
                             {% else %}
-                            <div class="text-center py-3 text-muted">
-                                <i class="feather-info fs-4"></i>
-                                <p class="mb-0">Belum ada data backup.</p>
+                            <div class="text-center py-5">
+                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light mb-3" style="width: 64px; height: 64px;">
+                                    <i class="feather-save text-muted fs-3"></i>
+                                </div>
+                                <h6 class="fw-bold text-dark mb-1">Belum Ada Backup</h6>
+                                <p class="text-muted small mb-0">Data backup terkait tiket ini akan muncul di sini.</p>
                             </div>
                             {% endif %}
                         </div>
@@ -1190,27 +1254,27 @@
                         <div class="tab-pane fade" id="tanda-terima-pane" role="tabpanel"
                             aria-labelledby="tanda-terima-tab">
                             {% if tanda_terima_items %}
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead class="table-light">
+                            <div class="premium-table-wrapper">
+                                <table class="premium-table">
+                                    <thead>
                                         <tr>
                                             <th><i class="feather-hash me-1"></i>Nomor</th>
                                             <th><i class="feather-calendar me-1"></i>Tanggal</th>
                                             <th><i class="feather-user me-1"></i>Perekam</th>
-                                            <th><i class="feather-x-circle me-1"></i>Status</th>
+                                            <th><i class="feather-activity me-1"></i>Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {% for item in tanda_terima_items %}
                                         <tr>
-                                            <td>{{ item.id_tanda_terima.nomor_tanda_terima_format }}</td>
-                                            <td>{{ item.id_tanda_terima.tanggal_tanda_terima|date:"d/m/Y H:i" }}</td>
-                                            <td>{{ item.id_tanda_terima.id_perekam.get_full_name|default:item.id_tanda_terima.id_perekam.username }}</td>
+                                            <td class="fw-bold text-dark">{{ item.id_tanda_terima.nomor_tanda_terima_format }}</td>
+                                            <td class="text-muted">{{ item.id_tanda_terima.tanggal_tanda_terima|date:"d/m/Y H:i" }}</td>
+                                            <td class="fw-semibold">{{ item.id_tanda_terima.id_perekam.get_full_name|default:item.id_tanda_terima.id_perekam.username }}</td>
                                             <td>
                                                 {% if not item.id_tanda_terima.active %}
-                                                <span class="badge bg-danger">Dibatalkan</span>
+                                                <span class="premium-badge premium-badge-danger">Dibatalkan</span>
                                                 {% else %}
-                                                <span class="badge bg-success">Aktif</span>
+                                                <span class="premium-badge premium-badge-success">Aktif</span>
                                                 {% endif %}
                                             </td>
                                         </tr>
@@ -1219,9 +1283,12 @@
                                 </table>
                             </div>
                             {% else %}
-                            <div class="text-center py-3 text-muted">
-                                <i class="feather-info fs-4"></i>
-                                <p class="mb-0">Belum ada tanda terima.</p>
+                            <div class="text-center py-5">
+                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light mb-3" style="width: 64px; height: 64px;">
+                                    <i class="feather-file-text text-muted fs-3"></i>
+                                </div>
+                                <h6 class="fw-bold text-dark mb-1">Belum Ada Tanda Terima</h6>
+                                <p class="text-muted small mb-0">Dokumen tanda terima akan muncul di sini.</p>
                             </div>
                             {% endif %}
                         </div>
@@ -1229,9 +1296,9 @@
                         <div class="tab-pane fade" id="riwayat-tiket-pane" role="tabpanel"
                             aria-labelledby="riwayat-tiket-tab">
                             {% if riwayat_tikets %}
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead class="table-light">
+                            <div class="premium-table-wrapper">
+                                <table class="premium-table">
+                                    <thead>
                                         <tr>
                                             <th><i class="feather-hash me-1"></i>Nomor Tiket</th>
                                             <th><i class="feather-calendar me-1"></i>Tanggal Terima DIP</th>
@@ -1245,11 +1312,11 @@
                                         <tr>
                                             <td>
                                                 <a href="{% url 'tiket_detail' rt.pk %}"
-                                                    class="fw-semibold text-decoration-none">
+                                                    class="fw-bold text-decoration-none text-primary">
                                                     {{ rt.nomor_tiket }}
                                                 </a>
                                             </td>
-                                            <td class="text-nowrap">
+                                            <td class="text-nowrap text-muted">
                                                 {% if rt.tgl_terima_dip %}
                                                 {{ rt.tgl_terima_dip|date:"d/m/Y H:i" }}
                                                 {% else %}
@@ -1284,12 +1351,20 @@
                                             </td>
                                             <td>
                                                 {% if rt.id_status_penelitian %}
-                                                <span class="badge bg-info">{{ rt.status_penelitian_label }}</span>
+                                                {% if rt.status_penelitian_label == 'Lengkap' %}
+                                                <span class="premium-badge premium-badge-success">{{ rt.status_penelitian_label }}</span>
+                                                {% elif rt.status_penelitian_label == 'Lengkap Sebagian' %}
+                                                <span class="premium-badge premium-badge-warning">{{ rt.status_penelitian_label }}</span>
+                                                {% elif rt.status_penelitian_label == 'Tidak Lengkap' %}
+                                                <span class="premium-badge premium-badge-danger">{{ rt.status_penelitian_label }}</span>
+                                                {% else %}
+                                                <span class="premium-badge premium-badge-secondary">{{ rt.status_penelitian_label }}</span>
+                                                {% endif %}
                                                 {% else %}
                                                 <span class="text-muted">-</span>
                                                 {% endif %}
                                             </td>
-                                            <td class="text-end fw-semibold">
+                                            <td class="text-end fw-semibold text-dark">
                                                 {% if rt.baris_cde %}
                                                 {{ rt.baris_cde }}
                                                 {% else %}
@@ -1302,9 +1377,12 @@
                                 </table>
                             </div>
                             {% else %}
-                            <div class="text-center py-3 text-muted">
-                                <i class="feather-info fs-4"></i>
-                                <p class="mb-0">Tidak ada riwayat tiket untuk sub jenis data, periode, dan tahun yang sama.</p>
+                            <div class="text-center py-5">
+                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light mb-3" style="width: 64px; height: 64px;">
+                                    <i class="feather-repeat text-muted fs-3"></i>
+                                </div>
+                                <h6 class="fw-bold text-dark mb-1">Belum Ada Riwayat Tiket</h6>
+                                <p class="text-muted small mb-0">Riwayat tiket ganda akan muncul di sini.</p>
                             </div>
                             {% endif %}
                         </div>
@@ -1318,10 +1396,18 @@
     <div class="modal fade" id="rekamBackupDataModal" tabindex="-1" aria-labelledby="rekamBackupDataModalLabel"
         aria-hidden="true">
         <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-warning text-dark">
-                    <h5 class="modal-title" id="rekamBackupDataModalLabel">Rekam Backup Data untuk Tiket {{ tiket.nomor_tiket }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+                <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #fef3c7; color: #f59e0b; flex-shrink: 0;">
+                            <i class="feather-save" style="font-size: 16px;"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0" id="rekamBackupDataModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Rekam Backup Data</h5>
+                            <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Tiket {{ tiket.nomor_tiket }}</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div id="backup-data-form-container">
                     <!-- Form will be loaded here -->
@@ -1334,10 +1420,18 @@
     <div class="modal fade" id="createTandaTerimaModal" tabindex="-1" aria-labelledby="createTandaTerimaModalLabel"
         aria-hidden="true">
         <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="createTandaTerimaModalLabel">Buat Tanda Terima untuk Tiket {{ tiket.nomor_tiket }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+                <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #e0f2fe; color: #0ea5e9; flex-shrink: 0;">
+                            <i class="feather-file-text" style="font-size: 16px;"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0" id="createTandaTerimaModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Buat Tanda Terima</h5>
+                            <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Tiket {{ tiket.nomor_tiket }}</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div id="tanda-terima-form-container">
                     <!-- Form will be loaded here -->
@@ -1350,11 +1444,18 @@
     <div class="modal fade" id="batalkanTiketModal" tabindex="-1" aria-labelledby="batalkanTiketModalLabel"
         aria-hidden="true">
         <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title text-white" id="batalkanTiketModalLabel">Batalkan Tiket {{ tiket.nomor_tiket }}</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                        aria-label="Close"></button>
+            <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+                <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #fee2e2; color: #ef4444; flex-shrink: 0;">
+                            <i class="feather-x-circle" style="font-size: 16px;"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0" id="batalkanTiketModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Batalkan</h5>
+                            <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Tiket {{ tiket.nomor_tiket }}</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div id="batalkan-tiket-form-container">
                     <!-- Form will be loaded here -->
@@ -1367,11 +1468,18 @@
     <div class="modal fade" id="rekamHasilPenelitianModal" tabindex="-1"
         aria-labelledby="rekamHasilPenelitianModalLabel" aria-hidden="true">
         <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title text-white" id="rekamHasilPenelitianModalLabel">Rekam Hasil Penelitian untuk Tiket {{ tiket.nomor_tiket }}</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                        aria-label="Close"></button>
+            <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+                <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #dbeafe; color: #2563eb; flex-shrink: 0;">
+                            <i class="feather-edit-3" style="font-size: 16px;"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0" id="rekamHasilPenelitianModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Rekam Hasil Penelitian</h5>
+                            <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Tiket {{ tiket.nomor_tiket }}</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div id="rekam-hasil-penelitian-form-container">
                     <!-- Form will be loaded here -->
@@ -1384,11 +1492,18 @@
     <div class="modal fade" id="kirimTiketModal" tabindex="-1" aria-labelledby="kirimTiketModalLabel"
         aria-hidden="true">
         <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title text-white" id="kirimTiketModalLabel">Generate ND Pengantar PIDE {{ tiket.nomor_tiket }}</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                        aria-label="Close"></button>
+            <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+                <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #dbeafe; color: #2563eb; flex-shrink: 0;">
+                            <i class="feather-file-text" style="font-size: 16px;"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0" id="kirimTiketModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Generate ND Pengantar</h5>
+                            <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Tiket {{ tiket.nomor_tiket }}</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div id="kirim-tiket-form-container">
                     <!-- Form will be loaded here -->
@@ -1401,13 +1516,18 @@
     <div class="modal fade" id="kirimTiketKePideModal" tabindex="-1" aria-labelledby="kirimTiketKePideModalLabel"
         aria-hidden="true">
         <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title text-white" id="kirimTiketKePideModalLabel">
-                        <i class="feather-send me-1"></i>Kirim Tiket ke PIDE {{ tiket.nomor_tiket }}
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                        aria-label="Close"></button>
+            <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+                <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #dbeafe; color: #2563eb; flex-shrink: 0;">
+                            <i class="feather-send" style="font-size: 16px;"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0" id="kirimTiketKePideModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Kirim Tiket ke PIDE</h5>
+                            <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Tiket {{ tiket.nomor_tiket }}</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div id="kirim-tiket-ke-pide-form-container">
                     <!-- Loaded via AJAX -->
@@ -1420,10 +1540,18 @@
     <div class="modal fade" id="dikembalikanTiketModal" tabindex="-1" aria-labelledby="dikembalikanTiketModalLabel"
         aria-hidden="true">
         <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-warning text-dark">
-                    <h5 class="modal-title text-dark" id="dikembalikanTiketModalLabel">Kembalikan Tiket ke P3DE {{ tiket.nomor_tiket }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+                <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #e6ecfd; color: #2f54c4; flex-shrink: 0;">
+                            <i class="feather-corner-up-left" style="font-size: 16px;"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0" id="dikembalikanTiketModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Kembalikan Tiket</h5>
+                            <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Tiket {{ tiket.nomor_tiket }}</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div id="dikembalikan-tiket-form-container">
                     <!-- Form will be loaded here -->
@@ -1436,11 +1564,18 @@
     <div class="modal fade" id="identifikasiTiketModal" tabindex="-1" aria-labelledby="identifikasiTiketModalLabel"
         aria-hidden="true">
         <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title text-white" id="identifikasiTiketModalLabel">Identifikasi Tiket {{ tiket.nomor_tiket }}</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                        aria-label="Close"></button>
+            <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+                <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #e0f2fe; color: #0ea5e9; flex-shrink: 0;">
+                            <i class="feather-check-circle" style="font-size: 16px;"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0" id="identifikasiTiketModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Identifikasi</h5>
+                            <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Tiket {{ tiket.nomor_tiket }}</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div id="identifikasi-tiket-form-container">
                     <!-- Form will be loaded here -->
@@ -1453,11 +1588,18 @@
     <div class="modal fade" id="transferKePMDEModal" tabindex="-1" aria-labelledby="transferKePMDEModalLabel"
         aria-hidden="true">
         <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title text-white" id="transferKePMDEModalLabel">Transfer Tiket ke PMDE {{ tiket.nomor_tiket }}</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                        aria-label="Close"></button>
+            <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+                <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #e6f4ff; color: #006fcc; flex-shrink: 0;">
+                            <i class="feather-send" style="font-size: 16px;"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0" id="transferKePMDEModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Transfer Tiket</h5>
+                            <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Tiket {{ tiket.nomor_tiket }}</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div id="transfer-ke-pmde-form-container">
                     <!-- Form will be loaded here -->
@@ -1470,10 +1612,18 @@
     {% if user_can_edit_special_request %}
     <div class="modal fade" id="specialRequestModal" tabindex="-1" aria-labelledby="specialRequestModalLabel" aria-hidden="true">
         <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="specialRequestModalLabel">Ubah Permintaan Khusus {{ tiket.nomor_tiket }}</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+                <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #dbeafe; color: #2563eb; flex-shrink: 0;">
+                            <i class="feather-star" style="font-size: 16px;"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0" id="specialRequestModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Ubah Permintaan Khusus</h5>
+                            <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Tiket {{ tiket.nomor_tiket }}</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div id="special-request-form-container">
                     <!-- Form will be loaded here -->
@@ -1487,10 +1637,18 @@
     {% if user_can_edit_tiket %}
     <div class="modal fade" id="editTiketModal" tabindex="-1" aria-labelledby="editTiketModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-secondary text-white">
-                    <h5 class="modal-title" id="editTiketModalLabel">Ubah Isian Tiket {{ tiket.nomor_tiket }}</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+                <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #dbeafe; color: #2563eb; flex-shrink: 0;">
+                            <i class="feather-edit-3" style="font-size: 16px;"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0" id="editTiketModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Ubah Isian</h5>
+                            <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Tiket {{ tiket.nomor_tiket }}</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div id="edit-tiket-form-container">
                     <!-- Form will be loaded here -->
@@ -1504,11 +1662,18 @@
     <div class="modal fade" id="selesaikanTiketModal" tabindex="-1" aria-labelledby="selesaikanTiketModalLabel"
         aria-hidden="true">
         <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title text-white" id="selesaikanTiketModalLabel">Selesaikan Tiket {{ tiket.nomor_tiket }}</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                        aria-label="Close"></button>
+            <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+                <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #dcfce7; color: #22c55e; flex-shrink: 0;">
+                            <i class="feather-check-circle" style="font-size: 16px;"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0" id="selesaikanTiketModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Selesaikan</h5>
+                            <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Tiket {{ tiket.nomor_tiket }}</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div id="selesaikan-tiket-form-container">
                     <!-- Form will be loaded here -->
@@ -1764,6 +1929,155 @@
             font-weight: 600;
             color: #0f172a;
             text-align: right;
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.35rem;
+        }
+
+        .premium-badge {
+            padding: 0.25rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            border: 1px solid transparent;
+        }
+
+        .premium-badge-primary { background-color: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+        .premium-badge-success { background-color: #dcfce7; color: #15803d; border-color: #bbf7d0; }
+        .premium-badge-warning { background-color: #fef3c7; color: #b45309; border-color: #fde68a; }
+        .premium-badge-danger { background-color: #fee2e2; color: #b91c1c; border-color: #fecaca; }
+        .premium-badge-indigo { background-color: #e0e7ff; color: #4338ca; border-color: #c7d2fe; }
+        .premium-badge-teal { background-color: #ccfbf1; color: #0f766e; border-color: #99f6e4; }
+        .premium-badge-secondary { background-color: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+
+        .premium-pill {
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background-color: #f8fafc;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+            white-space: nowrap;
+        }
+
+        /* Bento-style Cluster Cards */
+        .cluster-card {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            transition: all 0.2s ease;
+        }
+        
+        .cluster-card:hover {
+            border-color: #cbd5e1;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            background-color: #ffffff;
+        }
+
+        .cluster-header {
+            font-size: 0.75rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #475569;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .cluster-header i {
+            color: #00BDFB;
+            font-size: 0.85rem;
+        }
+
+        /* Premium Tabs */
+        .premium-tabs {
+            border-bottom: 1px solid #e2e8f0;
+            gap: 1rem;
+        }
+        .premium-tabs .nav-link {
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: #64748b;
+            font-weight: 600;
+            padding: 0.75rem 0.25rem;
+            margin-bottom: -1px;
+            background: transparent;
+            transition: all 0.2s ease;
+        }
+        .premium-tabs .nav-link:hover {
+            color: #0f172a;
+            border-bottom-color: #cbd5e1;
+        }
+        .premium-tabs .nav-link.active {
+            color: #00BDFB;
+            border-bottom-color: #00BDFB;
+            background: transparent;
+        }
+        .premium-tabs .nav-link .badge {
+            background-color: #f1f5f9 !important;
+            color: #475569 !important;
+            transition: all 0.2s ease;
+        }
+        .premium-tabs .nav-link.active .badge {
+            background-color: rgba(0, 189, 251, 0.1) !important;
+            color: #008bc2 !important;
+        }
+
+        /* Premium Table */
+        .premium-table-wrapper {
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+        .premium-table {
+            margin-bottom: 0;
+            width: 100%;
+        }
+        .premium-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .premium-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 11;
+            background-color: #f8fafc;
+            color: #64748b;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 700;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0.75rem 1rem;
+            background-clip: padding-box;
+            box-shadow: 0 1px 0 #e2e8f0;
+        }
+        .premium-table tbody td {
+            padding: 1rem;
+            vertical-align: middle;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+            font-size: 0.85rem;
+        }
+        .premium-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .premium-table tbody tr:hover {
+            background-color: #f8fafc;
         }
 
         /* Metric counter cards */
@@ -2026,6 +2340,8 @@
             background-color: #f8fafc !important;
         }
 
+
+        
         /* Premium Button styling */
         .main-content .btn {
             border-radius: 8px !important;
@@ -2050,85 +2366,90 @@
             font-size: 0.9rem;
         }
 
+                /* Action Buttons Premium Colors - Robust Override */
+        /* Primary Button (Main Flow) */
         .main-content .btn-primary {
-            background-color: #3b82f6 !important;
-            border-color: #3b82f6 !important;
+            background-color: #0c92ff !important;
+            border: 1px solid #0c92ff !important;
             color: #ffffff !important;
         }
-
-        .main-content .btn-primary:hover {
-            background-color: #2563eb !important;
-            border-color: #2563eb !important;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2) !important;
-            transform: translateY(-1px);
-        }
-
-        .main-content .btn-success {
-            background-color: #10b981 !important;
-            border-color: #10b981 !important;
+        .main-content .btn-primary:hover, .main-content .btn-primary:active, .main-content .btn-primary:focus {
+            background-color: #0284c7 !important;
+            border: 1px solid #0284c7 !important;
             color: #ffffff !important;
+            box-shadow: 0 0 0 0.25rem rgba(12, 146, 255, 0.25) !important;
         }
 
-        .main-content .btn-success:hover {
-            background-color: #059669 !important;
-            border-color: #059669 !important;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2) !important;
-            transform: translateY(-1px);
-        }
-
-        .main-content .btn-warning {
-            background-color: #f59e0b !important;
-            border-color: #f59e0b !important;
-            color: #ffffff !important;
-        }
-
-        .main-content .btn-warning:hover {
-            background-color: #d97706 !important;
-            border-color: #d97706 !important;
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2) !important;
-            transform: translateY(-1px);
-        }
-
+        /* Info Button (Cyan Primary) */
         .main-content .btn-info {
             background-color: #06b6d4 !important;
-            border-color: #06b6d4 !important;
+            border: 1px solid #06b6d4 !important;
             color: #ffffff !important;
         }
-
-        .main-content .btn-info:hover {
+        .main-content .btn-info:hover, .main-content .btn-info:active, .main-content .btn-info:focus {
             background-color: #0891b2 !important;
-            border-color: #0891b2 !important;
-            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2) !important;
-            transform: translateY(-1px);
-        }
-
-        .main-content .btn-danger {
-            background-color: #ef4444 !important;
-            border-color: #ef4444 !important;
+            border: 1px solid #0891b2 !important;
             color: #ffffff !important;
+            box-shadow: 0 0 0 0.25rem rgba(6, 182, 212, 0.25) !important;
         }
 
-        .main-content .btn-danger:hover {
-            background-color: #dc2626 !important;
-            border-color: #dc2626 !important;
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2) !important;
-            transform: translateY(-1px);
+        /* Outline Primary (Secondary Flow - Blue Outline) */
+        .main-content .btn-outline-primary {
+            background-color: transparent !important;
+            border: 1px solid #0c92ff !important;
+            color: #0c92ff !important;
+        }
+        .main-content .btn-outline-primary:hover, .main-content .btn-outline-primary:active, .main-content .btn-outline-primary:focus {
+            background-color: #f0f9ff !important;
+            border: 1px solid #0c92ff !important;
+            color: #0c92ff !important;
+            box-shadow: 0 0 0 0.25rem rgba(12, 146, 255, 0.25) !important;
         }
 
-        .main-content .btn-secondary {
-            background-color: #64748b !important;
-            border-color: #64748b !important;
-            color: #ffffff !important;
+        /* Outline Secondary (For purely neutral/gray needs) */
+        .main-content .btn-outline-secondary {
+            background-color: transparent !important;
+            border: 1px solid #cbd5e1 !important;
+            color: #475569 !important;
+        }
+        .main-content .btn-outline-secondary:hover, .main-content .btn-outline-secondary:active, .main-content .btn-outline-secondary:focus {
+            background-color: #f8fafc !important;
+            border: 1px solid #cbd5e1 !important;
+            color: #334155 !important;
+            box-shadow: 0 0 0 0.25rem rgba(100, 116, 139, 0.15) !important;
         }
 
-        .main-content .btn-secondary:hover {
-            background-color: #475569 !important;
-            border-color: #475569 !important;
-            box-shadow: 0 4px 12px rgba(100, 116, 139, 0.2) !important;
-            transform: translateY(-1px);
+        /* Outline Danger (For destructive actions) */
+        .main-content .btn-outline-danger {
+            background-color: transparent !important;
+            border: 1px solid #ef4444 !important;
+            color: #ef4444 !important;
+        }
+        .main-content .btn-outline-danger:hover, .main-content .btn-outline-danger:active, .main-content .btn-outline-danger:focus {
+            background-color: #fef2f2 !important;
+            border: 1px solid #ef4444 !important;
+            color: #ef4444 !important;
+            box-shadow: 0 0 0 0.25rem rgba(239, 68, 68, 0.25) !important;
         }
 
+        /* Action buttons premium styles */
+        .card-body .btn {
+            text-transform: none !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.3px !important;
+            padding: 0.55rem 1rem !important;
+            font-size: 13px !important;
+            border-radius: 8px !important;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        
+        .card-body .btn:hover {
+            transform: translateY(-1px) !important;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08) !important;
+        }
+        
         /* Modal Styling Improvements */
+
         .modal-content {
             border-radius: 14px !important;
             border: 1px solid #e2e8f0 !important;
@@ -2150,25 +2471,30 @@
             padding: 1.1rem 1.5rem !important;
         }
 
-        /* Action buttons premium styles */
-        .card-body .btn {
-            text-transform: none !important;
-            font-weight: 600 !important;
-            letter-spacing: 0.3px !important;
-            padding: 0.55rem 1rem !important;
-            font-size: 13px !important;
-            border-radius: 8px !important;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        }
-        
-        .card-body .btn:hover {
-            transform: translateY(-1px) !important;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08) !important;
-        }
+
     </style>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            // Auto open modal if action query param is specified
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const actionParam = urlParams.get('action');
+                let targetModalId = null;
+                if (actionParam === 'teliti') targetModalId = 'rekamHasilPenelitianModal';
+                else if (actionParam === 'backup') targetModalId = 'rekamBackupDataModal';
+                else if (actionParam === 'tanda_terima') targetModalId = 'createTandaTerimaModal';
+
+                if (targetModalId) {
+                    const targetEl = document.getElementById(targetModalId);
+                    if (targetEl && typeof bootstrap !== 'undefined') {
+                        setTimeout(() => {
+                            const modal = new bootstrap.Modal(targetEl);
+                            modal.show();
+                        }, 200);
+                    }
+                }
+            } catch(e) { console.error('Auto modal trigger error:', e); }
             const setupModalAria = (modalEl) => {
                 if (!modalEl) {
                     return;
@@ -2254,7 +2580,7 @@
                                 }
                                 showToast(data.message || opts.successMessage
                                     || 'Data berhasil disimpan.', 'success');
-                                setTimeout(() => location.reload(), 800);
+                                location.reload();
                             } else {
                                 showToast(data.message || opts.errorMessage
                                     || 'Gagal menyimpan data.', 'danger');
@@ -3412,8 +3738,42 @@
                         });
                     }
                 }
+
+                // Kanwil state logic
+                const lingkupSelect = container.querySelector('#id_lingkup');
+                const kanwilSelect = container.querySelector('#id_id_kanwil');
+                const kanwilWrapper = container.querySelector('#scope-kanwil-wrapper');
+                const kanwilHint = container.querySelector('#kanwil-hint');
+                const LINGKUP_REGIONAL = 'regional';
+
+                if (lingkupSelect && kanwilSelect) {
+                    const updateKanwilState = () => {
+                        const isRegional = lingkupSelect.value === LINGKUP_REGIONAL;
+                        
+                        kanwilSelect.disabled = !isRegional;
+                        
+                        if (kanwilWrapper) {
+                            kanwilWrapper.style.opacity = isRegional ? '1' : '0.55';
+                        }
+                        if (kanwilHint) {
+                            kanwilHint.style.display = isRegional ? 'none' : 'block';
+                        }
+                        
+                        if (!isRegional) {
+                            if (typeof $ !== 'undefined' && $(kanwilSelect).data('select2')) {
+                                $(kanwilSelect).val(null).trigger('change');
+                            } else {
+                                kanwilSelect.value = '';
+                            }
+                        }
+                    };
+
+                    lingkupSelect.addEventListener('change', updateKanwilState);
+                    updateKanwilState();
+                }
             }
         });
+
 
         // Document download functions
         function downloadTiketDoc(pk, docType) {
@@ -3599,5 +3959,74 @@
             }
             window.addEventListener('load', initStickyCard);
         })();
+
+        // Fitur Copy Format Penamaan File
+        function copyFilename(btn, tiket, ilap, jenis, periode) {
+            // Bersihkan string dari karakter yang dilarang di OS (/ \ : * ? " < > |)
+            let sanitize = (str) => {
+                if (!str) return '';
+                // Hapus multiple spasi menjadi single spasi agar rapi, lalu hapus karakter terlarang
+                return str.replace(/\s+/g, ' ').replace(/[\/\\:*?"<>|]+/g, '_').trim();
+            };
+            
+            let filename = [tiket, ilap, jenis, periode]
+                .map(s => sanitize(s))
+                .filter(s => s.length > 0)
+                .join('_')
+                .toUpperCase();
+                
+            navigator.clipboard.writeText(filename).then(() => {
+                let icon = btn.querySelector('i');
+                let oldClass = icon.className;
+                icon.className = 'feather-check text-success';
+                
+                // Ubah title tooltip
+                let tooltip = bootstrap.Tooltip.getInstance(btn);
+                let oldTitle = btn.getAttribute('data-bs-original-title') || btn.getAttribute('title');
+                if (tooltip) {
+                    btn.setAttribute('data-bs-original-title', 'Tersalin: ' + filename);
+                    tooltip.show();
+                }
+                
+                setTimeout(() => {
+                    icon.className = oldClass;
+                    if (tooltip) {
+                        btn.setAttribute('data-bs-original-title', oldTitle);
+                        tooltip.hide();
+                    }
+                }, 3000);
+            }).catch(err => {
+                console.error('Gagal menyalin teks: ', err);
+                alert('Gagal menyalin teks.');
+            });
+        }
+
+        // Fitur Copy Teks Sederhana (misal: Nomor Tiket saja)
+        function copySimpleText(btn, text) {
+            if (!text) return;
+            navigator.clipboard.writeText(text).then(() => {
+                let icon = btn.querySelector('i');
+                let oldClass = icon.className;
+                icon.className = 'feather-check text-success';
+                
+                let tooltip = bootstrap.Tooltip.getInstance(btn);
+                let oldTitle = btn.getAttribute('data-bs-original-title') || btn.getAttribute('title');
+                if (tooltip) {
+                    btn.setAttribute('data-bs-original-title', 'Tersalin: ' + text);
+                    tooltip.show();
+                }
+                
+                setTimeout(() => {
+                    icon.className = oldClass;
+                    if (tooltip) {
+                        btn.setAttribute('data-bs-original-title', oldTitle);
+                        tooltip.hide();
+                    }
+                }, 3000);
+            }).catch(err => {
+                console.error('Gagal menyalin teks: ', err);
+                alert('Gagal menyalin teks.');
+            });
+        }
     </script>
     {% endblock %}

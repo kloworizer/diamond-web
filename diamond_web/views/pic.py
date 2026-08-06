@@ -59,8 +59,10 @@ class PICListView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['tipe'] = self.tipe
-        context['tipe_display'] = self.get_tipe_display()
+        tipe_display = self.get_tipe_display()
+        context['tipe_display'] = tipe_display
         context['is_admin'] = self.is_admin_user()
+        context['page_title'] = f'PIC {tipe_display}'
         return context
 
     def is_admin_user(self):

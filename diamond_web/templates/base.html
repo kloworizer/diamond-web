@@ -9,7 +9,7 @@
     <meta name="description" content="" />
     <meta name="keyword" content="" />
     <meta name="author" content="Diamond Web" />
-    <title>{% block title %}Diamond Web{% endblock %}</title>
+    <title>{% block title %}{% if page_title %}{{ page_title }} - {% elif auto_page_title %}{{ auto_page_title }} - {% endif %}Diamond Web{% endblock %}</title>
 
     <link rel="shortcut icon" type="image/x-icon" href="{% static 'assets/images/logo-abbr-1.png' %}" />
     <link rel="stylesheet" type="text/css" href="{% static 'assets/css/bootstrap.min.css' %}" />
@@ -19,10 +19,16 @@
     <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/select2.min.css' %}" />
     <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/select2-theme.min.css' %}" />
     <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/datatables.min.css' %}" />
-    <link rel="stylesheet" type="text/css" href="{% static 'assets/css/theme.min.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/css/theme.min.css' %}?v=1.1" />
     <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/flatpickr.min.css' %}" />
 
     <style>
+        /* Disable uppercase and left align on tooltips for readability */
+        .tooltip, .tooltip-inner {
+            text-transform: none !important;
+            text-align: left !important;
+        }
+
         i[class^="feather-"],
         i[class*=" feather-"] {
             font-family: feather !important;
@@ -2026,8 +2032,8 @@
                         <p class="text-muted mb-4" style="font-size: 13px; line-height: 1.5; font-family: 'Inter', sans-serif;">Untuk alasan keamanan, sistem akan logout otomatis apabila Anda tidak aktif dalam kurun waktu tertentu</p>
                         <div id="sessionCountdown" class="fw-bold mb-4" style="font-size: 32px; color: #0f172a; font-family: 'Outfit', sans-serif; letter-spacing: 1.5px;">05:00</div>
                         <div class="d-flex gap-2">
-                          <button type="button" class="btn btn-outline-danger w-50" id="btn-logout-now" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 4px;">KELUAR SEKARANG</button>
-                          <button type="button" class="btn btn-primary w-50" id="btn-extend-session" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 4px; background-color: #0c92ff; border-color: #0c92ff;">LANJUTKAN SESI</button>
+                          <button type="button" class="btn btn-outline-danger w-50" id="btn-logout-now" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 4px;">Keluar Sekarang</button>
+                          <button type="button" class="btn btn-primary w-50" id="btn-extend-session" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 4px; background-color: #0c92ff; border-color: #0c92ff;">Lanjutkan Sesi</button>
                         </div>
                       </div>
                     </div>
@@ -2079,6 +2085,11 @@
             function onSessionExpired() {
                 clearTimers();
                 
+                // Broadcast logout to all other open tabs immediately
+                if (typeof window._diamondBroadcastLogout === 'function') {
+                    window._diamondBroadcastLogout();
+                }
+
                 // Close warning modal if open
                 const warningModalEl = document.getElementById('sessionWarningModal');
                 if (warningModalEl) {
@@ -2126,7 +2137,7 @@
                         </div>
                         <h5 class="fw-bold mb-2 text-dark" style="font-size: 16px; font-family: 'Outfit', sans-serif; text-transform: uppercase; letter-spacing: 0.5px;">Session Timeout!</h5>
                         <p class="text-muted mb-4" style="font-size: 13px; line-height: 1.5; font-family: 'Inter', sans-serif;">Anda sudah logout karena terdeteksi tidak aktif selama <strong>30 menit</strong></p>
-                        <button type="button" class="btn btn-primary w-100" id="btn-login-again" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 4px; background-color: #0c92ff; border-color: #0c92ff;">MASUK KEMBALI</button>
+                        <button type="button" class="btn btn-primary w-100" id="btn-login-again" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 4px; background-color: #0c92ff; border-color: #0c92ff;">Masuk Kembali</button>
                       </div>
                     </div>
                   </div>
@@ -2177,15 +2188,33 @@
             scheduleTimers();
             startKeepAliveInterval();
 
-            // Global AJAX / fetch wrapper to handle 401 responses and redirect to login
+            // Global AJAX / fetch wrapper:
+            // - 401 = session expired / unauthenticated  → redirect to login
+            // - 403 = permission denied (not session!)   → show toast, do NOT redirect
             const origFetch = window.fetch;
             window.fetch = function () {
                 return origFetch.apply(this, arguments).then(response => {
-                    if (response.status === 401 || response.status === 403) {
-                        // Session likely expired; redirect to login preserving next
-                        const next = encodeURIComponent(window.location.pathname + window.location.search);
-                        window.location.href = '/accounts/login/?next=' + next;
-                        return Promise.reject(new Error('Unauthorized'));
+                    if (response.status === 401) {
+                        // True unauthenticated — session expired on the server.
+                        // Trigger the client-side session-expired flow so the
+                        // user sees the "Session Timeout" modal instead of a
+                        // naked redirect flash.
+                        onSessionExpired();
+                        return Promise.reject(new Error('Unauthenticated'));
+                    }
+                    if (response.status === 403) {
+                        // PermissionDenied — the user is still logged in but lacks
+                        // permission for this specific action.  Show a toast and
+                        // resolve normally so the caller can handle it too.
+                        const cloned = response.clone();
+                        cloned.json().then(data => {
+                            const msg = (data && data.message) || 'Anda tidak memiliki izin untuk tindakan ini.';
+                            showToast(msg, 'danger', 'Akses Ditolak');
+                        }).catch(() => {
+                            showToast('Anda tidak memiliki izin untuk tindakan ini.', 'danger', 'Akses Ditolak');
+                        });
+                        // Still return the original response so callers can inspect it
+                        return response;
                     }
                     return response;
                 });
@@ -2194,6 +2223,90 @@
         })();
 
         // (Session keep-alive & inactivity timeout are handled by the IIFE above.)
+
+        // -----------------------------------------------------------------------
+        // Multi-tab session synchronisation via localStorage Storage Event API.
+        //
+        // Problem: When a user has the app open in multiple tabs and logs out
+        // (or is auto-logged-out) in one tab, the other tabs continue to show
+        // authenticated content and silently fail on AJAX requests.
+        //
+        // Solution: Use the browser's cross-tab `storage` event.  Whenever a
+        // logout is detected in any tab we write `diamond_logout_event` to
+        // localStorage.  Every other tab listening to `window.storage` will
+        // immediately pick this up and trigger the session-expired UI.
+        //
+        // Keys used:
+        //   diamond_logout_event  — set when the session expires in any tab
+        // -----------------------------------------------------------------------
+        (function () {
+            const LOGOUT_KEY = 'diamond_logout_event';
+
+            // Broadcast logout to other tabs when this tab logs out
+            function broadcastLogout() {
+                try {
+                    localStorage.setItem(LOGOUT_KEY, Date.now().toString());
+                } catch (e) {
+                    // localStorage unavailable (private browsing / storage quota)
+                    console.warn('Multi-tab sync: could not write to localStorage', e);
+                }
+            }
+
+            // Patch onSessionExpired to also broadcast
+            const _origOnSessionExpired = window._diamondOnSessionExpired;
+            // Listen for logout events from OTHER tabs
+            window.addEventListener('storage', function (e) {
+                if (e.key === LOGOUT_KEY && e.newValue) {
+                    // Another tab just logged out — trigger our own session-expired UI
+                    // Only if we are still showing authenticated content
+                    if (!document.getElementById('sessionTimeoutModal')) {
+                        // Call the IIFE's onSessionExpired via a re-dispatched custom event
+                        window.dispatchEvent(new CustomEvent('diamond:session-expired'));
+                    }
+                }
+            });
+
+            // Listen for the custom event to trigger the session-expired modal
+            window.addEventListener('diamond:session-expired', function () {
+                // We can't call the closure-scoped onSessionExpired directly,
+                // so we simulate a 401 to trigger the session-expired flow.
+                // The cleanest approach: POST to session-expired endpoint then show modal.
+                const csrftokenLocal = document.querySelector('[name=csrfmiddlewaretoken]')?.value
+                    || document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+                fetch('{% url "session_expired" %}', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrftokenLocal, 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({}),
+                }).finally(() => {
+                    // Show timeout modal by redirecting to login
+                    const next = encodeURIComponent(window.location.pathname + window.location.search);
+                    // Small delay so the POST can complete
+                    setTimeout(() => {
+                        window.location.href = '/accounts/login/?next=' + next;
+                    }, 300);
+                });
+            });
+
+            // Expose broadcastLogout so the session IIFE can call it on logout
+            window._diamondBroadcastLogout = broadcastLogout;
+
+            // Listen for login events from OTHER tabs.
+            // If the user logs in on another tab, this authenticated tab should
+            // simply stay in sync (no action needed since session cookie is shared).
+            // But if THIS tab is somehow showing stale / error content, a reload helps.
+            // Note: storage events only fire in OTHER tabs, not the one that set the key.
+            window.addEventListener('storage', function (e) {
+                if (e.key === 'diamond_login_event' && e.newValue) {
+                    // Another tab has just logged in.
+                    // We're in the authenticated base.html context, so do nothing —
+                    // the session cookie is already shared and this tab is still valid.
+                    // Clean up the logout key in case it was left over.
+                    try { localStorage.removeItem('diamond_logout_event'); } catch (_) {}
+                }
+            });
+        })();
+
         // Make notification items (divs with data-href) clickable while allowing inner links to work.
         document.addEventListener('click', function (ev) {
             try {
@@ -2226,6 +2339,13 @@
                 }
             }
         }, false);
+
+        // Global BFCache handler: force reload on browser Back button to prevent CSRF errors and stale forms
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        });
     </script>
 
     {% block scripts %}{% endblock %}
