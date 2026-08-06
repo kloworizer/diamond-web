@@ -332,24 +332,30 @@
                                             {% endif %}
                                         </span>
                                     </div>
-                                    <div class="meta-item">
-                                        <span class="meta-label">Permintaan Khusus</span>
+                                    <div class="meta-item {% if tiket.special_request %}px-3 py-2 rounded mb-2 border-0{% endif %}" {% if tiket.special_request %}style="background-color: #fffbeb; border-left: 3px solid #f59e0b !important; box-shadow: 0 1px 2px rgba(0,0,0,0.02);"{% endif %}>
+                                        <span class="meta-label {% if tiket.special_request %}text-warning-emphasis fw-bold{% endif %}">Permintaan Khusus</span>
                                         <span class="meta-value" id="special-request-value">
                                             {% if tiket.special_request %}
-                                            <i class="feather-star me-1 text-warning"></i>Ya
+                                            <span class="badge d-inline-flex align-items-center shadow-sm" style="background-color: #f59e0b; color: white; font-weight: 700; padding: 5px 10px; letter-spacing: 0.5px;">
+                                                <i class="feather-star me-1" style="font-size:11px;"></i>YA
+                                            </span>
                                             {% else %}
                                             <i class="feather-minus me-1 text-muted"></i>Tidak
                                             {% endif %}
                                         </span>
                                     </div>
                                     {% if tiket.special_request %}
-                                    <div class="meta-item">
-                                        <span class="meta-label">Jatuh Tempo Permintaan Khusus</span>
-                                        <span class="meta-value" id="tgl-special-request-value">
+                                    <div class="meta-item px-3 py-2 rounded mb-3 border-0" style="background-color: #fef2f2; border-left: 3px solid #ef4444 !important; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                                        <span class="meta-label fw-bold" style="color: #991b1b;">Jatuh Tempo Permintaan Khusus</span>
+                                        <span class="meta-value text-danger fw-bold" id="tgl-special-request-value">
                                             {% if tiket.tgl_special_request %}
-                                            <i class="feather-calendar me-1"></i>{{ tiket.tgl_special_request|date:"d/m/Y" }}
+                                            <span class="badge bg-danger text-white d-inline-flex align-items-center shadow-sm" style="font-weight: 700; padding: 5px 10px; font-size: 11.5px;">
+                                                <i class="feather-calendar me-1" style="font-size:12px;"></i>{{ tiket.tgl_special_request|date:"d M Y" }}
+                                            </span>
                                             {% else %}
-                                            <i class="feather-minus me-1 text-muted"></i>Belum ditentukan
+                                            <span class="badge bg-danger text-white d-inline-flex align-items-center shadow-sm" style="font-weight: 700; padding: 5px 10px;">
+                                                <i class="feather-alert-triangle me-1" style="font-size:12px;"></i>Belum ditentukan
+                                            </span>
                                             {% endif %}
                                         </span>
                                     </div>
