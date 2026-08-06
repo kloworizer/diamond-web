@@ -388,4 +388,14 @@ btn-figma-danger     ← aksi destruktif (hapus, tolak)
 
 ---
 
+## 13. Responsiveness & Adaptive Layouts
+
+### Dukungan Resolusi Lawas (4:3)
+Diamond Web dirancang untuk tahan banting (*robust*) di berbagai resolusi layar, termasuk monitor 4:3 lama (seperti `1024x768`).
+- **Selalu Gunakan Flex-Wrap:** Pada kontainer *Toolbar*, *Header*, atau baris yang berisi deretan tombol filter/metrik, wajib menyertakan kelas `flex-wrap` (seperti `d-flex flex-wrap`). Ini mencegah elemen saling menghimpit dan tumpah (overflow) keluar dari batas kartu.
+- **Lindungi Label Teks Singkat:** Untuk tombol seperti *toggle switches* atau *badges* yang berisi icon dan satu kata (misal: "Prioritas", "Pantauan"), tambahkan style `white-space: nowrap; flex-shrink: 0;` pada kontainer terluarnya. Ini memastikan kata tersebut tidak akan pernah terpotong atau turun setengah kata ke baris baru ketika layar menyempit.
+- **Tumpuk Secara Harmonis:** Biarkan elemen turun ke bawah (*stack*) secara alami di resolusi sempit alih-alih mengecilkan ukuran teks (*font-size*) secara paksa yang dapat merusak keterbacaan (prinsip *Accessibility*).
+
+---
+
 *Guideline ini adalah living document. Perbarui setiap kali ada keputusan desain baru yang disepakati bersama.*

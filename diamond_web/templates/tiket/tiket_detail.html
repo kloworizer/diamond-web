@@ -97,12 +97,22 @@
 
     <div class="row">
         <div class="col-12">
+            <style>
+                .identity-card-unavailable {
+                    background: #f8fafc !important;
+                    border-left: 4px solid #94a3b8 !important;
+                }
+                .identity-card-available {
+                    background: linear-gradient(135deg, #f8fffe 0%, #f0f8ff 100%) !important;
+                    border-left: 4px solid #00BDFB !important;
+                }
+            </style>
             <!-- Placeholder for sticky card -->
             <div id="sticky-card-placeholder" style="height: 0px; margin-bottom: 0; overflow: hidden;"></div>
 
             <!-- Info Utama: Tiket Identity Bar (sticky, full width, premium horizontal layout) -->
-            <div class="card border-0 shadow-sm mb-4" id="sticky-identity-card"
-                style="{% if not tiket.status_ketersediaan_data %}background: #f8fafc; border-left: 4px solid #94a3b8 !important;{% else %}background: linear-gradient(135deg, #f8fffe 0%, #f0f8ff 100%); border-left: 4px solid #00BDFB !important;{% endif %} transition: box-shadow 0.2s; overflow: visible;">
+            <div class="card border-0 shadow-sm mb-4 {% if not tiket.status_ketersediaan_data %}identity-card-unavailable{% else %}identity-card-available{% endif %}" id="sticky-identity-card"
+                style="transition: box-shadow 0.2s; overflow: visible;">
                 <div class="card-body py-3 px-4">
                     <div class="d-flex align-items-stretch gap-0">
 
