@@ -4,29 +4,57 @@ from django.views.generic import TemplateView
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.db.models import Q
+from django.db.models import Q, Min, Max
 from datetime import datetime, timedelta
 import calendar
 from urllib.parse import urlencode
 
-from ..models.jenis_data_ilap import JenisDataILAP
 from ..models.periode_jenis_data import PeriodeJenisData
 from ..models.tiket import Tiket
 from ..models.detil_tanda_terima import DetilTandaTerima
 from ..models.tiket_pic import TiketPIC
 from ..models.pic import PIC
-from ..models.kanwil import Kanwil
-from ..models.kpp import KPP
-from ..models.kategori_wilayah import KategoriWilayah
-from ..models.kategori_ilap import KategoriILAP
-from ..models.ilap import ILAP
-from ..models.jenis_tabel import JenisTabel
-from ..models.dasar_hukum import DasarHukum
-from ..models.klasifikasi_jenis_data import KlasifikasiJenisData
-from ..models.periode_pengiriman import PeriodePengiriman
 from ..utils import format_periode
-from ..utils.wilayah import ilap_in_kanwil_q
+from ..utils.wilayah import ilap_in_kanwil_q, kanwil_value_paths
 from .mixins import UserP3DERequiredMixin, get_active_p3de_jenis_data_ilap_ids
+
+
+# Query-path fragments leading from PeriodeJenisData — the row this page
+# monitors — to each dimension the filters slice by.
+JD_PATH = 'id_sub_jenis_data_ilap'
+ILAP_PATH = f'{JD_PATH}__id_ilap'
+ILAP_REL_PATH = f'{ILAP_PATH}__ilap_kpp_relations'
+
+# Filters whose value is computed while generating the monitoring rows rather
+# than stored on a column, so they can only be applied after generation and
+# cannot narrow the other dropdowns.
+COMPUTED_FILTER_KEYS = ('status_penyampaian', 'terlambat')
+
+# Every filter the page exposes, in dropdown order.
+FILTER_KEYS = (
+    'tahun',
+    'pic_p3de',
+    'kategori_ilap',
+    'ilap',
+    'jenis_data',
+    'sub_jenis_data',
+    'kanwil',
+    'kpp',
+    'kategori_wilayah',
+    'jenis_tabel',
+    'dasar_hukum',
+    'periode_pengiriman',
+) + COMPUTED_FILTER_KEYS
+
+STATUS_PENYAMPAIAN_OPTIONS = [
+    {'id': 'Sudah Menyampaikan', 'name': 'Sudah Menyampaikan'},
+    {'id': 'Belum Menyampaikan', 'name': 'Belum Menyampaikan'},
+]
+
+TERLAMBAT_OPTIONS = [
+    {'id': 'Ya', 'name': 'Ya'},
+    {'id': 'Tidak', 'name': 'Tidak'},
+]
 
 
 class MonitoringPenyampaianDataListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView):
@@ -127,8 +155,329 @@ def get_periods_for_range(start_date, end_date, periode_type):
         
         current = next_date
         periode_count += 1
-    
+
     return periods
+
+
+def split_filter_values(raw):
+    """Split a comma-separated multi-select value into a clean list.
+
+    Args:
+        raw (str): Raw query-string value, e.g. ``"1,2,3"``.
+
+    Returns:
+        list[str]: Non-empty, stripped values.
+    """
+    if not raw:
+        return []
+    return [value.strip() for value in raw.split(',') if value.strip()]
+
+
+def read_filters(request):
+    """Read every filter parameter off the request as a list of values.
+
+    Args:
+        request (HttpRequest): The incoming request.
+
+    Returns:
+        dict[str, list[str]]: Selected values keyed by filter name; a filter
+            the user left on "-- Semua --" maps to an empty list.
+    """
+    return {key: split_filter_values(request.GET.get(key, '')) for key in FILTER_KEYS}
+
+
+def year_overlap_q(years):
+    """Q matching PeriodeJenisData whose active range touches any of *years*.
+
+    Args:
+        years (list[int]): Calendar years to match.
+
+    Returns:
+        Q: Combined overlap condition (empty Q when *years* is empty).
+    """
+    condition = Q()
+    for year in years:
+        condition |= (
+            Q(start_date__lte=datetime(year, 12, 31).date())
+            & (Q(end_date__isnull=True) | Q(end_date__gte=datetime(year, 1, 1).date()))
+        )
+    return condition
+
+
+def dimension_q(key, values, today):
+    """Build the PeriodeJenisData condition for one filter dimension.
+
+    Args:
+        key (str): Filter name, one of :data:`FILTER_KEYS`.
+        values (list[str]): Selected values for that filter.
+        today (datetime.date): Reference date used to decide PIC activeness.
+
+    Returns:
+        Q | None: The condition, or ``None`` when the filter selects nothing
+            or cannot be expressed as a query (the computed filters).
+    """
+    if not values:
+        return None
+
+    if key == 'tahun':
+        years = [int(v) for v in values if v.isdigit()]
+        return year_overlap_q(years) if years else None
+
+    if key == 'pic_p3de':
+        # All conditions live in one Q so they resolve against the same PIC row.
+        return Q(**{
+            f'{JD_PATH}__pic__tipe': PIC.TipePIC.P3DE,
+            f'{JD_PATH}__pic__id_user_id__in': values,
+            f'{JD_PATH}__pic__start_date__lte': today,
+        }) & (
+            Q(**{f'{JD_PATH}__pic__end_date__isnull': True})
+            | Q(**{f'{JD_PATH}__pic__end_date__gte': today})
+        )
+
+    if key == 'kanwil':
+        # Regional ILAP reach a Kanwil either directly or through a KPP.
+        return ilap_in_kanwil_q(values, prefix=ILAP_REL_PATH)
+
+    lookup = {
+        'kpp': f'{ILAP_REL_PATH}__id_kpp__id__in',
+        'kategori_wilayah': f'{ILAP_PATH}__id_kategori_wilayah__id__in',
+        'kategori_ilap': f'{ILAP_PATH}__id_kategori__id__in',
+        'ilap': f'{ILAP_PATH}__id__in',
+        'jenis_data': f'{JD_PATH}__id_jenis_data__in',
+        'sub_jenis_data': f'{JD_PATH}__id_sub_jenis_data__in',
+        'jenis_tabel': f'{JD_PATH}__id_jenis_tabel__id__in',
+        'dasar_hukum': f'{JD_PATH}__klasifikasijenisdata__id_klasifikasi_tabel__id__in',
+        'periode_pengiriman': 'id_periode_pengiriman__id__in',
+    }.get(key)
+
+    return Q(**{lookup: values}) if lookup else None
+
+
+def apply_filters(queryset, filters, today, exclude=None):
+    """Narrow a PeriodeJenisData queryset by the selected filters.
+
+    Args:
+        queryset (QuerySet): PeriodeJenisData queryset to narrow.
+        filters (dict[str, list[str]]): Output of :func:`read_filters`.
+        today (datetime.date): Reference date for PIC activeness.
+        exclude (str | None): Filter to skip. Pass a dropdown's own name when
+            building its options, so selecting a value there does not collapse
+            that dropdown down to the single value already chosen.
+
+    Returns:
+        QuerySet: The narrowed queryset, de-duplicated because several of the
+            conditions join across multi-valued relations.
+    """
+    for key, values in filters.items():
+        if key == exclude:
+            continue
+        condition = dimension_q(key, values, today)
+        if condition is not None:
+            queryset = queryset.filter(condition)
+    return queryset.distinct()
+
+
+def collect_options(queryset, paths, label):
+    """Pull distinct dropdown options straight off a queryset.
+
+    Args:
+        queryset (QuerySet): Queryset to read values from.
+        paths (list[str]): Field paths; the first one supplies the option id.
+        label (callable): Receives the values of *paths* and returns the label.
+
+    Returns:
+        list[dict]: ``{'id', 'name'}`` options, sorted by label.
+    """
+    options = []
+    seen = set()
+    for row in queryset.values_list(*paths).distinct():
+        if row[0] is None:
+            continue
+        option_id = str(row[0])
+        if option_id in seen:
+            continue
+        seen.add(option_id)
+        options.append({'id': option_id, 'name': label(*row)})
+    return sorted(options, key=lambda option: option['name'])
+
+
+def build_filter_options(base_queryset, filters, today, is_admin, user):
+    """Build every dropdown's options from the currently selected filters.
+
+    Each dropdown is populated from the queryset narrowed by all *other*
+    selections, so picking a value in one filter prunes the remaining ones to
+    what is still reachable.
+
+    Args:
+        base_queryset (QuerySet): PeriodeJenisData scoped to what the user may see.
+        filters (dict[str, list[str]]): Output of :func:`read_filters`.
+        today (datetime.date): Reference date for PIC activeness and open ranges.
+        is_admin (bool): Whether the requesting user has the admin role.
+        user (User): The requesting user, used for the non-admin PIC list.
+
+    Returns:
+        dict[str, list[dict]]: Option lists keyed by filter name.
+    """
+    def scoped(key):
+        """Queryset narrowed by every filter except *key*."""
+        return apply_filters(base_queryset, filters, today, exclude=key)
+
+    specs = {
+        'kpp': (
+            [
+                f'{ILAP_REL_PATH}__id_kpp__id',
+                f'{ILAP_REL_PATH}__id_kpp__kode_kpp',
+                f'{ILAP_REL_PATH}__id_kpp__nama_kpp',
+            ],
+            lambda _id, kode, nama: f'{kode} - {nama}',
+        ),
+        'kategori_wilayah': (
+            [
+                f'{ILAP_PATH}__id_kategori_wilayah__id',
+                f'{ILAP_PATH}__id_kategori_wilayah__deskripsi',
+            ],
+            lambda _id, deskripsi: deskripsi,
+        ),
+        'kategori_ilap': (
+            [
+                f'{ILAP_PATH}__id_kategori__id',
+                f'{ILAP_PATH}__id_kategori__id_kategori',
+                f'{ILAP_PATH}__id_kategori__nama_kategori',
+            ],
+            lambda _id, kode, nama: f'{kode} - {nama}',
+        ),
+        'ilap': (
+            [f'{ILAP_PATH}__id', f'{ILAP_PATH}__id_ilap', f'{ILAP_PATH}__nama_ilap'],
+            lambda _id, kode, nama: f'{kode} - {nama}',
+        ),
+        'jenis_data': (
+            [f'{JD_PATH}__id_jenis_data', f'{JD_PATH}__nama_jenis_data'],
+            lambda kode, nama: f'{kode} - {nama}',
+        ),
+        'sub_jenis_data': (
+            [f'{JD_PATH}__id_sub_jenis_data', f'{JD_PATH}__nama_sub_jenis_data'],
+            lambda kode, nama: f'{kode} - {nama}',
+        ),
+        'jenis_tabel': (
+            [f'{JD_PATH}__id_jenis_tabel__id', f'{JD_PATH}__id_jenis_tabel__deskripsi'],
+            lambda _id, deskripsi: deskripsi,
+        ),
+        'dasar_hukum': (
+            [
+                f'{JD_PATH}__klasifikasijenisdata__id_klasifikasi_tabel__id',
+                f'{JD_PATH}__klasifikasijenisdata__id_klasifikasi_tabel__deskripsi',
+            ],
+            lambda _id, deskripsi: deskripsi,
+        ),
+        'periode_pengiriman': (
+            ['id_periode_pengiriman__id', 'id_periode_pengiriman__periode_penyampaian'],
+            lambda _id, deskripsi: deskripsi,
+        ),
+    }
+
+    options = {
+        key: collect_options(scoped(key), paths, label)
+        for key, (paths, label) in specs.items()
+    }
+
+    # Kanwil is reachable by two different shapes, so both paths are collected
+    # and merged into one option list.
+    kanwil_queryset = scoped('kanwil')
+    kanwil_options = []
+    kanwil_seen = set()
+    for paths in kanwil_value_paths(prefix=ILAP_REL_PATH):
+        for option in collect_options(
+            kanwil_queryset, list(paths), lambda _id, kode, nama: f'{kode} - {nama}'
+        ):
+            if option['id'] not in kanwil_seen:
+                kanwil_seen.add(option['id'])
+                kanwil_options.append(option)
+    options['kanwil'] = sorted(kanwil_options, key=lambda option: option['name'])
+
+    options['tahun'] = build_tahun_options(scoped('tahun'), today)
+
+    if is_admin:
+        options['pic_p3de'] = build_pic_p3de_options(scoped('pic_p3de'), today)
+    else:
+        # A non-admin only ever monitors their own assignments, so the list
+        # stays limited to themselves rather than exposing co-assigned PICs.
+        options['pic_p3de'] = (
+            [{
+                'id': str(user.id),
+                'name': f"{user.username} - {user.first_name} {user.last_name}".strip(),
+            }]
+            if base_queryset.exists() else []
+        )
+
+    options['status_penyampaian'] = list(STATUS_PENYAMPAIAN_OPTIONS)
+    options['terlambat'] = list(TERLAMBAT_OPTIONS)
+    return options
+
+
+def build_tahun_options(queryset, today):
+    """Years covered by the periode data still reachable under the filters.
+
+    Args:
+        queryset (QuerySet): PeriodeJenisData narrowed by the other filters.
+        today (datetime.date): Upper bound for rows with no end date.
+
+    Returns:
+        list[dict]: One ``{'id', 'name'}`` per year, oldest first.
+    """
+    bounds = queryset.aggregate(
+        min_year=Min('start_date__year'),
+        max_start_year=Max('start_date__year'),
+        max_end_year=Max('end_date__year'),
+    )
+    min_year = bounds.get('min_year')
+    if min_year is None:
+        return []
+
+    # A row with no end date is still running, so it reaches the current year.
+    if queryset.filter(end_date__isnull=True).exists():
+        max_year = today.year
+    else:
+        max_year = max(
+            bounds.get('max_end_year') or 0,
+            bounds.get('max_start_year') or 0,
+        )
+    max_year = max(max_year, min_year)
+
+    return [{'id': str(year), 'name': str(year)} for year in range(min_year, max_year + 1)]
+
+
+def build_pic_p3de_options(queryset, today):
+    """Active P3DE PICs on the sub jenis data still reachable under the filters.
+
+    Args:
+        queryset (QuerySet): PeriodeJenisData narrowed by the other filters.
+        today (datetime.date): Reference date for PIC activeness.
+
+    Returns:
+        list[dict]: One ``{'id', 'name'}`` per user, sorted by label.
+    """
+    jenis_data_ids = queryset.values_list(f'{JD_PATH}__id', flat=True).distinct()
+    pics = PIC.objects.filter(
+        tipe=PIC.TipePIC.P3DE,
+        id_sub_jenis_data_ilap_id__in=jenis_data_ids,
+        start_date__lte=today,
+    ).filter(
+        Q(end_date__isnull=True) | Q(end_date__gte=today)
+    ).select_related('id_user')
+
+    options = []
+    seen = set()
+    for pic in pics:
+        user = pic.id_user
+        if not user or user.id in seen:
+            continue
+        seen.add(user.id)
+        full_name = f"{user.first_name} {user.last_name}".strip()
+        options.append({
+            'id': str(user.id),
+            'name': f"{user.username} - {full_name}" if full_name else user.username,
+        })
+    return sorted(options, key=lambda option: option['name'])
 
 
 @login_required
@@ -164,181 +513,30 @@ def monitoring_penyampaian_data_data(request):
             ``recordsFiltered``, and ``data`` keys. If ``get_filter_options=1``
             is present, returns a dictionary with available filter option lists.
     """
-    # Check if requesting filter options
+    # Dropdown options are rebuilt on every filter change so that each one
+    # only offers values still reachable under the other selections.
     if request.GET.get('get_filter_options'):
-        from django.db.models import Min, Max
-        
-        # Determine if user is admin or regular user
+        options_today = datetime.now().date()
         is_admin = request.user.is_superuser or request.user.groups.filter(name='admin').exists()
-        
-        # Get active JenisDataILAP IDs for current user (used for filtering all dropdowns for non-admin users)
-        active_jenis_data_ilap_ids = get_active_p3de_jenis_data_ilap_ids(request.user) if not is_admin else None
-        
-        # Build filter querysets based on user role
-        if is_admin:
-            # Admin: show all data
-            kanwil_list = Kanwil.objects.all().values('id', 'kode_kanwil', 'nama_kanwil').order_by('kode_kanwil')
-            kpp_list = KPP.objects.all().values('id', 'kode_kpp', 'nama_kpp').order_by('kode_kpp')
-            kategori_wilayah_list = KategoriWilayah.objects.all().values('id', 'deskripsi').order_by('id')
-            kategori_ilap_list = KategoriILAP.objects.all().values('id', 'id_kategori', 'nama_kategori').order_by('nama_kategori')
-            ilap_list = ILAP.objects.all().values('id', 'id_ilap', 'nama_ilap').order_by('id_ilap')
-            jenis_data_list = JenisDataILAP.objects.values('id_jenis_data', 'nama_jenis_data').distinct().order_by('id_jenis_data')
-            sub_jenis_data_list = JenisDataILAP.objects.values('id_sub_jenis_data', 'nama_sub_jenis_data').distinct().order_by('id_sub_jenis_data')
-            jenis_tabel_list = JenisTabel.objects.all().values('id', 'deskripsi').order_by('id')
-            dasar_hukum_list = DasarHukum.objects.all().values('id', 'deskripsi').order_by('id')
-            periode_pengiriman_list = PeriodePengiriman.objects.all().values('id', 'periode_penyampaian').order_by('id')
-        else:
-            # Regular user: filter all data based on active P3DE PIC assignment
-            if active_jenis_data_ilap_ids:
-                active_jenis_data_qs = JenisDataILAP.objects.filter(
-                    id__in=active_jenis_data_ilap_ids
-                ).select_related(
-                    'id_ilap',
-                    'id_ilap__id_kategori',
-                    'id_ilap__id_kategori_wilayah',
-                    'id_jenis_tabel',
-                ).prefetch_related(
-                    'id_ilap__ilap_kpp_relations__id_kpp__id_kanwil',
-                    'id_ilap__ilap_kpp_relations__id_kanwil',
-                )
 
-                active_jenis_data = list(active_jenis_data_qs)
-                active_ilap_ids = {j.id_ilap_id for j in active_jenis_data if j.id_ilap_id}
-                ilap_qs = ILAP.objects.filter(id__in=active_ilap_ids).select_related(
-                    'id_kategori',
-                    'id_kategori_wilayah',
-                ).prefetch_related(
-                    'ilap_kpp_relations__id_kpp__id_kanwil',
-                    'ilap_kpp_relations__id_kanwil',
-                )
-                ilap_list = ilap_qs.values('id', 'id_ilap', 'nama_ilap').order_by('id_ilap')
+        # Options come from the same periode data the list draws from, so a
+        # non-admin never sees a value outside their active P3DE assignments.
+        base_queryset = PeriodeJenisData.objects.all()
+        if not is_admin:
+            base_queryset = base_queryset.filter(
+                id_sub_jenis_data_ilap_id__in=get_active_p3de_jenis_data_ilap_ids(request.user)
+            )
 
-                # Get kanwil/kpp from related ILAPs
-                kanwil_set = set()
-                kpp_set = set()
-                for ilap in ilap_qs:
-                    for rel in ilap.ilap_kpp_relations.all():
-                        if rel.id_kpp:
-                            kpp_set.add(rel.id_kpp.id)
-                        # PV ILAPs have no KPP and point at the Kanwil directly
-                        rel_kanwil = rel.kanwil
-                        if rel_kanwil:
-                            kanwil_set.add(rel_kanwil.id)
-                
-                kanwil_list = Kanwil.objects.filter(id__in=kanwil_set).values('id', 'kode_kanwil', 'nama_kanwil').order_by('kode_kanwil')
-                kpp_list = KPP.objects.filter(id__in=kpp_set).values('id', 'kode_kpp', 'nama_kpp').order_by('kode_kpp')
-                
-                # Get kategori_wilayah from related ILAPs
-                kategori_wilayah_set = {
-                    ilap.id_kategori_wilayah.id
-                    for ilap in ilap_qs
-                    if ilap.id_kategori_wilayah
-                }
-                
-                kategori_wilayah_list = KategoriWilayah.objects.filter(id__in=kategori_wilayah_set).values('id', 'deskripsi').order_by('id')
-                
-                # Get kategori_ilap from related ILAPs
-                kategori_ilap_set = {
-                    ilap.id_kategori.id
-                    for ilap in ilap_qs
-                    if ilap.id_kategori
-                }
-                
-                kategori_ilap_list = KategoriILAP.objects.filter(id__in=kategori_ilap_set).values('id', 'id_kategori', 'nama_kategori').order_by('nama_kategori')
-                
-                # Get jenis_data and sub_jenis_data from active assignment scope
-                jenis_data_list = active_jenis_data_qs.values('id_jenis_data', 'nama_jenis_data').distinct().order_by('id_jenis_data')
-                sub_jenis_data_list = active_jenis_data_qs.values('id_sub_jenis_data', 'nama_sub_jenis_data').distinct().order_by('id_sub_jenis_data')
-                
-                # Get jenis_tabel and dasar_hukum from active ILAPs' sub jenis data
-                jenis_tabel_set = {
-                    jdd.id_jenis_tabel.id
-                    for jdd in active_jenis_data
-                    if jdd.id_jenis_tabel
-                }
-                
-                jenis_tabel_list = JenisTabel.objects.filter(id__in=jenis_tabel_set).values('id', 'deskripsi').order_by('id')
-                
-                # Get dasar_hukum from active sub jenis data
-                dasar_hukum_set = set()
-                for kj in KlasifikasiJenisData.objects.filter(id_sub_jenis_data_id__in=active_jenis_data_ilap_ids):
-                    if kj.id_klasifikasi_tabel:
-                        dasar_hukum_set.add(kj.id_klasifikasi_tabel.id)
-                
-                dasar_hukum_list = DasarHukum.objects.filter(id__in=dasar_hukum_set).values('id', 'deskripsi').order_by('id')
-                
-                # Get periode_pengiriman from active sub jenis data
-                periode_pengiriman_set = set()
-                for pjd in PeriodeJenisData.objects.filter(id_sub_jenis_data_ilap_id__in=active_jenis_data_ilap_ids):
-                    if pjd.id_periode_pengiriman:
-                        periode_pengiriman_set.add(pjd.id_periode_pengiriman.id)
-                
-                periode_pengiriman_list = PeriodePengiriman.objects.filter(id__in=periode_pengiriman_set).values('id', 'periode_penyampaian').order_by('id')
-            else:
-                # No active assignments, return empty lists
-                kanwil_list = []
-                kpp_list = []
-                kategori_wilayah_list = []
-                kategori_ilap_list = []
-                ilap_list = []
-                jenis_data_list = []
-                sub_jenis_data_list = []
-                jenis_tabel_list = []
-                dasar_hukum_list = []
-                periode_pengiriman_list = []
-        
-        # Get unique tahun from periode_jenis_data and generate range up to current year
-        tahun_range = PeriodeJenisData.objects.aggregate(
-            min_year=Min('start_date__year'),
-            max_year=Max('start_date__year')
-        )
-        min_year = tahun_range.get('min_year') or datetime.now().year
-        max_year = max(tahun_range.get('max_year') or datetime.now().year, datetime.now().year)
-        tahun_options = [{'id': str(year), 'name': str(year)} for year in range(min_year, max_year + 1)]
-        
-        # Get PIC P3DE list based on user role
-        if is_admin:
-            # Admin: show all P3DE users
-            pic_p3de_list = PIC.objects.filter(
-                tipe=PIC.TipePIC.P3DE,
-                end_date__isnull=True
-            ).values('id_user__id', 'id_user__username', 'id_user__first_name', 'id_user__last_name').distinct().order_by('id_user__first_name', 'id_user__last_name', 'id_user__username')
-            pic_p3de_options = [
-                {
-                    'id': str(pic['id_user__id']),
-                    'name': f"{pic['id_user__username']} - {pic['id_user__first_name']} {pic['id_user__last_name']}".strip()
-                }
-                for pic in pic_p3de_list
-            ]
-        else:
-            # Regular User P3DE: show only their own name if they have active P3DE PIC
-            if active_jenis_data_ilap_ids:
-                pic_p3de_options = [
-                    {
-                        'id': str(request.user.id),
-                        'name': f"{request.user.username} - {request.user.first_name} {request.user.last_name}".strip()
-                    }
-                ]
-            else:
-                pic_p3de_options = []
-        
         return JsonResponse({
-            'filter_options': {
-                'tahun': tahun_options,
-                'pic_p3de': pic_p3de_options,
-                'kanwil': [{'id': str(k['id']), 'name': f"{k['kode_kanwil']} - {k['nama_kanwil']}"} for k in kanwil_list],
-                'kpp': [{'id': str(k['id']), 'name': f"{k['kode_kpp']} - {k['nama_kpp']}"} for k in kpp_list],
-                'kategori_wilayah': [{'id': str(k['id']), 'name': k['deskripsi']} for k in kategori_wilayah_list],
-                'kategori_ilap': [{'id': str(k['id']), 'name': f"{k['id_kategori']} - {k['nama_kategori']}"} for k in kategori_ilap_list],
-                'ilap': [{'id': str(k['id']), 'name': f"{k['id_ilap']} - {k['nama_ilap']}"} for k in ilap_list],
-                'jenis_data': [{'id': k['id_jenis_data'], 'name': f"{k['id_jenis_data']} - {k['nama_jenis_data']}"} for k in jenis_data_list],
-                'sub_jenis_data': [{'id': k['id_sub_jenis_data'], 'name': f"{k['id_sub_jenis_data']} - {k['nama_sub_jenis_data']}"} for k in sub_jenis_data_list],
-                'jenis_tabel': [{'id': str(k['id']), 'name': k['deskripsi']} for k in jenis_tabel_list],
-                'dasar_hukum': [{'id': str(k['id']), 'name': k['deskripsi']} for k in dasar_hukum_list],
-                'periode_pengiriman': [{'id': str(k['id']), 'name': k['periode_penyampaian']} for k in periode_pengiriman_list],
-            }
+            'filter_options': build_filter_options(
+                base_queryset,
+                read_filters(request),
+                options_today,
+                is_admin,
+                request.user,
+            )
         })
-    
+
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
@@ -350,21 +548,9 @@ def monitoring_penyampaian_data_data(request):
         name__in=['admin', 'admin_p3de', 'admin_pide', 'admin_pmde']
     ).exists()
 
-    # Read all filter params early so they can be applied at DB level
-    tahun_filter = request.GET.get('tahun', '')
-    pic_p3de_filter = request.GET.get('pic_p3de', '')
-    kanwil_id = request.GET.get('kanwil', '')
-    kpp_id = request.GET.get('kpp', '')
-    kategori_wilayah_id = request.GET.get('kategori_wilayah', '')
-    kategori_ilap_id = request.GET.get('kategori_ilap', '')
-    ilap_id = request.GET.get('ilap', '')
-    jenis_data_id = request.GET.get('jenis_data', '')
-    sub_jenis_data_id = request.GET.get('sub_jenis_data', '')
-    status_penyampaian_filter = request.GET.get('status_penyampaian', '')
-    terlambat_filter = request.GET.get('terlambat', '')
-    jenis_tabel_filter = request.GET.get('jenis_tabel', '')
-    dasar_hukum_filter = request.GET.get('dasar_hukum', '')
-    periode_pengiriman_filter = request.GET.get('periode_pengiriman', '')
+    # Read every filter up front so they can be pushed down to the queryset
+    filters = read_filters(request)
+    selected_years = sorted(int(year) for year in filters['tahun'] if year.isdigit())
 
     # Apply RBAC at query level to avoid building records that will be discarded
     allowed_jenis_data_ids = None
@@ -392,50 +578,9 @@ def monitoring_penyampaian_data_data(request):
     if allowed_jenis_data_ids is not None:
         periode_data_qs = periode_data_qs.filter(id_sub_jenis_data_ilap_id__in=allowed_jenis_data_ids)
 
-    # Push dimension filters to DB level to drastically reduce rows processed in Python
-    if kanwil_id:
-        periode_data_qs = periode_data_qs.filter(
-            ilap_in_kanwil_q(kanwil_id, prefix='id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations')
-        )
-    if kpp_id:
-        periode_data_qs = periode_data_qs.filter(
-            id_sub_jenis_data_ilap__id_ilap__ilap_kpp_relations__id_kpp_id=kpp_id
-        )
-    if kategori_wilayah_id:
-        periode_data_qs = periode_data_qs.filter(
-            id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah_id=kategori_wilayah_id
-        )
-    if kategori_ilap_id:
-        periode_data_qs = periode_data_qs.filter(
-            id_sub_jenis_data_ilap__id_ilap__id_kategori_id=kategori_ilap_id
-        )
-    if ilap_id:
-        periode_data_qs = periode_data_qs.filter(
-            id_sub_jenis_data_ilap__id_ilap_id=ilap_id
-        )
-    if sub_jenis_data_id:
-        periode_data_qs = periode_data_qs.filter(
-            id_sub_jenis_data_ilap__id_sub_jenis_data=sub_jenis_data_id
-        )
-    if jenis_tabel_filter:
-        periode_data_qs = periode_data_qs.filter(
-            id_sub_jenis_data_ilap__id_jenis_tabel_id=jenis_tabel_filter
-        )
-    if periode_pengiriman_filter:
-        periode_data_qs = periode_data_qs.filter(
-            id_periode_pengiriman_id=periode_pengiriman_filter
-        )
-
-    # If tahun_filter is set, only load periode_data whose range overlaps the requested year
-    tahun_int = int(tahun_filter) if tahun_filter else None
-    if tahun_int:
-        year_start = datetime(tahun_int, 1, 1).date()
-        year_end = datetime(tahun_int, 12, 31).date()
-        periode_data_qs = periode_data_qs.filter(
-            start_date__lte=year_end
-        ).filter(
-            Q(end_date__isnull=True) | Q(end_date__gte=year_start)
-        )
+    # Push every filter that maps to a column down to the DB, which drastically
+    # reduces the rows expanded into monitoring periods in Python.
+    periode_data_qs = apply_filters(periode_data_qs, filters, today)
 
     periode_data_list = list(periode_data_qs)
     if not periode_data_list:
@@ -446,27 +591,7 @@ def monitoring_penyampaian_data_data(request):
             'data': [],
         })
 
-    jenis_data_ids = {pd.id_sub_jenis_data_ilap_id for pd in periode_data_list}
     periode_data_ids = {pd.id for pd in periode_data_list}
-
-    # Build a map of jenis_data_ilap_id -> set of dasar_hukum ids
-    dasar_hukum_map = {}
-    for kj in KlasifikasiJenisData.objects.filter(id_sub_jenis_data_id__in=jenis_data_ids).values(
-        'id_sub_jenis_data_id',
-        'id_klasifikasi_tabel_id',
-    ):
-        dasar_hukum_map.setdefault(kj['id_sub_jenis_data_id'], set()).add(kj['id_klasifikasi_tabel_id'])
-
-    # Build active PIC map once (jenis_data_id -> user_id)
-    pic_p3de_map: dict[int, int] = {}
-    for pic in PIC.objects.filter(
-        id_sub_jenis_data_ilap_id__in=jenis_data_ids,
-        tipe=PIC.TipePIC.P3DE,
-        start_date__lte=today,
-    ).filter(
-        Q(end_date__isnull=True) | Q(end_date__gte=today)
-    ).order_by('id').values('id_sub_jenis_data_ilap_id', 'id_user_id'):
-        pic_p3de_map.setdefault(pic['id_sub_jenis_data_ilap_id'], pic['id_user_id'])
 
     # Build tiket lookup once ((periode_data_id, periode, tahun) -> tiket)
     tiket_map: dict[tuple[int, int, int], Tiket] = {}
@@ -507,12 +632,13 @@ def monitoring_penyampaian_data_data(request):
         # If periode_data has an end_date, use it; otherwise use today
         end_date_for_periods = periode_data.end_date if periode_data.end_date else today
 
-        # Restrict period generation range to tahun_filter to avoid generating all history
-        if tahun_int:
-            year_start = datetime(tahun_int, 1, 1).date()
-            year_end = datetime(tahun_int, 12, 31).date()
-            start_date = max(start_date, year_start)
-            end_date_for_periods = min(end_date_for_periods, year_end)
+        # Restrict period generation to the selected years so history outside
+        # them is never generated just to be filtered away afterwards.
+        if selected_years:
+            start_date = max(start_date, datetime(min(selected_years), 1, 1).date())
+            end_date_for_periods = min(
+                end_date_for_periods, datetime(max(selected_years), 12, 31).date()
+            )
             if start_date > end_date_for_periods:
                 continue
 
@@ -520,7 +646,6 @@ def monitoring_penyampaian_data_data(request):
         periods = get_periods_for_range(start_date, end_date_for_periods, periode_type_penerimaan)
 
         # Compute per-jenis_data values once outside the inner period loop
-        pic_p3de_id = pic_p3de_map.get(jenis_data.id)
         kategori_wilayah_desc = (
             (jenis_data.id_ilap.id_kategori_wilayah.deskripsi or '').lower()
             if jenis_data.id_ilap and jenis_data.id_ilap.id_kategori_wilayah
@@ -535,7 +660,6 @@ def monitoring_penyampaian_data_data(request):
         jenis_data_kpp_id = (first_kpp_rel.id_kpp.id if first_kpp_rel and first_kpp_rel.id_kpp else '')
         jenis_data_kategori_wilayah_id = jenis_data.id_ilap.id_kategori_wilayah.id if jenis_data.id_ilap.id_kategori_wilayah else ''
         jenis_data_kategori_ilap_id = jenis_data.id_ilap.id_kategori.id if jenis_data.id_ilap.id_kategori else ''
-        jenis_data_dasar_hukum_ids = dasar_hukum_map.get(jenis_data.id, set())
         jenis_data_ilap_name = jenis_data.id_ilap.nama_ilap
         jenis_data_ilap_id = jenis_data.id_ilap.id_ilap
         jenis_data_ilap_pk = jenis_data.id_ilap.id
@@ -605,39 +729,38 @@ def monitoring_penyampaian_data_data(request):
                 'tiket_exists': tiket_exists,
                 'is_late': is_late,
                 'days_diff': days_diff,
-                'pic_p3de_id': pic_p3de_id,
                 'kanwil_id': jenis_data_kanwil_id,
                 'kpp_id': jenis_data_kpp_id,
                 'kategori_wilayah_id': jenis_data_kategori_wilayah_id,
                 'kategori_ilap_id': jenis_data_kategori_ilap_id,
                 'jenis_tabel_id': jenis_data.id_jenis_tabel_id,
                 'periode_pengiriman_id': periode_data.id_periode_pengiriman_id,
-                'dasar_hukum_ids': jenis_data_dasar_hukum_ids,
             })
 
     records_total = len(records)
 
-    # Apply remaining Python-side filters in a single pass
-    # (DB-level filters for kanwil/kpp/ilap/etc. already applied above)
-    def record_matches_filters(r):
-        if tahun_filter and str(r.get('tahun', '')) != tahun_filter:
+    # Status penyampaian, terlambat and tahun are properties of a generated
+    # period rather than of a periode data row, so they are the only filters
+    # left to apply once the rows exist.
+    tahun_filter = set(filters['tahun'])
+    status_penyampaian_filter = set(filters['status_penyampaian'])
+    terlambat_filter = set(filters['terlambat'])
+
+    def record_matches_filters(record):
+        """Whether a generated monitoring row survives the remaining filters."""
+        if tahun_filter and str(record['tahun']) not in tahun_filter:
             return False
-        if pic_p3de_filter and (not r.get('pic_p3de_id') or str(r.get('pic_p3de_id')) != pic_p3de_filter):
+        if status_penyampaian_filter and record['status_penyampaian'] not in status_penyampaian_filter:
             return False
-        if status_penyampaian_filter and r.get('status_penyampaian', '') != status_penyampaian_filter:
-            return False
-        if terlambat_filter and r.get('status_terlambat', '') != terlambat_filter:
-            return False
-        if jenis_data_id and r.get('jenis_data', '') != jenis_data_id:
-            return False
-        if dasar_hukum_filter and int(dasar_hukum_filter) not in r.get('dasar_hukum_ids', set()):
+        if terlambat_filter and record['status_terlambat'] not in terlambat_filter:
             return False
         return True
 
-    filtered_records = records if not any([
-        tahun_filter, pic_p3de_filter, status_penyampaian_filter,
-        terlambat_filter, jenis_data_id, dasar_hukum_filter,
-    ]) else [r for r in records if record_matches_filters(r)]
+    filtered_records = (
+        [r for r in records if record_matches_filters(r)]
+        if (tahun_filter or status_penyampaian_filter or terlambat_filter)
+        else records
+    )
 
     records_filtered = len(filtered_records)
 
