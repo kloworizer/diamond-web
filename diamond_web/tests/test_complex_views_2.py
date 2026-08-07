@@ -193,12 +193,29 @@ class TestGetPeriodsForRange:
 class TestMonitoringFilterOptions:
     """Tests for get_filter_options=1 branch (lines 201, 259)."""
 
+    @staticmethod
+    def _monitored_jenis_data():
+        """A sub jenis data with periode data, so it reaches the monitoring rows.
+
+        The dropdowns only offer values that can actually produce a monitoring
+        row, so a PIC is only listed when its sub jenis data has periode data.
+        """
+        jdi = JenisDataILAPFactory()
+        PeriodeJenisDataFactory(
+            id_sub_jenis_data_ilap=jdi,
+            id_periode_pengiriman=PeriodePengirimanFactory(),
+            start_date=datetime.date(2024, 1, 1),
+            end_date=datetime.date(2024, 3, 31),
+            akhir_penyampaian=14,
+        )
+        return jdi
+
     @pytest.mark.django_db
     def test_admin_gets_all_pic_p3de_options(self, client, admin_user):
         """Line 201: admin user gets all active P3DE PICs."""
         # Create a P3DE PIC with no end_date
         user_for_pic = UserFactory(first_name='Budi', last_name='Santoso')
-        jdi = JenisDataILAPFactory()
+        jdi = self._monitored_jenis_data()
         PICFactory(tipe=PIC.TipePIC.P3DE, id_sub_jenis_data_ilap=jdi,
                    id_user=user_for_pic, start_date=datetime.date(2024, 1, 1), end_date=None)
         client.force_login(admin_user)
@@ -219,7 +236,7 @@ class TestMonitoringFilterOptions:
         user = UserFactory(first_name='Ani', last_name='Rahayu')
         grp, _ = Group.objects.get_or_create(name='user_p3de')
         user.groups.add(grp)
-        jdi = JenisDataILAPFactory()
+        jdi = self._monitored_jenis_data()
         PICFactory(tipe=PIC.TipePIC.P3DE, id_sub_jenis_data_ilap=jdi,
                    id_user=user, start_date=datetime.date(2024, 1, 1), end_date=None)
         client.force_login(user)
@@ -1396,6 +1413,13 @@ class TestMonitoringAdditionalCoverage:
         grp, _ = Group.objects.get_or_create(name='user_p3de')
         user.groups.add(grp)
         jdi = JenisDataILAPFactory()
+        PeriodeJenisDataFactory(
+            id_sub_jenis_data_ilap=jdi,
+            id_periode_pengiriman=self._get_or_create_pp('BulananPIC259', 'Bulanan'),
+            start_date=datetime.date(2024, 1, 1),
+            end_date=datetime.date(2024, 3, 31),
+            akhir_penyampaian=14,
+        )
         PICFactory(tipe=PIC.TipePIC.P3DE, id_sub_jenis_data_ilap=jdi,
                    id_user=user, start_date=datetime.date(2024, 1, 1), end_date=None)
         client.force_login(user)
