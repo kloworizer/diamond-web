@@ -1748,11 +1748,23 @@
                                 if ($firstTd.length && !$firstTd.hasClass('dataTables_empty')) {
                                     $firstTd.find('.dt-row-number').remove();
                                     let num = startIndex + index + 1;
-                                    let badgeHtml = '<span class="dt-row-number text-muted fw-bold" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 11.5px; user-select: none;">' + num + '.</span>';
                                     
-                                    $firstTd.css('position', 'relative');
-                                    $firstTd[0].style.setProperty('padding-left', '45px', 'important');
-                                    $firstTd.prepend(badgeHtml);
+                                    // Clean, soft rounded badge design (Flexbox compatible) - Circle for single digits, Pill for multi-digits
+                                    let badgeHtml = '<span class="dt-row-number d-flex align-items-center justify-content-center text-secondary" style="order: -2; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 50px; background-color: #f8fafc; border: 1px solid #e2e8f0; font-size: 11px; font-weight: 500; font-family: \'Inter\', sans-serif; user-select: none; flex-shrink: 0; margin-right: 8px;">' + num + '</span>';
+                                    
+                                    // Inject safely into a flex wrapper to avoid collisions
+                                    let $flexWrapper = $firstTd.children('.d-flex').first();
+                                    if ($flexWrapper.length > 0) {
+                                        $flexWrapper.prepend(badgeHtml);
+                                    } else {
+                                        let $newWrapper = $('<div class="d-flex align-items-center"></div>');
+                                        $newWrapper.append($firstTd.contents());
+                                        $newWrapper.prepend(badgeHtml);
+                                        $firstTd.append($newWrapper);
+                                    }
+                                    
+                                    // Clean up any old padding hacks
+                                    $firstTd.css('padding-left', '');
                                 }
                             });
                         }
