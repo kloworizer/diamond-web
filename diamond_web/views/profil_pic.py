@@ -8,16 +8,21 @@ turn, and which tikets landed on them. It is what every name in the app now
 links to, so a reader who meets an unfamiliar PIC can find out what else that
 person is responsible for without asking.
 
-Open to every logged in user, like the ILAP, jenis data and nama tabel profil
-pages it sits alongside: who is PIC of what is the working knowledge of the
-directorate, not a secret. Opening a tiket from the list here still goes through
-`TiketDetailView`, which enforces the PIC rules of its own.
+Unlike the catalogue pages it sits alongside, this one is scoped: a page about a
+person is read by that person and by whoever supervises their seksi, and by
+nobody else — see
+:func:`~diamond_web.utils.pic_profil.visible_profil_pic_users` for the rule,
+which governs the page, the tiket endpoint behind it, the header search that
+finds people, and whether a name printed elsewhere is a link at all. Opening a
+tiket from the list here still goes through `TiketDetailView`, which enforces
+the PIC rules of its own.
 """
 from datetime import date, datetime, time
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
+from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
 from django.http import Http404, JsonResponse
 from django.urls import reverse
@@ -32,8 +37,8 @@ from ..models.tiket import Tiket
 from ..models.tiket_pic import TiketPIC
 from ..utils import format_periode
 from ..utils.pic_profil import (
-    ADMIN_GROUPS,
     PDE_SEKSI,
+    can_view_pic_profil,
     pic_display_name,
     seksi_label,
 )
@@ -42,7 +47,6 @@ __all__ = [
     'ProfilPICDetailView',
     'build_seksi_directory',
     'profil_pic_tiket_data',
-    'visible_profil_pic_users',
 ]
 
 
@@ -84,16 +88,14 @@ def build_seksi_directory():
     The three columns of the Profil PDE page, answering who works a seksi's
     queue. Two kinds of account are subtracted from the staff group:
 
-    * administrators — the `admin` groups and superusers. They are members of
-      all three staff groups so that they can act anywhere, so reading the staff
-      group alone would put the same administrator at the top of every column.
+    * superusers. They are members of all three staff groups so that they can
+      act anywhere, so reading the staff group alone would put the same system
+      account at the top of every column. Only the superuser flag is subtracted:
+      somebody holding an admin role is a colleague who also administers the
+      application, and belongs in the seksi they work in.
     * inactive accounts. A directory is a list of people to go to, and a
       disabled account is nobody to go to. Their Profil PIC page stays reachable
       from the tikets they used to hold, so the history is not lost.
-
-    A kasi who is also a member of a staff group is left in: they hold the data
-    of that seksi like everyone else in it, and unlike an administrator they
-    belong to one seksi rather than to all three.
 
     Returns:
         list: One dict per seksi, ``{'kode', 'label', 'users'}``, in the order
@@ -103,9 +105,7 @@ def build_seksi_directory():
     columns = []
     for seksi in PDE_SEKSI:
         users = User.objects.filter(
-            groups__name=seksi['user_group'], is_active=True
-        ).exclude(
-            Q(is_superuser=True) | Q(groups__name__in=ADMIN_GROUPS)
+            groups__name=seksi['user_group'], is_active=True, is_superuser=False
         ).distinct()
         entries = [{'user': user, 'nama': pic_display_name(user)} for user in users]
         entries.sort(key=lambda entry: entry['nama'].lower())
@@ -117,47 +117,27 @@ def build_seksi_directory():
     return columns
 
 
-def visible_profil_pic_users(user):
-    """Return the users `user` may look up by name in the header search.
-
-    Searching for a person is not the same as meeting their name on a tiket: the
-    first is browsing the staff of the directorate, the second is reading the
-    record in front of you. So the search box is scoped, even though the Profil
-    PIC page it leads to stays open to every logged in user, as the names
-    printed across the app link to it from everywhere.
-
-    The rule follows the line of supervision:
-
-    * superusers and the global `admin` group look up anyone;
-    * a kasi or an admin of a seksi looks up the staff of that seksi — kasi PMDE
-      finds the user PMDE, and so on — plus themselves;
-    * everyone else finds only themselves.
+def get_viewable_pic_user(request, username):
+    """Return the user named `username`, or refuse the request.
 
     Args:
-        user (User): The person doing the searching, possibly anonymous.
+        request (HttpRequest): The current request, whose user is the viewer.
+        username (str): The username from the URL.
 
     Returns:
-        QuerySet: The users they may find, empty for an anonymous request.
+        User: The person the page is about.
+
+    Raises:
+        Http404: When no user carries that username.
+        PermissionDenied: When the viewer may not open that person's profile.
     """
-    if not user or not getattr(user, 'is_authenticated', False):
-        return User.objects.none()
-
-    group_names = set(user.groups.values_list('name', flat=True))
-    if user.is_superuser or 'admin' in group_names:
-        return User.objects.all()
-
-    supervised = [
-        seksi['user_group'] for seksi in PDE_SEKSI
-        if seksi['kasi_group'] in group_names or seksi['admin_group'] in group_names
-    ]
-    if supervised:
-        # Their own account is added on purpose: a kasi is not usually a member
-        # of the staff group they supervise, and they should still find it.
-        return User.objects.filter(
-            Q(groups__name__in=supervised) | Q(pk=user.pk)
-        ).distinct()
-
-    return User.objects.filter(pk=user.pk)
+    pic_user = get_pic_user(username)
+    if not can_view_pic_profil(request.user, pic_user):
+        raise PermissionDenied(
+            'Anda hanya dapat membuka profil PIC diri sendiri '
+            'atau pegawai di seksi Anda.'
+        )
+    return pic_user
 
 
 def build_penugasan_list(pic_user):
@@ -453,7 +433,7 @@ class ProfilPICDetailView(LoginRequiredMixin, TemplateView):
                   breakdowns shown under the matching summary tile.
         """
         context = super().get_context_data(**kwargs)
-        pic_user = get_pic_user(self.kwargs['username'])
+        pic_user = get_viewable_pic_user(self.request, self.kwargs['username'])
         penugasan_list = build_penugasan_list(pic_user)
 
         display_name = pic_display_name(pic_user)
@@ -520,8 +500,14 @@ def profil_pic_tiket_data(request, username):
     Returns:
         JsonResponse: A JSON object with ``draw``, ``recordsTotal``,
         ``recordsFiltered`` and ``data`` (one dict per assignment row).
+
+    Raises:
+        PermissionDenied: When the viewer may not open that person's profile.
+            Gated in its own right, not only through the page that draws it: the
+            rows are the person's whole tiket load and this URL can be called
+            directly.
     """
-    pic_user = get_pic_user(username)
+    pic_user = get_viewable_pic_user(request, username)
 
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))

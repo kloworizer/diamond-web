@@ -11,7 +11,7 @@ from ..models.pic import PIC
 from ..forms.pic import PICForm
 from ..constants.tiket_action_types import PICActionType
 from ..constants.tiket_status import STATUS_DIBATALKAN
-from ..utils.pic_profil import pic_profil_link
+from ..utils.pic_profil import pic_profil_link, pic_profil_visibility
 from .mixins import (
     AjaxFormMixin,
     AdminP3DERequiredMixin,
@@ -765,6 +765,10 @@ def _pic_data_common(request, tipe):
     }
     update_url_name, delete_url_name = tipe_url_map.get(tipe, ('', ''))
 
+    # Resolved once for the whole page: whether a name is a link depends on
+    # who is reading, and the rule costs a query to work out.
+    can_view = pic_profil_visibility(request.user)
+
     # Format data
     data = []
     for obj in qs:
@@ -780,7 +784,7 @@ def _pic_data_common(request, tipe):
             'username': obj.id_user.username,
             # The name is the way into everything else this person holds, so it
             # links to their Profil PIC page here as it does everywhere else.
-            'full_name': pic_profil_link(obj.id_user, label=user_display),
+            'full_name': pic_profil_link(obj.id_user, can_view, label=user_display),
             'start_date': obj.start_date.strftime('%Y-%m-%d') if obj.start_date else '',
             'end_date': obj.end_date.strftime('%Y-%m-%d') if obj.end_date else '',
         }

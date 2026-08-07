@@ -18,8 +18,12 @@ from ..models.pic import PIC
 from ..models.tiket import Tiket
 from ..models.tiket_pic import TiketPIC
 from ..utils import format_periode
-from ..utils.pic_profil import pic_display_name, seksi_label
-from .profil_pic import build_seksi_directory, visible_profil_pic_users
+from ..utils.pic_profil import (
+    pic_display_name,
+    seksi_label,
+    visible_profil_pic_users,
+)
+from .profil_pic import build_seksi_directory
 from .mixins import (
     UserP3DERequiredMixin,
     can_view_ilap_kontak,

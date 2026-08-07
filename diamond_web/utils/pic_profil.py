@@ -7,11 +7,20 @@ was responsible but nothing about what else that person holds. These helpers
 turn every one of those names into the same link, so the pages agree on where a
 name leads.
 
-Two forms are offered because the pages render names two ways. Templates take
-the URL from the ``pic_profil_url`` filter (see ``auth_extras``) and write their
-own markup; the DataTables endpoints, which build HTML strings server-side, take
-the finished anchor from :func:`pic_profil_link`.
+Not every name is a link, though. A Profil PIC page may only be opened by the
+person it is about and by whoever supervises their seksi — see
+:func:`can_view_pic_profil` — so a name the reader may not follow is printed as
+plain text instead of as a link they would only bounce off. Every helper that
+renders a name therefore has to be told who is doing the reading.
+
+Two forms are offered because the pages render names two ways. Templates use the
+``pic_name_link`` tag (see ``auth_extras``), which reads the viewer off the
+request; the DataTables endpoints, which build HTML strings server-side, take
+the finished anchor from :func:`pic_profil_link` and pass the viewer's
+predicate from :func:`pic_profil_visibility` explicitly.
 """
+from django.contrib.auth.models import User
+from django.db.models import Q
 from django.urls import reverse
 from django.utils.html import escape
 
@@ -69,6 +78,135 @@ PDE_SEKSI = (
 ADMIN_GROUPS = ('admin',) + tuple(seksi['admin_group'] for seksi in PDE_SEKSI)
 
 
+def _supervised_staff_groups(group_names):
+    """Return the staff groups a member of `group_names` supervises.
+
+    Args:
+        group_names (set): The group names the viewer belongs to.
+
+    Returns:
+        list: The ``user_*`` group names of every seksi the viewer is a kasi or
+        an admin of; empty for someone who supervises nothing.
+    """
+    return [
+        seksi['user_group'] for seksi in PDE_SEKSI
+        if seksi['kasi_group'] in group_names or seksi['admin_group'] in group_names
+    ]
+
+
+def visible_profil_pic_users(viewer):
+    """Return the users `viewer` may open the Profil PIC page of.
+
+    The line of supervision, and nothing wider:
+
+    * superusers and the global `admin` group reach anyone;
+    * a kasi or an admin of a seksi reaches the staff of that seksi — kasi PMDE
+      reaches the user PMDE, and so on — plus themselves;
+    * everyone else reaches only themselves.
+
+    This is the whole rule. It governs the page, the tiket endpoint behind it,
+    the header search that finds people, and whether a name printed elsewhere in
+    the app is rendered as a link at all.
+
+    Args:
+        viewer (User): The person doing the looking, possibly anonymous.
+
+    Returns:
+        QuerySet: The users they may open, empty for an anonymous request.
+    """
+    if not viewer or not getattr(viewer, 'is_authenticated', False):
+        return User.objects.none()
+
+    group_names = set(viewer.groups.values_list('name', flat=True))
+    if viewer.is_superuser or 'admin' in group_names:
+        return User.objects.all()
+
+    supervised = _supervised_staff_groups(group_names)
+    if supervised:
+        # Their own account is added on purpose: a kasi is not usually a member
+        # of the staff group they supervise, and they should still reach it.
+        return User.objects.filter(
+            Q(groups__name__in=supervised) | Q(pk=viewer.pk)
+        ).distinct()
+
+    return User.objects.filter(pk=viewer.pk)
+
+
+def pic_profil_visibility(viewer):
+    """Return a predicate answering :func:`visible_profil_pic_users` per user.
+
+    Resolves the rule once and returns a callable, so a page printing a hundred
+    names asks the database once rather than once per name. Callers that only
+    have a single user to test can use :func:`can_view_pic_profil` instead.
+
+    Args:
+        viewer (User): The person doing the looking, possibly anonymous.
+
+    Returns:
+        callable: ``(user) -> bool``, false for ``None``.
+    """
+    if not viewer or not getattr(viewer, 'is_authenticated', False):
+        return lambda user: False
+
+    group_names = set(viewer.groups.values_list('name', flat=True))
+    if viewer.is_superuser or 'admin' in group_names:
+        return lambda user: user is not None
+
+    supervised = _supervised_staff_groups(group_names)
+    if not supervised:
+        return lambda user: user is not None and user.pk == viewer.pk
+
+    allowed = set(
+        User.objects.filter(groups__name__in=supervised).values_list('pk', flat=True)
+    )
+    allowed.add(viewer.pk)
+    return lambda user: user is not None and user.pk in allowed
+
+
+def request_pic_profil_visibility(request):
+    """Return :func:`pic_profil_visibility` for `request`, cached on it.
+
+    For callers that render names one row at a time and have no obvious place to
+    hold the predicate — a per-row serializer, a template tag. Resolving the rule
+    costs a query, and a page of rows should pay it once.
+
+    Args:
+        request (HttpRequest): The current request, or ``None``.
+
+    Returns:
+        callable: ``(user) -> bool``; refuses everything when there is no
+        request, which is what the Excel export path passes.
+    """
+    if request is None:
+        return lambda user: False
+    predicate = getattr(request, '_pic_profil_visibility', None)
+    if predicate is None:
+        predicate = pic_profil_visibility(request.user)
+        request._pic_profil_visibility = predicate
+    return predicate
+
+
+def can_view_pic_profil(viewer, target):
+    """Return True when `viewer` may open the Profil PIC page of `target`.
+
+    The single-user form of :func:`visible_profil_pic_users`. Answered without a
+    query when the two are the same person, which is the common case on a page
+    someone reached from their own name.
+
+    Args:
+        viewer (User): The person doing the looking, possibly anonymous.
+        target (User): The person whose page is wanted, or ``None``.
+
+    Returns:
+        bool: Whether the page may be opened.
+    """
+    if target is None or not viewer or not getattr(viewer, 'is_authenticated', False):
+        return False
+    if viewer.pk == target.pk:
+        return True
+    return visible_profil_pic_users(viewer).filter(pk=target.pk).exists()
+
+
 def seksi_label(group_name):
     """Return the readable unit label of `group_name`.
 
@@ -120,23 +258,30 @@ def pic_profil_url(user):
     return reverse('profil_pic_detail', args=[user.username])
 
 
-def pic_profil_link(user, label=None, css_class='text-primary text-decoration-none'):
-    """Return an escaped anchor to the profil PIC page of `user`.
+def pic_profil_link(user, can_view, label=None,
+                    css_class='text-primary text-decoration-none'):
+    """Return `user`'s name, linked to their Profil PIC page when permitted.
 
-    For the DataTables endpoints, which hand the browser finished HTML. Both
-    the label and the URL are escaped here, so callers pass raw values.
+    For the DataTables endpoints, which hand the browser finished HTML. Both the
+    label and the URL are escaped here, so callers pass raw values.
+
+    `can_view` is required rather than defaulted so that a new caller has to
+    decide who is reading: a silent default would either strip every link or
+    offer every reader a page most of them may not open.
 
     Args:
-        user (User): The user to link to, or ``None``.
+        user (User): The user to name, or ``None``.
+        can_view (callable): The predicate from :func:`pic_profil_visibility`,
+            built once for the request the rows are being rendered for.
         label (str, optional): Link text; defaults to :func:`pic_display_name`.
         css_class (str, optional): Classes of the anchor.
 
     Returns:
-        str: The anchor, or the escaped label alone when `user` is ``None`` —
-        a row without a PIC still shows whatever the caller wanted to say.
+        str: The anchor when the viewer may open the page, otherwise the escaped
+        name on its own — the row still says who is responsible either way.
     """
     text = escape(label if label is not None else pic_display_name(user))
-    if user is None:
+    if user is None or not can_view(user):
         return text
     return (
         f'<a href="{escape(pic_profil_url(user))}" class="{escape(css_class)}">'

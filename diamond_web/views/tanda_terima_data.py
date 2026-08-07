@@ -18,7 +18,7 @@ from ..models.tiket import Tiket
 from ..forms.tanda_terima_data import TandaTerimaDataForm
 from ..constants.tiket_action_types import TandaTerimaActionType
 from ..constants.tiket_status import STATUS_DIREKAM
-from ..utils.pic_profil import pic_profil_link
+from ..utils.pic_profil import pic_profil_link, pic_profil_visibility
 from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, SafeDeleteMixin
 from ..constants.tiket_status import STATUS_DIKIRIM_KE_PIDE
 from ..utils import format_number_with_separator, format_periode
@@ -142,6 +142,10 @@ def tanda_terima_data_data(request):
 
     qs_page = qs[start:start + length]
 
+    # Resolved once for the whole page: whether a name is a link depends on
+    # who is reading, and the rule costs a query to work out.
+    can_view = pic_profil_visibility(request.user)
+
     data = []
     from django.db.models import Q
 
@@ -184,7 +188,9 @@ def tanda_terima_data_data(request):
             # The perekam links to their Profil PIC page, like every other name
             # in the app. The label stays the username, which is what the column
             # search filters on.
-            'id_perekam': pic_profil_link(obj.id_perekam, label=obj.id_perekam.username),
+            'id_perekam': pic_profil_link(
+                obj.id_perekam, can_view, label=obj.id_perekam.username
+            ),
             'status': status_text,
             'actions': actions_html
         })
