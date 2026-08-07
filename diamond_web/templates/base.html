@@ -858,6 +858,9 @@
         .btn,
         .btn-icon {
             border-radius: 4px;
+            text-transform: none !important;
+            font-size: 12.5px;
+            font-weight: 500;
             transition: transform 0.15s ease, box-shadow 0.15s ease,
                         background-color 0.2s ease, border-color 0.2s ease,
                         color 0.2s ease;
@@ -1293,7 +1296,7 @@
     {% include 'navbar.html' %}
 
     <!-- Toast Container -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1090">
     </div>
 
     <!-- Django Messages Data (for toasts) -->

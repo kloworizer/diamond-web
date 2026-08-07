@@ -2540,9 +2540,13 @@
         // Suppress DataTables default error alert and handle redirect to login on expired session
         if (typeof $ !== 'undefined' && $.fn && $.fn.dataTable) {
             $.fn.dataTable.ext.errMode = 'none';
+            let isReloading = false;
             $(document).on('xhr.dt', function (e, settings, json, xhr) {
                 if (xhr && (xhr.status === 401 || xhr.status === 403 || xhr.status === 302 || (xhr.responseText && xhr.responseText.indexOf('login') !== -1))) {
-                    window.location.reload();
+                    if (!isReloading) {
+                        isReloading = true;
+                        window.location.reload();
+                    }
                 }
             });
         }
