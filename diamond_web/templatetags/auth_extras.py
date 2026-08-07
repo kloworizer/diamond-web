@@ -1,7 +1,25 @@
 from django import template
 from diamond_web.utils import format_periode
+from diamond_web.utils.pic_profil import pic_profil_url as _pic_profil_url
 
 register = template.Library()
+
+
+@register.filter(name='pic_profil_url')
+def pic_profil_url(user):
+    """Return the Profil PIC URL of `user`, or an empty string when there is none.
+
+    Lets a template link a name it already has the User for, without repeating
+    the ``{% url %}`` call and the username lookup at every one of the dozen
+    places a PIC name is printed.
+
+    Args:
+        user: A `User` instance, or ``None``.
+
+    Returns:
+        str: The URL, or ``''`` so ``{% if %}`` can fall back to plain text.
+    """
+    return _pic_profil_url(user) or ''
 
 @register.filter(name='has_group')
 def has_group(user, group_name):

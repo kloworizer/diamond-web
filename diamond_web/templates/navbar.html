@@ -316,8 +316,8 @@
                 {% csrf_token %}
                 <div class="navbar-search-field">
                     <input type="text" class="form-control" id="navbar-search-nomor-tiket"
-                           placeholder="Cari ILAP / Jenis Data / Nama Tabel / Nomor Tiket..."
-                           aria-label="Cari ILAP, jenis data, nama tabel, atau nomor tiket"
+                           placeholder="Cari ILAP / Jenis Data / Nama Tabel / PIC / Nomor Tiket..."
+                           aria-label="Cari ILAP, jenis data, nama tabel, PIC, atau nomor tiket"
                            role="combobox" aria-expanded="false" aria-autocomplete="list"
                            aria-controls="navbar-search-suggestions" style="min-width: 400px;">
                     <button class="btn" type="submit" title="Cari">
@@ -331,8 +331,10 @@
                 (function () {
                     // Header search: the ILAP and jenis data halves of the term —
                     // the latter including the nama tabel I a jenis data lands in —
-                    // are suggested as you type, while a nomor tiket only ever
-                    // resolves on an exact match (see the navbar_search view).
+                    // and the PIC half are suggested as you type, while a nomor
+                    // tiket only ever resolves on an exact match. The PIC group
+                    // is scoped to who the searcher may look up, which the
+                    // server decides (see the navbar_search view).
                     var SUGGEST_MIN_LENGTH = 3;
                     var SUGGEST_DEBOUNCE_MS = 250;
 
@@ -617,6 +619,16 @@
                         <a class="dropdown-item" href="{% url 'user_profil' %}">
                             <i class="feather-user me-2"></i>
                             <span>Profil</span>
+                        </a>
+                        {% comment %}
+                        Two different pages: "Profil" is the account — the name
+                        and password the user may change — while "Profil PIC" is
+                        the read-only page everyone else reaches by clicking this
+                        user's name, showing what they are responsible for.
+                        {% endcomment %}
+                        <a class="dropdown-item" href="{{ user|pic_profil_url }}">
+                            <i class="feather-clipboard me-2"></i>
+                            <span>Profil PIC Saya</span>
                         </a>
                         <div class="dropdown-divider"></div>
                         <form action="{% url 'logout' %}" method="post" class="m-0">

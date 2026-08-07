@@ -27,6 +27,12 @@ urlpatterns = [
     path('notifications/read/<int:pk>/', views.mark_notification_read, name='mark_notification_read'),
     path('notifications/read-all/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
     path('profil/', views.ProfilView.as_view(), name='user_profil'),
+    # Profil PIC: the page every name in the app links to. Keyed by username,
+    # like the other profil pages are keyed by the business code of their
+    # subject, and declared with the tiket endpoint first so a username never
+    # shadows it.
+    path('profil-pic/<str:username>/tikets/', views.profil_pic_tiket_data, name='profil_pic_tiket_data'),
+    path('profil-pic/<str:username>/', views.ProfilPICDetailView.as_view(), name='profil_pic_detail'),
     path('sync-data-referensi/', views.oracle_sync_page, name='oracle_sync_page'),
     path('sync-data-referensi/test/', views.oracle_sync_test_connection, name='oracle_sync_test'),
     path('sync-data-referensi/check/', views.oracle_sync_check, name='oracle_sync_check'),

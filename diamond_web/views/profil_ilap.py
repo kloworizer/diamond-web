@@ -18,6 +18,8 @@ from ..models.pic import PIC
 from ..models.tiket import Tiket
 from ..models.tiket_pic import TiketPIC
 from ..utils import format_periode
+from ..utils.pic_profil import pic_display_name, seksi_label
+from .profil_pic import build_seksi_directory, visible_profil_pic_users
 from .mixins import (
     UserP3DERequiredMixin,
     can_view_ilap_kontak,
@@ -214,25 +216,47 @@ def build_ilap_years(ilap, current_year):
 
 
 class ProfilILAPListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView):
-    """List view for ILAP profiles with basic information.
+    """Profil PDE: the staff of the three seksi, above the ILAP catalogue.
 
     Unlike the detail pages, browsing the whole catalogue stays a P3DE
     feature; other roles reach a single profile through the navbar search.
+
+    The URL and the view name still say ILAP because that is what the table
+    below the directory lists, and renaming them would break every bookmark and
+    reverse() call for a heading.
     """
     template_name = 'profil_ilap/list.html'
 
+    def wants_json(self):
+        """Return True when the request is the DataTables one, not the page.
+
+        The ILAP table is paged server-side against this same URL, which is why
+        the check is needed in two places: :meth:`render_to_response` answers it
+        with JSON, and :meth:`get_context_data` skips the work the JSON does not
+        use.
+        """
+        return (
+            self.request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            or self.request.GET.get('format') == 'json'
+        )
+
     def get_context_data(self, **kwargs):
-        """Add additional context data for the ILAP list view.
+        """Add the staff directory shown above the ILAP table.
 
         Args:
             **kwargs: Additional keyword arguments passed to the parent class
                 context data.
 
         Returns:
-            dict: Template context data including any additional variables
-                for rendering the page.
+            dict: Template context data, carrying ``seksi_columns`` — the three
+            columns from :func:`~diamond_web.views.profil_pic.build_seksi_directory`
+            — on the page request. They are left out of the DataTables request,
+            which shares this URL and would otherwise rebuild the directory once
+            per page of the table without ever rendering it.
         """
         context = super().get_context_data(**kwargs)
+        if not self.wants_json():
+            context['seksi_columns'] = build_seksi_directory()
         return context
 
     def render_to_response(self, context, **response_kwargs):
@@ -251,7 +275,7 @@ class ProfilILAPListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView
             django.http.HttpResponse: The rendered HTML template otherwise.
         """
         # Check if request wants JSON data (for DataTables)
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest' or self.request.GET.get('format') == 'json':
+        if self.wants_json():
             return self.get_data_json()
         return super().render_to_response(context, **response_kwargs)
 
@@ -517,6 +541,10 @@ NAVBAR_JENIS_DATA_SEARCH_FIELDS = (
 # rather than as another field of the jenis data group: a table is the thing the
 # user is after when they type its name, not the jenis data feeding it.
 NAVBAR_NAMA_TABEL_SEARCH_FIELDS = ('nama_tabel_I',)
+# People are looked up by the name they are known by, and by the username that
+# names them in the tiket log. Email is left out: it is not how anyone refers to
+# a colleague, and it would surface an address the searcher was not shown.
+NAVBAR_USER_SEARCH_FIELDS = ('first_name', 'last_name', 'username')
 # The dropdown has to stay readable at a glance, so each group contributes at
 # most this many rows.
 NAVBAR_SUGGESTION_LIMIT = 5
@@ -639,6 +667,46 @@ def _nama_tabel_suggestions(term):
     ]
 
 
+def _user_suggestions(term, searcher):
+    """Return navbar suggestion dicts for the people matching `term`.
+
+    Scoped to the users `searcher` may look up — see
+    :func:`~diamond_web.views.profil_pic.visible_profil_pic_users` for the rule
+    and why the search is narrowed where the page itself is not. Inactive
+    accounts are excluded: they are nobody to go to, which is what a name in the
+    search box is for.
+
+    Args:
+        term (str): The raw search term.
+        searcher (User): The person doing the searching.
+
+    Returns:
+        list: Suggestion dicts, each carrying the seksi as a sublabel so two
+        colleagues with similar names are told apart.
+    """
+    users = (
+        visible_profil_pic_users(searcher)
+        .filter(is_active=True)
+        .filter(_full_text_filter(term, NAVBAR_USER_SEARCH_FIELDS))
+        .annotate(match_rank=_full_text_rank(term, NAVBAR_USER_SEARCH_FIELDS))
+        .prefetch_related('groups')
+        .order_by('match_rank', 'first_name', 'last_name', 'username')
+        [:NAVBAR_SUGGESTION_LIMIT]
+    )
+    return [
+        {
+            'type': 'user',
+            'type_label': 'PIC',
+            'url': reverse('profil_pic_detail', args=[user.username]),
+            'label': pic_display_name(user),
+            'sublabel': ', '.join(
+                seksi_label(group.name) for group in user.groups.all()
+            ) or user.username,
+        }
+        for user in users
+    ]
+
+
 def _can_open_tiket(user, tiket):
     """Return True when `user` may open `tiket`'s detail page.
 
@@ -662,10 +730,16 @@ def navbar_search(request):
       jenis data page, ``KPDE_ADHOC_DRKB`` for the nama tabel page, a full nomor
       tiket for the tiket detail page.
     * ``suggestions`` is the dropdown: a full text search over the ILAP codes
-      and names, the sub jenis data codes and names, and the nama tabel I, so
-      ``purwakarta`` lists the ILAPs of that city, ``penjualan`` the sub jenis
-      data named after it and ``drkb`` the bank data tables named after it.
-      Multi-word terms require every word (see :func:`_full_text_filter`).
+      and names, the sub jenis data codes and names, the nama tabel I, and the
+      names of the PDE staff, so ``purwakarta`` lists the ILAPs of that city,
+      ``penjualan`` the sub jenis data named after it, ``drkb`` the bank data
+      tables named after it and ``siti`` the colleagues called that. Multi-word
+      terms require every word (see :func:`_full_text_filter`).
+
+    The people group is the one scoped to the searcher: everything else here is
+    catalogue, which every logged in user may browse, while looking colleagues
+    up follows the line of supervision — see
+    :func:`~diamond_web.views.profil_pic.visible_profil_pic_users`.
 
     The three groups are separate on purpose. A nama tabel is a field repeated
     across every sub jenis data feeding the same table — one table routinely
@@ -743,6 +817,7 @@ def navbar_search(request):
             _ilap_suggestions(term)
             + _jenis_data_suggestions(term)
             + _nama_tabel_suggestions(term)
+            + _user_suggestions(term, request.user)
         )
 
     if payload['match'] is not None:

@@ -49,5 +49,6 @@ from .sync_tiket_update import *
 from .sync_log_status import *
 from .profil import *
 from .profil_ilap import *
+from .profil_pic import *
 from .quality_control import *
 from .docs import *

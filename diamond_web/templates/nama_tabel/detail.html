@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load auth_extras %}
 
 {% block content %}
 <style>
@@ -68,6 +69,55 @@
     .nama-tabel-chip .chip-code {
         color: #94a3b8;
         font-size: 11px;
+    }
+
+    /* A person is PIC of many of a table's sub jenis data, so the list carries
+       one entry per person and scrolls like the chip lists above. */
+    .nama-tabel-pic-list {
+        max-height: 220px;
+        overflow-y: auto;
+    }
+
+    .nama-tabel-pic-group-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        font-weight: 700;
+        color: #64748b;
+        margin-bottom: 12px;
+    }
+
+    .nama-tabel-pic {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 14px;
+    }
+
+    .nama-tabel-pic-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        flex-shrink: 0;
+    }
+
+    .nama-tabel-pic-body {
+        margin-left: 12px;
+    }
+
+    .nama-tabel-pic-name {
+        font-size: 13.5px;
+        font-weight: 500;
+        color: #1e293b;
+        margin-bottom: 0;
+    }
+
+    .nama-tabel-pic-meta {
+        font-size: 11px;
+        color: #94a3b8;
     }
 </style>
 
@@ -155,6 +205,51 @@
                         {% endfor %}
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PIC -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="feather-users me-2"></i>PIC Nama Tabel
+            </h5>
+        </div>
+        <div class="card-body">
+            {% comment %}
+            The PIC of a table is the PIC of the sub jenis data feeding it, and
+            one person usually holds several of them, so each name appears once
+            and carries the number of sub jenis data it stands for.
+            {% endcomment %}
+            <div class="row">
+                {% for group in pic_groups %}
+                <div class="col-lg-4">
+                    <h6 class="nama-tabel-pic-group-label">{{ group.label }}</h6>
+                    <div class="nama-tabel-pic-list">
+                        {% for pic in group.pics %}
+                        <div class="nama-tabel-pic">
+                            <span class="nama-tabel-pic-icon bg-soft-success text-success">
+                                <i class="feather-user"></i>
+                            </span>
+                            <div class="nama-tabel-pic-body">
+                                <p class="nama-tabel-pic-name">
+                                    <a href="{{ pic.user|pic_profil_url }}" class="text-primary text-decoration-none" title="Lihat profil PIC">{{ pic.nama }}</a>
+                                    {% if pic.aktif %}
+                                    <span class="badge bg-soft-success text-success ms-1" style="font-size: 10px;">Aktif</span>
+                                    {% endif %}
+                                </p>
+                                {% if pic.count > 1 %}
+                                <span class="nama-tabel-pic-meta">{{ pic.count }} sub jenis data</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted" style="font-size: 13px;">Belum ada PIC {{ group.tipe }}.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
             </div>
         </div>
     </div>

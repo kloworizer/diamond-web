@@ -180,7 +180,7 @@
         <ul class="breadcrumb mb-0">
             <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
             <li class="breadcrumb-item"><a href="javascript:void(0);">Admin P3DE</a></li>
-            <li class="breadcrumb-item"><a href="{% url 'profil_ilap_list' %}">Profil ILAP</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'profil_ilap_list' %}">Profil PDE</a></li>
             <li class="breadcrumb-item"><a href="{% url 'profil_ilap_detail' jenis_data.id_ilap.id_ilap %}">{{ jenis_data.id_ilap.nama_ilap }}</a></li>
             <li class="breadcrumb-item active">{{ jenis_data.id_sub_jenis_data }}</li>
         </ul>
@@ -301,7 +301,7 @@
                                 {{ pic.start_date|date:"d M Y" }} &ndash; {{ pic.end_date|date:"d M Y"|default:"sekarang" }}
                             </span>
                             <p class="info-item-value">
-                                {{ pic.id_user.get_full_name|default:pic.id_user.username }}
+                                <a href="{{ pic.id_user|pic_profil_url }}" class="text-primary text-decoration-none" title="Lihat profil PIC">{{ pic.id_user.get_full_name|default:pic.id_user.username }}</a>
                                 {% if not pic.end_date %}
                                 <span class="badge bg-soft-success text-success ms-1" style="font-size: 10px;">Aktif</span>
                                 {% endif %}

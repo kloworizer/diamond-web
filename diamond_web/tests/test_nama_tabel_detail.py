@@ -15,6 +15,7 @@ from diamond_web.tests.conftest import (
     ILAPFactory,
     JenisDataILAPFactory,
     PeriodeJenisDataFactory,
+    PICFactory,
     TiketFactory,
     UserFactory,
 )
@@ -114,6 +115,131 @@ class TestNamaTabelDetailView:
         resp = client.get(reverse('nama_tabel_detail', args=['kpde_x']))
         assert resp.status_code == 200
         assert resp.context['nama_tabel'] == 'KPDE_X'
+
+
+@pytest.mark.django_db
+class TestNamaTabelPIC:
+    """The PIC section: the people behind the sub jenis data feeding the table."""
+
+    def _groups(self, client, nama_tabel='KPDE_X'):
+        resp = client.get(reverse('nama_tabel_detail', args=[nama_tabel]))
+        return {group['tipe']: group['pics'] for group in resp.context['pic_groups']}
+
+    def test_every_tipe_is_present_even_when_empty(self, client):
+        JenisDataILAPFactory(nama_tabel_I='KPDE_X')
+        _logged_in(client)
+
+        groups = self._groups(client)
+        assert set(groups) == {'P3DE', 'PIDE', 'PMDE'}
+        assert all(pics == [] for pics in groups.values())
+
+    def test_pools_pics_across_the_sub_jenis_data_of_the_table(self, client):
+        mine = PICFactory(
+            id_sub_jenis_data_ilap=JenisDataILAPFactory(nama_tabel_I='KPDE_X'),
+            id_user=UserFactory(first_name='Ani', last_name='Rahayu'),
+        )
+        PICFactory(
+            id_sub_jenis_data_ilap=JenisDataILAPFactory(nama_tabel_I='KPDE_LAIN'),
+        )
+        _logged_in(client)
+
+        assert [p['nama'] for p in self._groups(client)['P3DE']] == [
+            mine.id_user.get_full_name()
+        ]
+
+    def test_a_person_holding_several_sub_jenis_data_is_listed_once(self, client):
+        """One officer covering many feeders would otherwise repeat down the page."""
+        user = UserFactory(first_name='Ani', last_name='Rahayu')
+        for _ in range(3):
+            PICFactory(
+                id_sub_jenis_data_ilap=JenisDataILAPFactory(nama_tabel_I='KPDE_X'),
+                id_user=user,
+            )
+        _logged_in(client)
+
+        pics = self._groups(client)['P3DE']
+        assert len(pics) == 1
+        # The count is what keeps the collapsed entry from reading as one posting.
+        assert pics[0]['count'] == 3
+
+    def test_repeat_assignments_to_one_sub_jenis_data_count_once(self, client):
+        """The count is of sub jenis data, not of the stretches of time."""
+        jenis_data = JenisDataILAPFactory(nama_tabel_I='KPDE_X')
+        user = UserFactory()
+        PICFactory(id_sub_jenis_data_ilap=jenis_data, id_user=user)
+        PICFactory(id_sub_jenis_data_ilap=jenis_data, id_user=user, end_date=None)
+        _logged_in(client)
+
+        pics = self._groups(client)['P3DE']
+        assert len(pics) == 1 and pics[0]['count'] == 1
+
+    def test_still_active_when_any_assignment_is_open(self, client):
+        user = UserFactory()
+        PICFactory(
+            id_sub_jenis_data_ilap=JenisDataILAPFactory(nama_tabel_I='KPDE_X'),
+            id_user=user,
+        )
+        PICFactory(
+            id_sub_jenis_data_ilap=JenisDataILAPFactory(nama_tabel_I='KPDE_X'),
+            id_user=user,
+            end_date=None,
+        )
+        _logged_in(client)
+
+        assert self._groups(client)['P3DE'][0]['aktif'] is True
+
+    def test_finished_assignments_are_not_active(self, client):
+        PICFactory(id_sub_jenis_data_ilap=JenisDataILAPFactory(nama_tabel_I='KPDE_X'))
+        _logged_in(client)
+
+        assert self._groups(client)['P3DE'][0]['aktif'] is False
+
+    def test_active_people_come_first_then_by_name(self, client):
+        def pic(nama, **kwargs):
+            PICFactory(
+                id_sub_jenis_data_ilap=JenisDataILAPFactory(nama_tabel_I='KPDE_X'),
+                id_user=UserFactory(first_name=nama, last_name=''),
+                **kwargs,
+            )
+
+        pic('Ani')
+        pic('Zainal', end_date=None)
+        pic('Budi', end_date=None)
+        _logged_in(client)
+
+        assert [p['nama'] for p in self._groups(client)['P3DE']] == [
+            'Budi', 'Zainal', 'Ani',
+        ]
+
+    def test_pics_are_grouped_by_tipe(self, client):
+        jenis_data = JenisDataILAPFactory(nama_tabel_I='KPDE_X')
+        PICFactory(id_sub_jenis_data_ilap=jenis_data, tipe='PIDE')
+        _logged_in(client)
+
+        groups = self._groups(client)
+        assert len(groups['PIDE']) == 1
+        assert groups['P3DE'] == [] and groups['PMDE'] == []
+
+    def test_names_are_rendered_on_the_page(self, client):
+        PICFactory(
+            id_sub_jenis_data_ilap=JenisDataILAPFactory(nama_tabel_I='KPDE_X'),
+            id_user=UserFactory(first_name='Ani', last_name='Rahayu'),
+        )
+        _logged_in(client)
+
+        body = client.get(reverse('nama_tabel_detail', args=['KPDE_X'])).content.decode()
+        assert 'PIC Nama Tabel' in body
+        assert 'Ani Rahayu' in body
+
+    def test_username_stands_in_when_there_is_no_full_name(self, client):
+        user = UserFactory(first_name='', last_name='')
+        PICFactory(
+            id_sub_jenis_data_ilap=JenisDataILAPFactory(nama_tabel_I='KPDE_X'),
+            id_user=user,
+        )
+        _logged_in(client)
+
+        assert self._groups(client)['P3DE'][0]['nama'] == user.username
 
 
 @pytest.mark.django_db

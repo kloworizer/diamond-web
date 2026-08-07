@@ -18,6 +18,7 @@ from ..models.tiket import Tiket
 from ..forms.tanda_terima_data import TandaTerimaDataForm
 from ..constants.tiket_action_types import TandaTerimaActionType
 from ..constants.tiket_status import STATUS_DIREKAM
+from ..utils.pic_profil import pic_profil_link
 from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, SafeDeleteMixin
 from ..constants.tiket_status import STATUS_DIKIRIM_KE_PIDE
 from ..utils import format_number_with_separator, format_periode
@@ -180,7 +181,10 @@ def tanda_terima_data_data(request):
             'tanggal_tanda_terima': obj.tanggal_tanda_terima.strftime('%d-%m-%Y %H:%M'),
             'sumber': obj.nama_sumber,
             'lingkup': 'Regional' if obj.is_regional else 'Nasional/Internasional',
-            'id_perekam': obj.id_perekam.username,
+            # The perekam links to their Profil PIC page, like every other name
+            # in the app. The label stays the username, which is what the column
+            # search filters on.
+            'id_perekam': pic_profil_link(obj.id_perekam, label=obj.id_perekam.username),
             'status': status_text,
             'actions': actions_html
         })
