@@ -118,6 +118,7 @@
         /* Modern Custom Toast Styling */
         .toast-container {
             padding: 1.5rem !important;
+            z-index: 100000 !important;
         }
         
         .custom-toast {
@@ -1296,7 +1297,7 @@
     {% include 'navbar.html' %}
 
     <!-- Toast Container -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1090">
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 100000 !important;">
     </div>
 
     <!-- Django Messages Data (for toasts) -->
@@ -2144,7 +2145,7 @@
                         </div>
                         <h5 class="fw-bold mb-2 text-dark" style="font-size: 16px; font-family: 'Outfit', sans-serif; text-transform: uppercase; letter-spacing: 0.5px;">Sesi Berakhir!</h5>
                         <p class="text-muted mb-4" style="font-size: 13px; line-height: 1.5; font-family: 'Inter', sans-serif;">${message}</p>
-                        <a href="/accounts/login/" target="_blank" class="btn btn-primary w-100 d-flex justify-content-center align-items-center gap-2" id="btn-login-again" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 4px; background-color: #0c92ff; border-color: #0c92ff;">
+                        <a href="/accounts/login/?next=${encodeURIComponent(window.location.pathname + window.location.search)}" target="_blank" class="btn btn-primary w-100 d-flex justify-content-center align-items-center gap-2" id="btn-login-again" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 4px; background-color: #0c92ff; border-color: #0c92ff;">
                             Masuk di Tab Baru <i class="feather-external-link"></i>
                         </a>
                       </div>
