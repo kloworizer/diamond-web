@@ -172,6 +172,33 @@
     .pic-tabel-name {
         font-family: var(--bs-font-monospace, monospace);
     }
+
+    /* Copy button, sitting opposite the card title. Quiet until hovered, so it
+       does not compete with the heading it belongs to. */
+    .pic-chip-card .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .pic-copy-btn {
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        line-height: 1;
+        padding: 5px 9px;
+        flex-shrink: 0;
+    }
+
+    .pic-copy-btn:hover {
+        border-color: #0c92ff;
+        color: #0c92ff;
+    }
+
+    .pic-copy-btn.is-copied {
+        border-color: #10b981;
+        color: #10b981;
+    }
 </style>
 
 <div class="page-header">
@@ -270,12 +297,26 @@
 
     <div class="row">
         <div class="col-lg-6">
-            <div class="card shadow-sm mb-4">
+            <div class="card shadow-sm mb-4 pic-chip-card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
                         <i class="feather-briefcase me-2"></i>ILAP yang Ditangani
                         <span class="badge bg-soft-secondary text-secondary ms-2">{{ ilap_list|length }}</span>
                     </h5>
+                    {% if ilap_list %}
+                    {% comment %}
+                    The list to copy is built here rather than scraped back out
+                    of the chips: a chip carries a count and an ellipsis-prone
+                    layout, while what a reader pastes into a query or a
+                    spreadsheet is the plain identifier, one per line.
+                    {% endcomment %}
+                    <button type="button" class="btn btn-sm btn-light pic-copy-btn"
+                            data-copy-label="Daftar ILAP"
+                            data-copy-text="{% for entry in ilap_list %}{{ entry.ilap.id_ilap }} - {{ entry.ilap.nama_ilap }}{% if not forloop.last %}&#10;{% endif %}{% endfor %}"
+                            title="Salin {{ ilap_list|length }} ILAP ke clipboard">
+                        <i class="feather-copy"></i>
+                    </button>
+                    {% endif %}
                 </div>
                 <div class="card-body">
                     {% comment %}
@@ -300,12 +341,20 @@
             </div>
         </div>
         <div class="col-lg-6">
-            <div class="card shadow-sm mb-4">
+            <div class="card shadow-sm mb-4 pic-chip-card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
                         <i class="feather-database me-2"></i>Nama Tabel yang Ditangani
                         <span class="badge bg-soft-secondary text-secondary ms-2">{{ nama_tabel_list|length }}</span>
                     </h5>
+                    {% if nama_tabel_list %}
+                    <button type="button" class="btn btn-sm btn-light pic-copy-btn"
+                            data-copy-label="Daftar nama tabel"
+                            data-copy-text="{% for entry in nama_tabel_list %}{{ entry.nama_tabel }}{% if not forloop.last %}&#10;{% endif %}{% endfor %}"
+                            title="Salin {{ nama_tabel_list|length }} nama tabel ke clipboard">
+                        <i class="feather-copy"></i>
+                    </button>
+                    {% endif %}
                 </div>
                 <div class="card-body">
                     <div class="pic-chip-list">
@@ -383,6 +432,70 @@
 
 {% block scripts %}
 <script>
+    // Copy a card's list to the clipboard, one entry per line. The text is
+    // built server-side into data-copy-text, so what lands in the clipboard is
+    // the plain list rather than whatever the chips happen to render.
+    //
+    // navigator.clipboard is unavailable on plain HTTP, which is how this app is
+    // reached inside the office network, so the textarea fallback is not a
+    // legacy branch here — it is the path most users take.
+    (function () {
+        function fallbackCopy(text, onSuccess, onError) {
+            var textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                if (document.execCommand('copy')) onSuccess();
+                else onError(new Error('execCommand failed'));
+            } catch (err) {
+                onError(err);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function flash(btn, label, jumlah) {
+            var icon = btn.querySelector('i');
+            btn.classList.add('is-copied');
+            if (icon) icon.className = 'feather-check';
+            setTimeout(function () {
+                btn.classList.remove('is-copied');
+                if (icon) icon.className = 'feather-copy';
+            }, 2000);
+            if (typeof showToast === 'function') {
+                showToast(label + ' (' + jumlah + ' baris) berhasil disalin!', 'success');
+            }
+        }
+
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.pic-copy-btn');
+            if (!btn) return;
+
+            var text = btn.getAttribute('data-copy-text') || '';
+            var label = btn.getAttribute('data-copy-label') || 'Daftar';
+            if (!text) return;
+            var jumlah = text.split('\n').length;
+
+            var onSuccess = function () { flash(btn, label, jumlah); };
+            var onError = function (err) {
+                console.error('Gagal menyalin teks: ', err);
+                if (typeof showToast === 'function') showToast('Gagal menyalin teks.', 'danger');
+                else alert('Gagal menyalin teks.');
+            };
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(onSuccess).catch(function () {
+                    fallbackCopy(text, onSuccess, onError);
+                });
+            } else {
+                fallbackCopy(text, onSuccess, onError);
+            }
+        });
+    })();
+
     $(document).ready(function () {
         var language = {
             search: 'Cari:',
