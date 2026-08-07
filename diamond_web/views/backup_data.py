@@ -12,6 +12,7 @@ from io import BytesIO
 from openpyxl import Workbook
 
 from ..utils import format_periode
+from ..utils.pic_profil import pic_profil_link
 
 from ..models.backup_data import BackupData
 from ..models.tiket import Tiket
@@ -175,7 +176,10 @@ def _build_backup_data_row(obj, request=None, include_actions=False):
             ``True`` to check user permissions.
         include_actions: bool. If ``True``, generates edit/delete button HTML
             for users with active PIC access on tikets with status below
-            ``STATUS_DIKIRIM_KE_PIDE``.
+            ``STATUS_DIKIRIM_KE_PIDE``. It also marks the row as bound for the
+            browser rather than for the Excel export, which is why the PIC names
+            are only linked when it is set — anchors belong in a table cell, not
+            in a spreadsheet one.
 
     Returns:
         dict: A dictionary with keys suitable for DataTables or export
@@ -188,7 +192,7 @@ def _build_backup_data_row(obj, request=None, include_actions=False):
     ilap = subjenis.id_ilap if subjenis else None
     kategori = ilap.id_kategori if ilap else None
 
-    pic_names = []
+    pic_entries = {}
     if tiket:
         for p in TiketPIC.objects.select_related('id_user').filter(
             id_tiket=tiket,
@@ -198,8 +202,15 @@ def _build_backup_data_row(obj, request=None, include_actions=False):
             if not p.id_user:
                 continue
             full_name = f"{(p.id_user.first_name or '').strip()} {(p.id_user.last_name or '').strip()}".strip()
-            pic_names.append(full_name or p.id_user.username)
-    pic_label = ', '.join(sorted(set([n for n in pic_names if n]))) if pic_names else '-'
+            name = full_name or p.id_user.username
+            if name:
+                pic_entries.setdefault(name, p.id_user)
+    pic_label = '-'
+    if pic_entries:
+        pic_label = ', '.join(
+            pic_profil_link(user, label=name) if include_actions else name
+            for name, user in sorted(pic_entries.items())
+        )
 
     actions = ''
     if include_actions and request and tiket:

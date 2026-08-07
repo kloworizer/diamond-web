@@ -38,6 +38,7 @@ from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from ..models.jenis_prioritas_data import JenisPrioritasData
 from ..models.status_penelitian import StatusPenelitian
 from ..constants.tiket_status import STATUS_PENGENDALIAN_MUTU
+from ..utils.pic_profil import pic_profil_link
 from ..utils.wilayah import kanwil_value_paths, tiket_in_kanwil_q
 from .mixins import is_kasi_pmde
 
@@ -832,7 +833,10 @@ def quality_control_data(request):
         )
         pic_pmde_name = ''
         if pic_pmde:
-            pic_pmde_name = pic_pmde.id_user.get_full_name() or pic_pmde.id_user.username
+            # Linked to the Profil PIC page, like every other name in the app:
+            # the reader of a QC queue often wants the rest of that person's
+            # load, not just the row in front of them.
+            pic_pmde_name = pic_profil_link(pic_pmde.id_user)
 
         # Deadline from the annotated durasi — 0 means no active DurasiJatuhTempo
         # covers this tiket's base date, so there is nothing to count from.

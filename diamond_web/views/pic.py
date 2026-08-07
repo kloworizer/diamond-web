@@ -11,6 +11,7 @@ from ..models.pic import PIC
 from ..forms.pic import PICForm
 from ..constants.tiket_action_types import PICActionType
 from ..constants.tiket_status import STATUS_DIBATALKAN
+from ..utils.pic_profil import pic_profil_link
 from .mixins import (
     AjaxFormMixin,
     AdminP3DERequiredMixin,
@@ -777,7 +778,9 @@ def _pic_data_common(request, tipe):
             'id_sub_jenis_data': obj.id_sub_jenis_data_ilap.id_sub_jenis_data,
             'nama_sub_jenis_data': obj.id_sub_jenis_data_ilap.nama_sub_jenis_data,
             'username': obj.id_user.username,
-            'full_name': user_display,
+            # The name is the way into everything else this person holds, so it
+            # links to their Profil PIC page here as it does everywhere else.
+            'full_name': pic_profil_link(obj.id_user, label=user_display),
             'start_date': obj.start_date.strftime('%Y-%m-%d') if obj.start_date else '',
             'end_date': obj.end_date.strftime('%Y-%m-%d') if obj.end_date else '',
         }

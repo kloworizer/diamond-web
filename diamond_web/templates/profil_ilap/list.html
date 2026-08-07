@@ -23,6 +23,67 @@
         padding-top: 4px !important;
         padding-bottom: 6px !important;
     }
+
+    /* Staff directory. Three columns of equal height whatever their length, so
+       the seksi read as three lists side by side rather than as one ragged
+       block; each scrolls on its own once it outgrows the card. */
+    .seksi-card {
+        height: 100%;
+    }
+
+    .seksi-card .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .seksi-user-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .seksi-user {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 7px 0;
+        border-bottom: 1px solid #f1f5f9;
+        text-decoration: none;
+    }
+
+    .seksi-user:last-child {
+        border-bottom: none;
+    }
+
+    .seksi-user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #00BDFB 0%, #0C92FF 100%);
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .seksi-user-name {
+        font-size: 13.5px;
+        font-weight: 500;
+        color: #1e293b;
+        margin-bottom: 0;
+    }
+
+    .seksi-user:hover .seksi-user-name {
+        color: #0c92ff;
+    }
+
+    .seksi-user-username {
+        font-size: 11px;
+        color: #94a3b8;
+    }
 </style>
 
 <div class="page-header">
@@ -30,12 +91,51 @@
         <ul class="breadcrumb">
             <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
             <li class="breadcrumb-item"><a href="javascript:void(0);">Admin P3DE</a></li>
-            <li class="breadcrumb-item active">Profil ILAP</li>
+            <li class="breadcrumb-item active">Profil PDE</li>
         </ul>
     </div>
 </div>
 
 <div class="main-content">
+    {% comment %}
+    The staff of PDE, above the ILAP catalogue they work on. Each seksi lists
+    the active accounts of its user group, less the administrators — they are
+    members of all three so they can act anywhere, and would otherwise head
+    every column. Each name opens that person's Profil PIC page.
+    {% endcomment %}
+    <div class="row g-3 mb-3">
+        {% for seksi in seksi_columns %}
+        <div class="col-lg-4">
+            <div class="card stretch seksi-card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="feather-users me-2 text-primary"></i>{{ seksi.label }}
+                    </h5>
+                    <span class="badge bg-soft-primary text-primary">{{ seksi.users|length }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="seksi-user-list">
+                        {% for entry in seksi.users %}
+                        <a class="seksi-user" href="{% url 'profil_pic_detail' entry.user.username %}"
+                           title="Lihat profil PIC {{ entry.nama }}">
+                            <span class="seksi-user-avatar">{{ entry.nama|slice:":1"|upper }}</span>
+                            <span>
+                                <p class="seksi-user-name">{{ entry.nama }}</p>
+                                <span class="seksi-user-username">@{{ entry.user.username }}</span>
+                            </span>
+                        </a>
+                        {% empty %}
+                        <p class="text-muted mb-0" style="font-size: 13px;">
+                            Belum ada pegawai aktif di {{ seksi.label }}.
+                        </p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
     <div class="card stretch stretch-full datatable-card">
         <div class="card-header">
             <h5 class="card-title"><i class="feather-file-text me-2 text-primary"></i>Daftar Profil ILAP</h5>

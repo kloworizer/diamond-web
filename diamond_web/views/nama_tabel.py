@@ -11,6 +11,7 @@ from django.views.decorators.http import require_GET
 
 from ..constants.tiket_status import STATUS_BADGE_CLASSES, STATUS_LABELS
 from ..models.jenis_data_ilap import JenisDataILAP
+from ..models.pic import PIC
 from ..models.tiket import Tiket
 from ..forms.nama_tabel import NamaTabelForm
 from ..utils import format_periode
@@ -271,6 +272,60 @@ def _distinct_by_nama(rows):
     return sorted(entries.values(), key=lambda entry: entry['nama'].lower())
 
 
+def _nama_tabel_pic_groups(rows):
+    """The PICs of `rows`, grouped by tipe and collapsed to one entry per person.
+
+    A table is fed by dozens of sub jenis data and the same officer is usually
+    PIC of many of them, often over several stretches of time, so listing every
+    assignment would repeat one name down the page. Each entry therefore stands
+    for all of a person's assignments in this table: it counts the sub jenis
+    data behind them, and reads as active when any one assignment is still open.
+
+    Args:
+        rows (iterable): JenisDataILAP rows sharing a nama tabel.
+
+    Returns:
+        list: One dict per tipe, ``{'tipe', 'label', 'pics'}``, in the order the
+        tipe choices declare; each pic is ``{'user', 'nama', 'count', 'aktif'}``,
+        active people first and then by name. The user is carried so the entry
+        can link to their Profil PIC page.
+    """
+    per_tipe = {tipe: {} for tipe, _ in PIC.TipePIC.choices}
+    pics = PIC.objects.filter(
+        id_sub_jenis_data_ilap__in=rows
+    ).select_related('id_user')
+
+    for pic in pics:
+        entries = per_tipe.get(pic.tipe)
+        if entries is None:  # a tipe no longer offered by the choices
+            continue
+        entry = entries.get(pic.id_user_id)
+        if entry is None:
+            entry = entries[pic.id_user_id] = {
+                'user': pic.id_user,
+                'nama': pic.id_user.get_full_name() or pic.id_user.username,
+                'sub_jenis_data': set(),
+                'aktif': False,
+            }
+        entry['sub_jenis_data'].add(pic.id_sub_jenis_data_ilap_id)
+        entry['aktif'] = entry['aktif'] or pic.end_date is None
+
+    groups = []
+    for tipe, label in PIC.TipePIC.choices:
+        entries = [
+            {
+                'user': e['user'],
+                'nama': e['nama'],
+                'count': len(e['sub_jenis_data']),
+                'aktif': e['aktif'],
+            }
+            for e in per_tipe[tipe].values()
+        ]
+        entries.sort(key=lambda entry: (not entry['aktif'], entry['nama'].lower()))
+        groups.append({'tipe': tipe, 'label': label, 'pics': entries})
+    return groups
+
+
 class NamaTabelDetailView(LoginRequiredMixin, TemplateView):
     """One bank data table, with the sub jenis data and tikets that fill it.
 
@@ -296,6 +351,7 @@ class NamaTabelDetailView(LoginRequiredMixin, TemplateView):
             if row.id_ilap and row.id_ilap.id_ilap not in ilaps:
                 ilaps[row.id_ilap.id_ilap] = row.id_ilap
         context['ilap_list'] = list(ilaps.values())
+        context['pic_groups'] = _nama_tabel_pic_groups(rows)
         context['tiket_total'] = Tiket.objects.filter(
             id_periode_data__id_sub_jenis_data_ilap__in=rows
         ).count()

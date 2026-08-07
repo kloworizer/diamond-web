@@ -694,6 +694,16 @@ class TestJenisDataILAPTiketData:
         assert 'Direkam' in row['status']
         assert '/tiket/' in row['actions']
 
+    def test_tgl_terima_dip_is_a_date_without_a_time(self, client):
+        """The clock time a DIP arrived is noise here, as in every tiket list."""
+        _, jenis_data = _bundle('Bulanan', extra_tikets=1)
+        client.force_login(_p3de_user())
+        resp = client.get(reverse('jenis_data_ilap_tiket_data', args=[jenis_data.id_sub_jenis_data]))
+
+        shown = resp.json()['data'][0]['tgl_terima_dip']
+
+        assert ':' not in shown
+
     def test_search_matches_status_label(self, client):
         _, jenis_data = _bundle('Bulanan', extra_tikets=2)
         client.force_login(_p3de_user())

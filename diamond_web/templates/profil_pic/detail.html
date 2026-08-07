@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+
+{% block title %}Profil PIC - {{ display_name }} - Diamond Web{% endblock %}
+
+{% block content %}
+<style>
+    /* Identity banner. The gradient is the one the app already uses for the
+       avatar on "Profil Saya", so the two profile pages read as a pair. */
+    .pic-hero {
+        border-radius: 16px;
+        overflow: hidden;
+        background: linear-gradient(120deg, #0C92FF 0%, #00BDFB 100%);
+        color: #fff;
+        box-shadow: 0 10px 24px -12px rgba(12, 146, 255, 0.55);
+    }
+
+    .pic-hero-body {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 22px;
+        padding: 26px 30px;
+    }
+
+    .pic-avatar {
+        width: 78px;
+        height: 78px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.18);
+        border: 3px solid rgba(255, 255, 255, 0.55);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        flex-shrink: 0;
+    }
+
+    .pic-hero-name {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 2px;
+        color: #fff;
+    }
+
+    .pic-hero-username {
+        font-size: 13px;
+        opacity: 0.85;
+        margin-bottom: 10px;
+    }
+
+    /* Badges on the gradient cannot use the soft palette, which assumes a light
+       background, so they are given a translucent white of their own. */
+    .pic-hero-badge {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        border-radius: 9999px;
+        padding: 4px 12px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        margin: 0 6px 6px 0;
+    }
+
+    /* Summary tiles, matching the nama tabel detail page. */
+    .pic-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .pic-stat {
+        flex: 1 1 150px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 14px 18px;
+        background-color: #f8fafc;
+    }
+
+    .pic-stat-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #64748b;
+    }
+
+    .pic-stat-value {
+        font-size: 22px;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 0;
+    }
+
+    /* The chip lists run to dozens of entries for a long serving PIC, so they
+       scroll inside their card rather than pushing the tables off the screen. */
+    .pic-chip-list {
+        max-height: 230px;
+        overflow-y: auto;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-content: flex-start;
+    }
+
+    .pic-chip {
+        display: inline-block;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 12px;
+        color: #475569;
+        text-decoration: none;
+        background-color: #fff;
+    }
+
+    .pic-chip:hover {
+        border-color: #0c92ff;
+        color: #0c92ff;
+    }
+
+    .pic-chip .chip-code {
+        color: #94a3b8;
+        font-size: 11px;
+    }
+
+    /* An assignment that has ended is still on the page — it is how the reader
+       learns who used to hold the data — but it is dimmed so the current one
+       stands out. */
+    .pic-chip.is-past {
+        background-color: #f8fafc;
+        color: #94a3b8;
+        border-style: dashed;
+    }
+
+    .pic-tabel-name {
+        font-family: var(--bs-font-monospace, monospace);
+    }
+</style>
+
+<div class="page-header">
+    <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+            <h5 class="m-b-10"><i class="feather-user me-2"></i>Profil PIC</h5>
+        </div>
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item active">{{ display_name }}</li>
+        </ul>
+    </div>
+</div>
+
+<div class="main-content">
+    <!-- Identity -->
+    <div class="pic-hero mb-4">
+        <div class="pic-hero-body">
+            <span class="pic-avatar">{{ initials }}</span>
+            <div>
+                <h4 class="pic-hero-name">{{ display_name }}</h4>
+                <p class="pic-hero-username">@{{ pic_user.username }}</p>
+                <div>
+                    {% for seksi in seksi_list %}
+                    <span class="pic-hero-badge"><i class="feather-briefcase me-1"></i>{{ seksi }}</span>
+                    {% empty %}
+                    <span class="pic-hero-badge">Tanpa Seksi</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ringkasan -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="pic-summary">
+                <div class="pic-stat">
+                    <span class="pic-stat-label">ILAP</span>
+                    <p class="pic-stat-value">{{ ilap_list|length }}</p>
+                </div>
+                <div class="pic-stat">
+                    <span class="pic-stat-label">Sub Jenis Data</span>
+                    <p class="pic-stat-value">{{ jenis_data_list|length }}</p>
+                </div>
+                <div class="pic-stat">
+                    <span class="pic-stat-label">Nama Tabel</span>
+                    <p class="pic-stat-value">{{ nama_tabel_list|length }}</p>
+                </div>
+                <div class="pic-stat">
+                    <span class="pic-stat-label">Tiket</span>
+                    <p class="pic-stat-value">{{ tiket_total }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="feather-briefcase me-2"></i>ILAP yang Ditangani
+                        <span class="badge bg-soft-secondary text-secondary ms-2">{{ ilap_list|length }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% comment %}
+                    One chip per ILAP, carrying how many of its sub jenis data
+                    this person holds; a chip whose assignments have all ended is
+                    dimmed rather than dropped.
+                    {% endcomment %}
+                    <div class="pic-chip-list">
+                        {% for entry in ilap_list %}
+                        <a class="pic-chip{% if not entry.aktif %} is-past{% endif %}"
+                           href="{% url 'profil_ilap_detail' entry.ilap.id_ilap %}"
+                           title="{{ entry.ilap.id_ilap }} &ndash; {{ entry.ilap.nama_ilap }}">
+                            <span class="chip-code">{{ entry.ilap.id_ilap }}</span>
+                            {{ entry.ilap.nama_ilap }}
+                            {% if entry.count > 1 %}<span class="chip-code">&times;{{ entry.count }}</span>{% endif %}
+                        </a>
+                        {% empty %}
+                        <span class="text-muted">Belum ada penugasan ILAP.</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="feather-database me-2"></i>Nama Tabel yang Ditangani
+                        <span class="badge bg-soft-secondary text-secondary ms-2">{{ nama_tabel_list|length }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="pic-chip-list">
+                        {% for entry in nama_tabel_list %}
+                        <a class="pic-chip pic-tabel-name{% if not entry.aktif %} is-past{% endif %}"
+                           href="{% url 'nama_tabel_detail' entry.nama_tabel %}"
+                           title="{{ entry.nama_tabel }}">
+                            {{ entry.nama_tabel }}
+                            {% if entry.count > 1 %}<span class="chip-code">&times;{{ entry.count }}</span>{% endif %}
+                        </a>
+                        {% empty %}
+                        <span class="text-muted">Belum ada nama tabel.</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Jenis Data -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="feather-layers me-2"></i>Sub Jenis Data yang Ditangani
+                <span class="badge bg-soft-secondary text-secondary ms-2">{{ jenis_data_list|length }}</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="pic-chip-list">
+                {% for entry in jenis_data_list %}
+                <a class="pic-chip{% if not entry.aktif %} is-past{% endif %}"
+                   href="{% url 'jenis_data_ilap_profil' entry.jenis_data.id_sub_jenis_data %}"
+                   title="{{ entry.jenis_data.id_sub_jenis_data }} &ndash; {{ entry.jenis_data.nama_sub_jenis_data }} ({{ entry.tipe_labels|join:', ' }})">
+                    <span class="chip-code">{{ entry.jenis_data.id_sub_jenis_data }}</span>
+                    {{ entry.jenis_data.nama_sub_jenis_data }}
+                </a>
+                {% empty %}
+                <span class="text-muted">Belum ada sub jenis data.</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Tiket -->
+    <div class="card stretch stretch-full datatable-card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="feather-file me-2"></i>Tiket yang Ditangani
+                <span class="badge bg-soft-secondary text-secondary ms-2">{{ tiket_total }}</span>
+            </h5>
+        </div>
+        <div class="card-body custom-card-action p-0">
+            <div class="table-responsive">
+                <table id="pic-tiket-table" class="table table-hover mb-0" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>Nomor Tiket</th>
+                            <th>ILAP</th>
+                            <th>Sub Jenis Data</th>
+                            <th>Periode</th>
+                            <th class="text-center">Tahun</th>
+                            <th>Peran</th>
+                            <th>Status</th>
+                            <th>Tanggal Terima DIP</th>
+                            <th class="col-actions text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function () {
+        var language = {
+            search: 'Cari:',
+            searchPlaceholder: 'Cari...',
+            lengthMenu: 'Tampilkan _MENU_ entri',
+            info: 'Menampilkan _START_ hingga _END_ dari _TOTAL_ entri',
+            infoEmpty: 'Menampilkan 0 hingga 0 dari 0 entri',
+            infoFiltered: '(disaring dari _MAX_ entri total)',
+            zeroRecords: 'Tidak ada data yang cocok',
+            loadingRecords: 'Memuat...',
+            processing: 'Memproses...',
+            aria: {
+                sortAscending: ': aktifkan untuk mengurutkan kolom naik',
+                sortDescending: ': aktifkan untuk mengurutkan kolom turun'
+            }
+        };
+
+        var layout = {
+            topStart: 'pageLength',
+            topEnd: 'search',
+            bottomStart: 'info',
+            bottomEnd: 'paging'
+        };
+
+        $('#pic-tiket-table').DataTable({
+            serverSide: true,
+            processing: true,
+            ajax: {
+                url: "{% url 'profil_pic_tiket_data' pic_user.username %}",
+                type: 'GET'
+            },
+            columns: [
+                { data: 'nomor_tiket' },
+                { data: 'nama_ilap' },
+                { data: 'sub_jenis_data' },
+                { data: 'periode' },
+                { data: 'tahun', className: 'text-center' },
+                { data: 'peran', orderable: false },
+                { data: 'status' },
+                { data: 'tgl_terima_dip' },
+                { data: 'actions', orderable: false, searchable: false, className: 'col-actions text-center' }
+            ],
+            order: [[0, 'asc']],
+            pageLength: 10,
+            layout: layout,
+            language: $.extend({}, language, {
+                emptyTable: 'Belum ada tiket untuk pengguna ini.'
+            })
+        });
+    });
+</script>
+{% endblock %}
