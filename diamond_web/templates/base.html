@@ -2110,13 +2110,13 @@
                     credentials: 'same-origin',
                     body: JSON.stringify({}),
                 }).then(() => {
-                    showTimeoutModal();
+                    window._diamondOnSessionExpired('timeout');
                 }).catch(() => {
-                    showTimeoutModal();
+                    window._diamondOnSessionExpired('timeout');
                 });
             }
 
-            function showTimeoutModal() {
+            window._diamondOnSessionExpired = function (reason = 'timeout') {
                 if (timeoutModalShown) return;
 
                 // Close any active modals to prevent stacking/overlap clashes
@@ -2130,6 +2130,10 @@
                 // remove existing timeout modal if any
                 document.getElementById('sessionTimeoutModal')?.remove();
 
+                const message = reason === 'multitab' 
+                    ? `Anda telah logout di tab lain. Silakan login kembali di tab baru untuk melanjutkan aktivitas Anda tanpa kehilangan data.`
+                    : `Anda sudah logout karena terdeteksi tidak aktif selama <strong>30 menit</strong>. Silakan login kembali di tab baru.`;
+
                 const modalHtml = `
                 <div class="modal fade" id="sessionTimeoutModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
                   <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
@@ -2138,9 +2142,11 @@
                         <div class="d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 56px; height: 56px; border-radius: 50%; background-color: #fef2f2; color: #dc2626;">
                           <i class="feather-alert-octagon" style="font-size: 26px;"></i>
                         </div>
-                        <h5 class="fw-bold mb-2 text-dark" style="font-size: 16px; font-family: 'Outfit', sans-serif; text-transform: uppercase; letter-spacing: 0.5px;">Session Timeout!</h5>
-                        <p class="text-muted mb-4" style="font-size: 13px; line-height: 1.5; font-family: 'Inter', sans-serif;">Anda sudah logout karena terdeteksi tidak aktif selama <strong>30 menit</strong></p>
-                        <button type="button" class="btn btn-primary w-100" id="btn-login-again" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 4px; background-color: #0c92ff; border-color: #0c92ff;">Masuk Kembali</button>
+                        <h5 class="fw-bold mb-2 text-dark" style="font-size: 16px; font-family: 'Outfit', sans-serif; text-transform: uppercase; letter-spacing: 0.5px;">Sesi Berakhir!</h5>
+                        <p class="text-muted mb-4" style="font-size: 13px; line-height: 1.5; font-family: 'Inter', sans-serif;">${message}</p>
+                        <a href="/accounts/login/" target="_blank" class="btn btn-primary w-100 d-flex justify-content-center align-items-center gap-2" id="btn-login-again" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 4px; background-color: #0c92ff; border-color: #0c92ff;">
+                            Masuk di Tab Baru <i class="feather-external-link"></i>
+                        </a>
                       </div>
                     </div>
                   </div>
@@ -2151,22 +2157,11 @@
                 const bsModal = new bootstrap.Modal(modalEl);
                 bsModal.show();
 
-                const redirectToLogin = () => {
-                    const next = encodeURIComponent(window.location.pathname + window.location.search);
-                    window.location.href = '/accounts/login/?next=' + next;
-                };
-
-                document.getElementById('btn-login-again').addEventListener('click', () => {
-                    bsModal.hide();
-                    redirectToLogin();
-                });
-
                 modalEl.addEventListener('hidden.bs.modal', () => {
                     document.getElementById('sessionTimeoutModal')?.remove();
                     timeoutModalShown = false;
-                    redirectToLogin();
                 });
-            }
+            };
 
             // Extend the session on user activity. This deliberately does NOT
             // just push the local clock forward: doing that made the browser
@@ -2255,8 +2250,6 @@
                 }
             }
 
-            // Patch onSessionExpired to also broadcast
-            const _origOnSessionExpired = window._diamondOnSessionExpired;
             // Listen for logout events from OTHER tabs
             window.addEventListener('storage', function (e) {
                 if (e.key === LOGOUT_KEY && e.newValue) {
@@ -2271,24 +2264,9 @@
 
             // Listen for the custom event to trigger the session-expired modal
             window.addEventListener('diamond:session-expired', function () {
-                // We can't call the closure-scoped onSessionExpired directly,
-                // so we simulate a 401 to trigger the session-expired flow.
-                // The cleanest approach: POST to session-expired endpoint then show modal.
-                const csrftokenLocal = document.querySelector('[name=csrfmiddlewaretoken]')?.value
-                    || document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
-                fetch('{% url "session_expired" %}', {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': csrftokenLocal, 'Content-Type': 'application/json' },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({}),
-                }).finally(() => {
-                    // Show timeout modal by redirecting to login
-                    const next = encodeURIComponent(window.location.pathname + window.location.search);
-                    // Small delay so the POST can complete
-                    setTimeout(() => {
-                        window.location.href = '/accounts/login/?next=' + next;
-                    }, 300);
-                });
+                if (typeof window._diamondOnSessionExpired === 'function') {
+                    window._diamondOnSessionExpired('multitab');
+                }
             });
 
             // Expose broadcastLogout so the session IIFE can call it on logout
@@ -2296,14 +2274,20 @@
 
             // Listen for login events from OTHER tabs.
             // If the user logs in on another tab, this authenticated tab should
-            // simply stay in sync (no action needed since session cookie is shared).
-            // But if THIS tab is somehow showing stale / error content, a reload helps.
-            // Note: storage events only fire in OTHER tabs, not the one that set the key.
+            // hide the timeout modal (if open) and sync its state.
             window.addEventListener('storage', function (e) {
                 if (e.key === 'diamond_login_event' && e.newValue) {
-                    // Another tab has just logged in.
-                    // We're in the authenticated base.html context, so do nothing —
-                    // the session cookie is already shared and this tab is still valid.
+                    const modalEl = document.getElementById('sessionTimeoutModal');
+                    if (modalEl) {
+                        const bsModal = bootstrap.Modal.getInstance(modalEl);
+                        if (bsModal) {
+                            bsModal.hide();
+                            timeoutModalShown = false; // reset flag
+                            if (typeof showToast === 'function') {
+                                showToast('Sesi berhasil dipulihkan dari tab lain!', 'success');
+                            }
+                        }
+                    }
                     // Clean up the logout key in case it was left over.
                     try { localStorage.removeItem('diamond_logout_event'); } catch (_) {}
                 }
