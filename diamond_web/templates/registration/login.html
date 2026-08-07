@@ -207,6 +207,22 @@
                 }
             });
         })();
+
+        // Fix CSRF verification failure due to cached login pages (bfcache/proxy)
+        (function () {
+            var getCookie = function(name) {
+                var value = "; " + document.cookie;
+                var parts = value.split("; " + name + "=");
+                if (parts.length === 2) return parts.pop().split(";").shift();
+            };
+            var csrftoken = getCookie('csrftoken');
+            if (csrftoken) {
+                var csrfInputs = document.querySelectorAll('input[name="csrfmiddlewaretoken"]');
+                csrfInputs.forEach(function (input) {
+                    input.value = decodeURIComponent(csrftoken);
+                });
+            }
+        })();
     </script>
 </body>
 

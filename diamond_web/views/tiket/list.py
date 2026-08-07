@@ -1402,6 +1402,7 @@ def tiket_data(request):
             'nama_tabel_I': nama_tabel_I,
             'periode_formatted': periode_formatted,
             'status': STATUS_LABELS.get(obj.status_tiket, '-'),
+            'status_code': obj.status_tiket,
             'status_ketersediaan_data': 'Ya' if obj.status_ketersediaan_data else 'Tidak',
             'special_request': 'Ya' if obj.special_request else 'Tidak',
             'baris_lengkap': obj.baris_lengkap,

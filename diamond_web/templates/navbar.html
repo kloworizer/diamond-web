@@ -631,7 +631,7 @@
                             <span>Profil PIC Saya</span>
                         </a>
                         <div class="dropdown-divider"></div>
-                        <form action="{% url 'logout' %}" method="post" class="m-0">
+                        <form action="{% url 'logout' %}" method="post" class="m-0" onsubmit="if(typeof window._diamondBroadcastLogout === 'function') window._diamondBroadcastLogout();">
                             {% csrf_token %}
                             <button type="submit" class="dropdown-item">
                                 <i class="feather-log-out me-2"></i>
