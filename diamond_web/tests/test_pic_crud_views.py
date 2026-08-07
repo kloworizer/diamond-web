@@ -265,6 +265,127 @@ class TestPICP3DEUpdateView:
         result = json.loads(resp.content)
         assert result.get('success') is True
 
+    def _post_user_change(self, client, pic, new_user, end_date=''):
+        return client.post(
+            reverse('pic_p3de_update', args=[pic.pk]),
+            {
+                'id_sub_jenis_data_ilap': pic.id_sub_jenis_data_ilap.pk,
+                'id_user': new_user.pk,
+                'start_date': str(pic.start_date),
+                'end_date': end_date,
+            },
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+    def test_post_change_user_hands_open_tiket_over(self, client, p3de_admin_user, db):
+        """Swapping the user deactivates the old PIC and assigns the new one."""
+        from diamond_web.constants.tiket_action_types import PICActionType
+        from diamond_web.models import TiketAction
+
+        old_user = _make_p3de_user()
+        new_user = _make_p3de_user()
+        tiket = TiketFactory(status_tiket=1)
+        jenis_data = tiket.id_periode_data.id_sub_jenis_data_ilap
+        pic = PICFactory(
+            tipe='P3DE',
+            id_user=old_user,
+            id_sub_jenis_data_ilap=jenis_data,
+            start_date=date.today() - timedelta(days=30),
+            end_date=None,
+        )
+        TiketPICFactory(id_tiket=tiket, id_user=old_user, role=TiketPIC.Role.P3DE, active=True)
+
+        client.force_login(p3de_admin_user)
+        resp = self._post_user_change(client, pic, new_user)
+
+        assert resp.status_code == 200
+        assert json.loads(resp.content).get('success') is True
+        assert PIC.objects.get(pk=pic.pk).id_user_id == new_user.pk
+        # Old PIC off, new PIC on - the tiket is never left unassigned
+        assert TiketPIC.objects.get(
+            id_tiket=tiket, id_user=old_user, role=TiketPIC.Role.P3DE
+        ).active is False
+        assert TiketPIC.objects.get(
+            id_tiket=tiket, id_user=new_user, role=TiketPIC.Role.P3DE
+        ).active is True
+        actions = TiketAction.objects.filter(id_tiket=tiket)
+        assert actions.filter(action=PICActionType.DITAMBAHKAN).exists()
+        assert actions.filter(action=PICActionType.TIDAK_AKTIF).exists()
+
+    def test_post_change_user_reactivates_existing_tiket_pic(self, client, p3de_admin_user, db):
+        """A new user who was assigned before is switched back on, not duplicated."""
+        old_user = _make_p3de_user()
+        new_user = _make_p3de_user()
+        tiket = TiketFactory(status_tiket=1)
+        jenis_data = tiket.id_periode_data.id_sub_jenis_data_ilap
+        pic = PICFactory(
+            tipe='P3DE',
+            id_user=old_user,
+            id_sub_jenis_data_ilap=jenis_data,
+            start_date=date.today() - timedelta(days=30),
+            end_date=None,
+        )
+        TiketPICFactory(id_tiket=tiket, id_user=old_user, role=TiketPIC.Role.P3DE, active=True)
+        TiketPICFactory(id_tiket=tiket, id_user=new_user, role=TiketPIC.Role.P3DE, active=False)
+
+        client.force_login(p3de_admin_user)
+        resp = self._post_user_change(client, pic, new_user)
+
+        assert resp.status_code == 200
+        new_records = TiketPIC.objects.filter(
+            id_tiket=tiket, id_user=new_user, role=TiketPIC.Role.P3DE
+        )
+        assert new_records.count() == 1
+        assert new_records.first().active is True
+
+    def test_post_change_user_leaves_closed_tiket_alone(self, client, p3de_admin_user, db):
+        """A finished tiket keeps the person who actually worked it."""
+        old_user = _make_p3de_user()
+        new_user = _make_p3de_user()
+        tiket = TiketFactory(status_tiket=8)  # selesai
+        jenis_data = tiket.id_periode_data.id_sub_jenis_data_ilap
+        pic = PICFactory(
+            tipe='P3DE',
+            id_user=old_user,
+            id_sub_jenis_data_ilap=jenis_data,
+            start_date=date.today() - timedelta(days=30),
+            end_date=None,
+        )
+        TiketPICFactory(id_tiket=tiket, id_user=old_user, role=TiketPIC.Role.P3DE, active=True)
+
+        client.force_login(p3de_admin_user)
+        resp = self._post_user_change(client, pic, new_user)
+
+        assert resp.status_code == 200
+        assert TiketPIC.objects.get(
+            id_tiket=tiket, id_user=old_user, role=TiketPIC.Role.P3DE
+        ).active is True
+        assert not TiketPIC.objects.filter(id_tiket=tiket, id_user=new_user).exists()
+
+    def test_post_change_user_with_end_date_only_deactivates(self, client, p3de_admin_user, db):
+        """Closing the PIC while swapping the user assigns nobody."""
+        old_user = _make_p3de_user()
+        new_user = _make_p3de_user()
+        tiket = TiketFactory(status_tiket=1)
+        jenis_data = tiket.id_periode_data.id_sub_jenis_data_ilap
+        pic = PICFactory(
+            tipe='P3DE',
+            id_user=old_user,
+            id_sub_jenis_data_ilap=jenis_data,
+            start_date=date.today() - timedelta(days=30),
+            end_date=None,
+        )
+        TiketPICFactory(id_tiket=tiket, id_user=old_user, role=TiketPIC.Role.P3DE, active=True)
+
+        client.force_login(p3de_admin_user)
+        resp = self._post_user_change(client, pic, new_user, end_date=str(date.today()))
+
+        assert resp.status_code == 200
+        assert TiketPIC.objects.get(
+            id_tiket=tiket, id_user=old_user, role=TiketPIC.Role.P3DE
+        ).active is False
+        assert not TiketPIC.objects.filter(id_tiket=tiket, id_user=new_user).exists()
+
 
 @pytest.mark.django_db
 class TestPICP3DEDeleteView:

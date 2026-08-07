@@ -151,7 +151,22 @@ Saat admin menekan **Tambah** dan menyimpan PIC baru:
 
 **Efeknya:** user langsung menjadi penanggung jawab pada semua tiket berjalan untuk data tersebut, tanpa perlu penugasan manual per tiket.
 
-### Skenario 2 — Mengisi End Date (Menonaktifkan PIC)
+### Skenario 2 — Mengganti User (Serah Terima PIC)
+
+Saat admin mengubah PIC dan **mengganti field User** dengan orang lain, sistem memperlakukannya sebagai **serah terima**: dalam satu penyimpanan, PIC lama dilepas dan PIC baru langsung memegang tiket, sehingga tiket tidak pernah tertinggal tanpa penanggung jawab.
+
+1. Record PIC diperbarui ke user yang baru.
+2. Sistem mencari **semua tiket berjalan** yang memakai Sub Jenis Data yang sama.
+3. Pada tiket-tiket tersebut, penugasan **user lama dinonaktifkan** dan dicatat riwayat **"Tidak Aktif"** dengan catatan *"… diganti oleh &lt;user baru&gt;"*.
+4. Pada tiket yang sama, **user baru ditugaskan persis seperti Skenario 1**: dibuat penugasan baru (riwayat **"Ditambahkan"**), atau bila ia pernah menjadi PIC pada tiket itu dan statusnya nonaktif → **diaktifkan kembali** (riwayat **"Diaktifkan Kembali"**). Penugasan tidak digandakan bila user baru sudah aktif di tiket tersebut.
+
+**Efeknya:** pergantian penanggung jawab cukup dilakukan sekali di menu PIC dan langsung tercermin pada seluruh tiket berjalan.
+
+> **Cakupan hanya tiket berjalan.** Tiket yang sudah **dibatalkan/selesai** sengaja tidak disentuh — tiket tersebut tetap mencatat orang yang benar-benar mengerjakannya.
+
+> **Jika User diganti sekaligus End Date diisi**, edit tersebut **bukan** serah terima melainkan pemberhentian: user lama dinonaktifkan dan **tidak ada** yang menggantikan (PIC-nya memang sudah tidak aktif).
+
+### Skenario 3 — Mengisi End Date (Menonaktifkan PIC)
 
 Saat admin mengubah PIC dan **mengisi End Date** yang sebelumnya kosong:
 
@@ -163,7 +178,7 @@ Saat admin mengubah PIC dan **mengisi End Date** yang sebelumnya kosong:
 
 > **Penting:** Menonaktifkan PIC dilakukan dengan **mengisi End Date**, bukan menghapus record. Ini cara yang benar untuk "memberhentikan" seorang PIC sambil menjaga histori.
 
-### Skenario 3 — Menghapus (Mengosongkan) End Date (Mengaktifkan Kembali)
+### Skenario 4 — Menghapus (Mengosongkan) End Date (Mengaktifkan Kembali)
 
 Saat admin mengubah PIC dan **mengosongkan kembali End Date** yang sebelumnya terisi:
 
@@ -174,7 +189,7 @@ Saat admin mengubah PIC dan **mengosongkan kembali End Date** yang sebelumnya te
 
 **Efeknya:** PIC kembali aktif dan otomatis dipasang lagi pada tiket-tiket berjalan.
 
-### Skenario 4 — Menghapus Record PIC
+### Skenario 5 — Menghapus Record PIC
 
 Saat admin menekan **Hapus** pada sebuah PIC:
 
@@ -187,13 +202,26 @@ Saat admin menekan **Hapus** pada sebuah PIC:
 > - **Isi End Date** → penugasan tiket dinonaktifkan tetapi **tetap tersimpan** (histori terjaga). Bisa diaktifkan kembali dengan mengosongkan End Date.
 > - **Hapus** → penugasan tiket **benar-benar dihapus**. Gunakan hanya bila data PIC salah/tidak diperlukan. Untuk pemberhentian normal, **lebih disarankan mengisi End Date**.
 
+### Ringkasan Efek ke Tiket
+
+| Aksi admin | Penugasan pada tiket (`TiketPIC`) | Riwayat tiket (`TiketAction`) | Cakupan tiket |
+|---|---|---|---|
+| **Tambah** PIC | User baru ditugaskan (dibuat / diaktifkan kembali) | *Ditambahkan* atau *Diaktifkan Kembali* | Tiket berjalan |
+| **Edit — ganti User** | User lama dinonaktifkan **dan** user baru ditugaskan | *Tidak Aktif* untuk yang lama + *Ditambahkan*/*Diaktifkan Kembali* untuk yang baru | Tiket berjalan |
+| **Edit — isi End Date** | Penugasan user dinonaktifkan (data tetap ada) | *Tidak Aktif* | Semua tiket dengan Sub Jenis Data tsb. |
+| **Edit — kosongkan End Date** | Penugasan user diaktifkan kembali / dibuat | *Diaktifkan Kembali* atau *Ditambahkan* | Tiket berjalan |
+| **Edit — ganti User + isi End Date** | Hanya user lama dinonaktifkan, tidak ada pengganti | *Tidak Aktif* | Tiket berjalan |
+| **Hapus** PIC | Penugasan **dihapus permanen** | *Tidak Aktif* (catatan: dihapus) | Semua tiket dengan Sub Jenis Data tsb. |
+
+> Perubahan **Start Date** saja tidak berpengaruh ke penugasan tiket.
+
 ---
 
 ### Aturan Validasi Form PIC
 
 Agar data konsisten, form PIC menerapkan aturan berikut:
 
-- **Saat mengubah (Edit):** field **Tipe**, **Sub Jenis Data**, dan **User** dikunci (tidak bisa diubah). Hanya **Start Date** dan **End Date** yang dapat disunting. Untuk mengganti user/data, buat record PIC baru.
+- **Saat mengubah (Edit):** field **Tipe** dan **Sub Jenis Data** dikunci (tidak bisa diubah). **User**, **Start Date**, dan **End Date** dapat disunting — mengganti User memicu serah terima pada tiket berjalan (lihat Skenario 2). Untuk memindahkan penugasan ke Sub Jenis Data lain, buat record PIC baru.
 - **User dibatasi per divisi:** dropdown user hanya menampilkan anggota grup yang sesuai (`user_p3de` / `user_pide` / `user_pmde`).
 - **Tidak boleh duplikat:** kombinasi Tipe + Sub Jenis Data + User + Start Date yang sama persis akan ditolak.
 - **Tidak boleh tumpang tindih aktif:** bila sudah ada PIC **aktif** (End Date kosong) untuk user & Sub Jenis Data yang sama, penambahan PIC aktif baru ditolak. Isi dulu End Date pada PIC yang lama sebelum membuat yang baru.

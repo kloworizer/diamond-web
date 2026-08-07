@@ -198,6 +198,8 @@ Setiap modul data master mengikuti pola URL yang konsisten:
 | Durasi Jatuh Tempo PIDE | `/durasi-jatuh-tempo-pide/` | `DurasiJatuhTempo` (seksi=PIDE) |
 | Durasi Jatuh Tempo PMDE | `/durasi-jatuh-tempo-pmde/` | `DurasiJatuhTempo` (seksi=PMDE) |
 
+> **Catatan efek samping PIC:** endpoint create/update/delete pada `/pic-p3de/`, `/pic-pide/`, dan `/pic-pmde/` tidak berhenti di tabel `PIC` — penugasan `TiketPIC` pada tiket berjalan ikut dibuat, dinonaktifkan, diaktifkan kembali, atau dihapus, dan setiap perubahan dicatat pada `TiketAction` (`301`/`302`/`303`). Termasuk **serah terima** saat field `id_user` diganti pada update. Rincian per skenario ada di `docs/ADMIN_MENU_GUIDE.md`.
+
 ### Endpoint Khusus (non-standard CRUD)
 
 | Method | URL | Deskripsi |
