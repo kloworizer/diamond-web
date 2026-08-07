@@ -684,7 +684,7 @@
                                     {% endif %}
                                 </div>
                             </div>
-                            <div class="fw-semibold mt-1"> <i class="feather-user me-1"></i><a href="{{ pic.id_user|pic_profil_url }}" class="text-primary text-decoration-none" title="Lihat profil PIC">{{ pic.user_display }}</a></div>
+                            <div class="fw-semibold mt-1"> <i class="feather-user me-1"></i>{% pic_name_link pic.id_user pic.user_display %}</div>
                         </div>
                         {% endfor %}
                     </div>
@@ -1186,7 +1186,7 @@
                                         {% for action in tiket_actions %}
                                         <tr>
                                             <td class="text-nowrap text-muted">{{ action.timestamp|date:"d/m/Y H:i" }}</td>
-                                            <td class="fw-bold"><a href="{{ action.id_user|pic_profil_url }}" class="text-primary text-decoration-none" title="Lihat profil PIC">{{ action.user_display }}</a></td>
+                                            <td class="fw-bold">{% pic_name_link action.id_user action.user_display %}</td>
                                             <td>
                                                 <span class="badge {{ action.badge_class }} action-badge-{{ action.badge_label|slugify }}">{{ action.badge_label }}</span>
                                             </td>
@@ -1230,7 +1230,7 @@
                                                 {% if backup.id_user %}
                                                 <div class="d-flex align-items-center gap-2">
                                                     <div class="bg-light rounded-circle d-flex align-items-center justify-content-center" style="width: 24px; height: 24px;"><i class="feather-user text-muted fs-7"></i></div>
-                                                    <a href="{{ backup.id_user|pic_profil_url }}" class="fw-semibold text-primary text-decoration-none" title="Lihat profil PIC">{{ backup.id_user.get_full_name|default:backup.id_user.username }}</a>
+                                                    {% pic_name_link backup.id_user css_class="fw-semibold text-primary text-decoration-none" %}
                                                 </div>
                                                 {% else %}
                                                 -
@@ -1272,7 +1272,7 @@
                                             <td class="text-muted">{{ item.id_tanda_terima.tanggal_tanda_terima|date:"d/m/Y H:i" }}</td>
                                             <td class="fw-semibold">
                                                 {% if item.id_tanda_terima.id_perekam %}
-                                                <a href="{{ item.id_tanda_terima.id_perekam|pic_profil_url }}" class="text-primary text-decoration-none" title="Lihat profil PIC">{{ item.id_tanda_terima.id_perekam.get_full_name|default:item.id_tanda_terima.id_perekam.username }}</a>
+                                                {% pic_name_link item.id_tanda_terima.id_perekam %}
                                                 {% else %}-{% endif %}
                                             </td>
                                             <td>

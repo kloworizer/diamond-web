@@ -234,7 +234,7 @@
                             </span>
                             <div class="nama-tabel-pic-body">
                                 <p class="nama-tabel-pic-name">
-                                    <a href="{{ pic.user|pic_profil_url }}" class="text-primary text-decoration-none" title="Lihat profil PIC">{{ pic.nama }}</a>
+                                    {% pic_name_link pic.user pic.nama %}
                                     {% if pic.aktif %}
                                     <span class="badge bg-soft-success text-success ms-1" style="font-size: 10px;">Aktif</span>
                                     {% endif %}

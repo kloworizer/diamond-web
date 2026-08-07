@@ -12,7 +12,7 @@ from io import BytesIO
 from openpyxl import Workbook
 
 from ..utils import format_periode
-from ..utils.pic_profil import pic_profil_link
+from ..utils.pic_profil import pic_profil_link, request_pic_profil_visibility
 
 from ..models.backup_data import BackupData
 from ..models.tiket import Tiket
@@ -205,10 +205,12 @@ def _build_backup_data_row(obj, request=None, include_actions=False):
             name = full_name or p.id_user.username
             if name:
                 pic_entries.setdefault(name, p.id_user)
+    # Cached on the request, so a page of rows resolves the rule once.
+    can_view = request_pic_profil_visibility(request)
     pic_label = '-'
     if pic_entries:
         pic_label = ', '.join(
-            pic_profil_link(user, label=name) if include_actions else name
+            pic_profil_link(user, can_view, label=name) if include_actions else name
             for name, user in sorted(pic_entries.items())
         )
 

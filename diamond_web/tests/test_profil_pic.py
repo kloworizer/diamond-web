@@ -25,9 +25,26 @@ from diamond_web.tests.conftest import (
 
 
 def _logged_in(client):
-    """Any logged in user: the page is open to everyone, like the ILAP profil."""
+    """Log in someone who may open anybody's profile.
+
+    A Profil PIC page is scoped to the person it is about and to whoever
+    supervises their seksi, so the tests that are about what the page *shows*
+    log in a global admin and leave the rule itself to
+    :class:`TestProfilPICAccess`.
+    """
+    viewer = UserFactory()
+    group, _ = Group.objects.get_or_create(name='admin')
+    viewer.groups.add(group)
+    client.force_login(viewer)
+    return viewer
+
+
+def _in_groups(*names):
+    """A user in every named group."""
     user = UserFactory()
-    client.force_login(user)
+    for name in names:
+        group, _ = Group.objects.get_or_create(name=name)
+        user.groups.add(group)
     return user
 
 
@@ -59,8 +76,7 @@ class TestProfilPICDetailView:
         resp = client.get(reverse('profil_pic_detail', args=[user.username]))
         assert resp.status_code == 302
 
-    def test_open_to_any_logged_in_user(self, client):
-        """No group needed: who is PIC of what is not restricted knowledge."""
+    def test_admin_may_open_anybody(self, client):
         pic_user = UserFactory()
         _logged_in(client)
         resp = client.get(reverse('profil_pic_detail', args=[pic_user.username]))
@@ -474,9 +490,14 @@ class TestProfilPICTiketData:
 
 @pytest.mark.django_db
 class TestNamesLinkToProfilPIC:
-    """Every page that prints a PIC name sends the reader to the same page."""
+    """A printed name links to the profile only for a reader who may open it.
 
-    def test_nama_tabel_detail_links_its_pic_names(self, client):
+    The name itself is always shown — the tiket still has to say who is
+    responsible — but the anchor around it is what the rule governs, so nobody
+    is handed a link that would only refuse them.
+    """
+
+    def test_nama_tabel_detail_links_the_name_for_a_permitted_reader(self, client):
         pic_user = UserFactory()
         _pic_of(pic_user, nama_tabel='KPDE_LINK', end_date=None)
         _logged_in(client)
@@ -487,7 +508,19 @@ class TestNamesLinkToProfilPIC:
             'profil_pic_detail', args=[pic_user.username]
         ).encode() in resp.content
 
-    def test_jenis_data_profil_links_its_pic_names(self, client):
+    def test_nama_tabel_detail_shows_the_name_unlinked_otherwise(self, client):
+        pic_user = UserFactory(first_name='Siti', last_name='Rahayu')
+        _pic_of(pic_user, nama_tabel='KPDE_LINK', end_date=None)
+        client.force_login(_in_groups('user_p3de'))
+
+        resp = client.get(reverse('nama_tabel_detail', args=['KPDE_LINK']))
+
+        assert b'Siti Rahayu' in resp.content
+        assert reverse(
+            'profil_pic_detail', args=[pic_user.username]
+        ).encode() not in resp.content
+
+    def test_jenis_data_profil_links_the_name_for_a_permitted_reader(self, client):
         pic_user = UserFactory()
         pic = _pic_of(pic_user, end_date=None)
         _logged_in(client)
@@ -501,12 +534,24 @@ class TestNamesLinkToProfilPIC:
             'profil_pic_detail', args=[pic_user.username]
         ).encode() in resp.content
 
+    def test_jenis_data_profil_shows_the_name_unlinked_otherwise(self, client):
+        pic_user = UserFactory(first_name='Siti', last_name='Rahayu')
+        pic = _pic_of(pic_user, end_date=None)
+        client.force_login(_in_groups('user_p3de'))
+
+        resp = client.get(reverse(
+            'jenis_data_ilap_profil',
+            args=[pic.id_sub_jenis_data_ilap.id_sub_jenis_data],
+        ))
+
+        assert b'Siti Rahayu' in resp.content
+        assert reverse(
+            'profil_pic_detail', args=[pic_user.username]
+        ).encode() not in resp.content
+
     def test_pic_list_endpoint_links_the_full_name(self, client):
         """The PIC admin lists are the densest table of names in the app."""
-        admin = UserFactory()
-        group, _ = Group.objects.get_or_create(name='admin')
-        admin.groups.add(group)
-        client.force_login(admin)
+        client.force_login(_in_groups('admin'))
 
         pic_user = UserFactory()
         _pic_of(pic_user, tipe='PIDE', end_date=None)
@@ -517,3 +562,89 @@ class TestNamesLinkToProfilPIC:
         assert reverse(
             'profil_pic_detail', args=[pic_user.username]
         ) in payload['data'][0]['full_name']
+
+    def test_pic_list_endpoint_leaves_the_name_bare_for_a_seksi_admin(self, client):
+        """Admin PIDE administers the PIC list but only reaches user PIDE."""
+        client.force_login(_in_groups('admin_pide'))
+
+        pic_user = UserFactory(first_name='Siti', last_name='Rahayu')
+        _pic_of(pic_user, tipe='PIDE', end_date=None)
+
+        resp = client.get(reverse('pic_pide_data'))
+        row = json.loads(resp.content)['data'][0]
+
+        assert 'Siti Rahayu' in row['full_name']
+        assert '<a ' not in row['full_name']
+
+
+@pytest.mark.django_db
+class TestProfilPICAccess:
+    """Who may open a Profil PIC page, and its tiket endpoint behind it."""
+
+    def _get(self, client, target):
+        return client.get(reverse('profil_pic_detail', args=[target.username]))
+
+    def _tikets(self, client, target):
+        return client.get(reverse('profil_pic_tiket_data', args=[target.username]))
+
+    def test_user_may_open_their_own_profile(self, client):
+        me = _in_groups('user_pmde')
+        client.force_login(me)
+        assert self._get(client, me).status_code == 200
+
+    def test_user_may_not_open_a_colleagues_profile(self, client):
+        me = _in_groups('user_pmde')
+        colleague = _in_groups('user_pmde')
+        client.force_login(me)
+        assert self._get(client, colleague).status_code == 403
+
+    def test_user_may_not_open_another_seksi(self, client):
+        client.force_login(_in_groups('user_pmde'))
+        assert self._get(client, _in_groups('user_pide')).status_code == 403
+
+    def test_kasi_may_open_their_own_seksi(self, client):
+        client.force_login(_in_groups('kasi_pmde'))
+        assert self._get(client, _in_groups('user_pmde')).status_code == 200
+
+    def test_kasi_may_not_open_another_seksi(self, client):
+        client.force_login(_in_groups('kasi_pmde'))
+        assert self._get(client, _in_groups('user_pide')).status_code == 403
+
+    def test_seksi_admin_may_open_their_own_seksi(self, client):
+        client.force_login(_in_groups('admin_pmde'))
+        assert self._get(client, _in_groups('user_pmde')).status_code == 200
+
+    def test_seksi_admin_may_not_open_another_seksi(self, client):
+        client.force_login(_in_groups('admin_pmde'))
+        assert self._get(client, _in_groups('user_pide')).status_code == 403
+
+    def test_global_admin_may_open_anybody(self, client):
+        client.force_login(_in_groups('admin'))
+        assert self._get(client, _in_groups('user_pide')).status_code == 200
+
+    def test_superuser_may_open_anybody(self, client):
+        client.force_login(UserFactory(is_superuser=True))
+        assert self._get(client, _in_groups('user_pide')).status_code == 200
+
+    def test_kasi_may_open_their_own_profile(self, client):
+        """A kasi is not a member of the staff group they supervise."""
+        kasi = _in_groups('kasi_pide')
+        client.force_login(kasi)
+        assert self._get(client, kasi).status_code == 200
+
+    def test_tiket_endpoint_is_gated_in_its_own_right(self, client):
+        """It is a URL of its own and carries the person's whole tiket load."""
+        client.force_login(_in_groups('user_pmde'))
+        assert self._tikets(client, _in_groups('user_pmde')).status_code == 403
+
+    def test_tiket_endpoint_allows_a_permitted_reader(self, client):
+        client.force_login(_in_groups('kasi_pmde'))
+        resp = self._tikets(client, _in_groups('user_pmde'))
+        assert resp.status_code == 200
+        assert json.loads(resp.content)['recordsTotal'] == 0
+
+    def test_refusal_beats_the_404_for_an_unknown_name(self, client):
+        """An unknown username is still a 404, not a leak of who exists."""
+        client.force_login(_in_groups('user_pmde'))
+        resp = client.get(reverse('profil_pic_detail', args=['tidak-ada']))
+        assert resp.status_code == 404

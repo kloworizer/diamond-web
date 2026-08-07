@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load auth_extras %}
 
 {% block content %}
 <style>
@@ -115,7 +116,16 @@
                 </div>
                 <div class="card-body">
                     <div class="seksi-user-list">
+                        {% comment %}
+                        The whole row is the link, so the entry is wrapped in an
+                        anchor only for the readers who may open that profile —
+                        their own, and their seksi's if they supervise one. The
+                        others still see who is there, without a link that would
+                        refuse them.
+                        {% endcomment %}
                         {% for entry in seksi.users %}
+                        {% can_view_pic_profil entry.user as dapat_dibuka %}
+                        {% if dapat_dibuka %}
                         <a class="seksi-user" href="{% url 'profil_pic_detail' entry.user.username %}"
                            title="Lihat profil PIC {{ entry.nama }}">
                             <span class="seksi-user-avatar">{{ entry.nama|slice:":1"|upper }}</span>
@@ -124,6 +134,15 @@
                                 <span class="seksi-user-username">@{{ entry.user.username }}</span>
                             </span>
                         </a>
+                        {% else %}
+                        <span class="seksi-user">
+                            <span class="seksi-user-avatar">{{ entry.nama|slice:":1"|upper }}</span>
+                            <span>
+                                <p class="seksi-user-name">{{ entry.nama }}</p>
+                                <span class="seksi-user-username">@{{ entry.user.username }}</span>
+                            </span>
+                        </span>
+                        {% endif %}
                         {% empty %}
                         <p class="text-muted mb-0" style="font-size: 13px;">
                             Belum ada pegawai aktif di {{ seksi.label }}.

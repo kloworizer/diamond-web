@@ -1,11 +1,10 @@
 """Tests for the Profil PDE staff directory and the scoped PIC search.
 
-Two features that pull in opposite directions and are deliberately allowed to:
-the directory on the Profil PDE page lists the staff of all three seksi to
-anyone who may open that page, while the header search only finds the people the
-searcher supervises. The first answers "who works on this data", the second is
-looking a colleague up by name, and only the second follows the line of
-supervision.
+The directory *names* the staff of all three seksi to anyone who may open the
+page — that is what it is for — but the profiles behind those names follow the
+line of supervision, so only some of the entries are links. The header search
+follows the same rule. These tests pin the seam: a name is shown either way,
+an anchor around it is not.
 """
 import pytest
 from django.contrib.auth.models import Group
@@ -81,11 +80,12 @@ class TestSeksiDirectory:
         ours = [n for n in _names_in(columns['PIDE']) if n.startswith(TOKEN)]
         assert ours == [f'{TOKEN} Aktif']
 
-    def test_administrators_are_left_out_of_every_column(self, client):
-        """An admin sits in all three staff groups, so reading them alone would
-        put the same person at the top of all three columns."""
-        _in_groups('admin', 'user_p3de', 'user_pide', 'user_pmde',
-                   first_name=TOKEN, last_name='Admin')
+    def test_admin_role_users_stay_listed(self, client):
+        """Holding an admin role does not stop somebody being staff of a seksi.
+
+        Only the superuser flag is subtracted — that is the system account that
+        sits in all three staff groups and would head every column.
+        """
         _in_groups('admin_pmde', 'user_pmde', first_name=TOKEN, last_name='AdminPmde')
         _in_groups('user_pmde', first_name=TOKEN, last_name='Pelaksana')
         client.force_login(_in_groups('user_p3de'))
@@ -93,11 +93,8 @@ class TestSeksiDirectory:
         resp = client.get(reverse('profil_ilap_list'))
         columns = {c['kode']: c for c in resp.context['seksi_columns']}
 
-        assert [n for n in _names_in(columns['PMDE']) if n.startswith(TOKEN)] == [
-            f'{TOKEN} Pelaksana'
-        ]
-        for kode in ('P3DE', 'PIDE'):
-            assert [n for n in _names_in(columns[kode]) if n.startswith(TOKEN)] == []
+        ours = [n for n in _names_in(columns['PMDE']) if n.startswith(TOKEN)]
+        assert ours == [f'{TOKEN} AdminPmde', f'{TOKEN} Pelaksana']
 
     def test_superusers_are_left_out(self, client):
         _in_groups('user_pide', first_name=TOKEN, last_name='Super', is_superuser=True)
@@ -121,10 +118,34 @@ class TestSeksiDirectory:
         ours = [n for n in _names_in(columns['PMDE']) if n.startswith(TOKEN)]
         assert ours == [f'{TOKEN} Kasi']
 
-    def test_entries_link_to_the_profil_pic_page(self, client):
-        staff = _in_groups('user_pide', first_name=TOKEN, last_name='Santoso')
-        client.force_login(_in_groups('user_p3de'))
+    def test_own_entry_is_linked_but_a_colleagues_is_not(self, client):
+        """The directory names everyone; only the profiles you may open link.
 
+        A plain member of staff reaches their own Profil PIC page and nobody
+        else's, so their own row is an anchor and the rest are plain text.
+        """
+        me = _in_groups('user_p3de', first_name=TOKEN, last_name='Saya')
+        colleague = _in_groups('user_pide', first_name=TOKEN, last_name='Rekan')
+        client.force_login(me)
+
+        resp = client.get(reverse('profil_ilap_list'))
+
+        assert reverse(
+            'profil_pic_detail', args=[me.username]
+        ).encode() in resp.content
+        assert f'{TOKEN} Rekan'.encode() in resp.content
+        assert reverse(
+            'profil_pic_detail', args=[colleague.username]
+        ).encode() not in resp.content
+
+    def test_kasi_gets_links_for_the_seksi_they_supervise(self, client):
+        kasi = _in_groups('kasi_pide')
+        staff = _in_groups('user_pide', first_name=TOKEN, last_name='Pide')
+        client.force_login(kasi)
+
+        # The Profil PDE page is a P3DE feature, so the kasi needs that too.
+        group, _ = Group.objects.get_or_create(name='user_p3de')
+        kasi.groups.add(group)
         resp = client.get(reverse('profil_ilap_list'))
 
         assert reverse(
