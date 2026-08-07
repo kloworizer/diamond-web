@@ -72,7 +72,7 @@
     }
 
     .pic-stat {
-        flex: 1 1 150px;
+        flex: 1 1 190px;
         border: 1px solid #e2e8f0;
         border-radius: 10px;
         padding: 14px 18px;
@@ -91,6 +91,41 @@
         font-weight: 600;
         color: #1e293b;
         margin-bottom: 0;
+    }
+
+    /* The breakdown under a tile: what the headline number is made of. Set as a
+       two-column row so the counts line up down the right edge and can be read
+       as a column of their own. */
+    .pic-stat-breakdown {
+        list-style: none;
+        margin: 10px 0 0 0;
+        padding: 10px 0 0 0;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .pic-stat-breakdown li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 12px;
+        color: #64748b;
+        padding: 2px 0;
+    }
+
+    .pic-stat-breakdown .breakdown-count {
+        font-weight: 600;
+        color: #1e293b;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .pic-stat-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 7px;
+        flex-shrink: 0;
     }
 
     /* The chip lists run to dozens of entries for a long serving PIC, so they
@@ -177,6 +212,16 @@
                 <div class="pic-stat">
                     <span class="pic-stat-label">ILAP</span>
                     <p class="pic-stat-value">{{ ilap_list|length }}</p>
+                    {% if ilap_wilayah %}
+                    <ul class="pic-stat-breakdown">
+                        {% for row in ilap_wilayah %}
+                        <li>
+                            <span>{{ row.label }}</span>
+                            <span class="breakdown-count">{{ row.count }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
                 </div>
                 <div class="pic-stat">
                     <span class="pic-stat-label">Sub Jenis Data</span>
@@ -185,10 +230,39 @@
                 <div class="pic-stat">
                     <span class="pic-stat-label">Nama Tabel</span>
                     <p class="pic-stat-value">{{ nama_tabel_list|length }}</p>
+                    {% if nama_tabel_list %}
+                    {% comment %}
+                    Aktif means a tiket has landed in the table within the last
+                    two years, counting every sub jenis data that feeds it — not
+                    only the ones this person holds.
+                    {% endcomment %}
+                    <ul class="pic-stat-breakdown">
+                        <li>
+                            <span title="Ada tiket masuk dalam {{ nama_tabel_aktivitas.tahun }} tahun terakhir">Aktif</span>
+                            <span class="breakdown-count">{{ nama_tabel_aktivitas.aktif }}</span>
+                        </li>
+                        <li>
+                            <span title="Tiket terakhir lebih dari {{ nama_tabel_aktivitas.tahun }} tahun lalu">Tidak Aktif</span>
+                            <span class="breakdown-count">{{ nama_tabel_aktivitas.tidak_aktif }}</span>
+                        </li>
+                    </ul>
+                    {% endif %}
                 </div>
                 <div class="pic-stat">
                     <span class="pic-stat-label">Tiket</span>
                     <p class="pic-stat-value">{{ tiket_total }}</p>
+                    {% if tiket_status %}
+                    <ul class="pic-stat-breakdown">
+                        {% for row in tiket_status %}
+                        <li>
+                            <span>
+                                <span class="pic-stat-dot {{ row.dot_class }}"></span>{{ row.label }}
+                            </span>
+                            <span class="breakdown-count">{{ row.count }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
                 </div>
             </div>
         </div>
