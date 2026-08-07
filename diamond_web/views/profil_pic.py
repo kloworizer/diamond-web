@@ -13,10 +13,12 @@ pages it sits alongside: who is PIC of what is the working knowledge of the
 directorate, not a secret. Opening a tiket from the list here still goes through
 `TiketDetailView`, which enforces the PIC rules of its own.
 """
+from datetime import date, datetime, time
+
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import Http404, JsonResponse
 from django.urls import reverse
 from django.utils.dateformat import format as date_format
@@ -26,6 +28,7 @@ from django.views.generic import TemplateView
 
 from ..constants.tiket_status import STATUS_BADGE_CLASSES, STATUS_LABELS
 from ..models.pic import PIC
+from ..models.tiket import Tiket
 from ..models.tiket_pic import TiketPIC
 from ..utils import format_periode
 from ..utils.pic_profil import (
@@ -176,7 +179,7 @@ def build_penugasan_list(pic_user):
         by tipe and then by most recent start date.
     """
     pics = PIC.objects.filter(id_user=pic_user).select_related(
-        'id_sub_jenis_data_ilap__id_ilap'
+        'id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah'
     ).order_by('tipe', '-start_date')
 
     return [
@@ -261,6 +264,135 @@ def summarise_jenis_data(penugasan_list):
     return result
 
 
+# The three kategori wilayah an ILAP is filed under, listed in this order ahead
+# of anything else the reference table grows, so the breakdown reads the same on
+# every profile. A kategori not named here still appears, after these.
+WILAYAH_ORDER = ('Nasional', 'Regional', 'Internasional')
+
+# How recently a tiket must have arrived for the table it lands in to count as
+# still being fed. Two years spans a full annual reporting cycle twice over, so
+# a table that has missed both is genuinely dormant rather than merely late.
+NAMA_TABEL_AKTIF_TAHUN = 2
+
+
+def summarise_ilap_wilayah(ilap_list):
+    """Break `ilap_list` down by the kategori wilayah of each ILAP.
+
+    Args:
+        ilap_list (list): Entries from :func:`summarise_ilap`.
+
+    Every ILAP has a kategori wilayah — the column is NOT NULL — so there is no
+    "uncategorised" bucket to fall back to.
+
+    Returns:
+        list: Dicts of ``{'label', 'count'}``, the kategori of
+        :data:`WILAYAH_ORDER` first and any other kategori after them, by name.
+        Kategori nobody holds are left out rather than shown as zero.
+    """
+    counts = {}
+    for entry in ilap_list:
+        label = entry['ilap'].id_kategori_wilayah.deskripsi
+        counts[label] = counts.get(label, 0) + 1
+
+    def sort_key(label):
+        if label in WILAYAH_ORDER:
+            return (0, WILAYAH_ORDER.index(label), '')
+        return (1, 0, label.lower())
+
+    return [
+        {'label': label, 'count': counts[label]}
+        for label in sorted(counts, key=sort_key)
+    ]
+
+
+def _years_ago(years):
+    """Return the datetime `years` years before now, at the start of that day.
+
+    Written out rather than done with a timedelta of 365 days so that a leap
+    year does not quietly shift the boundary by a day; 29 February falls back to
+    the 28th, which is the only date that has no counterpart in another year.
+    """
+    today = date.today()
+    try:
+        cutoff = today.replace(year=today.year - years)
+    except ValueError:  # 29 February in a year whose counterpart has none
+        cutoff = today.replace(year=today.year - years, day=28)
+    return datetime.combine(cutoff, time.min)
+
+
+def summarise_nama_tabel_aktivitas(nama_tabel_list):
+    """Split `nama_tabel_list` into the tables still being fed and the dormant.
+
+    A table counts as active when *any* tiket landing in it arrived within the
+    last :data:`NAMA_TABEL_AKTIF_TAHUN` years — every sub jenis data feeding it,
+    not only the ones this person is PIC of. Whether data still flows into a
+    table is a property of the table, and it is the same question the nama tabel
+    page these chips link to answers.
+
+    A table with no tiket at all is counted as dormant: it has no recent tiket
+    either, which is what the split is asking about.
+
+    Args:
+        nama_tabel_list (list): Entries from :func:`summarise_nama_tabel`.
+
+    Returns:
+        dict: ``{'aktif', 'tidak_aktif', 'tahun'}`` — the two counts and the
+        number of years behind the split, so the template can name it.
+    """
+    names = [entry['nama_tabel'] for entry in nama_tabel_list]
+    aktif = 0
+    if names:
+        aktif = len(set(
+            Tiket.objects
+            .filter(
+                id_periode_data__id_sub_jenis_data_ilap__nama_tabel_I__in=names,
+                tgl_terima_dip__gte=_years_ago(NAMA_TABEL_AKTIF_TAHUN),
+            )
+            .values_list(
+                'id_periode_data__id_sub_jenis_data_ilap__nama_tabel_I', flat=True
+            )
+        ))
+    return {
+        'aktif': aktif,
+        'tidak_aktif': len(names) - aktif,
+        'tahun': NAMA_TABEL_AKTIF_TAHUN,
+    }
+
+
+def summarise_tiket_status(pic_user):
+    """Break the tikets of `pic_user` down by status, in workflow order.
+
+    Counts distinct tikets, not assignments, so the rows add up to the headline
+    total even for a tiket the person holds under two roles.
+
+    Args:
+        pic_user (User): The person whose tikets are counted.
+
+    Returns:
+        list: Dicts of ``{'label', 'count', 'dot_class'}``, ordered by status
+        code — which is the order the workflow moves through them. Statuses with
+        no tiket are left out.
+    """
+    rows = (
+        TiketPIC.objects
+        .filter(id_user=pic_user)
+        .values('id_tiket__status_tiket')
+        .annotate(total=Count('id_tiket', distinct=True))
+    )
+    counts = {row['id_tiket__status_tiket']: row['total'] for row in rows}
+
+    return [
+        {
+            'label': STATUS_LABELS.get(status, f'Status {status}'),
+            'count': counts[status],
+            # The badge classes carry a text colour for the light badges; only
+            # the background is wanted for a dot.
+            'dot_class': STATUS_BADGE_CLASSES.get(status, 'bg-secondary').split()[0],
+        }
+        for status in sorted(counts)
+    ]
+
+
 def summarise_nama_tabel(penugasan_list):
     """Collapse `penugasan_list` to one entry per bank data table.
 
@@ -317,6 +449,8 @@ class ProfilPICDetailView(LoginRequiredMixin, TemplateView):
                   rather than per assignment.
                 - tiket_total (int): Distinct tikets they are a PIC of. The rows
                   are loaded server-side by :func:`profil_pic_tiket_data`.
+                - ilap_wilayah, nama_tabel_aktivitas, tiket_status: The
+                  breakdowns shown under the matching summary tile.
         """
         context = super().get_context_data(**kwargs)
         pic_user = get_pic_user(self.kwargs['username'])
@@ -340,6 +474,15 @@ class ProfilPICDetailView(LoginRequiredMixin, TemplateView):
         context['tiket_total'] = TiketPIC.objects.filter(
             id_user=pic_user
         ).values('id_tiket').distinct().count()
+
+        # The breakdowns under the summary tiles. Each splits the tile above it
+        # along the axis that tells a reader what kind of load this person
+        # carries, rather than only how much of it.
+        context['ilap_wilayah'] = summarise_ilap_wilayah(context['ilap_list'])
+        context['nama_tabel_aktivitas'] = summarise_nama_tabel_aktivitas(
+            context['nama_tabel_list']
+        )
+        context['tiket_status'] = summarise_tiket_status(pic_user)
 
         return context
 

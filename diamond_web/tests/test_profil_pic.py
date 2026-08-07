@@ -31,6 +31,17 @@ def _logged_in(client):
     return user
 
 
+def _wilayah(deskripsi):
+    """The KategoriWilayah named `deskripsi`, reusing the seeded row.
+
+    ``deskripsi`` is unique and the seed already ships Nasional, Regional and
+    Internasional, so these have to be fetched rather than made.
+    """
+    from diamond_web.models.kategori_wilayah import KategoriWilayah
+
+    return KategoriWilayah.objects.get_or_create(deskripsi=deskripsi)[0]
+
+
 def _pic_of(user, nama_tabel='KPDE_X', ilap=None, tipe='P3DE', end_date=None):
     """Make `user` the PIC of a fresh sub jenis data landing in `nama_tabel`."""
     jenis_data = JenisDataILAPFactory(
@@ -207,6 +218,171 @@ class TestProfilPICDetailView:
         assert resp.context['jenis_data_list'] == []
         assert resp.context['nama_tabel_list'] == []
         assert resp.context['tiket_total'] == 0
+
+
+@pytest.mark.django_db
+class TestSummaryBreakdowns:
+    """The three splits under the summary tiles: what the totals are made of."""
+
+    def _context(self, client, pic_user):
+        return client.get(
+            reverse('profil_pic_detail', args=[pic_user.username])
+        ).context
+
+    def test_ilap_split_by_kategori_wilayah(self, client):
+        pic_user = UserFactory()
+        for kategori, jumlah in (('Nasional', 1), ('Regional', 2), ('Internasional', 1)):
+            wilayah = _wilayah(kategori)
+            for _ in range(jumlah):
+                _pic_of(pic_user, ilap=ILAPFactory(id_kategori_wilayah=wilayah))
+        _logged_in(client)
+
+        rows = self._context(client, pic_user)['ilap_wilayah']
+
+        # Named in the order the reference table lists them, not by count.
+        assert [(r['label'], r['count']) for r in rows] == [
+            ('Nasional', 1), ('Regional', 2), ('Internasional', 1)
+        ]
+        assert sum(r['count'] for r in rows) == 4
+
+    def test_ilap_split_leaves_out_kategori_nobody_holds(self, client):
+        pic_user = UserFactory()
+        wilayah = _wilayah('Regional')
+        _pic_of(pic_user, ilap=ILAPFactory(id_kategori_wilayah=wilayah))
+        _logged_in(client)
+
+        rows = self._context(client, pic_user)['ilap_wilayah']
+
+        assert [r['label'] for r in rows] == ['Regional']
+
+    def test_an_unnamed_kategori_sorts_after_the_three(self, client):
+        pic_user = UserFactory()
+        for kategori in ('Zona Khusus', 'Nasional'):
+            _pic_of(
+                pic_user,
+                ilap=ILAPFactory(
+                    id_kategori_wilayah=_wilayah(kategori)
+                ),
+            )
+        _logged_in(client)
+
+        rows = self._context(client, pic_user)['ilap_wilayah']
+
+        assert [r['label'] for r in rows] == ['Nasional', 'Zona Khusus']
+
+    def test_nama_tabel_with_a_recent_tiket_is_aktif(self, client):
+        import datetime
+
+        pic_user = UserFactory()
+        pic = _pic_of(pic_user, nama_tabel='KPDE_AKTIF')
+        periode = PeriodeJenisDataFactory(
+            id_sub_jenis_data_ilap=pic.id_sub_jenis_data_ilap
+        )
+        TiketFactory(
+            id_periode_data=periode,
+            tgl_terima_dip=datetime.datetime.now() - datetime.timedelta(days=30),
+        )
+        _logged_in(client)
+
+        aktivitas = self._context(client, pic_user)['nama_tabel_aktivitas']
+
+        assert aktivitas == {'aktif': 1, 'tidak_aktif': 0, 'tahun': 2}
+
+    def test_nama_tabel_whose_last_tiket_is_older_is_tidak_aktif(self, client):
+        import datetime
+
+        pic_user = UserFactory()
+        pic = _pic_of(pic_user, nama_tabel='KPDE_DORMANT')
+        periode = PeriodeJenisDataFactory(
+            id_sub_jenis_data_ilap=pic.id_sub_jenis_data_ilap
+        )
+        TiketFactory(
+            id_periode_data=periode,
+            tgl_terima_dip=datetime.datetime.now() - datetime.timedelta(days=365 * 3),
+        )
+        _logged_in(client)
+
+        aktivitas = self._context(client, pic_user)['nama_tabel_aktivitas']
+
+        assert aktivitas['aktif'] == 0
+        assert aktivitas['tidak_aktif'] == 1
+
+    def test_nama_tabel_without_any_tiket_is_tidak_aktif(self, client):
+        pic_user = UserFactory()
+        _pic_of(pic_user, nama_tabel='KPDE_KOSONG')
+        _logged_in(client)
+
+        aktivitas = self._context(client, pic_user)['nama_tabel_aktivitas']
+
+        assert aktivitas['aktif'] == 0
+        assert aktivitas['tidak_aktif'] == 1
+
+    def test_a_tiket_from_another_pic_still_makes_the_table_aktif(self, client):
+        """Whether data flows into a table is a fact about the table."""
+        import datetime
+
+        pic_user = UserFactory()
+        _pic_of(pic_user, nama_tabel='KPDE_SHARED')
+        # A second sub jenis data feeding the same table, held by nobody here.
+        other = JenisDataILAPFactory(nama_tabel_I='KPDE_SHARED')
+        TiketFactory(
+            id_periode_data=PeriodeJenisDataFactory(id_sub_jenis_data_ilap=other),
+            tgl_terima_dip=datetime.datetime.now() - datetime.timedelta(days=10),
+        )
+        _logged_in(client)
+
+        aktivitas = self._context(client, pic_user)['nama_tabel_aktivitas']
+
+        assert aktivitas['aktif'] == 1
+
+    def test_tiket_split_by_status_in_workflow_order(self, client):
+        pic_user = UserFactory()
+        for status in (8, 1, 6):
+            TiketPICFactory(id_user=pic_user, id_tiket=TiketFactory(status_tiket=status))
+        _logged_in(client)
+
+        rows = self._context(client, pic_user)['tiket_status']
+
+        assert [r['label'] for r in rows] == [
+            'Direkam', 'Pengendalian Mutu', 'Selesai'
+        ]
+        assert all(r['count'] == 1 for r in rows)
+
+    def test_tiket_split_counts_distinct_tikets(self, client):
+        """Two roles on one tiket is one tiket, so the rows add up to the total."""
+        pic_user = UserFactory()
+        tiket = TiketFactory(status_tiket=1)
+        TiketPICFactory(id_tiket=tiket, id_user=pic_user, role=TiketPIC.Role.P3DE)
+        TiketPICFactory(id_tiket=tiket, id_user=pic_user, role=TiketPIC.Role.PIDE)
+        _logged_in(client)
+
+        context = self._context(client, pic_user)
+
+        assert [r['count'] for r in context['tiket_status']] == [1]
+        assert sum(r['count'] for r in context['tiket_status']) == context['tiket_total']
+
+    def test_tiket_split_carries_the_status_colour(self, client):
+        pic_user = UserFactory()
+        TiketPICFactory(id_user=pic_user, id_tiket=TiketFactory(status_tiket=8))
+        _logged_in(client)
+
+        rows = self._context(client, pic_user)['tiket_status']
+
+        # The badge class for Selesai is "bg-success"; a dot wants the
+        # background alone, never a trailing text colour.
+        assert rows[0]['dot_class'] == 'bg-success'
+        assert ' ' not in rows[0]['dot_class']
+
+    def test_breakdowns_are_empty_for_a_person_with_no_work(self, client):
+        pic_user = UserFactory()
+        _logged_in(client)
+
+        context = self._context(client, pic_user)
+
+        assert context['ilap_wilayah'] == []
+        assert context['tiket_status'] == []
+        assert context['nama_tabel_aktivitas']['aktif'] == 0
+        assert context['nama_tabel_aktivitas']['tidak_aktif'] == 0
 
 
 @pytest.mark.django_db
