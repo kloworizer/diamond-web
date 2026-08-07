@@ -335,7 +335,10 @@ class TestProfilILAPJenisDataData:
             'jenis_data_ilap_profil', args=[jenis_data.id_sub_jenis_data]
         ) in row['id_sub_jenis_data']
         assert row['nama_sub_jenis_data'] == jenis_data.nama_sub_jenis_data
-        assert row['nama_tabel_I'] == jenis_data.nama_tabel_I
+        assert jenis_data.nama_tabel_I in row['nama_tabel_I']
+        assert reverse(
+            'nama_tabel_detail', args=[jenis_data.nama_tabel_I]
+        ) in row['nama_tabel_I']
         assert 'DH Profil' in row['dasar_hukum']
         assert 'Bulanan - Bulanan' in row['periode']
         assert '2/12' in row[f'y{datetime.now().year}']
@@ -423,7 +426,24 @@ class TestProfilILAPJenisDataData:
         payload = self._rows(client, ilap, **{'search[value]': 'TBL_SASARAN'})
         assert payload['recordsTotal'] == 2
         assert payload['recordsFiltered'] == 1
-        assert payload['data'][0]['nama_tabel_I'] == 'TBL_SASARAN'
+        assert 'TBL_SASARAN' in payload['data'][0]['nama_tabel_I']
+
+    def test_nama_tabel_links_to_its_page(self, client):
+        """From a sub jenis data row to every tiket landing in the same table."""
+        ilap, jenis_data = _bundle('Bulanan')
+        client.force_login(_p3de_user())
+        cell = self._rows(client, ilap)['data'][0]['nama_tabel_I']
+        url = reverse('nama_tabel_detail', args=[jenis_data.nama_tabel_I])
+        assert f'href="{url}"' in cell
+        assert f'>{jenis_data.nama_tabel_I}</a>' in cell
+
+    def test_blank_nama_tabel_is_not_a_link(self, client):
+        """There is no page to open when no table is recorded."""
+        ilap = ILAPFactory()
+        PeriodeJenisDataFactory(id_sub_jenis_data_ilap=JenisDataILAPFactory(
+            id_ilap=ilap, nama_tabel_I=''))
+        client.force_login(_p3de_user())
+        assert self._rows(client, ilap)['data'][0]['nama_tabel_I'] == '---'
 
     def test_ordering_by_nama_tabel(self, client):
         ilap, _ = _bundle('Bulanan')
@@ -819,6 +839,38 @@ class TestNavbarSearchSuggestions:
         assert own['label'] == f'{jenis_data.id_sub_jenis_data} - Penjualan Kendaraan Bermotor'
         # The owning ILAP is what tells two similarly named rows apart.
         assert own['sublabel'] == str(jenis_data.id_ilap)
+
+    def test_nama_tabel_is_its_own_suggestion_group(self, client):
+        """A table name suggests the table, not the jenis data feeding it."""
+        JenisDataILAPFactory(
+            nama_sub_jenis_data='Rekapitulasi', nama_tabel_I='KPDE_PURWAKARTA'
+        )
+        client.force_login(_p3de_user())
+        suggestions = self._suggest(client, 'purwakarta')
+        assert [s['type'] for s in suggestions] == ['nama_tabel']
+        assert suggestions[0]['label'] == 'KPDE_PURWAKARTA'
+        assert suggestions[0]['url'] == reverse('nama_tabel_detail', args=['KPDE_PURWAKARTA'])
+
+    def test_one_suggestion_per_table_not_per_jenis_data(self, client):
+        """A table fed by many sub jenis data is still a single suggestion."""
+        for _ in range(3):
+            JenisDataILAPFactory(nama_tabel_I='KPDE_PURWAKARTA')
+        client.force_login(_p3de_user())
+        assert [s['label'] for s in self._suggest(client, 'purwakarta')] == ['KPDE_PURWAKARTA']
+
+    def test_blank_nama_tabel_is_never_suggested(self, client):
+        """An empty table name is a jenis data without a table, not a table."""
+        JenisDataILAPFactory(nama_sub_jenis_data='Penjualan Purwakarta', nama_tabel_I='')
+        client.force_login(_p3de_user())
+        assert all(s['type'] != 'nama_tabel' for s in self._suggest(client, 'purwakarta'))
+
+    def test_exact_nama_tabel_resolves_to_its_page(self, client):
+        """A full table name navigates, the way an exact code does."""
+        JenisDataILAPFactory(nama_tabel_I='KPDE_PURWAKARTA')
+        client.force_login(_p3de_user())
+        payload = client.get(reverse('navbar_search'), {'q': 'kpde_purwakarta'}).json()
+        assert payload['match'] == 'nama_tabel'
+        assert payload['url'] == reverse('nama_tabel_detail', args=['KPDE_PURWAKARTA'])
 
     def test_suggests_sub_jenis_data_by_nama_jenis_data(self, client):
         """The parent jenis data name is searched, not just the sub jenis data one."""

@@ -316,10 +316,10 @@
                 {% csrf_token %}
                 <div class="navbar-search-field">
                     <input type="text" class="form-control" id="navbar-search-nomor-tiket"
-                           placeholder="Cari ILAP / Jenis Data / Nomor Tiket..."
-                           aria-label="Cari ILAP, jenis data, atau nomor tiket"
+                           placeholder="Cari ILAP / Jenis Data / Nama Tabel / Nomor Tiket..."
+                           aria-label="Cari ILAP, jenis data, nama tabel, atau nomor tiket"
                            role="combobox" aria-expanded="false" aria-autocomplete="list"
-                           aria-controls="navbar-search-suggestions" style="min-width: 340px;">
+                           aria-controls="navbar-search-suggestions" style="min-width: 400px;">
                     <button class="btn" type="submit" title="Cari">
                         <i class="feather-search"></i>
                     </button>
@@ -329,9 +329,10 @@
             </form>
             <script>
                 (function () {
-                    // Header search: the ILAP and jenis data halves of the term are
-                    // suggested as you type, while a nomor tiket only ever resolves
-                    // on an exact match (see the navbar_search view).
+                    // Header search: the ILAP and jenis data halves of the term —
+                    // the latter including the nama tabel I a jenis data lands in —
+                    // are suggested as you type, while a nomor tiket only ever
+                    // resolves on an exact match (see the navbar_search view).
                     var SUGGEST_MIN_LENGTH = 3;
                     var SUGGEST_DEBOUNCE_MS = 250;
 
@@ -463,7 +464,7 @@
                             } else if (data.data && data.data.length > 1) {
                                 window.location.href = '{% url "tiket_list" %}?nomor_tiket=' + encodeURIComponent(term);
                             } else {
-                                showToast('"' + term + '" tidak cocok dengan ILAP, jenis data, atau nomor tiket mana pun', 'warning', 'Pencarian');
+                                showToast('"' + term + '" tidak cocok dengan ILAP, jenis data, nama tabel, atau nomor tiket mana pun', 'warning', 'Pencarian');
                             }
                         });
                     }

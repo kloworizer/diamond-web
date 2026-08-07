@@ -256,6 +256,11 @@ urlpatterns = [
     path('nama-tabel/create/', views.NamaTabelCreateView.as_view(), name='nama_tabel_create'),
     path('nama-tabel/<int:pk>/update/', views.NamaTabelUpdateView.as_view(), name='nama_tabel_update'),
     path('nama-tabel/<int:pk>/delete/', views.NamaTabelDeleteView.as_view(), name='nama_tabel_delete'),
+    # Read-only page for a single bank data table, reached from the navbar
+    # search. Declared after the fixed segments above so `data`, `create` and
+    # the like keep winning over a table that happened to be named after them.
+    path('nama-tabel/<str:nama_tabel>/tikets/', views.nama_tabel_tiket_data, name='nama_tabel_tiket_data'),
+    path('nama-tabel/<str:nama_tabel>/', views.NamaTabelDetailView.as_view(), name='nama_tabel_detail'),
     # PIC PIDE URLs
     path('pic-pide/', views.PICPIDEListView.as_view(), name='pic_pide_list'),
     path('pic-pide/data/', views.pic_pide_data, name='pic_pide_data'),

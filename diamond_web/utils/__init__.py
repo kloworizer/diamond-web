@@ -1,6 +1,6 @@
 """Utility functions and helpers for the diamond_web application."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.core.exceptions import ValidationError
 
 
@@ -73,6 +73,49 @@ def combine_date_with_current_time(value):
     return value.replace(
         hour=now.hour, minute=now.minute, second=now.second, microsecond=now.microsecond
     )
+
+
+def lift_time_above(value, floor, margin=timedelta(minutes=1)):
+    """Nudge *value*'s time-of-day to just past *floor*, keeping its date.
+
+    The pickers feeding :func:`combine_date_with_current_time` are date-only,
+    so the time-of-day is whatever the clock said at submit — it carries no
+    intent. When the user picks the *same day* as a timestamped predecessor
+    (a tiket's ``tgl_terima_dip``, say), that stamp can still land before the
+    predecessor purely because of when the form happened to be submitted. The
+    day they chose is not wrong, only the borrowed time is, so this lifts the
+    time-of-day just past *floor* instead of rejecting the submission.
+
+    Only same-day shortfalls are adjusted. A *value* on a later day, or one
+    already at or past *floor*, is returned unchanged; so is one on an earlier
+    day, which is a genuine chronology error for the caller to report.
+
+    The lift never rolls over into the next day: a *floor* late enough that
+    ``floor + margin`` would cross midnight clamps to the last microsecond of
+    the same day, which still satisfies "at or after the floor".
+
+    Args:
+        value: The submitted datetime, or ``None``.
+        floor: The datetime *value* must not precede, or ``None``.
+        margin: How far past *floor* to place the result.
+
+    Returns:
+        *value*, shifted when needed. Any tzinfo on *value* is preserved.
+    """
+    if value is None or floor is None:
+        return value
+
+    naive_value = normalize_server_datetime(value)
+    naive_floor = normalize_server_datetime(floor)
+    if naive_value.date() != naive_floor.date() or naive_value >= naive_floor:
+        return value
+
+    lifted = min(
+        naive_floor + margin,
+        naive_floor.replace(hour=23, minute=59, second=59, microsecond=999999),
+    )
+    # Shift rather than replace, so an aware *value* stays aware.
+    return value + (lifted - naive_value)
 
 
 def end_of_day(value):

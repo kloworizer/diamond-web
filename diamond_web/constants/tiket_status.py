@@ -33,3 +33,14 @@ STATUS_SELESAI = 8
 # Optional helpers for common comparisons
 # Tickets with status < STATUS_DIBATALKAN are considered non-final (not cancelled or finished)
 STATUS_KLARIFIKASI_MAX = STATUS_PENGENDALIAN_MUTU
+
+# Every status a tiket passes through before PMDE receives it: recorded,
+# researched and returned at P3DE (1-3), then sent on and identified at PIDE
+# (4-5). A tiket in one of these is still upstream of quality control.
+STATUSES_SEBELUM_PENGENDALIAN_MUTU = (
+    STATUS_DIREKAM,
+    STATUS_DITELITI,
+    STATUS_DIKEMBALIKAN,
+    STATUS_DIKIRIM_KE_PIDE,
+    STATUS_IDENTIFIKASI,
+)

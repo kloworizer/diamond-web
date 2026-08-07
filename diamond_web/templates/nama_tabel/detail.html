@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* A table name is a machine identifier, so it is set in the monospace face
+       everywhere it appears — the heading, the chips and the search box that
+       led here all show the same string. */
+    .nama-tabel-title {
+        font-family: var(--bs-font-monospace, monospace);
+        word-break: break-all;
+    }
+
+    .nama-tabel-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .nama-tabel-stat {
+        flex: 1 1 160px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 14px 18px;
+        background-color: #f8fafc;
+    }
+
+    .nama-tabel-stat-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #64748b;
+    }
+
+    .nama-tabel-stat-value {
+        font-size: 22px;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 0;
+    }
+
+    /* The feeder lists can run to dozens of entries, so they scroll inside the
+       card rather than pushing the tiket table off the screen. */
+    .nama-tabel-chip-list {
+        max-height: 220px;
+        overflow-y: auto;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-content: flex-start;
+    }
+
+    .nama-tabel-chip {
+        display: inline-block;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 12px;
+        color: #475569;
+        text-decoration: none;
+        background-color: #fff;
+    }
+
+    .nama-tabel-chip:hover {
+        border-color: #0c92ff;
+        color: #0c92ff;
+    }
+
+    .nama-tabel-chip .chip-code {
+        color: #94a3b8;
+        font-size: 11px;
+    }
+</style>
+
+<div class="page-header">
+    <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+            <h5 class="m-b-10">
+                <i class="feather-database me-2"></i>Nama Tabel
+            </h5>
+        </div>
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item active">{{ nama_tabel }}</li>
+        </ul>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h4 class="nama-tabel-title mb-3">{{ nama_tabel }}</h4>
+            <div class="nama-tabel-summary">
+                <div class="nama-tabel-stat">
+                    <span class="nama-tabel-stat-label">Jumlah Tiket</span>
+                    <p class="nama-tabel-stat-value">{{ tiket_total }}</p>
+                </div>
+                <div class="nama-tabel-stat">
+                    <span class="nama-tabel-stat-label">Nama Sub Jenis Data</span>
+                    <p class="nama-tabel-stat-value">{{ jenis_data_total }}</p>
+                </div>
+                <div class="nama-tabel-stat">
+                    <span class="nama-tabel-stat-label">ILAP</span>
+                    <p class="nama-tabel-stat-value">{{ ilap_list|length }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="feather-layers me-2"></i>Sub Jenis Data yang Mengisi Tabel Ini
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% comment %}
+                    One chip per distinct name. A name recorded against several
+                    sub jenis data carries the count, so the collapsed list is
+                    not mistaken for the full set; the link opens the first of
+                    them.
+                    {% endcomment %}
+                    <div class="nama-tabel-chip-list">
+                        {% for entry in jenis_data_list %}
+                        <a class="nama-tabel-chip" href="{% url 'jenis_data_ilap_profil' entry.jenis_data.id_sub_jenis_data %}"
+                           title="{{ entry.jenis_data.id_sub_jenis_data }} &ndash; {{ entry.nama }}">
+                            {{ entry.nama }}
+                            {% if entry.count > 1 %}<span class="chip-code">&times;{{ entry.count }}</span>{% endif %}
+                        </a>
+                        {% empty %}
+                        <span class="text-muted">Tidak ada sub jenis data.</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="feather-briefcase me-2"></i>ILAP Sumber Data
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="nama-tabel-chip-list">
+                        {% for ilap in ilap_list %}
+                        <a class="nama-tabel-chip" href="{% url 'profil_ilap_detail' ilap.id_ilap %}"
+                           title="{{ ilap.nama_ilap }}">
+                            <span class="chip-code">{{ ilap.id_ilap }}</span>
+                            {{ ilap.nama_ilap }}
+                        </a>
+                        {% empty %}
+                        <span class="text-muted">Tidak ada ILAP.</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Daftar Tiket -->
+    <div class="card stretch stretch-full datatable-card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="feather-file me-2"></i>Daftar Tiket
+                <span class="badge bg-soft-secondary text-secondary ms-2">{{ tiket_total }}</span>
+            </h5>
+        </div>
+        <div class="card-body custom-card-action p-0">
+            <div class="table-responsive">
+                <table id="nama-tabel-tiket-table" class="table table-hover mb-0" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>Nomor Tiket</th>
+                            <th>ILAP</th>
+                            <th>Sub Jenis Data</th>
+                            <th>Periode</th>
+                            <th class="text-center">Tahun</th>
+                            <th>Status</th>
+                            <th>Tanggal Terima DIP</th>
+                            <th class="col-actions text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function () {
+        $('#nama-tabel-tiket-table').DataTable({
+            serverSide: true,
+            processing: true,
+            ajax: {
+                url: "{% url 'nama_tabel_tiket_data' nama_tabel %}",
+                type: 'GET'
+            },
+            columns: [
+                { data: 'nomor_tiket' },
+                { data: 'nama_ilap' },
+                { data: 'sub_jenis_data' },
+                { data: 'periode' },
+                { data: 'tahun', className: 'text-center' },
+                { data: 'status' },
+                { data: 'tgl_terima_dip' },
+                { data: 'actions', orderable: false, searchable: false, className: 'col-actions text-center' }
+            ],
+            order: [[0, 'asc']],
+            paging: true,
+            pageLength: 10,
+            searching: true,
+            ordering: true,
+            info: true,
+            lengthChange: true,
+            layout: {
+                topStart: 'pageLength',
+                topEnd: 'search',
+                bottomStart: 'info',
+                bottomEnd: 'paging'
+            },
+            language: {
+                search: 'Cari:',
+                searchPlaceholder: 'Cari...',
+                lengthMenu: 'Tampilkan _MENU_ entri',
+                info: 'Menampilkan _START_ hingga _END_ dari _TOTAL_ entri',
+                infoEmpty: 'Menampilkan 0 hingga 0 dari 0 entri',
+                infoFiltered: '(disaring dari _MAX_ entri total)',
+                emptyTable: 'Belum ada tiket untuk nama tabel ini.',
+                zeroRecords: 'Tidak ada data yang cocok',
+                loadingRecords: 'Memuat...',
+                processing: 'Memproses...',
+                aria: {
+                    sortAscending: ': aktifkan untuk mengurutkan kolom naik',
+                    sortDescending: ': aktifkan untuk mengurutkan kolom turun'
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

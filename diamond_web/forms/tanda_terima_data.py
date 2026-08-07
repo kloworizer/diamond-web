@@ -5,7 +5,12 @@ from .base import AutoRequiredFormMixin
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime, parse_date
 from ..models.tanda_terima_data import TandaTerimaData
-from ..utils import validate_not_future_datetime, combine_date_with_current_time, normalize_server_datetime
+from ..utils import (
+    validate_not_future_datetime,
+    combine_date_with_current_time,
+    lift_time_above,
+    normalize_server_datetime,
+)
 from ..utils.tanda_terima_nomor import (
     allocate_nomor_tanda_terima,
     format_nomor_tanda_terima,
@@ -107,6 +112,19 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
             # underlying model field is a CharField, so no choice validation.
             'nomor_nd_pengantar': forms.Select(),
         }
+
+    @property
+    def submitted_tiket_ids(self):
+        """Posted tiket ids, so a re-rendered form can restore the selection.
+
+        The tiket table is rebuilt by AJAX every time the form is rendered, so
+        without this a rejected submit silently drops everything the user had
+        ticked — painful for a Kanwil-scoped receipt covering many tikets.
+        """
+        getlist = getattr(self.data, 'getlist', None) if self.is_bound else None
+        if getlist is None:
+            return ''
+        return ','.join(str(value) for value in getlist('tiket_ids') if value)
 
     def clean_tanggal_tanda_terima(self):
         value = self.cleaned_data.get('tanggal_tanda_terima')
@@ -349,15 +367,37 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
             else:
                 tikets = cleaned_data.get('tiket_ids') or Tiket.objects.none()
             tanggal = normalize_server_datetime(tanggal)
+            konflik = []
+            # Latest DIP receipt among the tikets whose day is still fine. The
+            # picker is date-only, so a same-day shortfall is an artefact of
+            # the submit time and gets lifted past this floor rather than
+            # rejected; only an earlier day is a real conflict.
+            batas = None
             for tiket in tikets:
                 if tiket.tgl_terima_dip:
                     tgl_terima_dip = normalize_server_datetime(tiket.tgl_terima_dip)
-                    if tanggal < tgl_terima_dip:
-                        raise ValidationError(
-                            f'Tanggal Tanda Terima tidak boleh sebelum Tanggal Terima DIP '
-                            f'({tgl_terima_dip.strftime("%d/%m/%Y %H:%M")}) '
-                            f'untuk tiket {tiket.nomor_tiket}.'
+                    if tanggal.date() < tgl_terima_dip.date():
+                        konflik.append(
+                            f'{tiket.nomor_tiket} '
+                            f'({tgl_terima_dip.strftime("%d/%m/%Y %H:%M")})'
                         )
+                    elif batas is None or tgl_terima_dip > batas:
+                        batas = tgl_terima_dip
+            if not konflik and batas is not None:
+                cleaned_data['tanggal_tanda_terima'] = lift_time_above(
+                    cleaned_data['tanggal_tanda_terima'], batas
+                )
+            if konflik:
+                # Attached to the date field rather than raised as a non-field
+                # error: that is the value the user can actually change, and a
+                # Kanwil-scoped receipt pools tikets from every ILAP in the
+                # wilayah, so several of them can clash at once — all are named
+                # instead of stopping at the first.
+                self.add_error(
+                    'tanggal_tanda_terima',
+                    'Tanggal Tanda Terima tidak boleh sebelum Tanggal Terima DIP '
+                    'untuk tiket ' + ', '.join(konflik) + '.'
+                )
         return cleaned_data
 
     def clean_tiket_ids(self):

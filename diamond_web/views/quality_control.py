@@ -8,8 +8,8 @@ calculations, and QC progress.
 Filtering works the same way as the tiket list page: a panel of Select2
 multi-selects above the table, each of which narrows both the table and the
 remaining dropdowns. The tiket status filter is absent (every row here is in
-Pengendalian Mutu by definition) and a Prioritas Ya/Tidak filter is added,
-since prioritas is a column of this table.
+Pengendalian Mutu by definition), while a Prioritas Ya/Tidak filter and a
+Jatuh Tempo threshold are added, since both are columns of this table.
 """
 
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -227,6 +227,62 @@ def _filter_periode(qs, values):
     return qs.filter(combined) if combined else qs
 
 
+# The thresholds the Jatuh Tempo dropdown offers, in days. They nest by
+# construction — every tiket under 10 days is also under 30 — so selecting
+# several of them is the union, which is simply the widest one.
+_JATUH_TEMPO_LIMITS = (10, 30, 60)
+
+
+def jatuh_tempo_ids(qs, limit):
+    """Ids of the tikets in `qs` whose jatuh tempo is under `limit` days.
+
+    Jatuh tempo is not a column: it is the deadline — the tiket's base date
+    plus the durasi that was active then — counted from today, so the
+    comparison is made here over the same computation the table renders and the
+    chart plots, rather than reassembled in SQL a third time.
+
+    Public because the PMDE home card filters by the same thresholds this page
+    does; going through one function is what stops the two from disagreeing
+    about when a tiket falls due.
+    """
+    rows = qs.annotate(
+        active_durasi=Coalesce(
+            Subquery(_durasi_subquery(), output_field=IntegerField()),
+            Value(0),
+        ),
+    ).values_list('id', 'tgl_transfer', 'tgl_rematch', 'active_durasi')
+
+    today = date.today()
+    ids = []
+    for tiket_id, tgl_transfer, tgl_rematch, durasi in rows:
+        deadline_day = _deadline_day(tgl_transfer, tgl_rematch, durasi)
+        if deadline_day is None:
+            continue
+        if (deadline_day - today).days < limit:
+            ids.append(tiket_id)
+    return ids
+
+
+def _filter_jatuh_tempo(qs, values):
+    """Applier for the Jatuh Tempo dropdown.
+
+    An overdue tiket is under every threshold, its jatuh tempo being negative,
+    and a tiket with no deadline is under none of them — the same rows the
+    table shows a '-' for.
+    """
+    limits = []
+    for value in values:
+        try:
+            limit = int(value)
+        except ValueError:
+            continue
+        if limit in _JATUH_TEMPO_LIMITS:
+            limits.append(limit)
+    if not limits:
+        return qs.none()
+    return qs.filter(id__in=jatuh_tempo_ids(qs, max(limits)))
+
+
 def _filter_prioritas(qs, values):
     """Applier for the Prioritas Ya/Tidak dropdown.
 
@@ -256,6 +312,7 @@ FILTER_APPLIERS = {
     'ilap': _in(f'{_ILAP}__id'),
     'jenis_data': _in(f'{_SUB}__id_jenis_data'),
     'sub_jenis_data': _in(f'{_SUB}__id_sub_jenis_data'),
+    'nama_tabel': _in(f'{_SUB}__nama_tabel_I'),
     'kanwil': lambda qs, values: qs.filter(tiket_in_kanwil_q(values)),
     'kpp': _in(f'{_ILAP}__ilap_kpp_relations__id_kpp__id'),
     'kategori_wilayah': _in(f'{_ILAP}__id_kategori_wilayah__id'),
@@ -265,6 +322,8 @@ FILTER_APPLIERS = {
     'status_ketersediaan_data': _bool_in('status_ketersediaan_data'),
     'special_request': _bool_in('special_request'),
     'prioritas': _filter_prioritas,
+    # Last, because it is the only applier that has to read rows to decide.
+    'jatuh_tempo': _filter_jatuh_tempo,
 }
 
 
@@ -418,6 +477,16 @@ def _prioritas_options(qs):
     return options
 
 
+def _jatuh_tempo_options(_qs):
+    """The fixed Jatuh Tempo thresholds.
+
+    Alone among the dropdowns these are not read off the result set: a
+    threshold is a question the user asks — "what falls due within 30 days?" —
+    and one that currently matches nothing is still worth being able to ask.
+    """
+    return [{'id': str(limit), 'name': f'< {limit} hari'} for limit in _JATUH_TEMPO_LIMITS]
+
+
 def _kode_nama(_id, kode, nama):
     """Label a lookup row as `<kode> - <nama>`, keeping the id out of the text."""
     return f'{kode} - {nama}'
@@ -455,6 +524,10 @@ FILTER_OPTIONS = {
         (f'{_SUB}__id_sub_jenis_data', f'{_SUB}__nama_sub_jenis_data'),
         lambda kode, nama: f'{kode} - {nama}',
     ),
+    # The nama tabel is its own id: it is free text on the sub jenis data row
+    # rather than a lookup, so the value filtered on is the name itself.
+    'nama_tabel': lambda qs: _distinct_options(
+        qs.order_by(f'{_SUB}__nama_tabel_I'), (f'{_SUB}__nama_tabel_I',)),
     'kanwil': _kanwil_options,
     'kpp': lambda qs: _distinct_options(
         qs,
@@ -483,11 +556,22 @@ FILTER_OPTIONS = {
     'status_ketersediaan_data': lambda qs: _yes_no_options(qs, 'status_ketersediaan_data'),
     'special_request': lambda qs: _yes_no_options(qs, 'special_request'),
     'prioritas': _prioritas_options,
+    'jatuh_tempo': _jatuh_tempo_options,
 }
 
 
 def _filter_options(scoped_qs, selected):
     """Build the option list for every dropdown, each excluding its own filter."""
+    # Jatuh tempo is narrowed away once, up front, instead of once per dropdown:
+    # it is the one filter that reads rows to decide, and the filters are
+    # conjunctive, so applying it first gives every builder the same result set
+    # it would have got anyway. Its own options are the fixed thresholds, so
+    # nothing is lost by it not being excluded from its own dropdown.
+    selected = dict(selected)
+    jatuh_tempo = selected.pop('jatuh_tempo', None)
+    if jatuh_tempo:
+        scoped_qs = _filter_jatuh_tempo(scoped_qs, jatuh_tempo)
+
     return {
         key: builder(_apply_filters(scoped_qs, selected, exclude=key))
         for key, builder in FILTER_OPTIONS.items()
@@ -695,22 +779,24 @@ def quality_control_data(request):
     records_filtered = tikets.count()
 
     # ---- Server-side sorting ----
+    # Columns 2, 3 and 4 each stack two values in one cell — nomor tiket over
+    # sub jenis data, nama ILAP over jenis tabel, tgl transfer over tgl rematch.
+    # Each sorts by the line the cell leads with, which is also the one the
+    # header names first, then falls back to its second line so the sort is not
+    # left as a coarse grouping. Nomor tiket is unique, so it needs no fallback.
     order_map = {
-        0: f'{_SUB}__nama_tabel_I',
-        1: 'id',
-        2: 'nomor_tiket',
-        3: f'{_ILAP}__nama_ilap',
-        4: f'{_SUB}__nama_sub_jenis_data',
-        5: f'{_SUB}__id_jenis_tabel__deskripsi',
-        6: 'tgl_transfer_date',
-        7: 'tgl_rematch_date',
-        8: 'deadline_date',
+        0: (f'{_SUB}__nama_tabel_I',),
+        1: ('id',),
+        2: ('nomor_tiket',),
+        3: (f'{_ILAP}__nama_ilap', f'{_SUB}__id_jenis_tabel__deskripsi'),
+        4: ('tgl_transfer_date', 'tgl_rematch_date'),
+        5: ('deadline_date',),
         # Jatuh tempo is the deadline counted from today, so it sorts the same way.
-        9: 'deadline_date',
-        10: 'is_prioritas',
-        11: 'baris_i',
-        12: 'sudah_qc',
-        13: 'belum_qc',
+        6: ('deadline_date',),
+        7: ('is_prioritas',),
+        8: ('baris_i',),
+        9: ('sudah_qc',),
+        10: ('belum_qc',),
     }
 
     # Read sort column and direction from DataTables params
@@ -720,10 +806,10 @@ def quality_control_data(request):
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
-            col = order_map.get(idx, 'id')
+            cols = order_map.get(idx, ('id',))
             if order_dir == 'desc':
-                col = '-' + col
-            tikets = tikets.order_by(col)
+                cols = tuple('-' + col for col in cols)
+            tikets = tikets.order_by(*cols)
         except (ValueError, TypeError):
             tikets = tikets.order_by('-id')
     else:
