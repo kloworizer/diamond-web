@@ -1051,8 +1051,11 @@ def jenis_data_ilap_tiket_data(request, id_sub_jenis_data):
             )),
             'tahun': tiket.tahun,
             'status': f'<span class="badge {badge_class}">{escape(status_label)}</span>',
+            # Date only, as every other list of tikets shows it. The field
+            # stores a datetime, but the hour a berkas arrived is not something
+            # this page reports on, and it was the only one printing it.
             'tgl_terima_dip': (
-                date_format(tiket.tgl_terima_dip, 'd M Y H:i')
+                date_format(tiket.tgl_terima_dip, 'd M Y')
                 if tiket.tgl_terima_dip else '---'
             ),
             'actions': (
