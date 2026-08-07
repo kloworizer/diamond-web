@@ -402,6 +402,74 @@ class TestSummaryBreakdowns:
 
 
 @pytest.mark.django_db
+class TestCopyToClipboard:
+    """The ILAP and nama tabel cards hand their list over one entry per line."""
+
+    def _payloads(self, client, pic_user):
+        """Return {label: [line, ...]} for every copy button on the page."""
+        import html
+        import re
+
+        page = client.get(
+            reverse('profil_pic_detail', args=[pic_user.username])
+        ).content.decode()
+        return {
+            m.group(1): html.unescape(m.group(2)).split('\n')
+            for m in re.finditer(
+                r'data-copy-label="([^"]+)"\s+data-copy-text="([^"]*)"', page
+            )
+        }
+
+    def test_ilap_list_is_one_entry_per_line(self, client):
+        pic_user = UserFactory()
+        for nama in ('Pemda Alpha', 'Pemda Beta'):
+            _pic_of(pic_user, ilap=ILAPFactory(nama_ilap=nama))
+        _logged_in(client)
+
+        lines = self._payloads(client, pic_user)['Daftar ILAP']
+
+        assert len(lines) == 2
+        assert all(' - ' in line for line in lines)
+        assert any(line.endswith('Pemda Alpha') for line in lines)
+
+    def test_nama_tabel_list_is_one_entry_per_line(self, client):
+        pic_user = UserFactory()
+        _pic_of(pic_user, nama_tabel='KPDE_SATU')
+        _pic_of(pic_user, nama_tabel='KPDE_DUA')
+        _logged_in(client)
+
+        lines = self._payloads(client, pic_user)['Daftar nama tabel']
+
+        assert sorted(lines) == ['KPDE_DUA', 'KPDE_SATU']
+
+    def test_each_name_appears_once_however_many_assignments(self, client):
+        """The copied list is the chip list, which is already collapsed."""
+        pic_user = UserFactory()
+        _pic_of(pic_user, nama_tabel='KPDE_SAMA')
+        _pic_of(pic_user, nama_tabel='KPDE_SAMA')
+        _logged_in(client)
+
+        assert self._payloads(client, pic_user)['Daftar nama tabel'] == ['KPDE_SAMA']
+
+    def test_no_button_when_there_is_nothing_to_copy(self, client):
+        pic_user = UserFactory()
+        _logged_in(client)
+
+        assert self._payloads(client, pic_user) == {}
+
+    def test_count_matches_the_card(self, client):
+        pic_user = UserFactory()
+        for nama_tabel in ('KPDE_A', 'KPDE_B', 'KPDE_C'):
+            _pic_of(pic_user, nama_tabel=nama_tabel)
+        _logged_in(client)
+
+        resp = client.get(reverse('profil_pic_detail', args=[pic_user.username]))
+        lines = self._payloads(client, pic_user)['Daftar nama tabel']
+
+        assert len(lines) == len(resp.context['nama_tabel_list'])
+
+
+@pytest.mark.django_db
 class TestProfilPICTiketData:
     def _tiket_for(self, pic_user, nomor_tiket='T-001', role=TiketPIC.Role.P3DE):
         jenis_data = JenisDataILAPFactory()

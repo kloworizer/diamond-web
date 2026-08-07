@@ -2,8 +2,20 @@
 <!DOCTYPE html>
 <html lang="en">
 
-/***** Color Palette Primer *****/
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="keyword" content="">
+    <meta name="author" content="Diamond Web">
+    <title>Diamond Web | Login</title>
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'assets/images/logo-abbr-1.png' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/vendors.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/css/theme.min.css' %}">
 <style>
+    /***** Color Palette Primer *****/
     .btn-custom-blue {
         background-color: #00BDFB !important;
         border-color: #00BDFB !important;
@@ -50,19 +62,6 @@
         background-color: rgba(0, 189, 251, 0.08);
     }
 </style>
-
-<head>
-    <meta charset="utf-8">
-    <meta http-equiv="x-ua-compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="">
-    <meta name="keyword" content="">
-    <meta name="author" content="Diamond Web">
-    <title>Diamond Web | Login</title>
-    <link rel="shortcut icon" type="image/x-icon" href="{% static 'assets/images/logo-abbr-1.png' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'assets/css/bootstrap.min.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'assets/vendors/css/vendors.min.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'assets/css/theme.min.css' %}">
 </head>
 
 <body>
@@ -81,12 +80,30 @@
                                 <p class="fs-12 fw-medium text-muted">Administrasikan pengelolaan data pada aplikasi <strong>Diamond</strong></p>
                                 <form method="post" class="w-100 mt-4 pt-2">
                                     {% csrf_token %}
+                                    {% comment %}
+                                    The two fields carry the autocomplete tokens
+                                    the browser password managers look for. The
+                                    placeholder alone is not a signal — "NIP9
+                                    SIKKA" means nothing to Edge's scanner — and
+                                    without `autocomplete="username"` and a real
+                                    label it will not offer a saved credential.
+                                    The labels are visually hidden so the design
+                                    keeps its placeholder-only look while both
+                                    the scanner and a screen reader get a name.
+                                    {% endcomment %}
                                     <div class="mb-4">
-                                        <input type="text" class="form-control" name="username" placeholder="NIP9 SIKKA" required>
+                                        <label for="id_username" class="visually-hidden">NIP9 SIKKA</label>
+                                        <input type="text" class="form-control" name="username" id="id_username"
+                                               placeholder="NIP9 SIKKA" required autofocus
+                                               autocomplete="username"
+                                               autocapitalize="none" spellcheck="false">
                                     </div>
                                     <div class="mb-3">
+                                        <label for="id_password" class="visually-hidden">Kata Sandi</label>
                                         <div class="password-field">
-                                            <input type="password" class="form-control" name="password" id="id_password" placeholder="Kata Sandi" required>
+                                            <input type="password" class="form-control" name="password" id="id_password"
+                                                   placeholder="Kata Sandi" required
+                                                   autocomplete="current-password">
                                             <button type="button" class="password-toggle" id="toggle-password"
                                                 aria-label="Tampilkan kata sandi" aria-pressed="false" title="Tampilkan kata sandi" tabindex="-1">
                                                 <i class="feather-eye" aria-hidden="true"></i>
