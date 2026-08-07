@@ -756,6 +756,16 @@
                             {% endif %}
                         </a>
                     </li>
+                    <li class="nav-item">
+                        {# What is still upstream of PMDE — the queue heading their way, not their own workload. #}
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="masih_di_p3de_pide">
+                            <span class="icon-bg-soft icon-bg-soft-green"><i class="feather-inbox" style="color:#16C098"></i></span>
+                            <span>Masih di P3DE &amp; PIDE</span>
+                            {% if pmde_category_counts.masih_di_p3de_pide %}
+                            <span class="badge bg-success ms-auto">{{ pmde_category_counts.masih_di_p3de_pide }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
                     {% if not is_p3de and not is_pide %}
                     <li class="nav-item">
                         <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="special_request">
@@ -1913,15 +1923,15 @@
 
                                 <!-- Right Section: Urgency Filter Badges -->
                                 <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-dalam_proses_pengendalian_mutu">
-                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i><span class="urgensi-label-text">Urgensi</span><i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Dihitung berdasarkan selisih hari kerja dari Tanggal Transfer" style="cursor: pointer;"></i><span class="urgensi-label-text">:</span></span>
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i><span class="urgensi-label-text">Urgensi</span><i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Sisa hari sampai jatuh tempo, dihitung sama seperti halaman Quality Control" style="cursor: pointer;"></i><span class="urgensi-label-text">:</span></span>
                                     <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
                                         <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-dalam_proses_pengendalian_mutu">0</span>)
                                     </button>
-                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="new" data-bs-toggle="tooltip" data-bs-placement="top" title="Baru: Tiket diterima < 85 Hari Kerja">
-                                        <i class="feather-clock me-1 align-middle" style="color: #10b981;"></i>Baru (<span id="count-new-dalam_proses_pengendalian_mutu">0</span>)
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="lt10" data-bs-toggle="tooltip" data-bs-placement="top" title="Jatuh tempo kurang dari 10 hari lagi, termasuk yang sudah lewat">
+                                        <i class="feather-alert-triangle me-1 align-middle" style="color: #ef4444;"></i>&lt; 10 hari (<span id="count-lt10-dalam_proses_pengendalian_mutu">0</span>)
                                     </button>
-                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="critical" data-bs-toggle="tooltip" data-bs-placement="top" title="Perlu Segera: Tiket mengendap > 85 Hari Kerja">
-                                        <i class="feather-alert-triangle me-1 align-middle" style="color: #ef4444;"></i>Perlu Segera (<span id="count-critical-dalam_proses_pengendalian_mutu">0</span>)
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="lt30" data-bs-toggle="tooltip" data-bs-placement="top" title="Jatuh tempo kurang dari 30 hari lagi, termasuk yang sudah lewat">
+                                        <i class="feather-alert-circle me-1 align-middle" style="color: #f59e0b;"></i>&lt; 30 hari (<span id="count-lt30-dalam_proses_pengendalian_mutu">0</span>)
                                     </button>
                                 </div>
                             </div>
@@ -1938,7 +1948,87 @@
                                         <th>Jenis Data</th>
                                         <th>Belum QC</th>
                                         <th>Lolos QC</th>
-                                        <th>Tgl Transfer</th>
+                                        <th>Tanggal Transfer</th>
+                                        <th>Prioritas</th>
+                                        <th class="col-actions">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% comment %}
+                Masih di P3DE & PIDE — the reader's tikets in status 1-5, i.e. the
+                ones heading towards them but not yet transferred. Scoped by the
+                same rule as the card above: own active PMDE assignments, or the
+                whole seksi for a kasi. It splits by which unit is still holding
+                the tiket rather than by age — across five statuses in two seksi,
+                whose desk it sits on is the question worth asking.
+                {% endcomment %}
+                <div class="card stretch stretch-full datatable-card" data-category="masih_di_p3de_pide" style="display:none;">
+                    <div class="card-header" style="display: block;">
+                        <div class="mb-2" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); padding: 10px 16px;">
+                            <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap dashboard-toolbar-row">
+                                <div class="d-flex align-items-center dashboard-metrics">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar avatar-xs bg-soft-primary text-primary" style="background-color: rgba(0, 189, 251, 0.1) !important; color: #00BDFB !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-file-text fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Tiket</small>
+                                            <h5 class="fw-bolder mb-0 text-primary" id="summary-total-tiket-masih_di_p3de_pide" style="color: #00BDFB !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-ilap-wrapper-masih_di_p3de_pide" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data ILAP">
+                                        <div class="avatar avatar-xs bg-soft-warning text-warning" style="background-color: rgba(239, 186, 34, 0.1) !important; color: #EFBA22 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-home fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">ILAP</small>
+                                            <h5 class="fw-bolder mb-0 text-warning" id="summary-total-ilap-masih_di_p3de_pide" style="color: #EFBA22 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                    <div style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                                    <div class="d-flex align-items-center gap-2 summary-interactive-indicator" id="summary-jenis-wrapper-masih_di_p3de_pide" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="Belum ada data Jenis">
+                                        <div class="avatar avatar-xs bg-soft-success text-success" style="background-color: rgba(22, 192, 152, 0.1) !important; color: #16C098 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                            <i class="feather-database fs-16"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Jenis Data</small>
+                                            <h5 class="fw-bolder mb-0 text-success" id="summary-total-jenis-data-masih_di_p3de_pide" style="color: #16C098 !important; font-size: 14px; line-height: 1.2;">0</h5>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Section: Which unit still holds the tiket -->
+                                <div class="d-flex align-items-center gap-2 flex-wrap" id="filter-group-masih_di_p3de_pide">
+                                    <span class="text-muted small fw-semibold me-1 d-inline-flex align-items-center gap-1"><i class="feather-filter"></i><span class="urgensi-label-text">Posisi</span><i class="feather-info text-muted fs-11" data-bs-toggle="tooltip" data-bs-placement="top" title="Seksi yang masih memegang tiket, dilihat dari status tiketnya" style="cursor: pointer;"></i><span class="urgensi-label-text">:</span></span>
+                                    <button type="button" class="btn-urgency-custom btn-urgency active" data-urgency="all" data-bs-toggle="tooltip" data-bs-placement="top" title="Tampilkan semua tiket">
+                                        <i class="feather-layers me-1 align-middle text-muted"></i>Semua (<span id="count-all-masih_di_p3de_pide">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="p3de" data-bs-toggle="tooltip" data-bs-placement="top" title="Masih di P3DE: Direkam, Diteliti, atau Dikembalikan">
+                                        <i class="feather-edit-3 me-1 align-middle" style="color: #0c92ff;"></i>P3DE (<span id="count-p3de-masih_di_p3de_pide">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-urgency-custom btn-urgency" data-urgency="pide" data-bs-toggle="tooltip" data-bs-placement="top" title="Masih di PIDE: Dikirim ke PIDE atau Identifikasi">
+                                        <i class="feather-search me-1 align-middle" style="color: #8b5cf6;"></i>PIDE (<span id="count-pide-masih_di_p3de_pide">0</span>)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-masih_di_p3de_pide" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Nomor Tiket</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
+                                        <th>Status Tiket</th>
+                                        <th>Tgl Terima DIP</th>
                                         <th>Prioritas</th>
                                         <th class="col-actions">Aksi</th>
                                     </tr>
@@ -2761,10 +2851,49 @@
                     return (data === null || data === undefined || data === '' || isNaN(data)) ? 0 : Number(data);
                 }
             },
-            { 
-                data: 'tanggal', 
-                title: 'Tanggal',
+            {
+                data: 'tanggal',
+                title: 'Tanggal Transfer',
                 render: function(data, type, row) {
+                    if (type === 'order' || type === 'type') {
+                        return row.tanggal_order || '';
+                    }
+                    return data || '';
+                }
+            },
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false, className: 'col-actions' }
+        ];
+
+        // Statuses 1-5, the ones this category spans. Anything else falls back to
+        // a neutral chip rather than going unstyled.
+        const STATUS_BADGE_STYLES = {
+            1: { bg: '#e0f2fe', fg: '#0369a1', border: '#bae6fd' },  // Direkam
+            2: { bg: '#f1f5f9', fg: '#475569', border: '#cbd5e1' },  // Diteliti
+            3: { bg: '#fee2e2', fg: '#b91c1c', border: '#fecaca' },  // Dikembalikan
+            4: { bg: '#fef3c7', fg: '#b45309', border: '#fde68a' },  // Dikirim ke PIDE
+            5: { bg: '#ede9fe', fg: '#6d28d9', border: '#ddd6fe' }   // Identifikasi
+        };
+
+        const masihDiP3dePideColumns = [
+            { data: 'nomor_tiket', title: 'Nomor Tiket' },
+            { data: 'nama_ilap', title: 'Nama ILAP' },
+            { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
+            {
+                data: 'status_tiket',
+                title: 'Status Tiket',
+                render: function (data, type, row) {
+                    if (type !== 'display') return data || '';
+                    const style = STATUS_BADGE_STYLES[row.status_tiket_code]
+                        || { bg: '#f1f5f9', fg: '#475569', border: '#cbd5e1' };
+                    return '<span class="badge" style="background-color:' + style.bg
+                        + ';color:' + style.fg + ';border:1px solid ' + style.border + ';">'
+                        + (data || '-') + '</span>';
+                }
+            },
+            {
+                data: 'tanggal',
+                title: 'Tgl Terima DIP',
+                render: function (data, type, row) {
                     if (type === 'order' || type === 'type') {
                         return row.tanggal_order || '';
                     }
@@ -2949,6 +3078,25 @@
                 }
             }
             return cols;
+            }
+            if (category === 'masih_di_p3de_pide') {
+                const cols = masihDiP3dePideColumns.slice();
+                const actionIdx = cols.findIndex(c => c.data === 'actions');
+                const prioritasCol = {
+                    data: 'is_prioritas',
+                    title: 'Prioritas',
+                    width: '80px',
+                    orderable: false,
+                    searchable: false,
+                    render: function(data, type) {
+                        if (type === 'display') {
+                            return data ? '<span class="badge bg-soft-danger text-danger border border-danger">Ya</span>' : '-';
+                        }
+                        return data;
+                    }
+                };
+                cols.splice(actionIdx === -1 ? cols.length : actionIdx, 0, prioritasCol);
+                return cols;
             }
             if (category === 'periode_tiket_null_p3de') {
                 let cols = periodeTiketNullColumns;
@@ -3327,6 +3475,14 @@
                         if (countWarningEl) countWarningEl.textContent = json.summary.warning_count || 0;
                         if (countNewEl) countNewEl.textContent = json.summary.new_count || 0;
                     }
+
+                    // Categories whose buttons are not the shared urgency triplet
+                    // report their own buckets, one span per key.
+                    const buckets = json.summary.bucket_counts || {};
+                    Object.keys(buckets).forEach(function (key) {
+                        const el = document.getElementById(`count-${key}-${category}`);
+                        if (el) el.textContent = buckets[key] || 0;
+                    });
                 }
             });
 

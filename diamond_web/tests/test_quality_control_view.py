@@ -242,7 +242,7 @@ class TestQualityControlData:
 
         resp = client.get(reverse(self.url), {
             'draw': '1', 'start': '0', 'length': '10',
-            'order[0][column]': '8', 'order[0][dir]': 'asc',
+            'order[0][column]': '5', 'order[0][dir]': 'asc',
         })
         nomor = [row['nomor_tiket'] for row in resp.json()['data']]
         assert nomor == [late['tiket'].nomor_tiket, early['tiket'].nomor_tiket]
@@ -389,6 +389,22 @@ class TestQualityControlFilters:
         assert self._rows(
             client, sub_jenis_data=second['jenis_data'].id_sub_jenis_data
         )['recordsFiltered'] == 1
+
+    def test_filter_by_nama_tabel(self, client):
+        """Nama tabel is free text, so the option id is the name itself."""
+        first = _qc_bundle()
+        second = _qc_bundle(pmde_user=first['pmde_user'])
+        client.force_login(first['pmde_user'])
+
+        options = self._options(client)
+        assert {o['id'] for o in options['nama_tabel']} == {
+            first['jenis_data'].nama_tabel_I, second['jenis_data'].nama_tabel_I
+        }
+        assert all(o['id'] == o['name'] for o in options['nama_tabel'])
+
+        payload = self._rows(client, nama_tabel=first['jenis_data'].nama_tabel_I)
+        assert payload['recordsFiltered'] == 1
+        assert payload['data'][0]['nama_tabel'] == first['jenis_data'].nama_tabel_I
 
     def test_filter_by_jenis_tabel_and_dasar_hukum(self, client):
         first = _qc_bundle()

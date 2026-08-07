@@ -513,6 +513,10 @@ NAVBAR_JENIS_DATA_SEARCH_FIELDS = (
     'nama_sub_jenis_data',
     'nama_jenis_data',
 )
+# Nama tabel I is searched as a group of its own (see `_nama_tabel_suggestions`)
+# rather than as another field of the jenis data group: a table is the thing the
+# user is after when they type its name, not the jenis data feeding it.
+NAVBAR_NAMA_TABEL_SEARCH_FIELDS = ('nama_tabel_I',)
 # The dropdown has to stay readable at a glance, so each group contributes at
 # most this many rows.
 NAVBAR_SUGGESTION_LIMIT = 5
@@ -606,6 +610,35 @@ def _jenis_data_suggestions(term):
     ]
 
 
+def _nama_tabel_suggestions(term):
+    """Return navbar suggestion dicts for the bank data tables matching `term`.
+
+    A nama tabel is a field repeated across every sub jenis data feeding the
+    same table, so the rows are collapsed to the distinct table names — one
+    suggestion per table, not one per sub jenis data behind it. Blank names are
+    skipped: they are sub jenis data with no table recorded yet, not a table.
+    """
+    names = (
+        JenisDataILAP.objects
+        .filter(_full_text_filter(term, NAVBAR_NAMA_TABEL_SEARCH_FIELDS))
+        .exclude(nama_tabel_I='')
+        .exclude(nama_tabel_I__isnull=True)
+        .annotate(match_rank=_full_text_rank(term, NAVBAR_NAMA_TABEL_SEARCH_FIELDS))
+        .values_list('nama_tabel_I', 'match_rank')
+        .distinct()
+        .order_by('match_rank', 'nama_tabel_I')[:NAVBAR_SUGGESTION_LIMIT]
+    )
+    return [
+        {
+            'type': 'nama_tabel',
+            'type_label': 'Nama Tabel',
+            'url': reverse('nama_tabel_detail', args=[name]),
+            'label': name,
+        }
+        for name, _rank in names
+    ]
+
+
 def _can_open_tiket(user, tiket):
     """Return True when `user` may open `tiket`'s detail page.
 
@@ -626,20 +659,28 @@ def navbar_search(request):
 
     * ``match`` is the exact, case-insensitive resolution the box navigates to
       straight away — ``BI001`` for the ILAP profile, ``BI0010101`` for the sub
-      jenis data page, a full nomor tiket for the tiket detail page.
-    * ``suggestions`` is the dropdown: a full text search over the ILAP and sub
-      jenis data codes and names, so ``purwakarta`` lists the ILAPs of that city
-      and ``penjualan`` the sub jenis data named after it. Multi-word terms
-      require every word (see :func:`_full_text_filter`).
+      jenis data page, ``KPDE_ADHOC_DRKB`` for the nama tabel page, a full nomor
+      tiket for the tiket detail page.
+    * ``suggestions`` is the dropdown: a full text search over the ILAP codes
+      and names, the sub jenis data codes and names, and the nama tabel I, so
+      ``purwakarta`` lists the ILAPs of that city, ``penjualan`` the sub jenis
+      data named after it and ``drkb`` the bank data tables named after it.
+      Multi-word terms require every word (see :func:`_full_text_filter`).
+
+    The three groups are separate on purpose. A nama tabel is a field repeated
+    across every sub jenis data feeding the same table — one table routinely
+    collects dozens of them — so a table-name search suggests the *tables* and
+    leads to the page listing the tikets landing in them, rather than spilling
+    those dozens of sub jenis data into the jenis data group.
 
     Tikets are deliberately absent from the suggestions: nomor tiket stays an
     exact lookup, because a partial number identifies a periode rather than a
     tiket and the tiket list is the right tool for browsing those.
 
     The ILAP catalogue is not scoped to the searcher: every logged in user
-    resolves and is suggested every ILAP and sub jenis data, because the
-    profil pages they lead to are open to everyone. What a user is not a PIC
-    for is held back on the page itself, not here — see
+    resolves and is suggested every ILAP, sub jenis data and nama tabel,
+    because the pages they lead to are open to everyone. What a user is not a
+    PIC for is held back on the page itself, not here — see
     :func:`~diamond_web.views.mixins.can_view_ilap_kontak`.
 
     The nomor tiket branch exists for Admin P3DE: they may correct the isian of
@@ -656,10 +697,10 @@ def navbar_search(request):
     Returns:
         JsonResponse: ``{'match': None, 'suggestions': []}`` when nothing
         matched, otherwise the same keys with ``match`` set to
-        ``'ilap'|'jenis_data'|'tiket'`` plus ``url`` and ``label`` for the exact
-        hit, and one ``{'type', 'type_label', 'url', 'label'}`` dict per
-        suggestion — sub jenis data rows carry an extra ``sublabel`` naming the
-        ILAP they belong to, which is what tells two similar names apart.
+        ``'ilap'|'jenis_data'|'nama_tabel'|'tiket'`` plus ``url`` and ``label``
+        for the exact hit, and one ``{'type', 'type_label', 'url', 'label'}``
+        dict per suggestion — sub jenis data rows carry an extra ``sublabel``
+        naming the ILAP they belong to, which tells two similar names apart.
     """
     term = request.GET.get('q', '').strip()
     payload = {'match': None, 'suggestions': []}
@@ -684,9 +725,24 @@ def navbar_search(request):
                 'label': f'{ilap.id_ilap} - {ilap.nama_ilap}',
             })
 
+    if payload['match'] is None:
+        # A nama tabel is checked after the two codes and before the tiket
+        # lookup below, so an exact table name opens its page straight away.
+        nama_tabel = JenisDataILAP.objects.filter(
+            nama_tabel_I__iexact=term
+        ).exclude(nama_tabel_I='').values_list('nama_tabel_I', flat=True).first()
+        if nama_tabel is not None:
+            payload.update({
+                'match': 'nama_tabel',
+                'url': reverse('nama_tabel_detail', args=[nama_tabel]),
+                'label': nama_tabel,
+            })
+
     if len(term) >= NAVBAR_SUGGESTION_MIN_LENGTH:
         payload['suggestions'] = (
-            _ilap_suggestions(term) + _jenis_data_suggestions(term)
+            _ilap_suggestions(term)
+            + _jenis_data_suggestions(term)
+            + _nama_tabel_suggestions(term)
         )
 
     if payload['match'] is not None:
@@ -802,7 +858,15 @@ def profil_ilap_jenis_data_data(request, id_ilap):
                 f'{escape(jenis_data.id_sub_jenis_data)}</a>'
             ),
             'nama_sub_jenis_data': escape(jenis_data.nama_sub_jenis_data),
-            'nama_tabel_I': escape(jenis_data.nama_tabel_I or '---'),
+            # The table name links to its own page, where the tikets landing in
+            # it are pooled across every sub jenis data feeding it — a wider view
+            # than this row, which only covers this one sub jenis data.
+            'nama_tabel_I': (
+                f'<a href="{reverse("nama_tabel_detail", args=[jenis_data.nama_tabel_I])}" '
+                f'class="text-primary text-decoration-none">'
+                f'{escape(jenis_data.nama_tabel_I)}</a>'
+                if jenis_data.nama_tabel_I else '---'
+            ),
             'dasar_hukum': (
                 f'<small class="text-muted">{escape(summary["dasar_hukum"] or "---")}</small>'
             ),

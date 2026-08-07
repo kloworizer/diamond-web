@@ -1,5 +1,7 @@
 """Tests for home view, general views, task_to_do functions, and tanda_terima_data endpoints."""
 import json
+from itertools import count
+
 import pytest
 from django.urls import reverse
 from django.test import override_settings
@@ -13,7 +15,33 @@ from diamond_web.views.task_to_do import (
 )
 from diamond_web.tests.conftest import (
     TiketFactory, TiketPICFactory, UserFactory, ILAPFactory,
+    DurasiJatuhTempoFactory, JenisDataILAPFactory, PeriodeJenisDataFactory,
+    PeriodePengirimanFactory,
 )
+
+_PENYAMPAIAN_SEQ = count()
+
+
+def _tiket_with_status(status, jenis_data=None, **kwargs):
+    """A tiket in `status`, with a periode pengiriman that cannot collide.
+
+    periode_penyampaian is unique and the factory draws it from a small word
+    list, so tikets created side by side clash unless it is spelled out.
+    """
+    periode_data = PeriodeJenisDataFactory(
+        id_sub_jenis_data_ilap=jenis_data or JenisDataILAPFactory(),
+        id_periode_pengiriman=PeriodePengirimanFactory(
+            periode_penyampaian=f'HOME {next(_PENYAMPAIAN_SEQ)}'
+        ),
+    )
+    return TiketFactory(id_periode_data=periode_data, status_tiket=status, **kwargs)
+
+
+def _assign_pmde(tiket, user):
+    """Make `user` the active PMDE PIC of `tiket`, the way rekam_tiket does."""
+    TiketPICFactory(id_tiket=tiket, id_user=user,
+                    role=TiketPIC.Role.PMDE, active=True)
+    return tiket
 
 
 # ============================================================
@@ -706,6 +734,209 @@ class TestHomeDataPmdeCategories:
         data = json.loads(resp.content)
         assert data['recordsTotal'] == 1
         assert data['data'][0]['tanggal'] == '02-03-2024'
+
+
+def _qc_tiket_falling_due_in(days, pmde_user):
+    """A tiket in Pengendalian Mutu whose deadline is `days` days from today.
+
+    The deadline counts the PMDE durasi from tgl_transfer, so a transfer five
+    days back needs a durasi of `days + 5` to land where the test wants it.
+    """
+    from datetime import date, datetime, timedelta
+    group, _ = Group.objects.get_or_create(name='user_pmde')
+    jenis_data = JenisDataILAPFactory()
+    tiket = _tiket_with_status(
+        6,
+        jenis_data=jenis_data,
+        # Anchored to mid-morning: a run late in the evening would otherwise
+        # push the deadline onto the following day.
+        tgl_transfer=(datetime.now() - timedelta(days=5)).replace(
+            hour=9, minute=0, second=0, microsecond=0),
+        tgl_rematch=None,
+    )
+    TiketPICFactory(id_tiket=tiket, id_user=pmde_user,
+                    role=TiketPIC.Role.PMDE, active=True)
+    DurasiJatuhTempoFactory(
+        id_sub_jenis_data=jenis_data, seksi=group, durasi=days + 5,
+        start_date=date(2000, 1, 1), end_date=None,
+    )
+    return tiket
+
+
+@pytest.mark.django_db
+class TestHomeDataPengendalianMutuJatuhTempo:
+    """The QC card filters by days left, the way the Quality Control page does."""
+
+    def test_buckets_count_by_days_left(self, client, pmde_user):
+        _qc_tiket_falling_due_in(3, pmde_user)     # under both thresholds
+        _qc_tiket_falling_due_in(20, pmde_user)    # under 30 only
+        _qc_tiket_falling_due_in(90, pmde_user)    # under neither
+        client.force_login(pmde_user)
+        resp = client.get(reverse('home_data'), _base_params('dalam_proses_pengendalian_mutu'))
+        buckets = json.loads(resp.content)['summary']['bucket_counts']
+        assert buckets == {'lt10': 1, 'lt30': 2, 'all': 3}
+
+    def test_overdue_counts_as_under_every_threshold(self, client, pmde_user):
+        """A passed deadline has negative days left, so it is under all of them."""
+        _qc_tiket_falling_due_in(-4, pmde_user)
+        client.force_login(pmde_user)
+        resp = client.get(reverse('home_data'), _base_params('dalam_proses_pengendalian_mutu'))
+        buckets = json.loads(resp.content)['summary']['bucket_counts']
+        assert buckets['lt10'] == 1 and buckets['lt30'] == 1
+
+    def test_tiket_without_a_durasi_is_in_no_bucket(self, client, pmde_user):
+        """No active durasi means no deadline to count, so no threshold applies."""
+        from datetime import datetime, timedelta
+        tiket = _tiket_with_status(6, tgl_transfer=datetime.now() - timedelta(days=5))
+        TiketPICFactory(id_tiket=tiket, id_user=pmde_user,
+                        role=TiketPIC.Role.PMDE, active=True)
+        client.force_login(pmde_user)
+        resp = client.get(reverse('home_data'), _base_params('dalam_proses_pengendalian_mutu'))
+        buckets = json.loads(resp.content)['summary']['bucket_counts']
+        assert buckets == {'lt10': 0, 'lt30': 0, 'all': 1}
+
+    @pytest.mark.parametrize('bucket,expected', [('lt10', 1), ('lt30', 2)])
+    def test_bucket_narrows_the_rows(self, client, pmde_user, bucket, expected):
+        _qc_tiket_falling_due_in(3, pmde_user)
+        _qc_tiket_falling_due_in(20, pmde_user)
+        _qc_tiket_falling_due_in(90, pmde_user)
+        client.force_login(pmde_user)
+        resp = client.get(reverse('home_data'), _base_params(
+            'dalam_proses_pengendalian_mutu', age_group=bucket))
+        assert json.loads(resp.content)['recordsFiltered'] == expected
+
+    def test_all_keeps_every_row(self, client, pmde_user):
+        _qc_tiket_falling_due_in(3, pmde_user)
+        _qc_tiket_falling_due_in(90, pmde_user)
+        client.force_login(pmde_user)
+        resp = client.get(reverse('home_data'), _base_params(
+            'dalam_proses_pengendalian_mutu', age_group='all'))
+        assert json.loads(resp.content)['recordsFiltered'] == 2
+
+
+@pytest.mark.django_db
+class TestHomeDataMasihDiP3dePide:
+    """The PMDE view of what is still upstream of quality control."""
+
+    def test_lists_every_status_from_one_to_five(self, client, pmde_user):
+        for status in (1, 2, 3, 4, 5):
+            _assign_pmde(_tiket_with_status(status), pmde_user)
+        client.force_login(pmde_user)
+        resp = client.get(reverse('home_data'), _base_params('masih_di_p3de_pide'))
+        assert resp.status_code == 200
+        assert json.loads(resp.content)['recordsTotal'] == 5
+
+    def test_excludes_pengendalian_mutu_and_beyond(self, client, pmde_user):
+        """Status 6-8 have left P3DE and PIDE, so they are not in the queue."""
+        _assign_pmde(_tiket_with_status(5), pmde_user)
+        for status in (6, 7, 8):
+            _assign_pmde(_tiket_with_status(status), pmde_user)
+        client.force_login(pmde_user)
+        resp = client.get(reverse('home_data'), _base_params('masih_di_p3de_pide'))
+        assert json.loads(resp.content)['recordsTotal'] == 1
+
+    def test_scoped_to_the_readers_pmde_assignments(self, client, pmde_user):
+        """PMDE PICs are assigned at rekam, so a pelaksana already has some here."""
+        _assign_pmde(_tiket_with_status(1), pmde_user)
+        _tiket_with_status(4)  # someone else's
+        client.force_login(pmde_user)
+        resp = client.get(reverse('home_data'), _base_params('masih_di_p3de_pide'))
+        assert json.loads(resp.content)['recordsTotal'] == 1
+
+    def test_an_inactive_assignment_does_not_count(self, client, pmde_user):
+        """Same rule as the QC card: only an active PIC row brings a tiket in."""
+        tiket = _tiket_with_status(1)
+        TiketPICFactory(id_tiket=tiket, id_user=pmde_user,
+                        role=TiketPIC.Role.PMDE, active=False)
+        client.force_login(pmde_user)
+        resp = client.get(reverse('home_data'), _base_params('masih_di_p3de_pide'))
+        assert json.loads(resp.content)['recordsTotal'] == 0
+
+    def test_a_pide_assignment_does_not_count(self, client, pmde_user):
+        """The scope is the PMDE role, not any assignment the reader happens to hold."""
+        tiket = _tiket_with_status(4)
+        TiketPICFactory(id_tiket=tiket, id_user=pmde_user,
+                        role=TiketPIC.Role.PIDE, active=True)
+        client.force_login(pmde_user)
+        resp = client.get(reverse('home_data'), _base_params('masih_di_p3de_pide'))
+        assert json.loads(resp.content)['recordsTotal'] == 0
+
+    def test_kasi_pmde_sees_the_whole_seksi(self, client, db):
+        """A kasi supervises the unit, so they need no assignment of their own."""
+        user = UserFactory()
+        _add_groups(user, 'kasi_pmde')
+        _tiket_with_status(2)
+        client.force_login(user)
+        resp = client.get(reverse('home_data'), _base_params('masih_di_p3de_pide'))
+        assert resp.status_code == 200
+        assert json.loads(resp.content)['recordsTotal'] == 1
+
+    def test_denied_outside_pmde(self, client, authenticated_user):
+        """It is a PMDE card; P3DE and PIDE have their own views of these tikets."""
+        client.force_login(authenticated_user)
+        resp = client.get(reverse('home_data'), _base_params('masih_di_p3de_pide'))
+        assert resp.status_code == 403
+
+    def test_row_carries_the_status_label_and_terima_dip(self, client, pmde_user):
+        from datetime import datetime
+        _assign_pmde(_tiket_with_status(4, tgl_terima_dip=datetime(2024, 7, 9)), pmde_user)
+        client.force_login(pmde_user)
+        resp = client.get(reverse('home_data'), _base_params('masih_di_p3de_pide'))
+        row = json.loads(resp.content)['data'][0]
+        # The status is the point of this card, so it travels as both the label
+        # the column shows and the code the badge colours itself from.
+        assert row['status_tiket'] == 'Dikirim ke PIDE'
+        assert row['status_tiket_code'] == 4
+        assert row['tanggal'] == '09-07-2024'
+        assert row['tanggal_order'] == '2024-07-09'
+
+    def test_sorts_by_status(self, client, pmde_user):
+        for status in (5, 1, 3):
+            _assign_pmde(_tiket_with_status(status), pmde_user)
+        client.force_login(pmde_user)
+        resp = client.get(reverse('home_data'), _base_params(
+            'masih_di_p3de_pide',
+            **{'order[0][column]': '3', 'order[0][dir]': 'asc'}))
+        codes = [row['status_tiket_code'] for row in json.loads(resp.content)['data']]
+        assert codes == [1, 3, 5]
+
+    def test_home_context_carries_the_count(self, client, pmde_user):
+        _assign_pmde(_tiket_with_status(1), pmde_user)
+        _assign_pmde(_tiket_with_status(6), pmde_user)
+        client.force_login(pmde_user)
+        resp = client.get(reverse('home'))
+        assert resp.context['pmde_category_counts']['masih_di_p3de_pide'] == 1
+
+    def test_buckets_count_each_unit(self, client, pmde_user):
+        """P3DE holds statuses 1-3, PIDE 4-5; every tiket falls in exactly one."""
+        for status in (1, 2, 3, 4, 5):
+            _assign_pmde(_tiket_with_status(status), pmde_user)
+        client.force_login(pmde_user)
+        resp = client.get(reverse('home_data'), _base_params('masih_di_p3de_pide'))
+        buckets = json.loads(resp.content)['summary']['bucket_counts']
+        assert buckets == {'p3de': 3, 'pide': 2, 'all': 5}
+
+    @pytest.mark.parametrize('unit,expected_statuses', [
+        ('p3de', {1, 2, 3}),
+        ('pide', {4, 5}),
+    ])
+    def test_unit_filter_narrows_to_that_seksi(self, client, pmde_user, unit, expected_statuses):
+        for status in (1, 2, 3, 4, 5):
+            _assign_pmde(_tiket_with_status(status), pmde_user)
+        client.force_login(pmde_user)
+        resp = client.get(reverse('home_data'), _base_params(
+            'masih_di_p3de_pide', age_group=unit))
+        payload = json.loads(resp.content)
+        assert payload['recordsFiltered'] == len(expected_statuses)
+        assert {row['status_tiket_code'] for row in payload['data']} == expected_statuses
+
+    def test_all_bucket_keeps_every_row(self, client, pmde_user):
+        for status in (1, 5):
+            _assign_pmde(_tiket_with_status(status), pmde_user)
+        client.force_login(pmde_user)
+        resp = client.get(reverse('home_data'), _base_params(
+            'masih_di_p3de_pide', age_group='all'))
+        assert json.loads(resp.content)['recordsFiltered'] == 2
 
 
 @pytest.mark.django_db

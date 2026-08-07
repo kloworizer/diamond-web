@@ -233,13 +233,17 @@ def _filter_periode(qs, values):
 _JATUH_TEMPO_LIMITS = (10, 30, 60)
 
 
-def _jatuh_tempo_ids(qs, limit):
+def jatuh_tempo_ids(qs, limit):
     """Ids of the tikets in `qs` whose jatuh tempo is under `limit` days.
 
     Jatuh tempo is not a column: it is the deadline — the tiket's base date
     plus the durasi that was active then — counted from today, so the
     comparison is made here over the same computation the table renders and the
     chart plots, rather than reassembled in SQL a third time.
+
+    Public because the PMDE home card filters by the same thresholds this page
+    does; going through one function is what stops the two from disagreeing
+    about when a tiket falls due.
     """
     rows = qs.annotate(
         active_durasi=Coalesce(
@@ -276,7 +280,7 @@ def _filter_jatuh_tempo(qs, values):
             limits.append(limit)
     if not limits:
         return qs.none()
-    return qs.filter(id__in=_jatuh_tempo_ids(qs, max(limits)))
+    return qs.filter(id__in=jatuh_tempo_ids(qs, max(limits)))
 
 
 def _filter_prioritas(qs, values):
@@ -308,6 +312,7 @@ FILTER_APPLIERS = {
     'ilap': _in(f'{_ILAP}__id'),
     'jenis_data': _in(f'{_SUB}__id_jenis_data'),
     'sub_jenis_data': _in(f'{_SUB}__id_sub_jenis_data'),
+    'nama_tabel': _in(f'{_SUB}__nama_tabel_I'),
     'kanwil': lambda qs, values: qs.filter(tiket_in_kanwil_q(values)),
     'kpp': _in(f'{_ILAP}__ilap_kpp_relations__id_kpp__id'),
     'kategori_wilayah': _in(f'{_ILAP}__id_kategori_wilayah__id'),
@@ -519,6 +524,10 @@ FILTER_OPTIONS = {
         (f'{_SUB}__id_sub_jenis_data', f'{_SUB}__nama_sub_jenis_data'),
         lambda kode, nama: f'{kode} - {nama}',
     ),
+    # The nama tabel is its own id: it is free text on the sub jenis data row
+    # rather than a lookup, so the value filtered on is the name itself.
+    'nama_tabel': lambda qs: _distinct_options(
+        qs.order_by(f'{_SUB}__nama_tabel_I'), (f'{_SUB}__nama_tabel_I',)),
     'kanwil': _kanwil_options,
     'kpp': lambda qs: _distinct_options(
         qs,
@@ -770,22 +779,24 @@ def quality_control_data(request):
     records_filtered = tikets.count()
 
     # ---- Server-side sorting ----
+    # Columns 2, 3 and 4 each stack two values in one cell — nomor tiket over
+    # sub jenis data, nama ILAP over jenis tabel, tgl transfer over tgl rematch.
+    # Each sorts by the line the cell leads with, which is also the one the
+    # header names first, then falls back to its second line so the sort is not
+    # left as a coarse grouping. Nomor tiket is unique, so it needs no fallback.
     order_map = {
-        0: f'{_SUB}__nama_tabel_I',
-        1: 'id',
-        2: 'nomor_tiket',
-        3: f'{_ILAP}__nama_ilap',
-        4: f'{_SUB}__nama_sub_jenis_data',
-        5: f'{_SUB}__id_jenis_tabel__deskripsi',
-        6: 'tgl_transfer_date',
-        7: 'tgl_rematch_date',
-        8: 'deadline_date',
+        0: (f'{_SUB}__nama_tabel_I',),
+        1: ('id',),
+        2: ('nomor_tiket',),
+        3: (f'{_ILAP}__nama_ilap', f'{_SUB}__id_jenis_tabel__deskripsi'),
+        4: ('tgl_transfer_date', 'tgl_rematch_date'),
+        5: ('deadline_date',),
         # Jatuh tempo is the deadline counted from today, so it sorts the same way.
-        9: 'deadline_date',
-        10: 'is_prioritas',
-        11: 'baris_i',
-        12: 'sudah_qc',
-        13: 'belum_qc',
+        6: ('deadline_date',),
+        7: ('is_prioritas',),
+        8: ('baris_i',),
+        9: ('sudah_qc',),
+        10: ('belum_qc',),
     }
 
     # Read sort column and direction from DataTables params
@@ -795,10 +806,10 @@ def quality_control_data(request):
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
-            col = order_map.get(idx, 'id')
+            cols = order_map.get(idx, ('id',))
             if order_dir == 'desc':
-                col = '-' + col
-            tikets = tikets.order_by(col)
+                cols = tuple('-' + col for col in cols)
+            tikets = tikets.order_by(*cols)
         except (ValueError, TypeError):
             tikets = tikets.order_by('-id')
     else:

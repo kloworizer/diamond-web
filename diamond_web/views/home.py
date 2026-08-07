@@ -27,10 +27,26 @@ from diamond_web.constants.tiket_status import (
     STATUS_DIKIRIM_KE_PIDE,
     STATUS_IDENTIFIKASI,
     STATUS_PENGENDALIAN_MUTU,
+    STATUSES_SEBELUM_PENGENDALIAN_MUTU,
     STATUS_LABELS,
 )
 from diamond_web.constants.tiket_action_types import TiketActionType
 from diamond_web.views.mixins import is_kasi, is_kasi_p3de, is_kasi_pide, is_kasi_pmde
+from diamond_web.views.quality_control import jatuh_tempo_ids
+
+# Filter buttons for the PMDE cards, keyed by the `data-urgency` value the
+# button carries and the `count-<key>-<category>` span the template renders.
+
+# Dalam Proses Pengendalian Mutu: days left until the deadline, the same
+# thresholds the Quality Control page offers.
+_JATUH_TEMPO_BUCKETS = {'lt10': 10, 'lt30': 30}
+
+# Masih di P3DE & PIDE: which unit is still holding the tiket. P3DE records,
+# researches and takes returns (1-3); PIDE receives and identifies (4-5).
+_UNIT_BUCKETS = {
+    'p3de': (STATUS_DIREKAM, STATUS_DITELITI, STATUS_DIKEMBALIKAN),
+    'pide': (STATUS_DIKIRIM_KE_PIDE, STATUS_IDENTIFIKASI),
+}
 
 def _get_category_metrics(qs):
     if qs is None:
@@ -190,8 +206,18 @@ def home(request):
         pmde_qs = Tiket.objects.filter(id__in=pmde_tiket_ids)
         dalam_proses_pengendalian_mutu_qs = pmde_qs.filter(status_tiket=STATUS_PENGENDALIAN_MUTU)
 
+        # Everything still upstream of PMDE, scoped the same way the card above
+        # is: PMDE PICs are assigned when a tiket is recorded, not when it is
+        # transferred (see rekam_tiket), so a pelaksana already has assignments
+        # among these and sees the ones heading towards them. Kasi PMDE see the
+        # whole seksi's queue, as everywhere else.
+        masih_di_p3de_pide_qs = pmde_qs.filter(
+            status_tiket__in=STATUSES_SEBELUM_PENGENDALIAN_MUTU
+        )
+
         context['pmde_category_metrics'] = {
             'dalam_proses_pengendalian_mutu': _get_category_metrics(dalam_proses_pengendalian_mutu_qs),
+            'masih_di_p3de_pide': _get_category_metrics(masih_di_p3de_pide_qs),
         }
 
         context['pmde_category_counts'] = {
@@ -311,6 +337,18 @@ def _build_tiket_base_qs(category, user):
         return tiket_qs.filter(
             id__in=_get_special_request_tiket_ids(user),
             special_request=True,
+        )
+
+    # PMDE category: everything still upstream of quality control, scoped by the
+    # same rule as Dalam Proses Pengendalian Mutu — the reader's own active PMDE
+    # assignments, or the whole seksi for a kasi. Also gated on PMDE membership,
+    # so the category stays out of the other units' home pages entirely.
+    if category == 'masih_di_p3de_pide':
+        if not user.groups.filter(name__in=['user_pmde', 'kasi_pmde']).exists():
+            return None
+        return tiket_qs.filter(
+            id__in=_get_pmde_tiket_ids(user),
+            status_tiket__in=STATUSES_SEBELUM_PENGENDALIAN_MUTU,
         )
 
     # Admin category: periode_tiket_null_p3de - no user-specific PIC filter
@@ -480,7 +518,8 @@ def home_data(request):
         'belum_dikirim_ke_pide', 'pengembalian_seluruhnya_dari_pide',
         'pengembalian_sebagian_dari_pide', 'diklarifikasi',
         'belum_mulai_proses_identifikasi', 'dalam_proses_identifikasi',
-        'dalam_proses_pengendalian_mutu', 'periode_tiket_null_p3de',
+        'dalam_proses_pengendalian_mutu', 'masih_di_p3de_pide',
+        'periode_tiket_null_p3de',
         'tiket_pengendalian_mutu_tanpa_pic',
         'tiket_dikirim_ke_pide_tanpa_pic',
         'special_request',
@@ -513,7 +552,13 @@ def home_data(request):
     critical_count = 0
     warning_count = 0
     new_count = 0
-    
+
+    # Categories whose filter buttons are not the shared urgency triplet report
+    # their own buckets here instead, keyed by the `data-urgency` value of the
+    # button they belong to. The template renders one `count-<key>-<category>`
+    # span per key, and the same key comes back as `age_group` when clicked.
+    bucket_counts = {}
+
     ilap_list = []
     jenis_data_list = []
 
@@ -528,10 +573,36 @@ def home_data(request):
                 # Determine the correct date field for age tracking
         is_pide_belum_mulai = category in ('belum_mulai_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic')
         is_pide_dalam_proses = category == 'dalam_proses_identifikasi'
-        is_pmde_category = category in ('dalam_proses_pengendalian_mutu', 'tiket_pengendalian_mutu_tanpa_pic')
+        # The admin "tanpa PIC" card still measures how long a tiket has sat
+        # since transfer; the main QC card measures how long it has left, which
+        # is a different question and gets its own branch below.
+        is_pmde_category = category == 'tiket_pengendalian_mutu_tanpa_pic'
 
         now = timezone.now()
-        if is_pide_belum_mulai:
+        if category == 'dalam_proses_pengendalian_mutu':
+            # Jatuh tempo, not age: the same thresholds the Quality Control page
+            # offers, computed by the same function so the two cannot disagree
+            # about when a tiket falls due.
+            selected = request.GET.get('age_group')
+            for key, limit in _JATUH_TEMPO_BUCKETS.items():
+                bucket_counts[key] = len(jatuh_tempo_ids(qs, limit))
+            bucket_counts['all'] = records_total
+            if selected in _JATUH_TEMPO_BUCKETS:
+                qs = qs.filter(
+                    id__in=jatuh_tempo_ids(qs, _JATUH_TEMPO_BUCKETS[selected])
+                )
+
+        elif category == 'masih_di_p3de_pide':
+            # Which unit still holds the tiket, which is the only split that
+            # means anything across five statuses spanning two seksi.
+            selected = request.GET.get('age_group')
+            for key, statuses in _UNIT_BUCKETS.items():
+                bucket_counts[key] = qs.filter(status_tiket__in=statuses).count()
+            bucket_counts['all'] = records_total
+            if selected in _UNIT_BUCKETS:
+                qs = qs.filter(status_tiket__in=_UNIT_BUCKETS[selected])
+
+        elif is_pide_belum_mulai:
             date_field = 'tgl_kirim_pide'
             # PIDE Belum Mulai SLA: 30 working days = 6 weeks = 42 calendar days
             cutoff_critical = now - timedelta(days=42)
@@ -652,6 +723,10 @@ def home_data(request):
             columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode', 'tahun', 'status_tiket']
         elif category == 'special_request':
             columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'status_tiket', 'tgl_special_request']
+        elif category == 'masih_di_p3de_pide':
+            # Status earns a column here: it is the one category spanning more
+            # than one of them, and which unit still holds a tiket is the point.
+            columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'status_tiket', 'tgl_terima_dip']
 
         if order_col_index is not None:
             try:
@@ -810,6 +885,19 @@ def home_data(request):
                     'status_tiket': STATUS_LABELS.get(obj.status_tiket, ''),
                     'actions': action_html,
                 })
+            elif category == 'masih_di_p3de_pide':
+                data.append({
+                    'nomor_tiket': obj.nomor_tiket,
+                    'nama_ilap': nama_ilap,
+                    'nama_sub_jenis_data': nama_sub_jenis,
+                    'nama_tabel_I': nama_tabel_I,
+                    'status_tiket': STATUS_LABELS.get(obj.status_tiket, ''),
+                    'status_tiket_code': obj.status_tiket,
+                    'tanggal': date_val,
+                    'tanggal_order': date_order,
+                    'is_prioritas': obj.id_jenis_prioritas_data_id is not None,
+                    'actions': action_html,
+                })
             elif category == 'special_request':
                 data.append({
                     'nomor_tiket': obj.nomor_tiket,
@@ -915,6 +1003,7 @@ def home_data(request):
             'critical_count': critical_count,
             'warning_count': warning_count,
             'new_count': new_count,
+            'bucket_counts': bucket_counts,
         }
     })
 
