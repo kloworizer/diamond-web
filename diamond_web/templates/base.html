@@ -118,6 +118,7 @@
         /* Modern Custom Toast Styling */
         .toast-container {
             padding: 1.5rem !important;
+            z-index: 100000 !important;
         }
         
         .custom-toast {
@@ -222,6 +223,11 @@
             0% { transform: scale(0.4); opacity: 0; }
             50% { transform: scale(1.15); }
             100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes zoomIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
         }
 
         .notification-item {
@@ -599,6 +605,8 @@
             padding: .35rem .75rem;
             font-size: .875rem;
             background: #fff;
+            width: 320px;
+            max-width: 100%;
         }
 
         .dt-container .dt-length select,
@@ -858,6 +866,9 @@
         .btn,
         .btn-icon {
             border-radius: 4px;
+            text-transform: none !important;
+            font-size: 12.5px;
+            font-weight: 500;
             transition: transform 0.15s ease, box-shadow 0.15s ease,
                         background-color 0.2s ease, border-color 0.2s ease,
                         color 0.2s ease;
@@ -1252,6 +1263,46 @@
         }
         .input-icon-wrapper input {
             padding-left: 32px !important;
+        /* --- PREMIUM DATATABLES SHIMMER SKELETON --- */
+        .dataTables_wrapper {
+            position: relative;
+        }
+        .dataTables_wrapper .dataTables_processing {
+            position: absolute !important;
+            top: 45px !important; /* Cover rows below header */
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            height: calc(100% - 45px) !important;
+            background: #ffffff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            z-index: 5 !important;
+            border: none !important;
+            box-shadow: none !important;
+            transform: none !important;
+            border-radius: 0 !important;
+        }
+        .dt-skeleton-loader {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 100%;
+            height: 100%;
+            padding: 16px;
+            overflow: hidden;
+        }
+        .dt-skeleton-loader .skel-row {
+            height: 18px;
+            width: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%;
+            animation: dt-shimmer 1.2s infinite linear;
+        }
+        @keyframes dt-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
     </style>
 
@@ -1284,6 +1335,10 @@
         .select2-container--bootstrap-5.select2-container--open .select2-dropdown--below {
             border-top: 1px solid #e9ecef;
         }
+        /* Fix Select2 multi-select search textarea showing browser resize gripper (looks like //) */
+        textarea.select2-search__field {
+            resize: none !important;
+        }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
@@ -1293,7 +1348,7 @@
     {% include 'navbar.html' %}
 
     <!-- Toast Container -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 100000 !important;">
     </div>
 
     <!-- Django Messages Data (for toasts) -->
@@ -1479,7 +1534,6 @@
                     });
 
                     $container.find('.dt-search input, .dataTables_filter input')
-                        .attr('placeholder', 'Cari...')
                         .addClass('form-control form-control-sm');
 
                     $container.find('.dt-length select, .dataTables_length select')
@@ -1575,12 +1629,27 @@
 
                     const $infoText = $container.find('.dataTables_info');
                     if ($infoText.length) {
-                        let info = $infoText.text().trim();
-                        info = info.replace(/^Showing\s+0\s+to\s+0\s+of\s+0\s+entries$/i, 'Menampilkan 0 hingga 0 dari 0 entri');
-                        info = info.replace(/^Showing\s+(\d+)\s+to\s+(\d+)\s+of\s+(\d+)\s+entries$/i, 'Menampilkan $1 hingga $2 dari $3 entri');
-                        info = info.replace(/\(filtered from\s+(\d+)\s+total entries\)$/i, '(disaring dari $1 entri total)');
-                        if (info !== $infoText.text().trim()) {
-                            $infoText.text(info);
+                        let rawText = $infoText.text().trim();
+                        let regex = /(?:Menampilkan|Showing)\s+(\d+)\s+(?:hingga|sampai|to)\s+(\d+)\s+(?:dari|of)\s+(\d+)\s+(?:entri|entries)/i;
+                        let match = rawText.match(regex);
+                        if (match) {
+                            let start = match[1];
+                            let end = match[2];
+                            let total = match[3];
+                            let html = `Menampilkan <span class="badge bg-soft-primary text-primary fw-bold fs-11 px-2 py-1 mx-1" style="border: 1px solid rgba(12,146,255,0.2); font-family: 'Inter', sans-serif;">${start} – ${end}</span> dari <span class="badge bg-light text-dark fw-bold fs-11 px-2 py-1 mx-1" style="border: 1px solid #cbd5e1; font-family: 'Inter', sans-serif;">${total}</span> entri`;
+                            let filterMatch = rawText.match(/\((?:filtered from|disaring dari)\s+(\d+)\s+(?:total entries|entri total)\)/i);
+                            if (filterMatch) {
+                                html += ` <span class="text-muted fs-11 ms-1">(disaring dari ${filterMatch[1]} total)</span>`;
+                            }
+                            $infoText.html(html);
+                        } else {
+                            let info = rawText;
+                            info = info.replace(/^Showing\s+0\s+to\s+0\s+of\s+0\s+entries$/i, 'Menampilkan 0 hingga 0 dari 0 entri');
+                            info = info.replace(/^Showing\s+(\d+)\s+to\s+(\d+)\s+of\s+(\d+)\s+entries$/i, 'Menampilkan $1 hingga $2 dari $3 entri');
+                            info = info.replace(/\(filtered from\s+(\d+)\s+total entries\)$/i, '(disaring dari $1 entri total)');
+                            if (info !== rawText) {
+                                $infoText.text(info);
+                            }
                         }
                     }
                 }
@@ -1672,7 +1741,7 @@
                     pagingType: 'simple_numbers',
                     language: {
                         search: 'Cari:',
-                        searchPlaceholder: 'Cari...',
+                        searchPlaceholder: 'Cari nama, nomor tiket, dll...',
                         lengthMenu: 'Tampilkan _MENU_ entri',
                         info: 'Menampilkan _START_ hingga _END_ dari _TOTAL_ entri',
                         infoEmpty: 'Menampilkan 0 hingga 0 dari 0 entri',
@@ -1680,7 +1749,7 @@
                         emptyTable: 'Tidak Ada Data yang Tersedia',
                         zeroRecords: 'Tidak ada data yang cocok',
                         loadingRecords: 'Memuat...',
-                        processing: 'Memproses...',
+                        processing: '<div class="dt-skeleton-loader"><div class="skel-row"></div><div class="skel-row"></div><div class="skel-row"></div><div class="skel-row"></div><div class="skel-row"></div><div class="skel-row"></div></div>',
                         aria: {
                             sortAscending: ': aktifkan untuk mengurutkan kolom naik',
                             sortDescending: ': aktifkan untuk mengurutkan kolom turun'
@@ -1717,6 +1786,42 @@
                 // DOMContentLoaded listener must still get its UI enhanced.
                 $(document).on('init.dt draw.dt', function (e, settings) {
                     if (!settings || !settings.nTable) return;
+                    
+                    // Add dynamic continuous row numbering
+                    try {
+                        let api = new $.fn.dataTable.Api(settings);
+                        let info = api.page.info();
+                        if (info) {
+                            let startIndex = info.start;
+                            $(settings.nTable).find('tbody tr').each(function(index) {
+                                let $firstTd = $(this).find('td:first-child');
+                                if ($firstTd.length && !$firstTd.hasClass('dataTables_empty')) {
+                                    $firstTd.find('.dt-row-number').remove();
+                                    let num = startIndex + index + 1;
+                                    
+                                    // Clean, soft rounded badge design (Flexbox compatible) - Circle for single digits, Pill for multi-digits
+                                    let badgeHtml = '<span class="dt-row-number d-flex align-items-center justify-content-center text-secondary" style="order: -2; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 50px; background-color: #f8fafc; border: 1px solid #e2e8f0; font-size: 11px; font-weight: 500; font-family: \'Inter\', sans-serif; user-select: none; flex-shrink: 0; margin-right: 8px;">' + num + '</span>';
+                                    
+                                    // Inject safely into a flex wrapper to avoid collisions
+                                    let $flexWrapper = $firstTd.children('.d-flex').first();
+                                    if ($flexWrapper.length > 0) {
+                                        $flexWrapper.prepend(badgeHtml);
+                                    } else {
+                                        let $newWrapper = $('<div class="d-flex align-items-center"></div>');
+                                        $newWrapper.append($firstTd.contents());
+                                        $newWrapper.prepend(badgeHtml);
+                                        $firstTd.append($newWrapper);
+                                    }
+                                    
+                                    // Clean up any old padding hacks
+                                    $firstTd.css('padding-left', '');
+                                }
+                            });
+                        }
+                    } catch (err) {
+                        console.warn('Row numbering error:', err);
+                    }
+
                     enhanceTableStructure(settings.nTable);
                     enhanceDataTableUI(settings.nTable);
                 });
@@ -1932,15 +2037,43 @@
             }
         });
 
-        // Keep-alive behavior & session warning modal (automatic keep-alive + server-side logout on expiry)
+        // Keep-alive behavior & session warning overlay (automatic server-side logout on expiry)
         (function () {
             const SESSION_SECONDS = 30 * 60; // must match server SESSION_COOKIE_AGE
             const WARNING_SECONDS = 60; // show warning 60 seconds before expiry
-            const KEEP_ALIVE_INTERVAL = 10 * 60 * 1000; // POST keep-alive every 10 minutes
-            let expiryTimestamp = Date.now() + SESSION_SECONDS * 1000; // optimistic local expiry
-            let warningTimeoutId, timeoutId, keepAliveIntervalId;
-            let warningModalShown = false;
-            let timeoutModalShown = false;
+            const ACTIVITY_KEEP_ALIVE_MS = 5 * 60 * 1000; // debounce user activity
+            
+            let expiryTimestamp = Date.now() + SESSION_SECONDS * 1000;
+            let lastActivityKeepAlive = Date.now();
+            let currentState = 'active'; // active, warning, expired
+            
+            // Heartbeat loop (runs every second, immune to laptop sleep/wake jumps)
+            setInterval(() => {
+                const now = Date.now();
+                const msUntilExpiry = expiryTimestamp - now;
+                
+                if (msUntilExpiry <= 0) {
+                    if (currentState !== 'expired') {
+                        currentState = 'expired';
+                        onSessionExpired('timeout');
+                    }
+                } else if (msUntilExpiry <= WARNING_SECONDS * 1000) {
+                    if (currentState === 'active') {
+                        currentState = 'warning';
+                        showWarningOverlay();
+                    }
+                    if (currentState === 'warning') {
+                        // Update countdown
+                        const countdownEl = document.getElementById('sessionCountdownText');
+                        if (countdownEl) countdownEl.textContent = formatTimeMMSS(Math.floor(msUntilExpiry / 1000));
+                    }
+                } else {
+                    if (currentState === 'warning') {
+                        currentState = 'active';
+                        removeSessionOverlay();
+                    }
+                }
+            }, 1000);
 
             function formatTimeMMSS(seconds) {
                 const mins = Math.floor(seconds / 60);
@@ -1948,44 +2081,10 @@
                 return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
             }
 
-            function scheduleTimers() {
-                clearTimers();
-                const msUntilExpiry = expiryTimestamp - Date.now();
-                if (msUntilExpiry <= 0) {
-                    onSessionExpired();
-                    return;
-                }
-                const msUntilWarning = msUntilExpiry - (WARNING_SECONDS * 1000);
-                if (msUntilWarning > 0) {
-                    warningTimeoutId = setTimeout(onShowWarning, msUntilWarning);
-                } else {
-                    // show warning immediately if already within warning window
-                    onShowWarning();
-                }
-                timeoutId = setTimeout(onSessionExpired, msUntilExpiry);
-            }
-
-            function clearTimers() {
-                if (warningTimeoutId) clearTimeout(warningTimeoutId);
-                if (timeoutId) clearTimeout(timeoutId);
-            }
-
-            function startKeepAliveInterval() {
-                if (keepAliveIntervalId) clearInterval(keepAliveIntervalId);
-                // POST keep-alive periodically to extend session
-                keepAliveIntervalId = setInterval(() => {
-                    sendKeepAlive();
-                }, KEEP_ALIVE_INTERVAL);
-            }
-
             function sendKeepAlive() {
-                // Silently extend session via POST to keep-alive endpoint
                 return fetch('{% url "keep_alive" %}', {
                     method: 'POST',
-                    headers: {
-                        'X-CSRFToken': csrftoken,
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' },
                     credentials: 'same-origin',
                     body: JSON.stringify({}),
                 }).then(r => {
@@ -1993,200 +2092,106 @@
                     throw new Error('keep-alive failed');
                 }).then(data => {
                     if (data.ok && data.expiry) {
-                        // Update local expiry based on server response
                         expiryTimestamp = Date.now() + data.expiry * 1000;
-                        // Reschedule warning/timeout to account for fresh expiry
-                        scheduleTimers();
+                        if (currentState === 'warning') {
+                            currentState = 'active';
+                            removeSessionOverlay();
+                            showToast('Sesi Anda berhasil diperpanjang.', 'success', 'Sesi');
+                        }
                         return true;
                     }
                     return false;
-                }).catch(err => {
-                    console.warn('keep-alive failed:', err);
-                    return false;
-                });
+                }).catch(err => false);
             }
 
-            function onShowWarning() {
-                if (warningModalShown || timeoutModalShown) return;
-
-                // Close any active modals to prevent stacking/overlap clashes
-                document.querySelectorAll('.modal.show').forEach(m => {
-                    const inst = bootstrap.Modal.getInstance(m);
-                    if (inst) inst.hide();
-                });
-
-                warningModalShown = true;
-
-                // remove existing modal if any
-                document.getElementById('sessionWarningModal')?.remove();
-
-                const modalHtml = `
-                <div class="modal fade" id="sessionWarningModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
-                  <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
-                    <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
-                      <div class="modal-body p-4 text-center">
-                        <div class="d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 56px; height: 56px; border-radius: 50%; background-color: #fffbeb; color: #d97706;">
-                          <i class="feather-clock" style="font-size: 26px;"></i>
-                        </div>
-                        <h5 class="fw-bold mb-2 text-dark" style="font-size: 16px; font-family: 'Outfit', sans-serif; text-transform: uppercase; letter-spacing: 0.5px;">Anda Akan Segera Keluar</h5>
-                        <p class="text-muted mb-4" style="font-size: 13px; line-height: 1.5; font-family: 'Inter', sans-serif;">Untuk alasan keamanan, sistem akan logout otomatis apabila Anda tidak aktif dalam kurun waktu tertentu</p>
-                        <div id="sessionCountdown" class="fw-bold mb-4" style="font-size: 32px; color: #0f172a; font-family: 'Outfit', sans-serif; letter-spacing: 1.5px;">05:00</div>
-                        <div class="d-flex gap-2">
-                          <button type="button" class="btn btn-outline-danger w-50" id="btn-logout-now" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 4px;">Keluar Sekarang</button>
-                          <button type="button" class="btn btn-primary w-50" id="btn-extend-session" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 4px; background-color: #0c92ff; border-color: #0c92ff;">Lanjutkan Sesi</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                `;
-                document.body.insertAdjacentHTML('beforeend', modalHtml);
-                const modalEl = document.getElementById('sessionWarningModal');
-                const bsModal = new bootstrap.Modal(modalEl);
-                bsModal.show();
-
-                const countdownEl = document.getElementById('sessionCountdown');
-                
-                const updateCountdown = () => {
-                    const remaining = Math.max(0, Math.floor((expiryTimestamp - Date.now()) / 1000));
-                    countdownEl.textContent = formatTimeMMSS(remaining);
-                    if (remaining <= 0) {
-                        clearInterval(countdownInterval);
-                    }
-                };
-
-                updateCountdown();
-                const countdownInterval = setInterval(updateCountdown, 1000);
-
-                // Extend session handler
-                document.getElementById('btn-extend-session').addEventListener('click', () => {
-                    // Send keep-alive immediately to extend session on the server side
-                    sendKeepAlive().then(success => {
-                        if (success) {
-                            showToast('Sesi Anda berhasil diperpanjang.', 'success', 'Sesi');
-                        }
-                    });
-                    bsModal.hide();
-                });
-
-                // Logout immediately handler
-                document.getElementById('btn-logout-now').addEventListener('click', () => {
-                    bsModal.hide();
-                    onSessionExpired();
-                });
-
-                modalEl.addEventListener('hidden.bs.modal', () => {
-                    clearInterval(countdownInterval);
-                    document.getElementById('sessionWarningModal')?.remove();
-                    warningModalShown = false;
-                });
-            }
-
-            function onSessionExpired() {
-                clearTimers();
-                
-                // Broadcast logout to all other open tabs immediately
-                if (typeof window._diamondBroadcastLogout === 'function') {
-                    window._diamondBroadcastLogout();
-                }
-
-                // Close warning modal if open
-                const warningModalEl = document.getElementById('sessionWarningModal');
-                if (warningModalEl) {
-                    const bsWarningModal = bootstrap.Modal.getInstance(warningModalEl);
-                    if (bsWarningModal) bsWarningModal.hide();
-                }
-
-                // POST to session-expired endpoint to log out server-side
-                fetch('{% url "session_expired" %}', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': csrftoken,
-                        'Content-Type': 'application/json',
-                    },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({}),
-                }).then(() => {
-                    showTimeoutModal();
-                }).catch(() => {
-                    showTimeoutModal();
-                });
-            }
-
-            function showTimeoutModal() {
-                if (timeoutModalShown) return;
-
-                // Close any active modals to prevent stacking/overlap clashes
-                document.querySelectorAll('.modal.show').forEach(m => {
-                    const inst = bootstrap.Modal.getInstance(m);
-                    if (inst) inst.hide();
-                });
-
-                timeoutModalShown = true;
-
-                // remove existing timeout modal if any
-                document.getElementById('sessionTimeoutModal')?.remove();
-
-                const modalHtml = `
-                <div class="modal fade" id="sessionTimeoutModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
-                  <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
-                    <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
-                      <div class="modal-body p-4 text-center">
-                        <div class="d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 56px; height: 56px; border-radius: 50%; background-color: #fef2f2; color: #dc2626;">
-                          <i class="feather-alert-octagon" style="font-size: 26px;"></i>
-                        </div>
-                        <h5 class="fw-bold mb-2 text-dark" style="font-size: 16px; font-family: 'Outfit', sans-serif; text-transform: uppercase; letter-spacing: 0.5px;">Session Timeout!</h5>
-                        <p class="text-muted mb-4" style="font-size: 13px; line-height: 1.5; font-family: 'Inter', sans-serif;">Anda sudah logout karena terdeteksi tidak aktif selama <strong>30 menit</strong></p>
-                        <button type="button" class="btn btn-primary w-100" id="btn-login-again" style="height: 40px; font-size: 12.5px; font-weight: 600; border-radius: 4px; background-color: #0c92ff; border-color: #0c92ff;">Masuk Kembali</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                `;
-                document.body.insertAdjacentHTML('beforeend', modalHtml);
-                const modalEl = document.getElementById('sessionTimeoutModal');
-                const bsModal = new bootstrap.Modal(modalEl);
-                bsModal.show();
-
-                const redirectToLogin = () => {
-                    const next = encodeURIComponent(window.location.pathname + window.location.search);
-                    window.location.href = '/accounts/login/?next=' + next;
-                };
-
-                document.getElementById('btn-login-again').addEventListener('click', () => {
-                    bsModal.hide();
-                    redirectToLogin();
-                });
-
-                modalEl.addEventListener('hidden.bs.modal', () => {
-                    document.getElementById('sessionTimeoutModal')?.remove();
-                    timeoutModalShown = false;
-                    redirectToLogin();
-                });
-            }
-
-            // Extend the session on user activity. This deliberately does NOT
-            // just push the local clock forward: doing that made the browser
-            // believe the session was alive whenever the mouse moved, which
-            // suppressed the warning modal while the server-side session
-            // quietly expired — the user only found out on the next page load.
-            // Activity now triggers a real keep-alive, and expiryTimestamp is
-            // set from what the server reports. Throttled to one request per
-            // ACTIVITY_KEEP_ALIVE_MS so mousemove cannot flood the endpoint.
-            const ACTIVITY_KEEP_ALIVE_MS = 5 * 60 * 1000;
-            let lastActivityKeepAlive = Date.now();
             function onUserActivity() {
                 const now = Date.now();
+                if (currentState === 'expired') return; // ignore activity if already dead
                 if (now - lastActivityKeepAlive < ACTIVITY_KEEP_ALIVE_MS) return;
                 lastActivityKeepAlive = now;
                 sendKeepAlive();
             }
 
+            // ONLY extend on actual user activity. 
+            // Removed the unconditional startKeepAliveInterval() that defeated the timeout.
             ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evt => document.addEventListener(evt, onUserActivity, { passive: true }));
 
-            // Initialize timers and keep-alive interval (runs independently of user activity)
-            scheduleTimers();
-            startKeepAliveInterval();
+            // Custom conflict-free overlay (bypasses Bootstrap modal stacking bugs)
+            function showWarningOverlay() {
+                removeSessionOverlay();
+                const overlayHtml = `
+                <div id="diamondSessionOverlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.8); backdrop-filter:blur(5px); z-index:999999; display:flex; align-items:center; justify-content:center;">
+                    <div class="bg-white shadow-lg text-center p-4" style="border-radius:16px; max-width:400px; width:90%; animation: zoomIn 0.3s ease;">
+                        <div class="d-flex align-items-center justify-content-center mx-auto mb-3" style="width:56px; height:56px; border-radius:50%; background-color:#fffbeb; color:#d97706;">
+                            <i class="feather-clock" style="font-size:26px;"></i>
+                        </div>
+                        <h5 class="fw-bold mb-2 text-dark" style="font-size:16px; font-family:'Outfit', sans-serif; text-transform:uppercase; letter-spacing:0.5px;">Anda Akan Segera Keluar</h5>
+                        <p class="text-muted mb-4" style="font-size:13px; line-height:1.5; font-family:'Inter', sans-serif;">Untuk alasan keamanan, sistem akan logout otomatis apabila Anda tidak aktif.</p>
+                        <div id="sessionCountdownText" class="fw-bold mb-4" style="font-size:32px; color:#0f172a; font-family:'Outfit', sans-serif; letter-spacing:1.5px;">01:00</div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-danger w-50" id="btn-logout-now-overlay" style="height:40px; font-size:12.5px; font-weight:600; border-radius:4px;">Keluar Sekarang</button>
+                            <button type="button" class="btn btn-primary w-50" id="btn-extend-session-overlay" style="height:40px; font-size:12.5px; font-weight:600; border-radius:4px; background-color:#0c92ff; border-color:#0c92ff;">Lanjutkan Sesi</button>
+                        </div>
+                    </div>
+                </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', overlayHtml);
+                
+                document.getElementById('btn-extend-session-overlay').addEventListener('click', () => {
+                    sendKeepAlive();
+                });
+                document.getElementById('btn-logout-now-overlay').addEventListener('click', () => {
+                    currentState = 'expired';
+                    onSessionExpired('timeout');
+                });
+            }
+
+            function removeSessionOverlay() {
+                document.getElementById('diamondSessionOverlay')?.remove();
+            }
+
+            function onSessionExpired(reason = 'timeout') {
+                removeSessionOverlay();
+                
+                if (typeof window._diamondBroadcastLogout === 'function') {
+                    window._diamondBroadcastLogout();
+                }
+
+                // POST to session-expired endpoint to log out server-side
+                fetch('{% url "session_expired" %}', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' },
+                    credentials: 'same-origin'
+                }).then(() => {
+                    window._diamondOnSessionExpired(reason);
+                }).catch(() => {
+                    window._diamondOnSessionExpired(reason);
+                });
+            }
+
+            window._diamondOnSessionExpired = function (reason = 'timeout') {
+                removeSessionOverlay();
+                
+                const message = reason === 'multitab' 
+                    ? 'Anda telah logout di tab lain. Silakan login kembali untuk melanjutkan aktivitas.'
+                    : 'Anda sudah logout karena terdeteksi tidak aktif selama <strong>30 menit</strong>. Silakan login kembali.';
+
+                const overlayHtml = `
+                <div id="diamondSessionOverlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.85); backdrop-filter:blur(8px); z-index:999999; display:flex; align-items:center; justify-content:center;">
+                    <div class="bg-white shadow-lg text-center p-4" style="border-radius:16px; max-width:400px; width:90%; animation: zoomIn 0.3s ease;">
+                        <div class="d-flex align-items-center justify-content-center mx-auto mb-3" style="width:56px; height:56px; border-radius:50%; background-color:#fef2f2; color:#dc2626;">
+                            <i class="feather-alert-octagon" style="font-size:26px;"></i>
+                        </div>
+                        <h5 class="fw-bold mb-2 text-dark" style="font-size:16px; font-family:'Outfit', sans-serif; text-transform:uppercase; letter-spacing:0.5px;">Sesi Berakhir!</h5>
+                        <p class="text-muted mb-4" style="font-size:13px; line-height:1.5; font-family:'Inter', sans-serif;">${message}</p>
+                        <a href="/accounts/login/?next=${encodeURIComponent(window.location.pathname + window.location.search)}" class="btn btn-primary w-100 d-flex justify-content-center align-items-center gap-2" style="height:40px; font-size:12.5px; font-weight:600; border-radius:4px; background-color:#0c92ff; border-color:#0c92ff;">
+                            Masuk Kembali <i class="feather-log-in"></i>
+                        </a>
+                    </div>
+                </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', overlayHtml);
+            };
 
             // Global AJAX / fetch wrapper:
             // - 401 = session expired / unauthenticated  → redirect to login
@@ -2252,8 +2257,6 @@
                 }
             }
 
-            // Patch onSessionExpired to also broadcast
-            const _origOnSessionExpired = window._diamondOnSessionExpired;
             // Listen for logout events from OTHER tabs
             window.addEventListener('storage', function (e) {
                 if (e.key === LOGOUT_KEY && e.newValue) {
@@ -2268,24 +2271,9 @@
 
             // Listen for the custom event to trigger the session-expired modal
             window.addEventListener('diamond:session-expired', function () {
-                // We can't call the closure-scoped onSessionExpired directly,
-                // so we simulate a 401 to trigger the session-expired flow.
-                // The cleanest approach: POST to session-expired endpoint then show modal.
-                const csrftokenLocal = document.querySelector('[name=csrfmiddlewaretoken]')?.value
-                    || document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
-                fetch('{% url "session_expired" %}', {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': csrftokenLocal, 'Content-Type': 'application/json' },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({}),
-                }).finally(() => {
-                    // Show timeout modal by redirecting to login
-                    const next = encodeURIComponent(window.location.pathname + window.location.search);
-                    // Small delay so the POST can complete
-                    setTimeout(() => {
-                        window.location.href = '/accounts/login/?next=' + next;
-                    }, 300);
-                });
+                if (typeof window._diamondOnSessionExpired === 'function') {
+                    window._diamondOnSessionExpired('multitab');
+                }
             });
 
             // Expose broadcastLogout so the session IIFE can call it on logout
@@ -2293,14 +2281,20 @@
 
             // Listen for login events from OTHER tabs.
             // If the user logs in on another tab, this authenticated tab should
-            // simply stay in sync (no action needed since session cookie is shared).
-            // But if THIS tab is somehow showing stale / error content, a reload helps.
-            // Note: storage events only fire in OTHER tabs, not the one that set the key.
+            // hide the timeout modal (if open) and sync its state.
             window.addEventListener('storage', function (e) {
                 if (e.key === 'diamond_login_event' && e.newValue) {
-                    // Another tab has just logged in.
-                    // We're in the authenticated base.html context, so do nothing —
-                    // the session cookie is already shared and this tab is still valid.
+                    const modalEl = document.getElementById('sessionTimeoutModal');
+                    if (modalEl) {
+                        const bsModal = bootstrap.Modal.getInstance(modalEl);
+                        if (bsModal) {
+                            bsModal.hide();
+                            timeoutModalShown = false; // reset flag
+                            if (typeof showToast === 'function') {
+                                showToast('Sesi berhasil dipulihkan dari tab lain!', 'success');
+                            }
+                        }
+                    }
                     // Clean up the logout key in case it was left over.
                     try { localStorage.removeItem('diamond_logout_event'); } catch (_) {}
                 }

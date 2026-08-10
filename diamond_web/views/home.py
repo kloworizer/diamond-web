@@ -847,7 +847,7 @@ def home_data(request):
                     f'<i class="feather-eye"></i></a>'
                     f'</div>'
                 )
-            elif category in ('belum_mulai_proses_identifikasi', 'dalam_proses_identifikasi'):
+            elif category == 'belum_mulai_proses_identifikasi':
                 identifikasi_url = reverse('identifikasi_tiket', kwargs={'pk': obj.id})
                 action_html = (
                     f'<div class="d-flex justify-content-center gap-1">'
