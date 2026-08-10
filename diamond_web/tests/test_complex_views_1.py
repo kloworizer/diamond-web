@@ -146,22 +146,37 @@ class TestJenisDataILAPMissingBranches:
         assert resp.status_code == 200
         data = json.loads(resp.content)
         assert 'html' in data
+        # The editable fields: the two names plus both lookups. The identifiers
+        # stay out — the create wizard is what derives them.
+        for name in ('nama_jenis_data', 'nama_sub_jenis_data',
+                     'id_jenis_tabel', 'id_status_data'):
+            assert f'name="{name}"' in data['html']
+        for name in ('id_ilap', 'id_jenis_data', 'id_sub_jenis_data'):
+            assert f'name="{name}"' not in data['html']
 
     def test_update_post_valid(self, client, p3de_admin_user):
-        """Valid AJAX POST updates JenisDataILAP."""
+        """Valid AJAX POST updates the names and both lookups."""
         jdi = JenisDataILAPFactory()
+        jenis_tabel = JenisTabelFactory()
+        status_data = StatusDataFactory()
         client.force_login(p3de_admin_user)
         resp = client.post(
             reverse('jenis_data_ilap_update', args=[jdi.pk]),
             {
                 'nama_jenis_data': 'Updated Jenis',
                 'nama_sub_jenis_data': 'Updated Sub Jenis',
+                'id_jenis_tabel': jenis_tabel.pk,
+                'id_status_data': status_data.pk,
             },
             HTTP_X_REQUESTED_WITH='XMLHttpRequest',
         )
         assert resp.status_code == 200
         data = json.loads(resp.content)
         assert data.get('success') is True
+        jdi.refresh_from_db()
+        assert jdi.nama_jenis_data == 'Updated Jenis'
+        assert jdi.id_jenis_tabel_id == jenis_tabel.pk
+        assert jdi.id_status_data_id == status_data.pk
 
     def test_delete_ajax_get(self, client, p3de_admin_user):
         """GET ?ajax=1 returns confirmation HTML."""

@@ -34,13 +34,21 @@ STATUS_SELESAI = 8
 # Tickets with status < STATUS_DIBATALKAN are considered non-final (not cancelled or finished)
 STATUS_KLARIFIKASI_MAX = STATUS_PENGENDALIAN_MUTU
 
-# Every status a tiket passes through before PMDE receives it: recorded,
-# researched and returned at P3DE (1-3), then sent on and identified at PIDE
-# (4-5). A tiket in one of these is still upstream of quality control.
-STATUSES_SEBELUM_PENGENDALIAN_MUTU = (
+# The statuses a tiket holds while it is still at P3DE: recorded, researched
+# and returned. Its data has one count at this point, the P3DE baris lengkap.
+STATUSES_DI_P3DE = (
     STATUS_DIREKAM,
     STATUS_DITELITI,
     STATUS_DIKEMBALIKAN,
+)
+
+# The statuses a tiket holds while it is at PIDE: sent on, then identified.
+# Identification is what splits its data into baris I/U/CDE/Res.
+STATUSES_DI_PIDE = (
     STATUS_DIKIRIM_KE_PIDE,
     STATUS_IDENTIFIKASI,
 )
+
+# Every status a tiket passes through before PMDE receives it, so a tiket in one
+# of these is still upstream of quality control.
+STATUSES_SEBELUM_PENGENDALIAN_MUTU = STATUSES_DI_P3DE + STATUSES_DI_PIDE

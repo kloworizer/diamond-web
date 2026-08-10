@@ -209,6 +209,74 @@
         </div>
     </div>
 
+    {% comment %}
+    Three summary sections, one Bootstrap column each and all the same shape, so
+    they can be read straight across: the queue this page lists, then the two
+    queues upstream of it. P3DE and PIDE are kept apart because they are
+    different work — P3DE still holds one count of a tiket's data, while PIDE has
+    begun splitting it. Each gives a tiket count with the rows behind it, broken
+    down by jenis tabel, since that is what decides how the data is handled. All
+    three follow the filter panel, so a narrowed page narrows its own totals.
+
+    `data-summary-key` names the payload section a column reads. What its rows
+    count differs between them — what is left to check here, what the tikets
+    carry upstream — and the line under each figure is what says which.
+    {% endcomment %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-3 qc-summary">
+                <div class="col-xl-4 col-md-6">
+                    <div class="qc-stat qc-stat-qc h-100" data-summary-key="qc">
+                        <div class="qc-stat-head">
+                            <span class="qc-stat-dot"></span>
+                            <span class="qc-stat-label">Dalam Pengendalian Mutu</span>
+                        </div>
+                        <div class="qc-stat-figure">
+                            <span class="qc-stat-value" data-summary-tikets>-</span>
+                            <span class="qc-stat-unit">tiket</span>
+                        </div>
+                        <div class="qc-stat-sub">
+                            <span data-summary-baris>-</span> baris belum QC
+                        </div>
+                        {% include "quality_control/_summary_breakdown.html" %}
+                    </div>
+                </div>
+                <div class="col-xl-4 col-md-6">
+                    <div class="qc-stat qc-stat-p3de h-100" data-summary-key="p3de">
+                        <div class="qc-stat-head">
+                            <span class="qc-stat-dot"></span>
+                            <span class="qc-stat-label">Masih di P3DE</span>
+                        </div>
+                        <div class="qc-stat-figure">
+                            <span class="qc-stat-value" data-summary-tikets>-</span>
+                            <span class="qc-stat-unit">tiket</span>
+                        </div>
+                        <div class="qc-stat-sub">
+                            <span data-summary-baris>-</span> baris data
+                        </div>
+                        {% include "quality_control/_summary_breakdown.html" %}
+                    </div>
+                </div>
+                <div class="col-xl-4 col-md-6">
+                    <div class="qc-stat qc-stat-pide h-100" data-summary-key="pide">
+                        <div class="qc-stat-head">
+                            <span class="qc-stat-dot"></span>
+                            <span class="qc-stat-label">Masih di PIDE</span>
+                        </div>
+                        <div class="qc-stat-figure">
+                            <span class="qc-stat-value" data-summary-tikets>-</span>
+                            <span class="qc-stat-unit">tiket</span>
+                        </div>
+                        <div class="qc-stat-sub">
+                            <span data-summary-baris>-</span> baris data
+                        </div>
+                        {% include "quality_control/_summary_breakdown.html" %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Progress per Jatuh Tempo, one line per PIC PMDE -->
     <div class="card stretch stretch-full mb-3">
         <div class="card-header">
@@ -302,6 +370,139 @@
         background-color: #ffffff !important;
         padding: 24px 28px !important;
         border-bottom: 1px solid #f1f5f9 !important;
+    }
+
+    /* Summary sections. All three read top to bottom in one order — whose queue,
+       how many tikets, how many rows, then the split — so the eye lands on the
+       same figure in each and can compare them without hunting. The identity is
+       carried by a small dot beside the label rather than by a filled panel,
+       which keeps the row quiet enough to sit above the chart. */
+    .qc-summary {
+        transition: opacity 0.15s ease;
+    }
+
+    .qc-stat {
+        border: 1px solid #ebeff4;
+        border-radius: 10px;
+        padding: 18px 20px;
+        background-color: #ffffff;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+
+    .qc-stat-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .qc-stat-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex: 0 0 auto;
+    }
+
+    /* Blue for the queue this page lists; the two upstream queues take muted
+       hues of their own, so the three are tellable apart without reading their
+       labels twice, and the one that is this page's work still leads. */
+    .qc-stat-qc .qc-stat-dot {
+        background-color: #2a78d6;
+    }
+
+    .qc-stat-p3de .qc-stat-dot {
+        background-color: #64748b;
+    }
+
+    .qc-stat-pide .qc-stat-dot {
+        background-color: #a3aec0;
+    }
+
+    .qc-stat-label {
+        font-size: 10.5px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #64748b;
+    }
+
+    /* The headline figure, with its unit set small and muted beside it so the
+       number itself is the only thing at that size. */
+    .qc-stat-figure {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        margin-top: 10px;
+    }
+
+    .qc-stat-value {
+        font-size: 28px;
+        font-weight: 600;
+        line-height: 1.1;
+        letter-spacing: -0.01em;
+        color: #0f172a;
+        font-variant-numeric: tabular-nums;
+        margin-bottom: 0;
+    }
+
+    .qc-stat-unit {
+        font-size: 12px;
+        color: #94a3b8;
+    }
+
+    .qc-stat-sub {
+        margin-top: 2px;
+        font-size: 12px;
+        color: #64748b;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* The breakdown under the figure: what that number is made of, as a small
+       table on Bootstrap's columns. The header names the two number columns once,
+       so each row underneath is figures only — and since every section uses the
+       same widths, the numbers line up across the three as well as down each. */
+    .qc-stat-breakdown {
+        margin-top: 14px;
+        border-top: 1px solid #f1f5f9;
+        padding-top: 8px;
+    }
+
+    .qc-stat-breakdown-head {
+        font-size: 9.5px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #a3aec0;
+        padding-bottom: 4px;
+    }
+
+    .qc-stat-breakdown-row {
+        font-size: 12px;
+        line-height: 1.9;
+        color: #475569;
+    }
+
+    /* A jenis tabel name is a fixed reference value, never long enough to need
+       wrapping, so it truncates rather than pushing the figures out of line. */
+    .qc-stat-breakdown-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .qc-stat-breakdown-tikets {
+        font-weight: 600;
+        color: #1e293b;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .qc-stat-breakdown-baris {
+        color: #94a3b8;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Refetched with the chart, and faded the same way while in flight. */
+    .qc-summary.is-loading {
+        opacity: 0.45;
     }
 
     /* Refetching the chart holds the previous render at reduced opacity rather
@@ -493,6 +694,56 @@
                     // the dropdowns stay usable.
                     initSelect2($('#filter-form select'));
                     if (onDone) onDone();
+                }
+            });
+        }
+
+        // ---- Summary tiles ----
+        // Both tiles read the same shape, each naming the payload section it
+        // draws from in `data-summary-key`, so adding a section is a matter of
+        // adding one tile to the markup above and one key on the server.
+        function formatCount(value) {
+            return typeof value === 'number' ? value.toLocaleString('id-ID') : '-';
+        }
+
+        // One row per jenis tabel, on the same Bootstrap columns as the header in
+        // _summary_breakdown.html: the name, its tiket count, then the rows behind
+        // those tikets. The units live in that header, so a row is figures only.
+        function renderBreakdown($target, entries) {
+            $target.empty();
+            (entries || []).forEach(function (entry) {
+                $target.append(
+                    $('<div>').addClass('row gx-2 qc-stat-breakdown-row').append(
+                        $('<div>').addClass('col-6 qc-stat-breakdown-name')
+                            .attr('title', entry.name).text(entry.name),
+                        $('<div>').addClass('col-2 text-end qc-stat-breakdown-tikets')
+                            .text(formatCount(entry.tikets)),
+                        $('<div>').addClass('col-4 text-end qc-stat-breakdown-baris')
+                            .text(formatCount(entry.baris))
+                    )
+                );
+            });
+        }
+
+        function renderSummary(payload) {
+            $('.qc-stat[data-summary-key]').each(function () {
+                const $tile = $(this);
+                const section = (payload || {})[$tile.attr('data-summary-key')] || {};
+                $tile.find('[data-summary-tikets]').text(formatCount(section.tikets));
+                $tile.find('[data-summary-baris]').text(formatCount(section.baris));
+                renderBreakdown($tile.find('[data-summary-breakdown]'), section.breakdown);
+            });
+        }
+
+        function loadSummary() {
+            $('.qc-summary').addClass('is-loading');
+            $.ajax({
+                url: ajaxUrl,
+                type: 'GET',
+                data: Object.assign({ get_summary: '1' }, getCurrentFilterValues()),
+                success: renderSummary,
+                complete: function () {
+                    $('.qc-summary').removeClass('is-loading');
                 }
             });
         }
@@ -823,6 +1074,7 @@
             $('#filter-form').on('change', 'select', function () {
                 loadFilterOptions();
                 table.ajax.reload();
+                loadSummary();
                 loadChartData();
                 updateFilterBadge();
             });
@@ -846,6 +1098,7 @@
                 initSelect2($('#filter-form select'));
                 loadFilterOptions();
                 table.ajax.reload();
+                loadSummary();
                 loadChartData();
                 updateFilterBadge();
             });
@@ -861,6 +1114,7 @@
                 applyInitialFilterPanelState(fromUrl);
                 // Drawn once the URL filters are in place, so the first render
                 // already matches the table rather than flashing the full set.
+                loadSummary();
                 loadChartData();
             });
         });

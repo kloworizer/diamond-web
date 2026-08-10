@@ -6,8 +6,16 @@ import pytest
 from django.contrib.auth.models import Group
 from django.urls import reverse
 
-from diamond_web.constants.tiket_status import STATUS_PENGENDALIAN_MUTU
-from diamond_web.models import DasarHukum, KlasifikasiJenisData, TiketPIC
+from diamond_web.constants.tiket_status import (
+    STATUS_DIKIRIM_KE_PIDE,
+    STATUS_DIREKAM,
+    STATUS_DITELITI,
+    STATUS_IDENTIFIKASI,
+    STATUS_PENGENDALIAN_MUTU,
+    STATUSES_DI_P3DE,
+    STATUSES_DI_PIDE,
+)
+from diamond_web.models import DasarHukum, JenisTabel, KlasifikasiJenisData, TiketPIC
 from diamond_web.tests.conftest import (
     DurasiJatuhTempoFactory,
     JenisDataILAPFactory,
@@ -40,8 +48,8 @@ _PENYAMPAIAN_SEQ = count()
 
 def _qc_bundle(with_durasi=True, with_prioritas=False, tgl_transfer=None,
                pmde_user=None, periode_penerimaan=None, tgl_rematch=_UNSET,
-               durasi=10):
-    jenis_tabel = JenisTabelFactory()
+               durasi=10, jenis_tabel=None, belum_qc=60):
+    jenis_tabel = jenis_tabel or JenisTabelFactory()
     jenis_data = JenisDataILAPFactory(id_jenis_tabel=jenis_tabel)
     # periode_penyampaian is unique and the factory draws it from a small word
     # list, so bundles created side by side collide unless it is spelled out.
@@ -65,7 +73,7 @@ def _qc_bundle(with_durasi=True, with_prioritas=False, tgl_transfer=None,
         tgl_rematch=tgl_rematch,
         baris_i=100,
         sudah_qc=40,
-        belum_qc=60,
+        belum_qc=belum_qc,
     )
     group, _ = Group.objects.get_or_create(name='user_pmde')
     if pmde_user is None:
@@ -439,7 +447,7 @@ class TestQualityControlFilters:
         client.force_login(bundle['pmde_user'])
         periode = bundle['tiket'].periode
         assert self._rows(client, periode=f'bulanan:{periode}')['recordsFiltered'] == 1
-        # Same number, wrong periode type — a monthly tiket is not a quarterly one.
+        # Same number, wrong periode type â€” a monthly tiket is not a quarterly one.
         assert self._rows(client, periode=f'triwulanan:{periode}')['recordsFiltered'] == 0
 
     def test_filter_by_status_ketersediaan_data(self, client):
@@ -585,7 +593,7 @@ class TestQualityControlChart:
 
         payload = self._chart(client)
         # durasi is 10 days, so 40 days ago is well past due and 5 days ago
-        # still has time left — the overdue one sorts first.
+        # still has time left â€” the overdue one sorts first.
         assert payload['categories'] == ['-30 hari', '5 hari']
         assert payload['series'][0]['data'] == [60, 60]
         assert older['tiket'].pk != recent['tiket'].pk
@@ -646,3 +654,377 @@ class TestQualityControlChart:
         client.force_login(UserFactory())
         resp = client.get(reverse(self.url), {'get_chart_data': '1'})
         assert resp.status_code == 302
+
+
+def _upstream_bundle(status_tiket, pmde_user=None, jenis_tabel=None, **baris):
+    """A tiket still at P3DE or PIDE, with a PMDE PIC already assigned.
+
+    PMDE PICs are attached when a tiket is recorded rather than when it is
+    transferred, which is what puts an upstream tiket inside a pelaksana's scope
+    on this page even though it has not reached quality control yet.
+    """
+    jenis_data_kwargs = {}
+    if jenis_tabel is not None:
+        jenis_data_kwargs['id_jenis_tabel'] = jenis_tabel
+    periode_data = PeriodeJenisDataFactory(
+        id_sub_jenis_data_ilap=JenisDataILAPFactory(**jenis_data_kwargs),
+        id_periode_pengiriman=PeriodePengirimanFactory(
+            periode_penyampaian=f'QC {next(_PENYAMPAIAN_SEQ)}',
+        ),
+    )
+    tiket = TiketFactory(
+        id_periode_data=periode_data, status_tiket=status_tiket, **baris,
+    )
+    group, _ = Group.objects.get_or_create(name='user_pmde')
+    if pmde_user is None:
+        pmde_user = UserFactory()
+    pmde_user.groups.add(group)
+    TiketPICFactory(id_tiket=tiket, id_user=pmde_user, role=TiketPIC.Role.PMDE, active=True)
+    return {'tiket': tiket, 'pmde_user': pmde_user}
+
+
+def _seeded_kinds():
+    """The three jenis tabel the reference table is seeded with by migration."""
+    return [
+        JenisTabel.objects.get(deskripsi=deskripsi)
+        for deskripsi in ('Diidentifikasi', 'Tidak Diidentifikasi', 'Tidak Terstruktur')
+    ]
+
+
+def _entries(section):
+    """A summary section's breakdown, keyed by jenis tabel name."""
+    return {entry['name']: entry for entry in section['breakdown']}
+
+
+class SummaryEndpoint:
+    """Shared access to the summary payload's three sections."""
+
+    url = 'quality_control_data'
+
+    def _summary(self, client, **filters):
+        params = {'get_summary': '1'}
+        params.update(filters)
+        resp = client.get(reverse(self.url), params)
+        assert resp.status_code == 200
+        return resp.json()
+
+    def _section(self, client, key, **filters):
+        return self._summary(client, **filters)[key]
+
+
+@pytest.mark.django_db
+class TestQualityControlSummary(SummaryEndpoint):
+    """The three sections above the chart: the QC queue, then P3DE and PIDE."""
+
+    def test_counts_tikets_and_sums_belum_qc(self, client):
+        first = _qc_bundle()
+        _qc_bundle(pmde_user=first['pmde_user'])
+        client.force_login(first['pmde_user'])
+
+        qc = self._section(client, 'qc')
+        assert qc['tikets'] == 2
+        # 60 belum_qc each, per _qc_bundle.
+        assert qc['baris'] == 120
+
+    def test_unset_belum_qc_counts_as_no_rows(self, client):
+        """A tiket that has not been counted yet still counts as a tiket."""
+        bundle = _qc_bundle(belum_qc=None)
+        client.force_login(bundle['pmde_user'])
+
+        qc = self._section(client, 'qc')
+        assert qc['tikets'] == 1
+        assert qc['baris'] == 0
+
+    def test_qc_tiket_is_in_no_upstream_section(self, client):
+        bundle = _qc_bundle()
+        client.force_login(bundle['pmde_user'])
+
+        payload = self._summary(client)
+        assert payload['qc']['tikets'] == 1
+        for key in ('p3de', 'pide'):
+            assert payload[key]['tikets'] == 0
+            assert payload[key]['baris'] == 0
+
+    def test_upstream_tiket_is_not_counted_as_qc(self, client):
+        bundle = _upstream_bundle(STATUS_DIREKAM, baris_lengkap=500)
+        client.force_login(bundle['pmde_user'])
+
+        payload = self._summary(client)
+        assert payload['qc']['tikets'] == 0
+        assert payload['qc']['baris'] == 0
+        assert payload['p3de']['tikets'] == 1
+
+    @pytest.mark.parametrize('status', list(STATUSES_DI_P3DE))
+    def test_a_p3de_tiket_lands_in_the_p3de_section_only(self, client, status):
+        """Below Dikirim ke PIDE the P3DE count is the only one taken."""
+        bundle = _upstream_bundle(status, baris_lengkap=500, baris_i=7)
+        client.force_login(bundle['pmde_user'])
+
+        payload = self._summary(client)
+        assert payload['p3de'] == {
+            'tikets': 1, 'baris': 500, 'breakdown': payload['p3de']['breakdown'],
+        }
+        assert payload['pide']['tikets'] == 0
+
+    @pytest.mark.parametrize('status', list(STATUSES_DI_PIDE))
+    def test_a_pide_tiket_lands_in_the_pide_section_only(self, client, status):
+        """From Dikirim ke PIDE on, baris I is the part still to be processed."""
+        bundle = _upstream_bundle(
+            status, baris_lengkap=500, baris_i=300, baris_u=100,
+            baris_cde=60, baris_res=40,
+        )
+        client.force_login(bundle['pmde_user'])
+
+        payload = self._summary(client)
+        assert payload['pide']['tikets'] == 1
+        assert payload['pide']['baris'] == 300
+        assert payload['p3de']['tikets'] == 0
+
+    @pytest.mark.parametrize('status', list(STATUSES_DI_PIDE))
+    def test_at_pide_an_empty_split_falls_back_to_baris_lengkap(self, client, status):
+        """Identification has recorded nothing yet, so baris lengkap still stands."""
+        bundle = _upstream_bundle(
+            status, baris_lengkap=500, baris_i=0, baris_u=0, baris_cde=0, baris_res=0,
+        )
+        client.force_login(bundle['pmde_user'])
+
+        assert self._section(client, 'pide')['baris'] == 500
+
+    @pytest.mark.parametrize('status', list(STATUSES_DI_PIDE))
+    def test_at_pide_unset_baris_fall_back_to_baris_lengkap(self, client, status):
+        """The legacy rows leave the split null rather than zero."""
+        bundle = _upstream_bundle(status, baris_lengkap=500)
+        client.force_login(bundle['pmde_user'])
+
+        assert self._section(client, 'pide')['baris'] == 500
+
+    def test_rows_of_several_tikets_in_a_section_are_summed(self, client):
+        first = _upstream_bundle(STATUS_DIREKAM, baris_lengkap=500)
+        _upstream_bundle(
+            STATUS_DITELITI, pmde_user=first['pmde_user'], baris_lengkap=300,
+        )
+        _upstream_bundle(
+            STATUS_IDENTIFIKASI, pmde_user=first['pmde_user'],
+            baris_lengkap=900, baris_i=200, baris_u=700,
+        )
+        client.force_login(first['pmde_user'])
+
+        payload = self._summary(client)
+        assert payload['p3de']['tikets'] == 2
+        assert payload['p3de']['baris'] == 800
+        assert payload['pide']['tikets'] == 1
+        assert payload['pide']['baris'] == 200
+
+    def test_a_pelaksana_sees_only_their_own_scope(self, client):
+        mine = _qc_bundle()
+        _qc_bundle()
+        _upstream_bundle(STATUS_DIREKAM, baris_lengkap=500)
+        client.force_login(mine['pmde_user'])
+
+        payload = self._summary(client)
+        assert payload['qc']['tikets'] == 1
+        assert payload['p3de']['tikets'] == 0
+
+    def test_kasi_sees_the_whole_seksi(self, client):
+        _qc_bundle()
+        _qc_bundle()
+        _upstream_bundle(STATUS_DIREKAM, baris_lengkap=500)
+        _upstream_bundle(STATUS_IDENTIFIKASI, baris_lengkap=40)
+        client.force_login(_kasi_pmde_user())
+
+        payload = self._summary(client)
+        assert payload['qc']['tikets'] == 2
+        assert payload['p3de']['tikets'] == 1
+        assert payload['pide']['tikets'] == 1
+
+    def test_filters_narrow_every_section(self, client):
+        qc_bundle = _qc_bundle()
+        user = qc_bundle['pmde_user']
+        p3de = _upstream_bundle(STATUS_DIREKAM, pmde_user=user, baris_lengkap=500)
+        _upstream_bundle(STATUS_IDENTIFIKASI, pmde_user=user, baris_lengkap=40)
+        client.force_login(user)
+
+        payload = self._summary(client, nomor_tiket=p3de['tiket'].nomor_tiket)
+        assert payload['qc']['tikets'] == 0
+        assert payload['qc']['baris'] == 0
+        assert payload['p3de']['tikets'] == 1
+        assert payload['p3de']['baris'] == 500
+        assert payload['pide']['tikets'] == 0
+
+    def test_jatuh_tempo_filter_leaves_the_upstream_sections_alone(self, client):
+        """Jatuh tempo counts from a transfer date an upstream tiket lacks.
+
+        Applying it there would empty the upstream sections rather than narrow
+        them, so the QC-only filter is dropped from those two.
+        """
+        qc_bundle = _jatuh_tempo_bundle(5)
+        user = qc_bundle['pmde_user']
+        _upstream_bundle(STATUS_DIREKAM, pmde_user=user, baris_lengkap=500)
+        _upstream_bundle(STATUS_IDENTIFIKASI, pmde_user=user, baris_lengkap=40)
+        client.force_login(user)
+
+        payload = self._summary(client, jatuh_tempo='10')
+        assert payload['qc']['tikets'] == 1
+        assert payload['p3de']['tikets'] == 1
+        assert payload['p3de']['baris'] == 500
+        assert payload['pide']['tikets'] == 1
+        assert payload['pide']['baris'] == 40
+
+    def test_denied_for_non_pmde(self, client):
+        client.force_login(UserFactory())
+        resp = client.get(reverse(self.url), {'get_summary': '1'})
+        assert resp.status_code == 302
+
+
+@pytest.mark.django_db
+class TestSummaryBreakdown(SummaryEndpoint):
+    """Each section's split by jenis tabel."""
+
+    def test_splits_tikets_and_rows_per_jenis_tabel(self, client):
+        identified, unidentified, unstructured = _seeded_kinds()
+        first = _upstream_bundle(
+            STATUS_DIREKAM, jenis_tabel=identified, baris_lengkap=500,
+        )
+        user = first['pmde_user']
+        _upstream_bundle(
+            STATUS_DITELITI, pmde_user=user, jenis_tabel=identified, baris_lengkap=300,
+        )
+        _upstream_bundle(
+            STATUS_DIREKAM, pmde_user=user, jenis_tabel=unidentified, baris_lengkap=900,
+        )
+        _upstream_bundle(
+            STATUS_DIREKAM, pmde_user=user, jenis_tabel=unstructured, baris_lengkap=40,
+        )
+        client.force_login(user)
+
+        p3de = self._section(client, 'p3de')
+        entries = _entries(p3de)
+        assert entries['Diidentifikasi']['tikets'] == 2
+        assert entries['Diidentifikasi']['baris'] == 800
+        assert entries['Tidak Diidentifikasi']['tikets'] == 1
+        assert entries['Tidak Diidentifikasi']['baris'] == 900
+        assert entries['Tidak Terstruktur']['tikets'] == 1
+        assert entries['Tidak Terstruktur']['baris'] == 40
+        # The breakdown accounts for the headline exactly.
+        assert p3de['tikets'] == 4
+        assert p3de['baris'] == 1740
+
+    def test_the_pide_breakdown_uses_the_identified_row_count(self, client):
+        identified, unidentified, _unstructured = _seeded_kinds()
+        first = _upstream_bundle(
+            STATUS_IDENTIFIKASI, jenis_tabel=identified,
+            baris_lengkap=900, baris_i=200, baris_u=700,
+        )
+        _upstream_bundle(
+            STATUS_DIKIRIM_KE_PIDE, pmde_user=first['pmde_user'],
+            jenis_tabel=unidentified, baris_lengkap=500,
+        )
+        client.force_login(first['pmde_user'])
+
+        pide = self._section(client, 'pide')
+        entries = _entries(pide)
+        # Split recorded, so baris I; split still empty, so baris lengkap.
+        assert entries['Diidentifikasi']['baris'] == 200
+        assert entries['Tidak Diidentifikasi']['baris'] == 500
+        assert pide['baris'] == 700
+
+    def test_splits_qc_tikets_and_rows_per_jenis_tabel(self, client):
+        identified, unidentified, _unstructured = _seeded_kinds()
+        first = _qc_bundle(jenis_tabel=identified, belum_qc=60)
+        _qc_bundle(pmde_user=first['pmde_user'], jenis_tabel=identified, belum_qc=25)
+        _qc_bundle(pmde_user=first['pmde_user'], jenis_tabel=unidentified, belum_qc=10)
+        client.force_login(first['pmde_user'])
+
+        qc = self._section(client, 'qc')
+        entries = _entries(qc)
+        assert entries['Diidentifikasi'] == {
+            'name': 'Diidentifikasi', 'tikets': 2, 'baris': 85,
+        }
+        assert entries['Tidak Diidentifikasi'] == {
+            'name': 'Tidak Diidentifikasi', 'tikets': 1, 'baris': 10,
+        }
+        assert qc['tikets'] == 3
+        assert qc['baris'] == 95
+
+    def test_every_section_lists_every_jenis_tabel_in_reference_order(self, client):
+        """A kind with nothing pending keeps its row, showing a zero."""
+        _identified, _unidentified, unstructured = _seeded_kinds()
+        bundle = _upstream_bundle(
+            STATUS_DIREKAM, jenis_tabel=unstructured, baris_lengkap=40,
+        )
+        client.force_login(bundle['pmde_user'])
+
+        # The seeded kinds keep the order the reference table gives them. Extra
+        # rows appear too: every factory-made tiket brings a jenis tabel of its
+        # own, and a section lists whatever the reference table holds.
+        seeded = ['Diidentifikasi', 'Tidak Diidentifikasi', 'Tidak Terstruktur']
+        payload = self._summary(client)
+        for key in ('qc', 'p3de', 'pide'):
+            names = [entry['name'] for entry in payload[key]['breakdown']]
+            assert [name for name in names if name in seeded] == seeded
+            assert _entries(payload[key])['Diidentifikasi'] == {
+                'name': 'Diidentifikasi', 'tikets': 0, 'baris': 0,
+            }
+
+    def test_each_section_only_counts_its_own_queue(self, client):
+        identified, _unidentified, _unstructured = _seeded_kinds()
+        qc_bundle = _qc_bundle(jenis_tabel=identified)
+        user = qc_bundle['pmde_user']
+        _upstream_bundle(
+            STATUS_DIREKAM, pmde_user=user, jenis_tabel=identified, baris_lengkap=500,
+        )
+        _upstream_bundle(
+            STATUS_DIKIRIM_KE_PIDE, pmde_user=user, jenis_tabel=identified,
+            baris_lengkap=40,
+        )
+        client.force_login(user)
+
+        payload = self._summary(client)
+        assert _entries(payload['qc'])['Diidentifikasi'] == {
+            'name': 'Diidentifikasi', 'tikets': 1, 'baris': 60,
+        }
+        assert _entries(payload['p3de'])['Diidentifikasi'] == {
+            'name': 'Diidentifikasi', 'tikets': 1, 'baris': 500,
+        }
+        assert _entries(payload['pide'])['Diidentifikasi'] == {
+            'name': 'Diidentifikasi', 'tikets': 1, 'baris': 40,
+        }
+
+    def test_filters_narrow_the_breakdown(self, client):
+        identified, unidentified, _unstructured = _seeded_kinds()
+        first = _upstream_bundle(
+            STATUS_DIREKAM, jenis_tabel=identified, baris_lengkap=500,
+        )
+        _upstream_bundle(
+            STATUS_DIREKAM, pmde_user=first['pmde_user'], jenis_tabel=unidentified,
+            baris_lengkap=300,
+        )
+        client.force_login(first['pmde_user'])
+
+        p3de = self._section(client, 'p3de', jenis_tabel=str(identified.pk))
+        entries = _entries(p3de)
+        assert entries['Diidentifikasi']['baris'] == 500
+        assert entries['Tidak Diidentifikasi']['baris'] == 0
+        assert p3de['baris'] == 500
+
+    def test_a_tiket_matched_twice_by_a_join_is_counted_once(self, client):
+        """Filtering through a to-many join must not double a breakdown row."""
+        identified, _unidentified, _unstructured = _seeded_kinds()
+        bundle = _upstream_bundle(
+            STATUS_DIREKAM, jenis_tabel=identified, baris_lengkap=500,
+        )
+        sub_jenis_data = bundle['tiket'].id_periode_data.id_sub_jenis_data_ilap
+        for label in ('DH A', 'DH B'):
+            dasar_hukum = DasarHukum.objects.create(
+                deskripsi=f'{label} {bundle["tiket"].pk}', kategori='PKS',
+            )
+            KlasifikasiJenisData.objects.create(
+                id_sub_jenis_data=sub_jenis_data, id_klasifikasi_tabel=dasar_hukum,
+            )
+        client.force_login(bundle['pmde_user'])
+
+        ids = ','.join(str(dh.pk) for dh in DasarHukum.objects.all())
+        p3de = self._section(client, 'p3de', dasar_hukum=ids)
+        assert _entries(p3de)['Diidentifikasi'] == {
+            'name': 'Diidentifikasi', 'tikets': 1, 'baris': 500,
+        }
