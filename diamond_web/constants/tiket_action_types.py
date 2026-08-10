@@ -13,6 +13,7 @@ class TiketActionType:
     SELESAI = 8
     DITRANSFER_KE_PMDE = 9
     DIUBAH = 10
+    REMATCH = 11
 
 # Action types for Backup workflow
 class BackupActionType:
@@ -53,6 +54,7 @@ ACTION_TYPE_LABELS = {
     8: 'Selesai',
     9: 'Ditransfer ke PMDE',
     10: 'Isian Tiket Diubah',
+    11: 'Rematch',
     # Backup actions
     101: 'Backup Direkam',
     102: 'Backup Dihapus',
@@ -82,6 +84,7 @@ ACTION_TYPE_BADGE_CLASSES = {
     8: 'bg-success',
     9: 'bg-success',
     10: 'bg-warning text-dark',
+    11: 'bg-info',
     # Backup actions
     101: 'bg-primary',
     102: 'bg-danger',
@@ -103,8 +106,9 @@ def get_tiket_action_type(action_name):
     """Get tiket action type ID by name (case-insensitive)
     
     Args:
-        action_name: One of 'direkam', 'diteliti', 'dikembalikan', 'dikirim_ke_pide', 
-                    'identifikasi', 'pengendalian_mutu', 'dibatalkan', 'selesai'
+        action_name: One of 'direkam', 'diteliti', 'dikembalikan', 'dikirim_ke_pide',
+                    'identifikasi', 'pengendalian_mutu', 'dibatalkan', 'selesai',
+                    'rematch'
     
     Returns:
         Action type ID or None if not found
@@ -118,6 +122,7 @@ def get_tiket_action_type(action_name):
         'pengendalian_mutu': TiketActionType.PENGENDALIAN_MUTU,
         'dibatalkan': TiketActionType.DIBATALKAN,
         'selesai': TiketActionType.SELESAI,
+        'rematch': TiketActionType.REMATCH,
     }
     return action_map.get(action_name.lower())
 

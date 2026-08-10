@@ -1,8 +1,12 @@
-"""Tests for the Oracle tiket-update sync status transitions from DIKIRIM_KE_PIDE (4).
+"""Tests for the Oracle tiket-update sync status transitions from DIKIRIM_KE_PIDE (4)
+and the rematch reopen rule.
 
 Covers the tgl_rekam_pide (Oracle tgl_load) backfill rules:
   - 4 + tgl_rekam_pide lokal null + tgl_transfer null      → 5 (Identifikasi)
   - 4 + tgl_rekam_pide lokal null + tgl_transfer not null  → 6 (Pengendalian Mutu)
+
+And the rematch rule:
+  - 8 + tgl_rematch not null + belum_qc > 0                → 6 (Pengendalian Mutu)
 """
 from contextlib import contextmanager
 from datetime import datetime
@@ -15,6 +19,7 @@ from diamond_web.constants.tiket_status import (
     STATUS_DIKIRIM_KE_PIDE,
     STATUS_IDENTIFIKASI,
     STATUS_PENGENDALIAN_MUTU,
+    STATUS_SELESAI,
 )
 from diamond_web.models.tiket_action import TiketAction
 from diamond_web.models.tiket_pic import TiketPIC
@@ -36,6 +41,7 @@ COLUMNS = [
 
 TGL_LOAD = datetime(2026, 3, 2, 8, 0)
 TGL_TRANSFER = datetime(2026, 3, 10, 9, 30)
+TGL_REMATCH = datetime(2026, 4, 1, 14, 15)
 
 
 def _row(nomor_tiket, tgl_rekam_pide=TGL_LOAD, tgl_transfer=None, **overrides):
@@ -157,6 +163,108 @@ class TestTransisiDariDikirimKePide:
         assert tiket.status_tiket == STATUS_IDENTIFIKASI
         assert tiket.tgl_rekam_pide == TGL_LOAD
         assert not TiketAction.objects.filter(id_tiket=tiket).exists()
+
+
+@pytest.fixture
+def tiket_selesai(db):
+    """Tiket already closed at status 8, plus an active PIDE PIC."""
+    tiket = TiketFactory(
+        status_tiket=STATUS_SELESAI,
+        tgl_rekam_pide=TGL_LOAD,
+        tgl_transfer=TGL_TRANSFER,
+    )
+    TiketPICFactory(id_tiket=tiket, role=TiketPIC.Role.PIDE, active=True)
+    return tiket
+
+
+@pytest.mark.django_db
+class TestTransisiRematchDariSelesai:
+    """Status 8 → 6 when Oracle reports a rematch with QC still outstanding."""
+
+    def test_rematch_dengan_belum_qc_membuka_pengendalian_mutu(self, tiket_selesai):
+        result = _update_tiket_data(_service([
+            _row(
+                tiket_selesai.nomor_tiket,
+                tgl_transfer=TGL_TRANSFER,
+                tgl_rematch=TGL_REMATCH,
+                belum_qc=3,
+            )
+        ]))
+
+        tiket_selesai.refresh_from_db()
+        assert tiket_selesai.status_tiket == STATUS_PENGENDALIAN_MUTU
+        assert tiket_selesai.tgl_rematch == TGL_REMATCH
+        assert result['status_to_rematch'] == 1
+
+        actions = list(TiketAction.objects.filter(id_tiket=tiket_selesai))
+        assert [a.action for a in actions] == [TiketActionType.REMATCH]
+        assert actions[0].timestamp == TGL_REMATCH
+
+    def test_belum_qc_nol_tetap_selesai(self, tiket_selesai):
+        result = _update_tiket_data(_service([
+            _row(
+                tiket_selesai.nomor_tiket,
+                tgl_transfer=TGL_TRANSFER,
+                tgl_rematch=TGL_REMATCH,
+                belum_qc=0,
+            )
+        ]))
+
+        tiket_selesai.refresh_from_db()
+        assert tiket_selesai.status_tiket == STATUS_SELESAI
+        assert result['status_to_rematch'] == 0
+        assert not TiketAction.objects.filter(id_tiket=tiket_selesai).exists()
+
+    def test_tanpa_tgl_rematch_tetap_selesai(self, tiket_selesai):
+        result = _update_tiket_data(_service([
+            _row(
+                tiket_selesai.nomor_tiket,
+                tgl_transfer=TGL_TRANSFER,
+                tgl_rematch=None,
+                belum_qc=3,
+            )
+        ]))
+
+        tiket_selesai.refresh_from_db()
+        assert tiket_selesai.status_tiket == STATUS_SELESAI
+        assert result['status_to_rematch'] == 0
+        assert not TiketAction.objects.filter(id_tiket=tiket_selesai).exists()
+
+    def test_tanpa_pic_pide_status_tetap_berubah(self, db):
+        tiket = TiketFactory(
+            status_tiket=STATUS_SELESAI,
+            tgl_rekam_pide=TGL_LOAD,
+            tgl_transfer=TGL_TRANSFER,
+        )
+
+        _update_tiket_data(_service([
+            _row(
+                tiket.nomor_tiket,
+                tgl_transfer=TGL_TRANSFER,
+                tgl_rematch=TGL_REMATCH,
+                belum_qc=3,
+            )
+        ]))
+
+        tiket.refresh_from_db()
+        assert tiket.status_tiket == STATUS_PENGENDALIAN_MUTU
+        assert not TiketAction.objects.filter(id_tiket=tiket).exists()
+
+    def test_dry_run_menghitung_calon_rematch(self, tiket_selesai):
+        result = _check_tiket_update_data(_service([
+            _row(
+                tiket_selesai.nomor_tiket,
+                tgl_transfer=TGL_TRANSFER,
+                tgl_rematch=TGL_REMATCH,
+                belum_qc=3,
+            )
+        ]))
+
+        assert result['would_rematch'] == 1
+        assert result['would_update'] == 1
+
+        tiket_selesai.refresh_from_db()
+        assert tiket_selesai.status_tiket == STATUS_SELESAI
 
 
 @pytest.mark.django_db

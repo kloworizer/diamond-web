@@ -1,7 +1,7 @@
 # Sinkronisasi Oracle — Aturan Transisi Status Tiket
 
 **File**: `diamond_web/views/sync_tiket_update.py`
-**Terakhir diperbarui**: 29 Juli 2026
+**Terakhir diperbarui**: 10 Agustus 2026
 
 ---
 
@@ -15,6 +15,7 @@ flowchart TD
     CHECK_STATUS -->|4 - Dikirim ke PIDE| KE_DIAGRAM_1[Lihat Diagram 1 ⬇]
     CHECK_STATUS -->|5 - Identifikasi| KE_DIAGRAM_2[Lihat Diagram 2a-2d ⬇]
     CHECK_STATUS -->|6 - Pengendalian Mutu| KE_DIAGRAM_3[Lihat Diagram 3 ⬇]
+    CHECK_STATUS -->|8 - Selesai| KE_DIAGRAM_4[Lihat Diagram 4 ⬇]
     CHECK_STATUS -->|Lainnya| UPDATE_ONLY[Update field saja<br/>tanpa transisi status]
     UPDATE_ONLY --> DONE[(Selesai)]
     NO_CHANGE --> DONE
@@ -22,6 +23,7 @@ flowchart TD
     style KE_DIAGRAM_1 fill:#e8eaf6,stroke:#5c6bc0
     style KE_DIAGRAM_2 fill:#e8eaf6,stroke:#5c6bc0
     style KE_DIAGRAM_3 fill:#e8eaf6,stroke:#5c6bc0
+    style KE_DIAGRAM_4 fill:#e8eaf6,stroke:#5c6bc0
 ```
 
 ### Diagram 1 — Aturan 6 & 7: Dikirim ke PIDE (4) → Identifikasi (5) / Pengendalian Mutu (6)
@@ -133,6 +135,22 @@ flowchart TD
     style C2 fill:#fff9c4,stroke:#f9a825
 ```
 
+### Diagram 4 — Aturan 8: Selesai (8) → Pengendalian Mutu (6) — Rematch
+
+```mermaid
+flowchart TD
+    START[Status: 8 - Selesai] --> C1{tgl_rematch<br/>!= null?}
+    C1 -->|Ya| C2{belum_qc<br/>!= null?}
+    C2 -->|Ya| C3{belum_qc<br/>> 0?}
+    C3 -->|Ya| RESULT[ATURAN 8<br/>Status Tiket: 8 → 6<br/>PENGENDALIAN_MUTU<br/>aksi REMATCH oleh PIDE]
+
+    style RESULT fill:#e3f2fd,stroke:#1565c0,stroke-width:3px
+    style START fill:#e8f5e9,stroke:#2e7d32
+    style C1 fill:#fff9c4,stroke:#f9a825
+    style C2 fill:#fff9c4,stroke:#f9a825
+    style C3 fill:#fff9c4,stroke:#f9a825
+```
+
 > **Keterangan singkatan**: `i` = baris_i (Identifikasi), `u` = baris_u (Update), `res` = baris_res (Residual), `cde` = baris_cde (CDE)
 
 ---
@@ -150,6 +168,7 @@ flowchart TD
    - [Aturan 5: Identifikasi (5) → Selesai (8) — Berbasis Baris](#aturan-5-identifikasi-5--selesai-8--berbasis-baris)
    - [Aturan 6: Dikirim ke PIDE (4) → Identifikasi (5)](#aturan-6-dikirim-ke-pide-4--identifikasi-5)
    - [Aturan 7: Dikirim ke PIDE (4) → Pengendalian Mutu (6)](#aturan-7-dikirim-ke-pide-4--pengendalian-mutu-6)
+   - [Aturan 8: Selesai (8) → Pengendalian Mutu (6) — Rematch](#aturan-8-selesai-8--pengendalian-mutu-6--rematch)
 5. [Diagram Alur Keputusan di Status 5](#diagram-alur-keputusan-di-status-5)
 6. [Ringkasan Jejak Audit TiketAction](#ringkasan-jejak-audit-tiketaction)
 7. [Penugasan Peran PIC](#penugasan-peran-pic)
@@ -559,6 +578,52 @@ Jika `tgl_load` di Oracle NULL, **tidak ada transisi** — tiket tetap di status
 
 ---
 
+### Aturan 8: Selesai (8) → Pengendalian Mutu (6) — Rematch
+
+**Nama variabel**: `needs_rematch` / `needs_rematch_transition`
+
+*Rematch* di Oracle mencocokkan ulang data tarikan sehingga baris QC baru muncul pada tiket yang sudah ditutup. Aturan ini membuka kembali tiket tersebut agar PMDE dapat menyelesaikan QC sisanya.
+
+#### Kondisi (semua harus benar)
+
+| Kondisi | Deskripsi |
+|---------|-----------|
+| `tiket.status_tiket == STATUS_SELESAI` (8) | Status saat ini adalah Selesai |
+| `tgl_rematch is not None` | Oracle memiliki tanggal *rematch* (`MAX(tgl_rematch)`) |
+| `belum_qc is not None and belum_qc > 0` | Masih ada baris yang belum di-QC |
+
+#### Perubahan Status
+
+`tiket.status_tiket = STATUS_PENGENDALIAN_MUTU` (6)
+
+Tidak ada field tanggal lain yang ditulis oleh aturan ini. `tgl_rematch` sendiri tetap diperbarui melalui pembaruan field umum.
+
+#### TiketAction yang Dibuat
+
+| Field | Nilai |
+|-------|-------|
+| **Aksi** | `TiketActionType.REMATCH` (11) |
+| **Pengguna** | PIC **PIDE** aktif pertama untuk tiket ini |
+| **Waktu** | `tgl_rematch or timezone.now()` |
+| **Catatan** | `'Tiket di-rematch oleh PIDE (auto-sync)'` |
+
+#### Fallback
+
+Jika tidak ada PIC PIDE aktif, status tetap diperbarui tetapi peringatan dicatat dan tidak ada `TiketAction` yang dibuat.
+
+#### Pencatatan (CSV)
+
+- **Kategori**: `'Status → Pengendalian Mutu (rematch)'`
+- **Detail**: `'Dari SELESAI ke PENGENDALIAN_MUTU (Tgl Rematch:{tgl_rematch}, Belum QC:{belum_qc})'`
+
+#### Penghitung
+
+Transisi ini dihitung terpisah dari transisi PMDE lain: `status_to_rematch` (sinkronisasi) dan `would_rematch` (*dry-run*), bukan `status_to_pmde` / `would_pmde`.
+
+> **Catatan**: Setelah dibuka kembali, tiket mengikuti Aturan 2 pada sinkronisasi berikutnya — begitu `belum_qc == 0` lagi, tiket kembali ke status 8 dengan aksi `PENGENDALIAN_MUTU` + `SELESAI` yang baru.
+
+---
+
 ## Diagram Alur Keputusan di Status 5
 
 Karena beberapa aturan menargetkan status 5, berikut adalah urutan prioritasnya (semua blok `if` independen, tetapi kondisi dirancang agar saling eksklusif):
@@ -626,6 +691,7 @@ Karena beberapa aturan menargetkan status 5, berikut adalah urutan prioritasnya 
 | 6 (4→5) | `IDENTIFIKASI` | PIDE | `tgl_rekam_pide` |
 | 7 (4→6) | `IDENTIFIKASI` | PIDE | `tgl_rekam_pide` |
 | 7 (4→6) | `DITRANSFER_KE_PMDE` | PIDE | `tgl_transfer` |
+| 8 (8→6) | `REMATCH` | PIDE | `tgl_rematch` |
 
 ---
 
@@ -633,7 +699,7 @@ Karena beberapa aturan menargetkan status 5, berikut adalah urutan prioritasnya 
 
 | Peran | Digunakan di | Tujuan |
 |-------|-------------|--------|
-| **PIDE** | Aturan 1, 3, 4, 5, 6, 7 | Membuat aksi `IDENTIFIKASI`, `DITRANSFER_KE_PMDE`, atau `DIKEMBALIKAN` |
+| **PIDE** | Aturan 1, 3, 4, 5, 6, 7, 8 | Membuat aksi `IDENTIFIKASI`, `DITRANSFER_KE_PMDE`, `DIKEMBALIKAN`, atau `REMATCH` |
 | **PMDE** | Aturan 2, 3, 5 | Membuat aksi `PENGENDALIAN_MUTU` dan `SELESAI` |
 | **P3DE** | Aturan 4 | Membuat aksi `DIBATALKAN` dan menerima notifikasi |
 
@@ -674,8 +740,8 @@ PIC diambil sebagai record `TiketPIC` dengan `active=True` untuk setiap tiket. H
 {
   "current": 0, "total": 0, "percentage": 0,
   "would_update": 0, "would_identifikasi": 0, "would_pmde": 0,
-  "would_selesai": 0, "would_dikembalikan": 0, "would_unchanged": 0,
-  "not_found": 0, "errors": 0
+  "would_selesai": 0, "would_dikembalikan": 0, "would_rematch": 0,
+  "would_unchanged": 0, "not_found": 0, "errors": 0
 }
 ```
 
@@ -684,7 +750,7 @@ PIC diambil sebagai record `TiketPIC` dengan `active=True` untuk setiap tiket. H
 {
   "current": 0, "total": 0, "percentage": 0,
   "updated_rows": 0, "status_to_identifikasi": 0, "status_to_pmde": 0,
-  "status_to_selesai": 0, "status_to_dikembalikan": 0,
+  "status_to_selesai": 0, "status_to_dikembalikan": 0, "status_to_rematch": 0,
   "not_found": 0, "unchanged": 0, "errors": 0
 }
 ```
@@ -714,7 +780,7 @@ Semua log CSV disimpan di direktori `sync_logs/` di root proyek.
 |-------|-----------|
 | `Timestamp` | Kapan baris dicatat |
 | `Nomor Tiket` | Identifikator tiket |
-| `Kategori` | Salah satu dari: `Baris Diupdate`, `Belum Disinkronisasi`, `Status → Identifikasi`, `Status → Pengendalian Mutu`, `Status → Selesai`, `Status → Dikembalikan`, `Tidak Berubah`, `Error` |
+| `Kategori` | Salah satu dari: `Baris Diupdate`, `Belum Disinkronisasi`, `Status → Identifikasi`, `Status → Pengendalian Mutu`, `Status → Pengendalian Mutu (rematch)`, `Status → Selesai`, `Status → Dikembalikan`, `Tidak Berubah`, `Error` |
 | `Detail` | Konteks tambahan |
 
 Setiap tiket dapat muncul **beberapa kali** jika termasuk dalam beberapa kategori (misalnya, "Baris Diupdate" + "Status → Pengendalian Mutu").
