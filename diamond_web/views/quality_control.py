@@ -36,8 +36,15 @@ from ..models.tiket import Tiket
 from ..models.tiket_pic import TiketPIC
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from ..models.jenis_prioritas_data import JenisPrioritasData
+from ..models.jenis_tabel import JenisTabel
 from ..models.status_penelitian import StatusPenelitian
-from ..constants.tiket_status import STATUS_PENGENDALIAN_MUTU
+from ..constants.tiket_status import (
+    STATUS_DIKIRIM_KE_PIDE,
+    STATUS_IDENTIFIKASI,
+    STATUS_PENGENDALIAN_MUTU,
+    STATUSES_DI_P3DE,
+    STATUSES_DI_PIDE,
+)
 from ..utils.pic_profil import pic_profil_link, pic_profil_visibility
 from ..utils.wilayah import kanwil_value_paths, tiket_in_kanwil_q
 from .mixins import is_kasi_pmde
@@ -88,20 +95,37 @@ class QualityControlView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         return context
 
 
-def _scoped_queryset(user):
-    """Tikets in Pengendalian Mutu that `user` is allowed to see.
+def _pmde_scope(tikets, user):
+    """Narrow `tikets` to what `user` is allowed to see as PMDE.
 
-    Kasi PMDE supervise the whole seksi, so they see every tiket in QC rather
-    than only the ones they are the active PIC for (same rule the tiket list
-    applies to kasi). Everyone else stays scoped to their own assignments.
+    Kasi PMDE supervise the whole seksi, so they see every tiket rather than
+    only the ones they are the active PIC for (same rule the tiket list applies
+    to kasi). Everyone else stays scoped to their own assignments.
     """
-    tikets = Tiket.objects.filter(status_tiket=STATUS_PENGENDALIAN_MUTU)
-    if not is_kasi_pmde(user):
-        pmde_tiket_ids = TiketPIC.objects.filter(
-            id_user=user, role=TiketPIC.Role.PMDE, active=True
-        ).values_list('id_tiket', flat=True)
-        tikets = tikets.filter(id__in=pmde_tiket_ids)
-    return tikets
+    if is_kasi_pmde(user):
+        return tikets
+    pmde_tiket_ids = TiketPIC.objects.filter(
+        id_user=user, role=TiketPIC.Role.PMDE, active=True
+    ).values_list('id_tiket', flat=True)
+    return tikets.filter(id__in=pmde_tiket_ids)
+
+
+def _scoped_queryset(user):
+    """Tikets in Pengendalian Mutu that `user` is allowed to see."""
+    return _pmde_scope(Tiket.objects.filter(status_tiket=STATUS_PENGENDALIAN_MUTU), user)
+
+
+def _upstream_queryset(user, statuses):
+    """Tikets in `statuses` that `user` is allowed to see, for the P3DE and PIDE
+    sections of the summary.
+
+    The same scope as the page's own queue, over the statuses upstream of
+    quality control instead. A PMDE PIC is assigned when a tiket is recorded
+    rather than when it is transferred (see rekam_tiket), so a pelaksana already
+    has assignments among these: they are the work heading towards them, which
+    is what makes them worth a section on this page.
+    """
+    return _pmde_scope(Tiket.objects.filter(status_tiket__in=statuses), user)
 
 
 def _prioritas_exists():
@@ -580,6 +604,117 @@ def _filter_options(scoped_qs, selected):
 
 
 # ---------------------------------------------------------------------------
+# Summary sections above the chart
+# ---------------------------------------------------------------------------
+
+# Filters that only mean anything for a tiket already in quality control, so
+# they are dropped from the P3DE and PIDE sections. Jatuh tempo counts from the
+# PMDE transfer date, which an upstream tiket does not have yet, so keeping it
+# would report both upstream queues as empty rather than unfiltered.
+_QC_ONLY_FILTERS = frozenset({'jatuh_tempo'})
+
+
+def _baris_data(status_tiket, baris_lengkap, baris_i, baris_u, baris_cde, baris_res):
+    """The row count that stands for a tiket's data at its current status.
+
+    Before a tiket reaches PIDE the only count taken is the P3DE one, so baris
+    lengkap is the figure. From Dikirim ke PIDE onwards identification has split
+    that figure into I/U/CDE/Res and baris I is the part still to be processed —
+    except while the split is still all zeros, identification not having recorded
+    anything yet, where baris lengkap remains the only count there is.
+    """
+    if status_tiket in (STATUS_DIKIRIM_KE_PIDE, STATUS_IDENTIFIKASI):
+        split = (baris_i or 0) + (baris_u or 0) + (baris_cde or 0) + (baris_res or 0)
+        if split != 0:
+            return baris_i or 0
+    return baris_lengkap or 0
+
+
+# The columns `_baris_data` reads, in the order it takes them.
+_BARIS_DATA_FIELDS = (
+    'status_tiket', 'baris_lengkap', 'baris_i', 'baris_u', 'baris_cde', 'baris_res',
+)
+
+
+def _belum_qc(belum_qc):
+    """The row count a tiket in quality control still has left to check."""
+    return belum_qc or 0
+
+
+def _queue_breakdown(qs, kinds, baris_fields, baris_of):
+    """A queue's tikets and rows, split by the jenis tabel of their data.
+
+    Jenis tabel is what decides how a tiket's data is handled — diidentifikasi,
+    tidak diidentifikasi or tidak terstruktur — so every queue is broken down
+    along it rather than along status.
+
+    Every jenis tabel in `kinds` gets a row, including the ones with nothing
+    pending: a zero there is a fact worth reading, and a row that vanished under
+    a filter would shuffle the rows around it.
+
+    Args:
+        qs: The tikets to summarise, already filtered.
+        kinds: `(id, deskripsi)` pairs, in the order the rows should read.
+        baris_fields: Field names to read for the row count.
+        baris_of: Callable receiving those fields and returning the row count.
+
+    The rows are read and summed here rather than aggregated in SQL because `id`
+    leads each tuple, so the DISTINCT that the to-many filters add collapses a
+    tiket matched twice into one row instead of counting it twice.
+    """
+    breakdown = {
+        kind_id: {'name': deskripsi, 'tikets': 0, 'baris': 0}
+        for kind_id, deskripsi in kinds
+    }
+
+    tikets = 0
+    baris_total = 0
+    rows = qs.values_list('id', f'{_SUB}__id_jenis_tabel__id', *baris_fields)
+    for _tiket_id, jenis_tabel_id, *values in rows:
+        baris = baris_of(*values)
+        tikets += 1
+        baris_total += baris
+        entry = breakdown.get(jenis_tabel_id)
+        if entry is not None:
+            entry['tikets'] += 1
+            entry['baris'] += baris
+
+    return {'tikets': tikets, 'baris': baris_total, 'breakdown': list(breakdown.values())}
+
+
+def _summary(user, selected):
+    """The three sections above the chart, over the same filters the chart uses.
+
+    The first is the QC queue this page lists, counting the rows it has left to
+    check. The other two are the queues upstream of it, kept apart because they
+    are different work: P3DE still holds one count of a tiket's data, while PIDE
+    has begun splitting it. All three read the same shape — a tiket total, a row
+    total and a per-jenis-tabel breakdown — so they can be read against each
+    other down the row.
+    """
+    upstream_selected = {
+        key: values for key, values in selected.items() if key not in _QC_ONLY_FILTERS
+    }
+    # Read once for all three, so every section's rows read in the same order.
+    kinds = list(JenisTabel.objects.order_by('id').values_list('id', 'deskripsi'))
+
+    def upstream(statuses):
+        return _queue_breakdown(
+            _apply_filters(_upstream_queryset(user, statuses), upstream_selected),
+            kinds, _BARIS_DATA_FIELDS, _baris_data,
+        )
+
+    return {
+        'qc': _queue_breakdown(
+            _apply_filters(_scoped_queryset(user), selected),
+            kinds, ('belum_qc',), _belum_qc,
+        ),
+        'p3de': upstream(STATUSES_DI_P3DE),
+        'pide': upstream(STATUSES_DI_PIDE),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Chart: Jml Progress per Jatuh Tempo, one line per PIC PMDE
 # ---------------------------------------------------------------------------
 
@@ -699,9 +834,10 @@ def quality_control_data(request):
     """DataTables server-side endpoint for Quality Control page.
 
     With ``get_filter_options=1`` it returns the option lists for the filter
-    panel, and with ``get_chart_data=1`` the series behind the progress chart;
-    every other request returns a page of rows. All three read the same filter
-    parameters, so the panel scopes the chart and the table together.
+    panel, with ``get_summary=1`` the figures for the tiles above the chart, and
+    with ``get_chart_data=1`` the series behind the chart itself; every other
+    request returns a page of rows. All of them read the same filter parameters,
+    so the panel scopes the tiles, the chart and the table together.
     """
     params = request.POST if request.method == 'POST' else request.GET
 
@@ -710,6 +846,9 @@ def quality_control_data(request):
 
     if params.get('get_filter_options'):
         return JsonResponse({'filter_options': _filter_options(scoped, selected)})
+
+    if params.get('get_summary'):
+        return JsonResponse(_summary(request.user, selected))
 
     if params.get('get_chart_data'):
         return JsonResponse(_chart_data(scoped, selected))
