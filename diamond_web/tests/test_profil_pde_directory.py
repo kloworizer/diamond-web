@@ -143,9 +143,6 @@ class TestSeksiDirectory:
         staff = _in_groups('user_pide', first_name=TOKEN, last_name='Pide')
         client.force_login(kasi)
 
-        # The Profil PDE page is a P3DE feature, so the kasi needs that too.
-        group, _ = Group.objects.get_or_create(name='user_p3de')
-        kasi.groups.add(group)
         resp = client.get(reverse('profil_ilap_list'))
 
         assert reverse(
@@ -162,11 +159,16 @@ class TestSeksiDirectory:
         assert resp.status_code == 200
         assert 'data' in resp.json()
 
-    def test_page_still_requires_p3de(self, client):
-        """Adding the directory must not have widened who may open the page."""
+    def test_page_is_open_to_any_logged_in_user(self, client):
+        """The catalogue is not a P3DE feature; only the links are scoped."""
         client.force_login(UserFactory())
         resp = client.get(reverse('profil_ilap_list'))
-        assert resp.status_code in (302, 403)
+        assert resp.status_code == 200
+        assert resp.context['seksi_columns']
+
+    def test_page_still_requires_login(self, client):
+        resp = client.get(reverse('profil_ilap_list'))
+        assert resp.status_code == 302
 
 
 @pytest.mark.django_db

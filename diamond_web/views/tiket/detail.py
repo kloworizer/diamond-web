@@ -8,7 +8,6 @@ from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
 from ...models.tiket_pic import TiketPIC
 from ...models.kirim_pide_temp import KirimPideTemp
-from ...models.pic import PIC
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ...models.detil_tanda_terima import DetilTandaTerima
 from ...constants.tiket_status import (
@@ -100,7 +99,6 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         - Queries TiketPIC with select_related('id_user'), ordered by role
         - Queries BackupData with select_related('id_user')
         - Queries DetilTandaTerima with related ILAP and perekam user data
-        - Queries PIC to check if each TiketPIC user has active PIC status
 
         Context Variables Added:
         - tiket: The Tiket instance
@@ -191,26 +189,11 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
                 f"{pic.id_user.username} - {full_name}"
                 if full_name else pic.id_user.username
             )
-            
-            # Check if this PIC is active (has an active PIC record without end_date)
-            if pic.role == TiketPIC.Role.P3DE:
-                tipe = PIC.TipePIC.P3DE
-            elif pic.role == TiketPIC.Role.PIDE:
-                tipe = PIC.TipePIC.PIDE
-            elif pic.role == TiketPIC.Role.PMDE:
-                tipe = PIC.TipePIC.PMDE
-            else:
-                tipe = None
-            
-            if tipe:
-                pic.is_pic_active = PIC.objects.filter(
-                    tipe=tipe,
-                    id_user=pic.id_user,
-                    id_sub_jenis_data_ilap=self.object.id_periode_data.id_sub_jenis_data_ilap,
-                    end_date__isnull=True
-                ).exists()
-            else:
-                pic.is_pic_active = False
+
+            # Whether this assignment still holds, straight from the tiket's own
+            # PIC record. A handover deactivates the row it replaces, so this is
+            # what the audit trail of the tiket itself says.
+            pic.is_pic_active = pic.active
         
         # Backup data list
         backups = self.object.backups.select_related('id_user').all().order_by('-id')
@@ -297,58 +280,24 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         ).exists()
         context['has_generated_nd_pengantar'] = has_pending_kirim_pide_temp or has_been_sent_to_pide
 
-        # Determine the sub_jenis_data_ilap for PIC validity check
+        # The sub jenis data ilap, also used by Riwayat Tiket below.
         sub_jenis_data_ilap = self.object.id_periode_data.id_sub_jenis_data_ilap
 
-        # Check if current user has any active PIC record for this tiket (per role)
-        # Must have both: active TiketPIC assignment AND valid PIC record (no end_date)
-        user_is_active_pic_p3de = (
+        # Whether the reader currently holds this tiket, per role. The tiket's
+        # own PIC record is the authority: it is what every action view checks
+        # before accepting a POST, so the buttons follow the same rule rather
+        # than a second one that can disagree with it.
+        user_roles = set(
             TiketPIC.objects.filter(
                 id_tiket=self.object,
                 id_user=self.request.user,
                 active=True,
-                role=TiketPIC.Role.P3DE
-            ).exists()
-            and
-            PIC.objects.filter(
-                tipe=PIC.TipePIC.P3DE,
-                id_user=self.request.user,
-                id_sub_jenis_data_ilap=sub_jenis_data_ilap,
-                end_date__isnull=True
-            ).exists()
+            ).values_list('role', flat=True)
         )
 
-        user_is_active_pic_pide = (
-            TiketPIC.objects.filter(
-                id_tiket=self.object,
-                id_user=self.request.user,
-                active=True,
-                role=TiketPIC.Role.PIDE
-            ).exists()
-            and
-            PIC.objects.filter(
-                tipe=PIC.TipePIC.PIDE,
-                id_user=self.request.user,
-                id_sub_jenis_data_ilap=sub_jenis_data_ilap,
-                end_date__isnull=True
-            ).exists()
-        )
-
-        user_is_active_pic_pmde = (
-            TiketPIC.objects.filter(
-                id_tiket=self.object,
-                id_user=self.request.user,
-                active=True,
-                role=TiketPIC.Role.PMDE
-            ).exists()
-            and
-            PIC.objects.filter(
-                tipe=PIC.TipePIC.PMDE,
-                id_user=self.request.user,
-                id_sub_jenis_data_ilap=sub_jenis_data_ilap,
-                end_date__isnull=True
-            ).exists()
-        )
+        user_is_active_pic_p3de = TiketPIC.Role.P3DE in user_roles
+        user_is_active_pic_pide = TiketPIC.Role.PIDE in user_roles
+        user_is_active_pic_pmde = TiketPIC.Role.PMDE in user_roles
 
         # overall active flag (any role)
         user_is_active_pic = user_is_active_pic_p3de or user_is_active_pic_pide or user_is_active_pic_pmde
