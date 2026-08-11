@@ -39,10 +39,15 @@ def _p3de_user():
 
 @pytest.mark.django_db
 class TestProfilILAPListView:
-    def test_get_denied_without_p3de_group(self, client):
+    def test_get_allowed_without_p3de_group(self, client):
+        """Browsing the catalogue is open to every logged in user."""
         client.force_login(UserFactory())
         resp = client.get(reverse('profil_ilap_list'))
-        assert resp.status_code in (302, 403)
+        assert resp.status_code == 200
+
+    def test_get_denied_when_anonymous(self, client):
+        resp = client.get(reverse('profil_ilap_list'))
+        assert resp.status_code == 302
 
     def test_get_html(self, client):
         client.force_login(_p3de_user())

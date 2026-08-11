@@ -25,7 +25,6 @@ from ..utils.pic_profil import (
 )
 from .profil_pic import build_seksi_directory
 from .mixins import (
-    UserP3DERequiredMixin,
     can_view_ilap_kontak,
     is_admin_p3de,
     is_kasi,
@@ -219,11 +218,14 @@ def build_ilap_years(ilap, current_year):
     return sorted(years)
 
 
-class ProfilILAPListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView):
+class ProfilILAPListView(LoginRequiredMixin, TemplateView):
     """Profil PDE: the staff of the three seksi, above the ILAP catalogue.
 
-    Unlike the detail pages, browsing the whole catalogue stays a P3DE
-    feature; other roles reach a single profile through the navbar search.
+    Open to every logged in user, like the detail pages it leads to: the
+    catalogue tells people which data the directorate receives and who to talk
+    to about it, so browsing it is not a P3DE feature. The directory names the
+    staff of all three seksi, but only the profiles a viewer may open are
+    linked — see :func:`~diamond_web.utils.pic_profil.visible_profil_pic_users`.
 
     The URL and the view name still say ILAP because that is what the table
     below the directory lists, and renaming them would break every bookmark and
