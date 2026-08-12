@@ -39,7 +39,7 @@
             <h5 class="card-title"><i class="feather-clock me-2"></i>Daftar Durasi Jatuh Tempo PMDE</h5>
             <div class="d-flex align-items-center gap-2">
                 <button type="button" class="btn btn-primary" id="btn-generate-durasi"
-                    title="Buat Durasi Jatuh Tempo PMDE untuk Sub Jenis Data yang belum punya, tahun 2022 s.d. tahun berjalan">
+                    title="Buat Durasi Jatuh Tempo PMDE untuk tahun yang belum punya (2019 s.d. tahun berjalan), sesuaikan durasi dengan status prioritas terbaru, lalu isi Durasi Jatuh Tempo PMDE pada Tiket yang masih kosong">
                     <i class="feather-zap me-1"></i>Generate Otomatis
                 </button>
                 <button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>
@@ -93,7 +93,7 @@
                         </div>
                         <div>
                             <h5 class="modal-title fw-bold mb-0" id="generateSummaryModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Ringkasan Generate Otomatis</h5>
-                            <span class="text-muted text-uppercase fw-semibold" style="font-size: 10px; letter-spacing: 0.5px;">Durasi Jatuh Tempo PMDE</span>
+                            <span class="text-muted text-uppercase fw-semibold" style="font-size: 10px; letter-spacing: 0.5px;" id="generate-step-label">Langkah 1 dari 3 &mdash; Durasi Jatuh Tempo PMDE</span>
                         </div>
                     </div>
                     <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -102,7 +102,7 @@
                     <!-- Filled by JS before the modal is shown -->
                 </div>
                 <div class="modal-footer border-top-0 pt-0 px-4 pb-4" style="border-top: none !important; background: transparent !important;">
-                    <button type="button" class="btn btn-figma-outline" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-figma-outline" data-bs-dismiss="modal" id="btn-generate-cancel">Batal</button>
                     <button type="button" class="btn btn-primary" id="btn-generate-confirm">
                         <i class="feather-check me-1"></i>PROSES
                     </button>
@@ -120,6 +120,12 @@
         const SUMMARY_PREVIEW_LIMIT = 50;
         let table;
         let generateSummaryModal;
+        // Generate Otomatis runs in three steps inside the same modal: step 1
+        // creates the missing Durasi Jatuh Tempo rows, step 2 re-applies the 45/85
+        // rule where the prioritas has changed since, and step 3 fills the Tiket
+        // rows that still have no Durasi Jatuh Tempo PMDE. `generateStep` is what
+        // the single footer button dispatches on.
+        let generateStep = 1;
 
         $(document).ready(function () {
             table = $('#durasi-jatuh-tempo-pmde-table').DataTable({
@@ -211,33 +217,16 @@
                 });
             });
 
-            // Handle confirm button inside the summary modal: do the actual insert
+            // Handle confirm button inside the summary modal: what it does depends
+            // on the step the modal is showing.
             $('#btn-generate-confirm').on('click', function () {
-                const btn = $(this);
-                const originalHtml = btn.html();
-                btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Memproses...');
-
-                $.ajax({
-                    url: '{% url "durasi_jatuh_tempo_pmde_generate" %}',
-                    type: 'POST',
-                    headers: { 'X-CSRFToken': '{{ csrf_token }}' },
-                    success: function (response) {
-                        if (response.success) {
-                            generateSummaryModal.hide();
-                            table.ajax.reload();
-                            showToast(response.message, response.created ? 'success' : 'info');
-                        } else {
-                            showToast(response.message || 'Gagal membuat Durasi Jatuh Tempo.', 'danger');
-                        }
-                    },
-                    error: function (xhr) {
-                        const res = xhr.responseJSON || {};
-                        showToast(res.message || 'Terjadi kesalahan. Silakan coba lagi.', 'danger');
-                    },
-                    complete: function () {
-                        btn.prop('disabled', false).html(originalHtml);
-                    }
-                });
+                if (generateStep === 1) {
+                    runGenerateDurasi();
+                } else if (generateStep === 2) {
+                    runPrioritasSync();
+                } else {
+                    runTiketBackfill();
+                }
             });
 
             // Handle edit/delete buttons (delegated event)
@@ -294,17 +283,24 @@
             const body = $('#generate-summary-body');
             const confirmBtn = $('#btn-generate-confirm');
 
+            generateStep = 1;
+            $('#generate-step-label').html('Langkah 1 dari 3 &mdash; Durasi Jatuh Tempo PMDE');
+            $('#btn-generate-cancel').text('Batal');
+            confirmBtn.show();
+
             if (!data.total_rows) {
-                confirmBtn.hide();
+                // Nothing to create, but the tikets may still need filling — so the
+                // button carries on to step 2 instead of dead-ending here.
+                confirmBtn.html('<i class="feather-arrow-right me-1"></i>LANJUT');
                 body.html(`
                     <div class="alert alert-info mb-0" style="font-size: 12.5px;">
-                        Tidak ada Sub Jenis Data yang perlu ditambahkan. Semua sudah punya Durasi Jatuh Tempo PMDE.
+                        Tidak ada baris yang perlu ditambahkan. Semua Sub Jenis Data sudah punya Durasi Jatuh Tempo PMDE untuk setiap tahun.
                     </div>
                 `);
                 return;
             }
 
-            confirmBtn.show();
+            confirmBtn.html('<i class="feather-check me-1"></i>PROSES');
 
             const shown = data.items.slice(0, SUMMARY_PREVIEW_LIMIT);
             const rows = shown.map(item => `
@@ -374,6 +370,304 @@
                 </div>
                 ${skippedNote}
             `);
+        }
+
+        // Step 1: write the missing Durasi Jatuh Tempo rows, then move on to the
+        // tikets that still point at nothing.
+        function runGenerateDurasi() {
+            const btn = $('#btn-generate-confirm');
+            const originalHtml = btn.html();
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Memproses...');
+
+            $.ajax({
+                url: '{% url "durasi_jatuh_tempo_pmde_generate" %}',
+                type: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                success: function (response) {
+                    if (!response.success) {
+                        showToast(response.message || 'Gagal membuat Durasi Jatuh Tempo.', 'danger');
+                        btn.prop('disabled', false).html(originalHtml);
+                        return;
+                    }
+                    table.ajax.reload();
+                    showToast(response.message, response.created ? 'success' : 'info');
+                    btn.prop('disabled', false);
+                    goToPrioritasSyncStep();
+                },
+                error: function (xhr) {
+                    const res = xhr.responseJSON || {};
+                    showToast(res.message || 'Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                    btn.prop('disabled', false).html(originalHtml);
+                }
+            });
+        }
+
+        // Step 2 preview: rows whose durasi no longer matches their prioritas
+        function goToPrioritasSyncStep() {
+            const body = $('#generate-summary-body');
+            const confirmBtn = $('#btn-generate-confirm');
+
+            generateStep = 2;
+            $('#generate-step-label').html('Langkah 2 dari 3 &mdash; Sesuaikan Durasi dengan Prioritas');
+            confirmBtn.hide();
+            body.html('<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></div>');
+
+            $.ajax({
+                url: '{% url "durasi_jatuh_tempo_pmde_prioritas_sync_preview" %}',
+                type: 'GET',
+                success: function (response) {
+                    if (!response.success) {
+                        body.html(`<div class="alert alert-danger mb-0" style="font-size: 12.5px;">${escapeHtml(response.message || 'Gagal memuat ringkasan prioritas.')}</div>`);
+                        return;
+                    }
+                    renderPrioritasSyncSummary(response);
+                },
+                error: function (xhr) {
+                    const res = xhr.responseJSON || {};
+                    body.html(`<div class="alert alert-danger mb-0" style="font-size: 12.5px;">${escapeHtml(res.message || 'Terjadi kesalahan saat memuat ringkasan prioritas.')}</div>`);
+                }
+            });
+        }
+
+        function renderPrioritasSyncSummary(data) {
+            const body = $('#generate-summary-body');
+            const confirmBtn = $('#btn-generate-confirm');
+
+            confirmBtn.show();
+
+            if (!data.total_rows) {
+                // Nothing to adjust, but the tikets may still need filling.
+                confirmBtn.html('<i class="feather-arrow-right me-1"></i>LANJUT');
+                body.html(`
+                    <div class="alert alert-info mb-0" style="font-size: 12.5px;">
+                        Tidak ada durasi yang perlu disesuaikan. Semua sudah sesuai status prioritasnya.
+                    </div>
+                `);
+                return;
+            }
+
+            confirmBtn.html('<i class="feather-check me-1"></i>PROSES');
+
+            const shown = data.items.slice(0, SUMMARY_PREVIEW_LIMIT);
+            const rows = shown.map(item => `
+                <tr>
+                    <td class="fw-semibold">${escapeHtml(item.id_sub_jenis_data)}</td>
+                    <td>${escapeHtml(item.nama_sub_jenis_data)}</td>
+                    <td class="text-center">
+                        ${item.durasi_lama} <i class="feather-arrow-right mx-1" style="font-size: 11px;"></i> <span class="fw-bold">${item.durasi_baru}</span>
+                        ${item.is_prioritas
+                            ? '<span class="badge bg-soft-danger text-danger ms-1" style="font-size: 10px;">Prioritas</span>'
+                            : '<span class="badge bg-soft-secondary text-secondary ms-1" style="font-size: 10px;">Non-Prioritas</span>'}
+                    </td>
+                    <td class="text-center">${item.jumlah_baris}</td>
+                    <td style="font-size: 11.5px;">${item.periode.map(escapeHtml).join('<br>')}</td>
+                </tr>
+            `).join('');
+
+            const sisa = data.items.length - shown.length;
+            const sisaRow = sisa > 0
+                ? `<tr><td colspan="5" class="text-center text-muted" style="font-size: 11.5px;">... dan ${sisa} Sub Jenis Data lainnya</td></tr>`
+                : '';
+
+            body.html(`
+                <div class="alert alert-info py-2 px-3 mb-3" style="font-size: 12px;">
+                    Status prioritas Sub Jenis Data berikut berubah setelah durasinya dibuat, sehingga durasinya
+                    <strong>akan disesuaikan</strong> menjadi ${data.durasi_prioritas} hari untuk yang prioritas dan
+                    ${data.durasi_non_prioritas} hari untuk lainnya. Durasi yang diisi manual (selain
+                    ${data.durasi_prioritas}/${data.durasi_non_prioritas} hari) tidak diubah.
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-4">
+                        <div class="p-3 rounded" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                            <span class="text-muted d-block mb-1" style="font-size: 11px;">Total Baris</span>
+                            <span class="fw-bold text-dark" style="font-size: 18px;">${data.total_rows}</span>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-3 rounded" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                            <span class="text-muted d-block mb-1" style="font-size: 11px;">Sub Jenis Data</span>
+                            <span class="fw-bold text-dark" style="font-size: 18px;">${data.total_jenis_data}</span>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-3 rounded" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                            <span class="text-muted d-block mb-1" style="font-size: 11px;">Jadi Prioritas / Non</span>
+                            <span class="fw-bold text-dark" style="font-size: 18px;">${data.menjadi_prioritas} / ${data.menjadi_non_prioritas}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0" style="font-size: 12.5px;">
+                        <thead>
+                            <tr>
+                                <th>ID Sub Jenis Data</th>
+                                <th>Nama Sub Jenis Data</th>
+                                <th class="text-center">Durasi</th>
+                                <th class="text-center">Baris</th>
+                                <th>Periode</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}${sisaRow}</tbody>
+                    </table>
+                </div>
+            `);
+        }
+
+        // Step 2: write the adjusted durasi values, then move on to the tikets
+        function runPrioritasSync() {
+            const btn = $('#btn-generate-confirm');
+            const originalHtml = btn.html();
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Memproses...');
+
+            $.ajax({
+                url: '{% url "durasi_jatuh_tempo_pmde_prioritas_sync" %}',
+                type: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                success: function (response) {
+                    if (!response.success) {
+                        showToast(response.message || 'Gagal menyesuaikan durasi.', 'danger');
+                        btn.prop('disabled', false).html(originalHtml);
+                        return;
+                    }
+                    table.ajax.reload();
+                    showToast(response.message, response.updated ? 'success' : 'info');
+                    btn.prop('disabled', false);
+                    goToTiketBackfillStep();
+                },
+                error: function (xhr) {
+                    const res = xhr.responseJSON || {};
+                    showToast(res.message || 'Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                    btn.prop('disabled', false).html(originalHtml);
+                }
+            });
+        }
+
+        // Step 3 preview: how many tikets would get their Durasi Jatuh Tempo PMDE
+        function goToTiketBackfillStep() {
+            const body = $('#generate-summary-body');
+            const confirmBtn = $('#btn-generate-confirm');
+
+            generateStep = 3;
+            $('#generate-step-label').html('Langkah 3 dari 3 &mdash; Isi Durasi Jatuh Tempo PMDE pada Tiket');
+            confirmBtn.hide();
+            body.html('<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></div>');
+
+            $.ajax({
+                url: '{% url "durasi_jatuh_tempo_pmde_tiket_backfill_preview" %}',
+                type: 'GET',
+                success: function (response) {
+                    if (!response.success) {
+                        body.html(`<div class="alert alert-danger mb-0" style="font-size: 12.5px;">${escapeHtml(response.message || 'Gagal memuat ringkasan Tiket.')}</div>`);
+                        return;
+                    }
+                    renderTiketBackfillSummary(response);
+                },
+                error: function (xhr) {
+                    const res = xhr.responseJSON || {};
+                    body.html(`<div class="alert alert-danger mb-0" style="font-size: 12.5px;">${escapeHtml(res.message || 'Terjadi kesalahan saat memuat ringkasan Tiket.')}</div>`);
+                }
+            });
+        }
+
+        function renderTiketBackfillSummary(data) {
+            const body = $('#generate-summary-body');
+            const confirmBtn = $('#btn-generate-confirm');
+
+            const lewatNote = (data.unmatched || data.tanpa_tanggal)
+                ? `<div class="alert alert-warning py-2 px-3 mt-3 mb-0" style="font-size: 12px;">
+                       ${data.unmatched} Tiket dilewati karena tidak ada durasi yang berlaku pada tanggal transfer/rematch-nya,
+                       dan ${data.tanpa_tanggal} Tiket belum ditransfer ke PMDE sehingga belum punya tanggal acuan.
+                   </div>`
+                : '';
+
+            if (!data.total_tiket) {
+                confirmBtn.hide();
+                $('#btn-generate-cancel').text('Tutup');
+                body.html(`
+                    <div class="alert alert-info mb-0" style="font-size: 12.5px;">
+                        Tidak ada Tiket yang perlu diisi Durasi Jatuh Tempo PMDE-nya.
+                    </div>
+                    ${lewatNote}
+                `);
+                return;
+            }
+
+            confirmBtn.show().html('<i class="feather-check me-1"></i>PROSES');
+
+            const rows = (data.per_year || []).map(item => `
+                <tr>
+                    <td class="fw-semibold">${escapeHtml(item.tahun)}</td>
+                    <td class="text-center">${item.jumlah}</td>
+                </tr>
+            `).join('');
+
+            body.html(`
+                <div class="alert alert-info py-2 px-3 mb-3" style="font-size: 12px;">
+                    Tiket berikut <strong>akan diisi</strong> Durasi Jatuh Tempo PMDE-nya, dicocokkan dari Sub Jenis Data
+                    ILAP tiket dan tanggal rematch (atau tanggal transfer bila belum pernah rematch). Nilai yang sudah
+                    terisi tidak diubah.
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-4">
+                        <div class="p-3 rounded" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                            <span class="text-muted d-block mb-1" style="font-size: 11px;">Total Tiket</span>
+                            <span class="fw-bold text-dark" style="font-size: 18px;">${data.total_tiket}</span>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-3 rounded" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                            <span class="text-muted d-block mb-1" style="font-size: 11px;">Tidak Cocok</span>
+                            <span class="fw-bold text-dark" style="font-size: 18px;">${data.unmatched}</span>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-3 rounded" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                            <span class="text-muted d-block mb-1" style="font-size: 11px;">Belum Transfer</span>
+                            <span class="fw-bold text-dark" style="font-size: 18px;">${data.tanpa_tanggal}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0" style="font-size: 12.5px;">
+                        <thead>
+                            <tr>
+                                <th>Tahun Transfer/Rematch</th>
+                                <th class="text-center">Jumlah Tiket</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+                ${lewatNote}
+            `);
+        }
+
+        // Step 3: write the matched Durasi Jatuh Tempo PMDE onto the tikets
+        function runTiketBackfill() {
+            const btn = $('#btn-generate-confirm');
+            const originalHtml = btn.html();
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Memproses...');
+
+            $.ajax({
+                url: '{% url "durasi_jatuh_tempo_pmde_tiket_backfill" %}',
+                type: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                success: function (response) {
+                    if (response.success) {
+                        generateSummaryModal.hide();
+                        showToast(response.message, response.updated ? 'success' : 'info');
+                    } else {
+                        showToast(response.message || 'Gagal mengisi Durasi Jatuh Tempo PMDE pada Tiket.', 'danger');
+                    }
+                },
+                error: function (xhr) {
+                    const res = xhr.responseJSON || {};
+                    showToast(res.message || 'Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                },
+                complete: function () {
+                    btn.prop('disabled', false).html(originalHtml);
+                }
+            });
         }
 
                 function loadModal(url, title) {

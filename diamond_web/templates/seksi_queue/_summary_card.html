@@ -1,0 +1,28 @@
+{% comment %}
+One summary section. Every card reads top to bottom in the same order — whose
+queue, how many tikets, how many rows, then the split — so the eye lands on the
+same figure in each and can compare them without hunting.
+
+Parameters:
+    key: The payload section this card draws from (`data-summary-key`).
+    variant: Which of the three dot colours it carries; `own` leads, since it
+        is the queue the page itself lists.
+    label: The queue named in the card's header.
+    sub: What the row figure counts, e.g. "baris belum QC".
+{% endcomment %}
+<div class="col-xl-4 col-md-6">
+    <div class="sq-stat sq-stat-{{ variant }} h-100" data-summary-key="{{ key }}">
+        <div class="sq-stat-head">
+            <span class="sq-stat-dot"></span>
+            <span class="sq-stat-label">{{ label }}</span>
+        </div>
+        <div class="sq-stat-figure">
+            <span class="sq-stat-value" data-summary-tikets>-</span>
+            <span class="sq-stat-unit">tiket</span>
+        </div>
+        <div class="sq-stat-sub">
+            <span data-summary-baris>-</span> {{ sub }}
+        </div>
+        {% include "seksi_queue/_summary_breakdown.html" %}
+    </div>
+</div>

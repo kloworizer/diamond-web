@@ -31,6 +31,8 @@ from .mixins import (
 )
 
 __all__ = [
+    'build_ilap_summary',
+    'summary_counts_payload',
     'ProfilILAPListView',
     'ProfilILAPDetailView',
     'JenisDataILAPProfilView',
@@ -218,6 +220,112 @@ def build_ilap_years(ilap, current_year):
     return sorted(years)
 
 
+def build_ilap_summary(queryset=None):
+    """Cross-tabulate the ILAP catalogue: kategori ILAP down, wilayah across.
+
+    The axes come from the whole catalogue while the numbers come from
+    `queryset`, so the shape of the table stays put as the search below it
+    narrows. That split is what makes the cells clickable: a column that came
+    and went with the search would move the cell the reader is aiming at, and a
+    kategori filtered down to nothing has to stay on screen for the reader to
+    find their way back out of it.
+
+    Both axes are read from the ILAPs rather than from the two reference
+    tables, so a kategori nobody is filed under is left out entirely — it has
+    nothing to report and would only add an empty row or column. Each axis
+    keeps the ordering of its reference model: kategori ILAP by its code,
+    kategori wilayah by id.
+
+    Args:
+        queryset (QuerySet, optional): The ILAPs to count. Defaults to the
+            whole catalogue, which is what the unfiltered page shows. Any
+            ordering on it is dropped, because an ordered queryset would carry
+            the ordering column into the GROUP BY and count one row per ILAP.
+
+    Returns:
+        dict: ``wilayah`` — the column headers, each ``{'id', 'label',
+        'total'}`` — ``rows``, one per kategori ILAP with ``kode``, ``label``,
+        ``total`` and a ``cells`` list of ``{'wilayah', 'jumlah'}`` in the
+        column order, and ``grand_total``. Both lists are empty and the total
+        zero when the catalogue holds no ILAP at all.
+    """
+    kategori = {}
+    wilayah = {}
+    axes = ILAP.objects.order_by().values_list(
+        'id_kategori__id_kategori',
+        'id_kategori__nama_kategori',
+        'id_kategori_wilayah__id',
+        'id_kategori_wilayah__deskripsi',
+    ).distinct()
+    for kode, nama_kategori, wilayah_id, deskripsi in axes:
+        kategori[kode] = nama_kategori
+        wilayah[wilayah_id] = deskripsi
+
+    counts = (
+        (ILAP.objects.all() if queryset is None else queryset)
+        .order_by()
+        .values('id_kategori__id_kategori', 'id_kategori_wilayah__id')
+        .annotate(total=Count('id'))
+    )
+    cells = {
+        (row['id_kategori__id_kategori'], row['id_kategori_wilayah__id']): row['total']
+        for row in counts
+    }
+
+    wilayah_ids = sorted(wilayah)
+    summary_rows = []
+    for kode in sorted(kategori):
+        row_cells = [
+            {'wilayah': w, 'jumlah': cells.get((kode, w), 0)} for w in wilayah_ids
+        ]
+        summary_rows.append({
+            'kode': kode,
+            'label': kategori[kode],
+            'cells': row_cells,
+            'total': sum(cell['jumlah'] for cell in row_cells),
+        })
+
+    return {
+        'wilayah': [
+            {
+                'id': w,
+                'label': wilayah[w],
+                'total': sum(cells.get((kode, w), 0) for kode in kategori),
+            }
+            for w in wilayah_ids
+        ],
+        'rows': summary_rows,
+        'grand_total': sum(row['total'] for row in summary_rows),
+    }
+
+
+def summary_counts_payload(summary):
+    """Reduce a :func:`build_ilap_summary` result to the numbers alone.
+
+    The page renders the axes once and the browser only ever refreshes the
+    figures in them, so the DataTables response carries the counts keyed by
+    kategori code and kategori wilayah id rather than a second copy of the
+    labels and their order.
+
+    Args:
+        summary (dict): A :func:`build_ilap_summary` result.
+
+    Returns:
+        dict: ``cells`` (``{kode: {wilayah_id: jumlah}}``), ``row_totals``
+        (``{kode: jumlah}``), ``column_totals`` (``{wilayah_id: jumlah}``) and
+        ``grand_total``.
+    """
+    return {
+        'cells': {
+            row['kode']: {cell['wilayah']: cell['jumlah'] for cell in row['cells']}
+            for row in summary['rows']
+        },
+        'row_totals': {row['kode']: row['total'] for row in summary['rows']},
+        'column_totals': {w['id']: w['total'] for w in summary['wilayah']},
+        'grand_total': summary['grand_total'],
+    }
+
+
 class ProfilILAPListView(LoginRequiredMixin, TemplateView):
     """Profil PDE: the staff of the three seksi, above the ILAP catalogue.
 
@@ -247,7 +355,7 @@ class ProfilILAPListView(LoginRequiredMixin, TemplateView):
         )
 
     def get_context_data(self, **kwargs):
-        """Add the staff directory shown above the ILAP table.
+        """Add the staff directory and the ILAP summary shown above the table.
 
         Args:
             **kwargs: Additional keyword arguments passed to the parent class
@@ -256,13 +364,15 @@ class ProfilILAPListView(LoginRequiredMixin, TemplateView):
         Returns:
             dict: Template context data, carrying ``seksi_columns`` — the three
             columns from :func:`~diamond_web.views.profil_pic.build_seksi_directory`
-            — on the page request. They are left out of the DataTables request,
-            which shares this URL and would otherwise rebuild the directory once
-            per page of the table without ever rendering it.
+            — and ``ilap_summary`` from :func:`build_ilap_summary` on the page
+            request. Both are left out of the DataTables request, which shares
+            this URL and would otherwise rebuild them once per page of the table
+            without ever rendering them.
         """
         context = super().get_context_data(**kwargs)
         if not self.wants_json():
             context['seksi_columns'] = build_seksi_directory()
+            context['ilap_summary'] = build_ilap_summary()
         return context
 
     def render_to_response(self, context, **response_kwargs):
@@ -289,7 +399,19 @@ class ProfilILAPListView(LoginRequiredMixin, TemplateView):
         """Build and return a JSON response for DataTables server-side processing.
 
         Handles pagination, global search, per-column filtering, ordering,
-        and record counts required by the DataTables jQuery plugin.
+        and record counts required by the DataTables jQuery plugin, plus the
+        counts the Ringkasan ILAP table above it displays.
+
+        Two filters narrow the rows: the search boxes, and the cell the reader
+        clicked in the summary (``summary_kategori``, a kategori code, and
+        ``summary_wilayah``, a kategori wilayah id). They are applied in that
+        order because the summary counts the searched ILAPs *without* the
+        clicked cell: drilling into one cell should narrow the table, not
+        collapse the breakdown that the reader's next click is aimed at.
+
+        The two summary parameters match exactly where the search boxes match
+        substrings, which is what a click on a named cell means and, for the
+        wilayah, what keeps ``Nasional`` from also selecting ``Internasional``.
 
         Returns:
             JsonResponse: A JSON object containing:
@@ -297,6 +419,7 @@ class ProfilILAPListView(LoginRequiredMixin, TemplateView):
                 - recordsTotal (int): Total records before filtering.
                 - recordsFiltered (int): Total records after filtering.
                 - data (list): Paginated list of ILAP row dictionaries.
+                - summary (dict): Counts from :func:`summary_counts_payload`.
         """
         draw = int(self.request.GET.get('draw', 1))
         start = int(self.request.GET.get('start', 0))
@@ -342,6 +465,17 @@ class ProfilILAPListView(LoginRequiredMixin, TemplateView):
                 }
                 base_qs = base_qs.filter(col_map.get(i, Q()))
 
+        # Counted before the summary selection narrows the rows further, so the
+        # breakdown keeps showing every cell the reader can still click.
+        summary = summary_counts_payload(build_ilap_summary(base_qs))
+
+        kategori_kode = self.request.GET.get('summary_kategori', '').strip()
+        if kategori_kode:
+            base_qs = base_qs.filter(id_kategori__id_kategori=kategori_kode)
+        wilayah_id = self.request.GET.get('summary_wilayah', '').strip()
+        if wilayah_id.isdigit():
+            base_qs = base_qs.filter(id_kategori_wilayah_id=int(wilayah_id))
+
         # Records after filtering
         records_filtered = base_qs.count()
 
@@ -376,6 +510,7 @@ class ProfilILAPListView(LoginRequiredMixin, TemplateView):
             'recordsTotal': records_total,
             'recordsFiltered': records_filtered,
             'data': data,
+            'summary': summary,
         })
 
 

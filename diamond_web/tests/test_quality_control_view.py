@@ -133,6 +133,25 @@ class TestQualityControlView:
         resp = client.get(reverse('quality_control'))
         assert resp.status_code == 200
 
+    def test_page_names_the_payload_keys_the_endpoint_sends(self, client):
+        """The shared template reads its variable columns out of a config block.
+
+        Nothing else ties the two halves together, so a key renamed on one side
+        would silently blank a column; this is what notices.
+        """
+        bundle = _qc_bundle()
+        client.force_login(bundle['pmde_user'])
+        html = client.get(reverse('quality_control')).content.decode()
+        row = client.get(
+            reverse('quality_control_data'),
+            {'draw': '1', 'start': '0', 'length': '10'},
+        ).json()['data'][0]
+
+        for key in ('pic_pmde', 'tgl_transfer', 'tgl_rematch',
+                    'jml_baris_i', 'jml_selesai', 'jml_progress'):
+            assert f"'{key}'" in html
+            assert key in row
+
 
 @pytest.mark.django_db
 class TestQualityControlData:
