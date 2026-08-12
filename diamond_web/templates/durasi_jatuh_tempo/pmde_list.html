@@ -307,20 +307,19 @@
                 <tr>
                     <td class="fw-semibold">${escapeHtml(item.id_sub_jenis_data)}</td>
                     <td>${escapeHtml(item.nama_sub_jenis_data)}</td>
-                    <td class="text-center">
-                        ${item.durasi}
-                        ${item.is_prioritas
+                    <td class="text-center">${item.jumlah_baris}</td>
+                    <td style="font-size: 11.5px;">${item.baris.map(baris => `
+                        ${escapeHtml(baris.periode)} &mdash; <span class="fw-semibold">${baris.durasi}</span> hari
+                        ${baris.is_prioritas
                             ? '<span class="badge bg-soft-danger text-danger ms-1" style="font-size: 10px;">Prioritas</span>'
                             : ''}
-                    </td>
-                    <td class="text-center">${item.jumlah_baris}</td>
-                    <td style="font-size: 11.5px;">${item.periode.map(escapeHtml).join('<br>')}</td>
+                    `).join('<br>')}</td>
                 </tr>
             `).join('');
 
             const sisa = data.items.length - shown.length;
             const sisaRow = sisa > 0
-                ? `<tr><td colspan="5" class="text-center text-muted" style="font-size: 11.5px;">... dan ${sisa} Sub Jenis Data lainnya</td></tr>`
+                ? `<tr><td colspan="4" class="text-center text-muted" style="font-size: 11.5px;">... dan ${sisa} Sub Jenis Data lainnya</td></tr>`
                 : '';
             const skippedNote = data.skipped
                 ? `<div class="alert alert-warning py-2 px-3 mt-3 mb-0" style="font-size: 12px;">
@@ -331,8 +330,9 @@
             body.html(`
                 <div class="alert alert-info py-2 px-3 mb-3" style="font-size: 12px;">
                     Baris berikut <strong>akan dibuat</strong> untuk Seksi PMDE, satu baris per tahun
-                    (${data.tahun_awal} s.d. ${data.tahun_akhir}). Durasi ${data.durasi_prioritas} hari untuk
-                    Sub Jenis Data prioritas dan ${data.durasi_non_prioritas} hari untuk lainnya.
+                    (${data.tahun_awal} s.d. ${data.tahun_akhir}). Durasi ditentukan per tahun:
+                    ${data.durasi_prioritas} hari bila tahun tersebut termasuk periode prioritas Sub Jenis Data
+                    itu, dan ${data.durasi_non_prioritas} hari bila tidak.
                 </div>
                 <div class="row g-2 mb-3">
                     <div class="col-4">
@@ -349,8 +349,8 @@
                     </div>
                     <div class="col-4">
                         <div class="p-3 rounded" style="background: #f8fafc; border: 1px solid #e2e8f0;">
-                            <span class="text-muted d-block mb-1" style="font-size: 11px;">Prioritas / Non</span>
-                            <span class="fw-bold text-dark" style="font-size: 18px;">${data.prioritas} / ${data.non_prioritas}</span>
+                            <span class="text-muted d-block mb-1" style="font-size: 11px;">Baris Prioritas / Non</span>
+                            <span class="fw-bold text-dark" style="font-size: 18px;">${data.baris_prioritas} / ${data.baris_non_prioritas}</span>
                         </div>
                     </div>
                 </div>
@@ -360,9 +360,8 @@
                             <tr>
                                 <th>ID Sub Jenis Data</th>
                                 <th>Nama Sub Jenis Data</th>
-                                <th class="text-center">Durasi</th>
                                 <th class="text-center">Baris</th>
-                                <th>Periode</th>
+                                <th>Periode &amp; Durasi</th>
                             </tr>
                         </thead>
                         <tbody>${rows}${sisaRow}</tbody>
@@ -453,28 +452,31 @@
                 <tr>
                     <td class="fw-semibold">${escapeHtml(item.id_sub_jenis_data)}</td>
                     <td>${escapeHtml(item.nama_sub_jenis_data)}</td>
-                    <td class="text-center">
-                        ${item.durasi_lama} <i class="feather-arrow-right mx-1" style="font-size: 11px;"></i> <span class="fw-bold">${item.durasi_baru}</span>
-                        ${item.is_prioritas
+                    <td class="text-center">${item.jumlah_baris}</td>
+                    <td style="font-size: 11.5px;">${item.baris.map(baris => `
+                        ${escapeHtml(baris.periode)} &mdash; ${baris.durasi_lama}
+                        <i class="feather-arrow-right mx-1" style="font-size: 11px;"></i>
+                        <span class="fw-bold">${baris.durasi_baru}</span> hari
+                        ${baris.is_prioritas
                             ? '<span class="badge bg-soft-danger text-danger ms-1" style="font-size: 10px;">Prioritas</span>'
                             : '<span class="badge bg-soft-secondary text-secondary ms-1" style="font-size: 10px;">Non-Prioritas</span>'}
-                    </td>
-                    <td class="text-center">${item.jumlah_baris}</td>
-                    <td style="font-size: 11.5px;">${item.periode.map(escapeHtml).join('<br>')}</td>
+                    `).join('<br>')}</td>
                 </tr>
             `).join('');
 
             const sisa = data.items.length - shown.length;
             const sisaRow = sisa > 0
-                ? `<tr><td colspan="5" class="text-center text-muted" style="font-size: 11.5px;">... dan ${sisa} Sub Jenis Data lainnya</td></tr>`
+                ? `<tr><td colspan="4" class="text-center text-muted" style="font-size: 11.5px;">... dan ${sisa} Sub Jenis Data lainnya</td></tr>`
                 : '';
 
             body.html(`
                 <div class="alert alert-info py-2 px-3 mb-3" style="font-size: 12px;">
-                    Status prioritas Sub Jenis Data berikut berubah setelah durasinya dibuat, sehingga durasinya
-                    <strong>akan disesuaikan</strong> menjadi ${data.durasi_prioritas} hari untuk yang prioritas dan
-                    ${data.durasi_non_prioritas} hari untuk lainnya. Durasi yang diisi manual (selain
-                    ${data.durasi_prioritas}/${data.durasi_non_prioritas} hari) tidak diubah.
+                    Periode berikut tidak lagi sesuai status prioritasnya, sehingga durasinya
+                    <strong>akan disesuaikan</strong> menjadi ${data.durasi_prioritas} hari bila periode itu
+                    termasuk periode prioritas dan ${data.durasi_non_prioritas} hari bila tidak. Penilaian
+                    dilakukan per periode, jadi tahun lain pada Sub Jenis Data yang sama tidak ikut berubah.
+                    Durasi yang diisi manual (selain ${data.durasi_prioritas}/${data.durasi_non_prioritas} hari)
+                    tidak diubah.
                 </div>
                 <div class="row g-2 mb-3">
                     <div class="col-4">
@@ -492,7 +494,7 @@
                     <div class="col-4">
                         <div class="p-3 rounded" style="background: #f8fafc; border: 1px solid #e2e8f0;">
                             <span class="text-muted d-block mb-1" style="font-size: 11px;">Jadi Prioritas / Non</span>
-                            <span class="fw-bold text-dark" style="font-size: 18px;">${data.menjadi_prioritas} / ${data.menjadi_non_prioritas}</span>
+                            <span class="fw-bold text-dark" style="font-size: 18px;">${data.baris_ke_prioritas} / ${data.baris_ke_non_prioritas}</span>
                         </div>
                     </div>
                 </div>
@@ -502,9 +504,8 @@
                             <tr>
                                 <th>ID Sub Jenis Data</th>
                                 <th>Nama Sub Jenis Data</th>
-                                <th class="text-center">Durasi</th>
                                 <th class="text-center">Baris</th>
-                                <th>Periode</th>
+                                <th>Periode &amp; Durasi</th>
                             </tr>
                         </thead>
                         <tbody>${rows}${sisaRow}</tbody>

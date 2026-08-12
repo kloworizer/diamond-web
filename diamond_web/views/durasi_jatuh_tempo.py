@@ -8,7 +8,6 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_GET, require_POST
 from django.contrib.auth.models import Group
 from django.db import transaction
-from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
@@ -504,24 +503,63 @@ def durasi_jatuh_tempo_pmde_data(request):
     })
 
 
+def _overlaps(start_a, end_a, start_b, end_b):
+    """True when the two closed date ranges share at least one day."""
+    return not (end_a < start_b or end_b < start_a)
+
+
+def _pmde_prioritas_ranges():
+    """The periods each Sub Jenis Data is prioritas, keyed by Sub Jenis Data id.
+
+    Prioritas is not a property of the Sub Jenis Data but of a period of it: a
+    `JenisPrioritasData` row carries the `start_date`/`end_date` the ND assigned
+    it for, so a Sub Jenis Data can be prioritas in one year and not the next.
+    An open-ended row (no `end_date`) runs indefinitely.
+    """
+    ranges = {}
+    for sub_id, start_date, end_date in JenisPrioritasData.objects.values_list(
+        'id_sub_jenis_data_ilap_id', 'start_date', 'end_date'
+    ):
+        ranges.setdefault(sub_id, []).append((start_date, end_date or _date.max))
+    return ranges
+
+
+def _is_prioritas_periode(prioritas_ranges, sub_id, start_date, end_date):
+    """Whether the period `start_date`..`end_date` of `sub_id` counts as prioritas.
+
+    A period is prioritas when any of the Sub Jenis Data's prioritas ranges
+    overlaps it. Generated ranges are whole years and the prioritas ND covers a
+    whole year too, so in practice this is a year-for-year comparison; a prioritas
+    range that only covers part of a period still makes that whole period
+    prioritas, since the durasi is a single number per row.
+    """
+    return any(
+        _overlaps(start_date, end_date, p_start, p_end)
+        for p_start, p_end in prioritas_ranges.get(sub_id, ())
+    )
+
+
 def _build_pmde_generate_plan(pmde_group):
     """Work out which PMDE `DurasiJatuhTempo` rows are missing.
 
     Rules applied:
     - Every `JenisDataILAP` row is considered, so a Sub Jenis Data that already
       has PMDE entries still gets the years none of them cover.
-    - `durasi` is 45 when the Sub Jenis Data appears in `JenisPrioritasData`,
-      otherwise 85.
     - One range per year from `GENERATE_PMDE_START_YEAR` up to and including the
       current year, each covering 01-01 until 31-12 of that year.
+    - `durasi` is decided per year, not per Sub Jenis Data: 45 when a
+      `JenisPrioritasData` period overlaps that year, otherwise 85. A Sub Jenis
+      Data that is prioritas only in some years therefore gets 45 for those years
+      and 85 for the rest.
 
     A year is skipped when its range would duplicate or overlap an existing PMDE
     row for the same Sub Jenis Data, so the non-overlapping invariant holds and
     nothing already configured by hand is touched.
 
     Returns a tuple ``(years, plan, skipped)`` where `plan` is a list of
-    ``{'jenis_data', 'durasi', 'is_prioritas', 'ranges'}`` dicts, and `skipped`
-    counts the ranges dropped as overlapping. Read-only — nothing is saved.
+    ``{'jenis_data', 'ranges'}`` dicts whose `ranges` are
+    ``(start_date, end_date, durasi, is_prioritas)`` tuples, and `skipped` counts
+    the ranges dropped as overlapping. Read-only — nothing is saved.
     """
     current_year = timezone.now().date().year
     years = list(range(GENERATE_PMDE_START_YEAR, current_year + 1))
@@ -531,9 +569,7 @@ def _build_pmde_generate_plan(pmde_group):
     if not candidates:
         return years, [], 0
 
-    prioritas_ids = set(
-        JenisPrioritasData.objects.values_list('id_sub_jenis_data_ilap_id', flat=True)
-    )
+    prioritas_ranges = _pmde_prioritas_ranges()
 
     # Existing PMDE ranges per Sub Jenis Data, used to guarantee no duplicate or
     # overlapping range is planned.
@@ -546,28 +582,23 @@ def _build_pmde_generate_plan(pmde_group):
     plan = []
     skipped = 0
     for obj in candidates:
-        is_prioritas = obj.pk in prioritas_ids
-        durasi = (
-            GENERATE_PMDE_DURASI_PRIORITAS if is_prioritas
-            else GENERATE_PMDE_DURASI_NON_PRIORITAS
-        )
         ranges = existing_ranges.setdefault(obj.pk, [])
         planned_ranges = []
         for year in years:
             start_date = _date(year, 1, 1)
             end_date = _date(year, 12, 31)
-            if any(not (e1 < start_date or end_date < s1) for s1, e1 in ranges):
+            if any(_overlaps(start_date, end_date, s1, e1) for s1, e1 in ranges):
                 skipped += 1
                 continue
+            is_prioritas = _is_prioritas_periode(prioritas_ranges, obj.pk, start_date, end_date)
+            durasi = (
+                GENERATE_PMDE_DURASI_PRIORITAS if is_prioritas
+                else GENERATE_PMDE_DURASI_NON_PRIORITAS
+            )
             ranges.append((start_date, end_date))
-            planned_ranges.append((start_date, end_date))
+            planned_ranges.append((start_date, end_date, durasi, is_prioritas))
         if planned_ranges:
-            plan.append({
-                'jenis_data': obj,
-                'durasi': durasi,
-                'is_prioritas': is_prioritas,
-                'ranges': planned_ranges,
-            })
+            plan.append({'jenis_data': obj, 'ranges': planned_ranges})
 
     return years, plan, skipped
 
@@ -583,9 +614,11 @@ def durasi_jatuh_tempo_pmde_generate_preview(request):
     `_build_pmde_generate_plan` — but saves nothing.
 
     Returns JSON with `success`, `tahun_awal`/`tahun_akhir`, `total_rows`,
-    `total_jenis_data`, `prioritas`/`non_prioritas` (Sub Jenis Data per durasi),
+    `total_jenis_data`, `baris_prioritas`/`baris_non_prioritas` (rows per durasi),
     `skipped`, and `items`: one entry per affected Sub Jenis Data with its kode,
-    nama, durasi, and the periode ranges to be inserted.
+    nama, and a `baris` list giving the periode, durasi and prioritas flag of
+    every row to be inserted — durasi is decided per periode, so one Sub Jenis
+    Data can carry both values.
 
     Side effects: None — read-only endpoint.
     """
@@ -602,25 +635,29 @@ def durasi_jatuh_tempo_pmde_generate_preview(request):
         {
             'id_sub_jenis_data': entry['jenis_data'].id_sub_jenis_data,
             'nama_sub_jenis_data': entry['jenis_data'].nama_sub_jenis_data,
-            'durasi': entry['durasi'],
-            'is_prioritas': entry['is_prioritas'],
             'jumlah_baris': len(entry['ranges']),
-            'periode': [
-                f"{start.strftime('%d-%m-%Y')} s.d. {end.strftime('%d-%m-%Y')}"
-                for start, end in entry['ranges']
+            'baris': [
+                {
+                    'periode': f"{start.strftime('%d-%m-%Y')} s.d. {end.strftime('%d-%m-%Y')}",
+                    'durasi': durasi,
+                    'is_prioritas': is_prioritas,
+                }
+                for start, end, durasi, is_prioritas in entry['ranges']
             ],
         }
         for entry in plan
     ]
 
+    all_rows = [row for item in items for row in item['baris']]
+
     return JsonResponse({
         'success': True,
         'tahun_awal': years[0] if years else None,
         'tahun_akhir': years[-1] if years else None,
-        'total_rows': sum(item['jumlah_baris'] for item in items),
+        'total_rows': len(all_rows),
         'total_jenis_data': len(items),
-        'prioritas': sum(1 for item in items if item['is_prioritas']),
-        'non_prioritas': sum(1 for item in items if not item['is_prioritas']),
+        'baris_prioritas': sum(1 for row in all_rows if row['is_prioritas']),
+        'baris_non_prioritas': sum(1 for row in all_rows if not row['is_prioritas']),
         'durasi_prioritas': GENERATE_PMDE_DURASI_PRIORITAS,
         'durasi_non_prioritas': GENERATE_PMDE_DURASI_NON_PRIORITAS,
         'skipped': skipped,
@@ -670,7 +707,7 @@ def durasi_jatuh_tempo_pmde_generate(request):
         DurasiJatuhTempo(
             id_sub_jenis_data=entry['jenis_data'],
             seksi=pmde_group,
-            durasi=entry['durasi'],
+            durasi=durasi,
             start_date=start_date,
             end_date=end_date,
             create_date=today,
@@ -679,7 +716,7 @@ def durasi_jatuh_tempo_pmde_generate(request):
             update_by=username,
         )
         for entry in plan
-        for start_date, end_date in entry['ranges']
+        for start_date, end_date, durasi, _is_prioritas in entry['ranges']
     ]
 
     with transaction.atomic():
@@ -700,64 +737,75 @@ def durasi_jatuh_tempo_pmde_generate(request):
 def _build_pmde_prioritas_sync_plan(pmde_group):
     """Find the generated PMDE rows whose durasi no longer matches their prioritas.
 
-    A Sub Jenis Data can be added to or removed from `JenisPrioritasData` long
-    after its `DurasiJatuhTempo` rows were generated, which leaves those rows on
-    the wrong side of the 45/85 rule. This collects the rows that need flipping —
-    85 to 45 when the Sub Jenis Data became prioritas, 45 to 85 when it stopped
-    being one.
+    A prioritas period can be added or deleted long after the `DurasiJatuhTempo`
+    rows were generated, which leaves rows on the wrong side of the 45/85 rule.
+    Each row is judged against its own periode — the same test
+    `_build_pmde_generate_plan` applies when it creates one — so only the years a
+    `JenisPrioritasData` period actually overlaps become 45, and a year that lost
+    its prioritas goes back to 85 while the Sub Jenis Data's other years stay put.
 
     Only rows that still carry one of the two generated values are considered, so
     a durasi somebody set by hand (say 30) is never overwritten.
 
     Returns a dict with `updates` (list of ``(durasi_row_id, durasi_baru)``
-    pairs), `items` (one entry per Sub Jenis Data, for the confirmation screen)
-    and the `menjadi_prioritas`/`menjadi_non_prioritas` Sub Jenis Data counts.
-    Read-only — nothing is saved.
+    pairs), `items` (one entry per Sub Jenis Data, each listing the rows that
+    change, for the confirmation screen) and the `baris_ke_prioritas` /
+    `baris_ke_non_prioritas` row counts. Read-only — nothing is saved.
     """
-    is_prioritas = Exists(
-        JenisPrioritasData.objects.filter(id_sub_jenis_data_ilap=OuterRef('id_sub_jenis_data_id'))
-    )
-    stale = DurasiJatuhTempo.objects.filter(
+    prioritas_ranges = _pmde_prioritas_ranges()
+
+    candidates = DurasiJatuhTempo.objects.filter(
         seksi=pmde_group,
         durasi__in=(GENERATE_PMDE_DURASI_PRIORITAS, GENERATE_PMDE_DURASI_NON_PRIORITAS),
-    ).annotate(prioritas=is_prioritas).filter(
-        Q(prioritas=True, durasi=GENERATE_PMDE_DURASI_NON_PRIORITAS)
-        | Q(prioritas=False, durasi=GENERATE_PMDE_DURASI_PRIORITAS)
     ).order_by('id_sub_jenis_data__id_sub_jenis_data', 'start_date')
 
     updates = []
     items = {}
-    for row_id, sub_id, kode, nama, durasi, prioritas, start_date, end_date in stale.values_list(
+    ke_prioritas = 0
+    ke_non_prioritas = 0
+    for row_id, sub_id, kode, nama, durasi, start_date, end_date in candidates.values_list(
         'id', 'id_sub_jenis_data_id',
         'id_sub_jenis_data__id_sub_jenis_data', 'id_sub_jenis_data__nama_sub_jenis_data',
-        'durasi', 'prioritas', 'start_date', 'end_date',
+        'durasi', 'start_date', 'end_date',
     ).iterator(chunk_size=2000):
+        is_prioritas = _is_prioritas_periode(
+            prioritas_ranges, sub_id, start_date, end_date or _date.max
+        )
         durasi_baru = (
-            GENERATE_PMDE_DURASI_PRIORITAS if prioritas
+            GENERATE_PMDE_DURASI_PRIORITAS if is_prioritas
             else GENERATE_PMDE_DURASI_NON_PRIORITAS
         )
+        if durasi == durasi_baru:
+            continue
+
         updates.append((row_id, durasi_baru))
+        if is_prioritas:
+            ke_prioritas += 1
+        else:
+            ke_non_prioritas += 1
+
         item = items.setdefault(sub_id, {
             'id_sub_jenis_data': kode,
             'nama_sub_jenis_data': nama,
-            'is_prioritas': bool(prioritas),
-            'durasi_lama': durasi,
-            'durasi_baru': durasi_baru,
             'jumlah_baris': 0,
-            'periode': [],
+            'baris': [],
         })
         item['jumlah_baris'] += 1
-        item['periode'].append(
-            f"{start_date.strftime('%d-%m-%Y')} s.d. "
-            f"{end_date.strftime('%d-%m-%Y') if end_date else 'seterusnya'}"
-        )
+        item['baris'].append({
+            'periode': (
+                f"{start_date.strftime('%d-%m-%Y')} s.d. "
+                f"{end_date.strftime('%d-%m-%Y') if end_date else 'seterusnya'}"
+            ),
+            'durasi_lama': durasi,
+            'durasi_baru': durasi_baru,
+            'is_prioritas': is_prioritas,
+        })
 
-    items = list(items.values())
     return {
         'updates': updates,
-        'items': items,
-        'menjadi_prioritas': sum(1 for item in items if item['is_prioritas']),
-        'menjadi_non_prioritas': sum(1 for item in items if not item['is_prioritas']),
+        'items': list(items.values()),
+        'baris_ke_prioritas': ke_prioritas,
+        'baris_ke_non_prioritas': ke_non_prioritas,
     }
 
 
@@ -771,9 +819,9 @@ def durasi_jatuh_tempo_pmde_prioritas_sync_preview(request):
     see `_build_pmde_prioritas_sync_plan` — but saves nothing.
 
     Returns JSON with `success`, `total_rows`, `total_jenis_data`,
-    `menjadi_prioritas`/`menjadi_non_prioritas`, the two durasi constants, and
-    `items`: one entry per affected Sub Jenis Data with its kode, nama, old and
-    new durasi, and the periode of every row that changes.
+    `baris_ke_prioritas`/`baris_ke_non_prioritas`, the two durasi constants, and
+    `items`: one entry per affected Sub Jenis Data whose `baris` list gives the
+    periode, old durasi and new durasi of every row that changes.
 
     Side effects: None — read-only endpoint.
     """
@@ -790,8 +838,8 @@ def durasi_jatuh_tempo_pmde_prioritas_sync_preview(request):
         'success': True,
         'total_rows': len(plan['updates']),
         'total_jenis_data': len(plan['items']),
-        'menjadi_prioritas': plan['menjadi_prioritas'],
-        'menjadi_non_prioritas': plan['menjadi_non_prioritas'],
+        'baris_ke_prioritas': plan['baris_ke_prioritas'],
+        'baris_ke_non_prioritas': plan['baris_ke_non_prioritas'],
         'durasi_prioritas': GENERATE_PMDE_DURASI_PRIORITAS,
         'durasi_non_prioritas': GENERATE_PMDE_DURASI_NON_PRIORITAS,
         'items': plan['items'],
@@ -856,8 +904,8 @@ def durasi_jatuh_tempo_pmde_prioritas_sync(request):
         'message': (
             f'{len(updates)} baris Durasi Jatuh Tempo PMDE disesuaikan untuk '
             f'{len(plan["items"])} Sub Jenis Data ('
-            f'{plan["menjadi_prioritas"]} menjadi prioritas, '
-            f'{plan["menjadi_non_prioritas"]} menjadi non-prioritas).'
+            f'{plan["baris_ke_prioritas"]} baris menjadi prioritas, '
+            f'{plan["baris_ke_non_prioritas"]} baris menjadi non-prioritas).'
         ),
     })
 

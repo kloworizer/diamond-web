@@ -654,7 +654,10 @@ class TestDurasiJatuhTempoPMDEViews:
         self._ensure_user_pmde_group()
         prioritas = JenisDataILAPFactory()
         biasa = JenisDataILAPFactory()
-        JenisPrioritasDataFactory(id_sub_jenis_data_ilap=prioritas)
+        JenisPrioritasDataFactory(
+            id_sub_jenis_data_ilap=prioritas, tahun='2024',
+            start_date=date(2024, 1, 1), end_date=date(2024, 12, 31),
+        )
         current_year = timezone.now().date().year
         years = list(range(GENERATE_PMDE_START_YEAR, current_year + 1))
 
@@ -667,16 +670,23 @@ class TestDurasiJatuhTempoPMDEViews:
         assert payload['tahun_akhir'] == current_year
         assert payload['total_jenis_data'] == 2
         assert payload['total_rows'] == 2 * len(years)
-        assert payload['prioritas'] == 1
-        assert payload['non_prioritas'] == 1
+        # Only the 2024 row of the prioritas Sub Jenis Data is prioritas
+        assert payload['baris_prioritas'] == 1
+        assert payload['baris_non_prioritas'] == 2 * len(years) - 1
 
         by_kode = {item['id_sub_jenis_data']: item for item in payload['items']}
-        assert by_kode[prioritas.id_sub_jenis_data]['durasi'] == 45
-        assert by_kode[biasa.id_sub_jenis_data]['durasi'] == 85
+        durasi_per_periode = {
+            baris['periode']: baris['durasi']
+            for baris in by_kode[prioritas.id_sub_jenis_data]['baris']
+        }
+        assert durasi_per_periode['01-01-2024 s.d. 31-12-2024'] == 45
+        assert durasi_per_periode['01-01-2023 s.d. 31-12-2023'] == 85
         assert by_kode[biasa.id_sub_jenis_data]['jumlah_baris'] == len(years)
-        assert by_kode[biasa.id_sub_jenis_data]['periode'][0] == (
-            f'01-01-{GENERATE_PMDE_START_YEAR} s.d. 31-12-{GENERATE_PMDE_START_YEAR}'
-        )
+        assert by_kode[biasa.id_sub_jenis_data]['baris'][0] == {
+            'periode': f'01-01-{GENERATE_PMDE_START_YEAR} s.d. 31-12-{GENERATE_PMDE_START_YEAR}',
+            'durasi': 85,
+            'is_prioritas': False,
+        }
 
         # Nothing was written
         assert not DurasiJatuhTempo.objects.filter(seksi__name='user_pmde').exists()
@@ -721,11 +731,14 @@ class TestDurasiJatuhTempoPMDEViews:
         assert {r.durasi for r in rows} == {85}
         assert rows[0].create_by == pmde_admin_user.username[:9]
 
-    def test_generate_uses_45_for_prioritas(self, client, pmde_admin_user):
+    def test_generate_uses_45_for_a_prioritas_that_never_ends(self, client, pmde_admin_user):
         self._ensure_user_pmde_group()
         prioritas = JenisDataILAPFactory()
         biasa = JenisDataILAPFactory()
-        JenisPrioritasDataFactory(id_sub_jenis_data_ilap=prioritas)
+        JenisPrioritasDataFactory(
+            id_sub_jenis_data_ilap=prioritas, tahun=str(GENERATE_PMDE_START_YEAR),
+            start_date=date(GENERATE_PMDE_START_YEAR, 1, 1), end_date=None,
+        )
 
         client.force_login(pmde_admin_user)
         resp = client.post(reverse('durasi_jatuh_tempo_pmde_generate'))
@@ -736,6 +749,32 @@ class TestDurasiJatuhTempoPMDEViews:
         assert {
             r.durasi for r in DurasiJatuhTempo.objects.filter(id_sub_jenis_data=biasa)
         } == {85}
+
+    def test_generate_applies_prioritas_only_to_the_years_it_covers(self, client, pmde_admin_user):
+        """Prioritas is a period, so only the years it overlaps get durasi 45."""
+        self._ensure_user_pmde_group()
+        jenis = JenisDataILAPFactory()
+        JenisPrioritasDataFactory(
+            id_sub_jenis_data_ilap=jenis, tahun='2023',
+            start_date=date(2023, 1, 1), end_date=date(2023, 12, 31),
+        )
+        JenisPrioritasDataFactory(
+            id_sub_jenis_data_ilap=jenis, tahun='2025',
+            start_date=date(2025, 1, 1), end_date=date(2025, 12, 31),
+        )
+
+        client.force_login(pmde_admin_user)
+        resp = client.post(reverse('durasi_jatuh_tempo_pmde_generate'))
+        assert resp.status_code == 200
+
+        durasi_per_year = {
+            r.start_date.year: r.durasi
+            for r in DurasiJatuhTempo.objects.filter(id_sub_jenis_data=jenis, seksi__name='user_pmde')
+        }
+        assert durasi_per_year[2023] == 45
+        assert durasi_per_year[2025] == 45
+        assert durasi_per_year[2024] == 85
+        assert durasi_per_year[GENERATE_PMDE_START_YEAR] == 85
 
     def test_generate_fills_only_the_years_an_existing_row_leaves_open(self, client, pmde_admin_user):
         """An open-ended row from 2023 covers 2023 onwards; earlier years are added."""
@@ -823,6 +862,13 @@ class TestDurasiJatuhTempoPMDEPrioritasSync:
             start_date=date(year, 1, 1), end_date=date(year, 12, 31),
         )
 
+    def _prioritas(self, jenis, year=2024):
+        """Mark `jenis` prioritas for one calendar year, the way an ND does."""
+        return JenisPrioritasDataFactory(
+            id_sub_jenis_data_ilap=jenis, tahun=str(year),
+            start_date=date(year, 1, 1), end_date=date(year, 12, 31),
+        )
+
     def test_sync_denied_non_admin(self, client, authenticated_user):
         client.force_login(authenticated_user)
         resp = client.post(reverse('durasi_jatuh_tempo_pmde_prioritas_sync'))
@@ -841,20 +887,22 @@ class TestDurasiJatuhTempoPMDEPrioritasSync:
     def test_preview_summarises_without_writing(self, client, pmde_admin_user):
         pmde_group = self._ensure_user_pmde_group()
         jenis = JenisDataILAPFactory()
-        JenisPrioritasDataFactory(id_sub_jenis_data_ilap=jenis)
-        row = self._durasi(jenis, pmde_group, 85)
+        self._prioritas(jenis, 2024)
+        row = self._durasi(jenis, pmde_group, 85, 2024)
 
         client.force_login(pmde_admin_user)
         payload = json.loads(client.get(reverse('durasi_jatuh_tempo_pmde_prioritas_sync_preview')).content)
         assert payload['success'] is True
         assert payload['total_rows'] == 1
         assert payload['total_jenis_data'] == 1
-        assert payload['menjadi_prioritas'] == 1
-        assert payload['menjadi_non_prioritas'] == 0
-        item = payload['items'][0]
-        assert item['durasi_lama'] == 85
-        assert item['durasi_baru'] == 45
-        assert item['periode'] == ['01-01-2024 s.d. 31-12-2024']
+        assert payload['baris_ke_prioritas'] == 1
+        assert payload['baris_ke_non_prioritas'] == 0
+        assert payload['items'][0]['baris'] == [{
+            'periode': '01-01-2024 s.d. 31-12-2024',
+            'durasi_lama': 85,
+            'durasi_baru': 45,
+            'is_prioritas': True,
+        }]
 
         row.refresh_from_db()
         assert row.durasi == 85
@@ -863,7 +911,8 @@ class TestDurasiJatuhTempoPMDEPrioritasSync:
         pmde_group = self._ensure_user_pmde_group()
         jenis = JenisDataILAPFactory()
         rows = [self._durasi(jenis, pmde_group, 85, year) for year in (2023, 2024)]
-        JenisPrioritasDataFactory(id_sub_jenis_data_ilap=jenis)
+        self._prioritas(jenis, 2023)
+        self._prioritas(jenis, 2024)
 
         client.force_login(pmde_admin_user)
         payload = json.loads(client.post(reverse('durasi_jatuh_tempo_pmde_prioritas_sync')).content)
@@ -876,11 +925,28 @@ class TestDurasiJatuhTempoPMDEPrioritasSync:
             assert row.durasi == 45
         assert rows[0].update_by == pmde_admin_user.username[:9]
 
+    def test_sync_only_touches_the_years_the_prioritas_covers(self, client, pmde_admin_user):
+        """A prioritas for 2024 leaves the 2023 row of the same Sub Jenis Data at 85."""
+        pmde_group = self._ensure_user_pmde_group()
+        jenis = JenisDataILAPFactory()
+        row_2023 = self._durasi(jenis, pmde_group, 85, 2023)
+        row_2024 = self._durasi(jenis, pmde_group, 85, 2024)
+        self._prioritas(jenis, 2024)
+
+        client.force_login(pmde_admin_user)
+        payload = json.loads(client.post(reverse('durasi_jatuh_tempo_pmde_prioritas_sync')).content)
+        assert payload['updated'] == 1
+
+        row_2023.refresh_from_db()
+        row_2024.refresh_from_db()
+        assert row_2023.durasi == 85
+        assert row_2024.durasi == 45
+
     def test_sync_raises_durasi_when_prioritas_deleted(self, client, pmde_admin_user):
         pmde_group = self._ensure_user_pmde_group()
         jenis = JenisDataILAPFactory()
-        prioritas = JenisPrioritasDataFactory(id_sub_jenis_data_ilap=jenis)
-        row = self._durasi(jenis, pmde_group, 45)
+        prioritas = self._prioritas(jenis, 2024)
+        row = self._durasi(jenis, pmde_group, 45, 2024)
         prioritas.delete()
 
         client.force_login(pmde_admin_user)
@@ -890,11 +956,28 @@ class TestDurasiJatuhTempoPMDEPrioritasSync:
         row.refresh_from_db()
         assert row.durasi == 85
 
+    def test_sync_raises_durasi_when_the_prioritas_year_moves(self, client, pmde_admin_user):
+        """Re-issuing the prioritas for another year flips both rows."""
+        pmde_group = self._ensure_user_pmde_group()
+        jenis = JenisDataILAPFactory()
+        row_2024 = self._durasi(jenis, pmde_group, 45, 2024)
+        row_2025 = self._durasi(jenis, pmde_group, 85, 2025)
+        self._prioritas(jenis, 2025)
+
+        client.force_login(pmde_admin_user)
+        payload = json.loads(client.post(reverse('durasi_jatuh_tempo_pmde_prioritas_sync')).content)
+        assert payload['updated'] == 2
+
+        row_2024.refresh_from_db()
+        row_2025.refresh_from_db()
+        assert row_2024.durasi == 85
+        assert row_2025.durasi == 45
+
     def test_sync_leaves_a_hand_set_durasi_alone(self, client, pmde_admin_user):
         pmde_group = self._ensure_user_pmde_group()
         jenis = JenisDataILAPFactory()
-        JenisPrioritasDataFactory(id_sub_jenis_data_ilap=jenis)
-        row = self._durasi(jenis, pmde_group, 30)
+        self._prioritas(jenis, 2024)
+        row = self._durasi(jenis, pmde_group, 30, 2024)
 
         client.force_login(pmde_admin_user)
         payload = json.loads(client.post(reverse('durasi_jatuh_tempo_pmde_prioritas_sync')).content)
@@ -907,8 +990,8 @@ class TestDurasiJatuhTempoPMDEPrioritasSync:
         self._ensure_user_pmde_group()
         pide_group, _ = Group.objects.get_or_create(name='user_pide')
         jenis = JenisDataILAPFactory()
-        JenisPrioritasDataFactory(id_sub_jenis_data_ilap=jenis)
-        row = self._durasi(jenis, pide_group, 85)
+        self._prioritas(jenis, 2024)
+        row = self._durasi(jenis, pide_group, 85, 2024)
 
         client.force_login(pmde_admin_user)
         payload = json.loads(client.post(reverse('durasi_jatuh_tempo_pmde_prioritas_sync')).content)
@@ -920,12 +1003,12 @@ class TestDurasiJatuhTempoPMDEPrioritasSync:
     def test_sync_keeps_the_row_so_tikets_follow_the_new_durasi(self, client, pmde_admin_user):
         pmde_group = self._ensure_user_pmde_group()
         jenis = JenisDataILAPFactory()
-        row = self._durasi(jenis, pmde_group, 85)
+        row = self._durasi(jenis, pmde_group, 85, 2024)
         tiket = TiketFactory(
             id_periode_data=PeriodeJenisDataFactory(id_sub_jenis_data_ilap=jenis),
             id_durasi_jatuh_tempo_pmde=row,
         )
-        JenisPrioritasDataFactory(id_sub_jenis_data_ilap=jenis)
+        self._prioritas(jenis, 2024)
 
         client.force_login(pmde_admin_user)
         client.post(reverse('durasi_jatuh_tempo_pmde_prioritas_sync'))
@@ -937,8 +1020,8 @@ class TestDurasiJatuhTempoPMDEPrioritasSync:
     def test_sync_is_idempotent(self, client, pmde_admin_user):
         pmde_group = self._ensure_user_pmde_group()
         jenis = JenisDataILAPFactory()
-        JenisPrioritasDataFactory(id_sub_jenis_data_ilap=jenis)
-        self._durasi(jenis, pmde_group, 85)
+        self._prioritas(jenis, 2024)
+        self._durasi(jenis, pmde_group, 85, 2024)
 
         client.force_login(pmde_admin_user)
         first = json.loads(client.post(reverse('durasi_jatuh_tempo_pmde_prioritas_sync')).content)
@@ -952,7 +1035,7 @@ class TestDurasiJatuhTempoPMDEPrioritasSync:
         self._ensure_user_pmde_group()
         prioritas = JenisDataILAPFactory()
         JenisDataILAPFactory()
-        JenisPrioritasDataFactory(id_sub_jenis_data_ilap=prioritas)
+        self._prioritas(prioritas, 2024)
 
         client.force_login(pmde_admin_user)
         client.post(reverse('durasi_jatuh_tempo_pmde_generate'))
