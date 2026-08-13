@@ -1,0 +1,1264 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+
+<div class="page-header">
+    <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+            <h5 class="m-b-10">
+                <i class="feather-users me-2"></i>Daftar PIC Data Subdit PDE
+            </h5>
+        </div>
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            {% if default_tab == 'p3de' %}
+                <li class="breadcrumb-item"><a href="javascript:void(0);">P3DE</a></li>
+                <li class="breadcrumb-item active">PIC P3DE</li>
+            {% elif default_tab == 'pide' %}
+                <li class="breadcrumb-item"><a href="javascript:void(0);">PIDE</a></li>
+                <li class="breadcrumb-item active">PIC PIDE</li>
+            {% elif default_tab == 'pmde' %}
+                <li class="breadcrumb-item"><a href="javascript:void(0);">PMDE</a></li>
+                <li class="breadcrumb-item active">PIC PMDE</li>
+            {% else %}
+                <li class="breadcrumb-item"><a href="javascript:void(0);">Manajemen PIC</a></li>
+                <li class="breadcrumb-item active">Daftar PIC Data Subdit PDE</li>
+            {% endif %}
+        </ul>
+    </div>
+</div>
+
+<style>
+    /* Premium Tabs */
+    .premium-tabs {
+        border-bottom: 1px solid #e2e8f0;
+        gap: 1rem;
+    }
+    .premium-tabs .nav-link {
+        border: none;
+        border-bottom: 2px solid transparent;
+        color: #64748b;
+        font-weight: 600;
+        padding: 0.75rem 0.25rem;
+        margin-bottom: -1px;
+        background: transparent;
+        transition: all 0.2s ease;
+    }
+    .premium-tabs .nav-link:hover {
+        color: #0f172a;
+        border-bottom-color: #cbd5e1;
+    }
+    .premium-tabs .nav-link.active {
+        color: #00BDFB;
+        border-bottom-color: #00BDFB;
+        background: transparent;
+    }
+    .premium-tabs .nav-link .badge {
+        background-color: #f1f5f9 !important;
+        color: #475569 !important;
+        transition: all 0.2s ease;
+    }
+    .premium-tabs .nav-link.active .badge {
+        background-color: rgba(0, 189, 251, 0.1) !important;
+        color: #008bc2 !important;
+    }
+
+    /* Active Filter Widget */
+    .summary-widget-card {
+        transition: border 0.3s ease, box-shadow 0.3s ease;
+        border: 2px solid transparent !important;
+    }
+    .summary-widget-card.filter-active {
+        border: 2px solid #00BDFB !important;
+        box-shadow: 0 0 0 4px rgba(0, 189, 251, 0.15) !important;
+    }
+
+    /* Premium Select2 Styling */
+    .select2-container--bootstrap-5 .select2-selection--multiple {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        min-height: 42px;
+        padding: 4px 8px;
+        background-color: #f8fafc;
+        transition: all 0.2s ease;
+    }
+    .select2-container--bootstrap-5.select2-container--focus .select2-selection--multiple {
+        border-color: #00BDFB;
+        box-shadow: 0 0 0 3px rgba(0, 189, 251, 0.15);
+        background-color: #fff;
+    }
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+        display: inline-flex;
+        align-items: center;
+        background-color: #e0f2fe;
+        border: 1px solid #bae6fd;
+        color: #0369a1;
+        border-radius: 4px;
+        padding: 2px 8px;
+        font-size: 11.5px;
+        font-weight: 500;
+        margin-top: 5px;
+        margin-right: 4px;
+        margin-bottom: 5px;
+    }
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
+        color: #0284c7;
+        font-weight: bold;
+        border: none;
+        background: transparent;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 0;
+        margin-left: 6px;
+        position: relative;
+        top: -1px; /* Slight optical adjustment if needed, but inline-flex should handle it */
+    }
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove:hover {
+        background: transparent;
+        color: #0c4a6e;
+    }
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered {
+        display: flex !important;
+        flex-wrap: wrap;
+        align-items: center;
+        list-style: none;
+        margin: 0;
+        padding: 0 4px;
+    }
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__clear {
+        display: none !important;
+    }
+    .select2-dropdown {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+    .select2-container--bootstrap-5 .select2-results__option--highlighted[aria-selected] {
+        background-color: #f1f5f9;
+        color: #0f172a;
+    }
+
+    /* Fix Select2 inline search field visibility */
+    .select2-container--bootstrap-5 .select2-search--inline .select2-search__field {
+        color: #0f172a !important;
+        background-color: transparent !important;
+        font-family: inherit;
+        caret-color: #0f172a !important;
+    }
+    
+    .pic-icon-p3de {
+        background-color: rgba(200, 215, 253, 0.25) !important;
+        color: #2f54c4 !important;
+    }
+    .pic-icon-pide {
+        background-color: rgba(6, 196, 210, 0.08) !important;
+        color: #048c96 !important;
+    }
+    .pic-icon-pmde {
+        background-color: rgba(12, 146, 255, 0.08) !important;
+        color: #006fcc !important;
+    }
+
+    #matrix-table td {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: normal;
+    }
+    #matrix-table td .text-truncate {
+        max-width: 100%;
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+</style>
+
+<div class="main-content">
+    <!-- PIC Summary Widgets -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
+            <div class="card border-0 shadow-sm cursor-pointer summary-widget-card" data-filter-type="ilap" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h4 class="fw-bolder text-dark mb-1">{{ total_ilap }}</h4>
+                            <p class="fs-12 fw-medium text-muted mb-0">Total ILAP</p>
+                        </div>
+                        <div class="avatar-text avatar-lg bg-soft-primary text-primary rounded-circle" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
+                            <i class="feather-grid fs-18"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
+            <div class="card border-0 shadow-sm cursor-pointer summary-widget-card" data-filter-type="jenis_data" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h4 class="fw-bolder text-dark mb-1">{{ total_matrix_rows }}</h4>
+                            <p class="fs-12 fw-medium text-muted mb-0">Total Jenis Data</p>
+                        </div>
+                        <div class="avatar-text avatar-lg bg-soft-success text-success rounded-circle" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
+                            <i class="feather-database fs-18"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if can_view_p3de %}
+        <div class="col-xl-2 col-md-4 mb-3 mb-md-0">
+            <div class="card border-0 shadow-sm cursor-pointer summary-widget-card" data-filter-type="pic_p3de" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h4 class="fw-bolder text-dark mb-1">{{ total_pic_p3de }}</h4>
+                            <p class="fs-12 fw-medium text-muted mb-0">PIC P3DE</p>
+                        </div>
+                        <div class="avatar-text avatar-lg pic-icon-p3de rounded-circle" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
+                            <span class="fw-bolder" style="font-size: 11px; letter-spacing: 0.5px;">P3DE</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if can_view_pide %}
+        <div class="col-xl-2 col-md-4 mb-3 mb-md-0">
+            <div class="card border-0 shadow-sm cursor-pointer summary-widget-card" data-filter-type="pic_pide" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h4 class="fw-bolder text-dark mb-1">{{ total_pic_pide }}</h4>
+                            <p class="fs-12 fw-medium text-muted mb-0">PIC PIDE</p>
+                        </div>
+                        <div class="avatar-text avatar-lg pic-icon-pide rounded-circle" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
+                            <span class="fw-bolder" style="font-size: 11px; letter-spacing: 0.5px;">PIDE</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if can_view_pmde %}
+        <div class="col-xl-2 col-md-4">
+            <div class="card border-0 shadow-sm cursor-pointer summary-widget-card" data-filter-type="pic_pmde" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h4 class="fw-bolder text-dark mb-1">{{ total_pic_pmde }}</h4>
+                            <p class="fs-12 fw-medium text-muted mb-0">PIC PMDE</p>
+                        </div>
+                        <div class="avatar-text avatar-lg pic-icon-pmde rounded-circle" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
+                            <span class="fw-bolder" style="font-size: 11px; letter-spacing: 0.5px;">PMDE</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="card shadow-sm border-0 stretch stretch-full datatable-card" style="border-radius: 12px;">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start mb-4">
+                <!-- LEFT SECTION: FILTER INDICATOR + TABS -->
+                <div>
+                    <div class="mb-2" id="filter-controls-container" style="display: none !important;">
+                        <span id="global-filter-indicator" class="badge bg-soft-primary text-primary px-3 py-2" style="font-size: 0.85rem; border-radius: 8px;">
+                            <i class="feather-filter me-1"></i>Filter Aktif: <span id="global-filter-count" class="fw-bold">0</span>
+                        </span>
+                    </div>
+
+                    <ul class="nav premium-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {% if default_tab == 'matrix' %}active{% endif %}" id="tab-matrix" data-bs-toggle="tab" data-bs-target="#pane-matrix" type="button" role="tab" aria-controls="pane-matrix" aria-selected="{% if default_tab == 'matrix' %}true{% else %}false{% endif %}">
+                                <i class="feather-grid me-2"></i>Matriks Penugasan
+                            </button>
+                        </li>
+                        {% if can_view_p3de %}
+                        <!-- Vertical Separator -->
+                        <li class="nav-item d-flex align-items-center mx-2" role="presentation">
+                            <div style="height: 24px; border-left: 2px solid #e2e8f0;"></div>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {% if default_tab == 'p3de' %}active{% endif %}" id="tab-p3de" data-bs-toggle="tab" data-bs-target="#pane-p3de" type="button" role="tab" aria-controls="pane-p3de" aria-selected="{% if default_tab == 'p3de' %}true{% else %}false{% endif %}">
+                                <i class="feather-user me-2"></i>PIC P3DE
+                            </button>
+                        </li>
+                        {% endif %}
+
+                        {% if can_view_pide %}
+                        <!-- Vertical Separator -->
+                        <li class="nav-item d-flex align-items-center mx-2" role="presentation">
+                            <div style="height: 24px; border-left: 2px solid #e2e8f0;"></div>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {% if default_tab == 'pide' %}active{% endif %}" id="tab-pide" data-bs-toggle="tab" data-bs-target="#pane-pide" type="button" role="tab" aria-controls="pane-pide" aria-selected="{% if default_tab == 'pide' %}true{% else %}false{% endif %}">
+                                <i class="feather-user me-2"></i>PIC PIDE
+                            </button>
+                        </li>
+                        {% endif %}
+
+                        {% if can_view_pmde %}
+                        <!-- Vertical Separator -->
+                        <li class="nav-item d-flex align-items-center mx-2" role="presentation">
+                            <div style="height: 24px; border-left: 2px solid #e2e8f0;"></div>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {% if default_tab == 'pmde' %}active{% endif %}" id="tab-pmde" data-bs-toggle="tab" data-bs-target="#pane-pmde" type="button" role="tab" aria-controls="pane-pmde" aria-selected="{% if default_tab == 'pmde' %}true{% else %}false{% endif %}">
+                                <i class="feather-user me-2"></i>PIC PMDE
+                            </button>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+                
+                <!-- RIGHT SECTION: RESET FILTER + SUMMARY WIDGET (TOP RIGHT ANCHORED) -->
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" id="btn-reset-global-filter" class="btn btn-outline-danger btn-sm align-items-center gap-1" style="display: none; border-radius: 8px; font-weight: 500; text-transform: none; padding: 7px 12px; font-size: 13px;">
+                        <i class="feather-x" style="width: 14px; height: 14px;"></i> Reset Filter
+                    </button>
+
+                    <!-- SUMMARY WIDGET (Matching Home Submenu Metrics Style) -->
+                    <div class="d-flex align-items-center dashboard-metrics" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 7px 14px;">
+                        <!-- Jumlah ILAP -->
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="avatar avatar-xs bg-soft-warning text-warning" style="background-color: rgba(239, 186, 34, 0.1) !important; color: #EFBA22 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                <i class="feather-home fs-16"></i>
+                            </div>
+                            <div>
+                                <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">ILAP</small>
+                                <h5 class="fw-bolder mb-0 text-warning" id="live-summary-ilap-count" style="color: #EFBA22 !important; font-size: 14px; line-height: 1.2;">{{ total_ilap|default:"0" }}</h5>
+                            </div>
+                        </div>
+                        <!-- Divider -->
+                        <div class="mx-3" style="border-left: 1.5px solid #e2e8f0; height: 28px;"></div>
+                        <!-- Jenis Data -->
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="avatar avatar-xs bg-soft-success text-success" style="background-color: rgba(22, 192, 152, 0.1) !important; color: #16C098 !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                <i class="feather-database fs-16"></i>
+                            </div>
+                            <div>
+                                <small class="text-muted d-block" style="font-size: 11px; font-weight: 500; line-height: 1.2;">Jenis Data</small>
+                                <h5 class="fw-bolder mb-0 text-success" id="live-summary-jenis-count" style="color: #16C098 !important; font-size: 14px; line-height: 1.2;">{{ total_matrix_rows|default:"0" }}</h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content">
+                <!-- MATRIX TAB -->
+                <div class="tab-pane fade {% if default_tab == 'matrix' %}show active{% endif %}" id="pane-matrix" role="tabpanel" aria-labelledby="tab-matrix">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h6 class="m-0 fw-bold text-dark"><i class="feather-grid me-2"></i>Matriks Penugasan PIC (Aktif)</h6>
+                            <p class="text-muted small mb-0 mt-1">Daftar ini menampilkan kombinasi ILAP dan Jenis Data yang sesuai dengan filter. Gunakan baris pencarian di bawah tabel untuk memfilter spesifik.</p>
+                        </div>
+                        <a href="javascript:void(0);" id="btn-reset-matrix" class="btn btn-light text-secondary border-0 fw-bold align-items-center gap-1 btn-reset" style="display: none; font-size: 13px; font-weight: 500; background-color: #f1f5f9;">
+                            <i class="feather-x" style="width: 14px; height: 14px;"></i> Reset Pencarian
+                        </a>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="matrix-table" class="table table-hover mb-0" style="width:100%; table-layout: fixed;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;" class="text-center"></th>
+                                    <th style="width: 180px;">ILAP</th>
+                                    <th style="width: 140px;">ID Sub Jenis Data</th>
+                                    <th style="width: 220px;">Nama Sub Jenis Data</th>
+                                    <th style="width: 180px;">PIC P3DE</th>
+                                    <th style="width: 180px;">PIC PIDE</th>
+                                    <th style="width: 180px;">PIC PMDE</th>
+                                </tr>
+                                <tr id="matrix-search-row">
+                                    <th></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="Search ILAP" data-column="1" /></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="Search ID Sub" data-column="2" /></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="Search Nama Sub" data-column="3" /></th>
+                                    <th></th>
+                                    <th></th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {% if can_view_p3de %}
+                <!-- P3DE TAB -->
+                <div class="tab-pane fade {% if default_tab == 'p3de' %}show active{% endif %}" id="pane-p3de" role="tabpanel" aria-labelledby="tab-p3de">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h6 class="m-0 fw-bold text-dark"><i class="feather-user-check me-2"></i>Daftar PIC P3DE</h6>
+                            <p class="text-muted small mb-0 mt-1">Daftar pengguna yang ditugaskan sebagai PIC P3DE.</p>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <a href="javascript:void(0);" id="btn-reset-p3de" class="btn btn-light text-secondary border-0 fw-bold align-items-center gap-1 btn-reset" style="display: none; font-size: 13px; font-weight: 500; background-color: #f1f5f9;">
+                                <i class="feather-x" style="width: 14px; height: 14px;"></i> Reset Pencarian
+                            </a>
+                            {% if is_admin_p3de %}<button type="button" class="btn btn-success" data-action="create" data-url="{% url 'pic_p3de_create' %}"><i class="feather-plus me-1"></i>Tambah</button>{% endif %}
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="p3de-table" class="table table-hover mb-0" style="width:100%; table-layout: fixed;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;" class="text-center"></th>
+                                    <th style="width: 180px;">ILAP</th>
+                                    <th style="width: 120px;">ID Sub</th>
+                                    <th style="width: 200px;">Nama Sub Jenis Data</th>
+                                    <th style="width: 100px;">Username</th>
+                                    <th style="width: 150px;">Nama PIC</th>
+                                    <th style="width: 100px;">Start Date</th>
+                                    <th style="width: 100px;">End Date</th>
+                                    {% if is_admin_p3de %}<th style="width: 100px;" class="col-actions">Aksi</th>{% endif %}
+                                </tr>
+                                <tr id="p3de-search-row">
+                                    <th></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="ILAP" data-column="1" /></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="ID" data-column="2" /></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="Sub Jenis" data-column="3" /></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="User" data-column="4" /></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="Nama" data-column="5" /></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="Start" data-column="6" /></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="End" data-column="7" /></th>
+                                    {% if is_admin_p3de %}<th class="col-actions"></th>{% endif %}
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if can_view_pide %}
+                <!-- PIDE TAB -->
+                <div class="tab-pane fade {% if default_tab == 'pide' %}show active{% endif %}" id="pane-pide" role="tabpanel" aria-labelledby="tab-pide">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h6 class="m-0 fw-bold text-dark"><i class="feather-user-check me-2"></i>Daftar PIC PIDE</h6>
+                            <p class="text-muted small mb-0 mt-1">Daftar pengguna yang ditugaskan sebagai PIC PIDE.</p>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <a href="javascript:void(0);" id="btn-reset-pide" class="btn btn-light text-secondary border-0 fw-bold align-items-center gap-1 btn-reset" style="display: none; font-size: 13px; font-weight: 500; background-color: #f1f5f9;">
+                                <i class="feather-x" style="width: 14px; height: 14px;"></i> Reset Pencarian
+                            </a>
+                            {% if is_admin_pide %}<button type="button" class="btn btn-success" data-action="create" data-url="{% url 'pic_pide_create' %}"><i class="feather-plus me-1"></i>Tambah</button>{% endif %}
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="pide-table" class="table table-hover mb-0" style="width:100%; table-layout: fixed;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;" class="text-center"></th>
+                                    <th style="width: 180px;">ILAP</th>
+                                    <th style="width: 120px;">ID Sub</th>
+                                    <th style="width: 200px;">Nama Sub Jenis Data</th>
+                                    <th style="width: 100px;">Username</th>
+                                    <th style="width: 150px;">Nama PIC</th>
+                                    <th style="width: 100px;">Start Date</th>
+                                    <th style="width: 100px;">End Date</th>
+                                    {% if is_admin_pide %}<th style="width: 100px;" class="col-actions">Aksi</th>{% endif %}
+                                </tr>
+                                <tr id="pide-search-row">
+                                    <th></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="ILAP" data-column="1" /></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="ID" data-column="2" /></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="Sub Jenis" data-column="3" /></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="User" data-column="4" /></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="Nama" data-column="5" /></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="Start" data-column="6" /></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="End" data-column="7" /></th>
+                                    {% if is_admin_pide %}<th class="col-actions"></th>{% endif %}
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if can_view_pmde %}
+                <!-- PMDE TAB -->
+                <div class="tab-pane fade {% if default_tab == 'pmde' %}show active{% endif %}" id="pane-pmde" role="tabpanel" aria-labelledby="tab-pmde">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h6 class="m-0 fw-bold text-dark"><i class="feather-user-check me-2"></i>Daftar PIC PMDE</h6>
+                            <p class="text-muted small mb-0 mt-1">Daftar pengguna yang ditugaskan sebagai PIC PMDE.</p>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <a href="javascript:void(0);" id="btn-reset-pmde" class="btn btn-light text-secondary border-0 fw-bold align-items-center gap-1 btn-reset" style="display: none; font-size: 13px; font-weight: 500; background-color: #f1f5f9;">
+                                <i class="feather-x" style="width: 14px; height: 14px;"></i> Reset Pencarian
+                            </a>
+                            {% if is_admin_pmde %}<button type="button" class="btn btn-success" data-action="create" data-url="{% url 'pic_pmde_create' %}"><i class="feather-plus me-1"></i>Tambah</button>{% endif %}
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="pmde-table" class="table table-hover mb-0" style="width:100%; table-layout: fixed;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;" class="text-center"></th>
+                                    <th style="width: 180px;">ILAP</th>
+                                    <th style="width: 120px;">ID Sub</th>
+                                    <th style="width: 200px;">Nama Sub Jenis Data</th>
+                                    <th style="width: 100px;">Username</th>
+                                    <th style="width: 150px;">Nama PIC</th>
+                                    <th style="width: 100px;">Start Date</th>
+                                    <th style="width: 100px;">End Date</th>
+                                    {% if is_admin_pmde %}<th style="width: 100px;" class="col-actions">Aksi</th>{% endif %}
+                                </tr>
+                                <tr id="pmde-search-row">
+                                    <th></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="ILAP" data-column="1" /></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="ID" data-column="2" /></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="Sub Jenis" data-column="3" /></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="User" data-column="4" /></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="Nama" data-column="5" /></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="Start" data-column="6" /></th>
+                                    <th><input type="text" class="form-control form-control-sm" placeholder="End" data-column="7" /></th>
+                                    {% if is_admin_pmde %}<th class="col-actions"></th>{% endif %}
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+ 
+    <!-- Modal for Global Filter -->
+    <div class="modal fade" id="globalFilterModal" aria-labelledby="globalFilterModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12); background-color: #ffffff;">
+                <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                    <div class="d-flex align-items-center gap-2" id="globalFilterModalLabelContainer">
+                        <div class="avatar avatar-xs bg-soft-primary text-primary" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                            <i class="feather-filter fs-16"></i>
+                        </div>
+                        <h5 class="modal-title fw-bold text-dark mb-0" id="globalFilterModalLabel" style="font-size: 15px;">Filter Data Global</h5>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="font-size: 12px;"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3 filter-group" id="group-ilap-kategori" style="display: none;">
+                        <label class="form-label fw-bold text-dark">Kategori ILAP</label>
+                        <select class="form-control select2-global-filter" id="filter-ilap-kategori" multiple="multiple" data-placeholder="Ketik untuk mencari Kategori ILAP..."></select>
+                    </div>
+                    <div class="mb-3 filter-group" id="group-ilap">
+                        <label class="form-label fw-bold text-dark">Pilih ILAP</label>
+                        <select class="form-control select2-global-filter" id="filter-ilap" multiple="multiple" data-placeholder="Ketik untuk mencari ILAP..."></select>
+                    </div>
+                    <div class="mb-3 filter-group" id="group-jenis-data">
+                        <label class="form-label fw-bold text-dark">Pilih Jenis Data</label>
+                        <select class="form-control select2-global-filter" id="filter-jenis-data" multiple="multiple" data-placeholder="Ketik untuk mencari Jenis Data..."></select>
+                    </div>
+                    {% if can_view_p3de %}
+                    <div class="mb-3 filter-group" id="group-pic-p3de">
+                        <label class="form-label fw-bold text-dark">Pilih PIC P3DE</label>
+                        <select class="form-control select2-global-filter" id="filter-pic-p3de" multiple="multiple" data-placeholder="Ketik untuk mencari PIC P3DE..."></select>
+                    </div>
+                    {% endif %}
+                    {% if can_view_pide %}
+                    <div class="mb-3 filter-group" id="group-pic-pide">
+                        <label class="form-label fw-bold text-dark">Pilih PIC PIDE</label>
+                        <select class="form-control select2-global-filter" id="filter-pic-pide" multiple="multiple" data-placeholder="Ketik untuk mencari PIC PIDE..."></select>
+                    </div>
+                    {% endif %}
+                    {% if can_view_pmde %}
+                    <div class="mb-0 filter-group" id="group-pic-pmde">
+                        <label class="form-label fw-bold text-dark">Pilih PIC PMDE</label>
+                        <select class="form-control select2-global-filter" id="filter-pic-pmde" multiple="multiple" data-placeholder="Ketik untuk mencari PIC PMDE..."></select>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer border-top-0 pt-0 pb-4 px-4 bg-transparent">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="font-weight: 500; text-transform: none; background-color: #f1f5f9; border-color: #e2e8f0;">Batal</button>
+                    <button type="button" class="btn btn-primary fw-bold" id="btn-apply-global-filter">Terapkan Filter</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Create/Edit/Delete -->
+    <div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" id="modalContent">
+                <!-- Content will be loaded here dynamically via AJAX -->
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script>
+    // Feature flags for admin actions
+    const isAdminP3DE = "{{ is_admin_p3de|yesno:'true,false' }}" === "true";
+    const isAdminPIDE = "{{ is_admin_pide|yesno:'true,false' }}" === "true";
+    const isAdminPMDE = "{{ is_admin_pmde|yesno:'true,false' }}" === "true";
+
+    let matrixTable, p3deTable, pideTable, pmdeTable;
+
+    (function () {
+        // Switch tab based on URL param if present
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = urlParams.get('tab');
+        if (tabParam) {
+            const tabEl = document.querySelector(`#tab-${tabParam}`);
+            if (tabEl) {
+                const tab = new bootstrap.Tab(tabEl);
+                tab.show();
+            }
+        }
+
+        function renderTruncatedText(data, type) {
+            if (type !== 'display' || !data) return data;
+            // Strip HTML tags for the tooltip title to prevent breaking the DOM
+            const textOnly = $('<div>').html(data).text();
+            return `<div class="text-truncate" title="${textOnly}">${data}</div>`;
+        }
+
+        $(document).ready(function () {
+            
+            // Fix Bootstrap 5 Modal Focus for Select2 Search Box
+            $.fn.modal.Constructor.prototype._enforceFocus = function() {};
+
+            // --- Init Global Filter ---
+            const filterOptions = JSON.parse('{{ filter_options|escapejs }}');
+
+            function initSelect2Filter(id, data) {
+                $(id).select2({
+                    data: data,
+                    dropdownParent: $('#globalFilterModal'),
+                    width: '100%',
+                    theme: 'bootstrap-5',
+                    allowClear: true,
+                    closeOnSelect: false
+                });
+                // Store initial options to prevent redundant re-rendering in cascade
+                const initialIds = data.map(o => String(o.id)).sort().join(',');
+                $(id).data('current-options', initialIds);
+            }
+            
+            initSelect2Filter('#filter-ilap-kategori', filterOptions.kategori_ilap);
+            initSelect2Filter('#filter-ilap', filterOptions.ilap);
+            initSelect2Filter('#filter-jenis-data', filterOptions.jenis_data);
+            initSelect2Filter('#filter-pic-p3de', filterOptions.pic_p3de);
+            initSelect2Filter('#filter-pic-pide', filterOptions.pic_pide);
+            initSelect2Filter('#filter-pic-pmde', filterOptions.pic_pmde);
+            
+            // Unified Dynamic Cascading Logic
+            let currentActiveTargetFilter = 'ilap';
+
+            function updateSelect2(selectId, newOptions) {
+                const currentSelection = $(selectId).val() || [];
+                const newOptionIds = newOptions.map(o => String(o.id)).sort().join(',');
+                const currentOptionIds = $(selectId).data('current-options') || '';
+                
+                if (newOptionIds === currentOptionIds) return;
+                
+                $(selectId).data('current-options', newOptionIds);
+                $(selectId).empty().select2('destroy');
+                initSelect2Filter(selectId, newOptions);
+                
+                const validSelections = currentSelection.filter(id => newOptions.some(item => String(item.id) === String(id)));
+                $(selectId).val(validSelections).trigger('change.select2');
+            }
+
+            function runMasterCascade(triggerId) {
+                // Read all current selections globally
+                const selKat = $('#filter-ilap-kategori').val() || [];
+                const selIlap = $('#filter-ilap').val() || [];
+                const selJenis = $('#filter-jenis-data').val() || [];
+                const selP3de = $('#filter-pic-p3de').val() || [];
+                const selPide = $('#filter-pic-pide').val() || [];
+                const selPmde = $('#filter-pic-pmde').val() || [];
+                
+                // Helper to get allowed ILAP/JenisData IDs from a PIC selection
+                const getPicAllowed = (picIds, picKey) => {
+                    if (!picIds || picIds.length === 0) return null;
+                    let allowedIlaps = [];
+                    let allowedJenis = [];
+                    picIds.forEach(id => {
+                        const p = filterOptions[picKey].find(x => String(x.id) === String(id));
+                        if (p) {
+                            allowedIlaps = allowedIlaps.concat(p.ilap_ids);
+                            allowedJenis = allowedJenis.concat(p.jenis_data_ids);
+                        }
+                    });
+                    return { ilaps: [...new Set(allowedIlaps)], jenis: [...new Set(allowedJenis)] };
+                };
+                
+                const p3deAllowed = getPicAllowed(selP3de, 'pic_p3de');
+                const pideAllowed = getPicAllowed(selPide, 'pic_pide');
+                const pmdeAllowed = getPicAllowed(selPmde, 'pic_pmde');
+                
+                // Intersect arrays (handles nulls gracefully)
+                const intersect = (arr1, arr2) => {
+                    if (!arr1) return arr2;
+                    if (!arr2) return arr1;
+                    return arr1.filter(x => arr2.includes(x));
+                };
+                
+                let restrictIlaps = null;
+                let restrictJenis = null;
+                
+                restrictIlaps = intersect(restrictIlaps, p3deAllowed ? p3deAllowed.ilaps : null);
+                restrictIlaps = intersect(restrictIlaps, pideAllowed ? pideAllowed.ilaps : null);
+                restrictIlaps = intersect(restrictIlaps, pmdeAllowed ? pmdeAllowed.ilaps : null);
+                
+                restrictJenis = intersect(restrictJenis, p3deAllowed ? p3deAllowed.jenis : null);
+                restrictJenis = intersect(restrictJenis, pideAllowed ? pideAllowed.jenis : null);
+                restrictJenis = intersect(restrictJenis, pmdeAllowed ? pmdeAllowed.jenis : null);
+
+                // 1. Update Kategori ILAP (Restricted by ILAP, Jenis Data, PICs)
+                if (triggerId !== '#filter-ilap-kategori') {
+                    let filteredKat = filterOptions.kategori_ilap;
+                    if (restrictIlaps) {
+                        const validKategoriIds = filterOptions.ilap
+                            .filter(i => restrictIlaps.includes(i.id))
+                            .map(i => String(i.kategori_id));
+                        filteredKat = filteredKat.filter(k => validKategoriIds.includes(String(k.id)));
+                    }
+                    if (selIlap.length > 0) {
+                        const validKategoriIds = filterOptions.ilap
+                            .filter(i => selIlap.includes(String(i.id)))
+                            .map(i => String(i.kategori_id));
+                        filteredKat = filteredKat.filter(k => validKategoriIds.includes(String(k.id)));
+                    }
+                    updateSelect2('#filter-ilap-kategori', filteredKat);
+                }
+                
+                // 2. Update ILAP
+                if (triggerId !== '#filter-ilap') {
+                    let filteredIlap = filterOptions.ilap;
+                    if (selKat.length > 0) {
+                        filteredIlap = filteredIlap.filter(x => selKat.includes(String(x.kategori_id)));
+                    }
+                    if (restrictIlaps) {
+                        filteredIlap = filteredIlap.filter(x => restrictIlaps.includes(x.id));
+                    }
+                    if (selJenis.length > 0) {
+                        const validIlapIds = filterOptions.jenis_data
+                            .filter(jd => selJenis.includes(String(jd.id)))
+                            .map(jd => String(jd.ilap_id));
+                        filteredIlap = filteredIlap.filter(x => validIlapIds.includes(String(x.id)));
+                    }
+                    updateSelect2('#filter-ilap', filteredIlap);
+                }
+
+                // 3. Update Jenis Data
+                if (triggerId !== '#filter-jenis-data') {
+                    let filteredJenis = filterOptions.jenis_data;
+                    if (selIlap.length > 0) {
+                        filteredJenis = filteredJenis.filter(x => selIlap.includes(String(x.ilap_id)));
+                    } else if (selKat.length > 0) {
+                        const katIlapIds = filterOptions.ilap
+                            .filter(i => selKat.includes(String(i.kategori_id)))
+                            .map(i => i.id);
+                        filteredJenis = filteredJenis.filter(x => katIlapIds.includes(x.ilap_id));
+                    }
+                    if (restrictJenis) {
+                        filteredJenis = filteredJenis.filter(x => restrictJenis.includes(x.id));
+                    }
+                    updateSelect2('#filter-jenis-data', filteredJenis);
+                }
+                
+                // 4. Update PIC Options
+                const updatePicDropdown = (picType, triggerElement) => {
+                    if (triggerId !== triggerElement) {
+                        let filteredPics = filterOptions[picType];
+                        if (selJenis.length > 0) {
+                            filteredPics = filteredPics.filter(p => p.jenis_data_ids.some(jId => selJenis.includes(String(jId))));
+                        } else if (selIlap.length > 0) {
+                            filteredPics = filteredPics.filter(p => p.ilap_ids.some(iId => selIlap.includes(String(iId))));
+                        } else if (selKat.length > 0) {
+                            const katIlapIds = filterOptions.ilap
+                                .filter(i => selKat.includes(String(i.kategori_id)))
+                                .map(i => i.id);
+                            filteredPics = filteredPics.filter(p => p.ilap_ids.some(iId => katIlapIds.includes(iId)));
+                        }
+                        updateSelect2(triggerElement, filteredPics);
+                    }
+                };
+                
+                updatePicDropdown('pic_p3de', '#filter-pic-p3de');
+                updatePicDropdown('pic_pide', '#filter-pic-pide');
+                updatePicDropdown('pic_pmde', '#filter-pic-pmde');
+            }
+
+            $('.select2-global-filter').on('change', function(e) {
+                // Ignore events triggered manually via code (.trigger('change.select2')) to prevent infinite loops
+                if (e.namespace === 'select2') return;
+                runMasterCascade('#' + $(this).attr('id'));
+            });
+            
+            // Open modal on widget click
+            $('.summary-widget-card').on('click', function() {
+                const targetFilter = $(this).data('filter-type');
+                currentActiveTargetFilter = targetFilter;
+                
+                // Set Modal Title
+                const titleMap = {
+                    'ilap': '<div class="avatar avatar-xs bg-soft-primary text-primary" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;"><i class="feather-grid fs-16"></i></div><h5 class="modal-title fw-bold text-dark mb-0" id="globalFilterModalLabel" style="font-size: 15px;">Filter Berdasarkan ILAP</h5>',
+                    'jenis_data': '<div class="avatar avatar-xs bg-soft-success text-success" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;"><i class="feather-database fs-16"></i></div><h5 class="modal-title fw-bold text-dark mb-0" id="globalFilterModalLabel" style="font-size: 15px;">Filter Berdasarkan Jenis Data</h5>',
+                    'pic_p3de': '<div class="avatar avatar-xs pic-icon-p3de" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;"><i class="feather-user fs-16"></i></div><h5 class="modal-title fw-bold text-dark mb-0" id="globalFilterModalLabel" style="font-size: 15px;">Filter PIC P3DE</h5>',
+                    'pic_pide': '<div class="avatar avatar-xs pic-icon-pide" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;"><i class="feather-user fs-16"></i></div><h5 class="modal-title fw-bold text-dark mb-0" id="globalFilterModalLabel" style="font-size: 15px;">Filter PIC PIDE</h5>',
+                    'pic_pmde': '<div class="avatar avatar-xs pic-icon-pmde" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;"><i class="feather-user fs-16"></i></div><h5 class="modal-title fw-bold text-dark mb-0" id="globalFilterModalLabel" style="font-size: 15px;">Filter PIC PMDE</h5>'
+                };
+                $('#globalFilterModalLabelContainer').html(titleMap[targetFilter] || '<div class="avatar avatar-xs bg-soft-primary text-primary" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;"><i class="feather-filter fs-16"></i></div><h5 class="modal-title fw-bold text-dark mb-0" id="globalFilterModalLabel" style="font-size: 15px;">Filter Data Global</h5>');
+                
+                // Hide all filter groups and reset visual order
+                $('.filter-group').hide();
+                $('.filter-group').removeClass('mb-3 mb-0'); // Reset margins
+                
+                const modalBody = $('#globalFilterModal .modal-body');
+                
+                if (targetFilter === 'ilap') {
+                    modalBody.append($('#group-ilap-kategori'));
+                    modalBody.append($('#group-ilap'));
+                    $('#group-ilap-kategori').show().addClass('mb-3');
+                    $('#group-ilap').show().addClass('mb-0');
+                } else if (targetFilter === 'jenis_data') {
+                    modalBody.append($('#group-ilap'));
+                    modalBody.append($('#group-jenis-data'));
+                    $('#group-ilap').show().addClass('mb-3');
+                    $('#group-jenis-data').show().addClass('mb-0');
+                } else if (['pic_p3de', 'pic_pide', 'pic_pmde'].includes(targetFilter)) {
+                    // Reorder dynamically: PIC -> ILAP -> Jenis Data
+                    const picGroupId = '#group-' + targetFilter.replace('_', '-');
+                    modalBody.append($(picGroupId));
+                    modalBody.append($('#group-ilap'));
+                    modalBody.append($('#group-jenis-data'));
+                    
+                    $(picGroupId).show().addClass('mb-3');
+                    $('#group-ilap').show().addClass('mb-3');
+                    $('#group-jenis-data').show().addClass('mb-0');
+                } else {
+                    $('#group-' + targetFilter.replace('_', '-')).show().addClass('mb-0');
+                }
+                
+                // Initialize cascading context specifically for the opened modal
+                runMasterCascade('init');
+                
+                const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('globalFilterModal'));
+                modal.show();
+                
+                // Optional: custom logic after modal opens could go here
+                // $('#globalFilterModal').one('shown.bs.modal', function () { ... });
+            });
+            
+            // Global Filter State
+            let globalFilters = {
+                ilap_kategori: [],
+                ilap: [],
+                jenis_data: [],
+                pic_p3de: [],
+                pic_pide: [],
+                pic_pmde: []
+            };
+            
+            function updateFilterIndicator() {
+                let count = 0;
+                let activeTexts = [];
+                Object.values(globalFilters).forEach(arr => { count += arr.length; });
+                
+                // Toggle active style on cards
+                $('.summary-widget-card').each(function() {
+                    const type = $(this).data('filter-type');
+                    if (globalFilters[type] && globalFilters[type].length > 0) {
+                        $(this).addClass('filter-active');
+                    } else {
+                        $(this).removeClass('filter-active');
+                    }
+                });
+
+                if (globalFilters.ilap_kategori.length > 0) activeTexts.push('Kategori ILAP (' + globalFilters.ilap_kategori.length + ')');
+                if (globalFilters.ilap.length > 0) activeTexts.push('ILAP (' + globalFilters.ilap.length + ')');
+                if (globalFilters.jenis_data.length > 0) activeTexts.push('Jenis Data (' + globalFilters.jenis_data.length + ')');
+                if (globalFilters.pic_p3de.length > 0) activeTexts.push('P3DE (' + globalFilters.pic_p3de.length + ')');
+                if (globalFilters.pic_pide.length > 0) activeTexts.push('PIDE (' + globalFilters.pic_pide.length + ')');
+                if (globalFilters.pic_pmde.length > 0) activeTexts.push('PMDE (' + globalFilters.pic_pmde.length + ')');
+                
+                if (count > 0) {
+                    $('#filter-controls-container').attr('style', 'display: flex !important;');
+                    $('#global-filter-count').text(activeTexts.join(', '));
+                    $('#btn-reset-global-filter').addClass('d-inline-flex').show();
+                } else {
+                    $('#filter-controls-container').attr('style', 'display: none !important;');
+                    $('#btn-reset-global-filter').removeClass('d-inline-flex').hide();
+                }
+                
+                // Update live summary widget counts
+                let selKat = globalFilters.ilap_kategori;
+                let selIlap = globalFilters.ilap;
+                let selJenis = globalFilters.jenis_data;
+                let selP3de = globalFilters.pic_p3de;
+                let selPide = globalFilters.pic_pide;
+                let selPmde = globalFilters.pic_pmde;
+
+                const getPicAllowed = (picIds, picKey) => {
+                    if (!picIds || picIds.length === 0) return null;
+                    let allowedIlaps = [];
+                    let allowedJenis = [];
+                    picIds.forEach(id => {
+                        const p = filterOptions[picKey].find(x => String(x.id) === String(id));
+                        if (p) {
+                            allowedIlaps = allowedIlaps.concat(p.ilap_ids);
+                            allowedJenis = allowedJenis.concat(p.jenis_data_ids);
+                        }
+                    });
+                    return { ilaps: [...new Set(allowedIlaps)], jenis: [...new Set(allowedJenis)] };
+                };
+                
+                const p3deAllowed = getPicAllowed(selP3de, 'pic_p3de');
+                const pideAllowed = getPicAllowed(selPide, 'pic_pide');
+                const pmdeAllowed = getPicAllowed(selPmde, 'pic_pmde');
+                
+                const intersect = (arr1, arr2) => {
+                    if (!arr1) return arr2;
+                    if (!arr2) return arr1;
+                    return arr1.filter(x => arr2.includes(x));
+                };
+                
+                let restrictIlaps = null;
+                let restrictJenis = null;
+                
+                restrictIlaps = intersect(restrictIlaps, p3deAllowed ? p3deAllowed.ilaps : null);
+                restrictIlaps = intersect(restrictIlaps, pideAllowed ? pideAllowed.ilaps : null);
+                restrictIlaps = intersect(restrictIlaps, pmdeAllowed ? pmdeAllowed.ilaps : null);
+                
+                restrictJenis = intersect(restrictJenis, p3deAllowed ? p3deAllowed.jenis : null);
+                restrictJenis = intersect(restrictJenis, pideAllowed ? pideAllowed.jenis : null);
+                restrictJenis = intersect(restrictJenis, pmdeAllowed ? pmdeAllowed.jenis : null);
+
+                let filteredIlap = filterOptions.ilap;
+                if (selKat.length > 0) {
+                    filteredIlap = filteredIlap.filter(x => selKat.includes(String(x.kategori_id)));
+                }
+                if (restrictIlaps) {
+                    filteredIlap = filteredIlap.filter(x => restrictIlaps.includes(x.id));
+                }
+                if (selJenis.length > 0) {
+                    const validIlapIds = filterOptions.jenis_data
+                        .filter(jd => selJenis.includes(String(jd.id)))
+                        .map(jd => String(jd.ilap_id));
+                    filteredIlap = filteredIlap.filter(x => validIlapIds.includes(String(x.id)));
+                }
+
+                let filteredJenis = filterOptions.jenis_data;
+                if (selIlap.length > 0) {
+                    filteredJenis = filteredJenis.filter(x => selIlap.includes(String(x.ilap_id)));
+                } else if (selKat.length > 0) {
+                    const katIlapIds = filterOptions.ilap
+                        .filter(i => selKat.includes(String(i.kategori_id)))
+                        .map(i => i.id);
+                    filteredJenis = filteredJenis.filter(x => katIlapIds.includes(x.ilap_id));
+                }
+                if (restrictJenis) {
+                    filteredJenis = filteredJenis.filter(x => restrictJenis.includes(x.id));
+                }
+                
+                const ilapCount = selIlap.length > 0 ? selIlap.length : filteredIlap.length;
+                const jenisCount = selJenis.length > 0 ? selJenis.length : filteredJenis.length;
+
+                $('#live-summary-ilap-count').text(ilapCount);
+                $('#live-summary-jenis-count').text(jenisCount);
+            }
+
+            
+            $('#btn-apply-global-filter').on('click', function() {
+                globalFilters.ilap_kategori = $('#filter-ilap-kategori').val() || [];
+                globalFilters.ilap = $('#filter-ilap').val() || [];
+                globalFilters.jenis_data = $('#filter-jenis-data').val() || [];
+                globalFilters.pic_p3de = $('#filter-pic-p3de').val() || [];
+                globalFilters.pic_pide = $('#filter-pic-pide').val() || [];
+                globalFilters.pic_pmde = $('#filter-pic-pmde').val() || [];
+                
+                updateFilterIndicator();
+                $('#globalFilterModal').modal('hide');
+                
+                // Switch to Matrix Tab if a filter is applied
+                let hasFilter = Object.values(globalFilters).some(arr => arr.length > 0);
+                if (hasFilter) {
+                    const matrixTabNode = document.querySelector('#tab-matrix');
+                    if (matrixTabNode) {
+                        bootstrap.Tab.getOrCreateInstance(matrixTabNode).show();
+                    }
+                }
+                
+                // Reload all tables
+                
+                updateFilterIndicator();
+                
+                if (matrixTable) matrixTable.ajax.reload(null, false);
+                if (p3deTable) p3deTable.ajax.reload(null, false);
+                if (pideTable) pideTable.ajax.reload(null, false);
+                if (pmdeTable) pmdeTable.ajax.reload(null, false);
+            });
+            
+            // Initialize count on page load
+            updateFilterIndicator();
+            
+            $('#btn-reset-global-filter').on('click', function() {
+                $('#filter-ilap-kategori').val(null).trigger('change');
+                $('#filter-ilap').val(null).trigger('change');
+                $('#filter-jenis-data').val(null).trigger('change');
+                $('#filter-pic-p3de').val(null).trigger('change');
+                $('#filter-pic-pide').val(null).trigger('change');
+                $('#filter-pic-pmde').val(null).trigger('change');
+                
+                $('#btn-apply-global-filter').trigger('click');
+            });
+            
+            // --- Init Matrix Table ---
+            matrixTable = $('#matrix-table').DataTable({
+                serverSide: true,
+                processing: true,
+                searching: false,
+                layout: { topStart: null, topEnd: null },
+                ajax: {
+                    url: '{% url "pic_matrix_data" %}',
+                    type: 'GET',
+                    data: function(d) {
+                        d['columns_search'] = [
+                            $('#matrix-search-row input[data-column="0"]').val(),
+                            $('#matrix-search-row input[data-column="1"]').val(),
+                            $('#matrix-search-row input[data-column="2"]').val(),
+                        ];
+                        // Append Global Filters
+                        d['filter_ilap_kategori'] = globalFilters.ilap_kategori;
+                        d['filter_ilap'] = globalFilters.ilap;
+                        d['filter_jenis_data'] = globalFilters.jenis_data;
+                        d['filter_pic_p3de'] = globalFilters.pic_p3de;
+                        d['filter_pic_pide'] = globalFilters.pic_pide;
+                        d['filter_pic_pmde'] = globalFilters.pic_pmde;
+                    },
+                    dataSrc: 'data'
+                },
+                pageLength: 10,
+                columns: [
+                    { 
+                        data: null, 
+                        title: '', 
+                        width: '40px', 
+                        orderable: false, 
+                        searchable: false, 
+                        className: 'text-center',
+                        render: function (data, type, row, meta) {
+                            return `<span class="badge rounded d-inline-flex align-items-center justify-content-center" style="min-width: 24px; height: 24px; padding: 0 6px; font-size: 12px; background-color: #f1f5f9; color: #64748b; font-weight: 600; border-radius: 6px !important;">${meta.row + 1 + meta.settings._iDisplayStart}</span>`;
+                        }
+                    },
+                    { data: 'ilap', render: renderTruncatedText },
+                    { data: 'id_sub_jenis_data', render: renderTruncatedText },
+                    { data: 'nama_sub_jenis_data', render: renderTruncatedText },
+                    { data: 'pic_p3de' },
+                    { data: 'pic_pide' },
+                    { data: 'pic_pmde' }
+                ],
+                order: [[1, 'asc']]
+            });
+
+            // Helper to init role tables
+            function initRoleTable(tableId, searchRowId, ajaxUrl, isAdmin) {
+                var columns = [
+                    { 
+                        data: null, 
+                        title: '', 
+                        width: '40px', 
+                        orderable: false, 
+                        searchable: false, 
+                        className: 'text-center',
+                        render: function (data, type, row, meta) {
+                            return `<span class="badge rounded d-inline-flex align-items-center justify-content-center" style="min-width: 24px; height: 24px; padding: 0 6px; font-size: 12px; background-color: #f1f5f9; color: #64748b; font-weight: 600; border-radius: 6px !important;">${meta.row + 1 + meta.settings._iDisplayStart}</span>`;
+                        }
+                    },
+                    { data: 'ilap', render: renderTruncatedText },
+                    { data: 'id_sub_jenis_data', render: renderTruncatedText },
+                    { data: 'nama_sub_jenis_data', render: renderTruncatedText },
+                    { data: 'username', render: renderTruncatedText },
+                    { data: 'full_name', render: renderTruncatedText },
+                    { data: 'start_date' },
+                    { data: 'end_date' }
+                ];
+                var columnDefs = [];
+                
+                if (isAdmin) {
+                    columns.push({ 
+                        data: 'actions', 
+                        orderable: false, 
+                        searchable: false,
+                        className: 'col-actions text-center'
+                    });
+                    columnDefs.push({ 
+                        targets: 8, 
+                        render: function (data, type, row, meta) { 
+                            return `<div class="d-flex gap-1 justify-content-center">${data}</div>`; 
+                        } 
+                    });
+                }
+
+                return $(tableId).DataTable({
+                    serverSide: true,
+                    processing: true,
+                    searching: false,
+                    layout: { topStart: null, topEnd: null },
+                    ajax: {
+                        url: ajaxUrl,
+                        dataSrc: 'data',
+                        data: function (d) {
+                            d.columns_search = [];
+                            $(searchRowId + ' input').each(function (i) { d.columns_search[i] = $(this).val(); });
+                            return d;
+                        }
+                    },
+                    pageLength: 10,
+                    columns: columns,
+                    columnDefs: columnDefs,
+                    order: [[1, 'asc']]
+                });
+            }
+
+            // Init other 3 tables conditionally
+            if ($('#p3de-table').length) p3deTable = initRoleTable('#p3de-table', '#p3de-search-row', "{% url 'pic_p3de_data' %}", isAdminP3DE);
+            if ($('#pide-table').length) pideTable = initRoleTable('#pide-table', '#pide-search-row', "{% url 'pic_pide_data' %}", isAdminPIDE);
+            if ($('#pmde-table').length) pmdeTable = initRoleTable('#pmde-table', '#pmde-search-row', "{% url 'pic_pmde_data' %}", isAdminPMDE);
+
+            // Column Search bindings
+            function bindColumnSearch(searchRowId, tableInstance, resetBtnId) {
+                $(searchRowId + ' input').on('keyup change', function () {
+                    if (tableInstance && typeof tableInstance.column === 'function') {
+                        tableInstance.column($(this).data('column')).search($(this).val());
+                    }
+                    if (tableInstance && tableInstance.ajax && typeof tableInstance.ajax.reload === 'function') {
+                        tableInstance.ajax.reload();
+                    } else if (tableInstance && typeof tableInstance.draw === 'function') {
+                        tableInstance.draw();
+                    }
+                    
+                    // toggle reset button
+                    let hasValue = false;
+                    $(searchRowId + ' input').each(function () {
+                        if ($(this).val().trim() !== '') hasValue = true;
+                    });
+                    if (hasValue) {
+                        $(resetBtnId).css('display', 'inline-flex').hide().fadeIn(200);
+                    } else {
+                        $(resetBtnId).fadeOut(200);
+                    }
+                });
+
+                $(resetBtnId).on('click', function () {
+                    $(searchRowId + ' input').val('');
+                    $(searchRowId + ' input').each(function () {
+                        tableInstance.column($(this).data('column')).search('');
+                    });
+                    tableInstance.draw();
+                    $(this).fadeOut(200);
+                });
+            }
+
+            bindColumnSearch('#matrix-search-row', matrixTable, '#btn-reset-matrix');
+            bindColumnSearch('#p3de-search-row', p3deTable, '#btn-reset-p3de');
+            bindColumnSearch('#pide-search-row', pideTable, '#btn-reset-pide');
+            bindColumnSearch('#pmde-search-row', pmdeTable, '#btn-reset-pmde');
+
+            // --- Reload Tables on Tab Show ---
+            // DataTables sometimes miscalculates column widths if init'd while hidden.
+            $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+                $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
+            });
+
+            // --- Action Buttons ---
+            $(document).on('click', '[data-action="create"], [data-action="edit"], [data-action="delete"]', function (e) {
+                e.preventDefault();
+                var url = $(this).data('url');
+                var action = $(this).data('action');
+                if (!url) return;
+                
+                if (action === 'delete') {
+                    // For delete, you could fetch the delete form via AJAX or use a JS confirmation.
+                    // Sticking with the original AJAX modal approach:
+                    $.ajax({
+                        url: url,
+                        type: 'GET',
+                        success: function (data) {
+                            $('#modalContent').html(data);
+                            var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('crudModal'));
+                            modal.show();
+                        },
+                        error: function () {
+                            alert('Terjadi kesalahan saat memuat form konfirmasi penghapusan.');
+                        }
+                    });
+                } else {
+                    $.ajax({
+                        url: url,
+                        type: 'GET',
+                        success: function (data) {
+                            $('#modalContent').html(data);
+                            // Initialize select2/flatpickr if the form has them
+                            if (typeof $.fn.select2 !== 'undefined') {
+                                $('#modalContent select[data-select2-selector="default"]').each(function () {
+                                    $(this).select2({ dropdownParent: $('#crudModal') });
+                                });
+                            }
+                            var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('crudModal'));
+                            modal.show();
+                        },
+                        error: function () {
+                            alert('Terjadi kesalahan saat memuat data form.');
+                        }
+                    });
+                }
+            });
+
+            // --- GSAP Hover & Click Animations for Summary Cards ---
+            if (typeof gsap !== 'undefined') {
+                $('.summary-widget-card').on('mouseenter', function() {
+                    gsap.to(this, { y: -3, scale: 1.01, duration: 0.15, ease: 'power2.out', boxShadow: '0 8px 16px rgba(0,0,0,0.08)' });
+                }).on('mouseleave', function() {
+                    gsap.to(this, { y: 0, scale: 1, duration: 0.15, ease: 'power2.out', boxShadow: '0 0.125rem 0.25rem rgba(0,0,0,0.075)' });
+                }).on('mousedown', function() {
+                    gsap.to(this, { scale: 0.96, duration: 0.05, ease: 'power1.out' });
+                }).on('mouseup', function() {
+                    gsap.to(this, { scale: 1.01, duration: 0.1, ease: 'power1.out' });
+                });
+            }
+            
+            // --- Force Active State on Sidebar ---
+            const currentTab = urlParams.get('tab') || '{{ default_tab }}';
+            const baseUrl = "{% url 'pic_unified_list' %}";
+            let targetLink = $('a.nxl-link[href="' + baseUrl + '?tab=' + currentTab + '"]');
+            
+            if (targetLink.length > 0) {
+                // Remove active from any existing PIC links
+                $('a.nxl-link[href^="' + baseUrl + '"]').removeClass('active').parent().removeClass('active');
+                
+                targetLink.addClass('active');
+                targetLink.parent().addClass('active');
+                
+                // Expand parent menu if it exists
+                let parentUl = targetLink.closest('ul.nxl-submenu');
+                if (parentUl.length > 0) {
+                    parentUl.css('display', 'block');
+                    parentUl.parent().addClass('nxl-hasmenu active');
+                }
+            }
+        });
+    })();
+</script>
+{% endblock %}

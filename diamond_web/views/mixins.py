@@ -342,8 +342,8 @@ class ActiveTiketP3DERequiredForEditMixin(UserPassesTestMixin):
             bool: True if the user is an active P3DE PIC for the tiket.
         """
         user = self.request.user
-        # Allow superuser or admin group
-        if user.is_authenticated and (user.is_superuser or user.groups.filter(name='admin').exists()):
+        # Allow superuser, admin, admin_p3de, or kasi_p3de
+        if user.is_authenticated and (user.is_superuser or user.groups.filter(name__in=['admin', 'admin_p3de', 'kasi_p3de']).exists()):
             return True
 
         # Get tiket from kwargs or object

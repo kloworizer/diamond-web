@@ -232,7 +232,7 @@ SESSION_COOKIE_AGE = 30 * 60  # 30 minutes (in seconds)
 # Left False to avoid a session write on every request (SQLite lock contention).
 # SlidingSessionMiddleware refreshes the expiry for active users instead, at
 # most once per SESSION_COOKIE_AGE * REFRESH_RATIO.
-SESSION_SAVE_EVERY_REQUEST = False
+SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
 # Email configuration

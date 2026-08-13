@@ -15,7 +15,7 @@ from ..mixins import UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin
 from ...constants.tiket_status import STATUS_DIBATALKAN
 
 
-class BatalkanTiketView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, UpdateView):
+class BatalkanTiketView(LoginRequiredMixin, ActiveTiketP3DERequiredForEditMixin, UserP3DERequiredMixin, UpdateView):
     """Allow P3DE PIC to cancel/reject a tiket during processing.
 
     This view enables P3DE users to mark a tiket as DIBATALKAN (canceled),

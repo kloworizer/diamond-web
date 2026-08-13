@@ -177,22 +177,6 @@
             if (form) form.addEventListener('submit', function () { setRevealed(false); });
         })();
 
-        // Multi-tab login sync: broadcast to all other open tabs that a new
-        // login has occurred so they can auto-redirect without a manual refresh.
-        (function () {
-            var form = document.querySelector('form[method="post"]');
-            if (!form) return;
-            form.addEventListener('submit', function () {
-                try {
-                    // Use a timestamp so the storage event always fires (even if
-                    // the same key was set before — same value won't fire the event).
-                    localStorage.setItem('diamond_login_event', Date.now().toString());
-                } catch (e) {
-                    // localStorage unavailable (private browsing / storage quota) — ignore
-                }
-            });
-        })();
-
         // Cross-tab login detection: if another tab (Tab 1) already logged in
         // successfully, redirect this login tab to the dashboard automatically
         // so the user does not have to manually switch tabs and refresh.
