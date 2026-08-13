@@ -5,11 +5,11 @@ are in the quality control process (status = Pengendalian Mutu). Displays a
 DataTable with comprehensive columns including ILAP info, PIC, deadline
 calculations, and QC progress.
 
-Filtering works the same way as the tiket list page: a panel of Select2
-multi-selects above the table, each of which narrows both the table and the
-remaining dropdowns. The tiket status filter is absent (every row here is in
-Pengendalian Mutu by definition), while a Prioritas Ya/Tidak filter and a
-Jatuh Tempo threshold are added, since both are columns of this table.
+The page itself — filter panel, summary sections, chart and table — is the one
+`seksi_queue` builds for every seksi; what is decided here is which queue is
+PMDE's, that its deadline counts from the transfer (or the rematch that handed
+the tiket back), and that the work left on a row is the rows it has still to
+check. The Identifikasi page is the same page read by PIDE.
 """
 
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -19,54 +19,40 @@ from django.views.generic import TemplateView
 from django.http import JsonResponse
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_protect
-from django.db import connection as db_connection
-from django.db.models import Q, Value, Prefetch
+from django.db.models import DateField, Prefetch
 from django.db.models.functions import Cast
-from django.db.models import (
-    DateField, IntegerField, Subquery, OuterRef,
-    Exists
-)
-from django.db.models.expressions import RawSQL
-from django.db.models.functions import Coalesce
-from django.utils import timezone
-from collections import defaultdict
-from datetime import date
 
+from . import seksi_queue as sq
 from ..models.tiket import Tiket
 from ..models.tiket_pic import TiketPIC
-from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
-from ..models.jenis_prioritas_data import JenisPrioritasData
-from ..models.jenis_tabel import JenisTabel
-from ..models.status_penelitian import StatusPenelitian
 from ..constants.tiket_status import (
-    STATUS_DIKIRIM_KE_PIDE,
-    STATUS_IDENTIFIKASI,
     STATUS_PENGENDALIAN_MUTU,
     STATUSES_DI_P3DE,
     STATUSES_DI_PIDE,
 )
 from ..utils.pic_profil import pic_profil_link, pic_profil_visibility
-from ..utils.wilayah import kanwil_value_paths, tiket_in_kanwil_q
 from .mixins import is_kasi_pmde
 
+__all__ = ['QualityControlView', 'quality_control_data']
 
-# Query path from Tiket to the JenisDataILAP row that carries most of the
-# descriptive fields the filters key off.
-_SUB = 'id_periode_data__id_sub_jenis_data_ilap'
-_ILAP = f'{_SUB}__id_ilap'
-_PENGIRIMAN = 'id_periode_data__id_periode_pengiriman'
 
-_PERIODE_TYPE_LABELS = {
-    'bulanan': 'Bulanan',
-    'triwulanan': 'Triwulanan',
-    'semester': 'Semester',
-    'tahunan': 'Tahunan',
-}
+# A rematched tiket starts its count again from tgl_rematch, so that date wins
+# over tgl_transfer whenever it is set.
+DEADLINE = sq.Deadline(
+    seksi='user_pmde', start_field='tgl_transfer', restart_field='tgl_rematch',
+)
 
-_BULAN_NAMES = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
-]
+# Kept module-level under their old names: the filter panel is exercised
+# through them, and the PMDE home card counts jatuh tempo by the same rule this
+# page does, which is what stops the two from disagreeing about when a tiket
+# falls due.
+FILTER_APPLIERS = sq.build_filter_appliers(DEADLINE)
+FILTER_OPTIONS = sq.FILTER_OPTIONS
+
+
+def jatuh_tempo_ids(qs, limit):
+    """Ids of the tikets in `qs` falling due within `limit` days, PMDE's count."""
+    return DEADLINE.jatuh_tempo_ids(qs, limit)
 
 
 def _is_pmde_user(user):
@@ -91,23 +77,41 @@ class QualityControlView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         return _is_pmde_user(self.request.user)
 
     def get_context_data(self, **kwargs):
+        """Add the header of the summary table.
+
+        Its sub columns are the jenis tabel of the reference table, which the
+        page cannot spell out in its markup — a jenis tabel added there has to
+        appear as a column here, exactly as it appears in every breakdown the
+        endpoint sends back. The endpoint reads the same list in the same order,
+        so a line of figures lands under the heading it belongs to.
+        """
         context = super().get_context_data(**kwargs)
+        kinds = [
+            # `hue` is the palette slot the column is drawn in, assigned by
+            # position and wrapping after the palette runs out — see the
+            # .sq-kind-* rules. Decided here rather than in the template because
+            # the template language has no modulo.
+            {'name': deskripsi, 'hue': index % SUMMARY_KIND_HUES}
+            for index, (_kind_id, deskripsi) in enumerate(sq.jenis_tabel_kinds())
+        ]
+        context.update({
+            'summary_sections': SUMMARY_SECTIONS,
+            'summary_kinds': kinds,
+            # Tiket and Baris Data, then one column per jenis tabel.
+            'summary_colspan': len(kinds) + 2,
+            'summary_section_keys': ','.join(
+                section['key'] for section in SUMMARY_SECTIONS
+            ),
+            'summary_section_variants': ','.join(
+                section['variant'] for section in SUMMARY_SECTIONS
+            ),
+        })
         return context
 
 
 def _pmde_scope(tikets, user):
-    """Narrow `tikets` to what `user` is allowed to see as PMDE.
-
-    Kasi PMDE supervise the whole seksi, so they see every tiket rather than
-    only the ones they are the active PIC for (same rule the tiket list applies
-    to kasi). Everyone else stays scoped to their own assignments.
-    """
-    if is_kasi_pmde(user):
-        return tikets
-    pmde_tiket_ids = TiketPIC.objects.filter(
-        id_user=user, role=TiketPIC.Role.PMDE, active=True
-    ).values_list('id_tiket', flat=True)
-    return tikets.filter(id__in=pmde_tiket_ids)
+    """Narrow `tikets` to what `user` is allowed to see as PMDE."""
+    return sq.pic_scope(tikets, user, TiketPIC.Role.PMDE, is_kasi_pmde)
 
 
 def _scoped_queryset(user):
@@ -128,702 +132,86 @@ def _upstream_queryset(user, statuses):
     return _pmde_scope(Tiket.objects.filter(status_tiket__in=statuses), user)
 
 
-def _prioritas_exists():
-    """Exists() matching tikets whose data was prioritas when it was received."""
-    return Exists(
-        JenisPrioritasData.objects.filter(
-            id_sub_jenis_data_ilap=OuterRef(_SUB),
-            start_date__lte=Cast(OuterRef('tgl_terima_dip'), DateField()),
-            end_date__gte=Cast(OuterRef('tgl_terima_dip'), DateField()),
-        )
-    )
-
-
-def _base_date_expr():
-    """The date the deadline counts from, as a query expression.
-
-    A rematched tiket starts its count again from tgl_rematch, so that date
-    wins over tgl_transfer whenever it is set. Each side is cast separately so
-    Coalesce resolves to a DateField despite the OuterRefs.
-    """
-    return Coalesce(
-        Cast(OuterRef('tgl_rematch'), DateField()),
-        Cast(OuterRef('tgl_transfer'), DateField()),
-    )
-
-
-# The same base date in raw SQL, for the deadline_date annotation below.
-_BASE_DATE_SQL = 'COALESCE("tiket"."tgl_rematch", "tiket"."tgl_transfer")'
-
-
-def _durasi_subquery():
-    """Subquery yielding the DurasiJatuhTempo that was active at the base date.
-
-    A tiket's deadline is its base date (tgl_rematch when set, otherwise
-    tgl_transfer) plus the PMDE durasi that applied on that date, so the row is
-    picked by that date rather than by today.
-    """
-    return DurasiJatuhTempo.objects.filter(
-        id_sub_jenis_data=OuterRef(f'{_SUB}'),
-        seksi__name='user_pmde',
-        start_date__lte=_base_date_expr(),
-    ).filter(
-        Q(end_date__isnull=True) | Q(end_date__gte=_base_date_expr())
-    ).order_by('-start_date').values('durasi')[:1]
-
-
-def _deadline_day(tgl_transfer, tgl_rematch, durasi):
-    """The deadline date, or None when there is no deadline to count.
-
-    Counting starts from tgl_rematch when the tiket has been rematched, and
-    from tgl_transfer otherwise. A durasi of 0 means no active DurasiJatuhTempo
-    covers that date, so there is nothing to count from — the '-' the table
-    shows in its Deadline and Jatuh Tempo columns, not a deadline of "today".
-    """
-    base_date = tgl_rematch or tgl_transfer
-    if not base_date or not durasi:
-        return None
-    deadline = base_date + timezone.timedelta(days=durasi)
-    return deadline.date() if hasattr(deadline, 'date') else deadline
-
-
-def _split(value):
-    """Split a comma-separated multi-select value into clean parts."""
-    if not value:
-        return []
-    return [part.strip() for part in value.split(',') if part.strip()]
-
-
-def _in(path):
-    """Build an applier filtering `path` against the selected values."""
-    def apply(qs, values):
-        return qs.filter(**{f'{path}__in': values})
-    return apply
-
-
-def _int_in(path):
-    """Like `_in`, but for integer columns — non-numeric input matches nothing."""
-    def apply(qs, values):
-        ints = []
-        for value in values:
-            try:
-                ints.append(int(value))
-            except ValueError:
-                pass
-        return qs.filter(**{f'{path}__in': ints}) if ints else qs.none()
-    return apply
-
-
-def _bool_in(path):
-    """Applier for the Ya/Tidak dropdowns, whose values are '1' and '0'."""
-    def apply(qs, values):
-        return qs.filter(**{f'{path}__in': [value == '1' for value in values]})
-    return apply
-
-
-def _pic_in(role):
-    """Applier matching tikets whose active PIC for `role` is one of the users."""
-    def apply(qs, values):
-        return qs.filter(
-            tiketpic__role=role, tiketpic__active=True,
-            tiketpic__id_user_id__in=values,
-        )
-    return apply
-
-
-def _filter_periode(qs, values):
-    """Applier for the `<type>:<number>` periode values (e.g. `bulanan:3`).
-
-    The number alone is ambiguous — periode 3 is March for a monthly ILAP but
-    the third quarter for a quarterly one — so the type half also constrains
-    periode_penerimaan.
-    """
-    combined = Q()
-    for value in values:
-        periode_type, _, periode_value = value.partition(':') if ':' in value else ('', '', value)
-        try:
-            selector = Q(periode=int(periode_value))
-        except ValueError:
-            continue
-        label = _PERIODE_TYPE_LABELS.get(periode_type)
-        if label:
-            selector &= Q(**{f'{_PENGIRIMAN}__periode_penerimaan': label})
-        combined |= selector
-    return qs.filter(combined) if combined else qs
-
-
-# The thresholds the Jatuh Tempo dropdown offers, in days. They nest by
-# construction — every tiket under 10 days is also under 30 — so selecting
-# several of them is the union, which is simply the widest one.
-_JATUH_TEMPO_LIMITS = (10, 30, 60)
-
-
-def jatuh_tempo_ids(qs, limit):
-    """Ids of the tikets in `qs` whose jatuh tempo is under `limit` days.
-
-    Jatuh tempo is not a column: it is the deadline — the tiket's base date
-    plus the durasi that was active then — counted from today, so the
-    comparison is made here over the same computation the table renders and the
-    chart plots, rather than reassembled in SQL a third time.
-
-    Public because the PMDE home card filters by the same thresholds this page
-    does; going through one function is what stops the two from disagreeing
-    about when a tiket falls due.
-    """
-    rows = qs.annotate(
-        active_durasi=Coalesce(
-            Subquery(_durasi_subquery(), output_field=IntegerField()),
-            Value(0),
-        ),
-    ).values_list('id', 'tgl_transfer', 'tgl_rematch', 'active_durasi')
-
-    today = date.today()
-    ids = []
-    for tiket_id, tgl_transfer, tgl_rematch, durasi in rows:
-        deadline_day = _deadline_day(tgl_transfer, tgl_rematch, durasi)
-        if deadline_day is None:
-            continue
-        if (deadline_day - today).days < limit:
-            ids.append(tiket_id)
-    return ids
-
-
-def _filter_jatuh_tempo(qs, values):
-    """Applier for the Jatuh Tempo dropdown.
-
-    An overdue tiket is under every threshold, its jatuh tempo being negative,
-    and a tiket with no deadline is under none of them — the same rows the
-    table shows a '-' for.
-    """
-    limits = []
-    for value in values:
-        try:
-            limit = int(value)
-        except ValueError:
-            continue
-        if limit in _JATUH_TEMPO_LIMITS:
-            limits.append(limit)
-    if not limits:
-        return qs.none()
-    return qs.filter(id__in=jatuh_tempo_ids(qs, max(limits)))
-
-
-def _filter_prioritas(qs, values):
-    """Applier for the Prioritas Ya/Tidak dropdown.
-
-    Selecting both is the same as selecting neither, so it falls through
-    without adding a clause.
-    """
-    wanted = {value == '1' for value in values}
-    if len(wanted) != 1:
-        return qs
-    return qs.filter(_prioritas_exists()) if wanted.pop() else qs.exclude(_prioritas_exists())
-
-
-# Every dropdown on the filter panel, in the order the panel renders them.
-# The key is both the request parameter and the `filter_options` key the
-# template reads back, so adding a filter means adding one entry here, one
-# entry in FILTER_OPTIONS below, and one <select> in the template.
-FILTER_APPLIERS = {
-    'nomor_tiket': _in('nomor_tiket'),
-    'tahun': _int_in('tahun'),
-    'periode': _filter_periode,
-    'periode_pengiriman': _in(f'{_PENGIRIMAN}__periode_penyampaian'),
-    'periode_penerimaan': _in(f'{_PENGIRIMAN}__periode_penerimaan'),
-    'pic_p3de': _pic_in(TiketPIC.Role.P3DE),
-    'pic_pide': _pic_in(TiketPIC.Role.PIDE),
-    'pic_pmde': _pic_in(TiketPIC.Role.PMDE),
-    'kategori_ilap': _in(f'{_ILAP}__id_kategori__id'),
-    'ilap': _in(f'{_ILAP}__id'),
-    'jenis_data': _in(f'{_SUB}__id_jenis_data'),
-    'sub_jenis_data': _in(f'{_SUB}__id_sub_jenis_data'),
-    'nama_tabel': _in(f'{_SUB}__nama_tabel_I'),
-    'kanwil': lambda qs, values: qs.filter(tiket_in_kanwil_q(values)),
-    'kpp': _in(f'{_ILAP}__ilap_kpp_relations__id_kpp__id'),
-    'kategori_wilayah': _in(f'{_ILAP}__id_kategori_wilayah__id'),
-    'jenis_tabel': _in(f'{_SUB}__id_jenis_tabel__id'),
-    'dasar_hukum': _in(f'{_SUB}__klasifikasijenisdata__id_klasifikasi_tabel__id'),
-    'status_penelitian': _in('id_status_penelitian_id'),
-    'status_ketersediaan_data': _bool_in('status_ketersediaan_data'),
-    'special_request': _bool_in('special_request'),
-    'prioritas': _filter_prioritas,
-    # Last, because it is the only applier that has to read rows to decide.
-    'jatuh_tempo': _filter_jatuh_tempo,
-}
-
-
-# Filters that reach a tiket through a to-many join, so a tiket can match more
-# than once and the result needs de-duplicating. The rest walk plain foreign
-# keys, where DISTINCT would only cost a sort.
-_MULTI_ROW_FILTERS = frozenset({
-    'pic_p3de', 'pic_pide', 'pic_pmde', 'kanwil', 'kpp', 'dasar_hukum',
-})
-
-
-def _selected_filters(params):
-    """Read every filter parameter, dropping the ones left on '-- Semua --'."""
-    selected = {}
-    for key in FILTER_APPLIERS:
-        values = _split(params.get(key, ''))
-        if values:
-            selected[key] = values
-    return selected
-
-
-def _apply_filters(qs, selected, exclude=None):
-    """Apply the selected filters, optionally skipping one dropdown's own key.
-
-    Skipping is what keeps a dropdown from narrowing itself: a dropdown's
-    options are built from everything the *other* dropdowns allow, so the
-    values already chosen in it stay selectable.
-    """
-    applied = set()
-    for key, values in selected.items():
-        if key == exclude:
-            continue
-        qs = FILTER_APPLIERS[key](qs, values)
-        applied.add(key)
-    return qs.distinct() if applied & _MULTI_ROW_FILTERS else qs
-
-
-def _distinct_options(qs, paths, label=None):
-    """Collect `{'id', 'name'}` option dicts from distinct values of `paths`.
-
-    Args:
-        qs: Queryset to read from.
-        paths: Field paths — the first one is the option id.
-        label: Callable receiving every path value and returning the display
-            name. Defaults to showing the id itself.
-    """
-    options = []
-    seen = set()
-    for row in qs.values_list(*paths).distinct():
-        value = row[0]
-        if value is None or value == '' or value in seen:
-            continue
-        seen.add(value)
-        options.append({'id': str(value), 'name': label(*row) if label else str(value)})
-    return options
-
-
-def _pic_options(qs, role):
-    """PIC options for `role`, drawn from the tikets actually in the result set."""
-    rows = qs.filter(
-        tiketpic__role=role, tiketpic__active=True,
-    ).values_list(
-        'tiketpic__id_user__id',
-        'tiketpic__id_user__username',
-        'tiketpic__id_user__first_name',
-        'tiketpic__id_user__last_name',
-    ).distinct()
-
-    options = []
-    seen = set()
-    for user_id, username, first_name, last_name in rows:
-        if user_id is None or user_id in seen:
-            continue
-        seen.add(user_id)
-        full_name = f'{first_name or ""} {last_name or ""}'.strip()
-        options.append({
-            'id': str(user_id),
-            'name': f'{username} - {full_name}' if full_name else username,
-        })
-    options.sort(key=lambda option: option['name'])
-    return options
-
-
-def _periode_options(qs):
-    """Periode options, labelled by the periode_penerimaan of their tikets."""
-    bulanan, triwulan, semester, tahunan = {}, {}, {}, {}
-    rows = qs.values_list('periode', f'{_PENGIRIMAN}__periode_penerimaan').distinct()
-    for periode, penerimaan in rows:
-        if periode is None:
-            continue
-        penerimaan = (penerimaan or '').strip().lower()
-        index = int(periode)
-        if 'triwulan' in penerimaan and 1 <= index <= 4:
-            triwulan[index] = {'id': f'triwulanan:{index}', 'name': f'Triwulan {index}'}
-        elif 'semester' in penerimaan and 1 <= index <= 2:
-            semester[index] = {'id': f'semester:{index}', 'name': f'Semester {index}'}
-        elif 'tahunan' in penerimaan:
-            tahunan[1] = {'id': 'tahunan:1', 'name': 'Tahunan'}
-        elif 1 <= index <= 12:
-            bulanan[index] = {'id': f'bulanan:{index}', 'name': _BULAN_NAMES[index - 1]}
-
-    options = []
-    for group in (bulanan, triwulan, semester, tahunan):
-        options.extend(group[index] for index in sorted(group))
-    return options
-
-
-def _kanwil_options(qs):
-    """Kanwil options covering both the direct and the via-KPP ILAP mappings."""
-    options = []
-    seen = set()
-    for paths in kanwil_value_paths():
-        for kanwil_id, kode, nama in qs.values_list(*paths).distinct():
-            if kanwil_id and kanwil_id not in seen:
-                seen.add(kanwil_id)
-                options.append({'id': str(kanwil_id), 'name': f'{kode} - {nama}'})
-    options.sort(key=lambda option: option['name'])
-    return options
-
-
-def _status_penelitian_options(qs):
-    """Status penelitian options present in the result set, in model order."""
-    ids = {
-        value for value in qs.values_list('id_status_penelitian_id', flat=True).distinct()
-        if value is not None
-    }
-    return [
-        {'id': str(status.id), 'name': status.deskripsi}
-        for status in StatusPenelitian.objects.filter(id__in=ids).order_by('id')
-    ]
-
-
-def _yes_no_options(qs, field):
-    """Ya/Tidak options, offering only the values the result set actually has."""
-    present = set(qs.values_list(field, flat=True).distinct())
-    options = []
-    if True in present:
-        options.append({'id': '1', 'name': 'Ya'})
-    if False in present:
-        options.append({'id': '0', 'name': 'Tidak'})
-    return options
-
-
-def _prioritas_options(qs):
-    """Ya/Tidak options for prioritas, offering only the values in the result set."""
-    options = []
-    if qs.filter(_prioritas_exists()).exists():
-        options.append({'id': '1', 'name': 'Ya'})
-    if qs.exclude(_prioritas_exists()).exists():
-        options.append({'id': '0', 'name': 'Tidak'})
-    return options
-
-
-def _jatuh_tempo_options(_qs):
-    """The fixed Jatuh Tempo thresholds.
-
-    Alone among the dropdowns these are not read off the result set: a
-    threshold is a question the user asks — "what falls due within 30 days?" —
-    and one that currently matches nothing is still worth being able to ask.
-    """
-    return [{'id': str(limit), 'name': f'< {limit} hari'} for limit in _JATUH_TEMPO_LIMITS]
-
-
-def _kode_nama(_id, kode, nama):
-    """Label a lookup row as `<kode> - <nama>`, keeping the id out of the text."""
-    return f'{kode} - {nama}'
-
-
-FILTER_OPTIONS = {
-    'nomor_tiket': lambda qs: _distinct_options(qs.order_by('nomor_tiket'), ('nomor_tiket',)),
-    'tahun': lambda qs: _distinct_options(qs.order_by('tahun'), ('tahun',)),
-    'periode': _periode_options,
-    'periode_pengiriman': lambda qs: _distinct_options(
-        qs, (f'{_PENGIRIMAN}__periode_penyampaian',)),
-    'periode_penerimaan': lambda qs: _distinct_options(
-        qs, (f'{_PENGIRIMAN}__periode_penerimaan',)),
-    'pic_p3de': lambda qs: _pic_options(qs, TiketPIC.Role.P3DE),
-    'pic_pide': lambda qs: _pic_options(qs, TiketPIC.Role.PIDE),
-    'pic_pmde': lambda qs: _pic_options(qs, TiketPIC.Role.PMDE),
-    'kategori_ilap': lambda qs: _distinct_options(
-        qs,
-        (f'{_ILAP}__id_kategori__id', f'{_ILAP}__id_kategori__id_kategori',
-         f'{_ILAP}__id_kategori__nama_kategori'),
-        _kode_nama,
-    ),
-    'ilap': lambda qs: _distinct_options(
-        qs,
-        (f'{_ILAP}__id', f'{_ILAP}__id_ilap', f'{_ILAP}__nama_ilap'),
-        _kode_nama,
-    ),
-    'jenis_data': lambda qs: _distinct_options(
-        qs,
-        (f'{_SUB}__id_jenis_data', f'{_SUB}__nama_jenis_data'),
-        lambda kode, nama: f'{kode} - {nama}',
-    ),
-    'sub_jenis_data': lambda qs: _distinct_options(
-        qs,
-        (f'{_SUB}__id_sub_jenis_data', f'{_SUB}__nama_sub_jenis_data'),
-        lambda kode, nama: f'{kode} - {nama}',
-    ),
-    # The nama tabel is its own id: it is free text on the sub jenis data row
-    # rather than a lookup, so the value filtered on is the name itself.
-    'nama_tabel': lambda qs: _distinct_options(
-        qs.order_by(f'{_SUB}__nama_tabel_I'), (f'{_SUB}__nama_tabel_I',)),
-    'kanwil': _kanwil_options,
-    'kpp': lambda qs: _distinct_options(
-        qs,
-        (f'{_ILAP}__ilap_kpp_relations__id_kpp__id',
-         f'{_ILAP}__ilap_kpp_relations__id_kpp__kode_kpp',
-         f'{_ILAP}__ilap_kpp_relations__id_kpp__nama_kpp'),
-        _kode_nama,
-    ),
-    'kategori_wilayah': lambda qs: _distinct_options(
-        qs,
-        (f'{_ILAP}__id_kategori_wilayah__id', f'{_ILAP}__id_kategori_wilayah__deskripsi'),
-        lambda _id, deskripsi: deskripsi,
-    ),
-    'jenis_tabel': lambda qs: _distinct_options(
-        qs,
-        (f'{_SUB}__id_jenis_tabel__id', f'{_SUB}__id_jenis_tabel__deskripsi'),
-        lambda _id, deskripsi: deskripsi,
-    ),
-    'dasar_hukum': lambda qs: _distinct_options(
-        qs,
-        (f'{_SUB}__klasifikasijenisdata__id_klasifikasi_tabel__id',
-         f'{_SUB}__klasifikasijenisdata__id_klasifikasi_tabel__deskripsi'),
-        lambda _id, deskripsi: deskripsi,
-    ),
-    'status_penelitian': _status_penelitian_options,
-    'status_ketersediaan_data': lambda qs: _yes_no_options(qs, 'status_ketersediaan_data'),
-    'special_request': lambda qs: _yes_no_options(qs, 'special_request'),
-    'prioritas': _prioritas_options,
-    'jatuh_tempo': _jatuh_tempo_options,
-}
-
-
-def _filter_options(scoped_qs, selected):
-    """Build the option list for every dropdown, each excluding its own filter."""
-    # Jatuh tempo is narrowed away once, up front, instead of once per dropdown:
-    # it is the one filter that reads rows to decide, and the filters are
-    # conjunctive, so applying it first gives every builder the same result set
-    # it would have got anyway. Its own options are the fixed thresholds, so
-    # nothing is lost by it not being excluded from its own dropdown.
-    selected = dict(selected)
-    jatuh_tempo = selected.pop('jatuh_tempo', None)
-    if jatuh_tempo:
-        scoped_qs = _filter_jatuh_tempo(scoped_qs, jatuh_tempo)
-
-    return {
-        key: builder(_apply_filters(scoped_qs, selected, exclude=key))
-        for key, builder in FILTER_OPTIONS.items()
-    }
-
-
-# ---------------------------------------------------------------------------
-# Summary sections above the chart
-# ---------------------------------------------------------------------------
-
-# Filters that only mean anything for a tiket already in quality control, so
-# they are dropped from the P3DE and PIDE sections. Jatuh tempo counts from the
-# PMDE transfer date, which an upstream tiket does not have yet, so keeping it
-# would report both upstream queues as empty rather than unfiltered.
-_QC_ONLY_FILTERS = frozenset({'jatuh_tempo'})
-
-
-def _baris_data(status_tiket, baris_lengkap, baris_i, baris_u, baris_cde, baris_res):
-    """The row count that stands for a tiket's data at its current status.
-
-    Before a tiket reaches PIDE the only count taken is the P3DE one, so baris
-    lengkap is the figure. From Dikirim ke PIDE onwards identification has split
-    that figure into I/U/CDE/Res and baris I is the part still to be processed —
-    except while the split is still all zeros, identification not having recorded
-    anything yet, where baris lengkap remains the only count there is.
-    """
-    if status_tiket in (STATUS_DIKIRIM_KE_PIDE, STATUS_IDENTIFIKASI):
-        split = (baris_i or 0) + (baris_u or 0) + (baris_cde or 0) + (baris_res or 0)
-        if split != 0:
-            return baris_i or 0
-    return baris_lengkap or 0
-
-
-# The columns `_baris_data` reads, in the order it takes them.
-_BARIS_DATA_FIELDS = (
-    'status_tiket', 'baris_lengkap', 'baris_i', 'baris_u', 'baris_cde', 'baris_res',
-)
-
-
 def _belum_qc(belum_qc):
     """The row count a tiket in quality control still has left to check."""
     return belum_qc or 0
 
 
-def _queue_breakdown(qs, kinds, baris_fields, baris_of):
-    """A queue's tikets and rows, split by the jenis tabel of their data.
+# The three column groups of the summary table, in the order it renders them:
+# the QC queue this page lists, then the two queues upstream of it, kept apart
+# because they are different work — P3DE still holds one count of a tiket's
+# data, while PIDE has begun splitting it.
+#
+# Only this page's own queue is split by jenis tabel. That split says how a
+# tiket's data is handled, which is the question a reader has about work that is
+# in front of them now; for the two upstream queues the question is only how
+# much is coming, so they are the tiket and row totals and nothing more — three
+# groups of five columns each would bury the queue that is actually theirs.
+#
+# `key` is the payload section, and the template renders the labels and the
+# column widths from this same list, so the header and the figures under it
+# cannot drift apart.
+SUMMARY_SECTIONS = (
+    {'key': 'qc', 'label': 'Pengendalian Mutu', 'variant': 'own', 'kinds': True},
+    {'key': 'p3de', 'label': 'Masih di P3DE', 'variant': 'upstream', 'kinds': False},
+    {'key': 'pide', 'label': 'Masih di PIDE', 'variant': 'upstream-alt', 'kinds': False},
+)
 
-    Jenis tabel is what decides how a tiket's data is handled — diidentifikasi,
-    tidak diidentifikasi or tidak terstruktur — so every queue is broken down
-    along it rather than along status.
-
-    Every jenis tabel in `kinds` gets a row, including the ones with nothing
-    pending: a zero there is a fact worth reading, and a row that vanished under
-    a filter would shuffle the rows around it.
-
-    Args:
-        qs: The tikets to summarise, already filtered.
-        kinds: `(id, deskripsi)` pairs, in the order the rows should read.
-        baris_fields: Field names to read for the row count.
-        baris_of: Callable receiving those fields and returning the row count.
-
-    The rows are read and summed here rather than aggregated in SQL because `id`
-    leads each tuple, so the DISTINCT that the to-many filters add collapses a
-    tiket matched twice into one row instead of counting it twice.
-    """
-    breakdown = {
-        kind_id: {'name': deskripsi, 'tikets': 0, 'baris': 0}
-        for kind_id, deskripsi in kinds
-    }
-
-    tikets = 0
-    baris_total = 0
-    rows = qs.values_list('id', f'{_SUB}__id_jenis_tabel__id', *baris_fields)
-    for _tiket_id, jenis_tabel_id, *values in rows:
-        baris = baris_of(*values)
-        tikets += 1
-        baris_total += baris
-        entry = breakdown.get(jenis_tabel_id)
-        if entry is not None:
-            entry['tikets'] += 1
-            entry['baris'] += baris
-
-    return {'tikets': tikets, 'baris': baris_total, 'breakdown': list(breakdown.values())}
+# How many hues the jenis tabel columns cycle through before repeating one; see
+# the .sq-kind-* rules in seksi_queue/list.html, which define exactly this many.
+SUMMARY_KIND_HUES = 5
 
 
-def _summary(user, selected):
-    """The three sections above the chart, over the same filters the chart uses.
-
-    The first is the QC queue this page lists, counting the rows it has left to
-    check. The other two are the queues upstream of it, kept apart because they
-    are different work: P3DE still holds one count of a tiket's data, while PIDE
-    has begun splitting it. All three read the same shape — a tiket total, a row
-    total and a per-jenis-tabel breakdown — so they can be read against each
-    other down the row.
-    """
-    upstream_selected = {
-        key: values for key, values in selected.items() if key not in _QC_ONLY_FILTERS
-    }
-    # Read once for all three, so every section's rows read in the same order.
-    kinds = list(JenisTabel.objects.order_by('id').values_list('id', 'deskripsi'))
+def _summary_sections(user, selected):
+    """The queue behind each column group: what to read, and how to count it."""
+    upstream_selected = sq.upstream_selected(selected)
 
     def upstream(statuses):
-        return _queue_breakdown(
-            _apply_filters(_upstream_queryset(user, statuses), upstream_selected),
-            kinds, _BARIS_DATA_FIELDS, _baris_data,
+        return (
+            sq.apply_filters(
+                _upstream_queryset(user, statuses), upstream_selected, FILTER_APPLIERS,
+            ),
+            # No jenis tabel columns, so nothing to split by.
+            (),
+            sq.BARIS_DATA_FIELDS,
+            sq.baris_data,
         )
 
     return {
-        'qc': _queue_breakdown(
-            _apply_filters(_scoped_queryset(user), selected),
-            kinds, ('belum_qc',), _belum_qc,
+        'qc': (
+            sq.apply_filters(_scoped_queryset(user), selected, FILTER_APPLIERS),
+            sq.jenis_tabel_kinds(),
+            ('belum_qc',),
+            _belum_qc,
         ),
         'p3de': upstream(STATUSES_DI_P3DE),
         'pide': upstream(STATUSES_DI_PIDE),
     }
 
 
-# ---------------------------------------------------------------------------
-# Chart: Jml Progress per Jatuh Tempo, one line per PIC PMDE
-# ---------------------------------------------------------------------------
+def _summary(user, selected):
+    """The summary table above the chart, over the same filters the chart uses.
 
-# Eight categorical hues, in this fixed order. Past the eighth PIC the hues
-# start over with a dashed stroke instead of a ninth colour, because a
-# generated hue would be indistinguishable from an existing one for a
-# colourblind reader while a dash pattern is legible to everyone.
-_CHART_COLORS = [
-    '#2a78d6', '#eb6834', '#1baf7a', '#eda100',
-    '#e87ba4', '#008300', '#4a3aa7', '#e34948',
-]
-
-# Tikets in QC with no active PIC PMDE still carry progress, so they get their
-# own line — deliberately a neutral grey, since "nobody" is not an identity.
-_CHART_NO_PIC_COLOR = '#94a3b8'
-_CHART_NO_PIC_LABEL = 'Tanpa PIC PMDE'
-
-
-def _pmde_pic_styles(scoped_qs):
-    """Assign each PIC PMDE a stable colour and stroke, keyed by user id.
-
-    The assignment is made over the *unfiltered* scope, so narrowing the filter
-    panel never repaints the lines that survive: a reader who learned that a
-    given PIC is the blue line keeps that reading across every filter.
+    One line per PIC PMDE — whoever the filter panel has left in the sections,
+    rather than the whole seksi — carrying all three queues side by side, so a
+    reader sees at once how much of each is that person's. The totals come back
+    under the section keys they have always used, which is the line under the
+    table.
     """
-    rows = TiketPIC.objects.filter(
-        id_tiket__in=scoped_qs, role=TiketPIC.Role.PMDE, active=True,
-        id_user__isnull=False,
-    ).values_list(
-        'id_user__id', 'id_user__username',
-        'id_user__first_name', 'id_user__last_name',
-    ).distinct()
-
-    names = {}
-    for user_id, username, first_name, last_name in rows:
-        full_name = f'{first_name or ""} {last_name or ""}'.strip()
-        names[user_id] = full_name or username
-
-    styles = {}
-    for index, user_id in enumerate(sorted(names, key=lambda uid: names[uid])):
-        styles[user_id] = {
-            'name': names[user_id],
-            'color': _CHART_COLORS[index % len(_CHART_COLORS)],
-            'dashed': index >= len(_CHART_COLORS),
-        }
-    styles[None] = {'name': _CHART_NO_PIC_LABEL, 'color': _CHART_NO_PIC_COLOR, 'dashed': True}
-    return styles
-
-
-def _chart_data(scoped_qs, selected):
-    """Jml Progress summed per jatuh tempo, split into one series per PIC PMDE.
-
-    The x axis is the Jatuh Tempo column of the table — days left until the
-    deadline, negative once it has passed — and the y axis is the Jml Progress
-    of every tiket sharing that value. Tikets without a deadline are left out,
-    matching the '-' the table shows for them.
-    """
-    styles = _pmde_pic_styles(scoped_qs)
-
-    rows = _apply_filters(scoped_qs, selected).annotate(
-        active_durasi=Coalesce(
-            Subquery(_durasi_subquery(), output_field=IntegerField()),
-            Value(0),
-        ),
-        pic_pmde_id=Subquery(
-            TiketPIC.objects.filter(
-                id_tiket=OuterRef('pk'), role=TiketPIC.Role.PMDE, active=True,
-            ).values('id_user_id')[:1],
-            output_field=IntegerField(),
-        ),
-        # `id` keeps DISTINCT (added by the to-many filters) from collapsing two
-        # different tikets that happen to agree on every other column here.
-    ).values_list(
-        'id', 'pic_pmde_id', 'tgl_transfer', 'tgl_rematch', 'active_durasi', 'belum_qc',
+    rows, totals = sq.pic_summary(
+        _summary_sections(user, selected), TiketPIC.Role.PMDE,
+        pic_profil_visibility(user), no_pic_label='Tanpa PIC PMDE',
     )
+    return dict(totals, rows=rows)
 
-    totals = defaultdict(int)
-    days = set()
-    today = date.today()
-    for _tiket_id, pic_id, tgl_transfer, tgl_rematch, durasi, progress in rows:
-        deadline_day = _deadline_day(tgl_transfer, tgl_rematch, durasi)
-        if deadline_day is None:
-            continue
-        sisa = (deadline_day - today).days
-        days.add(sisa)
-        totals[(pic_id, sisa)] += progress or 0
 
-    categories = sorted(days)
-    pic_ids = {pic_id for pic_id, _sisa in totals}
-
-    # Series follow the palette order rather than their totals, so the legend
-    # reads the same way from one filter to the next.
-    ordered = [pic_id for pic_id in styles if pic_id in pic_ids]
-    series = []
-    for pic_id in ordered:
-        style = styles[pic_id]
-        series.append({
-            'name': style['name'],
-            'color': style['color'],
-            'dashed': style['dashed'],
-            # A missing (pic, day) pair is a real zero — that PIC has no tiket
-            # falling due then — so the line stays continuous instead of broken.
-            'data': [totals.get((pic_id, day), 0) for day in categories],
-        })
-
-    return {
-        'categories': [f'{day} hari' for day in categories],
-        'series': series,
-    }
+def _chart_data(scoped, selected):
+    """Jml Progress — the rows left to check — per jatuh tempo, per PIC PMDE."""
+    return sq.chart_data(
+        scoped, selected, FILTER_APPLIERS, DEADLINE, TiketPIC.Role.PMDE,
+        no_pic_label='Tanpa PIC PMDE',
+        progress_fields=('belum_qc',), progress_of=_belum_qc,
+    )
 
 
 @login_required
@@ -842,10 +230,12 @@ def quality_control_data(request):
     params = request.POST if request.method == 'POST' else request.GET
 
     scoped = _scoped_queryset(request.user)
-    selected = _selected_filters(params)
+    selected = sq.selected_filters(params, FILTER_APPLIERS)
 
     if params.get('get_filter_options'):
-        return JsonResponse({'filter_options': _filter_options(scoped, selected)})
+        return JsonResponse({
+            'filter_options': sq.filter_options(scoped, selected, FILTER_APPLIERS),
+        })
 
     if params.get('get_summary'):
         return JsonResponse(_summary(request.user, selected))
@@ -859,61 +249,21 @@ def quality_control_data(request):
 
     records_total = scoped.count()
 
-    # Subquery: active durasi for each ticket's sub_jenis_data & tgl_transfer range
-    durasi_subq = _durasi_subquery()
-
-    tikets = _apply_filters(scoped, selected).select_related(
-        f'{_ILAP}',
-        f'{_SUB}__id_jenis_tabel',
-    ).prefetch_related(
-        Prefetch('tiketpic_set', queryset=TiketPIC.objects.select_related('id_user')),
+    tikets = DEADLINE.annotate_durasi(
+        sq.apply_filters(scoped, selected, FILTER_APPLIERS).select_related(
+            f'{sq.ILAP}',
+            f'{sq.SUB}__id_jenis_tabel',
+        ).prefetch_related(
+            Prefetch('tiketpic_set', queryset=TiketPIC.objects.select_related('id_user')),
+        ).annotate(
+            tgl_transfer_date=Cast('tgl_transfer', DateField()),
+            tgl_rematch_date=Cast('tgl_rematch', DateField()),
+        )
     ).annotate(
-        tgl_transfer_date=Cast('tgl_transfer', DateField()),
-        tgl_rematch_date=Cast('tgl_rematch', DateField()),
-        # Active durasi, used both for sorting and to compute the deadline below.
-        active_durasi=Coalesce(
-            Subquery(durasi_subq, output_field=IntegerField()),
-            Value(0)
-        ),
-    ).annotate(
-        is_prioritas=_prioritas_exists(),
-    ).annotate(
-        # Compute deadline date = base date + active_durasi days, where the base
-        # date is tgl_rematch when set and tgl_transfer otherwise.
-        # Correlated subquery embedded in RawSQL (no params) to avoid
-        # parameter-binding issues with nested expressions.
-        # SQLite (dev): DATE(date, '+' || days || ' days')
-        # PostgreSQL (prod): (date::date + days * INTERVAL '1 day')::date
-        deadline_date=RawSQL(
-            f"""
-            DATE({_BASE_DATE_SQL}, '+' || CAST(COALESCE(
-                (SELECT "durasi_jatuh_tempo"."durasi"
-                 FROM "durasi_jatuh_tempo"
-                 INNER JOIN "auth_group" ON ("durasi_jatuh_tempo"."seksi" = "auth_group"."id")
-                 WHERE ("durasi_jatuh_tempo"."id_sub_jenis_data" = "periode_jenis_data"."id_sub_jenis_data_ilap"
-                   AND "auth_group"."name" = 'user_pmde'
-                   AND "durasi_jatuh_tempo"."start_date" <= DATE({_BASE_DATE_SQL})
-                   AND ("durasi_jatuh_tempo"."end_date" IS NULL
-                        OR "durasi_jatuh_tempo"."end_date" >= DATE({_BASE_DATE_SQL})))
-                 ORDER BY "durasi_jatuh_tempo"."start_date" DESC LIMIT 1
-            ), 0) AS TEXT) || ' days')
-            """ if db_connection.vendor == 'sqlite' else
-            f"""
-            ({_BASE_DATE_SQL}::date + COALESCE(
-                (SELECT "durasi_jatuh_tempo"."durasi"
-                 FROM "durasi_jatuh_tempo"
-                 INNER JOIN "auth_group" ON ("durasi_jatuh_tempo"."seksi" = "auth_group"."id")
-                 WHERE ("durasi_jatuh_tempo"."id_sub_jenis_data" = "periode_jenis_data"."id_sub_jenis_data_ilap"
-                   AND "auth_group"."name" = 'user_pmde'
-                   AND "durasi_jatuh_tempo"."start_date" <= {_BASE_DATE_SQL}::date
-                   AND ("durasi_jatuh_tempo"."end_date" IS NULL
-                        OR "durasi_jatuh_tempo"."end_date" >= {_BASE_DATE_SQL}::date))
-                 ORDER BY "durasi_jatuh_tempo"."start_date" DESC LIMIT 1
-            ), 0) * INTERVAL '1 day')::date
-            """,
-            [],
-            output_field=DateField(),
-        ),
+        is_prioritas=sq.prioritas_exists(),
+        # The deadline itself, so the column can be sorted in SQL rather than
+        # recomputed per page.
+        deadline_date=DEADLINE.deadline_date_expr(),
     )
 
     records_filtered = tikets.count()
@@ -925,10 +275,10 @@ def quality_control_data(request):
     # header names first, then falls back to its second line so the sort is not
     # left as a coarse grouping. Nomor tiket is unique, so it needs no fallback.
     order_map = {
-        0: (f'{_SUB}__nama_tabel_I',),
+        0: (f'{sq.SUB}__nama_tabel_I',),
         1: ('id',),
         2: ('nomor_tiket',),
-        3: (f'{_ILAP}__nama_ilap', f'{_SUB}__id_jenis_tabel__deskripsi'),
+        3: (f'{sq.ILAP}__nama_ilap', f'{sq.SUB}__id_jenis_tabel__deskripsi'),
         4: ('tgl_transfer_date', 'tgl_rematch_date'),
         5: ('deadline_date',),
         # Jatuh tempo is the deadline counted from today, so it sorts the same way.
@@ -981,21 +331,6 @@ def quality_control_data(request):
             # load, not just the row in front of them.
             pic_pmde_name = pic_profil_link(pic_pmde.id_user, can_view)
 
-        # Deadline from the annotated durasi — 0 means no active DurasiJatuhTempo
-        # covers this tiket's base date, so there is nothing to count from.
-        deadline = '-'
-        jatuh_tempo = '-'
-        deadline_sort_iso = ''
-        sisa_hari = None
-        deadline_day = _deadline_day(
-            tiket.tgl_transfer, tiket.tgl_rematch, tiket.active_durasi,
-        )
-        if deadline_day is not None:
-            deadline = deadline_day.strftime('%d/%m/%Y')
-            deadline_sort_iso = deadline_day.strftime('%Y-%m-%d')
-            sisa_hari = (deadline_day - date.today()).days
-            jatuh_tempo = f'{sisa_hari} hari'
-
         row = {
             'nama_tabel': sub_jenis_data.nama_tabel_I or '',
             'pic_pmde': pic_pmde_name,
@@ -1003,7 +338,6 @@ def quality_control_data(request):
             'nama_ilap': ilap.nama_ilap if ilap else '',
             'sub_jenis_data': sub_jenis_data.nama_sub_jenis_data or '',
             'jenis_tabel': jenis_tabel.deskripsi if jenis_tabel else '',
-            'deadline': {'display': deadline, 'sort': deadline_sort_iso},
             'tgl_transfer': {
                 'display': tiket.tgl_transfer.strftime('%d/%m/%Y') if tiket.tgl_transfer else '-',
                 'sort': tiket.tgl_transfer.strftime('%Y-%m-%d') if tiket.tgl_transfer else '',
@@ -1012,17 +346,15 @@ def quality_control_data(request):
                 'display': tiket.tgl_rematch.strftime('%d/%m/%Y') if tiket.tgl_rematch else '-',
                 'sort': tiket.tgl_rematch.strftime('%Y-%m-%d') if tiket.tgl_rematch else '',
             },
-            'jatuh_tempo': {
-                'display': jatuh_tempo,
-                'sort': '' if sisa_hari is None else str(sisa_hari),
-            },
             'prioritas': 'Ya' if tiket.is_prioritas else 'Tidak',
             'jml_baris_i': tiket.baris_i or 0,
             'jml_selesai': tiket.sudah_qc or 0,
             'jml_progress': tiket.belum_qc or 0,
-            'sisa_hari': sisa_hari,  # numeric for frontend row coloring
             'action': f'<a href="{reverse("tiket_detail", args=[tiket.id])}" class="btn btn-sm btn-primary" title="Lihat Detail"><i class="feather-eye"></i></a>',
         }
+        # Deadline, jatuh tempo and the sisa_hari the frontend colours the row
+        # by, all counted from the durasi annotated above.
+        row.update(DEADLINE.cells(tiket))
         data.append(row)
 
     return JsonResponse({

@@ -159,13 +159,23 @@ def collect_requests(page, predicate=None):
         page.remove_listener("response", handler)
 
 
-def login(page):
+def login(page, user=USER, password=PASS):
+    """Log in as `user`, defaulting to the pw_tester account from setup_test_data.
+
+    Scenarios that need a *different* account (e.g. to exercise per-user PIC
+    scoping) pass one explicitly. Always log out first: the session cookie of a
+    previous scenario would otherwise keep the old user signed in and the login
+    form would never be shown.
+    """
+    # Drop any existing session cookie rather than GETting /accounts/logout/,
+    # which Django 5 no longer allows.
+    page.context.clear_cookies()
     page.goto(f"{BASE_URL}/accounts/login/")
-    page.fill('input[name="username"]', USER)
-    page.fill('input[name="password"]', PASS)
+    page.fill('input[name="username"]', user)
+    page.fill('input[name="password"]', password)
     with page.expect_navigation():
         page.click('button[type="submit"], input[type="submit"]')
-    assert "/accounts/login" not in page.url, "login failed"
+    assert "/accounts/login" not in page.url, f"login failed for {user}"
 
 
 def shot(page, name):

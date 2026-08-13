@@ -8,18 +8,18 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_GET, require_POST
 from django.contrib.auth.models import Group
 from django.db import transaction
-from django.db.models import Exists, OuterRef
 from django.utils import timezone
 
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from ..models.jenis_data_ilap import JenisDataILAP
 from ..models.jenis_prioritas_data import JenisPrioritasData
+from ..models.tiket import Tiket
 from ..forms.durasi_jatuh_tempo import DurasiJatuhTempoForm
 from .mixins import AjaxFormMixin, AdminPIDERequiredMixin, AdminPMDERequiredMixin, SafeDeleteMixin
 from datetime import date as _date
 
 # Durasi Jatuh Tempo PMDE auto-generation rules
-GENERATE_PMDE_START_YEAR = 2022
+GENERATE_PMDE_START_YEAR = 2019
 GENERATE_PMDE_DURASI_PRIORITAS = 45
 GENERATE_PMDE_DURASI_NON_PRIORITAS = 85
 
@@ -503,77 +503,102 @@ def durasi_jatuh_tempo_pmde_data(request):
     })
 
 
+def _overlaps(start_a, end_a, start_b, end_b):
+    """True when the two closed date ranges share at least one day."""
+    return not (end_a < start_b or end_b < start_a)
+
+
+def _pmde_prioritas_ranges():
+    """The periods each Sub Jenis Data is prioritas, keyed by Sub Jenis Data id.
+
+    Prioritas is not a property of the Sub Jenis Data but of a period of it: a
+    `JenisPrioritasData` row carries the `start_date`/`end_date` the ND assigned
+    it for, so a Sub Jenis Data can be prioritas in one year and not the next.
+    An open-ended row (no `end_date`) runs indefinitely.
+    """
+    ranges = {}
+    for sub_id, start_date, end_date in JenisPrioritasData.objects.values_list(
+        'id_sub_jenis_data_ilap_id', 'start_date', 'end_date'
+    ):
+        ranges.setdefault(sub_id, []).append((start_date, end_date or _date.max))
+    return ranges
+
+
+def _is_prioritas_periode(prioritas_ranges, sub_id, start_date, end_date):
+    """Whether the period `start_date`..`end_date` of `sub_id` counts as prioritas.
+
+    A period is prioritas when any of the Sub Jenis Data's prioritas ranges
+    overlaps it. Generated ranges are whole years and the prioritas ND covers a
+    whole year too, so in practice this is a year-for-year comparison; a prioritas
+    range that only covers part of a period still makes that whole period
+    prioritas, since the durasi is a single number per row.
+    """
+    return any(
+        _overlaps(start_date, end_date, p_start, p_end)
+        for p_start, p_end in prioritas_ranges.get(sub_id, ())
+    )
+
+
 def _build_pmde_generate_plan(pmde_group):
     """Work out which PMDE `DurasiJatuhTempo` rows are missing.
 
     Rules applied:
-    - Only `JenisDataILAP` rows that have no `DurasiJatuhTempo` entry at all for
-      seksi `user_pmde` are considered.
-    - `durasi` is 45 when the Sub Jenis Data appears in `JenisPrioritasData`,
-      otherwise 85.
-    - One range per year from 2022 up to and including the current year, each
-      covering 01-01 until 31-12 of that year.
+    - Every `JenisDataILAP` row is considered, so a Sub Jenis Data that already
+      has PMDE entries still gets the years none of them cover.
+    - One range per year from `GENERATE_PMDE_START_YEAR` up to and including the
+      current year, each covering 01-01 until 31-12 of that year.
+    - `durasi` is decided per year, not per Sub Jenis Data: 45 when a
+      `JenisPrioritasData` period overlaps that year, otherwise 85. A Sub Jenis
+      Data that is prioritas only in some years therefore gets 45 for those years
+      and 85 for the rest.
 
     A year is skipped when its range would duplicate or overlap an existing PMDE
-    row for the same Sub Jenis Data, so the non-overlapping invariant holds even
-    if the data already contains partial entries.
+    row for the same Sub Jenis Data, so the non-overlapping invariant holds and
+    nothing already configured by hand is touched.
 
     Returns a tuple ``(years, plan, skipped)`` where `plan` is a list of
-    ``{'jenis_data', 'durasi', 'is_prioritas', 'ranges'}`` dicts, and `skipped`
-    counts the ranges dropped as overlapping. Read-only — nothing is saved.
+    ``{'jenis_data', 'ranges'}`` dicts whose `ranges` are
+    ``(start_date, end_date, durasi, is_prioritas)`` tuples, and `skipped` counts
+    the ranges dropped as overlapping. Read-only — nothing is saved.
     """
     current_year = timezone.now().date().year
     years = list(range(GENERATE_PMDE_START_YEAR, current_year + 1))
 
-    candidates = list(JenisDataILAP.objects.filter(
-        ~Exists(DurasiJatuhTempo.objects.filter(
-            id_sub_jenis_data=OuterRef('pk'),
-            seksi=pmde_group
-        ))
-    ).order_by('id_sub_jenis_data'))
+    candidates = list(JenisDataILAP.objects.order_by('id_sub_jenis_data'))
 
     if not candidates:
         return years, [], 0
 
-    candidate_ids = [obj.pk for obj in candidates]
-    prioritas_ids = set(
-        JenisPrioritasData.objects.filter(id_sub_jenis_data_ilap__in=candidate_ids)
-        .values_list('id_sub_jenis_data_ilap_id', flat=True)
-    )
+    prioritas_ranges = _pmde_prioritas_ranges()
 
     # Existing PMDE ranges per Sub Jenis Data, used to guarantee no duplicate or
     # overlapping range is planned.
     existing_ranges = {}
     for sub_id, start_date, end_date in DurasiJatuhTempo.objects.filter(
-        seksi=pmde_group, id_sub_jenis_data__in=candidate_ids
+        seksi=pmde_group
     ).values_list('id_sub_jenis_data_id', 'start_date', 'end_date'):
         existing_ranges.setdefault(sub_id, []).append((start_date, end_date or _date.max))
 
     plan = []
     skipped = 0
     for obj in candidates:
-        is_prioritas = obj.pk in prioritas_ids
-        durasi = (
-            GENERATE_PMDE_DURASI_PRIORITAS if is_prioritas
-            else GENERATE_PMDE_DURASI_NON_PRIORITAS
-        )
         ranges = existing_ranges.setdefault(obj.pk, [])
         planned_ranges = []
         for year in years:
             start_date = _date(year, 1, 1)
             end_date = _date(year, 12, 31)
-            if any(not (e1 < start_date or end_date < s1) for s1, e1 in ranges):
+            if any(_overlaps(start_date, end_date, s1, e1) for s1, e1 in ranges):
                 skipped += 1
                 continue
+            is_prioritas = _is_prioritas_periode(prioritas_ranges, obj.pk, start_date, end_date)
+            durasi = (
+                GENERATE_PMDE_DURASI_PRIORITAS if is_prioritas
+                else GENERATE_PMDE_DURASI_NON_PRIORITAS
+            )
             ranges.append((start_date, end_date))
-            planned_ranges.append((start_date, end_date))
+            planned_ranges.append((start_date, end_date, durasi, is_prioritas))
         if planned_ranges:
-            plan.append({
-                'jenis_data': obj,
-                'durasi': durasi,
-                'is_prioritas': is_prioritas,
-                'ranges': planned_ranges,
-            })
+            plan.append({'jenis_data': obj, 'ranges': planned_ranges})
 
     return years, plan, skipped
 
@@ -589,9 +614,11 @@ def durasi_jatuh_tempo_pmde_generate_preview(request):
     `_build_pmde_generate_plan` — but saves nothing.
 
     Returns JSON with `success`, `tahun_awal`/`tahun_akhir`, `total_rows`,
-    `total_jenis_data`, `prioritas`/`non_prioritas` (Sub Jenis Data per durasi),
+    `total_jenis_data`, `baris_prioritas`/`baris_non_prioritas` (rows per durasi),
     `skipped`, and `items`: one entry per affected Sub Jenis Data with its kode,
-    nama, durasi, and the periode ranges to be inserted.
+    nama, and a `baris` list giving the periode, durasi and prioritas flag of
+    every row to be inserted — durasi is decided per periode, so one Sub Jenis
+    Data can carry both values.
 
     Side effects: None — read-only endpoint.
     """
@@ -608,25 +635,29 @@ def durasi_jatuh_tempo_pmde_generate_preview(request):
         {
             'id_sub_jenis_data': entry['jenis_data'].id_sub_jenis_data,
             'nama_sub_jenis_data': entry['jenis_data'].nama_sub_jenis_data,
-            'durasi': entry['durasi'],
-            'is_prioritas': entry['is_prioritas'],
             'jumlah_baris': len(entry['ranges']),
-            'periode': [
-                f"{start.strftime('%d-%m-%Y')} s.d. {end.strftime('%d-%m-%Y')}"
-                for start, end in entry['ranges']
+            'baris': [
+                {
+                    'periode': f"{start.strftime('%d-%m-%Y')} s.d. {end.strftime('%d-%m-%Y')}",
+                    'durasi': durasi,
+                    'is_prioritas': is_prioritas,
+                }
+                for start, end, durasi, is_prioritas in entry['ranges']
             ],
         }
         for entry in plan
     ]
 
+    all_rows = [row for item in items for row in item['baris']]
+
     return JsonResponse({
         'success': True,
         'tahun_awal': years[0] if years else None,
         'tahun_akhir': years[-1] if years else None,
-        'total_rows': sum(item['jumlah_baris'] for item in items),
+        'total_rows': len(all_rows),
         'total_jenis_data': len(items),
-        'prioritas': sum(1 for item in items if item['is_prioritas']),
-        'non_prioritas': sum(1 for item in items if not item['is_prioritas']),
+        'baris_prioritas': sum(1 for row in all_rows if row['is_prioritas']),
+        'baris_non_prioritas': sum(1 for row in all_rows if not row['is_prioritas']),
         'durasi_prioritas': GENERATE_PMDE_DURASI_PRIORITAS,
         'durasi_non_prioritas': GENERATE_PMDE_DURASI_NON_PRIORITAS,
         'skipped': skipped,
@@ -666,7 +697,7 @@ def durasi_jatuh_tempo_pmde_generate(request):
             'created': 0,
             'jenis_data': 0,
             'skipped': skipped,
-            'message': 'Tidak ada Jenis Data yang perlu ditambahkan. Semua sudah punya Durasi Jatuh Tempo PMDE.',
+            'message': 'Tidak ada Jenis Data yang perlu ditambahkan. Semua tahun sudah punya Durasi Jatuh Tempo PMDE.',
         })
 
     today = timezone.now().date()
@@ -676,7 +707,7 @@ def durasi_jatuh_tempo_pmde_generate(request):
         DurasiJatuhTempo(
             id_sub_jenis_data=entry['jenis_data'],
             seksi=pmde_group,
-            durasi=entry['durasi'],
+            durasi=durasi,
             start_date=start_date,
             end_date=end_date,
             create_date=today,
@@ -685,7 +716,7 @@ def durasi_jatuh_tempo_pmde_generate(request):
             update_by=username,
         )
         for entry in plan
-        for start_date, end_date in entry['ranges']
+        for start_date, end_date, durasi, _is_prioritas in entry['ranges']
     ]
 
     with transaction.atomic():
@@ -700,4 +731,334 @@ def durasi_jatuh_tempo_pmde_generate(request):
             f'{len(new_rows)} baris Durasi Jatuh Tempo PMDE berhasil dibuat untuk '
             f'{len(plan)} Sub Jenis Data (tahun {years[0]}-{years[-1]}).'
         ),
+    })
+
+
+def _build_pmde_prioritas_sync_plan(pmde_group):
+    """Find the generated PMDE rows whose durasi no longer matches their prioritas.
+
+    A prioritas period can be added or deleted long after the `DurasiJatuhTempo`
+    rows were generated, which leaves rows on the wrong side of the 45/85 rule.
+    Each row is judged against its own periode — the same test
+    `_build_pmde_generate_plan` applies when it creates one — so only the years a
+    `JenisPrioritasData` period actually overlaps become 45, and a year that lost
+    its prioritas goes back to 85 while the Sub Jenis Data's other years stay put.
+
+    Only rows that still carry one of the two generated values are considered, so
+    a durasi somebody set by hand (say 30) is never overwritten.
+
+    Returns a dict with `updates` (list of ``(durasi_row_id, durasi_baru)``
+    pairs), `items` (one entry per Sub Jenis Data, each listing the rows that
+    change, for the confirmation screen) and the `baris_ke_prioritas` /
+    `baris_ke_non_prioritas` row counts. Read-only — nothing is saved.
+    """
+    prioritas_ranges = _pmde_prioritas_ranges()
+
+    candidates = DurasiJatuhTempo.objects.filter(
+        seksi=pmde_group,
+        durasi__in=(GENERATE_PMDE_DURASI_PRIORITAS, GENERATE_PMDE_DURASI_NON_PRIORITAS),
+    ).order_by('id_sub_jenis_data__id_sub_jenis_data', 'start_date')
+
+    updates = []
+    items = {}
+    ke_prioritas = 0
+    ke_non_prioritas = 0
+    for row_id, sub_id, kode, nama, durasi, start_date, end_date in candidates.values_list(
+        'id', 'id_sub_jenis_data_id',
+        'id_sub_jenis_data__id_sub_jenis_data', 'id_sub_jenis_data__nama_sub_jenis_data',
+        'durasi', 'start_date', 'end_date',
+    ).iterator(chunk_size=2000):
+        is_prioritas = _is_prioritas_periode(
+            prioritas_ranges, sub_id, start_date, end_date or _date.max
+        )
+        durasi_baru = (
+            GENERATE_PMDE_DURASI_PRIORITAS if is_prioritas
+            else GENERATE_PMDE_DURASI_NON_PRIORITAS
+        )
+        if durasi == durasi_baru:
+            continue
+
+        updates.append((row_id, durasi_baru))
+        if is_prioritas:
+            ke_prioritas += 1
+        else:
+            ke_non_prioritas += 1
+
+        item = items.setdefault(sub_id, {
+            'id_sub_jenis_data': kode,
+            'nama_sub_jenis_data': nama,
+            'jumlah_baris': 0,
+            'baris': [],
+        })
+        item['jumlah_baris'] += 1
+        item['baris'].append({
+            'periode': (
+                f"{start_date.strftime('%d-%m-%Y')} s.d. "
+                f"{end_date.strftime('%d-%m-%Y') if end_date else 'seterusnya'}"
+            ),
+            'durasi_lama': durasi,
+            'durasi_baru': durasi_baru,
+            'is_prioritas': is_prioritas,
+        })
+
+    return {
+        'updates': updates,
+        'items': list(items.values()),
+        'baris_ke_prioritas': ke_prioritas,
+        'baris_ke_non_prioritas': ke_non_prioritas,
+    }
+
+
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde']).exists())
+@require_GET
+def durasi_jatuh_tempo_pmde_prioritas_sync_preview(request):
+    """Summarise the durasi values that the prioritas sync step would change.
+
+    Applies exactly the same rules as `durasi_jatuh_tempo_pmde_prioritas_sync` —
+    see `_build_pmde_prioritas_sync_plan` — but saves nothing.
+
+    Returns JSON with `success`, `total_rows`, `total_jenis_data`,
+    `baris_ke_prioritas`/`baris_ke_non_prioritas`, the two durasi constants, and
+    `items`: one entry per affected Sub Jenis Data whose `baris` list gives the
+    periode, old durasi and new durasi of every row that changes.
+
+    Side effects: None — read-only endpoint.
+    """
+    pmde_group = Group.objects.filter(name='user_pmde').first()
+    if pmde_group is None:
+        return JsonResponse(
+            {'success': False, 'message': 'Grup seksi "user_pmde" belum tersedia.'},
+            status=400,
+        )
+
+    plan = _build_pmde_prioritas_sync_plan(pmde_group)
+
+    return JsonResponse({
+        'success': True,
+        'total_rows': len(plan['updates']),
+        'total_jenis_data': len(plan['items']),
+        'baris_ke_prioritas': plan['baris_ke_prioritas'],
+        'baris_ke_non_prioritas': plan['baris_ke_non_prioritas'],
+        'durasi_prioritas': GENERATE_PMDE_DURASI_PRIORITAS,
+        'durasi_non_prioritas': GENERATE_PMDE_DURASI_NON_PRIORITAS,
+        'items': plan['items'],
+    })
+
+
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde']).exists())
+@require_POST
+def durasi_jatuh_tempo_pmde_prioritas_sync(request):
+    """Re-apply the 45/85 rule to PMDE rows whose prioritas has since changed.
+
+    Applies the rules described in `_build_pmde_prioritas_sync_plan`; the client
+    shows `durasi_jatuh_tempo_pmde_prioritas_sync_preview` first so the user can
+    confirm what will change.
+
+    Side effects: updates `durasi` (and the audit fields) on the affected
+    `DurasiJatuhTempo` rows inside a single transaction. The rows themselves are
+    kept, so tikets already pointing at them keep their reference and simply pick
+    up the new durasi.
+
+    Returns JSON with `success`, `updated` (rows changed), `jenis_data`
+    (Sub Jenis Data touched) and a ready-to-display `message`.
+    """
+    pmde_group = Group.objects.filter(name='user_pmde').first()
+    if pmde_group is None:
+        return JsonResponse(
+            {'success': False, 'message': 'Grup seksi "user_pmde" belum tersedia.'},
+            status=400,
+        )
+
+    plan = _build_pmde_prioritas_sync_plan(pmde_group)
+    updates = plan['updates']
+
+    if not updates:
+        return JsonResponse({
+            'success': True,
+            'updated': 0,
+            'jenis_data': 0,
+            'message': 'Tidak ada durasi yang perlu disesuaikan. Semua sudah sesuai status prioritasnya.',
+        })
+
+    today = timezone.now().date()
+    username = (getattr(request.user, 'username', '') or '')[:9]
+
+    with transaction.atomic():
+        DurasiJatuhTempo.objects.bulk_update(
+            [
+                DurasiJatuhTempo(
+                    id=row_id, durasi=durasi_baru, update_date=today, update_by=username
+                )
+                for row_id, durasi_baru in updates
+            ],
+            ['durasi', 'update_date', 'update_by'],
+            batch_size=500,
+        )
+
+    return JsonResponse({
+        'success': True,
+        'updated': len(updates),
+        'jenis_data': len(plan['items']),
+        'message': (
+            f'{len(updates)} baris Durasi Jatuh Tempo PMDE disesuaikan untuk '
+            f'{len(plan["items"])} Sub Jenis Data ('
+            f'{plan["baris_ke_prioritas"]} baris menjadi prioritas, '
+            f'{plan["baris_ke_non_prioritas"]} baris menjadi non-prioritas).'
+        ),
+    })
+
+
+def _build_pmde_tiket_backfill_plan(pmde_group):
+    """Match every Tiket that still has no `id_durasi_jatuh_tempo_pmde` to a row.
+
+    The match follows the model relation: a tiket points at a `PeriodeJenisData`,
+    which names the `JenisDataILAP`, which owns the `DurasiJatuhTempo` rows — of
+    those, the PMDE one whose range covers the tiket's base date is the answer.
+
+    The base date is `tgl_rematch` when the tiket has been rematched and
+    `tgl_transfer` otherwise, the same date `quality_control` counts the PMDE
+    deadline from. Tikets that never reached PMDE therefore have no base date and
+    are left untouched, and so is a tiket whose base date falls outside every
+    range configured for its Sub Jenis Data.
+
+    Returns a dict with `matches` (list of ``(tiket_id, durasi_id)`` pairs),
+    `per_year` (matched tikets grouped by the year of their base date),
+    `unmatched` and `tanpa_tanggal`. Read-only — nothing is saved.
+    """
+    # PMDE ranges per Sub Jenis Data, latest start first so the most recently
+    # configured range wins when two of them cover the same date.
+    ranges = {}
+    for durasi_id, sub_id, start_date, end_date in DurasiJatuhTempo.objects.filter(
+        seksi=pmde_group
+    ).values_list('id', 'id_sub_jenis_data_id', 'start_date', 'end_date'):
+        ranges.setdefault(sub_id, []).append((start_date, end_date or _date.max, durasi_id))
+    for entries in ranges.values():
+        entries.sort(key=lambda entry: entry[0], reverse=True)
+
+    empty = Tiket.objects.filter(id_durasi_jatuh_tempo_pmde__isnull=True)
+    tanpa_tanggal = empty.filter(tgl_transfer__isnull=True, tgl_rematch__isnull=True).count()
+
+    matches = []
+    per_year = {}
+    unmatched = 0
+    for tiket_id, sub_id, tgl_transfer, tgl_rematch in empty.exclude(
+        tgl_transfer__isnull=True, tgl_rematch__isnull=True
+    ).values_list(
+        'id', 'id_periode_data__id_sub_jenis_data_ilap_id', 'tgl_transfer', 'tgl_rematch'
+    ).iterator(chunk_size=2000):
+        base = tgl_rematch or tgl_transfer
+        base_date = base.date() if hasattr(base, 'date') else base
+        for start_date, end_date, durasi_id in ranges.get(sub_id, ()):
+            if start_date <= base_date <= end_date:
+                matches.append((tiket_id, durasi_id))
+                per_year[base_date.year] = per_year.get(base_date.year, 0) + 1
+                break
+        else:
+            unmatched += 1
+
+    return {
+        'matches': matches,
+        'per_year': [{'tahun': year, 'jumlah': per_year[year]} for year in sorted(per_year)],
+        'unmatched': unmatched,
+        'tanpa_tanggal': tanpa_tanggal,
+    }
+
+
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde']).exists())
+@require_GET
+def durasi_jatuh_tempo_pmde_tiket_backfill_preview(request):
+    """Summarise the tikets that the backfill step would fill in.
+
+    Second step of Generate Otomatis: once the PMDE `DurasiJatuhTempo` rows exist,
+    the tikets that were imported without one can be pointed at them. Applies
+    exactly the same matching as `durasi_jatuh_tempo_pmde_tiket_backfill` — see
+    `_build_pmde_tiket_backfill_plan` — but saves nothing.
+
+    Returns JSON with `success`, `total_tiket` (rows that would be updated),
+    `per_year` (breakdown by year of the base date), `unmatched` (tikets whose
+    base date no range covers) and `tanpa_tanggal` (tikets that never reached
+    PMDE, so they have no base date to match on).
+
+    Side effects: None — read-only endpoint.
+    """
+    pmde_group = Group.objects.filter(name='user_pmde').first()
+    if pmde_group is None:
+        return JsonResponse(
+            {'success': False, 'message': 'Grup seksi "user_pmde" belum tersedia.'},
+            status=400,
+        )
+
+    plan = _build_pmde_tiket_backfill_plan(pmde_group)
+
+    return JsonResponse({
+        'success': True,
+        'total_tiket': len(plan['matches']),
+        'per_year': plan['per_year'],
+        'unmatched': plan['unmatched'],
+        'tanpa_tanggal': plan['tanpa_tanggal'],
+    })
+
+
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde']).exists())
+@require_POST
+def durasi_jatuh_tempo_pmde_tiket_backfill(request):
+    """Fill the empty `Tiket.id_durasi_jatuh_tempo_pmde` columns.
+
+    Applies the matching described in `_build_pmde_tiket_backfill_plan`; the
+    client shows `durasi_jatuh_tempo_pmde_tiket_backfill_preview` first so the
+    user can confirm how many tikets will be touched.
+
+    Side effects: updates `id_durasi_jatuh_tempo_pmde` on the matched tikets
+    inside a single transaction. Only rows that are currently NULL are considered,
+    so a value already recorded is never overwritten and re-running is a no-op.
+
+    Returns JSON with `success`, `updated`, `unmatched`, `tanpa_tanggal` and a
+    ready-to-display `message`.
+    """
+    pmde_group = Group.objects.filter(name='user_pmde').first()
+    if pmde_group is None:
+        return JsonResponse(
+            {'success': False, 'message': 'Grup seksi "user_pmde" belum tersedia.'},
+            status=400,
+        )
+
+    plan = _build_pmde_tiket_backfill_plan(pmde_group)
+    matches = plan['matches']
+
+    if not matches:
+        return JsonResponse({
+            'success': True,
+            'updated': 0,
+            'unmatched': plan['unmatched'],
+            'tanpa_tanggal': plan['tanpa_tanggal'],
+            'message': 'Tidak ada Tiket yang perlu diisi Durasi Jatuh Tempo PMDE-nya.',
+        })
+
+    with transaction.atomic():
+        Tiket.objects.bulk_update(
+            [
+                Tiket(id=tiket_id, id_durasi_jatuh_tempo_pmde_id=durasi_id)
+                for tiket_id, durasi_id in matches
+            ],
+            ['id_durasi_jatuh_tempo_pmde'],
+            batch_size=500,
+        )
+
+    message = f'{len(matches)} Tiket berhasil diisi Durasi Jatuh Tempo PMDE-nya.'
+    if plan['unmatched']:
+        message += (
+            f' {plan["unmatched"]} Tiket dilewati karena tidak ada durasi yang '
+            'berlaku pada tanggal transfer/rematch-nya.'
+        )
+
+    return JsonResponse({
+        'success': True,
+        'updated': len(matches),
+        'unmatched': plan['unmatched'],
+        'tanpa_tanggal': plan['tanpa_tanggal'],
+        'message': message,
     })

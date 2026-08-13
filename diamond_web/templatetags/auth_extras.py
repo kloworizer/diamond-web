@@ -81,9 +81,15 @@ def pic_profil_url(user):
 
 @register.filter(name='has_group')
 def has_group(user, group_name):
-    if user is not None and user.is_authenticated:
-        return user.groups.filter(name=group_name).exists()
-    return False
+    """Return True when `user` belongs to `group_name`.
+
+    Reads the memoized group set rather than querying: the navbar and sidebar
+    alone test a dozen groups on every page, and each test used to be its own
+    join against `auth_user_groups`.
+    """
+    from ..views.mixins import user_group_names
+
+    return group_name in user_group_names(user)
 @register.filter(name='get_item')
 def get_item(dictionary, key):
     """Get item from dictionary by key"""

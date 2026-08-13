@@ -140,6 +140,7 @@ Aksi berikut bukan menu navbar melainkan tombol pada halaman detail tiket. Selai
 | **Profil Sub Jenis Data** | `/jenis-data-ilap/<id_sub_jenis_data>/` | ✅ | ✅ | ✅ | ✅ |
 | **Monitoring Penyampaian Data** | `/monitoring-penyampaian-data/` | ✅ | ✅ | ✅ | ✅ |
 | **Quality Control** | `/quality-control/` | ❌ | ✅ | ✅ | ✅ |
+| **Identifikasi** | `/identifikasi/` | ❌ | ✅ | ❌ | ✅ |
 
 ### Dashboard & Sinkronisasi
 

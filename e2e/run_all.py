@@ -22,6 +22,7 @@ import test_form_interactions
 import test_form_interactions_pages
 import test_master_data_crud
 import test_tiket_extra_actions
+import test_pic_end_date_dropdown
 
 
 def main():
@@ -35,6 +36,7 @@ def main():
             ("FORM INTERACTIONS", test_form_interactions.run),
             ("FORM INTERACTIONS (PAGES)", test_form_interactions_pages.run),
             ("TIKET EXTRA ACTIONS", test_tiket_extra_actions.run),
+            ("PIC END DATE DROPDOWN", test_pic_end_date_dropdown.run),
             ("MASTER DATA CRUD", test_master_data_crud.run),
         ):
             print(f"\n===== {label} =====")

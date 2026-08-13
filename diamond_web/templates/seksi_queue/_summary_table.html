@@ -1,0 +1,73 @@
+{% comment %}
+The summary read one PIC at a time: a line per person, with each queue the page
+summarises as a group of columns across it. Where the cards answer "how much is
+in this queue", the table answers "how much of each queue is whose" — the same
+figures, turned so that the comparison the reader of a seksi queue actually
+makes is the one along a row.
+
+Every group leads with the same two columns — the tikets, and the rows behind
+them — so the eye can be moved sideways between them without relearning the
+layout. The group the page's own queue is in carries the jenis tabel as well,
+that being the split worth having about work already in hand; each of those
+cells holds both figures, the tiket count over the rows behind it, muted,
+because a jenis tabel that is two tikets and a million rows is a different fact
+from twenty tikets and a thousand.
+
+Two rows of headers rather than one: the top names the queues, the bottom the
+columns each of them holds. Every column of that bottom row sorts the lines,
+as does the name itself; the lines all being on the page at once, the sorting
+is done where they are rather than asked of the server again.
+
+Context (see the page's view):
+    summary_sections: `{key, label, variant, kinds}` per group, in column order,
+        `kinds` saying whether it is split by jenis tabel.
+    summary_kinds: The jenis tabel names, in the order every breakdown reads.
+    summary_colspan: How many columns a group carrying the split spans.
+    summary_section_keys: The same keys, comma separated, for the JS below.
+
+The body rows are appended by `renderSummaryTable` in seksi_queue/list.html;
+the foot holds the totals, which are the payload's own section figures.
+{% endcomment %}
+<div class="table-responsive">
+    {% comment %}
+    The keys name the payload sections a line's cells are filled from, and the
+    variants the hue each of those groups is drawn in — both written from the
+    one list the header below is built from, so a cell cannot land under the
+    wrong heading or in the wrong colour.
+    {% endcomment %}
+    <table class="table sq-summary-table mb-0"
+           data-summary-sections="{{ summary_section_keys }}"
+           data-summary-variants="{{ summary_section_variants }}">
+        <thead>
+            <tr>
+                <th rowspan="2" class="sq-summary-pic" data-sort="name">Nama PIC</th>
+                {% for section in summary_sections %}
+                <th colspan="{% if section.kinds %}{{ summary_colspan }}{% else %}2{% endif %}" class="sq-summary-group sq-summary-group-{{ section.variant }}">
+                    <span class="sq-stat-dot"></span>{{ section.label }}
+                </th>
+                {% endfor %}
+            </tr>
+            <tr>
+                {% comment %}
+                `data-sort` names the figure a header orders the lines by: a
+                jenis tabel column sorts by the tiket count its cell leads with,
+                the same rule the tiket tables below follow for their stacked
+                cells. A header without one cannot be clicked.
+                {% endcomment %}
+                {% for section in summary_sections %}
+                <th class="sq-summary-sub sq-summary-group-start sq-summary-group-{{ section.variant }}" data-sort="{{ section.key }}:tikets">Tiket</th>
+                <th class="sq-summary-sub sq-summary-group-{{ section.variant }}" data-sort="{{ section.key }}:baris">Baris Data</th>
+                {% if section.kinds %}
+                {% for kind in summary_kinds %}
+                <th class="sq-summary-sub sq-kind-{{ kind.hue }}" data-sort="{{ section.key }}:kind:{{ forloop.counter0 }}">{{ kind.name }}</th>
+                {% endfor %}
+                {% endif %}
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody data-summary-rows></tbody>
+        <tfoot>
+            <tr data-summary-total></tr>
+        </tfoot>
+    </table>
+</div>

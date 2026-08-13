@@ -18,6 +18,14 @@ class JenisPrioritasData(AuditTrailModel):
     class Meta:
         db_table = 'jenis_prioritas_data'
         ordering = ['id']
+        indexes = [
+            # Serves prioritas_exists(): a correlated EXISTS matching the sub
+            # jenis data whose prioritas window covers the tiket's tgl_terima_dip.
+            models.Index(
+                fields=['id_sub_jenis_data_ilap', 'start_date', 'end_date'],
+                name='jpd_sub_dates_idx',
+            ),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=['id_sub_jenis_data_ilap', 'tahun'],

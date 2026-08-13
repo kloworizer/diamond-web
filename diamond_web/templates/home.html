@@ -2129,6 +2129,8 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
+                                        <th>Jumlah Baris Data</th>
+                                        <th>Jenis Tabel</th>
                                         <th>Tgl Transfer</th>
                                         <th>Prioritas</th>
                                         <th class="col-actions">Aksi</th>
@@ -2681,8 +2683,27 @@
             { data: 'nomor_tiket', title: 'Nomor Tiket' },
             { data: 'nama_ilap', title: 'Nama ILAP' },
             { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
-            { 
-                data: 'tanggal', 
+            {
+                data: 'baris_i',
+                title: 'Jumlah Baris Data',
+                width: '110px',
+                render: function(data, type, row) {
+                    if (type === 'display') return createFixedBadge(data, '#e0f2fe', '#0284c7', '#bae6fd');
+                    return (data === null || data === undefined || data === '' || isNaN(data)) ? 0 : Number(data);
+                }
+            },
+            {
+                data: 'jenis_tabel',
+                title: 'Jenis Tabel',
+                width: '130px',
+                render: function(data) {
+                    if (data === null || data === undefined || data === '') return '-';
+                    const esc = String(data).replace(/"/g, '&quot;');
+                    return `<div class="text-truncate cell-truncate" style="max-width: 160px;" data-full-text="${esc}">${esc}</div>`;
+                }
+            },
+            {
+                data: 'tanggal',
                 title: 'Tanggal Transfer',
                 render: function(data, type, row) {
                     if (type === 'order' || type === 'type') {

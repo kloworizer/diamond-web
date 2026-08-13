@@ -304,6 +304,9 @@ urlpatterns = [
     # Quality Control URLs
     path('quality-control/', views.QualityControlView.as_view(), name='quality_control'),
     path('quality-control/data/', views.quality_control_data, name='quality_control_data'),
+    # Identifikasi URLs — the same queue page, read by PIDE
+    path('identifikasi/', views.IdentifikasiView.as_view(), name='identifikasi'),
+    path('identifikasi/data/', views.identifikasi_data, name='identifikasi_data'),
     # PIC PMDE URLs
     path('pic-pmde/', views.PICPMDEListView.as_view(), name='pic_pmde_list'),
     path('pic-pmde/data/', views.pic_pmde_data, name='pic_pmde_data'),
@@ -316,6 +319,10 @@ urlpatterns = [
     path('durasi-jatuh-tempo-pmde/data/', views.durasi_jatuh_tempo_pmde_data, name='durasi_jatuh_tempo_pmde_data'),
     path('durasi-jatuh-tempo-pmde/generate/preview/', views.durasi_jatuh_tempo_pmde_generate_preview, name='durasi_jatuh_tempo_pmde_generate_preview'),
     path('durasi-jatuh-tempo-pmde/generate/', views.durasi_jatuh_tempo_pmde_generate, name='durasi_jatuh_tempo_pmde_generate'),
+    path('durasi-jatuh-tempo-pmde/prioritas-sync/preview/', views.durasi_jatuh_tempo_pmde_prioritas_sync_preview, name='durasi_jatuh_tempo_pmde_prioritas_sync_preview'),
+    path('durasi-jatuh-tempo-pmde/prioritas-sync/', views.durasi_jatuh_tempo_pmde_prioritas_sync, name='durasi_jatuh_tempo_pmde_prioritas_sync'),
+    path('durasi-jatuh-tempo-pmde/tiket-backfill/preview/', views.durasi_jatuh_tempo_pmde_tiket_backfill_preview, name='durasi_jatuh_tempo_pmde_tiket_backfill_preview'),
+    path('durasi-jatuh-tempo-pmde/tiket-backfill/', views.durasi_jatuh_tempo_pmde_tiket_backfill, name='durasi_jatuh_tempo_pmde_tiket_backfill'),
     path('durasi-jatuh-tempo-pmde/create/', views.DurasiJatuhTempoPMDECreateView.as_view(), name='durasi_jatuh_tempo_pmde_create'),
     path('durasi-jatuh-tempo-pmde/<int:pk>/update/', views.DurasiJatuhTempoPMDEUpdateView.as_view(), name='durasi_jatuh_tempo_pmde_update'),
     path('durasi-jatuh-tempo-pmde/<int:pk>/delete/', views.DurasiJatuhTempoPMDEDeleteView.as_view(), name='durasi_jatuh_tempo_pmde_delete'),

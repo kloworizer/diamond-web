@@ -123,6 +123,21 @@ if DB_ENGINE == "postgresql":
             "PASSWORD": os.getenv("DB_PASSWORD", ""),
             "HOST": os.getenv("DB_HOST", "localhost"),
             "PORT": os.getenv("DB_PORT", "5432"),
+            # Reuse the backend connection across requests. Postgres forks an OS
+            # process per connection, so the default (0 = reconnect every
+            # request) makes every view pay a fork + auth before its first query.
+            #
+            # Connections are held per worker process, so the ceiling is
+            # roughly (gunicorn workers + celery workers) simultaneous idle
+            # backends — keep that under the server's max_connections. Set
+            # DB_CONN_MAX_AGE=0 if PgBouncer is ever put in front in
+            # transaction-pooling mode; persistent connections and a
+            # transaction pooler do not compose.
+            "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "60")),
+            # A reused connection may have been closed server-side since the
+            # last request. Without this the next view raises OperationalError
+            # mid-request; with it Django checks cheaply and reconnects.
+            "CONN_HEALTH_CHECKS": True,
         }
     }
 else:

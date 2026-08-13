@@ -158,13 +158,19 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
             # For non-admin users, further filter to only show PeriodeJenisData where they are an active P3DE PIC
             if self.user and not (self.user.is_superuser or self.user.groups.filter(name='admin').exists()):
                 from ..models.pic import PIC
+                # All conditions live in one filter() so they resolve against the
+                # same PIC row. Chaining a second filter() would join `pic` again
+                # and check the end_date window against an unrelated assignment,
+                # keeping ended P3DE PICs in the dropdown.
                 periode_queryset = periode_queryset.filter(
-                    id_sub_jenis_data_ilap__pic__tipe='P3DE',
-                    id_sub_jenis_data_ilap__pic__id_user=self.user,
-                    id_sub_jenis_data_ilap__pic__start_date__lte=today,
-                ).filter(
-                    Q(id_sub_jenis_data_ilap__pic__end_date__isnull=True) |
-                    Q(id_sub_jenis_data_ilap__pic__end_date__gte=today)
+                    Q(
+                        id_sub_jenis_data_ilap__pic__tipe=PIC.TipePIC.P3DE,
+                        id_sub_jenis_data_ilap__pic__id_user=self.user,
+                        id_sub_jenis_data_ilap__pic__start_date__lte=today,
+                    ) & (
+                        Q(id_sub_jenis_data_ilap__pic__end_date__isnull=True) |
+                        Q(id_sub_jenis_data_ilap__pic__end_date__gte=today)
+                    )
                 ).distinct()
 
             self.fields['id_periode_data'].queryset = periode_queryset

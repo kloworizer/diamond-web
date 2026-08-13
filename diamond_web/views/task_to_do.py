@@ -5,7 +5,27 @@ from diamond_web.constants.tiket_status import (
     STATUS_IDENTIFIKASI,
     STATUS_PENGENDALIAN_MUTU,
 )
-from diamond_web.views.mixins import is_kasi_p3de, is_kasi_pide, is_kasi_pmde
+from diamond_web.views.mixins import (
+    is_kasi_p3de,
+    is_kasi_pide,
+    is_kasi_pmde,
+    user_group_names,
+)
+
+
+def _scope(role, user, is_kasi):
+    """Tikets `user` may act on in `role`, or None when they may act on none.
+
+    A kasi supervises the whole unit and is left unscoped — filtering on every
+    id in the table costs a subquery that removes nothing.
+    """
+    if is_kasi(user):
+        return Tiket.objects.all()
+    return Tiket.objects.filter(
+        id__in=TiketPIC.objects.filter(
+            id_user=user, role=role, active=True
+        ).values_list('id_tiket', flat=True)
+    )
 
 
 def get_tiket_summary_for_user_p3de(user):
@@ -44,20 +64,15 @@ def get_tiket_summary_for_user_p3de(user):
 
     if not user or not getattr(user, 'is_authenticated', False):
         return empty
-    if is_kasi_p3de(user):
-        tiket_ids = Tiket.objects.values_list('id', flat=True)
-    elif user.groups.filter(name='user_p3de').exists():
-        tiket_ids = TiketPIC.objects.filter(
-            id_user=user, role=TiketPIC.Role.P3DE, active=True
-        ).values_list('id_tiket', flat=True)
-    else:
+    if not is_kasi_p3de(user) and 'user_p3de' not in user_group_names(user):
         return empty
+    tikets = _scope(TiketPIC.Role.P3DE, user, is_kasi_p3de)
 
     return {
-        'rekam_backup_data': Tiket.objects.filter(id__in=tiket_ids, backup=False).count(),
-        'buat_tanda_terima': Tiket.objects.filter(id__in=tiket_ids, tanda_terima=False).count(),
-        'rekam_hasil_penelitian': Tiket.objects.filter(id__in=tiket_ids, tgl_teliti__isnull=True).count(),
-        'kirim_ke_pide': Tiket.objects.filter(id__in=tiket_ids, tgl_kirim_pide__isnull=True).count(),
+        'rekam_backup_data': tikets.filter(backup=False).count(),
+        'buat_tanda_terima': tikets.filter(tanda_terima=False).count(),
+        'rekam_hasil_penelitian': tikets.filter(tgl_teliti__isnull=True).count(),
+        'kirim_ke_pide': tikets.filter(tgl_kirim_pide__isnull=True).count(),
     }
 
 
@@ -91,18 +106,13 @@ def get_tiket_summary_for_user_pide(user):
 
     if not user or not getattr(user, 'is_authenticated', False):
         return empty
-    if is_kasi_pide(user):
-        tiket_ids = Tiket.objects.values_list('id', flat=True)
-    elif user.groups.filter(name='user_pide').exists():
-        tiket_ids = TiketPIC.objects.filter(
-            id_user=user, role=TiketPIC.Role.PIDE, active=True
-        ).values_list('id_tiket', flat=True)
-    else:
+    if not is_kasi_pide(user) and 'user_pide' not in user_group_names(user):
         return empty
+    tikets = _scope(TiketPIC.Role.PIDE, user, is_kasi_pide)
 
     return {
-        'identifikasi_data': Tiket.objects.filter(id__in=tiket_ids, status_tiket=STATUS_DIKIRIM_KE_PIDE).count(),
-        'transfer_ke_pmde': Tiket.objects.filter(id__in=tiket_ids, status_tiket=STATUS_IDENTIFIKASI).count(),
+        'identifikasi_data': tikets.filter(status_tiket=STATUS_DIKIRIM_KE_PIDE).count(),
+        'transfer_ke_pmde': tikets.filter(status_tiket=STATUS_IDENTIFIKASI).count(),
     }
 
 
@@ -133,15 +143,10 @@ def get_tiket_summary_for_user_pmde(user):
 
     if not user or not getattr(user, 'is_authenticated', False):
         return empty
-    if is_kasi_pmde(user):
-        tiket_ids = Tiket.objects.values_list('id', flat=True)
-    elif user.groups.filter(name='user_pmde').exists():
-        tiket_ids = TiketPIC.objects.filter(
-            id_user=user, role=TiketPIC.Role.PMDE, active=True
-        ).values_list('id_tiket', flat=True)
-    else:
+    if not is_kasi_pmde(user) and 'user_pmde' not in user_group_names(user):
         return empty
+    tikets = _scope(TiketPIC.Role.PMDE, user, is_kasi_pmde)
 
     return {
-        'pengendalian_mutu': Tiket.objects.filter(id__in=tiket_ids, status_tiket=STATUS_PENGENDALIAN_MUTU).count(),
+        'pengendalian_mutu': tikets.filter(status_tiket=STATUS_PENGENDALIAN_MUTU).count(),
     }

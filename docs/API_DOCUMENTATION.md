@@ -402,6 +402,8 @@ Pengguna mengklik "Generate" → Sistem memilih template berdasarkan:
 | `GET` | `/dashboard/` | Dasbor PowerBI tertanam |
 | `GET` | `/quality-control/` | Halaman pengendalian mutu |
 | `GET` | `/quality-control/data/` | Data JSON DataTables pengendalian mutu |
+| `GET` | `/identifikasi/` | Halaman identifikasi (antrean seksi PIDE) |
+| `GET` | `/identifikasi/data/` | Data JSON DataTables identifikasi |
 | `GET` | `/profil-ilap/` | Daftar profil ILAP |
 | `GET` | `/profil-ilap/<id_ilap>/` | Detail profil ILAP (mis. `/profil-ilap/BI001/`) |
 | `GET` | `/jenis-data-ilap/<id_sub_jenis_data>/` | Profil sub jenis data (mis. `/jenis-data-ilap/BI0010101/`) |

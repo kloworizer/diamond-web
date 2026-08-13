@@ -1,0 +1,53 @@
+{% extends "seksi_queue/list.html" %}
+{% comment %}
+Identifikasi — the PIDE seksi queue, the same page Quality Control is for PMDE.
+Everything but the naming below comes from seksi_queue/list.html; the queue
+itself, its deadline and its figures are decided in views/identifikasi.py.
+{% endcomment %}
+
+{% block queue_icon %}feather-search{% endblock %}
+{% block queue_title %}Identifikasi{% endblock %}
+{% block queue_crumb %}Identifikasi{% endblock %}
+{% block queue_unit %}PIDE{% endblock %}
+{% block queue_table_title %}Daftar Tiket Identifikasi{% endblock %}
+
+{% block queue_summary %}
+    <div class="row g-3">
+        {% include "seksi_queue/_summary_card.html" with key="identifikasi" variant="own" label="Dalam Proses Identifikasi" sub="baris belum diidentifikasi" %}
+        {% include "seksi_queue/_summary_card.html" with key="dikirim_ke_pide" variant="upstream" label="Belum Mulai Identifikasi" sub="baris data" %}
+        {% include "seksi_queue/_summary_card.html" with key="p3de" variant="upstream-alt" label="Masih di P3DE" sub="baris data" %}
+    </div>
+{% endblock %}
+
+{% block queue_table_headers %}
+    <th>Nama Tabel</th>
+    <th>PIC PIDE</th>
+    <th>Nomor Tiket / Sub Jenis Data</th>
+    <th>Nama ILAP / Jenis Tabel</th>
+    <th>Tgl Kirim PIDE / Tgl Rekam PIDE</th>
+    <th>Deadline</th>
+    <th>Jatuh Tempo</th>
+    <th>Prioritas</th>
+    <th>Jml Baris Lengkap</th>
+    <th>Jml Selesai</th>
+    <th>Jml Progress</th>
+    <th class="no-sort">Aksi</th>
+{% endblock %}
+
+{% block queue_config %}
+<script>
+    window.SEKSI_QUEUE = {
+        dataUrl: "{% url 'identifikasi_data' %}",
+        storageKey: 'diamond-identifikasi-filter-panel',
+        picKey: 'pic_pide',
+        // The tiket reaches PIDE on the first date and identification starts on
+        // the second, which is where the deadline counts from once it is set.
+        dates: [
+            { key: 'tgl_kirim_pide', label: 'Kirim' },
+            { key: 'tgl_rekam_pide', label: 'Rekam' }
+        ],
+        // Rows to identify, rows identified, rows still to identify.
+        countKeys: ['jml_baris_lengkap', 'jml_selesai', 'jml_progress']
+    };
+</script>
+{% endblock %}
