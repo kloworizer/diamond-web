@@ -26,6 +26,15 @@ class DurasiJatuhTempo(AuditTrailModel):
         verbose_name_plural = "Durasi Jatuh Tempo"
         db_table = "durasi_jatuh_tempo"
         ordering = ["id"]
+        indexes = [
+            # Deadline.durasi_subquery() correlates on (id_sub_jenis_data,
+            # seksi) and takes the latest start_date at or before the base
+            # date, once per row of every quality-control and seksi-queue page.
+            models.Index(
+                fields=["id_sub_jenis_data", "seksi", "-start_date"],
+                name="djt_sub_seksi_start_idx",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.id_sub_jenis_data} - {self.seksi}"

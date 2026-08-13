@@ -399,11 +399,38 @@ class ActiveTiketP3DERequiredForEditMixin(UserPassesTestMixin):
 KASI_GROUPS = ['kasi_p3de', 'kasi_pide', 'kasi_pmde']
 
 
+def user_group_names(user):
+    """Return the names of every group `user` belongs to, as a frozenset.
+
+    The membership is read once and memoized on the `User` instance. A single
+    request asks the same question many times over — the home page alone
+    resolves nine role flags before it runs a query of its own, and every
+    class-based view's `test_func` adds another — and each call was previously
+    its own join against `auth_user_groups`.
+
+    The cache lives on the request's `User` instance, so it is discarded when
+    the request ends and a group change takes effect on the next one.
+
+    Returns:
+        frozenset: The user's group names, empty for anonymous users.
+    """
+    if not user or not getattr(user, 'is_authenticated', False):
+        return frozenset()
+    names = getattr(user, '_group_names_cache', None)
+    if names is None:
+        names = frozenset(user.groups.values_list('name', flat=True))
+        try:
+            user._group_names_cache = names
+        except AttributeError:
+            # Not every caller passes a real model instance; skip the cache
+            # rather than fail when the attribute cannot be set.
+            pass
+    return names
+
+
 def _in_group(user, *names):
     """Return True when `user` is authenticated and belongs to any of `names`."""
-    if not user or not getattr(user, 'is_authenticated', False):
-        return False
-    return user.groups.filter(name__in=names).exists()
+    return not user_group_names(user).isdisjoint(names)
 
 
 def is_admin_p3de(user):

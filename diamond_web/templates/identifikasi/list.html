@@ -11,10 +11,12 @@ itself, its deadline and its figures are decided in views/identifikasi.py.
 {% block queue_unit %}PIDE{% endblock %}
 {% block queue_table_title %}Daftar Tiket Identifikasi{% endblock %}
 
-{% block queue_summary_cards %}
-    {% include "seksi_queue/_summary_card.html" with key="identifikasi" variant="own" label="Dalam Proses Identifikasi" sub="baris belum diidentifikasi" %}
-    {% include "seksi_queue/_summary_card.html" with key="dikirim_ke_pide" variant="upstream" label="Belum Mulai Identifikasi" sub="baris data" %}
-    {% include "seksi_queue/_summary_card.html" with key="p3de" variant="upstream-alt" label="Masih di P3DE" sub="baris data" %}
+{% block queue_summary %}
+    <div class="row g-3">
+        {% include "seksi_queue/_summary_card.html" with key="identifikasi" variant="own" label="Dalam Proses Identifikasi" sub="baris belum diidentifikasi" %}
+        {% include "seksi_queue/_summary_card.html" with key="dikirim_ke_pide" variant="upstream" label="Belum Mulai Identifikasi" sub="baris data" %}
+        {% include "seksi_queue/_summary_card.html" with key="p3de" variant="upstream-alt" label="Masih di P3DE" sub="baris data" %}
+    </div>
 {% endblock %}
 
 {% block queue_table_headers %}

@@ -26,6 +26,12 @@ class TiketAction(models.Model):
         verbose_name_plural = "Tiket Actions"
         db_table = "tiket_action"
         ordering = ["-timestamp"]
+        indexes = [
+            # Serves Exists(TiketAction.objects.filter(id_tiket=OuterRef('pk'),
+            # action=...)) — the shape behind the 'pengembalian dari PIDE'
+            # category and the workflow history lookups.
+            models.Index(fields=["id_tiket", "action"], name="taction_tiket_act_idx"),
+        ]
 
     def __str__(self):
         return f"Action {self.action} by {self.id_user} on {self.timestamp}"

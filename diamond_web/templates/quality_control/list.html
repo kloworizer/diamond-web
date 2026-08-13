@@ -10,10 +10,14 @@ decided in views/quality_control.py.
 {% block queue_unit %}PMDE{% endblock %}
 {% block queue_table_title %}Daftar Tiket Pengendalian Mutu{% endblock %}
 
-{% block queue_summary_cards %}
-    {% include "seksi_queue/_summary_card.html" with key="qc" variant="own" label="Dalam Pengendalian Mutu" sub="baris belum QC" %}
-    {% include "seksi_queue/_summary_card.html" with key="p3de" variant="upstream" label="Masih di P3DE" sub="baris data" %}
-    {% include "seksi_queue/_summary_card.html" with key="pide" variant="upstream-alt" label="Masih di PIDE" sub="baris data" %}
+{% comment %}
+The summary is read per PIC PMDE here rather than per queue: a kasi looking at
+this page is deciding how the seksi's work is spread, and the three queues on one
+line is what answers that. Its columns are named in views/quality_control.py, the
+header being rendered from the same list the figures come back under.
+{% endcomment %}
+{% block queue_summary %}
+    {% include "seksi_queue/_summary_table.html" %}
 {% endblock %}
 
 {% block queue_table_headers %}

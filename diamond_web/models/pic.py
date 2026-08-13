@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 from django.contrib.auth.models import User
 from .jenis_data_ilap import JenisDataILAP
 from .audit import AuditTrailModel
@@ -45,6 +46,14 @@ class PIC(AuditTrailModel):
             models.Index(fields=['tipe', 'id_sub_jenis_data_ilap'], name='pic_tipe_sub_idx'),
             models.Index(fields=['id_sub_jenis_data_ilap', 'tipe', 'start_date', 'end_date'], name='pic_sub_active_idx'),
             models.Index(fields=['id_user', 'tipe', 'end_date'], name='pic_user_tipe_idx'),
+            # The 'jenis data tanpa PIC aktif' admin counts ask only about
+            # currently-active PICs, so a partial index covers them at a
+            # fraction of the size of pic_sub_active_idx.
+            models.Index(
+                fields=['tipe', 'id_sub_jenis_data_ilap'],
+                condition=Q(end_date__isnull=True),
+                name='pic_aktif_tipe_sub_idx',
+            ),
         ]
 
     def __str__(self):

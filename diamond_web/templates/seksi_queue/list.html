@@ -9,7 +9,8 @@ the blocks below. See views/seksi_queue.py for the server half.
 Blocks a page must fill:
     queue_title, queue_crumb, queue_unit, queue_table_title — how the page
         names itself.
-    queue_summary_cards  — three `seksi_queue/_summary_card.html` includes.
+    queue_summary        — the summary above the chart, built from either
+        `seksi_queue/_summary_card.html` or `seksi_queue/_summary_table.html`.
     queue_table_headers  — the <th> row, twelve columns in the order the
         `columns` array below reads them.
     queue_config  — `window.SEKSI_QUEUE`, which is where the JS learns its
@@ -226,22 +227,20 @@ Blocks a page must fill:
     </div>
 
     {% comment %}
-    Three summary sections, one Bootstrap column each and all the same shape, so
-    they can be read straight across: the queue this page lists, then the two
-    queues upstream of it, kept apart because they are different work. Each
-    gives a tiket count with the rows behind it, broken down by jenis tabel,
-    since that is what decides how the data is handled. All three follow the
-    filter panel, so a narrowed page narrows its own totals.
+    The summary above the chart: the queue this page lists and the queues
+    upstream of it, all the same shape so they can be read straight across —
+    a tiket count with the rows behind it, broken down by jenis tabel, since
+    that is what decides how the data is handled. It follows the filter panel,
+    so a narrowed page narrows its own totals.
 
-    `data-summary-key` names the payload section a column reads. What its rows
-    count differs between them — what is left to do here, what the tikets carry
-    upstream — and the line under each figure is what says which.
+    Two shapes are offered, and a page fills the block with one of them:
+    `seksi_queue/_summary_card.html` per section, when the page's figures are
+    read one queue at a time, or `seksi_queue/_summary_table.html` once, when
+    they are read one PIC at a time with the queues as its columns.
     {% endcomment %}
     <div class="card mb-3">
-        <div class="card-body">
-            <div class="row g-3 sq-summary">
-                {% block queue_summary_cards %}{% endblock %}
-            </div>
+        <div class="card-body sq-summary">
+            {% block queue_summary %}{% endblock %}
         </div>
     </div>
 
@@ -292,6 +291,43 @@ Blocks a page must fill:
 {% endblock %}
 {% block extra_head %}
 <style>
+    /* ---- Palette ----
+       The hues the rest of the app is drawn in — the theme's own --bs-primary,
+       --bs-warning, --bs-info, --bs-success and --bs-danger, alongside the soft
+       10% tints the Home page fills its avatars and chips with. They are named
+       here once so a figure and the header above it cannot drift apart, and so
+       this page reads as the same application as the ones either side of it.
+
+       Each hue comes in three parts: the hue itself for a dot or a rule, the
+       tint behind a figure, and an ink dark enough to read on that tint — the
+       hue on its own tint is legible as an icon and not as a number. */
+    .main-content {
+        --sq-blue: #00BDFB;
+        --sq-blue-soft: rgba(0, 189, 251, 0.10);
+        --sq-blue-ink: #0b7fa8;
+        --sq-orange: #ffa21d;
+        --sq-orange-soft: rgba(255, 162, 29, 0.12);
+        --sq-orange-ink: #b06a00;
+        --sq-teal: #3dc7be;
+        --sq-teal-soft: rgba(61, 199, 190, 0.12);
+        --sq-teal-ink: #1d8b84;
+        --sq-green: #17c666;
+        --sq-green-soft: rgba(23, 198, 102, 0.12);
+        --sq-green-ink: #0f8a48;
+        --sq-red: #ea4d4d;
+        --sq-red-soft: rgba(234, 77, 77, 0.12);
+        --sq-red-ink: #c02c2c;
+        --sq-purple: #6f42c1;
+        --sq-purple-soft: rgba(111, 66, 193, 0.12);
+        --sq-purple-ink: #5a34a0;
+        --sq-indigo: #6610f2;
+        --sq-indigo-soft: rgba(102, 16, 242, 0.12);
+        --sq-indigo-ink: #4c0bb8;
+        --sq-pink: #d63384;
+        --sq-pink-soft: rgba(214, 51, 132, 0.12);
+        --sq-pink-ink: #a82766;
+    }
+
     /* Collapsible filter panel — same accordion banner the Tiket and Backup
        Data pages use (see tiket/list.html), so the affordance reads the same
        everywhere: grey bar, blue text when open, Bootstrap's own caret. */
@@ -463,6 +499,251 @@ Blocks a page must fill:
         opacity: 0.45;
     }
 
+    /* The same summary turned on its side: a line per PIC, each queue a group
+       of columns across it. The rules below are all about keeping sixteen
+       columns of figures readable — the groups told apart by a rule between
+       them rather than by a fill, and every number set in tabular figures so
+       the digits line up down a column. */
+    .sq-summary-table {
+        font-size: 12px;
+        margin-bottom: 0;
+    }
+
+    .sq-summary-table > :not(caption) > * > * {
+        padding: 6px 10px;
+    }
+
+    .sq-summary-table thead th {
+        font-weight: 600;
+        color: #64748b;
+        background-color: #f8fafc;
+        border-bottom: 1px solid #ebeff4;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    /* ---- One hue per queue ----
+       Each group of columns is drawn in a hue of its own and carries it all the
+       way down — band, sub headers, rule and figures — so the eye can follow one
+       queue across a wide table without counting columns. Blue for the queue
+       this page is about, which is the app's primary and the colour its own
+       menu entry is active in; orange for the one still upstream at P3DE, the
+       colour this app has always waiting work in; teal for the one at PIDE.
+       The variables are set on the header and on the cells alike, which is what
+       lets a single rule below paint a figure in its group's colour. */
+    .sq-summary-group-own,
+    .sq-summary-table td.sq-cell-own {
+        --sq-hue: var(--sq-blue);
+        --sq-hue-soft: var(--sq-blue-soft);
+        --sq-hue-ink: var(--sq-blue-ink);
+    }
+
+    .sq-summary-group-upstream,
+    .sq-summary-table td.sq-cell-upstream {
+        --sq-hue: var(--sq-orange);
+        --sq-hue-soft: var(--sq-orange-soft);
+        --sq-hue-ink: var(--sq-orange-ink);
+    }
+
+    .sq-summary-group-upstream-alt,
+    .sq-summary-table td.sq-cell-upstream-alt {
+        --sq-hue: var(--sq-teal);
+        --sq-hue-soft: var(--sq-teal-soft);
+        --sq-hue-ink: var(--sq-teal-ink);
+    }
+
+    /* The queue names, each with the dot its card carried, so a reader coming
+       from the other page recognises which group is this page's own work. */
+    .sq-summary-table .sq-summary-group {
+        text-align: center;
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--sq-hue-ink);
+        background-color: var(--sq-hue-soft);
+    }
+
+    .sq-summary-table .sq-summary-group .sq-stat-dot {
+        display: inline-block;
+        margin-right: 6px;
+        vertical-align: middle;
+        background-color: var(--sq-hue);
+    }
+
+    .sq-summary-table .sq-summary-sub {
+        text-align: right;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        color: #94a3b8;
+    }
+
+    /* One rule down the left of every group, in that group's own hue, which is
+       what stops a dozen columns of numbers from reading as one
+       undifferentiated block. */
+    .sq-summary-table .sq-summary-group,
+    .sq-summary-table .sq-summary-group-start {
+        border-left: 2px solid var(--sq-hue, #ebeff4);
+    }
+
+    /* ---- One hue per jenis tabel ----
+       Inside this page's own group the columns are the jenis tabel, which is a
+       kind of thing rather than a stage of one, so each takes a hue of its own
+       from the same palette. Assigned by position and wrapping after five: the
+       reference table decides how many there are, and a sixth kind repeating a
+       hue is better than a sixth invented colour. */
+    .sq-summary-table .sq-kind-0 { --sq-hue: var(--sq-green); --sq-hue-soft: var(--sq-green-soft); --sq-hue-ink: var(--sq-green-ink); }
+    .sq-summary-table .sq-kind-1 { --sq-hue: var(--sq-purple); --sq-hue-soft: var(--sq-purple-soft); --sq-hue-ink: var(--sq-purple-ink); }
+    .sq-summary-table .sq-kind-2 { --sq-hue: var(--sq-red); --sq-hue-soft: var(--sq-red-soft); --sq-hue-ink: var(--sq-red-ink); }
+    .sq-summary-table .sq-kind-3 { --sq-hue: var(--sq-indigo); --sq-hue-soft: var(--sq-indigo-soft); --sq-hue-ink: var(--sq-indigo-ink); }
+    .sq-summary-table .sq-kind-4 { --sq-hue: var(--sq-pink); --sq-hue-soft: var(--sq-pink-soft); --sq-hue-ink: var(--sq-pink-ink); }
+
+    .sq-summary-table thead .sq-summary-sub.sq-kind-0,
+    .sq-summary-table thead .sq-summary-sub.sq-kind-1,
+    .sq-summary-table thead .sq-summary-sub.sq-kind-2,
+    .sq-summary-table thead .sq-summary-sub.sq-kind-3,
+    .sq-summary-table thead .sq-summary-sub.sq-kind-4 {
+        color: var(--sq-hue-ink);
+    }
+
+    .sq-summary-table .sq-summary-pic {
+        text-align: left;
+        white-space: nowrap;
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* A sortable header keeps room for its caret whether or not it is the one
+       sorted by, so clicking through the columns never shifts the row. The
+       caret is faint until the column is the sorted one, which is the whole
+       affordance — there is no room over sixteen columns for anything louder. */
+    .sq-summary-table th[data-sort] {
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .sq-summary-table th[data-sort]:hover {
+        color: #0c92ff;
+    }
+
+    .sq-summary-table th[data-sort]::after {
+        content: '\2195';
+        margin-left: 4px;
+        font-size: 9px;
+        color: #cbd5e1;
+    }
+
+    .sq-summary-table th.sq-sort-asc,
+    .sq-summary-table th.sq-sort-desc {
+        color: #0f172a;
+    }
+
+    .sq-summary-table th.sq-sort-asc::after {
+        content: '\25B2';
+        color: #0c92ff;
+    }
+
+    .sq-summary-table th.sq-sort-desc::after {
+        content: '\25BC';
+        color: #0c92ff;
+    }
+
+    .sq-summary-table tbody td {
+        text-align: right;
+        color: #1e293b;
+        font-variant-numeric: tabular-nums;
+        border-bottom: 1px solid #f5f7fa;
+        vertical-align: middle;
+    }
+
+    .sq-summary-table tbody td.sq-summary-pic {
+        font-weight: 500;
+    }
+
+    .sq-summary-table tbody tr:hover td {
+        background-color: #f8fafc;
+    }
+
+    /* A tiket count sits in a soft pill of its column's hue, the same shape the
+       Tiket list puts its row counts in. A zero is left as plain muted text
+       instead: colour is what says there is something here, and a table of
+       coloured zeros would say it of everything. */
+    .sq-summary-pill {
+        display: inline-block;
+        min-width: 32px;
+        padding: 1px 8px;
+        border-radius: 999px;
+        background-color: var(--sq-hue-soft);
+        color: var(--sq-hue-ink);
+        font-weight: 600;
+    }
+
+    .sq-summary-zero {
+        color: #cbd5e1;
+    }
+
+    /* The rows behind a tiket count, in the same hue but unfilled and smaller,
+       so the pair reads as one fact with the count leading. */
+    .sq-summary-baris {
+        color: var(--sq-hue-ink);
+        font-weight: 500;
+    }
+
+    /* A split cell says both things at once: how many tikets, and how many rows
+       are behind them — set smaller and muted, so the tiket count still leads. */
+    .sq-summary-kind-tikets {
+        line-height: 1.3;
+    }
+
+    .sq-summary-kind-baris {
+        font-size: 10.5px;
+        line-height: 1.25;
+        color: #94a3b8;
+    }
+
+    /* The totals, which are the figures the three cards used to carry. Each
+       group's foot cells are washed with its hue, so the line reads as the sum
+       of the columns above it rather than as another PIC. */
+    .sq-summary-table tfoot td {
+        text-align: right;
+        font-weight: 600;
+        color: var(--sq-hue-ink, #0f172a);
+        background-color: #f8fafc;
+        border-top: 2px solid #ebeff4;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Named hues rather than the cell's own --sq-hue-soft, because the jenis
+       tabel columns of a group carry a hue of their own and the wash under them
+       still belongs to the group they are in. */
+    .sq-summary-table tfoot td.sq-group-own {
+        background-color: var(--sq-blue-soft);
+        border-top-color: var(--sq-blue);
+    }
+
+    .sq-summary-table tfoot td.sq-group-upstream {
+        background-color: var(--sq-orange-soft);
+        border-top-color: var(--sq-orange);
+    }
+
+    .sq-summary-table tfoot td.sq-group-upstream-alt {
+        background-color: var(--sq-teal-soft);
+        border-top-color: var(--sq-teal);
+    }
+
+    .sq-summary-table tfoot td.sq-summary-pic {
+        text-align: left;
+        color: #0f172a;
+    }
+
+    .sq-summary-empty {
+        text-align: center !important;
+        font-weight: 400;
+        color: #94a3b8;
+        padding: 24px 10px !important;
+    }
+
     /* Refetching the chart holds the previous render at reduced opacity rather
        than blanking the card, so changing a filter never jumps the layout. */
     #sq-progress-chart {
@@ -473,24 +754,66 @@ Blocks a page must fill:
         opacity: 0.45;
     }
 
-    /* Subtle row coloring for jatuh tempo indicators */
+    /* Subtle row coloring for jatuh tempo indicators, in the app's own success,
+       warning and danger rather than Bootstrap's defaults — the same three the
+       Home page draws its urgency chips in, so "overdue" is one colour across
+       the application instead of two shades of red. */
     table.dataTable tr.row-green td {
-        background-color: rgba(40, 167, 69, 0.12) !important;
+        background-color: rgba(23, 198, 102, 0.10) !important;
     }
     table.dataTable tr.row-yellow td {
-        background-color: rgba(255, 193, 7, 0.12) !important;
+        background-color: rgba(255, 162, 29, 0.12) !important;
     }
     table.dataTable tr.row-red td {
-        background-color: rgba(220, 53, 69, 0.12) !important;
+        background-color: rgba(234, 77, 77, 0.10) !important;
     }
     table.dataTable tr.row-green:hover td {
-        background-color: rgba(40, 167, 69, 0.20) !important;
+        background-color: rgba(23, 198, 102, 0.18) !important;
     }
     table.dataTable tr.row-yellow:hover td {
-        background-color: rgba(255, 193, 7, 0.20) !important;
+        background-color: rgba(255, 162, 29, 0.20) !important;
     }
     table.dataTable tr.row-red:hover td {
-        background-color: rgba(220, 53, 69, 0.20) !important;
+        background-color: rgba(234, 77, 77, 0.18) !important;
+    }
+
+    /* ---- Coloured cells in the queue table ----
+       The same soft pill the summary uses, so a figure means the same thing
+       wherever it is read on this page. Jatuh tempo takes the urgency colour
+       of its own row, prioritas the warning colour the app marks anything
+       needing attention in, and the three counts read total, done, left. */
+    .sq-pill {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 999px;
+        font-size: 11.5px;
+        font-weight: 600;
+        line-height: 1.5;
+        white-space: nowrap;
+        background-color: var(--sq-hue-soft);
+        color: var(--sq-hue-ink);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .sq-pill-blue { --sq-hue-soft: var(--sq-blue-soft); --sq-hue-ink: var(--sq-blue-ink); }
+    .sq-pill-green { --sq-hue-soft: var(--sq-green-soft); --sq-hue-ink: var(--sq-green-ink); }
+    .sq-pill-orange { --sq-hue-soft: var(--sq-orange-soft); --sq-hue-ink: var(--sq-orange-ink); }
+    .sq-pill-red { --sq-hue-soft: var(--sq-red-soft); --sq-hue-ink: var(--sq-red-ink); }
+    .sq-pill-grey { --sq-hue-soft: #f1f5f9; --sq-hue-ink: #64748b; }
+
+    /* An empty count says nothing and should not be the loudest thing in its
+       column, so it drops the fill and keeps only the figure. */
+    .sq-pill-empty {
+        background-color: transparent;
+        color: #cbd5e1;
+        font-weight: 400;
+    }
+
+    .sq-pill .feather,
+    .sq-pill i {
+        font-size: 11px;
+        margin-right: 3px;
+        vertical-align: baseline;
     }
 </style>
 {% endblock %}
@@ -691,7 +1014,7 @@ that differ between one seksi and the next.
             });
         }
 
-        function renderSummary(payload) {
+        function renderSummaryCards(payload) {
             $('.sq-stat[data-summary-key]').each(function () {
                 const $tile = $(this);
                 const section = (payload || {})[$tile.attr('data-summary-key')] || {};
@@ -699,6 +1022,168 @@ that differ between one seksi and the next.
                 $tile.find('[data-summary-baris]').text(formatCount(section.baris));
                 renderBreakdown($tile.find('[data-summary-breakdown]'), section.breakdown);
             });
+        }
+
+        // ---- Summary table ----
+        // The same payload read the other way round: a line per PIC, each queue
+        // a group of columns across it. Which groups those are is the table's
+        // own `data-summary-sections`, written from the list the server built
+        // the header from, so the cells cannot land under the wrong heading.
+        // A group is the tikets and the rows behind them, then one cell per
+        // entry of its breakdown — which is empty for a group the page heads
+        // with those two columns alone, so the width follows the payload.
+        // How many hues the jenis tabel columns cycle through; the .sq-kind-*
+        // rules define exactly this many, and the server assigns the header
+        // classes by the same count.
+        const KIND_HUES = 5;
+
+        // A tiket count in a soft pill of its column's hue, or plain muted text
+        // when there is nothing there — see .sq-summary-pill.
+        function countPill(value) {
+            return $('<span>').text(formatCount(value))
+                .addClass(value ? 'sq-summary-pill' : 'sq-summary-zero');
+        }
+
+        // `sq-group-<variant>` marks every cell of a group, which is what lets
+        // the totals line be washed in the group's colour from end to end;
+        // `sq-cell-<variant>` additionally hands a cell that group's hue, and is
+        // left off the jenis tabel columns because those carry a hue of their
+        // own.
+        function appendSectionCells($row, section, variant) {
+            const group = 'sq-group-' + variant;
+            const cell = group + ' sq-cell sq-cell-' + variant;
+            $row.append(
+                $('<td>').addClass(cell + ' sq-summary-group-start')
+                    .append(countPill(section.tikets)),
+                $('<td>').addClass(cell).append(
+                    $('<span>').addClass(section.baris ? 'sq-summary-baris' : 'sq-summary-zero')
+                        .text(formatCount(section.baris))
+                )
+            );
+            // The jenis tabel columns take their own hue rather than the
+            // group's, assigned by position the way the header above them is.
+            (section.breakdown || []).forEach(function (entry, index) {
+                $row.append(
+                    $('<td>').addClass(group + ' sq-kind-' + (index % KIND_HUES)).append(
+                        $('<div>').addClass('sq-summary-kind-tikets')
+                            .append(countPill(entry.tikets)),
+                        $('<div>').addClass('sq-summary-kind-baris').text(formatCount(entry.baris))
+                    )
+                );
+            });
+        }
+
+        function summaryColumnCount($table) {
+            return $table.find('thead tr').last().children().length + 1;
+        }
+
+        // ---- Sorting the summary lines ----
+        // Every line is already on the page — there is one per PIC, not one per
+        // tiket — so a header click reorders what is here rather than asking
+        // the server for the same figures in another order. The choice is held
+        // across a refetch, so changing a filter does not throw the reader back
+        // to the default order mid-comparison.
+        let summarySort = null;      // { spec: 'qc:baris', desc: bool }
+        let summaryPayload = null;   // the last payload, to reorder in place
+
+        // The figure a header sorts by. `<key>:tikets` and `<key>:baris` are a
+        // group's own two columns; `<key>:kind:<n>` is the nth entry of its
+        // breakdown, sorted by the tiket count its cell leads with, as the
+        // tiket tables sort their stacked cells.
+        function summaryValue(row, spec) {
+            const parts = spec.split(':');
+            if (parts[0] === 'name') return (row.name || '').toLowerCase();
+            const section = (row.sections || {})[parts[0]] || {};
+            if (parts[1] === 'kind') {
+                const entry = (section.breakdown || [])[Number(parts[2])] || {};
+                return entry.tikets || 0;
+            }
+            return section[parts[1]] || 0;
+        }
+
+        function sortedSummaryRows(rows) {
+            if (!summarySort) return rows;
+            const spec = summarySort.spec;
+            const direction = summarySort.desc ? -1 : 1;
+            // A copy, so the payload keeps the order the server sent it in and
+            // clearing the sort can fall back to it.
+            return rows.slice().sort(function (a, b) {
+                const left = summaryValue(a, spec);
+                const right = summaryValue(b, spec);
+                if (left < right) return -direction;
+                if (left > right) return direction;
+                // Ties keep reading by name, so equal figures do not shuffle
+                // from one render to the next.
+                return (a.name || '').localeCompare(b.name || '');
+            });
+        }
+
+        function markSortedHeader($table) {
+            $table.find('th[data-sort]').removeClass('sq-sort-asc sq-sort-desc');
+            if (!summarySort) return;
+            $table.find('th[data-sort="' + summarySort.spec + '"]')
+                .addClass(summarySort.desc ? 'sq-sort-desc' : 'sq-sort-asc');
+        }
+
+        function renderSummaryTable(payload) {
+            const $table = $('.sq-summary-table');
+            if ($table.length === 0) return;
+
+            if (payload) summaryPayload = payload;
+            const keys = ($table.attr('data-summary-sections') || '')
+                .split(',').filter(function (key) { return key; });
+            const variants = ($table.attr('data-summary-variants') || '').split(',');
+            const rows = sortedSummaryRows((summaryPayload || {}).rows || []);
+            markSortedHeader($table);
+
+            const $body = $table.find('[data-summary-rows]').empty();
+            rows.forEach(function (row) {
+                // The name arrives as finished HTML — an anchor to the reader's
+                // own Profil PIC page when they may open it, escaped text when
+                // they may not — so it is set rather than appended as text.
+                const $tr = $('<tr>').append(
+                    $('<td>').addClass('sq-summary-pic').html(row.pic)
+                );
+                keys.forEach(function (key, index) {
+                    appendSectionCells($tr, (row.sections || {})[key] || {}, variants[index]);
+                });
+                $body.append($tr);
+            });
+            if (rows.length === 0) {
+                $body.append($('<tr>').append(
+                    $('<td>').addClass('sq-summary-empty')
+                        .attr('colspan', summaryColumnCount($table))
+                        .text('Tidak Ada Data yang Tersedia')
+                ));
+            }
+
+            // The foot is the same line summed: the figures the summary carried
+            // before it was split per PIC. It stays put under every sort — a
+            // total that moved with the lines would be read as one of them.
+            const $total = $table.find('[data-summary-total]').empty();
+            $total.append($('<td>').addClass('sq-summary-pic').text('Total'));
+            keys.forEach(function (key, index) {
+                appendSectionCells($total, (summaryPayload || {})[key] || {}, variants[index]);
+            });
+        }
+
+        // Ascending first, then descending, then back to the order the server
+        // sent — which is by name, and is a state worth being able to return to
+        // rather than a place the reader can only leave.
+        function toggleSummarySort(spec) {
+            if (!summarySort || summarySort.spec !== spec) {
+                summarySort = { spec: spec, desc: false };
+            } else if (!summarySort.desc) {
+                summarySort.desc = true;
+            } else {
+                summarySort = null;
+            }
+            renderSummaryTable(null);
+        }
+
+        function renderSummary(payload) {
+            renderSummaryCards(payload);
+            renderSummaryTable(payload);
         }
 
         function loadSummary() {
@@ -757,6 +1242,45 @@ that differ between one seksi and the next.
                     + escapeHtml(value || '-') + '</div>';
             }
             return '<div>' + line(firstLabel, first) + line(secondLabel, second) + '</div>';
+        }
+
+        // ---- Coloured cells in the queue table ----
+        // One helper for every pill in the table below, so the colours stay the
+        // handful named in the stylesheet rather than growing one per column.
+        function pill(text, tone, icon) {
+            const classes = 'sq-pill ' + (tone ? 'sq-pill-' + tone : 'sq-pill-grey');
+            return '<span class="' + classes + '">'
+                + (icon ? '<i class="feather-' + icon + '"></i>' : '')
+                + escapeHtml(text) + '</span>';
+        }
+
+        // Green with time in hand, orange as it runs out, red once it has gone —
+        // the thresholds the row is already tinted by, so the cell and the row
+        // it sits in never disagree.
+        function jatuhTempoCell(display, days) {
+            if (days === null || days === undefined || days === '') {
+                return '<span class="sq-pill sq-pill-empty">' + escapeHtml(display) + '</span>';
+            }
+            const tone = days < 7 ? 'red' : (days < 30 ? 'orange' : 'green');
+            return pill(display, tone, days < 7 ? 'alert-circle' : 'clock');
+        }
+
+        // Blue for the rows there are to work through, green for the ones done,
+        // orange for what is left — read left to right, the row's own progress.
+        const COUNT_TONES = ['blue', 'green', 'orange'];
+
+        function countColumn(index) {
+            return {
+                data: config.countKeys[index],
+                render: function (data, type) {
+                    if (type !== 'display') return data || 0;
+                    const text = (data || 0).toLocaleString('id-ID');
+                    if (!data) {
+                        return '<span class="sq-pill sq-pill-empty">' + text + '</span>';
+                    }
+                    return pill(text, COUNT_TONES[index]);
+                }
+            };
         }
 
         function tooltipHtml(title, opts) {
@@ -998,12 +1522,26 @@ that differ between one seksi and the next.
                     },
                     {
                         data: 'jatuh_tempo',
-                        render: { _: 'display', sort: 'sort' }
+                        render: function (data, type, row) {
+                            const cell = data || {};
+                            if (type !== 'display') return cell.sort || '';
+                            return jatuhTempoCell(cell.display, row.sisa_hari);
+                        }
                     },
-                    { data: 'prioritas' },
-                    { data: config.countKeys[0] },
-                    { data: config.countKeys[1] },
-                    { data: config.countKeys[2] },
+                    {
+                        data: 'prioritas',
+                        render: function (data, type) {
+                            if (type !== 'display') return data || '';
+                            // Prioritas is the app's "needs attention", which it
+                            // marks in warning everywhere else too.
+                            return data === 'Ya'
+                                ? pill('Ya', 'orange', 'star')
+                                : pill('Tidak', 'grey');
+                        }
+                    },
+                    countColumn(0),
+                    countColumn(1),
+                    countColumn(2),
                     { data: 'action', orderable: false, searchable: false },
                 ],
                 columnDefs: [
@@ -1036,6 +1574,12 @@ that differ between one seksi and the next.
                         $(row).addClass('row-green');
                     }
                 }
+            });
+
+            // Delegated, since the summary table is only present on the pages
+            // whose summary is read per PIC.
+            $(document).on('click', '.sq-summary-table th[data-sort]', function () {
+                toggleSummarySort($(this).attr('data-sort'));
             });
 
             // Filter dropdowns — dynamic, reload on change

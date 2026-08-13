@@ -134,6 +134,8 @@ class Tiket(models.Model):
             models.Index(fields=["id_periode_data", "periode", "tahun", "penyampaian"], name="tiket_lookup_idx"),
             models.Index(fields=["tgl_terima_dip"], name="tiket_terima_dip_idx"),
             models.Index(fields=["tgl_terima_vertikal"], name="tiket_terima_vert_idx"),
+            # Filtered by nearly every list, report and summary view.
+            models.Index(fields=["status_tiket"], name="tiket_status_idx"),
         ]
 
     def __str__(self):

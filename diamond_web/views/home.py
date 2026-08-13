@@ -1,9 +1,9 @@
 from django.shortcuts import render
 from django.conf import settings
-from django.db.models import F, Q, Exists, OuterRef, Max, Subquery, Value
+from django.db.models import Count, F, Q, Exists, OuterRef, Max, Subquery, Value
 from django.utils import timezone
 from datetime import timedelta
-from django.db.models.functions import Concat, Coalesce
+from django.db.models.functions import Concat, Coalesce, NullIf
 from django.contrib.auth.models import Group, User
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -31,7 +31,13 @@ from diamond_web.constants.tiket_status import (
     STATUS_LABELS,
 )
 from diamond_web.constants.tiket_action_types import TiketActionType
-from diamond_web.views.mixins import is_kasi, is_kasi_p3de, is_kasi_pide, is_kasi_pmde
+from diamond_web.views.mixins import (
+    is_kasi,
+    is_kasi_p3de,
+    is_kasi_pide,
+    is_kasi_pmde,
+    user_group_names,
+)
 from diamond_web.views.quality_control import jatuh_tempo_ids
 
 # Filter buttons for the PMDE cards, keyed by the `data-urgency` value the
@@ -48,17 +54,29 @@ _UNIT_BUCKETS = {
     'pide': (STATUS_DIKIRIM_KE_PIDE, STATUS_IDENTIFIKASI),
 }
 
+# Join path from Tiket to the sub jenis data, and through it to the ILAP.
+_SUB = 'id_periode_data__id_sub_jenis_data_ilap'
+
+
 def _get_category_metrics(qs):
+    """Count the tikets, distinct ILAPs and distinct jenis data of `qs`.
+
+    All three are counted by the database in one pass. Counting the distinct
+    values in Python instead means fetching one row per tiket over a four-table
+    join, twice, to arrive at two integers.
+    """
     if qs is None:
         return {'tickets': 0, 'ilaps': 0, 'jenis_datas': 0}
-    tickets = qs.count()
-    ilaps = len({i for i in qs.values_list('id_periode_data__id_sub_jenis_data_ilap__id_ilap__nama_ilap', flat=True) if i}) if tickets > 0 else 0
-    jenis_datas = len({j for j in qs.values_list('id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data', flat=True) if j}) if tickets > 0 else 0
-    return {
-        'tickets': tickets,
-        'ilaps': ilaps,
-        'jenis_datas': jenis_datas,
-    }
+    row = qs.aggregate(
+        tickets=Count('id', distinct=True),
+        # NullIf keeps parity with the set comprehension this replaced, which
+        # dropped every falsy value: 393 jenis_data_ilap rows carry an empty
+        # nama_sub_jenis_data, and a bare Count would report them as one
+        # distinct value rather than none.
+        ilaps=Count(NullIf(f'{_SUB}__id_ilap__nama_ilap', Value('')), distinct=True),
+        jenis_datas=Count(NullIf(f'{_SUB}__nama_sub_jenis_data', Value('')), distinct=True),
+    )
+    return {key: value or 0 for key, value in row.items()}
 
 @login_required
 def home(request):
@@ -81,16 +99,15 @@ def home(request):
     Usage: GET request; returns rendered `home.html` with the above context.
     """
     context = {}
+    # Read the user's groups once — every role flag below is answered from this
+    # set rather than from a query of its own.
+    groups = user_group_names(request.user)
     # expose user role membership for templates
-    is_p3de = False
-    is_pide = False
-    is_pmde = False
-    if request.user.is_authenticated:
-        # Kasi supervise their unit, so they get the same home view as the
-        # unit's users — but scoped to every tiket, not just their own.
-        is_p3de = request.user.groups.filter(name__in=['user_p3de', 'kasi_p3de']).exists()
-        is_pide = request.user.groups.filter(name__in=['user_pide', 'kasi_pide']).exists()
-        is_pmde = request.user.groups.filter(name__in=['user_pmde', 'kasi_pmde']).exists()
+    # Kasi supervise their unit, so they get the same home view as the unit's
+    # users — but scoped to every tiket, not just their own.
+    is_p3de = not groups.isdisjoint(['user_p3de', 'kasi_p3de'])
+    is_pide = not groups.isdisjoint(['user_pide', 'kasi_pide'])
+    is_pmde = not groups.isdisjoint(['user_pmde', 'kasi_pmde'])
     context['is_p3de'] = is_p3de
     context['is_pide'] = is_pide
     context['is_pmde'] = is_pmde
@@ -98,9 +115,9 @@ def home(request):
     context['is_kasi_pide'] = is_kasi_pide(request.user)
     context['is_kasi_pmde'] = is_kasi_pmde(request.user)
     # check admin group membership
-    is_admin_p3de = request.user.groups.filter(name='admin_p3de').exists()
-    is_admin_pide = request.user.groups.filter(name='admin_pide').exists()
-    is_admin_pmde = request.user.groups.filter(name='admin_pmde').exists()
+    is_admin_p3de = 'admin_p3de' in groups
+    is_admin_pide = 'admin_pide' in groups
+    is_admin_pmde = 'admin_pmde' in groups
     context['is_admin_p3de'] = is_admin_p3de
     context['is_admin_pide'] = is_admin_pide
     context['is_admin_pmde'] = is_admin_pmde
@@ -109,7 +126,7 @@ def home(request):
         context['tiket_summary'] = get_tiket_summary_for_user_p3de(request.user)
         p3de_tiket_ids = _get_p3de_tiket_ids(request.user)
 
-        p3de_qs = Tiket.objects.filter(id__in=p3de_tiket_ids)
+        p3de_qs = _scoped(Tiket.objects.all(), p3de_tiket_ids)
 
         belum_rekam_backup_data_qs = p3de_qs.filter(status_tiket=STATUS_DIREKAM, backup=False)
         belum_dibuat_tanda_terima_qs = p3de_qs.filter(status_tiket=STATUS_DIREKAM, tanda_terima=False)
@@ -125,11 +142,13 @@ def home(request):
         
         diklarifikasi_qs = p3de_qs.filter(
             penyampaian=Subquery(
-                Tiket.objects.filter(
-                    id_periode_data=OuterRef('id_periode_data'),
-                    periode=OuterRef('periode'),
-                    tahun=OuterRef('tahun'),
-                    id__in=p3de_tiket_ids,
+                _scoped(
+                    Tiket.objects.filter(
+                        id_periode_data=OuterRef('id_periode_data'),
+                        periode=OuterRef('periode'),
+                        tahun=OuterRef('tahun'),
+                    ),
+                    p3de_tiket_ids,
                 ).values('id_periode_data', 'periode', 'tahun')
                 .annotate(max_penyampaian=Max('penyampaian'))
                 .values('max_penyampaian')[:1]
@@ -167,7 +186,7 @@ def home(request):
         context['tiket_summary_pide'] = get_tiket_summary_for_user_pide(request.user)
         pide_tiket_ids = _get_pide_tiket_ids(request.user)
 
-        pide_qs = Tiket.objects.filter(id__in=pide_tiket_ids)
+        pide_qs = _scoped(Tiket.objects.all(), pide_tiket_ids)
         belum_mulai_proses_identifikasi_qs = pide_qs.filter(status_tiket=STATUS_DIKIRIM_KE_PIDE)
         dalam_proses_identifikasi_qs = pide_qs.filter(status_tiket=STATUS_IDENTIFIKASI)
 
@@ -203,7 +222,7 @@ def home(request):
         context['tiket_summary_pmde'] = get_tiket_summary_for_user_pmde(request.user)
         pmde_tiket_ids = _get_pmde_tiket_ids(request.user)
 
-        pmde_qs = Tiket.objects.filter(id__in=pmde_tiket_ids)
+        pmde_qs = _scoped(Tiket.objects.all(), pmde_tiket_ids)
         dalam_proses_pengendalian_mutu_qs = pmde_qs.filter(status_tiket=STATUS_PENGENDALIAN_MUTU)
 
         # Everything still upstream of PMDE, scoped the same way the card above
@@ -245,9 +264,9 @@ def home(request):
             ).count()
     # Special Request (Permintaan Khusus) — available to any user/kasi role.
     if is_p3de or is_pide or is_pmde:
-        context['special_request_count'] = Tiket.objects.filter(
-            id__in=_get_special_request_tiket_ids(request.user),
-            special_request=True,
+        context['special_request_count'] = _scoped(
+            Tiket.objects.filter(special_request=True),
+            _get_special_request_tiket_ids(request.user),
         ).count()
     if settings.DEBUG:
         groups = Group.objects.filter(name__in=['user_p3de', 'user_pide', 'user_pmde']).prefetch_related('user_set')
@@ -265,14 +284,25 @@ def home(request):
     return render(request, 'home.html', context)
 
 
+def _scoped(qs, tiket_ids):
+    """Narrow `qs` to `tiket_ids`, or leave it alone when there is no scope.
+
+    The `_get_*_tiket_ids` helpers below return None for a supervisor, who sees
+    every tiket. Filtering on "every id in the table" is not free — it compiles
+    to `id IN (SELECT id FROM tiket)`, a subquery that removes no row but still
+    has to be executed to prove it.
+    """
+    return qs if tiket_ids is None else qs.filter(id__in=tiket_ids)
+
+
 def _get_p3de_tiket_ids(user):
     """Get the set of tiket IDs in the user's P3DE scope.
 
-    Kasi P3DE supervise the whole unit, so they get every tiket; other users
-    get only the tikets for which they are an active P3DE PIC.
+    Kasi P3DE supervise the whole unit, so they are unscoped and get None;
+    other users get only the tikets for which they are an active P3DE PIC.
     """
     if is_kasi_p3de(user):
-        return Tiket.objects.values_list('id', flat=True)
+        return None
     return TiketPIC.objects.filter(
         id_user=user, role=TiketPIC.Role.P3DE, active=True
     ).values_list('id_tiket', flat=True)
@@ -281,11 +311,11 @@ def _get_p3de_tiket_ids(user):
 def _get_pide_tiket_ids(user):
     """Get the set of tiket IDs in the user's PIDE scope.
 
-    Kasi PIDE supervise the whole unit, so they get every tiket; other users
-    get only the tikets for which they are an active PIDE PIC.
+    Kasi PIDE supervise the whole unit, so they are unscoped and get None;
+    other users get only the tikets for which they are an active PIDE PIC.
     """
     if is_kasi_pide(user):
-        return Tiket.objects.values_list('id', flat=True)
+        return None
     return TiketPIC.objects.filter(
         id_user=user, role=TiketPIC.Role.PIDE, active=True
     ).values_list('id_tiket', flat=True)
@@ -294,11 +324,11 @@ def _get_pide_tiket_ids(user):
 def _get_pmde_tiket_ids(user):
     """Get the set of tiket IDs in the user's PMDE scope.
 
-    Kasi PMDE supervise the whole unit, so they get every tiket; other users
-    get only the tikets for which they are an active PMDE PIC.
+    Kasi PMDE supervise the whole unit, so they are unscoped and get None;
+    other users get only the tikets for which they are an active PMDE PIC.
     """
     if is_kasi_pmde(user):
-        return Tiket.objects.values_list('id', flat=True)
+        return None
     return TiketPIC.objects.filter(
         id_user=user, role=TiketPIC.Role.PMDE, active=True
     ).values_list('id_tiket', flat=True)
@@ -307,12 +337,12 @@ def _get_pmde_tiket_ids(user):
 def _get_special_request_tiket_ids(user):
     """Get the tiket IDs visible to the user for the Special Request category.
 
-    Any kasi supervises the whole unit and therefore sees every tiket; other
+    Any kasi supervises the whole unit and is therefore unscoped (None); other
     users see only the tikets for which they hold an active PIC assignment
     (regardless of role).
     """
     if is_kasi(user):
-        return Tiket.objects.values_list('id', flat=True)
+        return None
     return TiketPIC.objects.filter(
         id_user=user, active=True
     ).values_list('id_tiket', flat=True)
@@ -335,9 +365,9 @@ def _build_tiket_base_qs(category, user):
     # Special Request category: tikets flagged special_request within the
     # user's visibility scope (kasi see all, others see their PIC tikets).
     if category == 'special_request':
-        return tiket_qs.filter(
-            id__in=_get_special_request_tiket_ids(user),
-            special_request=True,
+        return _scoped(
+            tiket_qs.filter(special_request=True),
+            _get_special_request_tiket_ids(user),
         )
 
     # PMDE category: everything still upstream of quality control, scoped by the
@@ -345,22 +375,22 @@ def _build_tiket_base_qs(category, user):
     # assignments, or the whole seksi for a kasi. Also gated on PMDE membership,
     # so the category stays out of the other units' home pages entirely.
     if category == 'masih_di_p3de_pide':
-        if not user.groups.filter(name__in=['user_pmde', 'kasi_pmde']).exists():
+        if user_group_names(user).isdisjoint(['user_pmde', 'kasi_pmde']):
             return None
-        return tiket_qs.filter(
-            id__in=_get_pmde_tiket_ids(user),
-            status_tiket__in=STATUSES_SEBELUM_PENGENDALIAN_MUTU,
+        return _scoped(
+            tiket_qs.filter(status_tiket__in=STATUSES_SEBELUM_PENGENDALIAN_MUTU),
+            _get_pmde_tiket_ids(user),
         )
 
     # Admin category: periode_tiket_null_p3de - no user-specific PIC filter
     if category == 'periode_tiket_null_p3de':
-        if not user.groups.filter(name='admin_p3de').exists():
+        if 'admin_p3de' not in user_group_names(user):
             return None
         return tiket_qs.filter(tahun=2099)
 
     # Admin category: tickets in Pengendalian Mutu status without an active PMDE PIC
     if category == 'tiket_pengendalian_mutu_tanpa_pic':
-        if not user.groups.filter(name='admin_pmde').exists():
+        if 'admin_pmde' not in user_group_names(user):
             return None
         return tiket_qs.filter(
             status_tiket=STATUS_PENGENDALIAN_MUTU
@@ -374,7 +404,7 @@ def _build_tiket_base_qs(category, user):
 
     # Admin category: tickets in Dikirim ke PIDE status without an active PIDE PIC
     if category == 'tiket_dikirim_ke_pide_tanpa_pic':
-        if not user.groups.filter(name='admin_pide').exists():
+        if 'admin_pide' not in user_group_names(user):
             return None
         return tiket_qs.filter(
             status_tiket=STATUS_DIKIRIM_KE_PIDE
@@ -420,11 +450,13 @@ def _build_tiket_base_qs(category, user):
             _get_p3de_tiket_ids,
             Q(
                 penyampaian=Subquery(
-                    Tiket.objects.filter(
-                        id_periode_data=OuterRef('id_periode_data'),
-                        periode=OuterRef('periode'),
-                        tahun=OuterRef('tahun'),
-                        id__in=_get_p3de_tiket_ids(user),
+                    _scoped(
+                        Tiket.objects.filter(
+                            id_periode_data=OuterRef('id_periode_data'),
+                            periode=OuterRef('periode'),
+                            tahun=OuterRef('tahun'),
+                        ),
+                        _get_p3de_tiket_ids(user),
                     ).values('id_periode_data', 'periode', 'tahun')
                     .annotate(max_penyampaian=Max('penyampaian'))
                     .values('max_penyampaian')[:1]
@@ -452,10 +484,7 @@ def _build_tiket_base_qs(category, user):
         return None
 
     ids_func, extra_filter = entry
-    tiket_ids = ids_func(user)
-    tiket_qs = tiket_qs.filter(id__in=tiket_ids).filter(extra_filter)
-
-    return tiket_qs
+    return _scoped(tiket_qs, ids_func(user)).filter(extra_filter)
 
 
 def _build_jenis_data_tanpa_pic_qs(category, user):

@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 from itertools import count
 
 import pytest
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, User
 from django.urls import reverse
 
 from diamond_web.constants.tiket_status import (
@@ -897,9 +897,14 @@ class TestQualityControlSummary(SummaryEndpoint):
 
 @pytest.mark.django_db
 class TestSummaryBreakdown(SummaryEndpoint):
-    """Each section's split by jenis tabel."""
+    """The QC section's split by jenis tabel, and the totals of the other two.
 
-    def test_splits_tikets_and_rows_per_jenis_tabel(self, client):
+    Only the queue this page lists is split: the upstream sections answer how
+    much is coming rather than how it will be handled, so they are the tiket and
+    row totals alone — see SUMMARY_SECTIONS.
+    """
+
+    def test_the_upstream_sections_carry_no_split(self, client):
         identified, unidentified, unstructured = _seeded_kinds()
         first = _upstream_bundle(
             STATUS_DIREKAM, jenis_tabel=identified, baris_lengkap=500,
@@ -916,36 +921,27 @@ class TestSummaryBreakdown(SummaryEndpoint):
         )
         client.force_login(user)
 
-        p3de = self._section(client, 'p3de')
-        entries = _entries(p3de)
-        assert entries['Diidentifikasi']['tikets'] == 2
-        assert entries['Diidentifikasi']['baris'] == 800
-        assert entries['Tidak Diidentifikasi']['tikets'] == 1
-        assert entries['Tidak Diidentifikasi']['baris'] == 900
-        assert entries['Tidak Terstruktur']['tikets'] == 1
-        assert entries['Tidak Terstruktur']['baris'] == 40
-        # The breakdown accounts for the headline exactly.
-        assert p3de['tikets'] == 4
-        assert p3de['baris'] == 1740
+        payload = self._summary(client)
+        # The totals are still every tiket and every row of them, whatever
+        # jenis tabel each is.
+        assert payload['p3de']['tikets'] == 4
+        assert payload['p3de']['baris'] == 1740
+        for key in ('p3de', 'pide'):
+            assert payload[key]['breakdown'] == []
+            for row in payload['rows']:
+                assert row['sections'][key]['breakdown'] == []
 
-    def test_the_pide_breakdown_uses_the_identified_row_count(self, client):
-        identified, unidentified, _unstructured = _seeded_kinds()
+    def test_the_pide_section_uses_the_identified_row_count(self, client):
         first = _upstream_bundle(
-            STATUS_IDENTIFIKASI, jenis_tabel=identified,
-            baris_lengkap=900, baris_i=200, baris_u=700,
+            STATUS_IDENTIFIKASI, baris_lengkap=900, baris_i=200, baris_u=700,
         )
         _upstream_bundle(
-            STATUS_DIKIRIM_KE_PIDE, pmde_user=first['pmde_user'],
-            jenis_tabel=unidentified, baris_lengkap=500,
+            STATUS_DIKIRIM_KE_PIDE, pmde_user=first['pmde_user'], baris_lengkap=500,
         )
         client.force_login(first['pmde_user'])
 
-        pide = self._section(client, 'pide')
-        entries = _entries(pide)
         # Split recorded, so baris I; split still empty, so baris lengkap.
-        assert entries['Diidentifikasi']['baris'] == 200
-        assert entries['Tidak Diidentifikasi']['baris'] == 500
-        assert pide['baris'] == 700
+        assert self._section(client, 'pide')['baris'] == 700
 
     def test_splits_qc_tikets_and_rows_per_jenis_tabel(self, client):
         identified, unidentified, _unstructured = _seeded_kinds()
@@ -965,25 +961,22 @@ class TestSummaryBreakdown(SummaryEndpoint):
         assert qc['tikets'] == 3
         assert qc['baris'] == 95
 
-    def test_every_section_lists_every_jenis_tabel_in_reference_order(self, client):
-        """A kind with nothing pending keeps its row, showing a zero."""
+    def test_the_qc_section_lists_every_jenis_tabel_in_reference_order(self, client):
+        """A kind with nothing pending keeps its column, showing a zero."""
         _identified, _unidentified, unstructured = _seeded_kinds()
-        bundle = _upstream_bundle(
-            STATUS_DIREKAM, jenis_tabel=unstructured, baris_lengkap=40,
-        )
+        bundle = _qc_bundle(jenis_tabel=unstructured)
         client.force_login(bundle['pmde_user'])
 
         # The seeded kinds keep the order the reference table gives them. Extra
         # rows appear too: every factory-made tiket brings a jenis tabel of its
         # own, and a section lists whatever the reference table holds.
         seeded = ['Diidentifikasi', 'Tidak Diidentifikasi', 'Tidak Terstruktur']
-        payload = self._summary(client)
-        for key in ('qc', 'p3de', 'pide'):
-            names = [entry['name'] for entry in payload[key]['breakdown']]
-            assert [name for name in names if name in seeded] == seeded
-            assert _entries(payload[key])['Diidentifikasi'] == {
-                'name': 'Diidentifikasi', 'tikets': 0, 'baris': 0,
-            }
+        qc = self._section(client, 'qc')
+        names = [entry['name'] for entry in qc['breakdown']]
+        assert [name for name in names if name in seeded] == seeded
+        assert _entries(qc)['Diidentifikasi'] == {
+            'name': 'Diidentifikasi', 'tikets': 0, 'baris': 0,
+        }
 
     def test_each_section_only_counts_its_own_queue(self, client):
         identified, _unidentified, _unstructured = _seeded_kinds()
@@ -1002,36 +995,41 @@ class TestSummaryBreakdown(SummaryEndpoint):
         assert _entries(payload['qc'])['Diidentifikasi'] == {
             'name': 'Diidentifikasi', 'tikets': 1, 'baris': 60,
         }
-        assert _entries(payload['p3de'])['Diidentifikasi'] == {
-            'name': 'Diidentifikasi', 'tikets': 1, 'baris': 500,
-        }
-        assert _entries(payload['pide'])['Diidentifikasi'] == {
-            'name': 'Diidentifikasi', 'tikets': 1, 'baris': 40,
-        }
+        assert (payload['p3de']['tikets'], payload['p3de']['baris']) == (1, 500)
+        assert (payload['pide']['tikets'], payload['pide']['baris']) == (1, 40)
 
     def test_filters_narrow_the_breakdown(self, client):
         identified, unidentified, _unstructured = _seeded_kinds()
-        first = _upstream_bundle(
-            STATUS_DIREKAM, jenis_tabel=identified, baris_lengkap=500,
-        )
-        _upstream_bundle(
-            STATUS_DIREKAM, pmde_user=first['pmde_user'], jenis_tabel=unidentified,
-            baris_lengkap=300,
+        first = _qc_bundle(jenis_tabel=identified, belum_qc=500)
+        _qc_bundle(
+            pmde_user=first['pmde_user'], jenis_tabel=unidentified, belum_qc=300,
         )
         client.force_login(first['pmde_user'])
 
-        p3de = self._section(client, 'p3de', jenis_tabel=str(identified.pk))
-        entries = _entries(p3de)
+        qc = self._section(client, 'qc', jenis_tabel=str(identified.pk))
+        entries = _entries(qc)
         assert entries['Diidentifikasi']['baris'] == 500
         assert entries['Tidak Diidentifikasi']['baris'] == 0
-        assert p3de['baris'] == 500
+        assert qc['baris'] == 500
+
+    def test_the_rows_of_a_section_add_up_to_its_totals(self, client):
+        """The per-PIC lines and the totals line are the same figures summed."""
+        identified, unidentified, _unstructured = _seeded_kinds()
+        first = _qc_bundle(jenis_tabel=identified, belum_qc=60)
+        _qc_bundle(jenis_tabel=unidentified, belum_qc=25)
+        client.force_login(_kasi_pmde_user())
+
+        payload = self._summary(client)
+        rows = payload['rows']
+        assert len(rows) == 2
+        assert sum(row['sections']['qc']['tikets'] for row in rows) == payload['qc']['tikets']
+        assert sum(row['sections']['qc']['baris'] for row in rows) == payload['qc']['baris']
+        assert first['pmde_user'].get_full_name() in {row['name'] for row in rows}
 
     def test_a_tiket_matched_twice_by_a_join_is_counted_once(self, client):
         """Filtering through a to-many join must not double a breakdown row."""
         identified, _unidentified, _unstructured = _seeded_kinds()
-        bundle = _upstream_bundle(
-            STATUS_DIREKAM, jenis_tabel=identified, baris_lengkap=500,
-        )
+        bundle = _qc_bundle(jenis_tabel=identified, belum_qc=500)
         sub_jenis_data = bundle['tiket'].id_periode_data.id_sub_jenis_data_ilap
         for label in ('DH A', 'DH B'):
             dasar_hukum = DasarHukum.objects.create(
@@ -1043,7 +1041,132 @@ class TestSummaryBreakdown(SummaryEndpoint):
         client.force_login(bundle['pmde_user'])
 
         ids = ','.join(str(dh.pk) for dh in DasarHukum.objects.all())
-        p3de = self._section(client, 'p3de', dasar_hukum=ids)
-        assert _entries(p3de)['Diidentifikasi'] == {
+        qc = self._section(client, 'qc', dasar_hukum=ids)
+        assert _entries(qc)['Diidentifikasi'] == {
             'name': 'Diidentifikasi', 'tikets': 1, 'baris': 500,
         }
+
+
+@pytest.mark.django_db
+class TestSummaryPerPic(SummaryEndpoint):
+    """The summary read one PIC PMDE at a time: the lines of the summary table."""
+
+    def _rows(self, client, **filters):
+        return {row['name']: row for row in self._summary(client, **filters)['rows']}
+
+    def test_a_line_per_pic_carrying_every_section(self, client):
+        mine = _qc_bundle()
+        theirs = _qc_bundle()
+        _upstream_bundle(STATUS_DIREKAM, pmde_user=theirs['pmde_user'], baris_lengkap=500)
+        client.force_login(_kasi_pmde_user())
+
+        rows = self._rows(client)
+        assert set(rows) == {
+            mine['pmde_user'].get_full_name(), theirs['pmde_user'].get_full_name(),
+        }
+        for row in rows.values():
+            assert set(row['sections']) == {'qc', 'p3de', 'pide'}
+
+        theirs_row = rows[theirs['pmde_user'].get_full_name()]
+        assert theirs_row['sections']['qc']['baris'] == 60
+        assert theirs_row['sections']['p3de']['baris'] == 500
+
+    def test_a_pic_holding_nothing_in_a_section_reads_as_zeros(self, client):
+        """Every line is the full width, or the figures would not line up."""
+        with_qc = _qc_bundle()
+        only_upstream = _upstream_bundle(STATUS_DIREKAM, baris_lengkap=500)
+        client.force_login(_kasi_pmde_user())
+
+        rows = self._rows(client)
+        row = rows[only_upstream['pmde_user'].get_full_name()]
+        assert row['sections']['qc']['tikets'] == 0
+        assert row['sections']['qc']['baris'] == 0
+        # Zeroed, not blank: the empty QC section still lists every jenis tabel,
+        # in the order the line that does hold tikets lists them.
+        held = rows[with_qc['pmde_user'].get_full_name()]['sections']['qc']
+        assert [entry['name'] for entry in row['sections']['qc']['breakdown']] == [
+            entry['name'] for entry in held['breakdown']
+        ]
+        assert all(entry['tikets'] == 0 for entry in row['sections']['qc']['breakdown'])
+
+    def test_each_line_splits_its_sections_by_jenis_tabel(self, client):
+        identified, unidentified, _unstructured = _seeded_kinds()
+        first = _qc_bundle(jenis_tabel=identified, belum_qc=60)
+        _qc_bundle(pmde_user=first['pmde_user'], jenis_tabel=unidentified, belum_qc=10)
+        client.force_login(first['pmde_user'])
+
+        row = self._rows(client)[first['pmde_user'].get_full_name()]
+        entries = _entries(row['sections']['qc'])
+        assert entries['Diidentifikasi'] == {
+            'name': 'Diidentifikasi', 'tikets': 1, 'baris': 60,
+        }
+        assert entries['Tidak Diidentifikasi'] == {
+            'name': 'Tidak Diidentifikasi', 'tikets': 1, 'baris': 10,
+        }
+
+    def test_a_tiket_without_an_active_pic_gets_a_line_of_its_own(self, client):
+        """Its work is real, so it is held apart rather than dropped."""
+        bundle = _qc_bundle()
+        TiketPIC.objects.filter(id_tiket=bundle['tiket']).update(active=False)
+        client.force_login(_kasi_pmde_user())
+
+        payload = self._summary(client)
+        assert [row['name'] for row in payload['rows']] == ['Tanpa PIC PMDE']
+        assert payload['rows'][0]['sections']['qc']['baris'] == payload['qc']['baris']
+        # Nobody to lead to, so the line is text rather than a link.
+        assert '<a ' not in payload['rows'][0]['pic']
+
+    def test_lines_read_by_name_with_nobody_last(self, client):
+        first = _qc_bundle()
+        User.objects.filter(pk=first['pmde_user'].pk).update(
+            first_name='Zulfa', last_name='',
+        )
+        second = _qc_bundle()
+        User.objects.filter(pk=second['pmde_user'].pk).update(
+            first_name='Ahmad', last_name='',
+        )
+        orphan = _qc_bundle()
+        TiketPIC.objects.filter(id_tiket=orphan['tiket']).update(active=False)
+        client.force_login(_kasi_pmde_user())
+
+        assert [row['name'] for row in self._summary(client)['rows']] == [
+            'Ahmad', 'Zulfa', 'Tanpa PIC PMDE',
+        ]
+
+    def test_the_lines_follow_the_filter_panel(self, client):
+        """Which PIC appear is read off the filtered sections, not the roster."""
+        first = _qc_bundle()
+        second = _qc_bundle()
+        client.force_login(_kasi_pmde_user())
+
+        assert len(self._summary(client)['rows']) == 2
+        rows = self._summary(client, nomor_tiket=second['tiket'].nomor_tiket)['rows']
+        assert [row['name'] for row in rows] == [second['pmde_user'].get_full_name()]
+        assert first['pmde_user'].get_full_name() != second['pmde_user'].get_full_name()
+
+    def test_a_name_links_to_the_profil_the_reader_may_open(self, client):
+        bundle = _qc_bundle()
+        client.force_login(_kasi_pmde_user())
+
+        row = self._summary(client)['rows'][0]
+        assert f'/profil-pic/{bundle["pmde_user"].username}/' in row['pic']
+
+    def test_the_page_heads_the_table_with_the_reference_jenis_tabel(self, client):
+        """The sub columns are the reference table, so a new kind gets a column.
+
+        Nothing else ties the header to the figures under it: both are built
+        from `jenis_tabel_kinds`, and a header spelled out in the markup would
+        silently mislabel every line the day a jenis tabel is added.
+        """
+        bundle = _qc_bundle()
+        client.force_login(bundle['pmde_user'])
+        html = client.get(reverse('quality_control')).content.decode()
+
+        for label in ('Nama PIC', 'Pengendalian Mutu', 'Masih di P3DE', 'Masih di PIDE',
+                      'Tiket', 'Baris Data'):
+            assert label in html
+        for kind in JenisTabel.objects.values_list('deskripsi', flat=True):
+            assert kind in html
+        # The JS fills a line's cells in this order; the header above them was
+        # rendered from the same list.
+        assert 'data-summary-sections="qc,p3de,pide"' in html

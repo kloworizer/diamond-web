@@ -17,6 +17,7 @@ added, since both are columns of these tables.
 from collections import defaultdict
 from datetime import date
 
+from django.contrib.auth.models import User
 from django.db import connection as db_connection
 from django.db.models import (
     DateField, Exists, IntegerField, OuterRef, Q, Subquery, Value,
@@ -24,6 +25,7 @@ from django.db.models import (
 from django.db.models.expressions import RawSQL
 from django.db.models.functions import Cast, Coalesce
 from django.utils import timezone
+from django.utils.html import escape
 
 from ..constants.tiket_status import STATUS_DIKIRIM_KE_PIDE, STATUS_IDENTIFIKASI
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
@@ -31,6 +33,7 @@ from ..models.jenis_prioritas_data import JenisPrioritasData
 from ..models.jenis_tabel import JenisTabel
 from ..models.status_penelitian import StatusPenelitian
 from ..models.tiket_pic import TiketPIC
+from ..utils.pic_profil import pic_display_name, pic_profil_link
 from ..utils.wilayah import kanwil_value_paths, tiket_in_kanwil_q
 
 
@@ -674,6 +677,20 @@ BARIS_DATA_FIELDS = (
 )
 
 
+def pic_id_expr(role):
+    """The id of a tiket's active PIC for `role`, as a correlated subquery.
+
+    One PIC per role is what the workflow assigns, so the first row is the row;
+    a tiket without one yields NULL, which the callers read as "nobody".
+    """
+    return Subquery(
+        TiketPIC.objects.filter(
+            id_tiket=OuterRef('pk'), role=role, active=True,
+        ).values('id_user_id')[:1],
+        output_field=IntegerField(),
+    )
+
+
 def jenis_tabel_kinds():
     """The `(id, deskripsi)` pairs every breakdown lists, in reference order.
 
@@ -683,16 +700,53 @@ def jenis_tabel_kinds():
     return list(JenisTabel.objects.order_by('id').values_list('id', 'deskripsi'))
 
 
+def _empty_section(kinds):
+    """A section with every jenis tabel present and nothing counted yet.
+
+    Every jenis tabel in `kinds` gets an entry, including the ones with nothing
+    pending: a zero there is a fact worth reading, and an entry that vanished
+    under a filter would shuffle the ones around it.
+    """
+    return {
+        'tikets': 0,
+        'baris': 0,
+        'breakdown': {
+            kind_id: {'name': deskripsi, 'tikets': 0, 'baris': 0}
+            for kind_id, deskripsi in kinds
+        },
+    }
+
+
+def _count_tiket(section, jenis_tabel_id, baris):
+    """Add one tiket and its rows to `section`.
+
+    A tiket whose jenis tabel is not one of the section's kinds — an unset one,
+    or a reference row read after the section was built — still counts towards
+    the totals, since it is a tiket in the queue, but has no entry to land in.
+    """
+    section['tikets'] += 1
+    section['baris'] += baris
+    entry = section['breakdown'].get(jenis_tabel_id)
+    if entry is not None:
+        entry['tikets'] += 1
+        entry['baris'] += baris
+
+
+def _finished(section):
+    """The payload shape of a section, its breakdown as a list in kinds order."""
+    return {
+        'tikets': section['tikets'],
+        'baris': section['baris'],
+        'breakdown': list(section['breakdown'].values()),
+    }
+
+
 def queue_breakdown(qs, kinds, baris_fields, baris_of):
     """A queue's tikets and rows, split by the jenis tabel of their data.
 
     Jenis tabel is what decides how a tiket's data is handled — diidentifikasi,
     tidak diidentifikasi or tidak terstruktur — so every queue is broken down
     along it rather than along status.
-
-    Every jenis tabel in `kinds` gets a row, including the ones with nothing
-    pending: a zero there is a fact worth reading, and a row that vanished under
-    a filter would shuffle the rows around it.
 
     Args:
         qs: The tikets to summarise, already filtered.
@@ -704,24 +758,104 @@ def queue_breakdown(qs, kinds, baris_fields, baris_of):
     leads each tuple, so the DISTINCT that the to-many filters add collapses a
     tiket matched twice into one row instead of counting it twice.
     """
-    breakdown = {
-        kind_id: {'name': deskripsi, 'tikets': 0, 'baris': 0}
-        for kind_id, deskripsi in kinds
-    }
-
-    tikets = 0
-    baris_total = 0
+    section = _empty_section(kinds)
     rows = qs.values_list('id', f'{SUB}__id_jenis_tabel__id', *baris_fields)
     for _tiket_id, jenis_tabel_id, *values in rows:
-        baris = baris_of(*values)
-        tikets += 1
-        baris_total += baris
-        entry = breakdown.get(jenis_tabel_id)
-        if entry is not None:
-            entry['tikets'] += 1
-            entry['baris'] += baris
+        _count_tiket(section, jenis_tabel_id, baris_of(*values))
+    return _finished(section)
 
-    return {'tikets': tikets, 'baris': baris_total, 'breakdown': list(breakdown.values())}
+
+def queue_breakdown_per_pic(qs, kinds, baris_fields, baris_of, role):
+    """:func:`queue_breakdown` again, one section per PIC of `role`.
+
+    Args:
+        role: The PIC role the queue is split by.
+
+    Returns:
+        tuple: `({pic_id: section}, total_section)`, where a `pic_id` of None
+        holds the tikets with no active PIC — they carry work like any other
+        tiket, so they keep a line of their own rather than being dropped. The
+        total is accumulated in the same pass, so a page showing both reads the
+        queue once instead of twice.
+    """
+    per_pic = {}
+    total = _empty_section(kinds)
+
+    rows = qs.annotate(pic_id=pic_id_expr(role)).values_list(
+        'id', 'pic_id', f'{SUB}__id_jenis_tabel__id', *baris_fields,
+    )
+    for _tiket_id, pic_id, jenis_tabel_id, *values in rows:
+        baris = baris_of(*values)
+        _count_tiket(total, jenis_tabel_id, baris)
+        if pic_id not in per_pic:
+            per_pic[pic_id] = _empty_section(kinds)
+        _count_tiket(per_pic[pic_id], jenis_tabel_id, baris)
+
+    return {pic_id: _finished(section) for pic_id, section in per_pic.items()}, _finished(total)
+
+
+def pic_summary(sections, role, can_view, no_pic_label):
+    """The summary table: one line per PIC, and the totals line under them.
+
+    Every section is the same queue read a different way — the queue this page
+    lists, then the ones upstream of it — so a PIC's line puts all of them side
+    by side and says how much of each is theirs. Which PIC appear is decided by
+    the filtered sections themselves rather than by the seksi's roster, so
+    narrowing the filter panel narrows the rows too.
+
+    A PIC present in one section but not another still gets a full line, the
+    sections they hold nothing in reading as zeros — a line that changed width
+    between one PIC and the next would not be a table.
+
+    Args:
+        sections: `{key: (qs, kinds, baris_fields, baris_of)}`, one entry per
+            column group, in the order the groups are rendered. A section is
+            split by the `kinds` it is given and by no others, so one passing an
+            empty tuple is the tiket and row totals alone — which is what a
+            group of two columns wants, and what its page renders.
+        role: The PIC role the lines are keyed by.
+        can_view: The predicate from `pic_profil_visibility`, deciding whether a
+            name is rendered as a link to its Profil PIC page.
+        no_pic_label: What to call the line holding the tikets with no PIC.
+
+    Returns:
+        tuple: `(rows, totals)` — the per-PIC lines, and `{key: section}` for
+        the line under them.
+    """
+    per_pic = {}
+    totals = {}
+    for key, (qs, kinds, baris_fields, baris_of) in sections.items():
+        per_pic[key], totals[key] = queue_breakdown_per_pic(
+            qs, kinds, baris_fields, baris_of, role,
+        )
+
+    pic_ids = {pic_id for breakdowns in per_pic.values() for pic_id in breakdowns}
+    users = User.objects.in_bulk([pic_id for pic_id in pic_ids if pic_id is not None])
+
+    # By name, with the line for "nobody" last: it is not a person, and holding
+    # its place at the foot keeps it from moving as PIC come and go.
+    ordered = sorted(
+        pic_ids,
+        key=lambda pic_id: (
+            pic_id is None, pic_display_name(users.get(pic_id)).lower(),
+        ),
+    )
+
+    rows = []
+    for pic_id in ordered:
+        user = users.get(pic_id)
+        rows.append({
+            'name': pic_display_name(user) if user else no_pic_label,
+            # Linked to the Profil PIC page, like every other name in the app;
+            # the line with no PIC behind it is plain text, there being nobody
+            # for it to lead to.
+            'pic': pic_profil_link(user, can_view) if user else escape(no_pic_label),
+            'sections': {
+                key: per_pic[key].get(pic_id) or _finished(_empty_section(kinds))
+                for key, (_qs, kinds, _fields, _of) in sections.items()
+            },
+        })
+    return rows, totals
 
 
 # ---------------------------------------------------------------------------
@@ -790,12 +924,7 @@ def chart_data(scoped_qs, selected, appliers, deadline, role, no_pic_label,
     rows = deadline.annotate_durasi(
         apply_filters(scoped_qs, selected, appliers)
     ).annotate(
-        pic_id=Subquery(
-            TiketPIC.objects.filter(
-                id_tiket=OuterRef('pk'), role=role, active=True,
-            ).values('id_user_id')[:1],
-            output_field=IntegerField(),
-        ),
+        pic_id=pic_id_expr(role),
         # `id` keeps DISTINCT (added by the to-many filters) from collapsing two
         # different tikets that happen to agree on every other column here.
     ).values_list(

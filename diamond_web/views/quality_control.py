@@ -76,6 +76,38 @@ class QualityControlView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         """Verify user is PMDE user or admin."""
         return _is_pmde_user(self.request.user)
 
+    def get_context_data(self, **kwargs):
+        """Add the header of the summary table.
+
+        Its sub columns are the jenis tabel of the reference table, which the
+        page cannot spell out in its markup — a jenis tabel added there has to
+        appear as a column here, exactly as it appears in every breakdown the
+        endpoint sends back. The endpoint reads the same list in the same order,
+        so a line of figures lands under the heading it belongs to.
+        """
+        context = super().get_context_data(**kwargs)
+        kinds = [
+            # `hue` is the palette slot the column is drawn in, assigned by
+            # position and wrapping after the palette runs out — see the
+            # .sq-kind-* rules. Decided here rather than in the template because
+            # the template language has no modulo.
+            {'name': deskripsi, 'hue': index % SUMMARY_KIND_HUES}
+            for index, (_kind_id, deskripsi) in enumerate(sq.jenis_tabel_kinds())
+        ]
+        context.update({
+            'summary_sections': SUMMARY_SECTIONS,
+            'summary_kinds': kinds,
+            # Tiket and Baris Data, then one column per jenis tabel.
+            'summary_colspan': len(kinds) + 2,
+            'summary_section_keys': ','.join(
+                section['key'] for section in SUMMARY_SECTIONS
+            ),
+            'summary_section_variants': ','.join(
+                section['variant'] for section in SUMMARY_SECTIONS
+            ),
+        })
+        return context
+
 
 def _pmde_scope(tikets, user):
     """Narrow `tikets` to what `user` is allowed to see as PMDE."""
@@ -105,35 +137,72 @@ def _belum_qc(belum_qc):
     return belum_qc or 0
 
 
-def _summary(user, selected):
-    """The three sections above the chart, over the same filters the chart uses.
+# The three column groups of the summary table, in the order it renders them:
+# the QC queue this page lists, then the two queues upstream of it, kept apart
+# because they are different work — P3DE still holds one count of a tiket's
+# data, while PIDE has begun splitting it.
+#
+# Only this page's own queue is split by jenis tabel. That split says how a
+# tiket's data is handled, which is the question a reader has about work that is
+# in front of them now; for the two upstream queues the question is only how
+# much is coming, so they are the tiket and row totals and nothing more — three
+# groups of five columns each would bury the queue that is actually theirs.
+#
+# `key` is the payload section, and the template renders the labels and the
+# column widths from this same list, so the header and the figures under it
+# cannot drift apart.
+SUMMARY_SECTIONS = (
+    {'key': 'qc', 'label': 'Pengendalian Mutu', 'variant': 'own', 'kinds': True},
+    {'key': 'p3de', 'label': 'Masih di P3DE', 'variant': 'upstream', 'kinds': False},
+    {'key': 'pide', 'label': 'Masih di PIDE', 'variant': 'upstream-alt', 'kinds': False},
+)
 
-    The first is the QC queue this page lists, counting the rows it has left to
-    check. The other two are the queues upstream of it, kept apart because they
-    are different work: P3DE still holds one count of a tiket's data, while PIDE
-    has begun splitting it. All three read the same shape — a tiket total, a row
-    total and a per-jenis-tabel breakdown — so they can be read against each
-    other down the row.
-    """
+# How many hues the jenis tabel columns cycle through before repeating one; see
+# the .sq-kind-* rules in seksi_queue/list.html, which define exactly this many.
+SUMMARY_KIND_HUES = 5
+
+
+def _summary_sections(user, selected):
+    """The queue behind each column group: what to read, and how to count it."""
     upstream_selected = sq.upstream_selected(selected)
-    kinds = sq.jenis_tabel_kinds()
 
     def upstream(statuses):
-        return sq.queue_breakdown(
+        return (
             sq.apply_filters(
                 _upstream_queryset(user, statuses), upstream_selected, FILTER_APPLIERS,
             ),
-            kinds, sq.BARIS_DATA_FIELDS, sq.baris_data,
+            # No jenis tabel columns, so nothing to split by.
+            (),
+            sq.BARIS_DATA_FIELDS,
+            sq.baris_data,
         )
 
     return {
-        'qc': sq.queue_breakdown(
+        'qc': (
             sq.apply_filters(_scoped_queryset(user), selected, FILTER_APPLIERS),
-            kinds, ('belum_qc',), _belum_qc,
+            sq.jenis_tabel_kinds(),
+            ('belum_qc',),
+            _belum_qc,
         ),
         'p3de': upstream(STATUSES_DI_P3DE),
         'pide': upstream(STATUSES_DI_PIDE),
     }
+
+
+def _summary(user, selected):
+    """The summary table above the chart, over the same filters the chart uses.
+
+    One line per PIC PMDE — whoever the filter panel has left in the sections,
+    rather than the whole seksi — carrying all three queues side by side, so a
+    reader sees at once how much of each is that person's. The totals come back
+    under the section keys they have always used, which is the line under the
+    table.
+    """
+    rows, totals = sq.pic_summary(
+        _summary_sections(user, selected), TiketPIC.Role.PMDE,
+        pic_profil_visibility(user), no_pic_label='Tanpa PIC PMDE',
+    )
+    return dict(totals, rows=rows)
 
 
 def _chart_data(scoped, selected):
