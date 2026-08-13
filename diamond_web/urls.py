@@ -195,7 +195,7 @@ urlpatterns = [
     path('pic/matrix-data/', views.pic_matrix_data, name='pic_matrix_data'),
     
     # PIC P3DE URLs
-    path('pic-p3de/', views.UnifiedPICListView.as_view(), name='pic_p3de_list'), # Kept for redirect/legacy
+    path('pic-p3de/', views.PICP3DEListView.as_view(), name='pic_p3de_list'), # Kept for redirect/legacy
     path('pic-p3de/data/', views.pic_p3de_data, name='pic_p3de_data'),
     path('pic-p3de/create/', views.PICP3DECreateView.as_view(), name='pic_p3de_create'),
     path('pic-p3de/<int:pk>/update/', views.PICP3DEUpdateView.as_view(), name='pic_p3de_update'),
@@ -272,7 +272,7 @@ urlpatterns = [
     path('nama-tabel/<str:nama_tabel>/tikets/', views.nama_tabel_tiket_data, name='nama_tabel_tiket_data'),
     path('nama-tabel/<str:nama_tabel>/', views.NamaTabelDetailView.as_view(), name='nama_tabel_detail'),
     # PIC PIDE URLs
-    path('pic-pide/', views.UnifiedPICListView.as_view(), name='pic_pide_list'),
+    path('pic-pide/', views.PICPIDEListView.as_view(), name='pic_pide_list'),
     path('pic-pide/data/', views.pic_pide_data, name='pic_pide_data'),
     path('pic-pide/create/', views.PICPIDECreateView.as_view(), name='pic_pide_create'),
     path('pic-pide/<int:pk>/update/', views.PICPIDEUpdateView.as_view(), name='pic_pide_update'),
@@ -312,7 +312,7 @@ urlpatterns = [
     path('identifikasi/', views.IdentifikasiView.as_view(), name='identifikasi'),
     path('identifikasi/data/', views.identifikasi_data, name='identifikasi_data'),
     # PIC PMDE URLs
-    path('pic-pmde/', views.UnifiedPICListView.as_view(), name='pic_pmde_list'),
+    path('pic-pmde/', views.PICPMDEListView.as_view(), name='pic_pmde_list'),
     path('pic-pmde/data/', views.pic_pmde_data, name='pic_pmde_data'),
     path('pic-pmde/create/', views.PICPMDECreateView.as_view(), name='pic_pmde_create'),
     path('pic-pmde/<int:pk>/update/', views.PICPMDEUpdateView.as_view(), name='pic_pmde_update'),

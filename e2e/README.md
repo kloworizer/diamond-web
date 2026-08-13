@@ -118,7 +118,11 @@ E2E_HEADFUL=1 .venv/Scripts/python.exe e2e/run_all.py
 
 # Or run a single scenario:
 .venv/Scripts/python.exe e2e/test_happy_path.py
+
+# Run automatically before every git push:
+bash scripts/pre-push.sh
 ```
+
 
 Output:
 - `report/RESULTS.md` — bugs/findings + a per-step PASS/FAIL log

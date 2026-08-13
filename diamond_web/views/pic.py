@@ -1,5 +1,5 @@
 from django.urls import reverse_lazy, reverse
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import CreateView, UpdateView, DeleteView, TemplateView
 from django.contrib import messages
 from urllib.parse import quote_plus, unquote_plus
@@ -806,6 +806,7 @@ def _pic_data_common(request, tipe):
 
 
 @login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de']).exists())
 @require_GET
 def pic_p3de_data(request):
     """DataTables endpoint for P3DE `PIC` rows.
@@ -818,6 +819,7 @@ def pic_p3de_data(request):
 
 
 @login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pide', 'user_pide']).exists())
 @require_GET
 def pic_pide_data(request):
     """DataTables endpoint for PIDE `PIC` rows.
@@ -830,6 +832,7 @@ def pic_pide_data(request):
 
 
 @login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde', 'user_pmde']).exists())
 @require_GET
 def pic_pmde_data(request):
     """DataTables endpoint for PMDE `PIC` rows.
@@ -841,8 +844,27 @@ def pic_pmde_data(request):
     return _pic_data_common(request, PIC.TipePIC.PMDE)
 
 
-class UnifiedPICListView(LoginRequiredMixin, TemplateView):
+class UnifiedPICListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     template_name = 'pic/unified_list.html'
+
+    def test_func(self):
+        user = self.request.user
+        if user.is_superuser:
+            return True
+        allowed_groups = ['admin', 'admin_p3de', 'user_p3de', 'admin_pide', 'user_pide', 'admin_pmde', 'user_pmde']
+        return user.groups.filter(name__in=allowed_groups).exists()
+
+    def get(self, request, *args, **kwargs):
+        # If redirected after delete, show success message from query params
+        deleted = request.GET.get('deleted')
+        name = request.GET.get('name')
+        if deleted and name:
+            try:
+                name = unquote_plus(name)
+                messages.success(request, f'"{name}" berhasil dihapus.')
+            except Exception:
+                pass
+        return super().get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1140,3 +1162,17 @@ def jenis_data_ilap_info_ajax(request, pk):
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
+
+class PICP3DEListView(UserP3DERequiredMixin, UnifiedPICListView):
+    """Unified list view strictly restricted to P3DE access."""
+    pass
+
+
+class PICPIDEListView(UserPIDERequiredMixin, UnifiedPICListView):
+    """Unified list view strictly restricted to PIDE access."""
+    pass
+
+
+class PICPMDEListView(UserPMDERequiredMixin, UnifiedPICListView):
+    """Unified list view strictly restricted to PMDE access."""
+    pass

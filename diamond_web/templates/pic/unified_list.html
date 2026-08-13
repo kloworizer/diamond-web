@@ -1223,7 +1223,83 @@
                             alert('Terjadi kesalahan saat memuat data form.');
                         }
                     });
+                    });
                 }
+            });
+
+            // Delegated Submit handler for AJAX CRUD forms inside the modal
+            $(document).on('submit', '#crudModal form', function (e) {
+                e.preventDefault();
+                const form = $(this);
+                const url = form.attr('action') || window.location.href;
+                const formData = new FormData(form[0]);
+
+                $.ajax({
+                    url: url,
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (response) {
+                        // Check for standard success response
+                        if (response.success || response.status === 'success') {
+                            var modal = bootstrap.Modal.getInstance(document.getElementById('crudModal'));
+                            if (modal) modal.hide();
+                            
+                            // Determine which table to reload based on active tab
+                            const activeTabId = $('.nav-link.active').attr('id');
+                            let activeTable;
+                            if (activeTabId === 'tab-matrix') activeTable = window.dtMatrix;
+                            else if (activeTabId === 'tab-p3de') activeTable = window.dtP3DE;
+                            else if (activeTabId === 'tab-pide') activeTable = window.dtPIDE;
+                            else if (activeTabId === 'tab-pmde') activeTable = window.dtPMDE;
+                            
+                            if (activeTable) {
+                                activeTable.ajax.reload(null, false);
+                            }
+                            
+                            if (typeof showToast === 'function') {
+                                showToast(response.message || 'Data berhasil disimpan.', 'success');
+                            } else {
+                                alert(response.message || 'Data berhasil disimpan.');
+                            }
+                        } else {
+                            // If response is not success, it might be the HTML of the form with validation errors
+                            var htmlContent = response.html || response;
+                            
+                            // Gracefully redirect to login if session has expired
+                            if (typeof htmlContent === 'string' && htmlContent.indexOf('Login') !== -1 && htmlContent.indexOf('password') !== -1) {
+                                window.location.href = '/accounts/login/?next=' + window.location.pathname;
+                                return;
+                            }
+                            
+                            $('#modalContent').html(htmlContent);
+                            // Re-initialize select2 if the form has them
+                            if (typeof $.fn.select2 !== 'undefined') {
+                                $('#modalContent select[data-select2-selector="default"]').each(function () {
+                                    $(this).select2({ dropdownParent: $('#crudModal') });
+                                });
+                            }
+                            // Retrigger change to load dynamic data like ILAP info
+                            $('#id_id_sub_jenis_data_ilap').trigger('change');
+                        }
+                    },
+                    error: function (xhr) {
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.message) {
+                                if (typeof showToast === 'function') showToast(response.message, 'danger');
+                                else alert(response.message);
+                            } else {
+                                if (typeof showToast === 'function') showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                                else alert('Terjadi kesalahan. Silakan coba lagi.');
+                            }
+                        } catch (e) {
+                            if (typeof showToast === 'function') showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                            else alert('Terjadi kesalahan. Silakan coba lagi.');
+                        }
+                    }
+                });
             });
 
             // --- GSAP Hover & Click Animations for Summary Cards ---

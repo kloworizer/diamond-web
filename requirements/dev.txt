@@ -15,3 +15,7 @@ pytest==9.0.3
 # pytest
 # pytest-django
 # coverage
+
+# E2E Testing
+playwright==1.46.0
+pytest-playwright==0.5.1

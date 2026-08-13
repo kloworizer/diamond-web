@@ -45,6 +45,8 @@ class AdminRequiredMixin(UserPassesTestMixin):
     belong to the `admin` group. It delegates to Django's
     `UserPassesTestMixin` and implements `test_func`.
     """
+    raise_exception = True
+
     def test_func(self):
         return self.request.user.groups.filter(name='admin').exists()
 
@@ -58,6 +60,8 @@ class AdminAnyRequiredMixin(UserPassesTestMixin):
     Subclasses can further restrict to specific admin roles via more specific
     mixins (e.g., AdminP3DERequiredMixin for P3DE-only views).
     """
+    raise_exception = True
+
     def test_func(self):
         """Check whether the current user belongs to any admin group.
 
@@ -77,6 +81,8 @@ class AdminP3DERequiredMixin(UserPassesTestMixin):
     P3DE administrative group. Returns True when the current user is a
     member of either group.
     """
+    raise_exception = True
+
     def test_func(self):
         """Check whether the current user belongs to the ``admin`` or ``admin_p3de`` group.
 
@@ -92,6 +98,8 @@ class AdminPIDERequiredMixin(UserPassesTestMixin):
     Use this for views that should be reachable by global admins and PIDE
     administrators.
     """
+    raise_exception = True
+
     def test_func(self):
         """Check whether the current user belongs to the ``admin`` or ``admin_pide`` group.
 
@@ -107,6 +115,8 @@ class AdminPMDERequiredMixin(UserPassesTestMixin):
     Use this mixin for views that should be accessible by global admins and
     PMDE administrators.
     """
+    raise_exception = True
+
     def test_func(self):
         """Check whether the current user belongs to the ``admin`` or ``admin_pmde`` group.
 
@@ -125,6 +135,8 @@ class UserP3DERequiredMixin(UserPassesTestMixin):
     flow simple; otherwise the standard `handle_no_permission` path is
     taken.
     """
+    raise_exception = True
+
     def test_func(self):
         """Check whether the current user belongs to an allowed group.
 
@@ -158,6 +170,8 @@ class UserPIDERequiredMixin(UserPassesTestMixin):
     403 for AJAX requests when permission is denied, otherwise falls back
     to the standard `handle_no_permission` behavior.
     """
+    raise_exception = True
+
     def test_func(self):
         """Check whether the current user belongs to an allowed group.
 
@@ -191,6 +205,8 @@ class UserPMDERequiredMixin(UserPassesTestMixin):
     403 for AJAX requests when permission is denied, otherwise falls back
     to the standard `handle_no_permission` behavior.
     """
+    raise_exception = True
+
     def test_func(self):
         """Check whether the current user belongs to an allowed group.
 
