@@ -355,8 +355,8 @@
 
                 <!-- Submit Button -->
                 <div class="d-flex align-items-center justify-content-end gap-3 mt-4">
-                    <button type="submit" class="btn btn-primary px-5 py-2 fw-semibold" style="height: 48px; border-radius: 4px;">
-                        <i class="feather-save me-2"></i>Simpan Seluruh Perubahan
+                    <button type="submit" id="btn-submit-profile" class="btn btn-primary px-5 py-2 fw-semibold" style="height: 48px; border-radius: 4px;" disabled>
+                        <i class="feather-save me-2"></i>Simpan Perubahan
                     </button>
                 </div>
             </form>
@@ -378,5 +378,42 @@
             icon.classList.add('feather-eye');
         }
     }
+
+    // Dynamic enable/disable submit button based on form changes
+    document.addEventListener('DOMContentLoaded', function() {
+        const profileForm = document.getElementById('profile-form');
+        const submitBtn = document.getElementById('btn-submit-profile');
+        if (!profileForm || !submitBtn) return;
+
+        const inputs = profileForm.querySelectorAll('input[name="first_name"], input[name="last_name"], input[name="old_password"], input[name="new_password1"], input[name="new_password2"]');
+        
+        const initialValues = {};
+        inputs.forEach(input => {
+            initialValues[input.name] = input.value;
+        });
+
+        function checkFormState() {
+            let isChanged = false;
+            inputs.forEach(input => {
+                if (input.type === 'password') {
+                    if (input.value.trim() !== '') {
+                        isChanged = true;
+                    }
+                } else {
+                    if (input.value !== initialValues[input.name]) {
+                        isChanged = true;
+                    }
+                }
+            });
+            submitBtn.disabled = !isChanged;
+        }
+
+        checkFormState();
+
+        inputs.forEach(input => {
+            input.addEventListener('input', checkFormState);
+            input.addEventListener('change', checkFormState);
+        });
+    });
 </script>
 {% endblock %}

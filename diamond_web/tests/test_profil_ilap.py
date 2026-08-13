@@ -7,6 +7,7 @@ from django.urls import reverse
 
 from diamond_web.models import (
     DasarHukum,
+    ILAP,
     ILAPKPP,
     KlasifikasiJenisData,
     PeriodePengiriman,
@@ -39,10 +40,15 @@ def _p3de_user():
 
 @pytest.mark.django_db
 class TestProfilILAPListView:
-    def test_get_denied_without_p3de_group(self, client):
+    def test_get_allowed_without_p3de_group(self, client):
+        """Browsing the catalogue is open to every logged in user."""
         client.force_login(UserFactory())
         resp = client.get(reverse('profil_ilap_list'))
-        assert resp.status_code in (302, 403)
+        assert resp.status_code == 200
+
+    def test_get_denied_when_anonymous(self, client):
+        resp = client.get(reverse('profil_ilap_list'))
+        assert resp.status_code == 302
 
     def test_get_html(self, client):
         client.force_login(_p3de_user())
@@ -114,6 +120,237 @@ class TestProfilILAPListView:
         assert payload['draw'] == 5
         assert len(payload['data']) <= 2
         assert 'actions' in payload['data'][0]
+
+    def test_breadcrumb_names_the_page_profil_ilap(self, client):
+        client.force_login(_p3de_user())
+        resp = client.get(reverse('profil_ilap_list'))
+        html = resp.content.decode()
+        assert 'Profil ILAP</li>' in html
+        assert 'Profil PDE' not in html
+
+
+def _crosstab(client):
+    """Create a two-by-two catalogue and return its pieces."""
+    kategori_a = KategoriILAPFactory(id_kategori='AA', nama_kategori='Kategori AA')
+    kategori_b = KategoriILAPFactory(id_kategori='BB', nama_kategori='Kategori BB')
+    nasional = KategoriWilayahFactory(deskripsi='Wilayah Nasional')
+    regional = KategoriWilayahFactory(deskripsi='Wilayah Regional')
+    ILAPFactory(id_kategori=kategori_a, id_kategori_wilayah=nasional, nama_ilap='AA Nasional 1')
+    ILAPFactory(id_kategori=kategori_a, id_kategori_wilayah=nasional, nama_ilap='AA Nasional 2')
+    ILAPFactory(id_kategori=kategori_a, id_kategori_wilayah=regional, nama_ilap='AA Regional')
+    ILAPFactory(id_kategori=kategori_b, id_kategori_wilayah=regional, nama_ilap='BB Regional')
+    return kategori_a, kategori_b, nasional, regional
+
+
+@pytest.mark.django_db
+class TestProfilILAPSummary:
+    """The kategori ILAP x kategori wilayah cross-tab above the catalogue."""
+
+    def _summary(self, client):
+        client.force_login(_p3de_user())
+        resp = client.get(reverse('profil_ilap_list'))
+        assert resp.status_code == 200
+        return resp.context['ilap_summary']
+
+    def test_counts_each_kategori_against_each_wilayah(self, client):
+        _, _, nasional, regional = _crosstab(client)
+
+        summary = self._summary(client)
+        assert [w['label'] for w in summary['wilayah']] == [
+            'Wilayah Nasional', 'Wilayah Regional'
+        ]
+        assert summary['rows'] == [
+            {
+                'kode': 'AA',
+                'label': 'Kategori AA',
+                'cells': [
+                    {'wilayah': nasional.id, 'jumlah': 2},
+                    {'wilayah': regional.id, 'jumlah': 1},
+                ],
+                'total': 3,
+            },
+            {
+                'kode': 'BB',
+                'label': 'Kategori BB',
+                'cells': [
+                    {'wilayah': nasional.id, 'jumlah': 0},
+                    {'wilayah': regional.id, 'jumlah': 1},
+                ],
+                'total': 1,
+            },
+        ]
+
+    def test_row_and_column_totals_meet_at_the_grand_total(self, client):
+        nasional = KategoriWilayahFactory(deskripsi='Wilayah Nasional')
+        regional = KategoriWilayahFactory(deskripsi='Wilayah Regional')
+        for wilayah, jumlah in ((nasional, 3), (regional, 2)):
+            for _ in range(jumlah):
+                ILAPFactory(id_kategori_wilayah=wilayah)
+
+        summary = self._summary(client)
+        assert [w['total'] for w in summary['wilayah']] == [3, 2]
+        assert sum(w['total'] for w in summary['wilayah']) == summary['grand_total'] == 5
+        assert sum(row['total'] for row in summary['rows']) == 5
+
+    def test_grand_total_matches_the_catalogue_below_it(self, client):
+        for _ in range(4):
+            ILAPFactory()
+        summary = self._summary(client)
+        assert summary['grand_total'] == ILAP.objects.count()
+
+    def test_kategori_without_an_ilap_is_left_out(self, client):
+        """Both axes are read from the ILAPs, so an unused kategori adds nothing."""
+        KategoriILAPFactory(id_kategori='ZZ', nama_kategori='Kategori Kosong')
+        KategoriWilayahFactory(deskripsi='Wilayah Kosong')
+        ILAPFactory()
+
+        summary = self._summary(client)
+        assert 'Kategori Kosong' not in [row['label'] for row in summary['rows']]
+        assert 'Wilayah Kosong' not in [w['label'] for w in summary['wilayah']]
+
+    def test_empty_catalogue_summarises_to_zero(self, client):
+        ILAP.objects.all().delete()
+        summary = self._summary(client)
+        assert summary == {'wilayah': [], 'rows': [], 'grand_total': 0}
+
+    def test_summary_is_rendered_below_the_seksi_directory(self, client):
+        """It reads with the table it filters, not with the staff above it."""
+        kategori = KategoriILAPFactory(id_kategori='RN', nama_kategori='Kategori Render')
+        wilayah = KategoriWilayahFactory(deskripsi='Wilayah Render')
+        ILAPFactory(id_kategori=kategori, id_kategori_wilayah=wilayah)
+
+        client.force_login(_p3de_user())
+        html = client.get(reverse('profil_ilap_list')).content.decode()
+        assert 'Ringkasan ILAP' in html
+        assert 'Kategori Render' in html
+        assert 'Wilayah Render' in html
+        assert html.index('seksi-user-list') < html.index('Ringkasan ILAP')
+        assert html.index('Ringkasan ILAP') < html.index('Daftar ILAP')
+
+    def test_table_card_is_titled_daftar_ilap(self, client):
+        client.force_login(_p3de_user())
+        html = client.get(reverse('profil_ilap_list')).content.decode()
+        assert 'Daftar ILAP' in html
+        assert 'Daftar Profil ILAP' not in html
+
+    def test_summary_is_skipped_for_the_datatables_context(self, client):
+        """The page context is not rebuilt per page of the table."""
+        client.force_login(_p3de_user())
+        resp = client.get(reverse('profil_ilap_list'), {'format': 'json'})
+        assert 'ilap_summary' not in (resp.context or {})
+
+
+@pytest.mark.django_db
+class TestProfilILAPSummarySync:
+    """The summary follows the table's search, and its cells filter the table."""
+
+    def _payload(self, client, **params):
+        client.force_login(_p3de_user())
+        params.setdefault('format', 'json')
+        resp = client.get(reverse('profil_ilap_list'), params)
+        assert resp.status_code == 200
+        return resp.json()
+
+    def test_datatables_response_carries_the_counts(self, client):
+        _, _, nasional, regional = _crosstab(client)
+        summary = self._payload(client)['summary']
+        assert summary['cells']['AA'] == {str(nasional.id): 2, str(regional.id): 1}
+        assert summary['row_totals'] == {'AA': 3, 'BB': 1}
+        assert summary['column_totals'] == {str(nasional.id): 2, str(regional.id): 2}
+        assert summary['grand_total'] == 4
+
+    def test_counts_follow_a_column_search(self, client):
+        _crosstab(client)
+        summary = self._payload(
+            client, **{'columns[2][search][value]': 'AA Nasional'}
+        )['summary']
+        assert summary['grand_total'] == 2
+        assert summary['row_totals'] == {'AA': 2, 'BB': 0}
+
+    def test_counts_follow_the_global_search(self, client):
+        _crosstab(client)
+        summary = self._payload(client, **{'search[value]': 'Regional'})['summary']
+        assert summary['grand_total'] == 2
+        assert summary['row_totals'] == {'AA': 1, 'BB': 1}
+
+    def test_a_selected_cell_filters_the_rows(self, client):
+        _, _, nasional, _ = _crosstab(client)
+        payload = self._payload(
+            client, summary_kategori='AA', summary_wilayah=str(nasional.id)
+        )
+        assert payload['recordsFiltered'] == 2
+        assert {row['nama'] for row in payload['data']} == {
+            'AA Nasional 1', 'AA Nasional 2'
+        }
+
+    def test_a_row_total_selects_the_kategori_across_every_wilayah(self, client):
+        _crosstab(client)
+        payload = self._payload(client, summary_kategori='AA')
+        assert payload['recordsFiltered'] == 3
+
+    def test_a_column_total_selects_the_wilayah_across_every_kategori(self, client):
+        _, _, _, regional = _crosstab(client)
+        payload = self._payload(client, summary_wilayah=str(regional.id))
+        assert payload['recordsFiltered'] == 2
+
+    def test_the_selection_matches_exactly_where_the_search_boxes_do_not(self, client):
+        """One wilayah naming another, as ``Nasional`` sits inside ``Internasional``."""
+        kategori = KategoriILAPFactory(id_kategori='XX')
+        nasional = KategoriWilayahFactory(deskripsi='Zona Uji')
+        internasional = KategoriWilayahFactory(deskripsi='Antar Zona Uji')
+        ILAPFactory(id_kategori=kategori, id_kategori_wilayah=nasional)
+        ILAPFactory(id_kategori=kategori, id_kategori_wilayah=internasional)
+
+        assert self._payload(
+            client, summary_wilayah=str(nasional.id)
+        )['recordsFiltered'] == 1
+        # The search box, which matches substrings, still sees both.
+        assert self._payload(
+            client, **{'columns[3][search][value]': 'Zona Uji'}
+        )['recordsFiltered'] == 2
+
+    def test_the_selection_does_not_collapse_the_counts(self, client):
+        """Drilling into a cell narrows the table, not the breakdown above it."""
+        _, _, nasional, _ = _crosstab(client)
+        payload = self._payload(
+            client, summary_kategori='AA', summary_wilayah=str(nasional.id)
+        )
+        assert payload['recordsFiltered'] == 2
+        assert payload['summary']['grand_total'] == 4
+        assert payload['summary']['row_totals'] == {'AA': 3, 'BB': 1}
+
+    def test_the_selection_narrows_what_the_search_already_found(self, client):
+        _, _, _, regional = _crosstab(client)
+        payload = self._payload(
+            client,
+            summary_wilayah=str(regional.id),
+            **{'columns[1][search][value]': 'Kategori AA'},
+        )
+        assert payload['recordsFiltered'] == 1
+        assert payload['data'][0]['nama'] == 'AA Regional'
+        # The counts report the search alone, so the other kategori is still
+        # visible for the reader to click across to.
+        assert payload['summary']['row_totals'] == {'AA': 3, 'BB': 0}
+
+    def test_an_unknown_selection_matches_nothing_rather_than_erroring(self, client):
+        _crosstab(client)
+        payload = self._payload(client, summary_kategori='NOPE')
+        assert payload['recordsFiltered'] == 0
+        assert payload['data'] == []
+
+    def test_a_non_numeric_wilayah_selection_is_ignored(self, client):
+        _crosstab(client)
+        payload = self._payload(client, summary_wilayah='bukan-angka')
+        assert payload['recordsFiltered'] == 4
+
+    def test_axes_stay_put_while_the_search_narrows(self, client):
+        """The cells the reader aims at must not move as the counts drop."""
+        _crosstab(client)
+        full = self._payload(client)['summary']
+        narrowed = self._payload(client, **{'search[value]': 'AA Regional'})['summary']
+        assert set(narrowed['cells']) == set(full['cells'])
+        assert set(narrowed['column_totals']) == set(full['column_totals'])
+        assert narrowed['grand_total'] == 1
 
 
 def _bundle(periode_penerimaan, extra_tikets=0, start_date=None, end_date=None,

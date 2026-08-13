@@ -3,44 +3,151 @@
 
 {% block content %}
 <style>
-    /* Collapsible filter panel — the 21 filter dropdowns push the table well
-       below the fold, so the panel folds away. This is the same accordion
-       banner the Backup Data page uses (see backup_data/list.html
-       .accordion-button-premium), so the affordance reads the same in both
-       places: grey bar, blue text when open, Bootstrap's own caret. */
-    .accordion-button-premium {
-        background-color: #f8fafc !important;
-        color: #475569 !important;
-        font-size: 13px !important;
-        font-weight: 600 !important;
-        padding: 14px 28px !important;
-        border: none !important;
-        box-shadow: none !important;
-        transition: all 0.2s ease !important;
-        cursor: pointer;
-    }
+    /* ═══════════════════════════════════════════════════════════════════
+       Filter Panel — Premium Upgrade
+       ═══════════════════════════════════════════════════════════════════ */
 
-    .accordion-button-premium:hover {
-        background-color: #f1f5f9 !important;
-        color: #0c92ff !important;
-    }
-
-    .accordion-button-premium:not(.collapsed) {
-        background-color: #f1f5f9 !important;
-        color: #0c92ff !important;
-        border-bottom: none !important;
-    }
-
+    /* ── Accordion shell ──────────────────────────────────────────────── */
     #filterAccordion,
     #filterAccordion .accordion-item {
         border: none !important;
         box-shadow: none !important;
     }
 
+    /* ── Header bar: flex so reset btn can live on the right ─────────── */
+    .filter-header-bar {
+        display: flex;
+        align-items: stretch;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-bottom: 1px solid #e8edf4;
+    }
+    .accordion-button-premium {
+        flex: 1;
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px;
+        background: transparent !important;
+        color: #374151 !important;
+        font-size: 12.5px !important;
+        font-weight: 600 !important;
+        padding: 13px 18px !important;
+        border: none !important;
+        box-shadow: none !important;
+        transition: color 0.15s ease !important;
+        cursor: pointer;
+    }
+    .accordion-button-premium:hover { color: #0c92ff !important; }
+    .accordion-button-premium:not(.collapsed) { color: #0c92ff !important; }
+    /* Bootstrap adds ::after caret — keep it but push it to end */
+    .accordion-button-premium::after {
+        margin-left: auto;
+        flex-shrink: 0;
+    }
+
+    /* ── Reset button embedded in header bar ─────────────────────────── */
+    .filter-header-reset {
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        border-left: 1px solid #e2e8f0;
+        background: transparent;
+        border-top: none;
+        border-right: none;
+        border-bottom: none;
+        cursor: pointer;
+        color: #94a3b8;
+        font-size: 11.5px;
+        font-weight: 500;
+        gap: 5px;
+        white-space: nowrap;
+        transition: color 0.15s ease, background 0.15s ease;
+    }
+    .filter-header-reset:hover {
+        color: #ef4444;
+        background: rgba(239, 68, 68, 0.04);
+    }
+    .filter-header-reset i { font-size: 12px; }
+
+    /* ── Panel body ───────────────────────────────────────────────────── */
     .filter-section-premium {
-        background-color: #ffffff !important;
-        padding: 24px 28px !important;
-        border-bottom: 1px solid #f1f5f9 !important;
+        background: #ffffff;
+        padding: 18px 20px 14px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    /* ── Group label: Bento Box style ─────────────────── */
+    .filter-segment-box {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 0;
+        margin-bottom: 16px;
+        background: #ffffff;
+        overflow: hidden;
+    }
+    .filter-group-label {
+        margin: 0 0 12px 0;
+        padding: 10px 16px;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-bottom: 1px solid #e2e8f0;
+        user-select: none;
+    }
+    .filter-group-label .fgl-dot,
+    .filter-group-label .fgl-line {
+        display: none;
+    }
+    .filter-group-label .fgl-text {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        color: #475569;
+    }
+    .filter-segment-box > div:not(.filter-group-label) {
+        padding: 0 16px;
+    }
+    .filter-segment-box > div:last-child {
+        padding-bottom: 12px;
+    }
+
+    /* ── Filter inputs ────────────────────────────────────────────────── */
+    #filter-form .form-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: #64748b;
+        margin-bottom: 3px;
+    }
+    #filter-form .mb-2 { margin-bottom: 7px !important; }
+
+    /* Select2 — auto width, fills column but no wider */
+    #filter-form .select2-container {
+        width: 100% !important;   /* fill the column */
+        min-width: 120px;
+    }
+    #filter-form .select2-container--bootstrap-5 .select2-selection {
+        font-size: 12px;
+        border-color: #dde3ed;
+        border-radius: 6px;
+        min-height: 30px;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    #filter-form .select2-container--bootstrap-5 .select2-selection:hover {
+        border-color: #94a3b8;
+    }
+    #filter-form .select2-container--bootstrap-5.select2-container--focus .select2-selection,
+    #filter-form .select2-container--bootstrap-5.select2-container--open .select2-selection {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+    }
+
+    /* ── Column divider ──────────────────────────────────────────────── */
+    .filter-col-divider { border-left: 1px solid #f1f5f9; }
+    @media (max-width: 767px) {
+        .filter-col-divider {
+            border-left: none;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 14px;
+            margin-top: 4px;
+        }
     }
 </style>
 <div class="page-header">
@@ -73,171 +180,262 @@
     </div>
 
     <div class="main-content">
-    <!-- Filter card above table with 3 internal columns -->
-    <div class="card mb-3 overflow-hidden">
+    <!-- Filter card — Opsi A upgraded: semantic groups, header-bar reset -->
+    <div class="card mb-3" style="border: 1px solid #e8edf4; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
         <div class="accordion" id="filterAccordion">
-            <div class="accordion-item border-0 rounded-0">
-                <h2 class="accordion-header" id="headingFilters">
+            <div class="accordion-item border-0">
+
+                <!-- ── Header bar with inline reset button ── -->
+                <div class="filter-header-bar" id="headingFilters">
                     {# Rendered expanded so Select2 can measure its widths, then folded shut on load. #}
                     <button class="accordion-button accordion-button-premium" type="button" id="filter-toggle"
-                        data-bs-toggle="collapse" data-bs-target="#filter-collapse"
-                        aria-expanded="true" aria-controls="filter-collapse">
-                        <i class="feather-filter me-2 text-primary"></i>Filter Data
-                        <span class="badge bg-primary ms-2 d-none" id="filter-active-count">0</span>
+                            data-bs-toggle="collapse" data-bs-target="#filter-collapse"
+                            aria-expanded="true" aria-controls="filter-collapse">
+                        <i class="feather-filter" style="font-size: 13px; color: #3b82f6;"></i>
+                        <span>Filter Data</span>
+                        <span class="badge d-none" id="filter-active-count"
+                              style="background: #3b82f6; font-size: 9.5px; font-weight: 700; padding: 3px 7px; border-radius: 20px; margin-left: 4px;">0</span>
                     </button>
-                </h2>
+                    <button type="button" id="btn-reset-filter" class="filter-header-reset" title="Hapus semua filter">
+                        <i class="feather-rotate-ccw"></i>
+                        <span>Atur Ulang</span>
+                    </button>
+                </div>
+
+                <!-- ── Collapsible body ── -->
                 <div id="filter-collapse" class="accordion-collapse collapse show" aria-labelledby="headingFilters">
-        <div class="accordion-body filter-section-premium">
-            <div class="d-flex justify-content-end mb-3">
-                <button type="reset" class="btn btn-secondary btn-sm" id="btn-reset-filter"><i class="feather-refresh-cw me-1"></i>Atur Ulang</button>
-            </div>
-            <form id="filter-form">
-                {% csrf_token %}
-                <div class="row g-2">
-                    <div class="col-12">
-                        <div class="mb-2">
-                            <label for="filter-nomor-tiket" class="form-label">Nomor Tiket</label>
-                            <select class="form-select form-select-sm" id="filter-nomor-tiket" name="nomor_tiket" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-2">
-                            <label for="filter-status" class="form-label">Status Tiket</label>
-                            <select class="form-select form-select-sm" id="filter-status" name="status" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="filter-tahun" class="form-label">Tahun</label>
-                            <select class="form-select form-select-sm" id="filter-tahun" name="tahun" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="filter-periode" class="form-label">Periode</label>
-                            <select class="form-select form-select-sm" id="filter-periode" name="periode" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="filter-pic-p3de" class="form-label">PIC P3DE</label>
-                            <select class="form-select form-select-sm" id="filter-pic-p3de" name="pic_p3de" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="filter-pic-pide" class="form-label">PIC PIDE</label>
-                            <select class="form-select form-select-sm" id="filter-pic-pide" name="pic_pide" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="filter-pic-pmde" class="form-label">PIC PMDE</label>
-                            <select class="form-select form-select-sm" id="filter-pic-pmde" name="pic_pmde" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-2">
-                            <label for="filter-kategori-ilap" class="form-label">Kategori ILAP</label>
-                            <select class="form-select form-select-sm" id="filter-kategori-ilap" name="kategori_ilap" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="filter-ilap" class="form-label">ILAP</label>
-                            <select class="form-select form-select-sm" id="filter-ilap" name="ilap" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="filter-jenis-data" class="form-label">Jenis Data</label>
-                            <select class="form-select form-select-sm" id="filter-jenis-data" name="jenis_data" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="filter-sub-jenis-data" class="form-label">Sub Jenis Data</label>
-                            <select class="form-select form-select-sm" id="filter-sub-jenis-data" name="sub_jenis_data" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="filter-kanwil" class="form-label">Kanwil</label>
-                            <select class="form-select form-select-sm" id="filter-kanwil" name="kanwil" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="filter-kpp" class="form-label">KPP</label>
-                            <select class="form-select form-select-sm" id="filter-kpp" name="kpp" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-2">
-                            <label for="filter-kategori-wilayah" class="form-label">Kategori Wilayah</label>
-                            <select class="form-select form-select-sm" id="filter-kategori-wilayah" name="kategori_wilayah" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="filter-jenis-tabel" class="form-label">Jenis Tabel</label>
-                            <select class="form-select form-select-sm" id="filter-jenis-tabel" name="jenis_tabel" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="filter-dasar-hukum" class="form-label">Dasar Hukum</label>
-                            <select class="form-select form-select-sm" id="filter-dasar-hukum" name="dasar_hukum" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="filter-periode-pengiriman" class="form-label">Periode Pengiriman</label>
-                            <select class="form-select form-select-sm" id="filter-periode-pengiriman" name="periode_pengiriman" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="filter-periode-penerimaan" class="form-label">Periode Penerimaan</label>
-                            <select class="form-select form-select-sm" id="filter-periode-penerimaan" name="periode_penerimaan" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="filter-status-penelitian" class="form-label">Status Penelitian</label>
-                            <select class="form-select form-select-sm" id="filter-status-penelitian" name="status_penelitian" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="filter-status-ketersediaan-data" class="form-label">Status Ketersediaan Data</label>
-                            <select class="form-select form-select-sm" id="filter-status-ketersediaan-data" name="status_ketersediaan_data" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="filter-special-request" class="form-label">Permintaan Khusus</label>
-                            <select class="form-select form-select-sm" id="filter-special-request" name="special_request" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="filter-nomor-nd-nadine" class="form-label">Nomor ND Nadine</label>
-                            <select class="form-select form-select-sm" id="filter-nomor-nd-nadine" name="nomor_nd_nadine" data-select2-selector="default" multiple="multiple">
-                                <option value="">-- Semua --</option>
-                            </select>
-                        </div>
+                    <div class="filter-section-premium">
+                        <form id="filter-form">
+                            {% csrf_token %}
+                            <div class="row g-3">
+
+                                <!-- ─── Kolom 1: TIKET + WAKTU ──────────────────────── -->
+                                <div class="col-lg-4">
+
+                                    <!-- Group: TIKET -->
+                                    <div class="filter-segment-box">
+                                        <h6 class="filter-group-label mb-3">
+                                            <span class="fgl-dot"></span>
+                                            <span class="fgl-text">Tiket</span>
+                                            <span class="fgl-line"></span>
+                                        </h6>
+                                        <div class="mb-2">
+                                            <label for="filter-nomor-tiket" class="form-label">Nomor Tiket</label>
+                                            <select class="form-select form-select-sm" id="filter-nomor-tiket" name="nomor_tiket" data-select2-selector="default" multiple="multiple">
+                                                <option value="">-- Semua --</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label for="filter-status" class="form-label">Status</label>
+                                            <select class="form-select form-select-sm" id="filter-status" name="status" data-select2-selector="default" multiple="multiple">
+                                                <option value="">-- Semua --</option>
+                                            </select>
+                                        </div>
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-6">
+                                                <label for="filter-tahun" class="form-label">Tahun</label>
+                                                <select class="form-select form-select-sm" id="filter-tahun" name="tahun" data-select2-selector="default" multiple="multiple">
+                                                    <option value="">-- Semua --</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-6">
+                                                <label for="filter-periode" class="form-label">Periode</label>
+                                                <select class="form-select form-select-sm" id="filter-periode" name="periode" data-select2-selector="default" multiple="multiple">
+                                                    <option value="">-- Semua --</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Group: WAKTU -->
+                                    <div class="filter-segment-box">
+                                        <h6 class="filter-group-label mb-3">
+                                            <span class="fgl-dot"></span>
+                                            <span class="fgl-text">Waktu</span>
+                                            <span class="fgl-line"></span>
+                                        </h6>
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-6">
+                                                <label for="filter-periode-pengiriman" class="form-label">Pengiriman</label>
+                                                <select class="form-select form-select-sm" id="filter-periode-pengiriman" name="periode_pengiriman" data-select2-selector="default" multiple="multiple">
+                                                    <option value="">-- Semua --</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-6">
+                                                <label for="filter-periode-penerimaan" class="form-label">Penerimaan</label>
+                                                <select class="form-select form-select-sm" id="filter-periode-penerimaan" name="periode_penerimaan" data-select2-selector="default" multiple="multiple">
+                                                    <option value="">-- Semua --</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <!-- ─── Kolom 2: TIM PIC + DATA ─────────────────────── -->
+                                <div class="col-lg-4 filter-col-divider">
+
+                                    <!-- Group: TIM PIC -->
+                                    <div class="filter-segment-box">
+                                        <h6 class="filter-group-label mb-3">
+                                            <span class="fgl-dot"></span>
+                                            <span class="fgl-text">Tim PIC</span>
+                                            <span class="fgl-line"></span>
+                                        </h6>
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-4">
+                                                <label for="filter-pic-p3de" class="form-label">P3DE</label>
+                                                <select class="form-select form-select-sm" id="filter-pic-p3de" name="pic_p3de" data-select2-selector="default" multiple="multiple">
+                                                    <option value="">-- Semua --</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-4">
+                                                <label for="filter-pic-pide" class="form-label">PIDE</label>
+                                                <select class="form-select form-select-sm" id="filter-pic-pide" name="pic_pide" data-select2-selector="default" multiple="multiple">
+                                                    <option value="">-- Semua --</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-4">
+                                                <label for="filter-pic-pmde" class="form-label">PMDE</label>
+                                                <select class="form-select form-select-sm" id="filter-pic-pmde" name="pic_pmde" data-select2-selector="default" multiple="multiple">
+                                                    <option value="">-- Semua --</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Group: DATA -->
+                                    <div class="filter-segment-box">
+                                        <h6 class="filter-group-label mb-3">
+                                            <span class="fgl-dot"></span>
+                                            <span class="fgl-text">Data ILAP</span>
+                                            <span class="fgl-line"></span>
+                                        </h6>
+                                        <div class="mb-2">
+                                            <label for="filter-kategori-ilap" class="form-label">Kategori ILAP</label>
+                                            <select class="form-select form-select-sm" id="filter-kategori-ilap" name="kategori_ilap" data-select2-selector="default" multiple="multiple">
+                                                <option value="">-- Semua --</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label for="filter-ilap" class="form-label">ILAP</label>
+                                            <select class="form-select form-select-sm" id="filter-ilap" name="ilap" data-select2-selector="default" multiple="multiple">
+                                                <option value="">-- Semua --</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label for="filter-jenis-data" class="form-label">Jenis Data</label>
+                                            <select class="form-select form-select-sm" id="filter-jenis-data" name="jenis_data" data-select2-selector="default" multiple="multiple">
+                                                <option value="">-- Semua --</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label for="filter-sub-jenis-data" class="form-label">Sub Jenis Data</label>
+                                            <select class="form-select form-select-sm" id="filter-sub-jenis-data" name="sub_jenis_data" data-select2-selector="default" multiple="multiple">
+                                                <option value="">-- Semua --</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <!-- ─── Kolom 3: WILAYAH + STATUS + LAINNYA ──────────── -->
+                                <div class="col-lg-4 filter-col-divider">
+
+                                    <!-- Group: WILAYAH -->
+                                    <div class="filter-segment-box">
+                                        <h6 class="filter-group-label mb-3">
+                                            <span class="fgl-dot"></span>
+                                            <span class="fgl-text">Wilayah</span>
+                                            <span class="fgl-line"></span>
+                                        </h6>
+                                        <div class="mb-2">
+                                            <label for="filter-kategori-wilayah" class="form-label">Kategori Wilayah</label>
+                                            <select class="form-select form-select-sm" id="filter-kategori-wilayah" name="kategori_wilayah" data-select2-selector="default" multiple="multiple">
+                                                <option value="">-- Semua --</option>
+                                            </select>
+                                        </div>
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-5">
+                                                <label for="filter-kanwil" class="form-label">Kanwil</label>
+                                                <select class="form-select form-select-sm" id="filter-kanwil" name="kanwil" data-select2-selector="default" multiple="multiple">
+                                                    <option value="">-- Semua --</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-7">
+                                                <label for="filter-kpp" class="form-label">KPP</label>
+                                                <select class="form-select form-select-sm" id="filter-kpp" name="kpp" data-select2-selector="default" multiple="multiple">
+                                                    <option value="">-- Semua --</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Group: STATUS -->
+                                    <div class="filter-segment-box">
+                                        <h6 class="filter-group-label mb-3">
+                                            <span class="fgl-dot"></span>
+                                            <span class="fgl-text">Status</span>
+                                            <span class="fgl-line"></span>
+                                        </h6>
+                                        <div class="mb-2">
+                                            <label for="filter-status-penelitian" class="form-label">Status Penelitian</label>
+                                            <select class="form-select form-select-sm" id="filter-status-penelitian" name="status_penelitian" data-select2-selector="default" multiple="multiple">
+                                                <option value="">-- Semua --</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label for="filter-status-ketersediaan-data" class="form-label">Ketersediaan Data</label>
+                                            <select class="form-select form-select-sm" id="filter-status-ketersediaan-data" name="status_ketersediaan_data" data-select2-selector="default" multiple="multiple">
+                                                <option value="">-- Semua --</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <!-- Group: LAINNYA -->
+                                    <div class="filter-segment-box">
+                                        <h6 class="filter-group-label mb-3">
+                                            <span class="fgl-dot"></span>
+                                            <span class="fgl-text">Lainnya</span>
+                                            <span class="fgl-line"></span>
+                                        </h6>
+                                        <div class="row g-2">
+                                            <div class="col-6">
+                                                <label for="filter-jenis-tabel" class="form-label">Jenis Tabel</label>
+                                                <select class="form-select form-select-sm" id="filter-jenis-tabel" name="jenis_tabel" data-select2-selector="default" multiple="multiple">
+                                                    <option value="">-- Semua --</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-6">
+                                                <label for="filter-dasar-hukum" class="form-label">Dasar Hukum</label>
+                                                <select class="form-select form-select-sm" id="filter-dasar-hukum" name="dasar_hukum" data-select2-selector="default" multiple="multiple">
+                                                    <option value="">-- Semua --</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="row g-2 mt-2 mb-2">
+                                            <div class="col-6">
+                                                <label for="filter-special-request" class="form-label">Perm. Khusus</label>
+                                                <select class="form-select form-select-sm" id="filter-special-request" name="special_request" data-select2-selector="default" multiple="multiple">
+                                                    <option value="">-- Semua --</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-6">
+                                                <label for="filter-nomor-nd-nadine" class="form-label">Nomor ND Nadine</label>
+                                                <select class="form-select form-select-sm" id="filter-nomor-nd-nadine" name="nomor_nd_nadine" data-select2-selector="default" multiple="multiple">
+                                                    <option value="">-- Semua --</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                            </div>
+                        </form>
                     </div>
                 </div>
-            </form>
-        </div>
-                </div>
+
             </div>
         </div>
     </div>
@@ -424,24 +622,59 @@
             };
         }
 
+        function formatStatusOption(state) {
+            if (!state.id) return state.text;
+            let badgeClass = 'bg-secondary';
+            let iconClass = 'feather-info';
+            const sId = parseInt(state.id, 10);
+            switch(sId) {
+                case 1: badgeClass = 'status-perekaman'; iconClass = 'feather-edit-2'; break;
+                case 2: badgeClass = 'status-diteliti'; iconClass = 'feather-search'; break;
+                case 3: badgeClass = 'status-dikembalikan'; iconClass = 'feather-corner-up-left'; break;
+                case 4: badgeClass = 'status-belum-diterima'; iconClass = 'feather-clock'; break;
+                case 5: badgeClass = 'status-identifikasi'; iconClass = 'feather-info'; break;
+                case 6: badgeClass = 'status-qc'; iconClass = 'feather-shield'; break;
+                case 7: badgeClass = 'status-dibatalkan'; iconClass = 'feather-x-circle'; break;
+                case 8: badgeClass = 'status-selesai'; iconClass = 'feather-check-circle'; break;
+                case 9: badgeClass = 'status-tidak-direkam'; iconClass = 'feather-slash'; break;
+            }
+            return $(`<span class="badge ${badgeClass} d-inline-flex align-items-center gap-1" style="font-size: 11px; padding: 3px 6px; margin: 1px 0;"><i class="${iconClass}" style="font-size: 10px;"></i> ${state.text}</span>`);
+        }
+
+        function getSelect2Config(selector) {
+            const config = {
+                theme: 'bootstrap-5',
+                closeOnSelect: false,
+                placeholder: '-- Pilih --',
+                allowClear: true
+            };
+            if (selector === '#filter-status' || selector === 'filter-status') {
+                config.templateResult = formatStatusOption;
+                config.templateSelection = formatStatusOption;
+            }
+            return config;
+        }
+
         function initSelect2() {
             if (typeof $.fn.select2 !== 'function') return;
             $('#filter-form select').each(function () {
                 if (!$(this).hasClass('select2-hidden-accessible')) {
-                    $(this).select2({
-                        theme: 'bootstrap-5',
-                        closeOnSelect: false,
-                        placeholder: '-- Pilih --',
-                        allowClear: true
-                    });
+                    const selector = '#' + $(this).attr('id');
+                    $(this).select2(getSelect2Config(selector));
                 }
             });
         }
 
+        let activeFilterAjax = null;
+
         function updateDynamicDropdowns() {
             const filters = getCurrentFilterValues();
             
-            $.ajax({
+            if (activeFilterAjax) {
+                activeFilterAjax.abort();
+            }
+            
+            activeFilterAjax = $.ajax({
                 url: ajaxUrl,
                 type: 'GET',
                 data: Object.assign({ get_filter_options: '1' }, filters),
@@ -508,9 +741,7 @@
                             });
                             if (validValues.length > 0) {
                                 $select.val(validValues);
-                            } else if (selector !== '#filter-tahun' && selector !== '#filter-kategori-ilap' && 
-                                       selector !== '#filter-ilap' && selector !== '#filter-jenis-data') {
-                                // Only clear dependent dropdowns, not main filter
+                            } else {
                                 $select.val([]);
                             }
                         } else {
@@ -519,7 +750,7 @@
                         
                         // Re-initialize Select2
                         if (typeof $.fn.select2 === 'function') {
-                            $select.select2({ theme: 'bootstrap-5' });
+                            $select.select2(getSelect2Config(selector));
                         }
                     };
 
@@ -563,6 +794,18 @@
                 serverSide: true,
                 processing: true,
                 searching: false,
+                language: {
+                    info: '<span class="text-muted">Menampilkan&nbsp;</span><span class="fw-medium text-dark">_START_ - _END_</span><span class="text-muted">&nbsp;dari&nbsp;</span><span class="fw-medium text-dark">_TOTAL_</span><span class="text-muted">&nbsp;tiket</span>',
+                    infoEmpty: '<span class="text-muted">Menampilkan&nbsp;</span><span class="fw-medium text-dark">0</span><span class="text-muted">&nbsp;tiket</span>',
+                    infoFiltered: '<span class="text-muted" style="margin-left: 8px; padding-left: 8px; border-left: 1px solid #e2e8f0; font-size: 12px;"><i class="feather-filter me-1"></i>Difilter dari _MAX_ data</span>',
+                    lengthMenu: '_MENU_ <span class="text-muted" style="font-size: 13px; font-weight: normal;">per halaman</span>',
+                    paginate: {
+                        first: '<i class="feather-chevrons-left"></i>',
+                        last: '<i class="feather-chevrons-right"></i>',
+                        next: '<i class="feather-chevron-right"></i>',
+                        previous: '<i class="feather-chevron-left"></i>'
+                    }
+                },
                 layout: {
                     topStart: null,
                     topEnd: null
@@ -622,7 +865,25 @@
                         }
                     },
                     { data: 'periode_formatted' },
-                    { data: 'status' },
+                    { 
+                        data: 'status',
+                        render: function(data, type, row) {
+                            let badgeClass = 'bg-secondary';
+                            let iconClass = 'feather-info';
+                            switch(row.status_code) {
+                                case 1: badgeClass = 'status-perekaman'; iconClass = 'feather-edit-2'; break;
+                                case 2: badgeClass = 'status-diteliti'; iconClass = 'feather-search'; break;
+                                case 3: badgeClass = 'status-dikembalikan'; iconClass = 'feather-corner-up-left'; break;
+                                case 4: badgeClass = 'status-belum-diterima'; iconClass = 'feather-clock'; break;
+                                case 5: badgeClass = 'status-identifikasi'; iconClass = 'feather-info'; break;
+                                case 6: badgeClass = 'status-qc'; iconClass = 'feather-shield'; break;
+                                case 7: badgeClass = 'status-dibatalkan'; iconClass = 'feather-x-circle'; break;
+                                case 8: badgeClass = 'status-selesai'; iconClass = 'feather-check-circle'; break;
+                                case 9: badgeClass = 'status-tidak-direkam'; iconClass = 'feather-slash'; break;
+                            }
+                            return `<span class="badge ${badgeClass} d-inline-flex align-items-center gap-1" style="font-size: 11px; padding: 4px 8px;"><i class="${iconClass}" style="font-size: 11px;"></i> ${data}</span>`;
+                        }
+                    },
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [

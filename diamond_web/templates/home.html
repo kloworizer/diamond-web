@@ -2129,6 +2129,8 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
+                                        <th>Jumlah Baris Data</th>
+                                        <th>Jenis Tabel</th>
                                         <th>Tgl Transfer</th>
                                         <th>Prioritas</th>
                                         <th class="col-actions">Aksi</th>
@@ -2167,7 +2169,7 @@
                 <!-- Search bar inside modal -->
                 <div class="input-group mb-3" style="box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); border-radius: 8px; overflow: hidden; border: 1px solid #cbd5e1;">
                     <span class="input-group-text bg-white border-0" style="height: 38px;"><i class="feather-search text-muted"></i></span>
-                    <input type="text" id="summary-modal-search" class="form-control border-0 ps-1" placeholder="Cari..." style="height: 38px; font-size: 12.5px; outline: none !important; box-shadow: none !important;">
+                    <input type="text" id="summary-modal-search" class="form-control border-0 ps-1" placeholder="Cari nama, nomor tiket, dll..." style="height: 38px; font-size: 12.5px; outline: none !important; box-shadow: none !important;">
                 </div>
                 <div class="list-group list-group-flush border rounded" id="summary-modal-list" style="max-height: 250px; overflow-y: auto;">
                     <!-- items will be injected here -->
@@ -2540,9 +2542,13 @@
         // Suppress DataTables default error alert and handle redirect to login on expired session
         if (typeof $ !== 'undefined' && $.fn && $.fn.dataTable) {
             $.fn.dataTable.ext.errMode = 'none';
+            let isReloading = false;
             $(document).on('xhr.dt', function (e, settings, json, xhr) {
                 if (xhr && (xhr.status === 401 || xhr.status === 403 || xhr.status === 302 || (xhr.responseText && xhr.responseText.indexOf('login') !== -1))) {
-                    window.location.reload();
+                    if (!isReloading) {
+                        isReloading = true;
+                        window.location.reload();
+                    }
                 }
             });
         }
@@ -2677,8 +2683,27 @@
             { data: 'nomor_tiket', title: 'Nomor Tiket' },
             { data: 'nama_ilap', title: 'Nama ILAP' },
             { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
-            { 
-                data: 'tanggal', 
+            {
+                data: 'baris_i',
+                title: 'Jumlah Baris Data',
+                width: '110px',
+                render: function(data, type, row) {
+                    if (type === 'display') return createFixedBadge(data, '#e0f2fe', '#0284c7', '#bae6fd');
+                    return (data === null || data === undefined || data === '' || isNaN(data)) ? 0 : Number(data);
+                }
+            },
+            {
+                data: 'jenis_tabel',
+                title: 'Jenis Tabel',
+                width: '130px',
+                render: function(data) {
+                    if (data === null || data === undefined || data === '') return '-';
+                    const esc = String(data).replace(/"/g, '&quot;');
+                    return `<div class="text-truncate cell-truncate" style="max-width: 160px;" data-full-text="${esc}">${esc}</div>`;
+                }
+            },
+            {
+                data: 'tanggal',
                 title: 'Tanggal Transfer',
                 render: function(data, type, row) {
                     if (type === 'order' || type === 'type') {
@@ -3523,7 +3548,7 @@
                 },
                 language: {
                     search: 'Cari:',
-                    searchPlaceholder: 'Cari...',
+                    searchPlaceholder: 'Cari nama, nomor tiket, dll...',
                     lengthMenu: 'Tampilkan _MENU_ entri',
                     info: 'Menampilkan _START_ hingga _END_ dari _TOTAL_ entri',
                     infoEmpty: 'Menampilkan 0 hingga 0 dari 0 entri',
@@ -4497,7 +4522,7 @@
         btn.className = 'btn btn-sm btn-star-tiket' + (isStarred ? ' starred' : '');
         btn.setAttribute('data-nomor', nomor);
         btn.title = isStarred ? 'Hapus dari Pantauan' : 'Tambah ke Pantauan';
-        btn.style.cssText = 'background:transparent;border:1px solid #e2e8f0;padding:2px 5px;border-radius:6px;margin-right:3px;' +
+        btn.style.cssText = 'background:transparent;border:1px solid #e2e8f0;padding:2px 5px;border-radius:6px;margin-right:8px;order:-1;' +
             (isStarred ? 'color:#f59e0b;border-color:#fde68a;' : 'color:#cbd5e1;');
         btn.innerHTML = '<i class="feather-star" style="width:13px;height:13px;font-size:13px;' +
             (isStarred ? 'fill:#f59e0b;' : '') + '"></i>';

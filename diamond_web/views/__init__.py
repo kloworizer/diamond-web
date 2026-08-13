@@ -51,4 +51,5 @@ from .profil import *
 from .profil_ilap import *
 from .profil_pic import *
 from .quality_control import *
+from .identifikasi import *
 from .docs import *

@@ -519,7 +519,8 @@ Halaman pemantauan lain:
 | Profil ILAP | `/profil-ilap/` dan `/profil-ilap/<id_ilap>/` | Profil ILAP beserta rekap sub jenis data dan tiketnya |
 | Profil Sub Jenis Data | `/jenis-data-ilap/<id_sub_jenis_data>/` | Ringkasan periode & capaian per tahun untuk satu sub jenis data, beserta daftar tiket |
 | Monitoring Penyampaian Data | `/monitoring-penyampaian-data/` | Pemantauan penyampaian data |
-| Quality Control | `/quality-control/` | Halaman pengendalian mutu |
+| Quality Control | `/quality-control/` | Antrean pengendalian mutu seksi PMDE |
+| Identifikasi | `/identifikasi/` | Antrean identifikasi seksi PIDE — halaman yang sama, dibaca oleh PIDE |
 
 Selain itu, ada **Dashboard Monitoring** di `/dashboard/` yang menampilkan Power BI report embedded.
 

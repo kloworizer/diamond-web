@@ -135,11 +135,12 @@ Aksi berikut bukan menu navbar melainkan tombol pada halaman detail tiket. Selai
 | **Kelengkapan Data** | `/laporan-kelengkapan-data/` | ❌ | ❌ | ✅ | ✅ |
 | **Rekap Himpun Olah Data** | `/laporan-rekap-himpun-olah-data/` | ❌ | ❌ | ✅ | ✅ |
 | **Detail Himpun Olah Data** | `/laporan-detail-himpun-olah-data/` | ❌ | ❌ | ✅ | ✅ |
-| **Profil ILAP (daftar)** | `/profil-ilap/` | ✅ | ❌ | ❌ | ✅ |
+| **Profil ILAP (daftar)** | `/profil-ilap/` | ✅ | ✅ | ✅ | ✅ |
 | **Profil ILAP (detail)** | `/profil-ilap/<id_ilap>/` | ✅ | ✅ | ✅ | ✅ |
 | **Profil Sub Jenis Data** | `/jenis-data-ilap/<id_sub_jenis_data>/` | ✅ | ✅ | ✅ | ✅ |
 | **Monitoring Penyampaian Data** | `/monitoring-penyampaian-data/` | ✅ | ✅ | ✅ | ✅ |
 | **Quality Control** | `/quality-control/` | ❌ | ✅ | ✅ | ✅ |
+| **Identifikasi** | `/identifikasi/` | ❌ | ✅ | ❌ | ✅ |
 
 ### Dashboard & Sinkronisasi
 

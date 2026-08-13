@@ -556,7 +556,8 @@ class TestSpecialRequestOnDetailPage:
     def _active_pic_tiket(self, user, tipe, role, status):
         tiket = TiketFactory(status_tiket=status)
         TiketPICFactory(id_tiket=tiket, id_user=user, role=role, active=True)
-        # Active PIC record (no end_date) is required for user_is_active_pic_*
+        # The detail page reads user_is_active_pic_* from TiketPIC alone; the
+        # master PIC row is kept here only so the fixture matches real data.
         PICFactory(
             tipe=tipe,
             id_sub_jenis_data_ilap=tiket.id_periode_data.id_sub_jenis_data_ilap,

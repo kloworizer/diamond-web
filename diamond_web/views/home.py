@@ -326,6 +326,7 @@ def _build_tiket_base_qs(category, user):
     tiket_qs = Tiket.objects.select_related(
         'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
         'id_periode_data__id_sub_jenis_data_ilap',
+        'id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel',
         'id_bentuk_data',
         'id_cara_penyampaian',
         'id_status_penelitian',
@@ -717,8 +718,15 @@ def home_data(request):
             columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'tgl_kirim_pide']
         elif category == 'dalam_proses_identifikasi':
             columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'tgl_rekam_pide']
-        elif category in ('dalam_proses_pengendalian_mutu', 'tiket_pengendalian_mutu_tanpa_pic'):
+        elif category == 'dalam_proses_pengendalian_mutu':
             columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'tgl_transfer']
+        elif category == 'tiket_pengendalian_mutu_tanpa_pic':
+            # Jumlah baris + jenis tabel sit between Jenis Data and the date, so
+            # the ordering indexes DataTables sends must account for them.
+            columns = [
+                'nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data',
+                'baris_i', 'jenis_tabel', 'tgl_transfer',
+            ]
         elif category == 'periode_tiket_null_p3de':
             columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode', 'tahun', 'status_tiket']
         elif category == 'special_request':
@@ -744,6 +752,8 @@ def home_data(request):
                     col = 'tgl_rekam_pide'
                 elif col == 'tgl_transfer':
                     col = 'tgl_transfer'
+                elif col == 'jenis_tabel':
+                    col = 'id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel__deskripsi'
                 if order_dir == 'desc':
                     col = '-' + col
                 qs = qs.order_by(col)
@@ -779,6 +789,8 @@ def home_data(request):
             nama_ilap = obj.id_periode_data.id_sub_jenis_data_ilap.id_ilap.nama_ilap
             nama_sub_jenis = obj.id_periode_data.id_sub_jenis_data_ilap.nama_sub_jenis_data
             nama_tabel_I = obj.id_periode_data.id_sub_jenis_data_ilap.nama_tabel_I or '-'
+            jenis_tabel_obj = obj.id_periode_data.id_sub_jenis_data_ilap.id_jenis_tabel
+            jenis_tabel = jenis_tabel_obj.deskripsi if jenis_tabel_obj else '-'
             view_url = reverse('tiket_detail', args=[obj.id])
             # Build action HTML — add quick-assign button for admin tiket_dikirim_ke_pide_tanpa_pic
             if category == 'tiket_dikirim_ke_pide_tan_pic' or category == 'tiket_dikirim_ke_pide_tanpa_pic':
@@ -847,7 +859,7 @@ def home_data(request):
                     f'<i class="feather-eye"></i></a>'
                     f'</div>'
                 )
-            elif category in ('belum_mulai_proses_identifikasi', 'dalam_proses_identifikasi'):
+            elif category == 'belum_mulai_proses_identifikasi':
                 identifikasi_url = reverse('identifikasi_tiket', kwargs={'pk': obj.id})
                 action_html = (
                     f'<div class="d-flex justify-content-center gap-1">'
@@ -918,9 +930,11 @@ def home_data(request):
                     'nama_ilap': nama_ilap,
                     'nama_sub_jenis_data': nama_sub_jenis,
                     'nama_tabel_I': nama_tabel_I,
+                    'jenis_tabel': jenis_tabel,
                     'baris_diterima': obj.baris_diterima or 0,
                     'baris_lengkap': obj.baris_lengkap or 0,
                     'baris_tidak_lengkap': obj.baris_tidak_lengkap or 0,
+                    'baris_i': obj.baris_i or 0,
                     'baris_cde': obj.baris_cde or 0,
                     'belum_qc': obj.belum_qc or 0,
                     'lolos_qc': obj.lolos_qc or 0,

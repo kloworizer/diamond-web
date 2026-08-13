@@ -95,14 +95,19 @@ class ILAPPeriodeDataAPIView(View):
                 else:
                     periode_data_list = periode_data_list.none()
                 
-                # Further filter to show only PeriodeJenisData where the user is an active P3DE PIC
+                # Further filter to show only PeriodeJenisData where the user is an active P3DE PIC.
+                # All conditions live in one filter() so they resolve against the same PIC row.
+                # Chaining a second filter() would join `pic` again and check the end_date window
+                # against an unrelated assignment, keeping ended P3DE PICs in the dropdown.
                 periode_data_list = periode_data_list.filter(
-                    id_sub_jenis_data_ilap__pic__tipe='P3DE',
-                    id_sub_jenis_data_ilap__pic__id_user=request.user,
-                    id_sub_jenis_data_ilap__pic__start_date__lte=today,
-                ).filter(
-                    Q(id_sub_jenis_data_ilap__pic__end_date__isnull=True) |
-                    Q(id_sub_jenis_data_ilap__pic__end_date__gte=today)
+                    Q(
+                        id_sub_jenis_data_ilap__pic__tipe=PIC.TipePIC.P3DE,
+                        id_sub_jenis_data_ilap__pic__id_user=request.user,
+                        id_sub_jenis_data_ilap__pic__start_date__lte=today,
+                    ) & (
+                        Q(id_sub_jenis_data_ilap__pic__end_date__isnull=True) |
+                        Q(id_sub_jenis_data_ilap__pic__end_date__gte=today)
+                    )
                 )
 
             periode_data_list = periode_data_list.select_related(
