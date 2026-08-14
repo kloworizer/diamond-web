@@ -147,15 +147,22 @@ def _upstream_queryset(user, statuses):
     return _pmde_scope(Tiket.objects.filter(status_tiket__in=statuses), user)
 
 
-# How far back the finished work on the right of the summary reaches. A quarter
-# is long enough that a pelaksana who spent a month on one large tiket still has
-# something to show, and short enough that the figure is this year's work rather
-# than a career total.
+# How far back the finished work on the right of the summary reaches. Two
+# windows rather than one, because "how much is this person getting through" is
+# a question asked at two ranges: the quarter just gone, which is recent enough
+# to say how they are working now, and the year, which is long enough to say how
+# they work.
+#
+# The quarter sits inside the year rather than beside it — a tiket closed last
+# week is counted in both columns. The wider column is the longer view of the
+# same work, not a different set of it, which is what makes the pair readable as
+# a zoom: whatever is in the quarter is part of what is in the year.
 SELESAI_WINDOW_DAYS = 90
+SELESAI_TAHUN_WINDOW_DAYS = 365
 
 
-def _selesai_queryset(user):
-    """Tikets `user` may see that finished quality control in the last 90 days.
+def _selesai_queryset(user, days):
+    """Tikets `user` may see that finished quality control in the last `days`.
 
     Completion is not a date on the tiket — it is the SELESAI action written
     when the tiket was closed (see selesaikan_tiket) — so the window is read
@@ -163,7 +170,7 @@ def _selesai_queryset(user):
     well, so a tiket closed and then reopened is counted where it is now and not
     where it has been.
     """
-    since = timezone.now() - timedelta(days=SELESAI_WINDOW_DAYS)
+    since = timezone.now() - timedelta(days=days)
     return _pmde_scope(
         Tiket.objects.filter(status_tiket=STATUS_SELESAI).filter(
             Exists(TiketAction.objects.filter(
@@ -186,25 +193,38 @@ def _sudah_qc(sudah_qc):
     return sudah_qc or 0
 
 
-# The four column groups of the summary table, in the order it renders them.
-# Read across a PIC's line they are that person's whole load in time order once
-# the last one is folded back to the front: the quarter behind them, the work in
-# their hands now, and the two queues still upstream that will reach them —
-# which is what makes the table worth reading as a row rather than as four
-# separate figures.
+# The column groups of the summary table, in the order it renders them. Read
+# across a PIC's line they are that person's whole load in time order once the
+# last two are folded back to the front: the year and the quarter behind them,
+# the work in their hands now, and the two queues still upstream that will reach
+# them — which is what makes the table worth reading as a row rather than as
+# five separate figures.
 #
-# Every group is the same two columns, tikets and the rows behind them, and
-# every group is split the same way by jenis tabel — down the table into a line
-# per kind rather than across it into columns, which is what lets all four carry
-# the split instead of only the first.
+# Every group is one column, the rows behind its tikets, and every group is
+# split the same way by jenis tabel — down the table into a line per kind rather
+# than across it into columns, which is what lets all of them carry the split
+# instead of only the first.
 #
 # `key` is the payload section, and the template renders the labels from this
 # same list, so the header and the figures under it cannot drift apart.
-SUMMARY_SECTIONS = (
-    {'key': 'qc', 'label': 'Proses QC', 'variant': 'own'},
-    {'key': 'p3de', 'label': 'Masih di P3DE', 'variant': 'upstream'},
-    {'key': 'pide', 'label': 'Masih di PIDE', 'variant': 'upstream-alt'},
-    {'key': 'selesai', 'label': 'Selesai QC 90 Hari Terakhir', 'variant': 'done'},
+#
+# `lines` is the label as the header sets it: with one column under each group,
+# the label is what decides how wide that column has to be, and the two finished
+# queues are named at a length no column of figures needs. Broken where the name
+# itself breaks — which queue, then how far back it reaches — they set two short
+# lines instead of one long one and the columns come out even. `label` is the
+# same words in one line, for everywhere the name is read rather than headed.
+SUMMARY_SECTIONS = tuple(
+    dict(section, label=' '.join(section['lines']))
+    for section in (
+        {'key': 'qc', 'lines': ('Proses QC',), 'variant': 'own'},
+        {'key': 'p3de', 'lines': ('Masih di P3DE',), 'variant': 'upstream'},
+        {'key': 'pide', 'lines': ('Masih di PIDE',), 'variant': 'upstream-alt'},
+        {'key': 'selesai', 'lines': ('Selesai QC', '90 Hari Terakhir'),
+         'variant': 'done'},
+        {'key': 'selesai_tahun', 'lines': ('Selesai QC', '1 Tahun Terakhir'),
+         'variant': 'done-alt'},
+    )
 )
 
 # How many hues the jenis tabel lines cycle through before repeating one; see
@@ -256,14 +276,22 @@ KATEGORI_WILAYAH_WEIGHTS = {
 # A queue's weight is how much of a PIC's attention it has. What is in front of
 # them now is the load they are actually carrying; what is at PIDE will reach
 # them soon and what is at P3DE later still, so each is discounted by how far
-# off it is. Work finished in the last quarter is behind them and counts least —
-# it is in the score because a PIC who has just cleared a heavy quarter has been
-# carrying that load, not because it is still theirs to do.
+# off it is. Finished work is behind them and counts least — it is in the score
+# because a PIC who has just cleared a heavy quarter has been carrying that
+# load, not because it is still theirs to do.
+#
+# The two finished queues overlap by construction, the quarter being part of the
+# year, so work closed last week is counted under both weights and work closed
+# ten months ago under the year's alone. That is the point of the pair rather
+# than a fault in it: recent work counts for 0.15 + 0.05 and old work for 0.05,
+# which is the score fading with age instead of dropping off a cliff at ninety
+# days.
 SECTION_WEIGHTS = {
     'qc': 1.0,
     'pide': 0.45,
     'p3de': 0.25,
     'selesai': 0.15,
+    'selesai_tahun': 0.05,
 }
 
 # What a value none of the maps above names is worth — a reference row added
@@ -356,6 +384,7 @@ def _beban_info(splits):
         ),
         'prioritas': PRIORITAS_WEIGHT,
         'selesai_hari': SELESAI_WINDOW_DAYS,
+        'selesai_tahun_hari': SELESAI_TAHUN_WINDOW_DAYS,
     }
 
 
@@ -415,6 +444,20 @@ def _summary_sections(user, selected):
             weighting(key),
         )
 
+    # The two finished columns are one queue read over two windows, the narrower
+    # one inside the wider, so they differ in nothing but how far back they
+    # reach.
+    def finished(key, days):
+        return (
+            sq.apply_filters(
+                _selesai_queryset(user, days), outside_queue, FILTER_APPLIERS,
+            ),
+            splits,
+            ('sudah_qc',),
+            _sudah_qc,
+            weighting(key),
+        )
+
     return {
         'qc': (
             sq.apply_filters(_scoped_queryset(user), selected, FILTER_APPLIERS),
@@ -425,13 +468,8 @@ def _summary_sections(user, selected):
         ),
         'p3de': upstream('p3de', STATUSES_DI_P3DE),
         'pide': upstream('pide', STATUSES_DI_PIDE),
-        'selesai': (
-            sq.apply_filters(_selesai_queryset(user), outside_queue, FILTER_APPLIERS),
-            splits,
-            ('sudah_qc',),
-            _sudah_qc,
-            weighting('selesai'),
-        ),
+        'selesai': finished('selesai', SELESAI_WINDOW_DAYS),
+        'selesai_tahun': finished('selesai_tahun', SELESAI_TAHUN_WINDOW_DAYS),
     }
 
 
@@ -439,7 +477,7 @@ def _summary(user, selected):
     """The summary table above the chart, over the same filters the chart uses.
 
     One line per PIC PMDE — whoever the filter panel has left in the sections,
-    rather than the whole seksi — carrying all three queues side by side, so a
+    rather than the whole seksi — carrying every queue side by side, so a
     reader sees at once how much of each is that person's. The totals come back
     under the section keys they have always used, which is the line under the
     table.

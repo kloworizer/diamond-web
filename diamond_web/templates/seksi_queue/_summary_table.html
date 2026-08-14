@@ -1,15 +1,18 @@
 {% comment %}
 The summary read one PIC at a time: a line per person, with each queue the page
-summarises as a pair of columns across it. Where the cards answer "how much is
-in this queue", the table answers "how much of each queue is whose" — the same
-figures, turned so that the comparison the reader of a seksi queue actually
-makes is the one along a row.
+summarises as a column across it. Where the cards answer "how much is in this
+queue", the table answers "how much of each queue is whose" — the same figures,
+turned so that the comparison the reader of a seksi queue actually makes is the
+one along a row.
 
 Read across, a line is that person's whole load in time order once the last
-group is folded back to the front: the quarter behind them, the work in hand,
-and the two queues still upstream that will reach them. Every group is the same
-two columns — the tikets, and the rows behind them — so the eye can be moved
-sideways between them without relearning the layout.
+groups are folded back to the front: the year and the quarter behind them, the
+work in hand, and the two queues still upstream that will reach them. Every
+group is the same single column — the rows behind its tikets — so the eye can be
+moved sideways between them without relearning the layout. The tiket count is
+not a column of its own: quality control is done row by row, so the rows are the
+figure, and how many tikets they arrived in is a footnote the cell carries in
+its hover title rather than a number competing for the same width.
 
 Ahead of the groups sits the one figure that is not a count: the Indeks Beban,
 which is those same rows weighted by how hard they are and how soon they land,
@@ -20,13 +23,14 @@ The splits run down the table rather than across it: under each PIC sits a
 labelled set of lines per dimension — the jenis tabel of the data, then the
 kategori wilayah of its ILAP — each set adding back up to the PIC's own line.
 That is what lets every group carry every split instead of only the first, and
-what keeps the table four groups wide however many kinds the reference tables
-hold. Those lines are folded away by default — the question the table is opened
-for is answered by the PIC lines alone — and the button in the card header opens
-them.
+what keeps the table as wide as there are groups however many kinds the
+reference tables hold. Those lines are folded away by default — the question the
+table is opened for is answered by the PIC lines alone — and the button in the
+card header opens them.
 
-Two rows of headers rather than one: the top names the queues, the bottom the
-two columns each of them holds. Every column of that bottom row sorts the lines,
+One row of headers: with a single column under each queue, the queue's name is
+the whole heading and there is nothing for a second row to tell apart. Every
+column sorts the lines,
 as does the name itself; the lines all being on the page at once, the sorting is
 done where they are rather than asked of the server again. A PIC's detail lines
 follow their PIC through a sort, being that PIC's figures broken up rather than
@@ -96,9 +100,14 @@ itself and the two cannot drift apart.
         <p class="sq-beban-info-note mb-0">
             Antrean ditimbang menurut seberapa dekat pekerjaannya: yang ada di tangan
             PIC sekarang bernilai penuh, yang masih di PIDE lalu di P3DE akan sampai
-            kemudian, dan yang selesai dalam {{ beban_info.selesai_hari }} hari terakhir
-            sudah lewat — ikut dihitung karena beban itu pernah dipikul, bukan karena
-            masih harus dikerjakan. Bobot jatuh tempo hanya berlaku pada
+            kemudian, dan yang sudah selesai berada di belakang — ikut dihitung karena
+            beban itu pernah dipikul, bukan karena masih harus dikerjakan. Kedua
+            antrean selesai bertingkat, bukan berdampingan:
+            {{ beban_info.selesai_hari }} hari terakhir termasuk di dalam
+            {{ beban_info.selesai_tahun_hari }} hari terakhir, sehingga pekerjaan yang
+            baru selesai dihitung pada keduanya dan yang selesai lebih lama hanya pada
+            yang setahun — bobotnya memudar seiring usia, bukan hilang begitu melewati
+            {{ beban_info.selesai_hari }} hari. Bobot jatuh tempo hanya berlaku pada
             {{ beban_info.jatuh_tempo_antrean }}, karena hanya antrean itu yang punya
             tenggat milik seksi ini; tiket tanpa tenggat dihitung &times;1.
         </p>
@@ -117,31 +126,38 @@ itself and the two cannot drift apart.
            data-summary-sort="{{ summary_default_sort }}" data-summary-sort-desc="1">
         <thead>
             <tr>
-                <th rowspan="2" class="sq-summary-pic" data-sort="name">Nama PIC</th>
+                <th class="sq-summary-pic" data-sort="name">Nama PIC</th>
                 {% comment %}
                 The one figure that is not a count of anything: how heavy the
                 load is rather than how large. It sits outside the groups
                 because it is built from all of them — see the weights in
                 views/quality_control.py, which the title repeats.
                 {% endcomment %}
-                <th rowspan="2" class="sq-summary-beban" data-sort="beban">Indeks Beban<button
+                <th class="sq-summary-beban" data-sort="beban">Indeks Beban<button
                         type="button" class="sq-beban-info-toggle" data-bs-toggle="collapse"
                         data-bs-target="#sq-beban-info" aria-expanded="false"
                         aria-controls="sq-beban-info"
                         aria-label="Cara menghitung Indeks Beban"
                         title="Cara menghitung Indeks Beban">i</button></th>
+                {% comment %}
+                The queue's name is the whole header: with one column under it
+                there is nothing left for a second row to distinguish, and a row
+                repeating "Baris Data" once per group would only say the same
+                thing five times. `data-sort` names the figure it orders the
+                lines by, which is the only figure the column holds, and the
+                title says what that figure counts — the one thing the second
+                row was there for.
+
+                A name set over as many lines as the view gave it: a long one
+                would otherwise hold its column open to the width of the whole
+                label, when the figures beneath it need a fraction of that.
+                {% endcomment %}
                 {% for section in summary_sections %}
-                {# Two columns: Tiket and Baris Data, spelled out in the row below. #}
-                <th colspan="2" class="sq-summary-group sq-summary-group-{{ section.variant }}">
-                    <span class="sq-stat-dot"></span>{{ section.label }}
+                <th class="sq-summary-group sq-summary-group-{{ section.variant }}"
+                    data-sort="{{ section.key }}:baris"
+                    title="{{ section.label }} — baris data">
+                    <span class="sq-stat-dot"></span>{% for line in section.lines %}{% if not forloop.first %}<br>{% endif %}{{ line }}{% endfor %}
                 </th>
-                {% endfor %}
-            </tr>
-            <tr>
-                {# `data-sort` names the figure a header orders the lines by. #}
-                {% for section in summary_sections %}
-                <th class="sq-summary-sub sq-summary-group-start sq-summary-group-{{ section.variant }}" data-sort="{{ section.key }}:tikets">Tiket</th>
-                <th class="sq-summary-sub sq-summary-group-{{ section.variant }}" data-sort="{{ section.key }}:baris">Baris Data</th>
                 {% endfor %}
             </tr>
         </thead>
