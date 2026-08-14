@@ -181,8 +181,13 @@
         // successfully, redirect this login tab to the dashboard automatically
         // so the user does not have to manually switch tabs and refresh.
         (function () {
+            // Since we are on the login page, we are not logged in.
+            // Clear the broadcast flag so that if we log in from this tab,
+            // it will correctly broadcast the login event to other tabs.
+            sessionStorage.removeItem('diamond_login_broadcasted');
+
             window.addEventListener('storage', function (e) {
-                if (e.key === 'diamond_login_event' && e.newValue) {
+                if (e.key === 'diamond_session_sync' && e.newValue && e.newValue.startsWith('login_')) {
                     // Another tab just completed a login. Redirect this login page
                     // to the home/next URL.
                     var params = new URLSearchParams(window.location.search);

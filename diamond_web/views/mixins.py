@@ -140,12 +140,12 @@ class UserP3DERequiredMixin(UserPassesTestMixin):
     def test_func(self):
         """Check whether the current user belongs to an allowed group.
 
-        Allowed groups are ``admin``, ``admin_p3de``, and ``user_p3de``.
+        Allowed groups are ``admin``, ``admin_p3de``, ``user_p3de``, and ``kasi_p3de``.
 
         Returns:
             bool: True if the user is a member of one of the allowed groups.
         """
-        return self.request.user.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de']).exists()
+        return self.request.user.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de', 'kasi_p3de']).exists()
 
     def handle_no_permission(self):
         """Handle unauthorized access for P3DE users.
@@ -175,12 +175,12 @@ class UserPIDERequiredMixin(UserPassesTestMixin):
     def test_func(self):
         """Check whether the current user belongs to an allowed group.
 
-        Allowed groups are ``admin``, ``admin_pide``, and ``user_pide``.
+        Allowed groups are ``admin``, ``admin_pide``, ``user_pide``, and ``kasi_pide``.
 
         Returns:
             bool: True if the user is a member of one of the allowed groups.
         """
-        return self.request.user.groups.filter(name__in=['admin', 'admin_pide', 'user_pide']).exists()
+        return self.request.user.groups.filter(name__in=['admin', 'admin_pide', 'user_pide', 'kasi_pide']).exists()
 
     def handle_no_permission(self):
         """Handle unauthorized access for PIDE users.
@@ -210,12 +210,12 @@ class UserPMDERequiredMixin(UserPassesTestMixin):
     def test_func(self):
         """Check whether the current user belongs to an allowed group.
 
-        Allowed groups are ``admin``, ``admin_pmde``, and ``user_pmde``.
+        Allowed groups are ``admin``, ``admin_pmde``, ``user_pmde``, and ``kasi_pmde``.
 
         Returns:
             bool: True if the user is a member of one of the allowed groups.
         """
-        return self.request.user.groups.filter(name__in=['admin', 'admin_pmde', 'user_pmde']).exists()
+        return self.request.user.groups.filter(name__in=['admin', 'admin_pmde', 'user_pmde', 'kasi_pmde']).exists()
 
     def handle_no_permission(self):
         """Handle unauthorized access for PMDE users.
