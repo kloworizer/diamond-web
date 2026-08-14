@@ -1058,9 +1058,7 @@
                         orderable: false, 
                         searchable: false, 
                         className: 'text-center',
-                        render: function (data, type, row, meta) {
-                            return `<span class="badge rounded d-inline-flex align-items-center justify-content-center" style="min-width: 24px; height: 24px; padding: 0 6px; font-size: 12px; background-color: #f1f5f9; color: #64748b; font-weight: 600; border-radius: 6px !important;">${meta.row + 1 + meta.settings._iDisplayStart}</span>`;
-                        }
+                        defaultContent: ''
                     },
                     { data: 'ilap', render: renderTruncatedText },
                     { data: 'id_sub_jenis_data', render: renderTruncatedText },
@@ -1069,7 +1067,8 @@
                     { data: 'pic_pide' },
                     { data: 'pic_pmde' }
                 ],
-                order: [[1, 'asc']]
+                order: [[1, 'asc']],
+                responsive: false
             });
 
             // Helper to init role tables
@@ -1082,9 +1081,7 @@
                         orderable: false, 
                         searchable: false, 
                         className: 'text-center',
-                        render: function (data, type, row, meta) {
-                            return `<span class="badge rounded d-inline-flex align-items-center justify-content-center" style="min-width: 24px; height: 24px; padding: 0 6px; font-size: 12px; background-color: #f1f5f9; color: #64748b; font-weight: 600; border-radius: 6px !important;">${meta.row + 1 + meta.settings._iDisplayStart}</span>`;
-                        }
+                        defaultContent: ''
                     },
                     { data: 'ilap', render: renderTruncatedText },
                     { data: 'id_sub_jenis_data', render: renderTruncatedText },
@@ -1122,13 +1119,25 @@
                         data: function (d) {
                             d.columns_search = [];
                             $(searchRowId + ' input').each(function (i) { d.columns_search[i] = $(this).val(); });
+                            
+                            // Append Global Filters for all role tables
+                            if (typeof globalFilters !== 'undefined') {
+                                d['filter_ilap_kategori'] = globalFilters.ilap_kategori;
+                                d['filter_ilap'] = globalFilters.ilap;
+                                d['filter_jenis_data'] = globalFilters.jenis_data;
+                                d['filter_pic_p3de'] = globalFilters.pic_p3de;
+                                d['filter_pic_pide'] = globalFilters.pic_pide;
+                                d['filter_pic_pmde'] = globalFilters.pic_pmde;
+                            }
+                            
                             return d;
                         }
                     },
                     pageLength: 10,
                     columns: columns,
                     columnDefs: columnDefs,
-                    order: [[1, 'asc']]
+                    order: [[1, 'asc']],
+                    responsive: false
                 });
             }
 
@@ -1222,7 +1231,6 @@
                         error: function () {
                             alert('Terjadi kesalahan saat memuat data form.');
                         }
-                    });
                     });
                 }
             });
