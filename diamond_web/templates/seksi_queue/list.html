@@ -1495,13 +1495,15 @@ that differ between one seksi and the next.
         }
 
         // ---- The jenis tabel detail ----
-        // Open on every page load, the split being the point of the table. The
-        // button folds it away for a reading that wants the totals alone, and
-        // that is a choice about the reading in front of you rather than a
-        // setting: it is deliberately not remembered, so arriving at this page
-        // always shows the same thing rather than whatever was left behind on
-        // some earlier visit.
-        let kindDetailShown = true;
+        // Folded away on every page load: a labelled set of lines per dimension
+        // under every PIC is several times the rows, and the question the table
+        // is opened for — who is carrying the most — is answered by the PIC
+        // lines alone. The button opens the detail for the reading that needs
+        // it, and that is a choice about the reading in front of you rather
+        // than a setting: it is deliberately not remembered, so arriving at
+        // this page always shows the same thing rather than whatever was left
+        // behind on some earlier visit.
+        let kindDetailShown = false;
 
         function applyKindVisibility() {
             $('.sq-summary-row-kind').toggleClass('d-none', !kindDetailShown);

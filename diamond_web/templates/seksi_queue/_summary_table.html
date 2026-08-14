@@ -21,9 +21,9 @@ labelled set of lines per dimension — the jenis tabel of the data, then the
 kategori wilayah of its ILAP — each set adding back up to the PIC's own line.
 That is what lets every group carry every split instead of only the first, and
 what keeps the table four groups wide however many kinds the reference tables
-hold. Those lines are shown by default, the detail being the point of the
-table, and the button in the card header folds them away for a reading that
-wants the totals alone.
+hold. Those lines are folded away by default — the question the table is opened
+for is answered by the PIC lines alone — and the button in the card header opens
+them.
 
 Two rows of headers rather than one: the top names the queues, the bottom the
 two columns each of them holds. Every column of that bottom row sorts the lines,
@@ -53,7 +53,7 @@ itself and the two cannot drift apart.
     <div class="sq-beban-info-body">
         <div class="sq-beban-info-formula">
             Indeks Beban = Σ ( baris data × bobot jenis tabel × bobot kategori wilayah
-            × bobot prioritas × bobot antrean )
+            × bobot prioritas × bobot jatuh tempo × bobot antrean )
         </div>
         <p class="sq-beban-info-note">
             Dihitung per tiket, bukan per baris ringkasan, lalu dijumlahkan per PIC.
@@ -63,7 +63,7 @@ itself and the two cannot drift apart.
         </p>
         <div class="row g-3">
             {% for faktor in beban_info.faktor %}
-            <div class="col-md-4">
+            <div class="col-lg-3 col-md-6">
                 <div class="sq-beban-info-title">{{ faktor.label }}</div>
                 {% for entry in faktor.bobot %}
                 <div class="sq-beban-info-row">
@@ -72,11 +72,11 @@ itself and the two cannot drift apart.
                 {% endfor %}
             </div>
             {% endfor %}
-            <div class="col-md-4">
-                <div class="sq-beban-info-title">Antrean</div>
-                {% for antrean in beban_info.antrean %}
+            <div class="col-lg-3 col-md-6">
+                <div class="sq-beban-info-title">Jatuh Tempo &amp; Prioritas</div>
+                {% for band in beban_info.jatuh_tempo %}
                 <div class="sq-beban-info-row">
-                    <span>{{ antrean.label }}</span><span>&times;{{ antrean.bobot }}</span>
+                    <span>{{ band.nama }}</span><span>&times;{{ band.bobot }}</span>
                 </div>
                 {% endfor %}
                 <div class="sq-beban-info-row">
@@ -84,13 +84,23 @@ itself and the two cannot drift apart.
                     <span>&times;{{ beban_info.prioritas }}</span>
                 </div>
             </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="sq-beban-info-title">Antrean</div>
+                {% for antrean in beban_info.antrean %}
+                <div class="sq-beban-info-row">
+                    <span>{{ antrean.label }}</span><span>&times;{{ antrean.bobot }}</span>
+                </div>
+                {% endfor %}
+            </div>
         </div>
         <p class="sq-beban-info-note mb-0">
             Antrean ditimbang menurut seberapa dekat pekerjaannya: yang ada di tangan
             PIC sekarang bernilai penuh, yang masih di PIDE lalu di P3DE akan sampai
             kemudian, dan yang selesai dalam {{ beban_info.selesai_hari }} hari terakhir
             sudah lewat — ikut dihitung karena beban itu pernah dipikul, bukan karena
-            masih harus dikerjakan.
+            masih harus dikerjakan. Bobot jatuh tempo hanya berlaku pada
+            {{ beban_info.jatuh_tempo_antrean }}, karena hanya antrean itu yang punya
+            tenggat milik seksi ini; tiket tanpa tenggat dihitung &times;1.
         </p>
     </div>
 </div>

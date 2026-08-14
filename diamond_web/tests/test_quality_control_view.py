@@ -39,6 +39,7 @@ from diamond_web.views.quality_control import (
     JENIS_TABEL_WEIGHTS,
     KATEGORI_WILAYAH_WEIGHTS,
     PRIORITAS_WEIGHT,
+    jatuh_tempo_bands,
 )
 
 
@@ -1306,6 +1307,64 @@ class TestIndeksBeban(SummaryEndpoint):
         client.force_login(bundle['pmde_user'])
         assert self._beban(client) == 0
 
+    def test_a_nearer_deadline_weighs_more(self, client):
+        """One band per threshold the Jatuh Tempo dropdown offers."""
+        loads = {}
+        for days in (5, 20, 45, 90):
+            bundle = _jatuh_tempo_bundle(days, belum_qc=1000)
+            client.force_login(bundle['pmde_user'])
+            loads[days] = self._beban(client)
+
+        assert loads[5] > loads[20] > loads[45] > loads[90] > 0
+
+    def test_an_overdue_tiket_takes_the_heaviest_band(self, client):
+        """Its jatuh tempo is negative, so it is under every threshold.
+
+        The same reading the dropdown gives it: a tiket eight days overdue is
+        one of the ones '< 10 hari' returns.
+        """
+        overdue = _jatuh_tempo_bundle(-8, belum_qc=1000)
+        client.force_login(overdue['pmde_user'])
+        loads = self._beban(client)
+
+        soon = _jatuh_tempo_bundle(5, belum_qc=1000)
+        client.force_login(soon['pmde_user'])
+
+        assert loads == self._beban(client)
+
+    def test_a_tiket_with_no_deadline_is_not_pressed(self, client):
+        """No durasi covers it, so nothing is known about its urgency."""
+        without = _qc_bundle(with_durasi=False, belum_qc=1000)
+        client.force_login(without['pmde_user'])
+        unknown = self._beban(client)
+
+        far = _jatuh_tempo_bundle(90, belum_qc=1000)
+        client.force_login(far['pmde_user'])
+
+        assert unknown == self._beban(client)
+
+    def test_only_the_queue_in_hand_is_pressed_by_a_deadline(self, client):
+        """Upstream work has not started its count, so it takes no band.
+
+        Both bundles are transferred long enough ago that a PMDE deadline would
+        be well past; the upstream one must score the same either way.
+        """
+        first = _upstream_bundle(STATUS_DIREKAM, baris_lengkap=1000)
+        client.force_login(first['pmde_user'])
+        plain = self._beban(client)
+
+        overdue = _upstream_bundle(STATUS_DIREKAM, baris_lengkap=1000)
+        overdue['tiket'].tgl_transfer = datetime.now() - timedelta(days=400)
+        overdue['tiket'].save()
+        DurasiJatuhTempoFactory(
+            id_sub_jenis_data=overdue['tiket'].id_periode_data.id_sub_jenis_data_ilap,
+            seksi=Group.objects.get_or_create(name='user_pmde')[0],
+            durasi=10, start_date=date(2000, 1, 1), end_date=None,
+        )
+        client.force_login(overdue['pmde_user'])
+
+        assert self._beban(client) == plain
+
     def test_the_page_explains_how_it_is_worked_out(self, client):
         """The panel is built from the weights themselves, so a weight edited in
         the view changes what the page says about itself.
@@ -1325,6 +1384,8 @@ class TestIndeksBeban(SummaryEndpoint):
         for name in KATEGORI_WILAYAH_WEIGHTS:
             assert name in html
         assert 'Prioritas saat diterima' in html
+        for band in jatuh_tempo_bands():
+            assert band['nama'] in html
         # Opened by its own control rather than shown outright.
         assert 'class="collapse sq-beban-info"' in html
         assert 'sq-beban-info-toggle' in html

@@ -802,31 +802,74 @@ class Weighting:
             reference row added since, or a tiket with none set.
         prioritas_weight: The factor applied when the data was prioritas.
         windows: The lookup from :func:`prioritas_windows`.
+        deadline: The :class:`Deadline` this queue is counted against, when it
+            has one. Only the queue a seksi is actually working has a deadline
+            of its own — what is still upstream has not started its count, and
+            what is finished is long past it — so the other queues pass None and
+            are scored without the jatuh tempo term.
+        jatuh_tempo_weights: `(days, weight)` pairs, heaviest first, applied to
+            the first one the tiket's jatuh tempo falls under. A tiket past its
+            deadline has a negative jatuh tempo, so it falls under every band
+            and takes the first.
     """
 
     def __init__(self, section_weight, entry_weights, default_weight,
-                 prioritas_weight, windows):
+                 prioritas_weight, windows, deadline=None,
+                 jatuh_tempo_weights=()):
         self.section_weight = section_weight
         self.entry_weights = entry_weights
         self.default_weight = default_weight
         self.prioritas_weight = prioritas_weight
         self.windows = windows
+        self.deadline = deadline
+        self.jatuh_tempo_weights = jatuh_tempo_weights
 
-    def score(self, baris, entry_ids, sub_id, tgl_terima_dip):
-        """The weighted load of one tiket, zero when it carries no rows."""
+    @property
+    def fields(self):
+        """The columns a scored row carries beyond the ones already read."""
+        fields = [SUB, 'tgl_terima_dip']
+        if self.deadline is not None:
+            fields += [
+                self.deadline.start_field, self.deadline.restart_field, 'active_durasi',
+            ]
+        return fields
+
+    def annotate(self, qs):
+        """Add whatever the score reads that is not a plain column."""
+        return self.deadline.annotate_durasi(qs) if self.deadline is not None else qs
+
+    def _jatuh_tempo_weight(self, start_value, restart_value, durasi):
+        """The factor for how close this tiket's deadline is.
+
+        A tiket with no deadline to count — no durasi covers its base date — is
+        left at 1: nothing is known about its urgency, and guessing at it would
+        move a PIC up the table for a gap in the reference data.
+        """
+        deadline_day = self.deadline.day(start_value, restart_value, durasi)
+        if deadline_day is None:
+            return 1.0
+        sisa_hari = (deadline_day - date.today()).days
+        for days, weight in self.jatuh_tempo_weights:
+            if sisa_hari < days:
+                return weight
+        return 1.0
+
+    def score(self, baris, entry_ids, extras):
+        """The weighted load of one tiket, zero when it carries no rows.
+
+        Args:
+            extras: The values of :attr:`fields`, in that order.
+        """
         if not baris:
             return 0.0
         weight = self.section_weight
         for weights, entry_id in zip(self.entry_weights, entry_ids):
             weight *= weights.get(entry_id, self.default_weight)
-        if _was_prioritas(self.windows, sub_id, tgl_terima_dip):
+        if _was_prioritas(self.windows, extras[0], extras[1]):
             weight *= self.prioritas_weight
+        if self.deadline is not None:
+            weight *= self._jatuh_tempo_weight(*extras[2:5])
         return baris * weight
-
-
-# The columns a Weighting needs beyond the ones already read: the sub jenis data
-# whose prioritas windows apply, and the date they are checked against.
-WEIGHTING_FIELDS = (SUB, 'tgl_terima_dip')
 
 
 def _empty_section(splits):
@@ -919,7 +962,7 @@ def _row_columns(splits, baris_fields, weighting, *leading):
     columns += [split.path for split in splits]
     columns += list(baris_fields)
     if weighting is not None:
-        columns += list(WEIGHTING_FIELDS)
+        columns += weighting.fields
     return columns
 
 
@@ -935,11 +978,13 @@ def _accumulate(qs, splits, baris_fields, baris_of, weighting=None):
     depth = len(splits)
     end = 1 + depth + len(baris_fields)
 
+    if weighting is not None:
+        qs = weighting.annotate(qs)
     rows = qs.values_list(*_row_columns(splits, baris_fields, weighting, 'id'))
     for row in rows:
         entry_ids = row[1:1 + depth]
         baris = baris_of(*row[1 + depth:end])
-        beban = weighting.score(baris, entry_ids, *row[end:]) if weighting else 0.0
+        beban = weighting.score(baris, entry_ids, row[end:]) if weighting else 0.0
         _count_tiket(section, keys, entry_ids, baris, beban)
     return section
 
@@ -965,6 +1010,8 @@ def queue_breakdown_per_pic(qs, splits, baris_fields, baris_of, role, weighting=
     depth = len(splits)
     end = 2 + depth + len(baris_fields)
 
+    if weighting is not None:
+        qs = weighting.annotate(qs)
     rows = qs.annotate(pic_id=pic_id_expr(role)).values_list(
         *_row_columns(splits, baris_fields, weighting, 'id', 'pic_id')
     )
@@ -972,7 +1019,7 @@ def queue_breakdown_per_pic(qs, splits, baris_fields, baris_of, role, weighting=
         pic_id = row[1]
         entry_ids = row[2:2 + depth]
         baris = baris_of(*row[2 + depth:end])
-        beban = weighting.score(baris, entry_ids, *row[end:]) if weighting else 0.0
+        beban = weighting.score(baris, entry_ids, row[end:]) if weighting else 0.0
         _count_tiket(total, keys, entry_ids, baris, beban)
         if pic_id not in per_pic:
             per_pic[pic_id] = _empty_section(splits)

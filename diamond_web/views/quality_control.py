@@ -233,6 +233,8 @@ SUMMARY_DEFAULT_SORT = 'beban'
 #     sent it, which the wider ones are not;
 #   * prioritas — data that was prioritas when it arrived is worked to a
 #     tighter standard, so it counts half as much again;
+#   * jatuh tempo — rows falling due within ten days press hardest, and the
+#     press eases in the same bands the filter panel offers;
 #   * which queue it sits in — see SECTION_WEIGHTS.
 #
 # These are ratios rather than measurements: they say a regional tiket is worth
@@ -270,6 +272,41 @@ SECTION_WEIGHTS = {
 DEFAULT_ENTRY_WEIGHT = 0.5
 
 PRIORITAS_WEIGHT = 1.5
+
+# How much harder a deadline presses as it approaches. The bands are the filter
+# panel's own thresholds — see JATUH_TEMPO_LIMITS — so the page asks one question
+# about urgency and answers it the same way twice: what the dropdown will narrow
+# to is what the score has already weighed.
+#
+# Read in order as `(hari, bobot)`: a tiket takes the first band its jatuh tempo
+# falls under, and anything past the last threshold takes the default of 1. An
+# overdue tiket's jatuh tempo is negative, so it falls under every band and takes
+# the first — which is the dropdown's reading of "< 10 hari" too.
+#
+# This term applies to the QC queue alone. Only work a seksi is actually holding
+# has a deadline of its own: an upstream tiket has not started its count, and a
+# finished one is long past it. See SUMMARY_DEADLINES.
+JATUH_TEMPO_WEIGHTS = tuple(zip(sq.JATUH_TEMPO_LIMITS, (2.0, 1.5, 1.2)))
+
+
+def jatuh_tempo_bands():
+    """The bands as the page names them, the last one being the default.
+
+    Named from the thresholds rather than written out, so a threshold changed in
+    JATUH_TEMPO_LIMITS renames the band it belongs to.
+    """
+    bands = []
+    previous = None
+    for days, weight in JATUH_TEMPO_WEIGHTS:
+        label = f'Kurang dari {days} hari' if previous is None else f'{previous}–{days} hari'
+        bands.append({'nama': label, 'bobot': weight})
+        previous = days
+    bands.append({'nama': f'Lebih dari {previous} hari', 'bobot': 1.0})
+    return bands
+
+# The queues whose rows carry a deadline this seksi is counted against. The rest
+# are scored without the jatuh tempo term rather than with a guess at it.
+SUMMARY_DEADLINES = {'qc': DEADLINE}
 
 
 def summary_splits():
@@ -312,6 +349,11 @@ def _beban_info(splits):
             {'label': section['label'], 'bobot': SECTION_WEIGHTS[section['key']]}
             for section in SUMMARY_SECTIONS
         ],
+        'jatuh_tempo': jatuh_tempo_bands(),
+        'jatuh_tempo_antrean': ', '.join(
+            section['label'] for section in SUMMARY_SECTIONS
+            if section['key'] in SUMMARY_DEADLINES
+        ),
         'prioritas': PRIORITAS_WEIGHT,
         'selesai_hari': SELESAI_WINDOW_DAYS,
     }
@@ -358,6 +400,8 @@ def _summary_sections(user, selected):
         return sq.Weighting(
             SECTION_WEIGHTS[key], weights, DEFAULT_ENTRY_WEIGHT,
             PRIORITAS_WEIGHT, windows,
+            deadline=SUMMARY_DEADLINES.get(key),
+            jatuh_tempo_weights=JATUH_TEMPO_WEIGHTS,
         )
 
     def upstream(key, statuses):

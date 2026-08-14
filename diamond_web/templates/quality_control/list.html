@@ -20,12 +20,12 @@ header being rendered from the same list the figures come back under.
 <div class="card-header">
     <h5 class="card-title"><i class="feather-users me-2"></i>Beban Kerja</h5>
     {% comment %}
-    Rendered in the open state, which is the default, so the label does not
-    flash the wrong way round before the script settles it.
+    Rendered folded, which is the default, so the label does not flash the wrong
+    way round before the script settles it.
     {% endcomment %}
-    <button type="button" class="btn btn-sm btn-outline-secondary sq-summary-toggle active"
-            id="sq-toggle-kinds" aria-expanded="true">
-        <i class="feather-list me-1"></i><span data-toggle-label>Sembunyikan Detail</span>
+    <button type="button" class="btn btn-sm btn-outline-secondary sq-summary-toggle"
+            id="sq-toggle-kinds" aria-expanded="false">
+        <i class="feather-list me-1"></i><span data-toggle-label>Tampilkan Detail</span>
     </button>
 </div>
 {% endblock %}
