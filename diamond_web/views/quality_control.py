@@ -12,21 +12,27 @@ the tiket back), and that the work left on a row is the rows it has still to
 check. The Identifikasi page is the same page read by PIDE.
 """
 
+from datetime import timedelta
+
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.decorators.http import require_http_methods
 from django.views.generic import TemplateView
 from django.http import JsonResponse
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
-from django.db.models import DateField, Prefetch
+from django.db.models import DateField, Exists, OuterRef, Prefetch
 from django.db.models.functions import Cast
 
 from . import seksi_queue as sq
 from ..models.tiket import Tiket
+from ..models.tiket_action import TiketAction
 from ..models.tiket_pic import TiketPIC
+from ..constants.tiket_action_types import TiketActionType
 from ..constants.tiket_status import (
     STATUS_PENGENDALIAN_MUTU,
+    STATUS_SELESAI,
     STATUSES_DI_P3DE,
     STATUSES_DI_PIDE,
 )
@@ -77,34 +83,43 @@ class QualityControlView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         return _is_pmde_user(self.request.user)
 
     def get_context_data(self, **kwargs):
-        """Add the header of the summary table.
+        """Add the header of the summary table, and the detail lines under it.
 
-        Its sub columns are the jenis tabel of the reference table, which the
-        page cannot spell out in its markup — a jenis tabel added there has to
-        appear as a column here, exactly as it appears in every breakdown the
-        endpoint sends back. The endpoint reads the same list in the same order,
-        so a line of figures lands under the heading it belongs to.
+        The detail lines are reference data — the jenis tabel and the kategori
+        wilayah — which the page cannot spell out in its markup: a row added to
+        either table has to appear as a line here, exactly as it appears in
+        every breakdown the endpoint sends back. The endpoint reads the same
+        lists in the same order, so a line of figures lands beside the name it
+        belongs to.
         """
         context = super().get_context_data(**kwargs)
-        kinds = [
-            # `hue` is the palette slot the column is drawn in, assigned by
-            # position and wrapping after the palette runs out — see the
-            # .sq-kind-* rules. Decided here rather than in the template because
-            # the template language has no modulo.
-            {'name': deskripsi, 'hue': index % SUMMARY_KIND_HUES}
-            for index, (_kind_id, deskripsi) in enumerate(sq.jenis_tabel_kinds())
+        splits = summary_splits()
+        details = [
+            {
+                'key': split.key,
+                'label': split.label,
+                # `hue` is the palette slot the line is marked in, assigned by
+                # position and wrapping after the palette runs out — see the
+                # .sq-kind-* rules. Decided here rather than in the template
+                # because the template language has no modulo.
+                'entries': [
+                    {'name': name, 'hue': index % SUMMARY_KIND_HUES}
+                    for index, (_entry_id, name) in enumerate(split.entries)
+                ],
+            }
+            for split in splits
         ]
         context.update({
             'summary_sections': SUMMARY_SECTIONS,
-            'summary_kinds': kinds,
-            # Tiket and Baris Data, then one column per jenis tabel.
-            'summary_colspan': len(kinds) + 2,
+            'summary_details': details,
+            'beban_info': _beban_info(splits),
             'summary_section_keys': ','.join(
                 section['key'] for section in SUMMARY_SECTIONS
             ),
             'summary_section_variants': ','.join(
                 section['variant'] for section in SUMMARY_SECTIONS
             ),
+            'summary_default_sort': SUMMARY_DEFAULT_SORT,
         })
         return context
 
@@ -132,60 +147,247 @@ def _upstream_queryset(user, statuses):
     return _pmde_scope(Tiket.objects.filter(status_tiket__in=statuses), user)
 
 
+# How far back the finished work on the right of the summary reaches. A quarter
+# is long enough that a pelaksana who spent a month on one large tiket still has
+# something to show, and short enough that the figure is this year's work rather
+# than a career total.
+SELESAI_WINDOW_DAYS = 90
+
+
+def _selesai_queryset(user):
+    """Tikets `user` may see that finished quality control in the last 90 days.
+
+    Completion is not a date on the tiket — it is the SELESAI action written
+    when the tiket was closed (see selesaikan_tiket) — so the window is read
+    from the action log rather than from a column. The status is checked as
+    well, so a tiket closed and then reopened is counted where it is now and not
+    where it has been.
+    """
+    since = timezone.now() - timedelta(days=SELESAI_WINDOW_DAYS)
+    return _pmde_scope(
+        Tiket.objects.filter(status_tiket=STATUS_SELESAI).filter(
+            Exists(TiketAction.objects.filter(
+                id_tiket=OuterRef('pk'),
+                action=TiketActionType.SELESAI,
+                timestamp__gte=since,
+            ))
+        ),
+        user,
+    )
+
+
 def _belum_qc(belum_qc):
     """The row count a tiket in quality control still has left to check."""
     return belum_qc or 0
 
 
-# The three column groups of the summary table, in the order it renders them:
-# the QC queue this page lists, then the two queues upstream of it, kept apart
-# because they are different work — P3DE still holds one count of a tiket's
-# data, while PIDE has begun splitting it.
+def _sudah_qc(sudah_qc):
+    """The row count a finished tiket was checked over — the work done on it."""
+    return sudah_qc or 0
+
+
+# The four column groups of the summary table, in the order it renders them.
+# Read across a PIC's line they are that person's whole load in time order once
+# the last one is folded back to the front: the quarter behind them, the work in
+# their hands now, and the two queues still upstream that will reach them —
+# which is what makes the table worth reading as a row rather than as four
+# separate figures.
 #
-# Only this page's own queue is split by jenis tabel. That split says how a
-# tiket's data is handled, which is the question a reader has about work that is
-# in front of them now; for the two upstream queues the question is only how
-# much is coming, so they are the tiket and row totals and nothing more — three
-# groups of five columns each would bury the queue that is actually theirs.
+# Every group is the same two columns, tikets and the rows behind them, and
+# every group is split the same way by jenis tabel — down the table into a line
+# per kind rather than across it into columns, which is what lets all four carry
+# the split instead of only the first.
 #
-# `key` is the payload section, and the template renders the labels and the
-# column widths from this same list, so the header and the figures under it
-# cannot drift apart.
+# `key` is the payload section, and the template renders the labels from this
+# same list, so the header and the figures under it cannot drift apart.
 SUMMARY_SECTIONS = (
-    {'key': 'qc', 'label': 'Pengendalian Mutu', 'variant': 'own', 'kinds': True},
-    {'key': 'p3de', 'label': 'Masih di P3DE', 'variant': 'upstream', 'kinds': False},
-    {'key': 'pide', 'label': 'Masih di PIDE', 'variant': 'upstream-alt', 'kinds': False},
+    {'key': 'qc', 'label': 'Proses QC', 'variant': 'own'},
+    {'key': 'p3de', 'label': 'Masih di P3DE', 'variant': 'upstream'},
+    {'key': 'pide', 'label': 'Masih di PIDE', 'variant': 'upstream-alt'},
+    {'key': 'selesai', 'label': 'Selesai QC 90 Hari Terakhir', 'variant': 'done'},
 )
 
-# How many hues the jenis tabel columns cycle through before repeating one; see
+# How many hues the jenis tabel lines cycle through before repeating one; see
 # the .sq-kind-* rules in seksi_queue/list.html, which define exactly this many.
 SUMMARY_KIND_HUES = 5
 
+# What the table is ordered by when the page opens: the weighted load below,
+# heaviest first. The first question a reader of this page has is who is
+# carrying the most work, which alphabetical order answers for nobody.
+SUMMARY_DEFAULT_SORT = 'beban'
+
+
+# ---------------------------------------------------------------------------
+# Indeks Beban — how heavy a PIC's load is, rather than how large
+# ---------------------------------------------------------------------------
+#
+# The tiket count is deliberately absent from every term below. Quality control
+# is done row by row, so one tiket of a million rows is a thousand tikets of a
+# thousand, and every factor here multiplies baris data instead.
+#
+# What the factors say, in the order they are applied:
+#
+#   * jenis tabel — data that is identified is checked field by field, where
+#     the rest is checked as a whole, so it weighs about twice as much;
+#   * kategori wilayah — a regional ILAP is checked back against the unit that
+#     sent it, which the wider ones are not;
+#   * prioritas — data that was prioritas when it arrived is worked to a
+#     tighter standard, so it counts half as much again;
+#   * which queue it sits in — see SECTION_WEIGHTS.
+#
+# These are ratios rather than measurements: they say a regional tiket is worth
+# about one and a half international ones, which is a claim about the work that
+# the seksi can argue with. They are gathered here to be argued with and edited,
+# and nothing else in the page depends on their particular values.
+JENIS_TABEL_WEIGHTS = {
+    'Diidentifikasi': 1.0,
+    'Tidak Diidentifikasi': 0.5,
+    'Tidak Terstruktur': 0.5,
+}
+
+KATEGORI_WILAYAH_WEIGHTS = {
+    'Regional': 1.0,
+    'Nasional': 0.65,
+    'Internasional': 0.65,
+}
+
+# A queue's weight is how much of a PIC's attention it has. What is in front of
+# them now is the load they are actually carrying; what is at PIDE will reach
+# them soon and what is at P3DE later still, so each is discounted by how far
+# off it is. Work finished in the last quarter is behind them and counts least —
+# it is in the score because a PIC who has just cleared a heavy quarter has been
+# carrying that load, not because it is still theirs to do.
+SECTION_WEIGHTS = {
+    'qc': 1.0,
+    'pide': 0.45,
+    'p3de': 0.25,
+    'selesai': 0.15,
+}
+
+# What a value none of the maps above names is worth — a reference row added
+# since, or a tiket with none set. Half, so an unnamed kind is treated as the
+# lighter sort of work rather than silently becoming the heaviest.
+DEFAULT_ENTRY_WEIGHT = 0.5
+
+PRIORITAS_WEIGHT = 1.5
+
+
+def summary_splits():
+    """The dimensions a PIC's figures are broken into detail lines along.
+
+    Two questions get asked of a load, and each is the same tikets counted a
+    different way: what kind of table the data is, and how far the ILAP behind
+    it reaches. They are listed one under the other rather than crossed with
+    each other — a line per pairing would be the two of them multiplied, and
+    nobody reads a load that way.
+    """
+    return [sq.jenis_tabel_split(), sq.kategori_wilayah_split()]
+
+
+def _beban_info(splits):
+    """The weights as the page explains them, read off the weights themselves.
+
+    The panel behind the Indeks Beban column is built from this rather than
+    written out in the template, so editing a weight above changes what the page
+    says about itself. Entries no weight names are listed at the default, since
+    that is what they are actually scored at.
+    """
+    named = {
+        'jenis_tabel': JENIS_TABEL_WEIGHTS,
+        'kategori_wilayah': KATEGORI_WILAYAH_WEIGHTS,
+    }
+    return {
+        'faktor': [
+            {
+                'label': split.label,
+                'bobot': [
+                    {'nama': name,
+                     'bobot': named.get(split.key, {}).get(name, DEFAULT_ENTRY_WEIGHT)}
+                    for _entry_id, name in split.entries
+                ],
+            }
+            for split in splits
+        ],
+        'antrean': [
+            {'label': section['label'], 'bobot': SECTION_WEIGHTS[section['key']]}
+            for section in SUMMARY_SECTIONS
+        ],
+        'prioritas': PRIORITAS_WEIGHT,
+        'selesai_hari': SELESAI_WINDOW_DAYS,
+    }
+
+
+def _entry_weights(splits):
+    """The weight of every entry of every split, keyed the way a row reads them.
+
+    The maps above are written by name, because that is what a reader arguing
+    about them sees; the scoring reads ids, because that is what a row carries.
+    This turns the one into the other, once per request.
+    """
+    by_split = {
+        'jenis_tabel': JENIS_TABEL_WEIGHTS,
+        'kategori_wilayah': KATEGORI_WILAYAH_WEIGHTS,
+    }
+    return [
+        {
+            entry_id: by_split.get(split.key, {}).get(name, DEFAULT_ENTRY_WEIGHT)
+            for entry_id, name in split.entries
+        }
+        for split in splits
+    ]
+
 
 def _summary_sections(user, selected):
-    """The queue behind each column group: what to read, and how to count it."""
-    upstream_selected = sq.upstream_selected(selected)
+    """The queue behind each column group: what to read, how to count it, and
+    how heavily its rows weigh.
 
-    def upstream(statuses):
+    Jatuh tempo is dropped from every group but the QC queue itself: it counts
+    from a transfer date that upstream work does not have yet and that finished
+    work is long past, so keeping it would empty those groups rather than narrow
+    them.
+
+    The prioritas windows are read once here and shared by all four weightings,
+    which is what keeps the score off the per-row query path.
+    """
+    outside_queue = sq.upstream_selected(selected)
+    splits = summary_splits()
+    weights = _entry_weights(splits)
+    windows = sq.prioritas_windows()
+
+    def weighting(key):
+        return sq.Weighting(
+            SECTION_WEIGHTS[key], weights, DEFAULT_ENTRY_WEIGHT,
+            PRIORITAS_WEIGHT, windows,
+        )
+
+    def upstream(key, statuses):
         return (
             sq.apply_filters(
-                _upstream_queryset(user, statuses), upstream_selected, FILTER_APPLIERS,
+                _upstream_queryset(user, statuses), outside_queue, FILTER_APPLIERS,
             ),
-            # No jenis tabel columns, so nothing to split by.
-            (),
+            splits,
             sq.BARIS_DATA_FIELDS,
             sq.baris_data,
+            weighting(key),
         )
 
     return {
         'qc': (
             sq.apply_filters(_scoped_queryset(user), selected, FILTER_APPLIERS),
-            sq.jenis_tabel_kinds(),
+            splits,
             ('belum_qc',),
             _belum_qc,
+            weighting('qc'),
         ),
-        'p3de': upstream(STATUSES_DI_P3DE),
-        'pide': upstream(STATUSES_DI_PIDE),
+        'p3de': upstream('p3de', STATUSES_DI_P3DE),
+        'pide': upstream('pide', STATUSES_DI_PIDE),
+        'selesai': (
+            sq.apply_filters(_selesai_queryset(user), outside_queue, FILTER_APPLIERS),
+            splits,
+            ('sudah_qc',),
+            _sudah_qc,
+            weighting('selesai'),
+        ),
     }
 
 

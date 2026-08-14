@@ -5,19 +5,25 @@ from itertools import count
 import pytest
 from django.contrib.auth.models import Group, User
 from django.urls import reverse
+from django.utils import timezone
 
+from diamond_web.constants.tiket_action_types import TiketActionType
 from diamond_web.constants.tiket_status import (
     STATUS_DIKIRIM_KE_PIDE,
     STATUS_DIREKAM,
     STATUS_DITELITI,
     STATUS_IDENTIFIKASI,
     STATUS_PENGENDALIAN_MUTU,
+    STATUS_SELESAI,
     STATUSES_DI_P3DE,
     STATUSES_DI_PIDE,
 )
 from diamond_web.models import DasarHukum, JenisTabel, KlasifikasiJenisData, TiketPIC
+from diamond_web.models.kategori_wilayah import KategoriWilayah
+from diamond_web.models.tiket_action import TiketAction
 from diamond_web.tests.conftest import (
     DurasiJatuhTempoFactory,
+    ILAPFactory,
     JenisDataILAPFactory,
     JenisPrioritasDataFactory,
     JenisTabelFactory,
@@ -27,7 +33,13 @@ from diamond_web.tests.conftest import (
     TiketPICFactory,
     UserFactory,
 )
-from diamond_web.views.quality_control import FILTER_APPLIERS, FILTER_OPTIONS
+from diamond_web.views.quality_control import (
+    FILTER_APPLIERS,
+    FILTER_OPTIONS,
+    JENIS_TABEL_WEIGHTS,
+    KATEGORI_WILAYAH_WEIGHTS,
+    PRIORITAS_WEIGHT,
+)
 
 
 def _pmde_admin_user():
@@ -48,9 +60,12 @@ _PENYAMPAIAN_SEQ = count()
 
 def _qc_bundle(with_durasi=True, with_prioritas=False, tgl_transfer=None,
                pmde_user=None, periode_penerimaan=None, tgl_rematch=_UNSET,
-               durasi=10, jenis_tabel=None, belum_qc=60):
+               durasi=10, jenis_tabel=None, belum_qc=60, kategori_wilayah=None):
     jenis_tabel = jenis_tabel or JenisTabelFactory()
-    jenis_data = JenisDataILAPFactory(id_jenis_tabel=jenis_tabel)
+    ilap_kwargs = {}
+    if kategori_wilayah is not None:
+        ilap_kwargs['id_ilap'] = ILAPFactory(id_kategori_wilayah=kategori_wilayah)
+    jenis_data = JenisDataILAPFactory(id_jenis_tabel=jenis_tabel, **ilap_kwargs)
     # periode_penyampaian is unique and the factory draws it from a small word
     # list, so bundles created side by side collide unless it is spelled out.
     pengiriman_kwargs = {'periode_penyampaian': f'QC {next(_PENYAMPAIAN_SEQ)}'}
@@ -702,6 +717,25 @@ def _upstream_bundle(status_tiket, pmde_user=None, jenis_tabel=None, **baris):
     return {'tiket': tiket, 'pmde_user': pmde_user}
 
 
+def _selesai_bundle(days_ago=5, pmde_user=None, jenis_tabel=None, sudah_qc=250,
+                    action=TiketActionType.SELESAI, status=STATUS_SELESAI):
+    """A tiket closed `days_ago` days ago, with a PMDE PIC on it.
+
+    Completion is the SELESAI action rather than a column on the tiket, so the
+    bundle writes one — which is what the 90 day window is read from.
+    """
+    bundle = _upstream_bundle(
+        status, pmde_user=pmde_user, jenis_tabel=jenis_tabel, sudah_qc=sudah_qc,
+    )
+    TiketAction.objects.create(
+        id_tiket=bundle['tiket'],
+        id_user=bundle['pmde_user'],
+        timestamp=timezone.now() - timedelta(days=days_ago),
+        action=action,
+    )
+    return bundle
+
+
 def _seeded_kinds():
     """The three jenis tabel the reference table is seeded with by migration."""
     return [
@@ -710,13 +744,22 @@ def _seeded_kinds():
     ]
 
 
-def _entries(section):
-    """A summary section's breakdown, keyed by jenis tabel name."""
-    return {entry['name']: entry for entry in section['breakdown']}
+def _entries(section, split='jenis_tabel'):
+    """One of a summary section's splits, keyed by entry name."""
+    return {entry['name']: entry for entry in section['splits'][split]}
+
+
+def _counts(entry):
+    """An entry's counted figures, without the weighted load beside them.
+
+    The load is asserted where it is the subject (see TestIndeksBeban); every
+    other test is about the counting and says so by leaving it out.
+    """
+    return {key: entry[key] for key in ('name', 'tikets', 'baris')}
 
 
 class SummaryEndpoint:
-    """Shared access to the summary payload's three sections."""
+    """Shared access to the summary payload's sections."""
 
     url = 'quality_control_data'
 
@@ -780,9 +823,7 @@ class TestQualityControlSummary(SummaryEndpoint):
         client.force_login(bundle['pmde_user'])
 
         payload = self._summary(client)
-        assert payload['p3de'] == {
-            'tikets': 1, 'baris': 500, 'breakdown': payload['p3de']['breakdown'],
-        }
+        assert (payload['p3de']['tikets'], payload['p3de']['baris']) == (1, 500)
         assert payload['pide']['tikets'] == 0
 
     @pytest.mark.parametrize('status', list(STATUSES_DI_PIDE))
@@ -897,14 +938,9 @@ class TestQualityControlSummary(SummaryEndpoint):
 
 @pytest.mark.django_db
 class TestSummaryBreakdown(SummaryEndpoint):
-    """The QC section's split by jenis tabel, and the totals of the other two.
+    """Every section's split by jenis tabel — the detail lines under a PIC."""
 
-    Only the queue this page lists is split: the upstream sections answer how
-    much is coming rather than how it will be handled, so they are the tiket and
-    row totals alone — see SUMMARY_SECTIONS.
-    """
-
-    def test_the_upstream_sections_carry_no_split(self, client):
+    def test_every_section_carries_the_split(self, client):
         identified, unidentified, unstructured = _seeded_kinds()
         first = _upstream_bundle(
             STATUS_DIREKAM, jenis_tabel=identified, baris_lengkap=500,
@@ -922,26 +958,42 @@ class TestSummaryBreakdown(SummaryEndpoint):
         client.force_login(user)
 
         payload = self._summary(client)
-        # The totals are still every tiket and every row of them, whatever
-        # jenis tabel each is.
+        entries = _entries(payload['p3de'])
+        assert _counts(entries['Diidentifikasi']) == {
+            'name': 'Diidentifikasi', 'tikets': 2, 'baris': 800,
+        }
+        assert entries['Tidak Diidentifikasi']['baris'] == 900
+        assert entries['Tidak Terstruktur']['baris'] == 40
+        # The split accounts for the headline exactly.
         assert payload['p3de']['tikets'] == 4
         assert payload['p3de']['baris'] == 1740
-        for key in ('p3de', 'pide'):
-            assert payload[key]['breakdown'] == []
-            for row in payload['rows']:
-                assert row['sections'][key]['breakdown'] == []
+        # And every section is split every way, in the same order, so a detail
+        # line can be read straight across.
+        for key in ('qc', 'p3de', 'pide', 'selesai'):
+            assert set(payload[key]['splits']) == {'jenis_tabel', 'kategori_wilayah'}
+            for split in ('jenis_tabel', 'kategori_wilayah'):
+                assert [entry['name'] for entry in payload[key]['splits'][split]] == [
+                    entry['name'] for entry in payload['p3de']['splits'][split]
+                ]
 
-    def test_the_pide_section_uses_the_identified_row_count(self, client):
+    def test_the_pide_breakdown_uses_the_identified_row_count(self, client):
+        identified, unidentified, _unstructured = _seeded_kinds()
         first = _upstream_bundle(
-            STATUS_IDENTIFIKASI, baris_lengkap=900, baris_i=200, baris_u=700,
+            STATUS_IDENTIFIKASI, jenis_tabel=identified,
+            baris_lengkap=900, baris_i=200, baris_u=700,
         )
         _upstream_bundle(
-            STATUS_DIKIRIM_KE_PIDE, pmde_user=first['pmde_user'], baris_lengkap=500,
+            STATUS_DIKIRIM_KE_PIDE, pmde_user=first['pmde_user'],
+            jenis_tabel=unidentified, baris_lengkap=500,
         )
         client.force_login(first['pmde_user'])
 
+        pide = self._section(client, 'pide')
+        entries = _entries(pide)
         # Split recorded, so baris I; split still empty, so baris lengkap.
-        assert self._section(client, 'pide')['baris'] == 700
+        assert entries['Diidentifikasi']['baris'] == 200
+        assert entries['Tidak Diidentifikasi']['baris'] == 500
+        assert pide['baris'] == 700
 
     def test_splits_qc_tikets_and_rows_per_jenis_tabel(self, client):
         identified, unidentified, _unstructured = _seeded_kinds()
@@ -952,10 +1004,10 @@ class TestSummaryBreakdown(SummaryEndpoint):
 
         qc = self._section(client, 'qc')
         entries = _entries(qc)
-        assert entries['Diidentifikasi'] == {
+        assert _counts(entries['Diidentifikasi']) == {
             'name': 'Diidentifikasi', 'tikets': 2, 'baris': 85,
         }
-        assert entries['Tidak Diidentifikasi'] == {
+        assert _counts(entries['Tidak Diidentifikasi']) == {
             'name': 'Tidak Diidentifikasi', 'tikets': 1, 'baris': 10,
         }
         assert qc['tikets'] == 3
@@ -972,9 +1024,9 @@ class TestSummaryBreakdown(SummaryEndpoint):
         # own, and a section lists whatever the reference table holds.
         seeded = ['Diidentifikasi', 'Tidak Diidentifikasi', 'Tidak Terstruktur']
         qc = self._section(client, 'qc')
-        names = [entry['name'] for entry in qc['breakdown']]
+        names = [entry['name'] for entry in qc['splits']['jenis_tabel']]
         assert [name for name in names if name in seeded] == seeded
-        assert _entries(qc)['Diidentifikasi'] == {
+        assert _counts(_entries(qc)['Diidentifikasi']) == {
             'name': 'Diidentifikasi', 'tikets': 0, 'baris': 0,
         }
 
@@ -992,7 +1044,7 @@ class TestSummaryBreakdown(SummaryEndpoint):
         client.force_login(user)
 
         payload = self._summary(client)
-        assert _entries(payload['qc'])['Diidentifikasi'] == {
+        assert _counts(_entries(payload['qc'])['Diidentifikasi']) == {
             'name': 'Diidentifikasi', 'tikets': 1, 'baris': 60,
         }
         assert (payload['p3de']['tikets'], payload['p3de']['baris']) == (1, 500)
@@ -1026,6 +1078,24 @@ class TestSummaryBreakdown(SummaryEndpoint):
         assert sum(row['sections']['qc']['baris'] for row in rows) == payload['qc']['baris']
         assert first['pmde_user'].get_full_name() in {row['name'] for row in rows}
 
+    def test_it_also_splits_by_the_kategori_wilayah_of_the_ilap(self, client):
+        """The same tikets counted by reach rather than by handling."""
+        regional = KategoriWilayah.objects.get(deskripsi='Regional')
+        nasional = KategoriWilayah.objects.get(deskripsi='Nasional')
+        first = _qc_bundle(belum_qc=500, kategori_wilayah=regional)
+        _qc_bundle(pmde_user=first['pmde_user'], belum_qc=300, kategori_wilayah=regional)
+        _qc_bundle(pmde_user=first['pmde_user'], belum_qc=40, kategori_wilayah=nasional)
+        client.force_login(first['pmde_user'])
+
+        qc = self._section(client, 'qc')
+        entries = _entries(qc, 'kategori_wilayah')
+        assert _counts(entries['Regional']) == {'name': 'Regional', 'tikets': 2, 'baris': 800}
+        assert _counts(entries['Nasional']) == {'name': 'Nasional', 'tikets': 1, 'baris': 40}
+        # Both splits account for the same headline, being the same tikets
+        # counted two ways.
+        assert sum(e['baris'] for e in qc['splits']['kategori_wilayah']) == qc['baris']
+        assert sum(e['baris'] for e in qc['splits']['jenis_tabel']) == qc['baris']
+
     def test_a_tiket_matched_twice_by_a_join_is_counted_once(self, client):
         """Filtering through a to-many join must not double a breakdown row."""
         identified, _unidentified, _unstructured = _seeded_kinds()
@@ -1042,9 +1112,231 @@ class TestSummaryBreakdown(SummaryEndpoint):
 
         ids = ','.join(str(dh.pk) for dh in DasarHukum.objects.all())
         qc = self._section(client, 'qc', dasar_hukum=ids)
-        assert _entries(qc)['Diidentifikasi'] == {
+        assert _counts(_entries(qc)['Diidentifikasi']) == {
             'name': 'Diidentifikasi', 'tikets': 1, 'baris': 500,
         }
+
+
+@pytest.mark.django_db
+class TestSummarySelesai(SummaryEndpoint):
+    """The quarter of finished work on the right of the table."""
+
+    def test_counts_tikets_closed_inside_the_window(self, client):
+        first = _selesai_bundle(days_ago=1, sudah_qc=250)
+        _selesai_bundle(days_ago=89, pmde_user=first['pmde_user'], sudah_qc=150)
+        client.force_login(first['pmde_user'])
+
+        selesai = self._section(client, 'selesai')
+        assert selesai['tikets'] == 2
+        # The rows checked, which is the work the quarter actually took.
+        assert selesai['baris'] == 400
+
+    def test_a_tiket_closed_before_the_window_is_left_out(self, client):
+        bundle = _selesai_bundle(days_ago=91)
+        client.force_login(bundle['pmde_user'])
+        assert self._section(client, 'selesai')['tikets'] == 0
+
+    def test_a_tiket_still_in_the_queue_is_not_counted_as_finished(self, client):
+        """The SELESAI action alone is not enough — a reopened tiket is where it
+        is now, not where it has been."""
+        bundle = _selesai_bundle(days_ago=2, status=STATUS_PENGENDALIAN_MUTU)
+        client.force_login(bundle['pmde_user'])
+
+        payload = self._summary(client)
+        assert payload['selesai']['tikets'] == 0
+        assert payload['qc']['tikets'] == 1
+
+    def test_a_finished_tiket_without_the_action_is_left_out(self, client):
+        """Closed before the log recorded it, so there is no date to place it by."""
+        bundle = _selesai_bundle(days_ago=2, action=TiketActionType.PENGENDALIAN_MUTU)
+        client.force_login(bundle['pmde_user'])
+        assert self._section(client, 'selesai')['tikets'] == 0
+
+    def test_it_splits_by_jenis_tabel_like_every_other_section(self, client):
+        identified, unidentified, _unstructured = _seeded_kinds()
+        first = _selesai_bundle(jenis_tabel=identified, sudah_qc=250)
+        _selesai_bundle(
+            pmde_user=first['pmde_user'], jenis_tabel=unidentified, sudah_qc=90,
+        )
+        client.force_login(first['pmde_user'])
+
+        entries = _entries(self._section(client, 'selesai'))
+        assert entries['Diidentifikasi']['baris'] == 250
+        assert entries['Tidak Diidentifikasi']['baris'] == 90
+
+    def test_it_lands_on_the_pic_line_and_follows_the_filter(self, client):
+        first = _selesai_bundle()
+        other = _selesai_bundle()
+        client.force_login(_kasi_pmde_user())
+
+        rows = {row['name']: row for row in self._summary(client)['rows']}
+        assert rows[first['pmde_user'].get_full_name()]['sections']['selesai']['tikets'] == 1
+
+        narrowed = self._summary(client, nomor_tiket=other['tiket'].nomor_tiket)
+        assert [row['name'] for row in narrowed['rows']] == [
+            other['pmde_user'].get_full_name()
+        ]
+        assert narrowed['selesai']['tikets'] == 1
+
+    def test_the_jatuh_tempo_filter_leaves_it_alone(self, client):
+        """Its deadline is long past, so the filter would empty it, not narrow it."""
+        qc_bundle = _jatuh_tempo_bundle(5)
+        _selesai_bundle(pmde_user=qc_bundle['pmde_user'])
+        client.force_login(qc_bundle['pmde_user'])
+
+        payload = self._summary(client, jatuh_tempo='10')
+        assert payload['qc']['tikets'] == 1
+        assert payload['selesai']['tikets'] == 1
+
+
+@pytest.mark.django_db
+class TestIndeksBeban(SummaryEndpoint):
+    """The weighted load the table sorts by.
+
+    Every case builds the same rows twice, differing in one factor, and asserts
+    the ratio between the two loads — which is what the weights actually claim.
+    The numbers themselves are meant to be edited, so nothing here pins one.
+    """
+
+    def _beban(self, client, **filters):
+        return self._summary(client, **filters)['rows'][0]['beban']
+
+    def test_the_tiket_count_does_not_enter_it(self, client):
+        """QC is done row by row, so one large tiket is many small ones."""
+        identified, _u, _t = _seeded_kinds()
+        one = _qc_bundle(jenis_tabel=identified, belum_qc=900)
+        client.force_login(one['pmde_user'])
+        single = self._beban(client)
+
+        split_user = _qc_bundle(jenis_tabel=identified, belum_qc=300)['pmde_user']
+        for _ in range(2):
+            _qc_bundle(pmde_user=split_user, jenis_tabel=identified, belum_qc=300)
+        client.force_login(split_user)
+
+        assert self._beban(client) == single
+
+    def test_diidentifikasi_weighs_more_than_the_others(self, client):
+        identified, unidentified, unstructured = _seeded_kinds()
+        loads = {}
+        for kind in (identified, unidentified, unstructured):
+            bundle = _qc_bundle(jenis_tabel=kind, belum_qc=1000)
+            client.force_login(bundle['pmde_user'])
+            loads[kind.deskripsi] = self._beban(client)
+
+        assert loads['Diidentifikasi'] > loads['Tidak Diidentifikasi']
+        assert loads['Diidentifikasi'] > loads['Tidak Terstruktur']
+
+    def test_regional_weighs_more_than_the_wider_reaches(self, client):
+        loads = {}
+        for name in ('Regional', 'Nasional', 'Internasional'):
+            wilayah = KategoriWilayah.objects.get(deskripsi=name)
+            bundle = _qc_bundle(kategori_wilayah=wilayah, belum_qc=1000)
+            client.force_login(bundle['pmde_user'])
+            loads[name] = self._beban(client)
+
+        assert loads['Regional'] > loads['Nasional']
+        assert loads['Regional'] > loads['Internasional']
+
+    def test_prioritas_weighs_more(self, client):
+        plain = _qc_bundle(with_prioritas=False, belum_qc=1000)
+        client.force_login(plain['pmde_user'])
+        without = self._beban(client)
+
+        urgent = _qc_bundle(with_prioritas=True, belum_qc=1000)
+        client.force_login(urgent['pmde_user'])
+
+        assert self._beban(client) == pytest.approx(without * PRIORITAS_WEIGHT)
+
+    def test_the_queue_in_hand_weighs_most(self, client):
+        """The same rows count for less the further upstream they still are."""
+        loads = {}
+        in_hand = _qc_bundle(belum_qc=1000)
+        client.force_login(in_hand['pmde_user'])
+        loads['qc'] = self._beban(client)
+
+        for key, status in (('pide', STATUS_IDENTIFIKASI), ('p3de', STATUS_DIREKAM)):
+            bundle = _upstream_bundle(status, baris_lengkap=1000)
+            client.force_login(bundle['pmde_user'])
+            loads[key] = self._beban(client)
+
+        done = _selesai_bundle(sudah_qc=1000)
+        client.force_login(done['pmde_user'])
+        loads['selesai'] = self._beban(client)
+
+        assert loads['qc'] > loads['pide'] > loads['p3de'] > loads['selesai'] > 0
+
+    def test_it_is_the_sum_of_every_queue(self, client):
+        """A PIC's load is their whole line, not the queue this page lists."""
+        bundle = _qc_bundle(belum_qc=1000)
+        user = bundle['pmde_user']
+        client.force_login(user)
+        qc_only = self._beban(client)
+
+        _upstream_bundle(STATUS_DIREKAM, pmde_user=user, baris_lengkap=1000)
+        _selesai_bundle(pmde_user=user, sudah_qc=1000)
+
+        assert self._beban(client) > qc_only
+
+    def test_a_detail_line_carries_its_share_of_the_load(self, client):
+        identified, unidentified, _t = _seeded_kinds()
+        first = _qc_bundle(jenis_tabel=identified, belum_qc=1000)
+        _qc_bundle(pmde_user=first['pmde_user'], jenis_tabel=unidentified, belum_qc=1000)
+        client.force_login(first['pmde_user'])
+
+        row = self._summary(client)['rows'][0]
+        detail = dict(zip(
+            [entry['name'] for entry in row['sections']['qc']['splits']['jenis_tabel']],
+            row['detail']['jenis_tabel'],
+        ))
+        assert detail['Diidentifikasi'] > detail['Tidak Diidentifikasi'] > 0
+        # The lines account for the PIC's own figure exactly.
+        assert sum(row['detail']['jenis_tabel']) == row['beban']
+        assert sum(row['detail']['kategori_wilayah']) == row['beban']
+
+    def test_the_total_is_the_sum_of_the_lines(self, client):
+        _qc_bundle(belum_qc=1000)
+        _qc_bundle(belum_qc=500)
+        client.force_login(_kasi_pmde_user())
+
+        payload = self._summary(client)
+        assert payload['beban'] == sum(row['beban'] for row in payload['rows'])
+
+    def test_a_tiket_with_no_rows_left_adds_nothing(self, client):
+        bundle = _qc_bundle(belum_qc=0)
+        client.force_login(bundle['pmde_user'])
+        assert self._beban(client) == 0
+
+    def test_the_page_explains_how_it_is_worked_out(self, client):
+        """The panel is built from the weights themselves, so a weight edited in
+        the view changes what the page says about itself.
+
+        Only the names are asserted, not the figures: they are rendered through
+        the Indonesian locale, and pinning their formatting here would break on
+        a setting that has nothing to do with the weights.
+        """
+        bundle = _qc_bundle()
+        client.force_login(bundle['pmde_user'])
+        html = client.get(reverse('quality_control')).content.decode()
+
+        assert 'id="sq-beban-info"' in html
+        assert 'Indeks Beban = ' in html
+        for name in JENIS_TABEL_WEIGHTS:
+            assert name in html
+        for name in KATEGORI_WILAYAH_WEIGHTS:
+            assert name in html
+        assert 'Prioritas saat diterima' in html
+        # Opened by its own control rather than shown outright.
+        assert 'class="collapse sq-beban-info"' in html
+        assert 'sq-beban-info-toggle' in html
+
+    def test_the_filters_narrow_it(self, client):
+        first = _qc_bundle(belum_qc=1000)
+        _qc_bundle(pmde_user=first['pmde_user'], belum_qc=1000)
+        client.force_login(first['pmde_user'])
+
+        whole = self._beban(client)
+        narrowed = self._beban(client, nomor_tiket=first['tiket'].nomor_tiket)
+        assert narrowed == pytest.approx(whole / 2)
 
 
 @pytest.mark.django_db
@@ -1065,7 +1357,7 @@ class TestSummaryPerPic(SummaryEndpoint):
             mine['pmde_user'].get_full_name(), theirs['pmde_user'].get_full_name(),
         }
         for row in rows.values():
-            assert set(row['sections']) == {'qc', 'p3de', 'pide'}
+            assert set(row['sections']) == {'qc', 'p3de', 'pide', 'selesai'}
 
         theirs_row = rows[theirs['pmde_user'].get_full_name()]
         assert theirs_row['sections']['qc']['baris'] == 60
@@ -1084,10 +1376,12 @@ class TestSummaryPerPic(SummaryEndpoint):
         # Zeroed, not blank: the empty QC section still lists every jenis tabel,
         # in the order the line that does hold tikets lists them.
         held = rows[with_qc['pmde_user'].get_full_name()]['sections']['qc']
-        assert [entry['name'] for entry in row['sections']['qc']['breakdown']] == [
-            entry['name'] for entry in held['breakdown']
-        ]
-        assert all(entry['tikets'] == 0 for entry in row['sections']['qc']['breakdown'])
+        for split in ('jenis_tabel', 'kategori_wilayah'):
+            empty = row['sections']['qc']['splits'][split]
+            assert [entry['name'] for entry in empty] == [
+                entry['name'] for entry in held['splits'][split]
+            ]
+            assert all(entry['tikets'] == 0 for entry in empty)
 
     def test_each_line_splits_its_sections_by_jenis_tabel(self, client):
         identified, unidentified, _unstructured = _seeded_kinds()
@@ -1097,10 +1391,10 @@ class TestSummaryPerPic(SummaryEndpoint):
 
         row = self._rows(client)[first['pmde_user'].get_full_name()]
         entries = _entries(row['sections']['qc'])
-        assert entries['Diidentifikasi'] == {
+        assert _counts(entries['Diidentifikasi']) == {
             'name': 'Diidentifikasi', 'tikets': 1, 'baris': 60,
         }
-        assert entries['Tidak Diidentifikasi'] == {
+        assert _counts(entries['Tidak Diidentifikasi']) == {
             'name': 'Tidak Diidentifikasi', 'tikets': 1, 'baris': 10,
         }
 
@@ -1152,21 +1446,27 @@ class TestSummaryPerPic(SummaryEndpoint):
         assert f'/profil-pic/{bundle["pmde_user"].username}/' in row['pic']
 
     def test_the_page_heads_the_table_with_the_reference_jenis_tabel(self, client):
-        """The sub columns are the reference table, so a new kind gets a column.
+        """The detail lines are the reference table, so a new kind gets a line.
 
-        Nothing else ties the header to the figures under it: both are built
-        from `jenis_tabel_kinds`, and a header spelled out in the markup would
+        Nothing else ties the names to the figures beside them: both are built
+        from `jenis_tabel_kinds`, and a list spelled out in the markup would
         silently mislabel every line the day a jenis tabel is added.
         """
         bundle = _qc_bundle()
         client.force_login(bundle['pmde_user'])
         html = client.get(reverse('quality_control')).content.decode()
 
-        for label in ('Nama PIC', 'Pengendalian Mutu', 'Masih di P3DE', 'Masih di PIDE',
-                      'Tiket', 'Baris Data'):
+        for label in ('Beban Kerja', 'Nama PIC', 'Proses QC', 'Masih di P3DE',
+                      'Masih di PIDE', 'Selesai QC 90 Hari Terakhir',
+                      'Tiket', 'Baris Data', 'Jenis Tabel', 'Kategori Wilayah'):
             assert label in html
         for kind in JenisTabel.objects.values_list('deskripsi', flat=True):
             assert kind in html
+        for wilayah in KategoriWilayah.objects.values_list('deskripsi', flat=True):
+            assert wilayah in html
         # The JS fills a line's cells in this order; the header above them was
         # rendered from the same list.
-        assert 'data-summary-sections="qc,p3de,pide"' in html
+        assert 'data-summary-sections="qc,p3de,pide,selesai"' in html
+        assert 'data-summary-variants="own,upstream,upstream-alt,done"' in html
+        # The table opens on the heaviest QC load rather than alphabetically.
+        assert 'data-summary-sort="beban" data-summary-sort-desc="1"' in html
