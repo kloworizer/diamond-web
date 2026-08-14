@@ -31,6 +31,7 @@ from ..constants.tiket_status import STATUS_DIKIRIM_KE_PIDE, STATUS_IDENTIFIKASI
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from ..models.jenis_prioritas_data import JenisPrioritasData
 from ..models.jenis_tabel import JenisTabel
+from ..models.kategori_wilayah import KategoriWilayah
 from ..models.status_penelitian import StatusPenelitian
 from ..models.tiket_pic import TiketPIC
 from ..utils.pic_profil import pic_display_name, pic_profil_link
@@ -700,76 +701,301 @@ def jenis_tabel_kinds():
     return list(JenisTabel.objects.order_by('id').values_list('id', 'deskripsi'))
 
 
-def _empty_section(kinds):
-    """A section with every jenis tabel present and nothing counted yet.
+class Split:
+    """One dimension a queue's figures are broken down along.
 
-    Every jenis tabel in `kinds` gets an entry, including the ones with nothing
-    pending: a zero there is a fact worth reading, and an entry that vanished
-    under a filter would shuffle the ones around it.
+    A queue answers more than one question about the same tikets — what kind of
+    table their data is, what sort of wilayah their ILAP covers — and each is
+    the same figures counted a different way. A split names one of those
+    questions: where to read a tiket's answer from, and every answer there is,
+    so the ones nothing landed in still get a line.
+
+    Args:
+        key: The payload key its entries come back under.
+        label: What to call the dimension where it is shown.
+        path: The field path holding the id of the entry a tiket belongs to.
+        entries: `(id, name)` pairs, in the order the lines should read.
+    """
+
+    def __init__(self, key, label, path, entries):
+        self.key = key
+        self.label = label
+        self.path = path
+        self.entries = entries
+
+
+def jenis_tabel_split():
+    """The split by jenis tabel — what decides how a tiket's data is handled.
+
+    Read fresh for each page's summary, so every section of it reads its lines
+    in the same order and they can be compared straight across.
+    """
+    return Split(
+        'jenis_tabel', 'Jenis Tabel', f'{SUB}__id_jenis_tabel__id',
+        list(JenisTabel.objects.order_by('id').values_list('id', 'deskripsi')),
+    )
+
+
+def kategori_wilayah_split():
+    """The split by the kategori wilayah of the tiket's ILAP.
+
+    The same tikets counted by reach rather than by handling — regional,
+    nasional, internasional — which is the other question asked of a load.
+    """
+    return Split(
+        'kategori_wilayah', 'Kategori Wilayah', f'{ILAP}__id_kategori_wilayah__id',
+        list(KategoriWilayah.objects.order_by('id').values_list('id', 'deskripsi')),
+    )
+
+
+def prioritas_windows():
+    """Every prioritas period, grouped by the sub jenis data it applies to.
+
+    Read once for a whole summary rather than asked per tiket. Whether a tiket
+    was prioritas is an EXISTS over a date range, and asking it of every row of
+    four queues is thousands of correlated subqueries; the table it would ask is
+    a few hundred rows, so the whole of it is carried in memory instead and the
+    question answered in Python.
+    """
+    windows = defaultdict(list)
+    rows = JenisPrioritasData.objects.values_list(
+        'id_sub_jenis_data_ilap', 'start_date', 'end_date',
+    )
+    for sub_id, start_date, end_date in rows:
+        windows[sub_id].append((start_date, end_date))
+    return windows
+
+
+def _was_prioritas(windows, sub_id, tgl_terima_dip):
+    """Whether the data was prioritas on the day the tiket was received.
+
+    The same rule :func:`prioritas_exists` applies in SQL — a window covering
+    tgl_terima_dip — answered against the windows read up front.
+    """
+    if tgl_terima_dip is None:
+        return False
+    day = tgl_terima_dip.date() if hasattr(tgl_terima_dip, 'date') else tgl_terima_dip
+    for start_date, end_date in windows.get(sub_id, ()):
+        if start_date <= day and (end_date is None or end_date >= day):
+            return True
+    return False
+
+
+class Weighting:
+    """How heavy a tiket's rows are, over and above how many there are.
+
+    A queue's size is not its load. The same thousand rows are more work when
+    they have to be identified field by field, more when they belong to a
+    regional ILAP that has to be checked back against the unit that sent it,
+    more when the data was prioritas on arrival, and more when they are in front
+    of the PIC now rather than still upstream. Each of those is a factor on the
+    row count, and their product is what this returns.
+
+    The tiket count is deliberately absent: quality control is done row by row,
+    so one tiket of a million rows is a thousand tikets of a thousand.
+
+    Args:
+        section_weight: How much this queue counts for against the others.
+        entry_weights: One `{entry_id: weight}` mapping per split, in the order
+            of the splits it will be scored against.
+        default_weight: The weight of a value none of those mappings names — a
+            reference row added since, or a tiket with none set.
+        prioritas_weight: The factor applied when the data was prioritas.
+        windows: The lookup from :func:`prioritas_windows`.
+        deadline: The :class:`Deadline` this queue is counted against, when it
+            has one. Only the queue a seksi is actually working has a deadline
+            of its own — what is still upstream has not started its count, and
+            what is finished is long past it — so the other queues pass None and
+            are scored without the jatuh tempo term.
+        jatuh_tempo_weights: `(days, weight)` pairs, heaviest first, applied to
+            the first one the tiket's jatuh tempo falls under. A tiket past its
+            deadline has a negative jatuh tempo, so it falls under every band
+            and takes the first.
+    """
+
+    def __init__(self, section_weight, entry_weights, default_weight,
+                 prioritas_weight, windows, deadline=None,
+                 jatuh_tempo_weights=()):
+        self.section_weight = section_weight
+        self.entry_weights = entry_weights
+        self.default_weight = default_weight
+        self.prioritas_weight = prioritas_weight
+        self.windows = windows
+        self.deadline = deadline
+        self.jatuh_tempo_weights = jatuh_tempo_weights
+
+    @property
+    def fields(self):
+        """The columns a scored row carries beyond the ones already read."""
+        fields = [SUB, 'tgl_terima_dip']
+        if self.deadline is not None:
+            fields += [
+                self.deadline.start_field, self.deadline.restart_field, 'active_durasi',
+            ]
+        return fields
+
+    def annotate(self, qs):
+        """Add whatever the score reads that is not a plain column."""
+        return self.deadline.annotate_durasi(qs) if self.deadline is not None else qs
+
+    def _jatuh_tempo_weight(self, start_value, restart_value, durasi):
+        """The factor for how close this tiket's deadline is.
+
+        A tiket with no deadline to count — no durasi covers its base date — is
+        left at 1: nothing is known about its urgency, and guessing at it would
+        move a PIC up the table for a gap in the reference data.
+        """
+        deadline_day = self.deadline.day(start_value, restart_value, durasi)
+        if deadline_day is None:
+            return 1.0
+        sisa_hari = (deadline_day - date.today()).days
+        for days, weight in self.jatuh_tempo_weights:
+            if sisa_hari < days:
+                return weight
+        return 1.0
+
+    def score(self, baris, entry_ids, extras):
+        """The weighted load of one tiket, zero when it carries no rows.
+
+        Args:
+            extras: The values of :attr:`fields`, in that order.
+        """
+        if not baris:
+            return 0.0
+        weight = self.section_weight
+        for weights, entry_id in zip(self.entry_weights, entry_ids):
+            weight *= weights.get(entry_id, self.default_weight)
+        if _was_prioritas(self.windows, extras[0], extras[1]):
+            weight *= self.prioritas_weight
+        if self.deadline is not None:
+            weight *= self._jatuh_tempo_weight(*extras[2:5])
+        return baris * weight
+
+
+def _empty_section(splits):
+    """A section with every entry of every split present and nothing counted.
+
+    Every entry gets a place, including the ones with nothing pending: a zero
+    there is a fact worth reading, and a line that vanished under a filter would
+    shuffle the ones around it.
     """
     return {
         'tikets': 0,
         'baris': 0,
-        'breakdown': {
-            kind_id: {'name': deskripsi, 'tikets': 0, 'baris': 0}
-            for kind_id, deskripsi in kinds
+        'beban': 0.0,
+        'splits': {
+            split.key: {
+                entry_id: {'name': name, 'tikets': 0, 'baris': 0, 'beban': 0.0}
+                for entry_id, name in split.entries
+            }
+            for split in splits
         },
     }
 
 
-def _count_tiket(section, jenis_tabel_id, baris):
-    """Add one tiket and its rows to `section`.
+def _count_tiket(section, split_keys, entry_ids, baris, beban):
+    """Add one tiket, its rows and its weighted load to `section`.
 
-    A tiket whose jenis tabel is not one of the section's kinds — an unset one,
-    or a reference row read after the section was built — still counts towards
-    the totals, since it is a tiket in the queue, but has no entry to land in.
+    A tiket whose value on a split is not one of that split's entries — an unset
+    one, or a reference row read after the section was built — still counts
+    towards the totals, since it is a tiket in the queue, but has no line to
+    land in there.
     """
     section['tikets'] += 1
     section['baris'] += baris
-    entry = section['breakdown'].get(jenis_tabel_id)
-    if entry is not None:
-        entry['tikets'] += 1
-        entry['baris'] += baris
+    section['beban'] += beban
+    for key, entry_id in zip(split_keys, entry_ids):
+        entry = section['splits'][key].get(entry_id)
+        if entry is not None:
+            entry['tikets'] += 1
+            entry['baris'] += baris
+            entry['beban'] += beban
 
 
 def _finished(section):
-    """The payload shape of a section, its breakdown as a list in kinds order."""
+    """The payload shape of a section, each split's entries as an ordered list.
+
+    The load is rounded on the way out: it is an index built from ratios, and
+    the digits past the point would read as a precision it does not have.
+    """
     return {
         'tikets': section['tikets'],
         'baris': section['baris'],
-        'breakdown': list(section['breakdown'].values()),
+        'beban': round(section['beban']),
+        'splits': {
+            key: [
+                dict(entry, beban=round(entry['beban'])) for entry in entries.values()
+            ]
+            for key, entries in section['splits'].items()
+        },
     }
 
 
 def queue_breakdown(qs, kinds, baris_fields, baris_of):
     """A queue's tikets and rows, split by the jenis tabel of their data.
 
-    Jenis tabel is what decides how a tiket's data is handled — diidentifikasi,
-    tidak diidentifikasi or tidak terstruktur — so every queue is broken down
-    along it rather than along status.
+    The one-dimension form, for the pages whose summary is a card per queue.
+    Its `breakdown` key is that single split, unwrapped.
 
     Args:
         qs: The tikets to summarise, already filtered.
         kinds: `(id, deskripsi)` pairs, in the order the rows should read.
         baris_fields: Field names to read for the row count.
         baris_of: Callable receiving those fields and returning the row count.
+    """
+    split = Split('jenis_tabel', 'Jenis Tabel', f'{SUB}__id_jenis_tabel__id', kinds)
+    section = _finished(_accumulate(qs, [split], baris_fields, baris_of))
+    return {
+        'tikets': section['tikets'],
+        'baris': section['baris'],
+        'breakdown': section['splits']['jenis_tabel'],
+    }
+
+
+def _row_columns(splits, baris_fields, weighting, *leading):
+    """The columns one pass reads, and where each group of them starts.
+
+    Named here once because the reader and the loop have to agree on the layout
+    of a tuple that changes with the splits it was asked for.
+    """
+    columns = list(leading)
+    columns += [split.path for split in splits]
+    columns += list(baris_fields)
+    if weighting is not None:
+        columns += weighting.fields
+    return columns
+
+
+def _accumulate(qs, splits, baris_fields, baris_of, weighting=None):
+    """Sum `qs` into one working section, split every way `splits` asks.
 
     The rows are read and summed here rather than aggregated in SQL because `id`
     leads each tuple, so the DISTINCT that the to-many filters add collapses a
     tiket matched twice into one row instead of counting it twice.
     """
-    section = _empty_section(kinds)
-    rows = qs.values_list('id', f'{SUB}__id_jenis_tabel__id', *baris_fields)
-    for _tiket_id, jenis_tabel_id, *values in rows:
-        _count_tiket(section, jenis_tabel_id, baris_of(*values))
-    return _finished(section)
+    section = _empty_section(splits)
+    keys = [split.key for split in splits]
+    depth = len(splits)
+    end = 1 + depth + len(baris_fields)
+
+    if weighting is not None:
+        qs = weighting.annotate(qs)
+    rows = qs.values_list(*_row_columns(splits, baris_fields, weighting, 'id'))
+    for row in rows:
+        entry_ids = row[1:1 + depth]
+        baris = baris_of(*row[1 + depth:end])
+        beban = weighting.score(baris, entry_ids, row[end:]) if weighting else 0.0
+        _count_tiket(section, keys, entry_ids, baris, beban)
+    return section
 
 
-def queue_breakdown_per_pic(qs, kinds, baris_fields, baris_of, role):
-    """:func:`queue_breakdown` again, one section per PIC of `role`.
+def queue_breakdown_per_pic(qs, splits, baris_fields, baris_of, role, weighting=None):
+    """:func:`_accumulate` again, one section per PIC of `role`.
 
     Args:
-        role: The PIC role the queue is split by.
+        role: The PIC role the queue is grouped by.
+        weighting: The :class:`Weighting` scoring this queue's load, or None to
+            count rows without weighing them.
 
     Returns:
         tuple: `({pic_id: section}, total_section)`, where a `pic_id` of None
@@ -779,17 +1005,25 @@ def queue_breakdown_per_pic(qs, kinds, baris_fields, baris_of, role):
         queue once instead of twice.
     """
     per_pic = {}
-    total = _empty_section(kinds)
+    total = _empty_section(splits)
+    keys = [split.key for split in splits]
+    depth = len(splits)
+    end = 2 + depth + len(baris_fields)
 
+    if weighting is not None:
+        qs = weighting.annotate(qs)
     rows = qs.annotate(pic_id=pic_id_expr(role)).values_list(
-        'id', 'pic_id', f'{SUB}__id_jenis_tabel__id', *baris_fields,
+        *_row_columns(splits, baris_fields, weighting, 'id', 'pic_id')
     )
-    for _tiket_id, pic_id, jenis_tabel_id, *values in rows:
-        baris = baris_of(*values)
-        _count_tiket(total, jenis_tabel_id, baris)
+    for row in rows:
+        pic_id = row[1]
+        entry_ids = row[2:2 + depth]
+        baris = baris_of(*row[2 + depth:end])
+        beban = weighting.score(baris, entry_ids, row[end:]) if weighting else 0.0
+        _count_tiket(total, keys, entry_ids, baris, beban)
         if pic_id not in per_pic:
-            per_pic[pic_id] = _empty_section(kinds)
-        _count_tiket(per_pic[pic_id], jenis_tabel_id, baris)
+            per_pic[pic_id] = _empty_section(splits)
+        _count_tiket(per_pic[pic_id], keys, entry_ids, baris, beban)
 
     return {pic_id: _finished(section) for pic_id, section in per_pic.items()}, _finished(total)
 
@@ -808,11 +1042,12 @@ def pic_summary(sections, role, can_view, no_pic_label):
     between one PIC and the next would not be a table.
 
     Args:
-        sections: `{key: (qs, kinds, baris_fields, baris_of)}`, one entry per
-            column group, in the order the groups are rendered. A section is
-            split by the `kinds` it is given and by no others, so one passing an
-            empty tuple is the tiket and row totals alone — which is what a
-            group of two columns wants, and what its page renders.
+        sections: `{key: (qs, splits, baris_fields, baris_of, weighting)}`, one
+            entry per column group, in the order the groups are rendered. A
+            section is broken down by the :class:`Split` list it is given and by
+            no others, so one passing an empty list is the tiket and row totals
+            alone; `weighting` is the :class:`Weighting` scoring its load, or
+            None to leave the load at zero.
         role: The PIC role the lines are keyed by.
         can_view: The predicate from `pic_profil_visibility`, deciding whether a
             name is rendered as a link to its Profil PIC page.
@@ -820,13 +1055,13 @@ def pic_summary(sections, role, can_view, no_pic_label):
 
     Returns:
         tuple: `(rows, totals)` — the per-PIC lines, and `{key: section}` for
-        the line under them.
+        the line under them, with the whole table's load under `beban`.
     """
     per_pic = {}
     totals = {}
-    for key, (qs, kinds, baris_fields, baris_of) in sections.items():
+    for key, (qs, splits, baris_fields, baris_of, weighting) in sections.items():
         per_pic[key], totals[key] = queue_breakdown_per_pic(
-            qs, kinds, baris_fields, baris_of, role,
+            qs, splits, baris_fields, baris_of, role, weighting,
         )
 
     pic_ids = {pic_id for breakdowns in per_pic.values() for pic_id in breakdowns}
@@ -844,18 +1079,36 @@ def pic_summary(sections, role, can_view, no_pic_label):
     rows = []
     for pic_id in ordered:
         user = users.get(pic_id)
+        row_sections = {
+            key: per_pic[key].get(pic_id) or _finished(_empty_section(section[1]))
+            for key, section in sections.items()
+        }
         rows.append({
             'name': pic_display_name(user) if user else no_pic_label,
             # Linked to the Profil PIC page, like every other name in the app;
             # the line with no PIC behind it is plain text, there being nobody
             # for it to lead to.
             'pic': pic_profil_link(user, can_view) if user else escape(no_pic_label),
-            'sections': {
-                key: per_pic[key].get(pic_id) or _finished(_empty_section(kinds))
-                for key, (_qs, kinds, _fields, _of) in sections.items()
-            },
+            'sections': row_sections,
+            # A PIC's whole load is what the queues add up to, and a detail
+            # line's is the part of it that line accounts for. Both are summed
+            # across the groups here rather than in the browser, so the column
+            # the table sorts by is a figure the server stands behind.
+            'beban': sum(section['beban'] for section in row_sections.values()),
+            'detail': _detail_beban(row_sections),
         })
-    return rows, totals
+    return rows, dict(totals, beban=sum(total['beban'] for total in totals.values()))
+
+
+def _detail_beban(row_sections):
+    """Each split entry's load, summed across the groups, in entry order."""
+    detail = {}
+    for section in row_sections.values():
+        for key, entries in section['splits'].items():
+            running = detail.setdefault(key, [0] * len(entries))
+            for index, entry in enumerate(entries):
+                running[index] += entry['beban']
+    return detail
 
 
 # ---------------------------------------------------------------------------

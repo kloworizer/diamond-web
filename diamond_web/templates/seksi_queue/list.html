@@ -238,7 +238,13 @@ Blocks a page must fill:
     read one queue at a time, or `seksi_queue/_summary_table.html` once, when
     they are read one PIC at a time with the queues as its columns.
     {% endcomment %}
-    <div class="card mb-3">
+    {% comment %}
+    The card header is the one every other card on this page and the ones either
+    side of it wear: an icon, the title, and whatever action the card offers on
+    the right. A page with no title to give keeps the plain card it had.
+    {% endcomment %}
+    <div class="card stretch stretch-full mb-3">
+        {% block queue_summary_header %}{% endblock %}
         <div class="card-body sq-summary">
             {% block queue_summary %}{% endblock %}
         </div>
@@ -552,6 +558,15 @@ Blocks a page must fill:
         --sq-hue-ink: var(--sq-teal-ink);
     }
 
+    /* Green for the quarter already behind them — the colour this app finishes
+       things in, the one its Selesai badge is drawn in. */
+    .sq-summary-group-done,
+    .sq-summary-table td.sq-cell-done {
+        --sq-hue: var(--sq-green);
+        --sq-hue-soft: var(--sq-green-soft);
+        --sq-hue-ink: var(--sq-green-ink);
+    }
+
     /* The queue names, each with the dot its card carried, so a reader coming
        from the other page recognises which group is this page's own work. */
     .sq-summary-table .sq-summary-group {
@@ -578,20 +593,21 @@ Blocks a page must fill:
         color: #94a3b8;
     }
 
-    /* One rule down the left of every group, in that group's own hue, which is
-       what stops a dozen columns of numbers from reading as one
-       undifferentiated block. */
+    /* A hairline down the left of every group, which is all that is needed to
+       stop the columns reading as one undifferentiated block: the coloured band
+       over each group and the wash under its totals already say where one ends
+       and the next begins, so a heavier rule only competes with the figures. */
     .sq-summary-table .sq-summary-group,
     .sq-summary-table .sq-summary-group-start {
-        border-left: 2px solid var(--sq-hue, #ebeff4);
+        border-left: 1px solid #ebeff4;
     }
 
     /* ---- One hue per jenis tabel ----
-       Inside this page's own group the columns are the jenis tabel, which is a
-       kind of thing rather than a stage of one, so each takes a hue of its own
-       from the same palette. Assigned by position and wrapping after five: the
-       reference table decides how many there are, and a sixth kind repeating a
-       hue is better than a sixth invented colour. */
+       The detail lines under a PIC are the jenis tabel, which is a kind of
+       thing rather than a stage of one, so each takes a hue of its own from the
+       same palette to mark its name with. Assigned by position and wrapping
+       after five: the reference table decides how many there are, and a sixth
+       kind repeating a hue is better than a sixth invented colour. */
     .sq-summary-table .sq-kind-0 { --sq-hue: var(--sq-green); --sq-hue-soft: var(--sq-green-soft); --sq-hue-ink: var(--sq-green-ink); }
     .sq-summary-table .sq-kind-1 { --sq-hue: var(--sq-purple); --sq-hue-soft: var(--sq-purple-soft); --sq-hue-ink: var(--sq-purple-ink); }
     .sq-summary-table .sq-kind-2 { --sq-hue: var(--sq-red); --sq-hue-soft: var(--sq-red-soft); --sq-hue-ink: var(--sq-red-ink); }
@@ -661,6 +677,143 @@ Blocks a page must fill:
         font-weight: 500;
     }
 
+    /* ---- Indeks Beban ----
+       Not a count of anything, so it is set apart from the counted columns: its
+       own hue, its own rule, and a bar behind the figure drawn to the heaviest
+       line on the page. The bar is what makes the sorted order legible at a
+       glance — a column of large numbers all beginning with a digit says much
+       less than a column of lengths. */
+    .sq-summary-table .sq-summary-beban {
+        --sq-hue: #6f42c1;
+        --sq-hue-soft: rgba(111, 66, 193, 0.14);
+        --sq-hue-ink: #5a34a0;
+        text-align: right;
+        border-left: 1px solid #ebeff4;
+        border-right: 1px solid #ebeff4;
+        white-space: nowrap;
+    }
+
+    .sq-summary-table thead th.sq-summary-beban {
+        color: var(--sq-hue-ink);
+    }
+
+    /* The ⓘ beside the column, which is the only way to the explanation. Set as
+       a small ring rather than a word, so a header that is also the sort control
+       does not read as two labels. */
+    .sq-beban-info-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 14px;
+        height: 14px;
+        margin-left: 5px;
+        padding: 0;
+        border: 1px solid currentColor;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--sq-hue-ink);
+        font-size: 9px;
+        font-weight: 700;
+        font-style: italic;
+        line-height: 1;
+        vertical-align: middle;
+        opacity: 0.65;
+    }
+
+    .sq-beban-info-toggle:hover,
+    .sq-beban-info-toggle[aria-expanded="true"] {
+        opacity: 1;
+        background-color: var(--sq-hue-soft);
+    }
+
+    /* The explanation itself: folded away, and quiet when open — it is read
+       once and then known, and the table is what the card is for. */
+    .sq-beban-info-body {
+        margin-bottom: 14px;
+        padding: 14px 16px;
+        border: 1px solid #e7e3f3;
+        border-left: 3px solid #6f42c1;
+        border-radius: 8px;
+        background-color: #faf9fe;
+        font-size: 11.5px;
+        color: #4b5563;
+    }
+
+    .sq-beban-info-formula {
+        font-family: 'SFMono-Regular', Consolas, monospace;
+        font-size: 11px;
+        color: #5a34a0;
+        background-color: #ffffff;
+        border: 1px solid #ebe6f7;
+        border-radius: 6px;
+        padding: 7px 10px;
+        margin-bottom: 10px;
+    }
+
+    .sq-beban-info-note {
+        margin-bottom: 12px;
+        line-height: 1.55;
+        color: #64748b;
+    }
+
+    .sq-beban-info-title {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #9fabbb;
+        margin-bottom: 4px;
+    }
+
+    .sq-beban-info-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 2px 0;
+        border-bottom: 1px dashed #ece9f6;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .sq-beban-info-row span:last-child {
+        font-weight: 600;
+        color: #5a34a0;
+    }
+
+    .sq-summary-table tbody td.sq-summary-beban,
+    .sq-summary-table tfoot td.sq-summary-beban {
+        position: relative;
+        min-width: 108px;
+    }
+
+    /* Behind the figure rather than beside it, so the column costs no width. */
+    .sq-summary-beban-bar {
+        position: absolute;
+        left: 0;
+        top: 4px;
+        bottom: 4px;
+        background-color: var(--sq-hue-soft);
+        border-radius: 0 3px 3px 0;
+    }
+
+    .sq-summary-beban-value {
+        position: relative;
+        font-weight: 600;
+        color: var(--sq-hue-ink);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Inside a block the bars are drawn against the PIC's own load, so they say
+       what that person's work is made of; they are quieter than the line above
+       to keep the two readings apart. */
+    .sq-summary-table tr.sq-summary-row-kind .sq-summary-beban-value {
+        font-weight: 500;
+        color: #7c6aa8;
+    }
+
+    .sq-summary-table tr.sq-summary-row-kind .sq-summary-beban-bar {
+        background-color: rgba(111, 66, 193, 0.08);
+    }
+
     .sq-summary-table tbody tr:hover td {
         background-color: #f8fafc;
     }
@@ -690,27 +843,103 @@ Blocks a page must fill:
         font-weight: 500;
     }
 
-    /* A split cell says both things at once: how many tikets, and how many rows
-       are behind them — set smaller and muted, so the tiket count still leads. */
-    .sq-summary-kind-tikets {
-        line-height: 1.3;
+    /* ---- A PIC and their detail lines are one block ----
+       Nine or ten lines all on the same white ground read as one long list, so
+       the PIC's own line is banded to stand as the block's header and the lines
+       under it are left on white, indented behind a rail that runs to the foot
+       of the block. The eye then finds where a person's figures start and stop
+       without counting names, which is the whole difficulty with a table this
+       tall.
+
+       The band is neutral rather than one of the group hues: those are spoken
+       for by the columns, and a row colour crossing them would make a PIC look
+       like a fifth queue. */
+    .sq-summary-table tbody tr.sq-summary-row-pic td {
+        background-color: #f4f7fb;
+        border-top: 1px solid #dfe6ef;
+        padding-top: 9px;
+        padding-bottom: 9px;
     }
 
-    .sq-summary-kind-baris {
-        font-size: 10.5px;
-        line-height: 1.25;
-        color: #94a3b8;
+    .sq-summary-table tbody tr.sq-summary-row-pic:hover td {
+        background-color: #eaf1f9;
     }
 
-    /* The totals, which are the figures the three cards used to carry. Each
-       group's foot cells are washed with its hue, so the line reads as the sum
-       of the columns above it rather than as another PIC. */
+    .sq-summary-table tbody tr.sq-summary-row-pic td.sq-summary-pic {
+        font-weight: 600;
+        font-size: 12.5px;
+    }
+
+    .sq-summary-table tbody tr.sq-summary-row-kind td {
+        border-bottom: none;
+        padding-top: 2px;
+        padding-bottom: 2px;
+        font-size: 11.5px;
+    }
+
+    /* The rail: one line down the left of everything belonging to the PIC
+       above, closed off by the band of the next one. */
+    .sq-summary-table tbody tr.sq-summary-row-kind td.sq-summary-pic,
+    .sq-summary-table tbody tr.sq-summary-row-kind td.sq-summary-detail-caption {
+        box-shadow: inset 3px 0 0 #e8edf4;
+    }
+
+    /* The last block has no band beneath it to close it off, so it takes a
+       little air instead before the totals. */
+    .sq-summary-table tbody tr.sq-summary-row-kind:last-child td {
+        padding-bottom: 8px;
+    }
+
+    .sq-summary-table tbody tr.sq-summary-row-kind .sq-summary-pill {
+        background-color: transparent;
+        padding: 0;
+        min-width: 0;
+        font-weight: 500;
+    }
+
+    .sq-summary-kind-name {
+        padding-left: 26px !important;
+        color: #64748b;
+        font-weight: 400 !important;
+    }
+
+    .sq-summary-kind-name .sq-stat-dot {
+        display: inline-block;
+        margin-right: 7px;
+        vertical-align: middle;
+        background-color: var(--sq-hue);
+    }
+
+    /* Which question the lines under it answer. Two sets of names beneath one
+       PIC would otherwise read as one list — "Regional" says nothing about
+       whether it is a kind of table or a reach until this line says so. */
+    .sq-summary-table tbody td.sq-summary-detail-caption {
+        text-align: left;
+        padding-top: 9px !important;
+        padding-bottom: 3px !important;
+        padding-left: 26px !important;
+        /* Smaller and in sentence case than the names it labels, so it sits
+           under them in the hierarchy rather than shouting over them: the PIC
+           leads the block, then the names, and this only says which question
+           they answer. */
+        font-size: 10px;
+        font-weight: 600;
+        color: #9fabbb;
+    }
+
+    /* The totals of the whole table. Each group's foot cells are washed with
+       its hue and the line is set apart above, so it reads as the sum of every
+       block rather than as one more PIC — which matters most when the blocks
+       are open and it is a long way from the top of the table. */
     .sq-summary-table tfoot td {
         text-align: right;
         font-weight: 600;
+        font-size: 12.5px;
         color: var(--sq-hue-ink, #0f172a);
         background-color: #f8fafc;
-        border-top: 2px solid #ebeff4;
+        border-top: 1px solid #c9d3e0;
+        padding-top: 10px !important;
+        padding-bottom: 10px !important;
         font-variant-numeric: tabular-nums;
     }
 
@@ -719,17 +948,18 @@ Blocks a page must fill:
        still belongs to the group they are in. */
     .sq-summary-table tfoot td.sq-group-own {
         background-color: var(--sq-blue-soft);
-        border-top-color: var(--sq-blue);
     }
 
     .sq-summary-table tfoot td.sq-group-upstream {
         background-color: var(--sq-orange-soft);
-        border-top-color: var(--sq-orange);
     }
 
     .sq-summary-table tfoot td.sq-group-upstream-alt {
         background-color: var(--sq-teal-soft);
-        border-top-color: var(--sq-teal);
+    }
+
+    .sq-summary-table tfoot td.sq-group-done {
+        background-color: var(--sq-green-soft);
     }
 
     .sq-summary-table tfoot td.sq-summary-pic {
@@ -742,6 +972,32 @@ Blocks a page must fill:
         font-weight: 400;
         color: #94a3b8;
         padding: 24px 10px !important;
+    }
+
+    /* The card header carries the title on the left and this card's one action
+       on the right, which is what every other card with an action does. */
+    .sq-summary .table-responsive {
+        margin-top: -4px;
+    }
+
+    .sq-summary-toggle {
+        font-size: 11.5px;
+        padding: 3px 12px;
+        border-color: #e2e8f0;
+        color: #64748b;
+    }
+
+    .sq-summary-toggle:hover {
+        border-color: var(--sq-blue);
+        background-color: var(--sq-blue-soft);
+        color: var(--sq-blue-ink);
+    }
+
+    /* Open reads as a pressed control rather than as another button. */
+    .sq-summary-toggle.active {
+        border-color: var(--sq-blue);
+        background-color: var(--sq-blue-soft);
+        color: var(--sq-blue-ink);
     }
 
     /* Refetching the chart holds the previous render at reduced opacity rather
@@ -1032,10 +1288,13 @@ that differ between one seksi and the next.
         // A group is the tikets and the rows behind them, then one cell per
         // entry of its breakdown — which is empty for a group the page heads
         // with those two columns alone, so the width follows the payload.
-        // How many hues the jenis tabel columns cycle through; the .sq-kind-*
-        // rules define exactly this many, and the server assigns the header
-        // classes by the same count.
-        const KIND_HUES = 5;
+        // The dimensions the detail lines break a PIC down along, each with the
+        // entries it lists — the same lists the server built, so line n of a set
+        // is entry n of that split in each of the PIC's sections.
+        function summaryDetails() {
+            const el = document.getElementById('sq-summary-details');
+            return el ? JSON.parse(el.textContent) : [];
+        }
 
         // A tiket count in a soft pill of its column's hue, or plain muted text
         // when there is nothing there — see .sq-summary-pill.
@@ -1045,13 +1304,10 @@ that differ between one seksi and the next.
         }
 
         // `sq-group-<variant>` marks every cell of a group, which is what lets
-        // the totals line be washed in the group's colour from end to end;
-        // `sq-cell-<variant>` additionally hands a cell that group's hue, and is
-        // left off the jenis tabel columns because those carry a hue of their
-        // own.
+        // the totals line be washed in the group's colour from end to end, and
+        // `sq-cell-<variant>` hands the cell that group's hue.
         function appendSectionCells($row, section, variant) {
-            const group = 'sq-group-' + variant;
-            const cell = group + ' sq-cell sq-cell-' + variant;
+            const cell = 'sq-group-' + variant + ' sq-cell sq-cell-' + variant;
             $row.append(
                 $('<td>').addClass(cell + ' sq-summary-group-start')
                     .append(countPill(section.tikets)),
@@ -1060,21 +1316,77 @@ that differ between one seksi and the next.
                         .text(formatCount(section.baris))
                 )
             );
-            // The jenis tabel columns take their own hue rather than the
-            // group's, assigned by position the way the header above them is.
-            (section.breakdown || []).forEach(function (entry, index) {
-                $row.append(
-                    $('<td>').addClass(group + ' sq-kind-' + (index % KIND_HUES)).append(
-                        $('<div>').addClass('sq-summary-kind-tikets')
-                            .append(countPill(entry.tikets)),
-                        $('<div>').addClass('sq-summary-kind-baris').text(formatCount(entry.baris))
-                    )
-                );
+        }
+
+        // The Indeks Beban cell. The figure is the point, but a load only means
+        // anything against the other loads, so it is backed by a bar drawn to
+        // the heaviest line on the page — which is what makes the sorted order
+        // legible at a glance rather than only correct.
+        function bebanCell(value, share, extraClass) {
+            const $cell = $('<td>').addClass('sq-summary-beban ' + (extraClass || ''));
+            if (!value) return $cell.append($('<span>').addClass('sq-summary-zero').text('0'));
+            const width = Math.max(2, Math.round(share * 100));
+            return $cell.append(
+                $('<span>').addClass('sq-summary-beban-bar')
+                    .css('width', width + '%'),
+                $('<span>').addClass('sq-summary-beban-value').text(formatCount(value))
+            );
+        }
+
+        // One PIC's block: their totals, then a labelled set of lines per
+        // dimension, each set adding back up to the line above it. Every detail
+        // line is built the same way whichever dimension it belongs to, so a
+        // dimension added on the server needs nothing here.
+        function summaryBlock($body, row, keys, variants, details, heaviest) {
+            const sections = row.sections || {};
+            const $row = $('<tr>').addClass('sq-summary-row-pic').append(
+                // The name arrives as finished HTML — an anchor to the Profil
+                // PIC page when the reader may open it, escaped text when they
+                // may not — so it is set rather than appended as text.
+                $('<td>').addClass('sq-summary-pic').html(row.pic),
+                bebanCell(row.beban, heaviest ? row.beban / heaviest : 0)
+            );
+            keys.forEach(function (key, index) {
+                appendSectionCells($row, sections[key] || {}, variants[index]);
+            });
+            $body.append($row);
+
+            const detailBeban = row.detail || {};
+            details.forEach(function (dimension) {
+                // Which question this set of lines answers. Two sets of names
+                // under one PIC would otherwise be read as one list.
+                $body.append($('<tr>').addClass('sq-summary-row-kind').append(
+                    $('<td>').addClass('sq-summary-detail-caption')
+                        .attr('colspan', summaryWidth(keys))
+                        .text(dimension.label)
+                ));
+
+                const loads = detailBeban[dimension.key] || [];
+                dimension.entries.forEach(function (entry, entryIndex) {
+                    const $detail = $('<tr>').addClass('sq-summary-row-kind').append(
+                        $('<td>').addClass('sq-summary-pic sq-summary-kind-name sq-kind-' + entry.hue)
+                            .append(
+                                $('<span>').addClass('sq-stat-dot'),
+                                document.createTextNode(entry.name)
+                            ),
+                        // Against the PIC's own load rather than the page's, so
+                        // the bars inside a block say how that person's work is
+                        // made up.
+                        bebanCell(loads[entryIndex],
+                                  row.beban ? (loads[entryIndex] || 0) / row.beban : 0)
+                    );
+                    keys.forEach(function (key, index) {
+                        const split = ((sections[key] || {}).splits || {})[dimension.key] || [];
+                        appendSectionCells($detail, split[entryIndex] || {}, variants[index]);
+                    });
+                    $body.append($detail);
+                });
             });
         }
 
-        function summaryColumnCount($table) {
-            return $table.find('thead tr').last().children().length + 1;
+        // Nama PIC, Indeks Beban, then two columns per group.
+        function summaryWidth(keys) {
+            return 2 + keys.length * 2;
         }
 
         // ---- Sorting the summary lines ----
@@ -1082,23 +1394,29 @@ that differ between one seksi and the next.
         // tiket — so a header click reorders what is here rather than asking
         // the server for the same figures in another order. The choice is held
         // across a refetch, so changing a filter does not throw the reader back
-        // to the default order mid-comparison.
+        // to the opening order mid-comparison.
+        //
+        // The table opens on the order its markup names — see the page's
+        // SUMMARY_DEFAULT_SORT — rather than on the order the server sent,
+        // which is alphabetical and answers nothing.
         let summarySort = null;      // { spec: 'qc:baris', desc: bool }
         let summaryPayload = null;   // the last payload, to reorder in place
 
-        // The figure a header sorts by. `<key>:tikets` and `<key>:baris` are a
-        // group's own two columns; `<key>:kind:<n>` is the nth entry of its
-        // breakdown, sorted by the tiket count its cell leads with, as the
-        // tiket tables sort their stacked cells.
+        function defaultSummarySort($table) {
+            const spec = $table.attr('data-summary-sort');
+            if (!spec) return null;
+            return { spec: spec, desc: $table.attr('data-summary-sort-desc') === '1' };
+        }
+
+        // The figure a header sorts by: `name`, `beban`, or a group's own
+        // `<key>:tikets` or `<key>:baris`. A PIC's detail lines are that PIC's
+        // figures broken up rather than lines of their own, so they are not
+        // sorted — they follow the line they belong to.
         function summaryValue(row, spec) {
             const parts = spec.split(':');
             if (parts[0] === 'name') return (row.name || '').toLowerCase();
-            const section = (row.sections || {})[parts[0]] || {};
-            if (parts[1] === 'kind') {
-                const entry = (section.breakdown || [])[Number(parts[2])] || {};
-                return entry.tikets || 0;
-            }
-            return section[parts[1]] || 0;
+            if (parts[0] === 'beban') return row.beban || 0;
+            return ((row.sections || {})[parts[0]] || {})[parts[1]] || 0;
         }
 
         function sortedSummaryRows(rows) {
@@ -1130,53 +1448,86 @@ that differ between one seksi and the next.
             if ($table.length === 0) return;
 
             if (payload) summaryPayload = payload;
+            if (!summarySort) summarySort = defaultSummarySort($table);
             const keys = ($table.attr('data-summary-sections') || '')
                 .split(',').filter(function (key) { return key; });
             const variants = ($table.attr('data-summary-variants') || '').split(',');
             const rows = sortedSummaryRows((summaryPayload || {}).rows || []);
             markSortedHeader($table);
 
+            const details = summaryDetails();
+            // Every bar on a PIC line is drawn against the heaviest of them, so
+            // the longest bar is always full and the rest read as a share of it.
+            const heaviest = rows.reduce(function (top, row) {
+                return Math.max(top, row.beban || 0);
+            }, 0);
+
             const $body = $table.find('[data-summary-rows]').empty();
             rows.forEach(function (row) {
-                // The name arrives as finished HTML — an anchor to the reader's
-                // own Profil PIC page when they may open it, escaped text when
-                // they may not — so it is set rather than appended as text.
-                const $tr = $('<tr>').append(
-                    $('<td>').addClass('sq-summary-pic').html(row.pic)
-                );
-                keys.forEach(function (key, index) {
-                    appendSectionCells($tr, (row.sections || {})[key] || {}, variants[index]);
-                });
-                $body.append($tr);
+                summaryBlock($body, row, keys, variants, details, heaviest);
             });
             if (rows.length === 0) {
                 $body.append($('<tr>').append(
                     $('<td>').addClass('sq-summary-empty')
-                        .attr('colspan', summaryColumnCount($table))
+                        .attr('colspan', summaryWidth(keys))
                         .text('Tidak Ada Data yang Tersedia')
                 ));
             }
+            applyKindVisibility();
 
             // The foot is the same line summed: the figures the summary carried
             // before it was split per PIC. It stays put under every sort — a
             // total that moved with the lines would be read as one of them.
+            const payloadNow = summaryPayload || {};
             const $total = $table.find('[data-summary-total]').empty();
-            $total.append($('<td>').addClass('sq-summary-pic').text('Total'));
+            $total.append(
+                $('<td>').addClass('sq-summary-pic').text('Total'),
+                // No bar: the total is not one of the lines it would be measured
+                // against.
+                $('<td>').addClass('sq-summary-beban').append(
+                    $('<span>').addClass('sq-summary-beban-value')
+                        .text(formatCount(payloadNow.beban || 0))
+                )
+            );
             keys.forEach(function (key, index) {
-                appendSectionCells($total, (summaryPayload || {})[key] || {}, variants[index]);
+                appendSectionCells($total, payloadNow[key] || {}, variants[index]);
             });
         }
 
-        // Ascending first, then descending, then back to the order the server
-        // sent — which is by name, and is a state worth being able to return to
-        // rather than a place the reader can only leave.
+        // ---- The jenis tabel detail ----
+        // Folded away on every page load: a labelled set of lines per dimension
+        // under every PIC is several times the rows, and the question the table
+        // is opened for — who is carrying the most — is answered by the PIC
+        // lines alone. The button opens the detail for the reading that needs
+        // it, and that is a choice about the reading in front of you rather
+        // than a setting: it is deliberately not remembered, so arriving at
+        // this page always shows the same thing rather than whatever was left
+        // behind on some earlier visit.
+        let kindDetailShown = false;
+
+        function applyKindVisibility() {
+            $('.sq-summary-row-kind').toggleClass('d-none', !kindDetailShown);
+            $('#sq-toggle-kinds')
+                .attr('aria-expanded', kindDetailShown ? 'true' : 'false')
+                .toggleClass('active', kindDetailShown)
+                .find('[data-toggle-label]')
+                .text(kindDetailShown ? 'Sembunyikan Detail' : 'Tampilkan Detail');
+        }
+
+        function toggleKindDetail() {
+            kindDetailShown = !kindDetailShown;
+            applyKindVisibility();
+        }
+
+        // Ascending on a new column, and flipping the direction on the one
+        // already sorted by — the same two states the tiket table below offers,
+        // and with the table always in some order there is no third state to
+        // return to.
         function toggleSummarySort(spec) {
-            if (!summarySort || summarySort.spec !== spec) {
-                summarySort = { spec: spec, desc: false };
-            } else if (!summarySort.desc) {
-                summarySort.desc = true;
+            if (summarySort && summarySort.spec === spec) {
+                summarySort.desc = !summarySort.desc;
             } else {
-                summarySort = null;
+                summarySort = { spec: spec, desc: false };
             }
             renderSummaryTable(null);
         }
@@ -1581,6 +1932,13 @@ that differ between one seksi and the next.
             $(document).on('click', '.sq-summary-table th[data-sort]', function () {
                 toggleSummarySort($(this).attr('data-sort'));
             });
+            // The ⓘ sits inside a header that sorts, so its click has to stop
+            // there — opening the explanation is not asking to reorder.
+            $(document).on('click', '.sq-beban-info-toggle', function (event) {
+                event.stopPropagation();
+            });
+            $(document).on('click', '#sq-toggle-kinds', toggleKindDetail);
+            applyKindVisibility();
 
             // Filter dropdowns — dynamic, reload on change
             $('#filter-form').on('change', 'select', function () {
