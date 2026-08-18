@@ -38,6 +38,15 @@ Two rules keep the result honest rather than merely complete:
   no date of its own falls back to the latest timestamp so far, and that row
   says so in its catatan.
 
+A tiket currently at ``Dibatalkan`` (7) is a third case, and gets no reconstructed
+trail at all — not even ``Direkam``. Several views key off the presence of a
+``DIKEMBALIKAN``/``DIBATALKAN`` action without checking whether the tiket is
+still open (``home.py``'s "Pengembalian Seluruhnya dari PIDE" card, for one),
+so filling in that history for a tiket that is *already* cancelled makes it
+resurface there forever with nothing left to do about it. A cancelled migrated
+tiket keeps only its ``PIC ditambahkan`` rows; any reconstructed row this
+command wrote there on an earlier run is deleted.
+
 Every row this command writes carries a ``(data migrasi)`` marker in its
 catatan, which is also how ``--remove`` finds them again.
 
@@ -214,6 +223,10 @@ STEP_DIBATALKAN_DARI_PIDE = Step(
     ('tgl_dibatalkan', 'tgl_dikembalikan'),
 )
 
+# STEP_DIBATALKAN and STEP_DIBATALKAN_DARI_PIDE are never planned any more
+# (plan_steps short-circuits Dibatalkan to []) but stay listed here so
+# all_generated_catatan() still recognises — and cleans up — rows an earlier
+# version of this command wrote for a cancelled tiket.
 ALL_STEPS = (
     STEP_DIREKAM, STEP_DITELITI, STEP_DIKIRIM, STEP_IDENTIFIKASI, STEP_TRANSFER,
     STEP_REMATCH, STEP_PENGENDALIAN_MUTU, STEP_SELESAI_PMDE, STEP_SELESAI_P3DE,
@@ -260,9 +273,20 @@ def plan_steps(t):
     ``t`` is a mapping of :data:`TIKET_FIELDS`. The status says how far the
     tiket got; the dates and counters say which of the earlier steps actually
     happened, which matters for the statuses that can be reached by more than
-    one route (Dibatalkan and Selesai).
+    one route (Selesai).
+
+    A tiket currently at ``Dibatalkan`` gets no steps at all — not even
+    ``Direkam``. Views that look at ``DIKEMBALIKAN``/``DIBATALKAN`` history
+    without checking whether the tiket is still open (``home.py``'s
+    "Pengembalian Seluruhnya dari PIDE") would otherwise resurface a cancelled
+    tiket forever once its history is filled in. A cancelled migrated tiket
+    keeps only its ``PIC ditambahkan`` rows, same as if it had never been
+    backfilled.
     """
     status = t['status_tiket']
+    if status == STATUS_DIBATALKAN:
+        return []
+
     steps = [STEP_DIREKAM]
 
     if status == STATUS_DIREKAM:
@@ -276,23 +300,19 @@ def plan_steps(t):
     if status == STATUS_DITELITI:
         return steps + [STEP_DITELITI]
 
-    if status in (STATUS_DIKEMBALIKAN, STATUS_DIBATALKAN):
-        # A tiket can be cancelled at any point, so every earlier step here is
-        # claimed only on evidence.
+    if status == STATUS_DIKEMBALIKAN:
+        # Never actually assigned by the app (see status_tiket_flow.md) — a
+        # PIDE return sets Dibatalkan, not this — but handled for correctness
+        # in case it ever appears. A cancelled-at-DIKEMBALIKAN tiket is not
+        # reachable here since STATUS_DIBATALKAN already returned above.
         if reached_penelitian:
             steps.append(STEP_DITELITI)
         if reached_pide:
             steps.append(STEP_DIKIRIM)
         if reached_identifikasi:
             steps.append(STEP_IDENTIFIKASI)
-
         if reached_pide:
-            # Cancelled after handover means PIDE sent it back.
             steps.append(STEP_DIKEMBALIKAN)
-            if status == STATUS_DIBATALKAN:
-                steps.append(STEP_DIBATALKAN_DARI_PIDE)
-        elif status == STATUS_DIBATALKAN:
-            steps.append(STEP_DIBATALKAN)
         return steps
 
     if status == STATUS_SELESAI and not reached_pide:
@@ -411,6 +431,11 @@ class Command(BaseCommand):
                  'the migration batch to the tiket receipt date.',
         )
         parser.add_argument(
+            '--skip-cancelled-cleanup', action='store_true',
+            help='Leave any backfilled workflow action on a Dibatalkan tiket in place '
+                 'instead of deleting it.',
+        )
+        parser.add_argument(
             '--dedupe', action='store_true',
             help='Also delete exact duplicate actions on migrated tikets (keeps the oldest row).',
         )
@@ -431,6 +456,9 @@ class Command(BaseCommand):
             self._dedupe()
 
         self._backfill(options)
+
+        if not options['skip_cancelled_cleanup']:
+            self._cleanup_cancelled(options)
 
         if not options['skip_pic_dates']:
             self._repair_pic_dates(options)
@@ -711,6 +739,49 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING('Dry run: nothing was written.'))
         else:
             self.stdout.write(self.style.SUCCESS('Backfill complete.'))
+
+    # ------------------------------------------------------------------ #
+    # Cancelled tikets                                                    #
+    # ------------------------------------------------------------------ #
+
+    def _cleanup_cancelled(self, options):
+        """Strip the reconstructed workflow trail from a tiket now sitting at
+        Dibatalkan, leaving only its ``PIC ditambahkan`` rows.
+
+        ``plan_steps`` stopped planning any workflow steps for these tikets,
+        but that alone does not touch what an earlier run of this command
+        already wrote — the backfill loop only visits the steps a status
+        currently plans, so an already-cancelled tiket's old rows are never
+        revisited by it. This is the pass that actually removes them.
+
+        Only rows this command wrote are deleted (matched by the exact
+        catatan marker set, same as ``--remove``); a genuine Dibatalkan or
+        Dikembalikan recorded by a user through the app is left alone.
+        """
+        qs = TiketAction.objects.filter(
+            id_tiket__in=self._select_tikets(options).filter(status_tiket=STATUS_DIBATALKAN),
+            action__lt=WORKFLOW_ACTION_MAX,
+            catatan__in=all_generated_catatan(),
+        )
+        tiket_count = qs.values('id_tiket').distinct().count()
+        row_count = qs.count()
+
+        if not row_count:
+            return
+
+        verb = 'Would delete' if self.dry_run else 'Deleted'
+        self.stdout.write('')
+        self.stdout.write(
+            f'{verb} {row_count} backfilled workflow action(s) on {tiket_count} tiket '
+            f'now at Dibatalkan, keeping only "PIC ditambahkan".'
+        )
+
+        if self.dry_run:
+            return
+        for start in range(0, row_count, self.batch_size):
+            with transaction.atomic():
+                ids = list(qs.values_list('pk', flat=True)[:self.batch_size])
+                TiketAction.objects.filter(pk__in=ids).delete()
 
     # ------------------------------------------------------------------ #
     # PIC action dates                                                    #

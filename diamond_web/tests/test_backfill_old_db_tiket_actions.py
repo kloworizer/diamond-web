@@ -16,6 +16,7 @@ from django.core.management import call_command
 from diamond_web.constants.tiket_action_types import PICActionType, TiketActionType
 from diamond_web.constants.tiket_status import (
     STATUS_DIBATALKAN,
+    STATUS_DIKEMBALIKAN,
     STATUS_DIKIRIM_KE_PIDE,
     STATUS_DIREKAM,
     STATUS_DITELITI,
@@ -148,32 +149,19 @@ class TestPlanStepsForClosedTikets:
 
     def test_cancelled_before_research_claims_nothing_it_cannot_show(self):
         row = _row(status_tiket=STATUS_DIBATALKAN)
-        assert _actions(row) == [TiketActionType.DIREKAM, TiketActionType.DIBATALKAN]
+        assert _actions(row) == []
 
-    def test_cancelled_after_research_keeps_the_research_step(self):
-        row = _row(status_tiket=STATUS_DIBATALKAN, tgl_teliti=TELITI)
-        assert _actions(row) == [
-            TiketActionType.DIREKAM,
-            TiketActionType.DITELITI,
-            TiketActionType.DIBATALKAN,
-        ]
-
-    def test_cancelled_after_handover_is_a_return_from_pide(self):
-        """DikembalikanTiketView pairs a Dikembalikan by PIDE with a Dibatalkan
-        attributed to P3DE; a migrated tiket cancelled past the handover gets
-        the same pair."""
+    def test_cancelled_tiket_gets_no_steps_even_with_a_rich_history(self):
+        """A cancelled tiket gets nothing reconstructed at all, not even
+        Direkam — several views (home.py's "Pengembalian Seluruhnya dari
+        PIDE") key off DIKEMBALIKAN/DIBATALKAN history without checking
+        whether the tiket is still open, so a filled-in trail on an already-
+        cancelled tiket would resurface it there forever."""
         row = _row(
             status_tiket=STATUS_DIBATALKAN, tgl_teliti=TELITI,
             tgl_kirim_pide=KIRIM, tgl_rekam_pide=REKAM_PIDE,
         )
-        assert _actions(row) == [
-            TiketActionType.DIREKAM,
-            TiketActionType.DITELITI,
-            TiketActionType.DIKIRIM_KE_PIDE,
-            TiketActionType.IDENTIFIKASI,
-            TiketActionType.DIKEMBALIKAN,
-            TiketActionType.DIBATALKAN,
-        ]
+        assert _actions(row) == []
 
     def test_selesai_at_rekam_when_no_data_was_available(self):
         row = _row(status_tiket=STATUS_SELESAI, status_ketersediaan_data=False)
@@ -203,12 +191,36 @@ class TestPlanStepsForClosedTikets:
 
     def test_a_zero_row_count_is_not_read_as_research(self):
         """The sync COALESCEs baris_lengkap to 0 for every migrated row, so a
-        zero count is not evidence that penelitian happened."""
-        row = _row(status_tiket=STATUS_DIBATALKAN, baris_lengkap=0)
+        zero count is not evidence that penelitian happened. Exercised through
+        STATUS_DIKEMBALIKAN, since Dibatalkan itself now plans no steps at all."""
+        row = _row(status_tiket=STATUS_DIKEMBALIKAN, baris_lengkap=0)
         assert TiketActionType.DITELITI not in _actions(row)
 
-        row = _row(status_tiket=STATUS_DIBATALKAN, baris_lengkap=42)
+        row = _row(status_tiket=STATUS_DIKEMBALIKAN, baris_lengkap=42)
         assert TiketActionType.DITELITI in _actions(row)
+
+
+class TestPlanStepsForDikembalikan:
+    """STATUS_DIKEMBALIKAN (3) is never actually assigned by the app — a PIDE
+    return sets Dibatalkan, not this (see status_tiket_flow.md) — but the
+    planner still handles it correctly if it ever appears."""
+
+    def test_returned_after_handover_keeps_the_steps_it_shows_evidence_for(self):
+        row = _row(
+            status_tiket=STATUS_DIKEMBALIKAN, tgl_teliti=TELITI,
+            tgl_kirim_pide=KIRIM, tgl_rekam_pide=REKAM_PIDE,
+        )
+        assert _actions(row) == [
+            TiketActionType.DIREKAM,
+            TiketActionType.DITELITI,
+            TiketActionType.DIKIRIM_KE_PIDE,
+            TiketActionType.IDENTIFIKASI,
+            TiketActionType.DIKEMBALIKAN,
+        ]
+
+    def test_returned_before_reaching_pide_claims_nothing_it_cannot_show(self):
+        row = _row(status_tiket=STATUS_DIKEMBALIKAN)
+        assert _actions(row) == [TiketActionType.DIREKAM]
 
 
 # --------------------------------------------------------------------------- #
@@ -433,6 +445,95 @@ class TestCommand:
         )
         assert [a.timestamp for a in closing] == [CLOSE, CLOSE]
         assert all(a.catatan.endswith(MARKER) for a in closing)
+
+
+@pytest.mark.django_db
+class TestCancelledTiketCleanup:
+    """A migrated tiket now sitting at Dibatalkan keeps only its PIC rows.
+
+    home.py's "Pengembalian Seluruhnya dari PIDE" card (and anything similar)
+    matches on the mere presence of a DIKEMBALIKAN/DIBATALKAN action, with no
+    check for whether the tiket is still open — so once these tikets got a
+    filled-in trail, they started showing up there permanently, including
+    ones nobody can act on any more.
+    """
+
+    @pytest.fixture
+    def cancelled_tiket(self, db):
+        tiket = TiketFactory(old_db=True, status_tiket=STATUS_DIBATALKAN, tgl_terima_dip=TERIMA)
+        TiketPICFactory(id_tiket=tiket, id_user=UserFactory(), role=TiketPIC.Role.P3DE, active=True)
+        return tiket
+
+    def test_a_cancelled_tiket_gets_nothing_backfilled(self, cancelled_tiket):
+        _run()
+        assert not TiketAction.objects.filter(
+            id_tiket=cancelled_tiket, action__lt=100,
+        ).exists()
+
+    def test_an_earlier_runs_trail_is_deleted_down_to_pic_rows_only(self, cancelled_tiket):
+        pic_action = TiketAction.objects.create(
+            id_tiket=cancelled_tiket, id_user=UserFactory(), timestamp=TERIMA,
+            action=PICActionType.DITAMBAHKAN, catatan='PIC P3DE ditambahkan',
+        )
+        for action, catatan in (
+            (TiketActionType.DIREKAM, 'tiket direkam (data migrasi)'),
+            (TiketActionType.DITELITI, 'Hasil penelitian direkam (data migrasi)'),
+            (TiketActionType.DIKEMBALIKAN, 'Tiket dikembalikan oleh PIDE (data migrasi, tanggal perkiraan)'),
+            (TiketActionType.DIBATALKAN, 'Tiket dibatalkan (dikembalikan oleh PIDE) (data migrasi, tanggal perkiraan)'),
+        ):
+            TiketAction.objects.create(
+                id_tiket=cancelled_tiket, id_user=UserFactory(), timestamp=TERIMA,
+                action=action, catatan=catatan,
+            )
+
+        output = _run()
+
+        remaining = list(TiketAction.objects.filter(id_tiket=cancelled_tiket))
+        assert [a.pk for a in remaining] == [pic_action.pk]
+        assert 'Deleted 4 backfilled workflow action(s) on 1 tiket' in output
+
+    def test_a_genuine_user_recorded_cancellation_is_left_alone(self, cancelled_tiket):
+        real = TiketAction.objects.create(
+            id_tiket=cancelled_tiket, id_user=UserFactory(), timestamp=TERIMA,
+            action=TiketActionType.DIBATALKAN, catatan='Data duplikat, tiket lain sudah dibuat',
+        )
+
+        _run()
+
+        real.refresh_from_db()
+        assert real.catatan == 'Data duplikat, tiket lain sudah dibuat'
+
+    def test_dry_run_reports_without_deleting(self, cancelled_tiket):
+        TiketAction.objects.create(
+            id_tiket=cancelled_tiket, id_user=UserFactory(), timestamp=TERIMA,
+            action=TiketActionType.DIREKAM, catatan='tiket direkam (data migrasi)',
+        )
+
+        output = _run('--dry-run')
+
+        assert 'Would delete 1 backfilled workflow action(s)' in output
+        assert TiketAction.objects.filter(id_tiket=cancelled_tiket, action=TiketActionType.DIREKAM).exists()
+
+    def test_skip_cancelled_cleanup_leaves_the_old_trail_in_place(self, cancelled_tiket):
+        TiketAction.objects.create(
+            id_tiket=cancelled_tiket, id_user=UserFactory(), timestamp=TERIMA,
+            action=TiketActionType.DIREKAM, catatan='tiket direkam (data migrasi)',
+        )
+
+        _run('--skip-cancelled-cleanup')
+
+        assert TiketAction.objects.filter(id_tiket=cancelled_tiket, action=TiketActionType.DIREKAM).exists()
+
+    def test_running_twice_is_a_no_op_on_the_second_pass(self, cancelled_tiket):
+        TiketAction.objects.create(
+            id_tiket=cancelled_tiket, id_user=UserFactory(), timestamp=TERIMA,
+            action=TiketActionType.DIREKAM, catatan='tiket direkam (data migrasi)',
+        )
+        _run()
+
+        output = _run()
+
+        assert 'Deleted' not in output
 
 
 @pytest.mark.django_db
