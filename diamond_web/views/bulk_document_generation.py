@@ -235,6 +235,7 @@ def _generate_docx_for_tickets(selected_tickets, doc_type, title_prefix):
             'jumlah_baris_lengkap': format_number_with_separator(t.baris_lengkap) if t.baris_lengkap is not None else '-',
             'jumlah_baris_tidak_lengkap': format_number_with_separator(t.baris_tidak_lengkap) if t.baris_tidak_lengkap is not None else '-',
             'dasar_hukum': dasar_hukum if dasar_hukum else '-',
+            'nama_tabel_i': sub.nama_tabel_I if sub else '-',
             'nomor_surat_pengantar': t.nomor_surat_pengantar or '-',
             'tanggal_surat_pengantar': _format_date_indonesian(t.tanggal_surat_pengantar),
             'tanggal_terima_dip': _format_date_indonesian(t.tgl_terima_dip),

@@ -40,105 +40,85 @@ logger = logging.getLogger(__name__)
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _replace_in_paragraph(paragraph, replacements):
-    """Replace all simple {{key}} placeholders in a paragraph's runs while preserving formatting."""
-    if not paragraph.runs:
-        return
-    full_text = ''.join(run.text for run in paragraph.runs)
-    if not any(ph in full_text for ph in replacements):
-        return
-    new_text = full_text
-    for placeholder, value in replacements.items():
-        new_text = new_text.replace(placeholder, str(value if value is not None else '-'))
-    
-    # Preserve formatting from the first run
+def _iter_run_groups(paragraph):
+    """Yield each contiguous group of Run objects in *paragraph*.
+
+    A paragraph's own direct runs are one group; each hyperlink nested in the
+    paragraph is a separate group. python-docx only exposes ``<w:r>`` elements
+    that are direct children of ``<w:p>`` via ``paragraph.runs`` — runs living
+    inside a ``<w:hyperlink>`` (a common leftover from pasted text) are
+    invisible to that property, so without this a placeholder wrapped in a
+    hyperlink is silently left unreplaced.
+    """
     if paragraph.runs:
-        first_run = paragraph.runs[0]
-        # Store formatting properties
-        fmt = first_run.font
-        bold = fmt.bold
-        italic = fmt.italic
-        size = fmt.size
-        name = fmt.name
-        color = fmt.color
-        
-        # Remove all runs
-        for run in paragraph.runs:
-            run._element.getparent().remove(run._element)
-        
-        # Add new run with preserved formatting
-        if new_text:
-            new_run = paragraph.add_run(new_text)
-            new_fmt = new_run.font
-            new_fmt.bold = bold
-            new_fmt.italic = italic
-            new_fmt.size = size
-            new_fmt.name = name
-            if color and color.rgb:
-                new_fmt.color.rgb = color.rgb
-    else:
-        # No runs to copy formatting from, just add text
-        if new_text:
-            paragraph.add_run(new_text)
+        yield paragraph.runs
+    for hyperlink in paragraph.hyperlinks:
+        if hyperlink.runs:
+            yield hyperlink.runs
+
+
+def _replace_in_runs(runs, new_text_fn):
+    """Collapse a run group to a single run holding the replaced text.
+
+    ``new_text_fn`` receives the concatenated text of *runs* and returns the
+    replacement text, or ``None`` if nothing in this group needs replacing.
+    Rewriting ``runs[0].text`` keeps that run's own formatting (``<w:rPr>``)
+    untouched; the remaining runs in the group are dropped.
+    """
+    full_text = ''.join(run.text for run in runs)
+    new_text = new_text_fn(full_text)
+    if new_text is None:
+        return
+    runs[0].text = new_text
+    for run in runs[1:]:
+        run._element.getparent().remove(run._element)
+
+
+def _replace_in_paragraph(paragraph, replacements):
+    """Replace all simple {{key}} placeholders in a paragraph while preserving formatting.
+
+    Scans the paragraph's direct runs and any hyperlink-nested runs separately.
+    """
+    def resolve(full_text):
+        if not any(ph in full_text for ph in replacements):
+            return None
+        new_text = full_text
+        for placeholder, value in replacements.items():
+            new_text = new_text.replace(placeholder, str(value if value is not None else '-'))
+        return new_text
+
+    for runs in _iter_run_groups(paragraph):
+        _replace_in_runs(runs, resolve)
+
+
+_ROW_PLACEHOLDER_RE = re.compile(r'\{\{row\.\s*\w+')
 
 
 def _row_has_row_placeholder(row):
     """Return True if any cell in *row* contains a ``{{row.xxx}}`` placeholder."""
-    _ROW_RE = re.compile(r'\{\{row\.\s*\w+')
     for cell in row.cells:
         for para in cell.paragraphs:
-            # Also check raw XML text to catch placeholders split across runs
-            full = ''.join(run.text for run in para.runs)
-            if _ROW_RE.search(full):
-                return True
-            # Fallback: check the full XML text of the paragraph
-            xml_text = para._element.text_content() if hasattr(para._element, 'text_content') else ''
-            if _ROW_RE.search(xml_text):
+            # paragraph.text includes hyperlink-nested run text, unlike paragraph.runs.
+            if _ROW_PLACEHOLDER_RE.search(para.text):
                 return True
     return False
 
 
 def _fill_row_placeholders(row, row_dict):
     """Replace ``{{row.field}}`` placeholders in all paragraphs of *row* while preserving formatting."""
+    def resolve(full_text):
+        if not _ROW_PLACEHOLDER_RE.search(full_text):
+            return None
+        new_text = full_text
+        for key, value in row_dict.items():
+            pattern = r'\{\{row\.\s*' + re.escape(key) + r'\s*\}\}'
+            new_text = re.sub(pattern, str(value if value is not None else '-'), new_text)
+        return new_text
+
     for cell in row.cells:
         for para in cell.paragraphs:
-            full_text = ''.join(run.text for run in para.runs)
-            if not re.search(r'\{\{row\.\s*\w+', full_text):
-                continue
-            new_text = full_text
-            for key, value in row_dict.items():
-                pattern = r'\{\{row\.\s*' + re.escape(key) + r'\s*\}\}'
-                new_text = re.sub(pattern, str(value if value is not None else '-'), new_text)
-            
-            # Preserve formatting from the first run
-            if para.runs:
-                first_run = para.runs[0]
-                # Store formatting properties
-                fmt = first_run.font
-                bold = fmt.bold
-                italic = fmt.italic
-                size = fmt.size
-                name = fmt.name
-                color = fmt.color
-                
-                # Remove all runs
-                for run in para.runs:
-                    run._element.getparent().remove(run._element)
-                
-                # Add new run with preserved formatting
-                if new_text:
-                    new_run = para.add_run(new_text)
-                    new_fmt = new_run.font
-                    new_fmt.bold = bold
-                    new_fmt.italic = italic
-                    new_fmt.size = size
-                    new_fmt.name = name
-                    if color and color.rgb:
-                        new_fmt.color.rgb = color.rgb
-            else:
-                # No runs to copy formatting from, just add text
-                if new_text:
-                    para.add_run(new_text)
+            for runs in _iter_run_groups(para):
+                _replace_in_runs(runs, resolve)
 
 
 def _expand_repeating_rows(table, row_data):
