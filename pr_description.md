@@ -24,7 +24,7 @@ This PR introduces the **Unified PIC Management** interface, implements bidirect
 
 ### 3. 🔄 Multi-Tab Session Synchronization & Silent Restoration (`base.html` & `login.html`)
 - **Context-Aware Session Expired Modal**:
-  - **Form Pages**: Displays `Sesi Berakhir (Isian Form Aman)` with explicit reassurance that unsaved form drafts remain safe.
+  - **Form Pages**: Displays `Sesi Berakhir!` with a green success text explicit reassurance (`✓ Draf formulir Anda tetap aman`) that unsaved form drafts remain safe.
   - **Non-Form Pages**: Displays standard session expiration notices.
 - **Cross-Tab Auto-Dismiss Overlay**: When logging back in via Tab C, open tabs (Tab A & B) automatically detect the active session, update CSRF tokens silently, and dismiss the timeout overlay **without a full page reload**, preserving unsaved form inputs.
 - **Focus & Storage Sync**: Added `focus` and client-side `storage` event listeners for instant cross-tab session restoration.
