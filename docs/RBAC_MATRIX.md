@@ -1,6 +1,6 @@
 # Matriks RBAC & Hak Akses Menu
 
-> **Terakhir Diperbarui:** Juli 28, 2026 (versi 1.2.0)  
+> **Terakhir Diperbarui:** Agustus 20, 2026 (versi 1.2.1)  
 > **Proyek:** Diamond — Sistem P3DE/PIDE/PMDE
 
 ---
@@ -127,20 +127,22 @@ Aksi berikut bukan menu navbar melainkan tombol pada halaman detail tiket. Selai
 |------|-----|:----:|:----:|:----:|:-----:|
 | **Register Penerimaan Data** | `/register-penerimaan-data/` | ✅ | ❌ | ❌ | ✅ |
 | **Laporan Transfer** | `/laporan-transfer/` | ❌ | ✅ | ❌ | ✅ |
-| **SLA Perekaman** | `/laporan-sla-perekaman/` | ✅ | ❌ | ❌ | ✅ |
+| **SLA Perekaman** | `/laporan-sla-perekaman/` | ❌ | ✅ | ❌ | ✅ |
 | **SLA Identifikasi** | `/laporan-sla-identifikasi/` | ❌ | ✅ | ❌ | ✅ |
 | **Metrik Data Eksternal** | `/laporan-metrik-data-eksternal/` | ❌ | ✅ | ❌ | ✅ |
 | **Pengendalian Mutu** | `/laporan-pengendalian-mutu/` | ❌ | ❌ | ✅ | ✅ |
-| **Hasil Pengolahan Data Prioritas** | `/laporan-hasil-pengolahan-data-prioritas/` | ❌ | ✅ | ❌ | ✅ |
+| **Hasil Pengolahan Data Prioritas** | `/laporan-hasil-pengolahan-data-prioritas/` | ❌ | ❌ | ✅ | ✅ |
 | **Kelengkapan Data** | `/laporan-kelengkapan-data/` | ❌ | ❌ | ✅ | ✅ |
-| **Rekap Himpun Olah Data** | `/laporan-rekap-himpun-olah-data/` | ❌ | ❌ | ✅ | ✅ |
-| **Detail Himpun Olah Data** | `/laporan-detail-himpun-olah-data/` | ❌ | ❌ | ✅ | ✅ |
+| **Rekap Himpun Olah Data** | `/laporan-rekap-himpun-olah-data/` | ✅ | ❌ | ✅ | ✅ |
+| **Detail Himpun Olah Data** | `/laporan-detail-himpun-olah-data/` | ✅ | ❌ | ✅ | ✅ |
 | **Profil ILAP (daftar)** | `/profil-ilap/` | ✅ | ✅ | ✅ | ✅ |
 | **Profil ILAP (detail)** | `/profil-ilap/<id_ilap>/` | ✅ | ✅ | ✅ | ✅ |
 | **Profil Sub Jenis Data** | `/jenis-data-ilap/<id_sub_jenis_data>/` | ✅ | ✅ | ✅ | ✅ |
-| **Monitoring Penyampaian Data** | `/monitoring-penyampaian-data/` | ✅ | ✅ | ✅ | ✅ |
-| **Quality Control** | `/quality-control/` | ❌ | ✅ | ✅ | ✅ |
+| **Monitoring Penyampaian Data** | `/monitoring-penyampaian-data/` | ✅ | ❌ | ❌ | ✅ |
+| **Quality Control** | `/quality-control/` | ❌ | ❌ | ✅ | ✅ |
 | **Identifikasi** | `/identifikasi/` | ❌ | ✅ | ❌ | ✅ |
+
+> Baris di atas mencerminkan pengecekan grup yang benar-benar ada di kode (`test_func`/`@user_passes_test` pada masing-masing view), bukan hanya penempatan tautan di navbar. Riwayat koreksi baris-baris ini — dan detail lebih lanjut tiap menu — ada di [Panduan Menu Pengguna](PANDUAN_MENU_PENGGUNA.md).
 
 ### Dashboard & Sinkronisasi
 
@@ -191,31 +193,35 @@ Helper terkait berada di `diamond_web/views/mixins.py`: `is_kasi()`, `is_kasi_p3
 - ✅ Akses penuh ke tiket workflow (rekam, teliti, kirim)
 - ✅ Manajemen backup data dan tanda terima
 - ✅ Semua data master (read & write)
-- ✅ Laporan P3DE (Register Penerimaan, SLA Perekaman)
+- ✅ Laporan P3DE (Register Penerimaan, Monitoring Penyampaian Data, Rekap Himpun Olah Data, Detail Himpun Olah Data)
 - ❌ Tidak bisa mengakses halaman identifikasi PIDE
-- ❌ Tidak bisa mengakses laporan PMDE
+- ❌ Tidak bisa mengakses laporan yang PIDE/PMDE-only (SLA Perekaman, SLA Identifikasi, Metrik Data Eksternal, Pengendalian Mutu, Kelengkapan Data, Hasil Pengolahan Data Prioritas)
 - ❌ Tidak bisa mengakses sync Oracle
 
 ### User PIDE
 - ✅ Akses identifikasi tiket
 - ✅ Transfer tiket ke PMDE
 - ✅ Semua data master (read & write)
-- ✅ Laporan PIDE (Transfer, SLA Identifikasi, Metrik Data, Hasil Pengolahan)
+- ✅ Laporan PIDE (Transfer, SLA Perekaman, SLA Identifikasi, Metrik Data Eksternal)
 - ❌ Tidak bisa merekam tiket baru
-- ❌ Tidak bisa mengakses backup data
+- ❌ Tidak bisa mengakses backup data, tanda terima, maupun Monitoring Penyampaian Data
+- ❌ Tidak bisa mengakses Quality Control maupun laporan PMDE
 - ❌ Tidak bisa mengakses sync Oracle
 
 ### User PMDE
 - ✅ Quality control dan penyelesaian tiket
 - ✅ Semua data master (read & write)
-- ✅ Laporan PMDE (Kelengkapan Data, Rekap Himpun Olah Data, Detail Himpun Olah Data)
+- ✅ Laporan PMDE (Pengendalian Mutu, Kelengkapan Data, Hasil Pengolahan Data Prioritas)
+- ✅ Laporan Rekap & Detail Himpun Olah Data (dipakai bersama P3DE)
 - ❌ Tidak bisa merekam atau mengirim tiket
-- ❌ Tidak bisa mengakses backup data
+- ❌ Tidak bisa mengakses backup data, tanda terima, maupun Monitoring Penyampaian Data
+- ❌ Tidak bisa mengakses halaman identifikasi maupun laporan PIDE
 - ❌ Tidak bisa mengakses sync Oracle
 
 ### Kasi (kasi_p3de / kasi_pide / kasi_pmde)
-- ✅ Melihat seluruh tiket unitnya tanpa harus menjadi PIC aktif
-- ✅ Daftar Tiket, Monitoring Penyampaian Data, dan Quality Control tanpa batasan PIC
+- ✅ Melihat seluruh tiket unitnya tanpa harus menjadi PIC aktif — berlaku di Daftar Tiket untuk ketiganya, ditambah halaman antrean unit masing-masing: **Identifikasi** untuk `kasi_pide`, **Quality Control** untuk `kasi_pmde`
+- ❌ `kasi_p3de` **tidak** mendapat akses ke menu Monitoring Penyampaian Data — P3DE tidak memiliki padanan halaman antrean unit seperti Identifikasi/Quality Control
+- ❌ Ketiga grup kasi juga tidak mendapat akses ke menu Laporan divisinya (Register Penerimaan Data, SLA Perekaman, SLA Identifikasi, Transfer, Metrik Data Eksternal, Pengendalian Mutu, Kelengkapan Data, Hasil Pengolahan Data Prioritas, Rekap/Detail Himpun Olah Data) — laporan-laporan tersebut hanya mengizinkan grup `user_*`/`admin*`, bukan `kasi_*`
 - ❌ Tidak memperoleh menu admin (referensi, PIC, template, sequence)
 - ❌ Tidak bisa mengakses sync Oracle
 - ❌ Tidak memperoleh aksi alur kerja yang menuntut peran PIC aktif

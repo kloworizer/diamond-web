@@ -24,7 +24,8 @@ def _get_filtered_tikets(params):
 
     Applies filters for date range (tgl_mulai, tgl_akhir filtered on
     tgl_rekam_pide), ILAP, Jenis Data, Sub Jenis Data, and Tabel I.
-    Results are ordered by tgl_kirim_pide ascending.
+    Results are ordered by tgl_rekam_pide ascending, the same field the
+    date range filters on.
 
     Args:
         params: QueryDict or dict-like object containing filter parameters.
@@ -85,8 +86,9 @@ def _get_filtered_tikets(params):
     if nama_tabel_I and nama_tabel_I != 'all' and nama_tabel_I != '':
         tikets = tikets.filter(id_periode_data__id_sub_jenis_data_ilap__nama_tabel_I=nama_tabel_I)
 
-    # Order by sent to PIDE date (chronological)
-    return tikets.order_by('tgl_kirim_pide')
+    # Order by start-of-identification date (chronological) — the same field
+    # the date range above filters on, so the sort matches what was searched.
+    return tikets.order_by('tgl_rekam_pide')
 
 
 class LaporanSLAIdentifikasiView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):

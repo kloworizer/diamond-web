@@ -20,9 +20,14 @@ from ..models.dasar_hukum import DasarHukum
 
 
 def is_pmde_user(user):
-    """Check if user belongs to PMDE group."""
+    """Check if user belongs to PMDE or P3DE group.
+
+    P3DE is included alongside PMDE: this report recaps the data P3DE
+    collects (Penghimpunan) and PIDE/PMDE process (Pengolahan), and the
+    navbar has always linked it from the P3DE menu block.
+    """
     return user.is_superuser or user.is_staff or user.groups.filter(
-        name__in=['user_pmde', 'admin', 'admin_pmde']
+        name__in=['user_pmde', 'admin', 'admin_pmde', 'user_p3de', 'admin_p3de']
     ).exists()
 
 
@@ -103,10 +108,10 @@ class LaporanDetailHimpunOlahDataView(LoginRequiredMixin, UserPassesTestMixin, T
     template_name = 'laporan_detail_himpun_olah_data/list.html'
 
     def test_func(self):
-        """Check if the current user is a PMDE user or admin.
+        """Check if the current user is a PMDE user, a P3DE user, or admin.
 
         Returns:
-            bool: True if the user has PMDE or admin privileges.
+            bool: True if the user has PMDE, P3DE, or admin privileges.
         """
         return is_pmde_user(self.request.user)
 
