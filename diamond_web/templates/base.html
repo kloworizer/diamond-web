@@ -2186,22 +2186,32 @@
                 removeSessionOverlay();
                 
                 const hasForm = document.querySelectorAll('form:not([action*="logout"]):not([role="search"]) input:not([type="hidden"]):not([type="search"]), form:not([action*="logout"]):not([role="search"]) textarea, form:not([action*="logout"]):not([role="search"]) select').length > 0;
-                const suffix = hasForm ? ' agar isian form atau pekerjaan Anda tidak hilang.' : ' untuk melanjutkan aktivitas.';
                 
-                const message = reason === 'multitab' 
-                    ? 'Anda telah logout di tab lain. Silakan login kembali di tab baru' + suffix
-                    : 'Anda sudah logout karena terdeteksi tidak aktif selama <strong>30 menit</strong>. Silakan login kembali di tab baru' + suffix;
+                let titleText = 'Sesi Berakhir!';
+                let messageHtml = '';
+
+                if (hasForm) {
+                    titleText = 'Sesi Berakhir (Isian Form Aman)';
+                    messageHtml = 'Sesi Anda telah berakhir. Jangan khawatir, <strong>isian formulir Anda tersimpan aman dan tidak akan hilang</strong>.<br><br>Silakan klik tombol di bawah untuk <strong>Masuk Kembali di tab baru</strong>. Setelah login di tab baru, modal ini akan otomatis tertutup dan Anda dapat langsung melanjutkan pengisian formulir di tab ini.';
+                } else {
+                    titleText = 'Sesi Berakhir!';
+                    if (reason === 'multitab') {
+                        messageHtml = 'Anda telah keluar (logout) di tab lain. Silakan login kembali di tab baru untuk melanjutkan aktivitas.';
+                    } else {
+                        messageHtml = 'Sesi Anda telah berakhir karena terdeteksi tidak aktif selama <strong>30 menit</strong>. Silakan login kembali di tab baru untuk melanjutkan aktivitas.';
+                    }
+                }
 
                 const overlayHtml = `
                 <div id="diamondSessionOverlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.85); backdrop-filter:blur(8px); z-index:999999; display:flex; align-items:center; justify-content:center;">
-                    <div class="bg-white shadow-lg text-center p-4" style="border-radius:16px; max-width:400px; width:90%; animation: zoomIn 0.3s ease;">
+                    <div class="bg-white shadow-lg text-center p-4" style="border-radius:16px; max-width:420px; width:90%; animation: zoomIn 0.3s ease;">
                         <div class="d-flex align-items-center justify-content-center mx-auto mb-3" style="width:56px; height:56px; border-radius:50%; background-color:#fef2f2; color:#dc2626;">
                             <i class="feather-alert-octagon" style="font-size:26px;"></i>
                         </div>
-                        <h5 class="fw-bold mb-2 text-dark" style="font-size:16px; font-family:'Outfit', sans-serif; text-transform:uppercase; letter-spacing:0.5px;">Sesi Berakhir!</h5>
-                        <p class="text-muted mb-4" style="font-size:13px; line-height:1.5; font-family:'Inter', sans-serif;">${message}</p>
+                        <h5 class="fw-bold mb-2 text-dark" style="font-size:16px; font-family:'Outfit', sans-serif; text-transform:uppercase; letter-spacing:0.5px;">${titleText}</h5>
+                        <p class="text-muted mb-4" style="font-size:13px; line-height:1.5; font-family:'Inter', sans-serif;">${messageHtml}</p>
                         <a href="{% url 'login' %}?next=${encodeURIComponent(window.location.pathname + window.location.search)}" target="_blank" class="btn btn-primary w-100 d-flex justify-content-center align-items-center gap-2" style="height:40px; font-size:12.5px; font-weight:600; border-radius:4px; background-color:#0c92ff; border-color:#0c92ff;">
-                            Masuk Kembali (Tab Baru) <i class="feather-log-in"></i>
+                            Masuk Kembali (Tab Baru) <i class="feather-external-link"></i>
                         </a>
                     </div>
                 </div>
@@ -2247,18 +2257,6 @@
 
         // -----------------------------------------------------------------------
         // Multi-tab session synchronisation via localStorage Storage Event API.
-        //
-        // Problem: When a user has the app open in multiple tabs and logs out
-        // (or is auto-logged-out) in one tab, the other tabs continue to show
-        // authenticated content and silently fail on AJAX requests.
-        //
-        // Solution: Use the browser's cross-tab `storage` event.  Whenever a
-        // logout is detected in any tab we write `diamond_logout_event` to
-        // localStorage.  Every other tab listening to `window.storage` will
-        // immediately pick this up and trigger the session-expired UI.
-        //
-        // Keys used:
-        //   diamond_logout_event  — set when the session expires in any tab
         // -----------------------------------------------------------------------
         (function () {
             const LOGOUT_KEY = 'diamond_logout_event';
@@ -2267,19 +2265,56 @@
             function broadcastLogout() {
                 try {
                     localStorage.setItem(LOGOUT_KEY, Date.now().toString());
+                    localStorage.setItem('diamond_session_sync', 'logout_' + Date.now());
                 } catch (e) {
-                    // localStorage unavailable (private browsing / storage quota)
                     console.warn('Multi-tab sync: could not write to localStorage', e);
                 }
             }
 
+            // Function to dismiss overlay and restore session state in current tab
+            window.checkAndDismissOverlay = function () {
+                const overlay = document.getElementById('diamondSessionOverlay');
+                if (!overlay) return;
+
+                // 1. Remove custom overlay
+                overlay.remove();
+
+                // 2. Update CSRF token in the DOM to prevent form submission errors
+                const getCookie = function(name) {
+                    const value = "; " + document.cookie;
+                    const parts = value.split("; " + name + "=");
+                    if (parts.length === 2) return parts.pop().split(";").shift();
+                };
+                const newCsrf = getCookie('csrftoken');
+                if (newCsrf) {
+                    document.querySelectorAll('input[name="csrfmiddlewaretoken"]').forEach(input => {
+                        input.value = decodeURIComponent(newCsrf);
+                    });
+                    if (window.csrftoken !== undefined) {
+                        window.csrftoken = decodeURIComponent(newCsrf);
+                    }
+                }
+
+                // 3. Dispatch session-restored event to reset idle timer
+                window.dispatchEvent(new CustomEvent('diamond:session-restored'));
+
+                // 4. Show appropriate toast message
+                const hasForm = document.querySelectorAll('form:not([action*="logout"]):not([role="search"]) input:not([type="hidden"]):not([type="search"]), form:not([action*="logout"]):not([role="search"]) textarea, form:not([action*="logout"]):not([role="search"]) select').length > 0;
+                const toastMsg = hasForm
+                    ? 'Sesi berhasil dipulihkan! Isian formulir Anda aman dan dapat langsung dilanjutkan.'
+                    : 'Sesi berhasil dipulihkan dari tab lain!';
+
+                if (typeof showToast === 'function') {
+                    showToast(toastMsg, 'success', 'Sesi Dipulihkan');
+                }
+
+                try { localStorage.removeItem('diamond_logout_event'); } catch (_) {}
+            };
+
             // Listen for logout events from OTHER tabs
             window.addEventListener('storage', function (e) {
                 if (e.key === LOGOUT_KEY && e.newValue) {
-                    // Another tab just logged out — trigger our own session-expired UI
-                    // Only if we are still showing authenticated content
-                    if (!document.getElementById('sessionTimeoutModal')) {
-                        // Call the IIFE's onSessionExpired via a re-dispatched custom event
+                    if (!document.getElementById('diamondSessionOverlay')) {
                         window.dispatchEvent(new CustomEvent('diamond:session-expired'));
                     }
                 }
@@ -2292,10 +2327,11 @@
                 }
             });
 
-            // Broadcast successful login to other tabs once per session.
+            // Broadcast successful login to other tabs
             if (!sessionStorage.getItem('diamond_auth_synced')) {
                 try {
                     localStorage.setItem('diamond_login_event', Date.now().toString());
+                    localStorage.setItem('diamond_session_sync', 'login_' + Date.now());
                     sessionStorage.setItem('diamond_auth_synced', '1');
                 } catch (e) {}
             }
@@ -2303,49 +2339,25 @@
             // Expose broadcastLogout so the session IIFE can call it on logout
             window._diamondBroadcastLogout = broadcastLogout;
 
-            // Listen for login events from OTHER tabs.
-            // If the user logs in on another tab, this authenticated tab should
-            // hide the timeout modal (if open) and sync its state.
+            // Listen for login events from OTHER tabs
             window.addEventListener('storage', function (e) {
-                if (e.key === 'diamond_session_sync' && e.newValue && e.newValue.startsWith('login_')) {
-                    // 1. Remove the custom overlay if it exists
-                    const overlay = document.getElementById('diamondSessionOverlay');
-                    if (overlay) {
-                        overlay.remove();
-                        if (typeof showToast === 'function') {
-                            showToast('Sesi berhasil dipulihkan dari tab lain!', 'success');
-                        }
-                    }
-                    window.dispatchEvent(new CustomEvent('diamond:session-restored'));
+                if ((e.key === 'diamond_session_sync' && e.newValue && e.newValue.startsWith('login_')) || e.key === 'diamond_login_event') {
+                    window.checkAndDismissOverlay();
+                }
+            });
 
-                    // 2. Hide bootstrap modal just in case
-                    const modalEl = document.getElementById('sessionTimeoutModal');
-                    if (modalEl) {
-                        const bsModal = bootstrap.Modal.getInstance(modalEl);
-                        if (bsModal) {
-                            bsModal.hide();
-                            timeoutModalShown = false; // reset flag
+            // Also check session on window focus / tab switch if overlay is currently shown
+            window.addEventListener('focus', function () {
+                if (document.getElementById('diamondSessionOverlay')) {
+                    fetch('{% url "keep_alive" %}', {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': window.csrftoken || csrftoken, 'Content-Type': 'application/json' },
+                        credentials: 'same-origin'
+                    }).then(res => {
+                        if (res.ok) {
+                            window.checkAndDismissOverlay();
                         }
-                    }
-
-                    // 3. Update CSRF token in the DOM to prevent form submission errors
-                    const getCookie = function(name) {
-                        const value = "; " + document.cookie;
-                        const parts = value.split("; " + name + "=");
-                        if (parts.length === 2) return parts.pop().split(";").shift();
-                    };
-                    const newCsrf = getCookie('csrftoken');
-                    if (newCsrf) {
-                        document.querySelectorAll('input[name="csrfmiddlewaretoken"]').forEach(input => {
-                            input.value = decodeURIComponent(newCsrf);
-                        });
-                        if (window.csrftoken !== undefined) {
-                            window.csrftoken = decodeURIComponent(newCsrf);
-                        }
-                    }
-
-                    // Clean up the logout key in case it was left over.
-                    try { localStorage.removeItem('diamond_logout_event'); } catch (_) {}
+                    }).catch(() => {});
                 }
             });
         })();
@@ -2412,17 +2424,15 @@
                 const isLoginEvent = event.newValue && event.newValue.startsWith('login_');
                 const isLogoutEvent = event.newValue && event.newValue.startsWith('logout_');
                 
-                {% if request.user.is_authenticated %}
-                if (isLogoutEvent) {
-                    // Current tab thinks user is logged in, but another tab logged out -> Reload
-                    window.location.reload();
-                }
-                {% else %}
                 if (isLoginEvent) {
-                    // Current tab thinks user is logged out, but another tab logged in -> Reload
-                    window.location.reload();
+                    if (typeof window.checkAndDismissOverlay === 'function') {
+                        window.checkAndDismissOverlay();
+                    }
+                } else if (isLogoutEvent) {
+                    if (!document.getElementById('diamondSessionOverlay')) {
+                        window.dispatchEvent(new CustomEvent('diamond:session-expired'));
+                    }
                 }
-                {% endif %}
             }
         });
     </script>
