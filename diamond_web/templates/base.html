@@ -2191,8 +2191,8 @@
                 let messageHtml = '';
 
                 if (hasForm) {
-                    titleText = 'Sesi Berakhir (Isian Form Aman)';
-                    messageHtml = 'Sesi Anda telah berakhir. Jangan khawatir, <strong>isian formulir Anda tersimpan aman dan tidak akan hilang</strong>.<br><br>Silakan klik tombol di bawah untuk <strong>Masuk Kembali di tab baru</strong>. Setelah login di tab baru, modal ini akan otomatis tertutup dan Anda dapat langsung melanjutkan pengisian formulir di tab ini.';
+                    titleText = 'Sesi Berakhir!';
+                    messageHtml = 'Sesi Anda telah kedaluwarsa. <span class="text-success fw-medium"><i class="feather-check-circle me-1"></i>Draf formulir Anda tetap aman.</span><br><br>Silakan masuk kembali di tab baru. Modal ini akan otomatis tertutup setelah Anda berhasil login.';
                 } else {
                     titleText = 'Sesi Berakhir!';
                     if (reason === 'multitab') {
