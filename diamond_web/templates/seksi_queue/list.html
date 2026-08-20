@@ -332,6 +332,11 @@ Blocks a page must fill:
         --sq-pink: #d63384;
         --sq-pink-soft: rgba(214, 51, 132, 0.12);
         --sq-pink-ink: #a82766;
+        /* The theme's own --bs-secondary, for the one group that is not a
+           stage of the work but the long view behind it. */
+        --sq-slate: #64748b;
+        --sq-slate-soft: rgba(100, 116, 139, 0.10);
+        --sq-slate-ink: #475569;
     }
 
     /* Collapsible filter panel — same accordion banner the Tiket and Backup
@@ -505,11 +510,11 @@ Blocks a page must fill:
         opacity: 0.45;
     }
 
-    /* The same summary turned on its side: a line per PIC, each queue a group
-       of columns across it. The rules below are all about keeping sixteen
-       columns of figures readable — the groups told apart by a rule between
-       them rather than by a fill, and every number set in tabular figures so
-       the digits line up down a column. */
+    /* The same summary turned on its side: a line per PIC, each queue a column
+       across it. The rules below are all about keeping a row of figures
+       readable — the groups told apart by a rule between them rather than by a
+       fill, and every number set in tabular figures so the digits line up down
+       a column. */
     .sq-summary-table {
         font-size: 12px;
         margin-bottom: 0;
@@ -567,13 +572,33 @@ Blocks a page must fill:
         --sq-hue-ink: var(--sq-green-ink);
     }
 
+    /* The year holds the quarter inside it, so it is the same work seen from
+       further off — drawn in slate rather than a sixth colour, which says
+       "further back and quieter" where another hue would say "another queue".
+       It sits at the end of the row for the same reason: read right to left it
+       is the oldest thing on the line. */
+    .sq-summary-group-done-alt,
+    .sq-summary-table td.sq-cell-done-alt {
+        --sq-hue: var(--sq-slate);
+        --sq-hue-soft: var(--sq-slate-soft);
+        --sq-hue-ink: var(--sq-slate-ink);
+    }
+
     /* The queue names, each with the dot its card carried, so a reader coming
-       from the other page recognises which group is this page's own work. */
+       from the other page recognises which group is this page's own work. With
+       one column under each, this is the whole header: it names the queue, it
+       is the sort control, and it sits over the figures it heads rather than
+       over a second row that would only repeat their unit. Set to the right,
+       like the figures, so the label and its column read as one line. */
     .sq-summary-table .sq-summary-group {
-        text-align: center;
+        text-align: right;
         font-size: 10.5px;
         text-transform: uppercase;
         letter-spacing: 0.06em;
+        /* Set tight, because a name broken over two lines is one label and not
+           two: the pair has to read as a block against the single-line names
+           beside it rather than as a column of its own. */
+        line-height: 1.3;
         color: var(--sq-hue-ink);
         background-color: var(--sq-hue-soft);
     }
@@ -583,14 +608,6 @@ Blocks a page must fill:
         margin-right: 6px;
         vertical-align: middle;
         background-color: var(--sq-hue);
-    }
-
-    .sq-summary-table .sq-summary-sub {
-        text-align: right;
-        font-size: 10px;
-        font-weight: 600;
-        letter-spacing: 0.03em;
-        color: #94a3b8;
     }
 
     /* A hairline down the left of every group, which is all that is needed to
@@ -614,14 +631,6 @@ Blocks a page must fill:
     .sq-summary-table .sq-kind-3 { --sq-hue: var(--sq-indigo); --sq-hue-soft: var(--sq-indigo-soft); --sq-hue-ink: var(--sq-indigo-ink); }
     .sq-summary-table .sq-kind-4 { --sq-hue: var(--sq-pink); --sq-hue-soft: var(--sq-pink-soft); --sq-hue-ink: var(--sq-pink-ink); }
 
-    .sq-summary-table thead .sq-summary-sub.sq-kind-0,
-    .sq-summary-table thead .sq-summary-sub.sq-kind-1,
-    .sq-summary-table thead .sq-summary-sub.sq-kind-2,
-    .sq-summary-table thead .sq-summary-sub.sq-kind-3,
-    .sq-summary-table thead .sq-summary-sub.sq-kind-4 {
-        color: var(--sq-hue-ink);
-    }
-
     .sq-summary-table .sq-summary-pic {
         text-align: left;
         white-space: nowrap;
@@ -633,7 +642,7 @@ Blocks a page must fill:
     /* A sortable header keeps room for its caret whether or not it is the one
        sorted by, so clicking through the columns never shifts the row. The
        caret is faint until the column is the sorted one, which is the whole
-       affordance — there is no room over sixteen columns for anything louder. */
+       affordance — a header this small has no room for anything louder. */
     .sq-summary-table th[data-sort] {
         cursor: pointer;
         user-select: none;
@@ -818,29 +827,24 @@ Blocks a page must fill:
         background-color: #f8fafc;
     }
 
-    /* A tiket count sits in a soft pill of its column's hue, the same shape the
-       Tiket list puts its row counts in. A zero is left as plain muted text
-       instead: colour is what says there is something here, and a table of
-       coloured zeros would say it of everything. */
-    .sq-summary-pill {
-        display: inline-block;
-        min-width: 32px;
-        padding: 1px 8px;
-        border-radius: 999px;
-        background-color: var(--sq-hue-soft);
-        color: var(--sq-hue-ink);
-        font-weight: 600;
-    }
-
+    /* A zero is left as plain muted text rather than in its column's hue:
+       colour is what says there is something here, and a table of coloured
+       zeros would say it of everything. */
     .sq-summary-zero {
         color: #cbd5e1;
     }
 
-    /* The rows behind a tiket count, in the same hue but unfilled and smaller,
-       so the pair reads as one fact with the count leading. */
+    /* The rows a queue holds, in its group's hue — the one figure each group
+       shows, so it carries the colour on its own. */
     .sq-summary-baris {
         color: var(--sq-hue-ink);
         font-weight: 500;
+    }
+
+    /* The tiket count behind the rows is on the cell's title, so the cursor is
+       what says there is something more to read here. */
+    .sq-summary-table td.sq-summary-baris-cell {
+        cursor: help;
     }
 
     /* ---- A PIC and their detail lines are one block ----
@@ -888,13 +892,6 @@ Blocks a page must fill:
        little air instead before the totals. */
     .sq-summary-table tbody tr.sq-summary-row-kind:last-child td {
         padding-bottom: 8px;
-    }
-
-    .sq-summary-table tbody tr.sq-summary-row-kind .sq-summary-pill {
-        background-color: transparent;
-        padding: 0;
-        min-width: 0;
-        font-weight: 500;
     }
 
     .sq-summary-kind-name {
@@ -960,6 +957,10 @@ Blocks a page must fill:
 
     .sq-summary-table tfoot td.sq-group-done {
         background-color: var(--sq-green-soft);
+    }
+
+    .sq-summary-table tfoot td.sq-group-done-alt {
+        background-color: var(--sq-slate-soft);
     }
 
     .sq-summary-table tfoot td.sq-summary-pic {
@@ -1034,8 +1035,8 @@ Blocks a page must fill:
     }
 
     /* ---- Coloured cells in the queue table ----
-       The same soft pill the summary uses, so a figure means the same thing
-       wherever it is read on this page. Jatuh tempo takes the urgency colour
+       A soft pill in the hue of what it counts, so a figure means the same
+       thing wherever it is read on this page. Jatuh tempo takes the urgency colour
        of its own row, prioritas the warning colour the app marks anything
        needing attention in, and the three counts read total, done, left. */
     .sq-pill {
@@ -1282,12 +1283,9 @@ that differ between one seksi and the next.
 
         // ---- Summary table ----
         // The same payload read the other way round: a line per PIC, each queue
-        // a group of columns across it. Which groups those are is the table's
-        // own `data-summary-sections`, written from the list the server built
-        // the header from, so the cells cannot land under the wrong heading.
-        // A group is the tikets and the rows behind them, then one cell per
-        // entry of its breakdown — which is empty for a group the page heads
-        // with those two columns alone, so the width follows the payload.
+        // one column across it. Which groups those are is the table's own
+        // `data-summary-sections`, written from the list the server built the
+        // header from, so the cells cannot land under the wrong heading.
         // The dimensions the detail lines break a PIC down along, each with the
         // entries it lists — the same lists the server built, so line n of a set
         // is entry n of that split in each of the PIC's sections.
@@ -1296,25 +1294,29 @@ that differ between one seksi and the next.
             return el ? JSON.parse(el.textContent) : [];
         }
 
-        // A tiket count in a soft pill of its column's hue, or plain muted text
-        // when there is nothing there — see .sq-summary-pill.
-        function countPill(value) {
-            return $('<span>').text(formatCount(value))
-                .addClass(value ? 'sq-summary-pill' : 'sq-summary-zero');
-        }
-
+        // One cell per group: the rows behind that queue, with the tikets they
+        // arrived in on the cell's hover title rather than in a column of their
+        // own. Quality control is done row by row — the same figure the Indeks
+        // Beban is built from — so the rows are what the table compares, and a
+        // second column of tiket counts beside every one of them doubled the
+        // width to answer a question that is only ever asked about one cell at
+        // a time.
+        //
         // `sq-group-<variant>` marks every cell of a group, which is what lets
         // the totals line be washed in the group's colour from end to end, and
         // `sq-cell-<variant>` hands the cell that group's hue.
         function appendSectionCells($row, section, variant) {
-            const cell = 'sq-group-' + variant + ' sq-cell sq-cell-' + variant;
+            const tikets = section.tikets || 0;
             $row.append(
-                $('<td>').addClass(cell + ' sq-summary-group-start')
-                    .append(countPill(section.tikets)),
-                $('<td>').addClass(cell).append(
-                    $('<span>').addClass(section.baris ? 'sq-summary-baris' : 'sq-summary-zero')
-                        .text(formatCount(section.baris))
-                )
+                $('<td>')
+                    .addClass('sq-group-' + variant + ' sq-cell sq-cell-' + variant
+                              + ' sq-summary-group-start sq-summary-baris-cell')
+                    .attr('title', formatCount(tikets) + ' tiket')
+                    .append(
+                        $('<span>')
+                            .addClass(section.baris ? 'sq-summary-baris' : 'sq-summary-zero')
+                            .text(formatCount(section.baris))
+                    )
             );
         }
 
@@ -1384,9 +1386,9 @@ that differ between one seksi and the next.
             });
         }
 
-        // Nama PIC, Indeks Beban, then two columns per group.
+        // Nama PIC, Indeks Beban, then one column per group.
         function summaryWidth(keys) {
-            return 2 + keys.length * 2;
+            return 2 + keys.length;
         }
 
         // ---- Sorting the summary lines ----
@@ -1409,7 +1411,7 @@ that differ between one seksi and the next.
         }
 
         // The figure a header sorts by: `name`, `beban`, or a group's own
-        // `<key>:tikets` or `<key>:baris`. A PIC's detail lines are that PIC's
+        // `<key>:baris`. A PIC's detail lines are that PIC's
         // figures broken up rather than lines of their own, so they are not
         // sorted — they follow the line they belong to.
         function summaryValue(row, spec) {

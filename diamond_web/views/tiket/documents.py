@@ -372,6 +372,22 @@ def _generate_single_document(request, pk, doc_type):
                             'jumlah_baris_tidak_lengkap': format_number_with_separator(t.baris_tidak_lengkap) if t.baris_tidak_lengkap is not None else '-',
                         })
                     nomor_counter += 1
+            elif doc_type == 'nd_pengantar':
+                row_data = []
+                nomor_counter = 1
+                for t in tiket_rows:
+                    sub = t.id_periode_data.id_sub_jenis_data_ilap if t.id_periode_data else None
+                    ilap_obj = sub.id_ilap if sub else None
+                    row_data.append({
+                        'nomor': str(nomor_counter),
+                        'nomor_tiket': t.nomor_tiket,
+                        'nama_ilap': ilap_obj.nama_ilap if ilap_obj else '-',
+                        'sub_jenis_data': sub.nama_sub_jenis_data if sub else '-',
+                        'periode_data': _format_periode_tiket(t),
+                        'jumlah_baris_lengkap': format_number_with_separator(t.baris_lengkap) if t.baris_lengkap is not None else '-',
+                        'nama_tabel_i': sub.nama_tabel_I if sub else '-',
+                    })
+                    nomor_counter += 1
 
             doc_buffer = fill_template_with_data(template.file_template.open('rb'), template_variables, row_data=row_data)
             

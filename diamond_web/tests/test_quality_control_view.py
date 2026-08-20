@@ -39,6 +39,7 @@ from diamond_web.views.quality_control import (
     JENIS_TABEL_WEIGHTS,
     KATEGORI_WILAYAH_WEIGHTS,
     PRIORITAS_WEIGHT,
+    SECTION_WEIGHTS,
     jatuh_tempo_bands,
 )
 
@@ -723,7 +724,7 @@ def _selesai_bundle(days_ago=5, pmde_user=None, jenis_tabel=None, sudah_qc=250,
     """A tiket closed `days_ago` days ago, with a PMDE PIC on it.
 
     Completion is the SELESAI action rather than a column on the tiket, so the
-    bundle writes one — which is what the 90 day window is read from.
+    bundle writes one — which is what both finished windows are read from.
     """
     bundle = _upstream_bundle(
         status, pmde_user=pmde_user, jenis_tabel=jenis_tabel, sudah_qc=sudah_qc,
@@ -1191,6 +1192,63 @@ class TestSummarySelesai(SummaryEndpoint):
 
 
 @pytest.mark.django_db
+class TestSummarySelesaiTahun(SummaryEndpoint):
+    """The year of finished work at the end of the table.
+
+    The same queue as the quarter beside it, read over a wider window — so what
+    is asserted here is the relationship between the two columns rather than the
+    counting, which TestSummarySelesai already pins.
+    """
+
+    def test_it_counts_work_the_quarter_is_too_short_to_reach(self, client):
+        bundle = _selesai_bundle(days_ago=200, sudah_qc=700)
+        client.force_login(bundle['pmde_user'])
+
+        payload = self._summary(client)
+        assert payload['selesai']['tikets'] == 0
+        assert (payload['selesai_tahun']['tikets'], payload['selesai_tahun']['baris']) \
+            == (1, 700)
+
+    def test_a_tiket_closed_before_the_year_is_left_out(self, client):
+        bundle = _selesai_bundle(days_ago=366)
+        client.force_login(bundle['pmde_user'])
+        assert self._section(client, 'selesai_tahun')['tikets'] == 0
+
+    def test_the_quarter_sits_inside_it_rather_than_beside_it(self, client):
+        """Recent work is in both columns: the year is the longer view of the
+        same queue, not a different set of tikets."""
+        first = _selesai_bundle(days_ago=5, sudah_qc=250)
+        _selesai_bundle(days_ago=200, pmde_user=first['pmde_user'], sudah_qc=150)
+        client.force_login(first['pmde_user'])
+
+        payload = self._summary(client)
+        assert (payload['selesai']['tikets'], payload['selesai']['baris']) == (1, 250)
+        assert (payload['selesai_tahun']['tikets'], payload['selesai_tahun']['baris']) \
+            == (2, 400)
+
+    def test_it_splits_and_lands_on_the_pic_line_like_every_other_section(self, client):
+        identified, unidentified, _unstructured = _seeded_kinds()
+        first = _selesai_bundle(days_ago=200, jenis_tabel=identified, sudah_qc=250)
+        _selesai_bundle(
+            days_ago=200, pmde_user=first['pmde_user'], jenis_tabel=unidentified,
+            sudah_qc=90,
+        )
+        client.force_login(first['pmde_user'])
+
+        row = self._summary(client)['rows'][0]
+        entries = _entries(row['sections']['selesai_tahun'])
+        assert entries['Diidentifikasi']['baris'] == 250
+        assert entries['Tidak Diidentifikasi']['baris'] == 90
+
+    def test_the_jatuh_tempo_filter_leaves_it_alone(self, client):
+        qc_bundle = _jatuh_tempo_bundle(5)
+        _selesai_bundle(days_ago=200, pmde_user=qc_bundle['pmde_user'])
+        client.force_login(qc_bundle['pmde_user'])
+
+        assert self._summary(client, jatuh_tempo='10')['selesai_tahun']['tikets'] == 1
+
+
+@pytest.mark.django_db
 class TestIndeksBeban(SummaryEndpoint):
     """The weighted load the table sorts by.
 
@@ -1249,7 +1307,8 @@ class TestIndeksBeban(SummaryEndpoint):
         assert self._beban(client) == pytest.approx(without * PRIORITAS_WEIGHT)
 
     def test_the_queue_in_hand_weighs_most(self, client):
-        """The same rows count for less the further upstream they still are."""
+        """The same rows count for less the further upstream they still are, and
+        less again once they are behind."""
         loads = {}
         in_hand = _qc_bundle(belum_qc=1000)
         client.force_login(in_hand['pmde_user'])
@@ -1260,11 +1319,37 @@ class TestIndeksBeban(SummaryEndpoint):
             client.force_login(bundle['pmde_user'])
             loads[key] = self._beban(client)
 
-        done = _selesai_bundle(sudah_qc=1000)
+        # Inside the quarter, so it is counted under both finished weights.
+        done = _selesai_bundle(days_ago=5, sudah_qc=1000)
         client.force_login(done['pmde_user'])
         loads['selesai'] = self._beban(client)
 
-        assert loads['qc'] > loads['pide'] > loads['p3de'] > loads['selesai'] > 0
+        # Inside the year alone, which is the lightest anything counts for.
+        older = _selesai_bundle(days_ago=200, sudah_qc=1000)
+        client.force_login(older['pmde_user'])
+        loads['selesai_tahun'] = self._beban(client)
+
+        assert loads['qc'] > loads['pide'] > loads['p3de'] > loads['selesai'] \
+            > loads['selesai_tahun'] > 0
+
+    def test_finished_work_fades_with_age_rather_than_dropping_off(self, client):
+        """The windows overlap deliberately: work inside the quarter is scored
+        under both, so passing ninety days costs it the quarter's weight and
+        leaves it the year's."""
+        # Enough rows that the rounding each section's load goes through on the
+        # way out cannot move the ratio being asserted.
+        recent = _selesai_bundle(days_ago=5, sudah_qc=100000)
+        client.force_login(recent['pmde_user'])
+        fresh = self._beban(client)
+
+        older = _selesai_bundle(days_ago=200, sudah_qc=100000)
+        client.force_login(older['pmde_user'])
+        faded = self._beban(client)
+
+        assert fresh == pytest.approx(
+            faded * (SECTION_WEIGHTS['selesai'] + SECTION_WEIGHTS['selesai_tahun'])
+            / SECTION_WEIGHTS['selesai_tahun']
+        )
 
     def test_it_is_the_sum_of_every_queue(self, client):
         """A PIC's load is their whole line, not the queue this page lists."""
@@ -1418,7 +1503,9 @@ class TestSummaryPerPic(SummaryEndpoint):
             mine['pmde_user'].get_full_name(), theirs['pmde_user'].get_full_name(),
         }
         for row in rows.values():
-            assert set(row['sections']) == {'qc', 'p3de', 'pide', 'selesai'}
+            assert set(row['sections']) == {
+                'qc', 'p3de', 'pide', 'selesai', 'selesai_tahun',
+            }
 
         theirs_row = rows[theirs['pmde_user'].get_full_name()]
         assert theirs_row['sections']['qc']['baris'] == 60
@@ -1519,15 +1606,25 @@ class TestSummaryPerPic(SummaryEndpoint):
 
         for label in ('Beban Kerja', 'Nama PIC', 'Proses QC', 'Masih di P3DE',
                       'Masih di PIDE', 'Selesai QC 90 Hari Terakhir',
-                      'Tiket', 'Baris Data', 'Jenis Tabel', 'Kategori Wilayah'):
+                      'Selesai QC 1 Tahun Terakhir',
+                      'Jenis Tabel', 'Kategori Wilayah'):
             assert label in html
         for kind in JenisTabel.objects.values_list('deskripsi', flat=True):
             assert kind in html
         for wilayah in KategoriWilayah.objects.values_list('deskripsi', flat=True):
             assert wilayah in html
+        # One column per group, holding the rows, and the queue's name is its
+        # whole header — one row of headings, no second row repeating the unit.
+        assert 'data-sort="qc:baris"' in html
+        assert ':tikets"' not in html
+        assert 'sq-summary-sub' not in html
+        head = html[html.index('sq-summary-table'):]
+        assert head[:head.index('</thead>')].count('<tr>') == 1
         # The JS fills a line's cells in this order; the header above them was
         # rendered from the same list.
-        assert 'data-summary-sections="qc,p3de,pide,selesai"' in html
-        assert 'data-summary-variants="own,upstream,upstream-alt,done"' in html
+        assert 'data-summary-sections="qc,p3de,pide,selesai,selesai_tahun"' in html
+        assert (
+            'data-summary-variants="own,upstream,upstream-alt,done,done-alt"' in html
+        )
         # The table opens on the heaviest QC load rather than alphabetically.
         assert 'data-summary-sort="beban" data-summary-sort-desc="1"' in html

@@ -230,25 +230,25 @@ def laporan_metrik_data_eksternal_export(request):
     # Create Excel workbook using openpyxl
     wb = Workbook()
     ws = wb.active
-    ws.title = "Laporan Transfer"
-    
+    ws.title = "Laporan Metrik Data Eksternal"
+
     # Write headers
     headers = dataset.headers
     for col_idx, header in enumerate(headers, 1):
         ws.cell(row=1, column=col_idx, value=header)
-    
+
     # Write data rows
     for row_idx, row in enumerate(dataset, 2):
         for col_idx, value in enumerate(row, 1):
             ws.cell(row=row_idx, column=col_idx, value=value)
-    
+
     # Save to BytesIO
     excel_file = BytesIO()
     wb.save(excel_file)
     excel_data = excel_file.getvalue()
-    
+
     # Create filename
-    filename = "Laporan_Transfer"
+    filename = "Laporan_Metrik_Data_Eksternal"
     tgl_mulai_str = request.GET.get('tgl_mulai')
     tgl_akhir_str = request.GET.get('tgl_akhir')
     if tgl_mulai_str and tgl_akhir_str:

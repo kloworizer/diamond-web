@@ -62,7 +62,8 @@ Oracle DB (Sumber)
     │   └── python manage.py sync_oracle_data
     │
     ├── Fase 3: Data Tiket (sekali/sesuai kebutuhan)
-    │   └── python manage.py sync_tiket_data
+    │   ├── python manage.py sync_tiket_data
+    │   └── python manage.py backfill_old_db_tiket_actions
     │
     ├── Fase 4: Sinkronisasi Harian (otomatis via cron)
     │   └── scripts/sync_daily_cron.sh ───► 09:00 WIB setiap hari
@@ -267,6 +268,44 @@ print(f'old_db=True (dari Oracle): {old_db}')
 print(f'old_db=False (input manual): {new_db}')
 "
 ```
+
+#### Langkah 3.4 — Rekonstruksi Riwayat Aksi Tiket
+
+Sinkronisasi tiket hanya menulis aksi `PIC ditambahkan` (301). Seluruh langkah alur kerja yang dilalui tiket **sebelum** migrasi (Direkam, Diteliti, Dikirim ke PIDE, Identifikasi, Ditransfer ke PMDE, Pengendalian Mutu, Selesai, Dibatalkan) tidak ikut terbawa, sehingga tab **Riwayat Aksi** pada halaman detail tiket hasil migrasi kosong atau mulai dari tengah alur.
+
+Command `backfill_old_db_tiket_actions` menyusun ulang aksi-aksi tersebut dari status tiket dan tanggal alur kerja yang **sudah** dibawa migrasi (`tgl_terima_dip`, `tgl_teliti`, `tgl_kirim_pide`, `tgl_rekam_pide`, `tgl_transfer`, `tgl_rematch`), ditambah **tanggal tutup tiket yang dibaca langsung dari Oracle** (`tgl_close_tiket` — tanggal QC saat `belum_qc = 0`, sama seperti pada `sync_tiket_update`). Tanggal tutup tidak punya kolom pada tabel `tiket`, sehingga hanya tersedia bila Oracle dapat dihubungi.
+
+Selain melengkapi aksi yang hilang, command ini juga **memperbaiki dua hal yang salah** dari hasil migrasi:
+
+1. **Posisi aksi `PIC ditambahkan`.** `_assign_tiket_pics_sync` memberi timestamp berdasarkan jam sinkronisasi, sehingga riwayat PIC setiap tiket migrasi tercatat pada saat migrasi dijalankan — bertahun-tahun setelah tiketnya sendiri, bahkan setelah aksi `Selesai`. Command memindahkannya ke tepat setelah `Direkam` (`tgl_terima_dip` + offset mikrodetik), sama seperti yang dilakukan `RekamPenerimaanDataView`. Hanya batch PIC awal yang dipindah; PIC yang benar-benar ditambahkan setelah migrasi melalui menu PIC tetap pada tanggalnya.
+2. **Baris hasil run sebelumnya.** Baris yang ditulis command ini pada run terdahulu akan **di-update di tempat** bila tersedia tanggal yang lebih baik — terutama tanggal tutup dari Oracle yang belum terbaca saat itu. Baris yang ditulis pengguna atau `sync_tiket_update` tidak pernah disentuh.
+
+**Tiket berstatus Dibatalkan (7) tidak direkonstruksi sama sekali** — bukan hanya "tidak lengkap", tapi sengaja dikosongkan kembali ke `PIC ditambahkan` saja. Beberapa tampilan (kartu **Pengembalian Seluruhnya dari PIDE** di halaman beranda) mencocokkan tiket semata dari *ada tidaknya* aksi `Dikembalikan`/`Dibatalkan`, tanpa memeriksa apakah tiketnya masih terbuka. Riwayat aksi yang lengkap justru membuat tiket yang **sudah** dibatalkan muncul selamanya di kartu tersebut, padahal tidak ada yang bisa dikerjakan atasnya. Command menghapus baris `Direkam`/`Diteliti`/... hasil rekonstruksi run sebelumnya pada tiket-tiket ini setiap kali dijalankan; aksi Dibatalkan yang benar-benar direkam pengguna melalui aplikasi tidak disentuh. Nonaktifkan dengan `--skip-cancelled-cleanup` bila diperlukan.
+
+```bash
+# Dry-run: lihat jumlah aksi yang akan dibuat, per jenis aksi
+python manage.py backfill_old_db_tiket_actions --dry-run
+
+# Eksekusi
+python manage.py backfill_old_db_tiket_actions
+
+# Batalkan (hapus aksi hasil rekonstruksi)
+python manage.py backfill_old_db_tiket_actions --remove
+```
+
+**Ketentuan:**
+
+| Aturan | Keterangan |
+|--------|------------|
+| **Idempotent** | Langkah yang aksinya sudah ada dilewati, termasuk transisi yang sudah dicatat `sync_tiket_update`. Aman — bahkan dianjurkan — dijalankan berulang: run berikutnya memperbaiki tanggal yang sebelumnya belum tersedia |
+| **Berbasis bukti** | Langkah hanya dicatat bila data tiket mendukungnya. Tiket dibatalkan yang tidak pernah sampai PIDE tidak mendapat aksi `Dikirim ke PIDE`, dan tiket yang selesai di P3DE tidak ditelusurkan melalui PIDE/PMDE |
+| **Tanggal asli dipertahankan** | Tanggal yang terbawa migrasi dipakai apa adanya — termasuk tanggal yang saling bertentangan. Hanya langkah yang memang tidak punya tanggal yang mewarisi timestamp langkah sebelumnya, dan catatannya ditandai `tanggal perkiraan` |
+| **Penanda** | Semua baris hasil rekonstruksi berakhiran `(data migrasi)` pada kolom catatan, sehingga tidak terbaca sebagai aksi yang benar-benar direkam pengguna |
+| **Atribusi PIC** | Setiap langkah dicatat atas nama PIC aktif sesuai perannya (P3DE/PIDE/PMDE). Bila tiket tidak punya PIC untuk peran tersebut, aksi dicatat atas nama user sistem (`--system-user`, default `admin`) dan jumlahnya dilaporkan |
+
+Opsi lain: `--tiket NOMOR` (ulangi untuk beberapa tiket), `--status N`, `--limit N`, `--batch-size N`, `--no-oracle` (lewati pembacaan tanggal tutup), `--skip-pic-dates` (jangan pindahkan aksi `PIC ditambahkan`), `--skip-cancelled-cleanup` (jangan bersihkan tiket Dibatalkan), dan `--dedupe` untuk menghapus aksi duplikat pada tiket migrasi (duplikat dapat muncul bila `sync_tiket_update` memproses transisi yang sama dua kali).
+
+> **Catatan:** bila Oracle tidak dapat dihubungi, command tetap berjalan — aksi `Pengendalian Mutu` dan `Selesai` mewarisi timestamp langkah sebelumnya dan ditandai `tanggal perkiraan`. Jalankan ulang setelah Oracle tersedia untuk memperbaikinya.
 
 ---
 
@@ -1396,6 +1435,7 @@ chmod +x /home/pajak/diamond-web/scripts/*.sh
 |---------|-----------|------|
 | `sync_oracle_data` | Sinkronisasi data referensi dari Oracle | `--check-only` (dry) / normal (execute) |
 | `sync_tiket_data` | Sinkronisasi data tiket dari Oracle | `--check-only` (dry) / normal (execute) |
+| `backfill_old_db_tiket_actions` | Rekonstruksi riwayat aksi alur kerja tiket hasil migrasi (`old_db=True`) + perbaikan tanggal aksi `PIC ditambahkan` | `--dry-run` / `--remove` / `--dedupe` / `--no-oracle` / normal (execute) |
 | `cleanup_pre_production` | Bersihkan data testing + hapus tiket `old_db=False` | `--dry-run` / `--skip-test-data` / normal (execute) |
 | `dbbackup` | Backup database (django-dbbackup) | `--compress`, `--database=default` |
 | `mediabackup` | Backup media files (django-dbbackup) | `--compress` |
