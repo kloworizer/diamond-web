@@ -296,7 +296,7 @@
                                     <tr>
                                         <th>ID Temp</th>
                                         <th>Jumlah Tiket</th>
-                                        <th style="width: 320px;">Aksi</th>
+                                        <th style="width: 380px;">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -312,6 +312,11 @@
                                             {% endif %}
                                         </td>
                                         <td class="d-flex gap-1">
+                                            <a href="{% url 'kirim_tiket_download' group.id_temp %}"
+                                               class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip"
+                                               data-bs-title="Download Dokumen">
+                                                <i class="feather-download"></i>
+                                            </a>
                                             <button type="button" class="btn btn-sm btn-primary btn-update-temp"
                                                     data-id-temp="{{ group.id_temp }}" data-bs-toggle="tooltip"
                                                     data-bs-title="Update Template">

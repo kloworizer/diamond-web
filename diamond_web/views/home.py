@@ -39,6 +39,7 @@ from diamond_web.views.mixins import (
     user_group_names,
 )
 from diamond_web.views.quality_control import jatuh_tempo_ids
+from diamond_web.views import seksi_queue as sq
 
 # Filter buttons for the PMDE cards, keyed by the `data-urgency` value the
 # button carries and the `count-<key>-<category>` span the template renders.
@@ -763,7 +764,14 @@ def home_data(request):
         elif category == 'masih_di_p3de_pide':
             # Status earns a column here: it is the one category spanning more
             # than one of them, and which unit still holds a tiket is the point.
-            columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'status_tiket', 'tgl_terima_dip']
+            # Jumlah Baris sits between Jenis Data and Status Tiket but is a
+            # computed value (sq.baris_data), not a raw field, so it is not
+            # orderable — it still occupies a slot here to keep the indices of
+            # the columns after it aligned with what the client sends.
+            columns = [
+                'nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data',
+                'jumlah_baris', 'status_tiket', 'tgl_terima_dip',
+            ]
 
         if order_col_index is not None:
             try:
@@ -932,6 +940,13 @@ def home_data(request):
                     'nama_ilap': nama_ilap,
                     'nama_sub_jenis_data': nama_sub_jenis,
                     'nama_tabel_I': nama_tabel_I,
+                    # Same rule the Quality Control page uses for its P3DE/PIDE
+                    # upstream sections: baris lengkap until identification has
+                    # actually split it, baris I from there on.
+                    'jumlah_baris': sq.baris_data(
+                        obj.status_tiket, obj.baris_lengkap, obj.baris_i,
+                        obj.baris_u, obj.baris_cde, obj.baris_res,
+                    ),
                     'status_tiket': STATUS_LABELS.get(obj.status_tiket, ''),
                     'status_tiket_code': obj.status_tiket,
                     'tanggal': date_val,

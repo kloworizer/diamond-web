@@ -2027,6 +2027,7 @@
                                         <th>Nomor Tiket</th>
                                         <th>Nama ILAP</th>
                                         <th>Jenis Data</th>
+                                        <th>Jumlah Baris</th>
                                         <th>Status Tiket</th>
                                         <th>Tgl Terima DIP</th>
                                         <th>Prioritas</th>
@@ -2903,6 +2904,16 @@
             { data: 'nomor_tiket', title: 'Nomor Tiket' },
             { data: 'nama_ilap', title: 'Nama ILAP' },
             { data: 'nama_sub_jenis_data', title: 'Jenis Data' },
+            {
+                data: 'jumlah_baris',
+                title: 'Jumlah Baris',
+                width: '110px',
+                orderable: false,
+                render: function(data, type, row) {
+                    if (type === 'display') return createFixedBadge(data, '#e0f2fe', '#0284c7', '#bae6fd');
+                    return (data === null || data === undefined || data === '' || isNaN(data)) ? 0 : Number(data);
+                }
+            },
             {
                 data: 'status_tiket',
                 title: 'Status Tiket',
