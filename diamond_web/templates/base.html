@@ -2354,8 +2354,10 @@
                         headers: { 'X-CSRFToken': window.csrftoken || csrftoken, 'Content-Type': 'application/json' },
                         credentials: 'same-origin'
                     }).then(res => {
-                        if (res.ok) {
-                            window.checkAndDismissOverlay();
+                        if (res.ok && !res.redirected && res.headers.get('content-type')?.includes('application/json')) {
+                            return res.json().then(data => {
+                                if (data.ok) window.checkAndDismissOverlay();
+                            });
                         }
                     }).catch(() => {});
                 }
