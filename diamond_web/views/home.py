@@ -1,6 +1,8 @@
 from django.shortcuts import render
 from django.conf import settings
-from django.db.models import Count, F, Q, Exists, OuterRef, Max, Subquery, Value
+from django.db.models import (
+    Count, F, Q, Exists, OuterRef, Max, Subquery, Value, Case, When, IntegerField,
+)
 from django.utils import timezone
 from datetime import timedelta
 from django.db.models.functions import Concat, Coalesce, NullIf
@@ -39,7 +41,6 @@ from diamond_web.views.mixins import (
     user_group_names,
 )
 from diamond_web.views.quality_control import jatuh_tempo_ids
-from diamond_web.views import seksi_queue as sq
 
 # Filter buttons for the PMDE cards, keyed by the `data-urgency` value the
 # button carries and the `count-<key>-<category>` span the template renders.
@@ -378,8 +379,29 @@ def _build_tiket_base_qs(category, user):
     if category == 'masih_di_p3de_pide':
         if user_group_names(user).isdisjoint(['user_pmde', 'kasi_pmde']):
             return None
+        # jumlah_baris mirrors sq.baris_data(): baris lengkap until
+        # identification has actually split it into I/U/CDE/Res, baris I from
+        # there on. Annotated (rather than computed in Python per row) so the
+        # column can be sorted at the database like the others.
         return _scoped(
-            tiket_qs.filter(status_tiket__in=STATUSES_SEBELUM_PENGENDALIAN_MUTU),
+            tiket_qs.filter(
+                status_tiket__in=STATUSES_SEBELUM_PENGENDALIAN_MUTU
+            ).annotate(
+                _split_total=(
+                    Coalesce(F('baris_i'), 0) + Coalesce(F('baris_u'), 0)
+                    + Coalesce(F('baris_cde'), 0) + Coalesce(F('baris_res'), 0)
+                ),
+            ).annotate(
+                jumlah_baris=Case(
+                    When(
+                        Q(status_tiket__in=[STATUS_DIKIRIM_KE_PIDE, STATUS_IDENTIFIKASI])
+                        & ~Q(_split_total=0),
+                        then=Coalesce(F('baris_i'), Value(0)),
+                    ),
+                    default=Coalesce(F('baris_lengkap'), Value(0)),
+                    output_field=IntegerField(),
+                ),
+            ),
             _get_pmde_tiket_ids(user),
         )
 
@@ -764,10 +786,8 @@ def home_data(request):
         elif category == 'masih_di_p3de_pide':
             # Status earns a column here: it is the one category spanning more
             # than one of them, and which unit still holds a tiket is the point.
-            # Jumlah Baris sits between Jenis Data and Status Tiket but is a
-            # computed value (sq.baris_data), not a raw field, so it is not
-            # orderable — it still occupies a slot here to keep the indices of
-            # the columns after it aligned with what the client sends.
+            # jumlah_baris is annotated onto the queryset in _build_tiket_base_qs,
+            # so it sorts directly like any other column.
             columns = [
                 'nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data',
                 'jumlah_baris', 'status_tiket', 'tgl_terima_dip',
@@ -941,12 +961,11 @@ def home_data(request):
                     'nama_sub_jenis_data': nama_sub_jenis,
                     'nama_tabel_I': nama_tabel_I,
                     # Same rule the Quality Control page uses for its P3DE/PIDE
-                    # upstream sections: baris lengkap until identification has
-                    # actually split it, baris I from there on.
-                    'jumlah_baris': sq.baris_data(
-                        obj.status_tiket, obj.baris_lengkap, obj.baris_i,
-                        obj.baris_u, obj.baris_cde, obj.baris_res,
-                    ),
+                    # upstream sections (sq.baris_data): baris lengkap until
+                    # identification has actually split it, baris I from there
+                    # on. Computed as the `jumlah_baris` annotation so it can
+                    # also be sorted at the database.
+                    'jumlah_baris': obj.jumlah_baris,
                     'status_tiket': STATUS_LABELS.get(obj.status_tiket, ''),
                     'status_tiket_code': obj.status_tiket,
                     'tanggal': date_val,

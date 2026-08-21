@@ -2908,7 +2908,6 @@
                 data: 'jumlah_baris',
                 title: 'Jumlah Baris',
                 width: '110px',
-                orderable: false,
                 render: function(data, type, row) {
                     if (type === 'display') return createFixedBadge(data, '#e0f2fe', '#0284c7', '#bae6fd');
                     return (data === null || data === undefined || data === '' || isNaN(data)) ? 0 : Number(data);

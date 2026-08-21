@@ -896,9 +896,8 @@ class TestHomeDataMasihDiP3dePide:
         client.force_login(pmde_user)
         resp = client.get(reverse('home_data'), _base_params(
             'masih_di_p3de_pide',
-            # Column 4: Jumlah Baris (column 3) is a computed value, not
-            # orderable, so it sits between Jenis Data and Status Tiket
-            # without shifting Status Tiket's own place in the sort.
+            # Column 4: Jumlah Baris (column 3) shifted Status Tiket one slot
+            # over.
             **{'order[0][column]': '4', 'order[0][dir]': 'asc'}))
         codes = [row['status_tiket_code'] for row in json.loads(resp.content)['data']]
         assert codes == [1, 3, 5]
@@ -915,6 +914,18 @@ class TestHomeDataMasihDiP3dePide:
         rows = {row['status_tiket_code']: row['jumlah_baris'] for row in json.loads(resp.content)['data']}
         assert rows[2] == 40
         assert rows[4] == 25
+
+    def test_sorts_by_jumlah_baris(self, client, pmde_user):
+        """Jumlah Baris is a database annotation, not a Python-side value, so
+        it sorts at the database like any other column."""
+        _assign_pmde(_tiket_with_status(2, baris_lengkap=30), pmde_user)
+        _assign_pmde(_tiket_with_status(2, baris_lengkap=10), pmde_user)
+        _assign_pmde(_tiket_with_status(2, baris_lengkap=20), pmde_user)
+        client.force_login(pmde_user)
+        resp = client.get(reverse('home_data'), _base_params(
+            'masih_di_p3de_pide',
+            **{'order[0][column]': '3', 'order[0][dir]': 'asc'}))
+        assert [row['jumlah_baris'] for row in json.loads(resp.content)['data']] == [10, 20, 30]
 
     def test_home_context_carries_the_count(self, client, pmde_user):
         _assign_pmde(_tiket_with_status(1), pmde_user)
