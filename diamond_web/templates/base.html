@@ -2192,7 +2192,7 @@
 
                 if (hasForm) {
                     titleText = 'Sesi Berakhir!';
-                    messageHtml = 'Sesi Anda telah kedaluwarsa. <span class="text-success fw-medium"><i class="feather-check-circle me-1"></i>Draf formulir Anda tetap aman.</span><br><br>Silakan masuk kembali di tab baru. Modal ini akan otomatis tertutup setelah Anda berhasil login.';
+                    messageHtml = 'Sesi Anda telah kedaluwarsa.<br><div class="d-inline-flex align-items-center bg-success-subtle text-success px-3 py-2 rounded-2 my-3 fw-medium" style="font-size:12.5px; border: 1px solid #d1fae5;"><i class="feather-check-circle me-2" style="font-size:15px;"></i> Draf formulir Anda tetap aman</div><br>Silakan masuk kembali di tab baru. Modal ini akan otomatis tertutup setelah Anda berhasil login.';
                 } else {
                     titleText = 'Sesi Berakhir!';
                     if (reason === 'multitab') {
@@ -2209,7 +2209,7 @@
                             <i class="feather-alert-octagon" style="font-size:26px;"></i>
                         </div>
                         <h5 class="fw-bold mb-2 text-dark" style="font-size:16px; font-family:'Outfit', sans-serif; text-transform:uppercase; letter-spacing:0.5px;">${titleText}</h5>
-                        <p class="text-muted mb-4" style="font-size:13px; line-height:1.5; font-family:'Inter', sans-serif;">${messageHtml}</p>
+                        <div class="text-muted mb-4" style="font-size:13px; line-height:1.5; font-family:'Inter', sans-serif;">${messageHtml}</div>
                         <a href="{% url 'login' %}?next=${encodeURIComponent(window.location.pathname + window.location.search)}" target="_blank" class="btn btn-primary w-100 d-flex justify-content-center align-items-center gap-2" style="height:40px; font-size:12.5px; font-weight:600; border-radius:4px; background-color:#0c92ff; border-color:#0c92ff;">
                             Masuk Kembali (Tab Baru) <i class="feather-external-link"></i>
                         </a>
