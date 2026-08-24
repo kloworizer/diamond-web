@@ -597,11 +597,6 @@ class PICDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminAnyRequiredMixin, 
 
 
 # Concrete views for each PIC type
-class PICP3DEListView(UserP3DERequiredMixin, PICListView):
-    tipe = PIC.TipePIC.P3DE
-    template_name = 'pic_p3de/list.html'  # Keep old template for backward compatibility
-
-
 class PICP3DECreateView(AdminP3DERequiredMixin, PICCreateView):
     tipe = PIC.TipePIC.P3DE
     template_name = 'pic_p3de/form.html'
@@ -617,11 +612,6 @@ class PICP3DEDeleteView(AdminP3DERequiredMixin, PICDeleteView):
     template_name = 'pic_p3de/confirm_delete.html'
 
 
-class PICPIDEListView(UserPIDERequiredMixin, PICListView):
-    tipe = PIC.TipePIC.PIDE
-    template_name = 'pic_pide/list.html'
-
-
 class PICPIDECreateView(AdminPIDERequiredMixin, PICCreateView):
     tipe = PIC.TipePIC.PIDE
     template_name = 'pic_pide/form.html'
@@ -635,11 +625,6 @@ class PICPIDEUpdateView(AdminPIDERequiredMixin, PICUpdateView):
 class PICPIDEDeleteView(AdminPIDERequiredMixin, PICDeleteView):
     tipe = PIC.TipePIC.PIDE
     template_name = 'pic_pide/confirm_delete.html'
-
-
-class PICPMDEListView(UserPMDERequiredMixin, PICListView):
-    tipe = PIC.TipePIC.PMDE
-    template_name = 'pic_pmde/list.html'
 
 
 class PICPMDECreateView(AdminPMDERequiredMixin, PICCreateView):

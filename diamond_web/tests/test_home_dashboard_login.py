@@ -18,7 +18,7 @@ class TestHomeView:
         """Test home view redirects unauthenticated user to login."""
         response = client.get(reverse('home'))
         assert response.status_code == 302
-        assert '/accounts/login/' in response.url
+        assert reverse('login') in response.url
 
     def test_home_view_p3de_user(self, client, authenticated_user):
         """Test home view identifies P3DE user and computes tiket summary."""

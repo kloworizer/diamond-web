@@ -2,7 +2,12 @@ from django import forms
 from ..models.tiket import Tiket
 from ..models.detil_tanda_terima import DetilTandaTerima
 from .base import AutoRequiredFormMixin
-from ..utils import validate_not_future_datetime, normalize_server_datetime, combine_date_with_current_time
+from ..utils import (
+    validate_not_future_datetime,
+    normalize_server_datetime,
+    combine_date_with_current_time,
+    lift_time_above,
+)
 
 
 class RekamHasilPenelitianForm(AutoRequiredFormMixin, forms.ModelForm):
@@ -64,13 +69,17 @@ class RekamHasilPenelitianForm(AutoRequiredFormMixin, forms.ModelForm):
         value = combine_date_with_current_time(value)
         value = validate_not_future_datetime(value, "Tanggal Teliti")
         if value and self.instance and self.instance.tgl_terima_dip:
-            value = normalize_server_datetime(value)
             tgl_terima_dip = normalize_server_datetime(self.instance.tgl_terima_dip)
-            if value < tgl_terima_dip:
+            naive_value = normalize_server_datetime(value)
+            if naive_value.date() < tgl_terima_dip.date():
                 raise forms.ValidationError(
                     f'Tanggal Teliti tidak boleh sebelum Tanggal Terima DIP '
                     f'({tgl_terima_dip.strftime("%d/%m/%Y %H:%M")}).'
                 )
+            # Same-day shortfall is an artefact of the submit time (both
+            # fields are date-only pickers stamped with capture time), not a
+            # real chronology error -- lift the time-of-day instead.
+            value = lift_time_above(value, tgl_terima_dip)
 
         # Tanda Terima (the step immediately before Rekam Hasil Penelitian) is
         # a separate table, not reachable via a Tiket field, so it needs its
@@ -87,11 +96,13 @@ class RekamHasilPenelitianForm(AutoRequiredFormMixin, forms.ModelForm):
                 tanggal_tanda_terima = normalize_server_datetime(
                     detil.id_tanda_terima.tanggal_tanda_terima
                 )
-                if value < tanggal_tanda_terima:
+                naive_value = normalize_server_datetime(value)
+                if naive_value.date() < tanggal_tanda_terima.date():
                     raise forms.ValidationError(
                         f'Tanggal Teliti tidak boleh sebelum Tanggal Tanda Terima '
                         f'({tanggal_tanda_terima.strftime("%d/%m/%Y %H:%M")}).'
                     )
+                value = lift_time_above(value, tanggal_tanda_terima)
         return value
 
     def clean(self):

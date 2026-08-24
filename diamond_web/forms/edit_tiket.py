@@ -11,7 +11,12 @@ from ..constants.tiket_status import (
     STATUS_DITELITI,
     STATUS_DIKEMBALIKAN,
 )
-from ..utils import validate_not_future_datetime, normalize_server_datetime, combine_date_with_current_time
+from ..utils import (
+    validate_not_future_datetime,
+    normalize_server_datetime,
+    combine_date_with_current_time,
+    lift_time_above,
+)
 
 
 class EditTiketForm(AutoRequiredFormMixin, forms.ModelForm):
@@ -313,13 +318,18 @@ class EditTiketForm(AutoRequiredFormMixin, forms.ModelForm):
         tgl_teliti = cleaned_data.get('tgl_teliti')
         tgl_dip = cleaned_data.get('tgl_terima_dip')
         if tgl_teliti and tgl_dip and self._is_changed('tgl_teliti', 'tgl_terima_dip'):
-            tgl_teliti = normalize_server_datetime(tgl_teliti)
-            tgl_dip = normalize_server_datetime(tgl_dip)
-            if tgl_teliti < tgl_dip:
+            naive_dip = normalize_server_datetime(tgl_dip)
+            naive_teliti = normalize_server_datetime(tgl_teliti)
+            if naive_teliti.date() < naive_dip.date():
                 self.add_error('tgl_teliti', forms.ValidationError(
                     'Tanggal Teliti tidak boleh sebelum Tanggal Terima DIP '
-                    f'({tgl_dip.strftime("%d/%m/%Y %H:%M")}).'
+                    f'({naive_dip.strftime("%d/%m/%Y %H:%M")}).'
                 ))
+            else:
+                # Same-day shortfall is an artefact of the submit time (both
+                # fields are date-only pickers stamped with capture time),
+                # not a real chronology error -- lift the time-of-day.
+                cleaned_data['tgl_teliti'] = lift_time_above(tgl_teliti, naive_dip)
 
     def _clean_pengiriman_pide(self, cleaned_data):
         """Validate the ND Nadine / kirim ke PIDE isian, mirroring that form.
@@ -340,20 +350,33 @@ class EditTiketForm(AutoRequiredFormMixin, forms.ModelForm):
             ):
                 if not value or not self._is_changed(name, 'tgl_teliti'):
                     continue
-                if normalize_server_datetime(value) < teliti:
+                naive_value = normalize_server_datetime(value)
+                if naive_value.date() < teliti.date():
                     self.add_error(name, forms.ValidationError(
                         f'{label} tidak boleh sebelum Tanggal Teliti '
                         f'({teliti.strftime("%d/%m/%Y %H:%M")}).'
                     ))
+                else:
+                    # Same-day shortfall is an artefact of the submit time
+                    # (both fields are date-only pickers stamped with capture
+                    # time), not a real chronology error -- lift it instead.
+                    lifted = lift_time_above(value, teliti)
+                    cleaned_data[name] = lifted
+                    if name == 'tgl_nadine':
+                        tgl_nadine = lifted
+                    else:
+                        tgl_kirim_pide = lifted
 
         if tgl_nadine and tgl_kirim_pide and self._is_changed('tgl_nadine', 'tgl_kirim_pide'):
             nadine = normalize_server_datetime(tgl_nadine)
             kirim = normalize_server_datetime(tgl_kirim_pide)
-            if kirim < nadine:
+            if kirim.date() < nadine.date():
                 self.add_error('tgl_kirim_pide', forms.ValidationError(
                     'Tanggal Kirim PIDE tidak boleh sebelum Tanggal Nadine '
                     f'({nadine.strftime("%d/%m/%Y %H:%M")}).'
                 ))
+            else:
+                cleaned_data['tgl_kirim_pide'] = lift_time_above(tgl_kirim_pide, nadine)
 
     def clean(self):
         cleaned_data = super().clean()
@@ -369,13 +392,14 @@ class EditTiketForm(AutoRequiredFormMixin, forms.ModelForm):
         tgl_vertikal = cleaned_data.get('tgl_terima_vertikal')
         tgl_dip = cleaned_data.get('tgl_terima_dip')
         if tgl_vertikal and tgl_dip:
-            tgl_vertikal = normalize_server_datetime(tgl_vertikal)
-            tgl_dip = normalize_server_datetime(tgl_dip)
-            if tgl_dip < tgl_vertikal:
+            naive_vertikal = normalize_server_datetime(tgl_vertikal)
+            naive_dip = normalize_server_datetime(tgl_dip)
+            if naive_dip.date() < naive_vertikal.date():
                 raise forms.ValidationError(
                     'Tanggal Terima DIP tidak boleh sebelum Tanggal Terima Vertikal '
-                    f'({tgl_vertikal.strftime("%d/%m/%Y %H:%M")}).'
+                    f'({naive_vertikal.strftime("%d/%m/%Y %H:%M")}).'
                 )
+            cleaned_data['tgl_terima_dip'] = lift_time_above(tgl_dip, naive_vertikal)
         # Validasi: tgl_terima_dip tidak boleh melebihi end_date periode.
         # id_periode_data is not editable here, so read it from the instance.
         id_periode_data = getattr(self.instance, 'id_periode_data', None)
