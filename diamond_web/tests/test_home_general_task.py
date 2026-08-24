@@ -896,9 +896,36 @@ class TestHomeDataMasihDiP3dePide:
         client.force_login(pmde_user)
         resp = client.get(reverse('home_data'), _base_params(
             'masih_di_p3de_pide',
-            **{'order[0][column]': '3', 'order[0][dir]': 'asc'}))
+            # Column 4: Jumlah Baris (column 3) shifted Status Tiket one slot
+            # over.
+            **{'order[0][column]': '4', 'order[0][dir]': 'asc'}))
         codes = [row['status_tiket_code'] for row in json.loads(resp.content)['data']]
         assert codes == [1, 3, 5]
+
+    def test_row_carries_jumlah_baris_using_the_qc_page_rule(self, client, pmde_user):
+        """Same rule as the QC page's P3DE/PIDE summary: baris lengkap until
+        identification has actually split it, baris I from there on."""
+        _assign_pmde(_tiket_with_status(2, baris_lengkap=40), pmde_user)
+        _assign_pmde(_tiket_with_status(
+            4, baris_lengkap=40, baris_i=25, baris_u=10, baris_cde=5, baris_res=0,
+        ), pmde_user)
+        client.force_login(pmde_user)
+        resp = client.get(reverse('home_data'), _base_params('masih_di_p3de_pide'))
+        rows = {row['status_tiket_code']: row['jumlah_baris'] for row in json.loads(resp.content)['data']}
+        assert rows[2] == 40
+        assert rows[4] == 25
+
+    def test_sorts_by_jumlah_baris(self, client, pmde_user):
+        """Jumlah Baris is a database annotation, not a Python-side value, so
+        it sorts at the database like any other column."""
+        _assign_pmde(_tiket_with_status(2, baris_lengkap=30), pmde_user)
+        _assign_pmde(_tiket_with_status(2, baris_lengkap=10), pmde_user)
+        _assign_pmde(_tiket_with_status(2, baris_lengkap=20), pmde_user)
+        client.force_login(pmde_user)
+        resp = client.get(reverse('home_data'), _base_params(
+            'masih_di_p3de_pide',
+            **{'order[0][column]': '3', 'order[0][dir]': 'asc'}))
+        assert [row['jumlah_baris'] for row in json.loads(resp.content)['data']] == [10, 20, 30]
 
     def test_home_context_carries_the_count(self, client, pmde_user):
         _assign_pmde(_tiket_with_status(1), pmde_user)
