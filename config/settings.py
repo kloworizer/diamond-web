@@ -74,7 +74,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     # Must sit after AuthenticationMiddleware (reads request.user) and inside
     # SessionMiddleware (which saves the session on the way out).
-    "diamond_web.middleware.SlidingSessionMiddleware",
+    
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
