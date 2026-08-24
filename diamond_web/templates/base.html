@@ -2259,13 +2259,14 @@
         // Multi-tab session synchronisation via localStorage Storage Event API.
         // -----------------------------------------------------------------------
         (function () {
+            const SYNC_KEY   = 'diamond_session_sync';
             const LOGOUT_KEY = 'diamond_logout_event';
 
             // Broadcast logout to other tabs when this tab logs out
             function broadcastLogout() {
                 try {
                     localStorage.setItem(LOGOUT_KEY, Date.now().toString());
-                    localStorage.setItem('diamond_session_sync', 'logout_' + Date.now());
+                    localStorage.setItem(SYNC_KEY, 'logout_' + Date.now());
                 } catch (e) {
                     console.warn('Multi-tab sync: could not write to localStorage', e);
                 }
@@ -2308,17 +2309,8 @@
                     showToast(toastMsg, 'success', 'Sesi Dipulihkan');
                 }
 
-                try { localStorage.removeItem('diamond_logout_event'); } catch (_) {}
+                try { localStorage.removeItem(LOGOUT_KEY); } catch (_) {}
             };
-
-            // Listen for logout events from OTHER tabs
-            window.addEventListener('storage', function (e) {
-                if (e.key === LOGOUT_KEY && e.newValue) {
-                    if (!document.getElementById('diamondSessionOverlay')) {
-                        window.dispatchEvent(new CustomEvent('diamond:session-expired'));
-                    }
-                }
-            });
 
             // Listen for the custom event to trigger the session-expired modal
             window.addEventListener('diamond:session-expired', function () {
@@ -2327,22 +2319,43 @@
                 }
             });
 
-            // Broadcast successful login to other tabs
-            if (!sessionStorage.getItem('diamond_auth_synced')) {
-                try {
-                    localStorage.setItem('diamond_login_event', Date.now().toString());
-                    localStorage.setItem('diamond_session_sync', 'login_' + Date.now());
-                    sessionStorage.setItem('diamond_auth_synced', '1');
-                } catch (e) {}
-            }
+            // ── Broadcast current auth state (once per tab, server-side check) ──
+            {% if request.user.is_authenticated %}
+                if (!sessionStorage.getItem('diamond_login_broadcasted')) {
+                    try {
+                        localStorage.setItem(SYNC_KEY, 'login_' + Date.now());
+                    } catch (_) {}
+                    sessionStorage.setItem('diamond_login_broadcasted', 'true');
+                }
+                sessionStorage.removeItem('diamond_logout_broadcasted');
+            {% else %}
+                if (!sessionStorage.getItem('diamond_logout_broadcasted')) {
+                    try {
+                        localStorage.setItem(SYNC_KEY, 'logout_' + Date.now());
+                    } catch (_) {}
+                    sessionStorage.setItem('diamond_logout_broadcasted', 'true');
+                }
+                sessionStorage.removeItem('diamond_login_broadcasted');
+            {% endif %}
 
             // Expose broadcastLogout so the session IIFE can call it on logout
             window._diamondBroadcastLogout = broadcastLogout;
 
-            // Listen for login events from OTHER tabs
+            // ── Single unified storage listener (no duplicates) ──
             window.addEventListener('storage', function (e) {
-                if ((e.key === 'diamond_session_sync' && e.newValue && e.newValue.startsWith('login_')) || e.key === 'diamond_login_event') {
-                    window.checkAndDismissOverlay();
+                if (e.key === SYNC_KEY && e.newValue) {
+                    if (e.newValue.startsWith('login_')) {
+                        window.checkAndDismissOverlay();
+                    } else if (e.newValue.startsWith('logout_')) {
+                        if (!document.getElementById('diamondSessionOverlay')) {
+                            window.dispatchEvent(new CustomEvent('diamond:session-expired'));
+                        }
+                    }
+                } else if (e.key === LOGOUT_KEY && e.newValue) {
+                    // Legacy key — also triggers logout overlay
+                    if (!document.getElementById('diamondSessionOverlay')) {
+                        window.dispatchEvent(new CustomEvent('diamond:session-expired'));
+                    }
                 }
             });
 
@@ -2404,39 +2417,6 @@
             }
         });
 
-        // Multi-tab Session Sync: Automatically reload if another tab logs in or logs out
-        {% if request.user.is_authenticated %}
-            // Broadcast login state if not already done in this tab session
-            if (!sessionStorage.getItem('diamond_login_broadcasted')) {
-                localStorage.setItem('diamond_session_sync', 'login_' + Date.now());
-                sessionStorage.setItem('diamond_login_broadcasted', 'true');
-            }
-            sessionStorage.removeItem('diamond_logout_broadcasted');
-        {% else %}
-            // Broadcast logout state if not already done in this tab session
-            if (!sessionStorage.getItem('diamond_logout_broadcasted')) {
-                localStorage.setItem('diamond_session_sync', 'logout_' + Date.now());
-                sessionStorage.setItem('diamond_logout_broadcasted', 'true');
-            }
-            sessionStorage.removeItem('diamond_login_broadcasted');
-        {% endif %}
-
-        window.addEventListener('storage', function(event) {
-            if (event.key === 'diamond_session_sync') {
-                const isLoginEvent = event.newValue && event.newValue.startsWith('login_');
-                const isLogoutEvent = event.newValue && event.newValue.startsWith('logout_');
-                
-                if (isLoginEvent) {
-                    if (typeof window.checkAndDismissOverlay === 'function') {
-                        window.checkAndDismissOverlay();
-                    }
-                } else if (isLogoutEvent) {
-                    if (!document.getElementById('diamondSessionOverlay')) {
-                        window.dispatchEvent(new CustomEvent('diamond:session-expired'));
-                    }
-                }
-            }
-        });
     </script>
 
     {% block scripts %}{% endblock %}

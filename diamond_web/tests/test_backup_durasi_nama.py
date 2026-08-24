@@ -650,15 +650,16 @@ class TestDurasiJatuhTempoPMDEViews:
         assert resp.status_code in (302, 403)
 
     def test_generate_preview_summarises_without_inserting(self, client, pmde_admin_user):
+        from django.utils import timezone
         """The preview reports what would be written and saves nothing."""
         self._ensure_user_pmde_group()
         prioritas = JenisDataILAPFactory()
         biasa = JenisDataILAPFactory()
-        JenisPrioritasDataFactory(
-            id_sub_jenis_data_ilap=prioritas, tahun='2024',
-            start_date=date(2024, 1, 1), end_date=date(2024, 12, 31),
-        )
         current_year = timezone.now().date().year
+        JenisPrioritasDataFactory(
+            id_sub_jenis_data_ilap=prioritas, tahun=str(current_year),
+            start_date=date(current_year, 1, 1), end_date=date(current_year, 12, 31),
+        )
         years = list(range(GENERATE_PMDE_START_YEAR, current_year + 1))
 
         client.force_login(pmde_admin_user)

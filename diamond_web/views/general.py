@@ -20,7 +20,7 @@ def keep_alive(request):
     # Mark session modified so SESSION_SAVE_EVERY_REQUEST (or session backend) will update expiry
     request.session.modified = True
     try:
-        expiry = request.session.get_expiry_age()
+        expiry = settings.SESSION_COOKIE_AGE
     except Exception:
         expiry = None
     return JsonResponse({"ok": True, "expiry": expiry})
