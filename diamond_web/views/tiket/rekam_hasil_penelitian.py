@@ -17,7 +17,7 @@ from ..mixins import UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin
 from ...constants.tiket_status import STATUS_DITELITI, STATUS_SELESAI
 
 
-class RekamHasilPenelitianView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, UpdateView):
+class RekamHasilPenelitianView(LoginRequiredMixin, ActiveTiketP3DERequiredForEditMixin, UserP3DERequiredMixin, UpdateView):
     """Allow P3DE PICs to record research results for a tiket.
 
     This view enables P3DE users to record research outcomes (test results,

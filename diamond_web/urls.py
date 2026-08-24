@@ -8,7 +8,7 @@ print("--- Loading diamond_web/urls.py ---", file=sys.stderr)
 
 urlpatterns = [
     # === Authentication URLs ===
-    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
+    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html', redirect_authenticated_user=True), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     
     path('tanda-terima-data/<int:pk>/view/', views.TandaTerimaDataViewOnly.as_view(), name='tanda_terima_data_view'),
@@ -190,8 +190,12 @@ urlpatterns = [
     path('jenis-prioritas-data/create/', views.JenisPrioritasDataCreateView.as_view(), name='jenis_prioritas_data_create'),
     path('jenis-prioritas-data/<int:pk>/update/', views.JenisPrioritasDataUpdateView.as_view(), name='jenis_prioritas_data_update'),
     path('jenis-prioritas-data/<int:pk>/delete/', views.JenisPrioritasDataDeleteView.as_view(), name='jenis_prioritas_data_delete'),
+    # Unified PIC URLs
+    path('pic/', views.UnifiedPICListView.as_view(), name='pic_unified_list'),
+    path('pic/matrix-data/', views.pic_matrix_data, name='pic_matrix_data'),
+    
     # PIC P3DE URLs
-    path('pic-p3de/', views.PICP3DEListView.as_view(), name='pic_p3de_list'),
+    path('pic-p3de/', views.PICP3DEListView.as_view(), name='pic_p3de_list'), # Kept for redirect/legacy
     path('pic-p3de/data/', views.pic_p3de_data, name='pic_p3de_data'),
     path('pic-p3de/create/', views.PICP3DECreateView.as_view(), name='pic_p3de_create'),
     path('pic-p3de/<int:pk>/update/', views.PICP3DEUpdateView.as_view(), name='pic_p3de_update'),

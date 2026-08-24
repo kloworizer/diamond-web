@@ -45,6 +45,8 @@ class AdminRequiredMixin(UserPassesTestMixin):
     belong to the `admin` group. It delegates to Django's
     `UserPassesTestMixin` and implements `test_func`.
     """
+    raise_exception = True
+
     def test_func(self):
         return self.request.user.groups.filter(name='admin').exists()
 
@@ -58,6 +60,8 @@ class AdminAnyRequiredMixin(UserPassesTestMixin):
     Subclasses can further restrict to specific admin roles via more specific
     mixins (e.g., AdminP3DERequiredMixin for P3DE-only views).
     """
+    raise_exception = True
+
     def test_func(self):
         """Check whether the current user belongs to any admin group.
 
@@ -77,6 +81,8 @@ class AdminP3DERequiredMixin(UserPassesTestMixin):
     P3DE administrative group. Returns True when the current user is a
     member of either group.
     """
+    raise_exception = True
+
     def test_func(self):
         """Check whether the current user belongs to the ``admin`` or ``admin_p3de`` group.
 
@@ -92,6 +98,8 @@ class AdminPIDERequiredMixin(UserPassesTestMixin):
     Use this for views that should be reachable by global admins and PIDE
     administrators.
     """
+    raise_exception = True
+
     def test_func(self):
         """Check whether the current user belongs to the ``admin`` or ``admin_pide`` group.
 
@@ -107,6 +115,8 @@ class AdminPMDERequiredMixin(UserPassesTestMixin):
     Use this mixin for views that should be accessible by global admins and
     PMDE administrators.
     """
+    raise_exception = True
+
     def test_func(self):
         """Check whether the current user belongs to the ``admin`` or ``admin_pmde`` group.
 
@@ -125,15 +135,17 @@ class UserP3DERequiredMixin(UserPassesTestMixin):
     flow simple; otherwise the standard `handle_no_permission` path is
     taken.
     """
+    raise_exception = True
+
     def test_func(self):
         """Check whether the current user belongs to an allowed group.
 
-        Allowed groups are ``admin``, ``admin_p3de``, and ``user_p3de``.
+        Allowed groups are ``admin``, ``admin_p3de``, ``user_p3de``, and ``kasi_p3de``.
 
         Returns:
             bool: True if the user is a member of one of the allowed groups.
         """
-        return self.request.user.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de']).exists()
+        return self.request.user.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de', 'kasi_p3de']).exists()
 
     def handle_no_permission(self):
         """Handle unauthorized access for P3DE users.
@@ -158,15 +170,17 @@ class UserPIDERequiredMixin(UserPassesTestMixin):
     403 for AJAX requests when permission is denied, otherwise falls back
     to the standard `handle_no_permission` behavior.
     """
+    raise_exception = True
+
     def test_func(self):
         """Check whether the current user belongs to an allowed group.
 
-        Allowed groups are ``admin``, ``admin_pide``, and ``user_pide``.
+        Allowed groups are ``admin``, ``admin_pide``, ``user_pide``, and ``kasi_pide``.
 
         Returns:
             bool: True if the user is a member of one of the allowed groups.
         """
-        return self.request.user.groups.filter(name__in=['admin', 'admin_pide', 'user_pide']).exists()
+        return self.request.user.groups.filter(name__in=['admin', 'admin_pide', 'user_pide', 'kasi_pide']).exists()
 
     def handle_no_permission(self):
         """Handle unauthorized access for PIDE users.
@@ -191,15 +205,17 @@ class UserPMDERequiredMixin(UserPassesTestMixin):
     403 for AJAX requests when permission is denied, otherwise falls back
     to the standard `handle_no_permission` behavior.
     """
+    raise_exception = True
+
     def test_func(self):
         """Check whether the current user belongs to an allowed group.
 
-        Allowed groups are ``admin``, ``admin_pmde``, and ``user_pmde``.
+        Allowed groups are ``admin``, ``admin_pmde``, ``user_pmde``, and ``kasi_pmde``.
 
         Returns:
             bool: True if the user is a member of one of the allowed groups.
         """
-        return self.request.user.groups.filter(name__in=['admin', 'admin_pmde', 'user_pmde']).exists()
+        return self.request.user.groups.filter(name__in=['admin', 'admin_pmde', 'user_pmde', 'kasi_pmde']).exists()
 
     def handle_no_permission(self):
         """Handle unauthorized access for PMDE users.
@@ -342,8 +358,8 @@ class ActiveTiketP3DERequiredForEditMixin(UserPassesTestMixin):
             bool: True if the user is an active P3DE PIC for the tiket.
         """
         user = self.request.user
-        # Allow superuser or admin group
-        if user.is_authenticated and (user.is_superuser or user.groups.filter(name='admin').exists()):
+        # Allow superuser, admin, admin_p3de, or kasi_p3de
+        if user.is_authenticated and (user.is_superuser or user.groups.filter(name__in=['admin', 'admin_p3de', 'kasi_p3de']).exists()):
             return True
 
         # Get tiket from kwargs or object

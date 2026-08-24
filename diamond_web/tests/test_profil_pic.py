@@ -626,10 +626,11 @@ class TestNamesLinkToProfilPIC:
 
         resp = client.get(reverse('pic_pide_data'))
         payload = json.loads(resp.content)
+        row = next(r for r in payload['data'] if r['username'] == pic_user.username)
 
         assert reverse(
             'profil_pic_detail', args=[pic_user.username]
-        ) in payload['data'][0]['full_name']
+        ) in row['full_name']
 
     def test_pic_list_endpoint_leaves_the_name_bare_for_a_seksi_admin(self, client):
         """Admin PIDE administers the PIC list but only reaches user PIDE."""
@@ -639,7 +640,7 @@ class TestNamesLinkToProfilPIC:
         _pic_of(pic_user, tipe='PIDE', end_date=None)
 
         resp = client.get(reverse('pic_pide_data'))
-        row = json.loads(resp.content)['data'][0]
+        row = next(r for r in json.loads(resp.content)['data'] if r['username'] == pic_user.username)
 
         assert 'Siti Rahayu' in row['full_name']
         assert '<a ' not in row['full_name']

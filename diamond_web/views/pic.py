@@ -1,5 +1,5 @@
 from django.urls import reverse_lazy, reverse
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import CreateView, UpdateView, DeleteView, TemplateView
 from django.contrib import messages
 from urllib.parse import quote_plus, unquote_plus
@@ -699,6 +699,10 @@ def _pic_data_common(request, tipe):
     is_admin = _is_data_admin(request, tipe)
 
     qs = PIC.objects.filter(tipe=tipe).select_related('id_sub_jenis_data_ilap__id_ilap', 'id_user').all()
+    
+    # Apply Global Dashboard Filters
+    qs = apply_global_pic_filters(qs, request, base_model='pic')
+    
     records_total = qs.count()
 
     # Column-specific filtering
@@ -840,6 +844,295 @@ def pic_pmde_data(request):
     return _pic_data_common(request, PIC.TipePIC.PMDE)
 
 
+class UnifiedPICListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    template_name = 'pic/unified_list.html'
+
+    def test_func(self):
+        user = self.request.user
+        if user.is_superuser:
+            return True
+        allowed_groups = ['admin', 'admin_p3de', 'user_p3de', 'admin_pide', 'user_pide', 'admin_pmde', 'user_pmde']
+        return user.groups.filter(name__in=allowed_groups).exists()
+
+    def get(self, request, *args, **kwargs):
+        # If redirected after delete, show success message from query params
+        deleted = request.GET.get('deleted')
+        name = request.GET.get('name')
+        if deleted and name:
+            try:
+                name = unquote_plus(name)
+                messages.success(request, f'"{name}" berhasil dihapus.')
+            except Exception:
+                pass
+        return super().get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        user = self.request.user
+        is_central_admin = user.is_superuser or user.groups.filter(name='admin').exists()
+        
+        can_view_p3de = is_central_admin or user.groups.filter(name__in=['admin_p3de', 'user_p3de']).exists()
+        can_view_pide = is_central_admin or user.groups.filter(name__in=['admin_pide', 'user_pide']).exists()
+        can_view_pmde = is_central_admin or user.groups.filter(name__in=['admin_pmde', 'user_pmde']).exists()
+
+        context['is_admin_p3de'] = user.is_superuser or user.groups.filter(name__in=['admin', 'admin_p3de']).exists()
+        context['is_admin_pide'] = user.is_superuser or user.groups.filter(name__in=['admin', 'admin_pide']).exists()
+        context['is_admin_pmde'] = user.is_superuser or user.groups.filter(name__in=['admin', 'admin_pmde']).exists()
+        
+        context['can_view_p3de'] = can_view_p3de
+        context['can_view_pide'] = can_view_pide
+        context['can_view_pmde'] = can_view_pmde
+        
+        # Calculate Summary Stats for Dashboard Widgets
+        from ..models.jenis_data_ilap import JenisDataILAP
+        from ..models.ilap import ILAP
+        from ..models.pic import PIC
+        from ..models.kategori_ilap import KategoriILAP
+        import json
+        from django.db.models import F, Value, CharField
+        from django.db.models.functions import Concat
+        
+        context['total_matrix_rows'] = JenisDataILAP.objects.count()
+        context['total_ilap'] = ILAP.objects.count()
+        
+        # Count distinct users acting as PIC per role
+        context['total_pic_p3de'] = PIC.objects.filter(tipe=PIC.TipePIC.P3DE).values('id_user_id').distinct().count()
+        context['total_pic_pide'] = PIC.objects.filter(tipe=PIC.TipePIC.PIDE).values('id_user_id').distinct().count()
+        context['total_pic_pmde'] = PIC.objects.filter(tipe=PIC.TipePIC.PMDE).values('id_user_id').distinct().count()
+
+        # Prepare Filter Options (JSON)
+        kategori_ilap_list = list(KategoriILAP.objects.values('id', 'nama_kategori'))
+        ilap_list = list(ILAP.objects.values('id', 'nama_ilap', 'id_kategori_id'))
+        jenis_data_list = list(JenisDataILAP.objects.values('id', 'nama_sub_jenis_data', 'id_ilap_id'))
+        
+        def get_pic_users(tipe):
+            qs = PIC.objects.filter(tipe=tipe, end_date__isnull=True).annotate(
+                full_name=Concat('id_user__first_name', Value(' '), 'id_user__last_name', output_field=CharField())
+            ).values('id_user_id', 'id_user__username', 'full_name', 'id_sub_jenis_data_ilap_id', 'id_sub_jenis_data_ilap__id_ilap_id')
+            
+            users_dict = {}
+            for item in qs:
+                uid = item['id_user_id']
+                if uid not in users_dict:
+                    full_name = item['full_name'].strip()
+                    display_text = f"{full_name} - {item['id_user__username']}" if full_name else item['id_user__username']
+                    users_dict[uid] = {
+                        'id': uid,
+                        'text': display_text,
+                        'ilap_ids': set(),
+                        'jenis_data_ids': set(),
+                    }
+                if item['id_sub_jenis_data_ilap__id_ilap_id']:
+                    users_dict[uid]['ilap_ids'].add(item['id_sub_jenis_data_ilap__id_ilap_id'])
+                if item['id_sub_jenis_data_ilap_id']:
+                    users_dict[uid]['jenis_data_ids'].add(item['id_sub_jenis_data_ilap_id'])
+                    
+            # Convert sets to lists
+            users_list = []
+            for user_data in users_dict.values():
+                user_data['ilap_ids'] = list(user_data['ilap_ids'])
+                user_data['jenis_data_ids'] = list(user_data['jenis_data_ids'])
+                users_list.append(user_data)
+                
+            return users_list
+            
+        context['filter_options'] = json.dumps({
+            'kategori_ilap': [{'id': x['id'], 'text': x['nama_kategori']} for x in kategori_ilap_list],
+            'ilap': [{'id': x['id'], 'text': x['nama_ilap'], 'kategori_id': x['id_kategori_id']} for x in ilap_list],
+            'jenis_data': [{'id': x['id'], 'text': x['nama_sub_jenis_data'], 'ilap_id': x['id_ilap_id']} for x in jenis_data_list],
+            'pic_p3de': get_pic_users(PIC.TipePIC.P3DE),
+            'pic_pide': get_pic_users(PIC.TipePIC.PIDE),
+            'pic_pmde': get_pic_users(PIC.TipePIC.PMDE),
+        })
+        # Determine default tab based on user's primary group
+        default_tab = 'matrix'
+        if user.groups.filter(name__in=['admin_p3de', 'user_p3de']).exists():
+            default_tab = 'p3de'
+        elif user.groups.filter(name__in=['admin_pide', 'user_pide']).exists():
+            default_tab = 'pide'
+        elif user.groups.filter(name__in=['admin_pmde', 'user_pmde']).exists():
+            default_tab = 'pmde'
+            
+        context['default_tab'] = default_tab
+        context['page_title'] = 'Daftar PIC Terpadu'
+        return context
+
+def apply_global_pic_filters(qs, request, base_model='jenis_data'):
+    """Helper function to apply global filters from the PIC Dashboard to any queryset."""
+    filter_ilap_kategori = request.GET.getlist('filter_ilap_kategori[]')
+    filter_ilap = request.GET.getlist('filter_ilap[]')
+    filter_jenis_data = request.GET.getlist('filter_jenis_data[]')
+    filter_pic_p3de = request.GET.getlist('filter_pic_p3de[]')
+    filter_pic_pide = request.GET.getlist('filter_pic_pide[]')
+    filter_pic_pmde = request.GET.getlist('filter_pic_pmde[]')
+
+    if base_model == 'jenis_data':
+        if filter_ilap_kategori:
+            qs = qs.filter(id_ilap__id_kategori_id__in=filter_ilap_kategori)
+        if filter_ilap:
+            qs = qs.filter(id_ilap_id__in=filter_ilap)
+        if filter_jenis_data:
+            qs = qs.filter(id__in=filter_jenis_data)
+        if filter_pic_p3de:
+            qs = qs.filter(pic__tipe='P3DE', pic__id_user_id__in=filter_pic_p3de, pic__end_date__isnull=True)
+        if filter_pic_pide:
+            qs = qs.filter(pic__tipe='PIDE', pic__id_user_id__in=filter_pic_pide, pic__end_date__isnull=True)
+        if filter_pic_pmde:
+            qs = qs.filter(pic__tipe='PMDE', pic__id_user_id__in=filter_pic_pmde, pic__end_date__isnull=True)
+            
+    elif base_model == 'pic':
+        if filter_ilap_kategori:
+            qs = qs.filter(id_sub_jenis_data_ilap__id_ilap__id_kategori_id__in=filter_ilap_kategori)
+        if filter_ilap:
+            qs = qs.filter(id_sub_jenis_data_ilap__id_ilap_id__in=filter_ilap)
+        if filter_jenis_data:
+            qs = qs.filter(id_sub_jenis_data_ilap_id__in=filter_jenis_data)
+            
+        if filter_pic_p3de:
+            qs = qs.filter(id_sub_jenis_data_ilap__pic__tipe='P3DE', 
+                           id_sub_jenis_data_ilap__pic__id_user_id__in=filter_pic_p3de,
+                           id_sub_jenis_data_ilap__pic__end_date__isnull=True)
+        if filter_pic_pide:
+            qs = qs.filter(id_sub_jenis_data_ilap__pic__tipe='PIDE', 
+                           id_sub_jenis_data_ilap__pic__id_user_id__in=filter_pic_pide,
+                           id_sub_jenis_data_ilap__pic__end_date__isnull=True)
+        if filter_pic_pmde:
+            qs = qs.filter(id_sub_jenis_data_ilap__pic__tipe='PMDE', 
+                           id_sub_jenis_data_ilap__pic__id_user_id__in=filter_pic_pmde,
+                           id_sub_jenis_data_ilap__pic__end_date__isnull=True)
+                           
+    return qs.distinct()
+
+@login_required
+@require_GET
+def pic_matrix_data(request):
+    """DataTables endpoint for the Unified PIC Matrix Tab."""
+    from ..models.jenis_data_ilap import JenisDataILAP
+    
+    try:
+        draw = int(request.GET.get('draw', '1'))
+    except (ValueError, TypeError):
+        draw = 1
+    try:
+        start = int(request.GET.get('start', '0'))
+    except (ValueError, TypeError):
+        start = 0
+    try:
+        length = int(request.GET.get('length', '10'))
+    except (ValueError, TypeError):
+        length = 10
+
+    # Base QuerySet: All JenisDataILAP
+    qs = JenisDataILAP.objects.select_related('id_ilap').all()
+    records_total = qs.count()
+
+    # Apply Global Dashboard Filters
+    qs = apply_global_pic_filters(qs, request, base_model='jenis_data')
+
+    # Column-specific filtering
+    columns_search = request.GET.getlist('columns_search[]')
+    if columns_search:
+        if columns_search[0]:  # ILAP
+            qs = qs.filter(id_ilap__nama_ilap__icontains=columns_search[0])
+        if len(columns_search) > 1 and columns_search[1]:  # ID Sub Jenis Data
+            qs = qs.filter(id_sub_jenis_data__icontains=columns_search[1])
+        if len(columns_search) > 2 and columns_search[2]:  # Nama Sub Jenis Data
+            qs = qs.filter(nama_sub_jenis_data__icontains=columns_search[2])
+
+    # Global search
+    search_value = request.GET.get('search[value]')
+    if search_value:
+        from django.db.models import Q
+        qs = qs.filter(
+            Q(id_ilap__nama_ilap__icontains=search_value) |
+            Q(nama_sub_jenis_data__icontains=search_value) |
+            Q(id_sub_jenis_data__icontains=search_value)
+        )
+
+    records_filtered = qs.count()
+
+    # Ordering
+    order_column_idx = int(request.GET.get('order[0][column]', '0'))
+    order_dir = request.GET.get('order[0][dir]', 'asc')
+    order_columns = ['id_ilap__nama_ilap', 'id_sub_jenis_data', 'nama_sub_jenis_data']
+    if 0 <= order_column_idx < len(order_columns):
+        order_field = order_columns[order_column_idx]
+        if order_dir == 'desc':
+            order_field = f'-{order_field}'
+        qs = qs.order_by(order_field)
+    else:
+        qs = qs.order_by('id_ilap__nama_ilap', 'id_sub_jenis_data')
+
+    # Pagination
+    qs = qs[start:start + length]
+
+    # Pre-fetch active PICs for these JenisDataILAP
+    jenis_data_ids = [obj.pk for obj in qs]
+    active_pics = PIC.objects.filter(
+        id_sub_jenis_data_ilap__in=jenis_data_ids,
+        end_date__isnull=True
+    ).select_related('id_user')
+    
+    # Map PICs by JenisDataILAP ID and Type
+    pic_map = {}
+    for pic in active_pics:
+        key = (pic.id_sub_jenis_data_ilap_id, pic.tipe)
+        if key not in pic_map:
+            pic_map[key] = []
+        
+        full_name = f"{pic.id_user.first_name} {pic.id_user.last_name}".strip()
+        if full_name:
+            user_display = f"{full_name} - {pic.id_user.username}"
+        else:
+            user_display = pic.id_user.username
+            
+        pic_map[key].append({
+            'username': pic.id_user.username,
+            'display': user_display,
+            'pic_id': pic.id,
+            'user_id': pic.id_user_id
+        })
+
+    can_view = pic_profil_visibility(request.user)
+
+    data = []
+    for obj in qs:
+        row = {
+            'ilap': obj.id_ilap.nama_ilap,
+            'id_sub_jenis_data': obj.id_sub_jenis_data,
+            'nama_sub_jenis_data': obj.nama_sub_jenis_data,
+            'pic_p3de': '',
+            'pic_pide': '',
+            'pic_pmde': ''
+        }
+        
+        for tipe, col in [(PIC.TipePIC.P3DE, 'pic_p3de'), (PIC.TipePIC.PIDE, 'pic_pide'), (PIC.TipePIC.PMDE, 'pic_pmde')]:
+            pics = pic_map.get((obj.pk, tipe), [])
+            if pics:
+                links = []
+                from django.utils.html import escape
+                for p in pics:
+                    # Construct mock user object for pic_profil_link
+                    from collections import namedtuple
+                    UserMock = namedtuple('User', ['pk', 'username'])
+                    mock_user = UserMock(pk=p['user_id'], username=p['username'])
+                    link_html = pic_profil_link(mock_user, can_view, label=p['display'])
+                    links.append(f'<div class="text-truncate" title="{escape(p["display"])}">{link_html}</div>')
+                row[col] = "".join(links)
+            else:
+                row[col] = '<span class="text-muted fst-italic" style="font-size: 0.8rem;">Belum ada PIC</span>'
+                
+        data.append(row)
+
+    return JsonResponse({
+        'draw': draw,
+        'recordsTotal': records_total,
+        'recordsFiltered': records_filtered,
+        'data': data,
+    })
+
+
 @login_required
 def jenis_data_ilap_info_ajax(request, pk):
     """AJAX view to fetch classification details of a JenisDataILAP."""
@@ -869,3 +1162,17 @@ def jenis_data_ilap_info_ajax(request, pk):
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
+
+class PICP3DEListView(UserP3DERequiredMixin, UnifiedPICListView):
+    """Unified list view strictly restricted to P3DE access."""
+    pass
+
+
+class PICPIDEListView(UserPIDERequiredMixin, UnifiedPICListView):
+    """Unified list view strictly restricted to PIDE access."""
+    pass
+
+
+class PICPMDEListView(UserPMDERequiredMixin, UnifiedPICListView):
+    """Unified list view strictly restricted to PMDE access."""
+    pass

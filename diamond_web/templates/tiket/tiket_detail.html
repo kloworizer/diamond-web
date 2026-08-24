@@ -2494,7 +2494,7 @@
                     const targetEl = document.getElementById(targetModalId);
                     if (targetEl && typeof bootstrap !== 'undefined') {
                         setTimeout(() => {
-                            const modal = new bootstrap.Modal(targetEl);
+                            const modal = bootstrap.Modal.getOrCreateInstance(targetEl);
                             modal.show();
                         }, 200);
                     }
@@ -2900,7 +2900,7 @@
                                             .then(data => {
                                                 if (data.success) {
                                                     bootstrap.Modal.getInstance(identifikasiTiketModal).hide();
-                                                    showToast(data.message || 'Tiket berhasil diidentifikasi.', 'success');
+                                                    showToast(data.message || 'Tiket masuk proses identifikasi.', 'success');
                                                     setTimeout(() => location.reload(), 800);
                                                 } else {
                                                     showToast(data.message || 'Gagal mengidentifikasi tiket.', 'danger');

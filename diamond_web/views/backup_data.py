@@ -541,7 +541,7 @@ class BackupDataCreateView(LoginRequiredMixin, UserP3DERequiredMixin, AjaxFormMi
         return response
 
 
-class BackupDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, AjaxFormMixin, CreateView):
+class BackupDataFromTiketCreateView(LoginRequiredMixin, ActiveTiketP3DERequiredForEditMixin, UserP3DERequiredMixin, AjaxFormMixin, CreateView):
     """Create a `BackupData` row for a specific `Tiket`.
 
     Usage: When the user is adding backup data from a tiket detail view
@@ -622,7 +622,7 @@ class BackupDataFromTiketCreateView(LoginRequiredMixin, UserP3DERequiredMixin, A
         
         return AjaxFormMixin.form_valid(self, form)
 
-class BackupDataUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, AjaxFormMixin, UpdateView):
+class BackupDataUpdateView(LoginRequiredMixin, ActiveTiketP3DERequiredForEditMixin, UserP3DERequiredMixin, AjaxFormMixin, UpdateView):
     """Update view for `BackupData` entries.
 
     Usage: Edit an existing backup record. Access restricted to active P3DE

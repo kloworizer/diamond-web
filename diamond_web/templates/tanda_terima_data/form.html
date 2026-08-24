@@ -144,8 +144,7 @@
     </style>
 
     <div class="modal-body pt-2 px-4 pb-1" {% if tanda_terima_id %}data-tanda-terima-id="{{ tanda_terima_id }}"{% endif %}>
-        {# Catch-all for form-wide errors. Without it a failed clean() re-renders
-           the form with no visible reason and the save looks like a no-op. #}
+        {# Catch-all for form-wide errors. Without it a failed clean() re-renders the form with no visible reason and the save looks like a no-op. #}
         {% if form.non_field_errors %}
             <div class="alert alert-danger py-2 px-3 mb-3 fs-12" role="alert">
                 {% for error in form.non_field_errors %}
