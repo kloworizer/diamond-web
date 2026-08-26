@@ -37,6 +37,16 @@ Kasi **bukan** administrator: mereka tidak memperoleh menu admin maupun sinkroni
 | `kasi_pide` | Kepala Seksi PIDE — pengawas tim pengolahan data |
 | `kasi_pmde` | Kepala Seksi PMDE — pengawas tim pengendalian mutu |
 
+### Grup Pengawas Subdit
+
+| Grup | Deskripsi |
+|------|-----------|
+| `kasubdit_pde` | Kepala Subdirektorat PDE — pengawas ketiga seksi |
+
+`kasubdit_pde` **tidak** memberi hak akses apa pun: grup ini murni aturan navigasi. Anggotanya juga tergabung dalam grup seksi lain (umumnya `kasi_*`), dan grup seksi itulah yang menentukan cakupan data mereka. Yang dilakukan `kasubdit_pde` adalah **menyembunyikan** seluruh seksi menu di navbar — P3DE, PIDE, PMDE, ketiga blok Admin, dan Sinkronisasi Data — sehingga navigasi berhenti pada empat entri teratas: **Home**, **Dashboard**, **Daftar Tiket**, dan **Profil ILAP**. Aturannya berada di `diamond_web/templates/navbar.html`.
+
+> Menyembunyikan menu bukan menutup akses: URL menu yang disembunyikan tetap dapat dibuka bila grup pendamping mengizinkannya.
+
 ### Grup Administrator
 
 | Grup | Deskripsi |
@@ -225,6 +235,13 @@ Helper terkait berada di `diamond_web/views/mixins.py`: `is_kasi()`, `is_kasi_p3
 - ❌ Tidak memperoleh menu admin (referensi, PIC, template, sequence)
 - ❌ Tidak bisa mengakses sync Oracle
 - ❌ Tidak memperoleh aksi alur kerja yang menuntut peran PIC aktif
+
+### Kasubdit (kasubdit_pde)
+- ✅ Navigasi hanya menampilkan **Home**, **Dashboard**, **Daftar Tiket**, dan **Profil ILAP**
+- ✅ Cakupan data keempat halaman tersebut mengikuti grup pendamping (`kasi_*`/`user_*`) yang juga disandang pengguna
+- ❌ Seluruh seksi menu P3DE/PIDE/PMDE disembunyikan, termasuk Identifikasi dan Quality Control yang biasanya didapat kasi
+- ❌ Blok menu Admin dan Sinkronisasi Data disembunyikan
+- ℹ️ Grup ini tidak menambah maupun mengurangi hak akses di sisi view — hanya tampilan menu
 
 ### Admin
 - ✅ Semua akses termasuk sync Oracle
