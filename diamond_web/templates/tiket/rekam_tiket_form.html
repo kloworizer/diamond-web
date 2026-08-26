@@ -2094,8 +2094,10 @@
             setConfirm('confirm-bentuk-data', getSelectText('id_id_bentuk_data'));
             setConfirm('confirm-cara-penyampaian', getSelectText('id_id_cara_penyampaian'));
             setConfirm('confirm-penyampaian', getVal('id_penyampaian'));
-            const rawBaris = getVal('id_baris_diterima');
-            const numBaris = (rawBaris === null || rawBaris === undefined || rawBaris === '' || isNaN(rawBaris)) ? null : Number(rawBaris);
+            const hiddenBaris = document.getElementById('hidden_baris_diterima');
+            let rawBaris = hiddenBaris ? hiddenBaris.value : getVal('id_baris_diterima');
+            if (rawBaris) rawBaris = rawBaris.toString().replace(/\D/g, ''); // Ensure only digits
+            const numBaris = (rawBaris === null || rawBaris === undefined || rawBaris === '') ? null : Number(rawBaris);
             setConfirm('confirm-baris-diterima', numBaris !== null ? numBaris.toLocaleString('id-ID') : '-');
             setConfirm('modal-summary-baris', numBaris !== null ? numBaris.toLocaleString('id-ID') + ' Baris' : '-');
             setConfirm('confirm-satuan-data', getSelectText('id_satuan_data'));
