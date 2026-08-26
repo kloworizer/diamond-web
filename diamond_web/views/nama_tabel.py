@@ -117,10 +117,17 @@ class NamaTabelDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminPIDERequired
         """
         self.object = self.get_object()
         name = str(self.object)
-        # Clear only the nama_tabel_I and nama_tabel_U fields instead of deleting the row
+        # The names live in NamaTabelJenisData, so emptying this sub jenis data
+        # means removing its rows there — every one of them, matching what the
+        # button has always promised: the sub jenis data ends up with no table
+        # name at all. The jenis data row itself stays.
+        self.object.nama_tabel_set.all().delete()
+        # Cleared here as well as by the post_delete signal, which only fires
+        # when there was a row to delete: a jenis data whose names predate this
+        # table still carries them in the cache columns alone.
         self.object.nama_tabel_I = ''
         self.object.nama_tabel_U = ''
-        self.object.save()
+        self.object.save(update_fields=['nama_tabel_I', 'nama_tabel_U'])
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,

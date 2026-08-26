@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from django import forms
 from ..models.jenis_data_ilap import JenisDataILAP
+from ..models.nama_tabel_jenis_data import NamaTabelJenisData
 from .base import AutoRequiredFormMixin
 
 
@@ -44,14 +45,58 @@ class NamaTabelForm(AutoRequiredFormMixin, forms.ModelForm):
             new_fields.update(self.fields)
             self.fields = new_fields
 
+    def clean(self):
+        """Reject a name the sub jenis data already carries as a second table.
+
+        The pair is unique per jenis data, so without this the save would come
+        back as an IntegrityError instead of a message on the field.
+        """
+        cleaned = super().clean()
+        sub = cleaned.get('sub_jenis') or self.instance
+        nama_i = cleaned.get('nama_tabel_I')
+        if sub and sub.pk and nama_i:
+            bentrok = NamaTabelJenisData.objects.filter(
+                id_jenis_data_ilap=sub, nama_tabel_I=nama_i, utama=False
+            ).exists()
+            if bentrok:
+                self.add_error(
+                    'nama_tabel_I',
+                    'Nama tabel ini sudah terdaftar pada sub jenis data tersebut.',
+                )
+        return cleaned
+
     def save(self, commit=True):
-        # If the form includes `sub_jenis`, the intent is to update an
-        # existing `JenisDataILAP` instance rather than create a new one.
-        sub = self.cleaned_data.get('sub_jenis') if 'sub_jenis' in self.cleaned_data else None
-        if sub is not None:
-            sub.nama_tabel_I = self.cleaned_data.get('nama_tabel_I', '')
-            sub.nama_tabel_U = self.cleaned_data.get('nama_tabel_U', '')
-            if commit:
-                sub.save()
+        """Write the table name to its own row, not to the jenis data.
+
+        The names live in `NamaTabelJenisData`; `JenisDataILAP` keeps only the
+        utama one, as a cache that `sync_nama_tabel_cache_on_save` rewrites.
+        Assigning the jenis data's fields here would be overwritten by that
+        signal anyway, so the child row is the whole save.
+
+        `sub_jenis` is present on the create form and absent on the update
+        form, where the instance being edited is the jenis data itself.
+        """
+        sub = self.cleaned_data.get('sub_jenis') or self.instance
+        if not commit:
             return sub
-        return super().save(commit=commit)
+
+        nama_i = self.cleaned_data.get('nama_tabel_I', '')
+        nama_u = self.cleaned_data.get('nama_tabel_U', '')
+        utama = NamaTabelJenisData.objects.filter(
+            id_jenis_data_ilap=sub, utama=True
+        ).first()
+        if utama is None:
+            NamaTabelJenisData.objects.create(
+                id_jenis_data_ilap=sub,
+                nama_tabel_I=nama_i,
+                nama_tabel_U=nama_u,
+                utama=True,
+                aktif=True,
+            )
+        else:
+            utama.nama_tabel_I = nama_i
+            utama.nama_tabel_U = nama_u
+            utama.save(update_fields=['nama_tabel_I', 'nama_tabel_U'])
+
+        sub.refresh_from_db(fields=['nama_tabel_I', 'nama_tabel_U'])
+        return sub

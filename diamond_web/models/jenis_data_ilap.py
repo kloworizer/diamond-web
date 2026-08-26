@@ -38,6 +38,16 @@ class JenisDataILAP(AuditTrailModel):
         verbose_name_plural = "Jenis Data ILAP"
         db_table = "jenis_data_ilap"
         ordering = ["id"]
+        constraints = [
+            # A sub jenis data is one row. Several table names used to be
+            # recorded by repeating the whole row, which left every lookup by
+            # this code picking whichever came first; the names live in
+            # NamaTabelJenisData now, so the code identifies a row again.
+            models.UniqueConstraint(
+                fields=["id_sub_jenis_data"],
+                name="jdi_sub_jenis_data_unik",
+            ),
+        ]
         indexes = [
             models.Index(fields=["id_ilap"], name="jdi_id_ilap_idx"),
             models.Index(fields=["id_jenis_tabel"], name="jdi_jtabel_idx"),
