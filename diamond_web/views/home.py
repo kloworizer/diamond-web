@@ -22,6 +22,7 @@ from diamond_web.models.user_starred_tiket import UserStarredTiket
 from diamond_web.models.tiket_action import TiketAction
 from diamond_web.models.pic import PIC
 from diamond_web.models.jenis_data_ilap import JenisDataILAP
+from diamond_web.templatetags.auth_extras import format_periode_tiket
 from diamond_web.constants.tiket_status import (
     STATUS_DIREKAM,
     STATUS_DITELITI,
@@ -359,6 +360,7 @@ def _build_tiket_base_qs(category, user):
         'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
         'id_periode_data__id_sub_jenis_data_ilap',
         'id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel',
+        'id_periode_data__id_periode_pengiriman',
         'id_bentuk_data',
         'id_cara_penyampaian',
         'id_status_penelitian',
@@ -949,6 +951,7 @@ def home_data(request):
                     'nama_ilap': nama_ilap,
                     'nama_sub_jenis_data': nama_sub_jenis,
                     'nama_tabel_I': nama_tabel_I,
+                    'periode_data': format_periode_tiket(obj) or '-',
                     'periode': obj.periode,
                     'tahun': obj.tahun,
                     'status_tiket': STATUS_LABELS.get(obj.status_tiket, ''),
@@ -959,6 +962,7 @@ def home_data(request):
                     'nomor_tiket': obj.nomor_tiket,
                     'nama_ilap': nama_ilap,
                     'nama_sub_jenis_data': nama_sub_jenis,
+                    'periode_data': format_periode_tiket(obj) or '-',
                     'nama_tabel_I': nama_tabel_I,
                     # Same rule the Quality Control page uses for its P3DE/PIDE
                     # upstream sections (sq.baris_data): baris lengkap until
@@ -978,6 +982,7 @@ def home_data(request):
                     'nomor_tiket': obj.nomor_tiket,
                     'nama_ilap': nama_ilap,
                     'nama_sub_jenis_data': nama_sub_jenis,
+                    'periode_data': format_periode_tiket(obj) or '-',
                     'status_tiket': STATUS_LABELS.get(obj.status_tiket, ''),
                     'tgl_special_request': (
                         obj.tgl_special_request.strftime('%d-%m-%Y') if obj.tgl_special_request else ''
@@ -992,6 +997,7 @@ def home_data(request):
                     'nomor_tiket': obj.nomor_tiket,
                     'nama_ilap': nama_ilap,
                     'nama_sub_jenis_data': nama_sub_jenis,
+                    'periode_data': format_periode_tiket(obj) or '-',
                     'nama_tabel_I': nama_tabel_I,
                     'jenis_tabel': jenis_tabel,
                     'baris_diterima': obj.baris_diterima or 0,
