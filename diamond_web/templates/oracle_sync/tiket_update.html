@@ -301,6 +301,27 @@
                 : defaultText;
         }
 
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text == null ? '' : String(text);
+            return div.innerHTML;
+        }
+
+        function renderErrorDetails(errors) {
+            // Angka "Error" saja tidak cukup: pesan seperti pembatalan reset
+            // membawa jumlah kandidat yang justru jadi dasar tindak lanjut.
+            if (!errors || !errors.length) return '';
+            const shown = errors.slice(0, 10)
+                .map(function (e) { return '<li>' + escapeHtml(e) + '</li>'; })
+                .join('');
+            const rest = errors.length > 10
+                ? '<div class="small mt-1">… dan ' + (errors.length - 10) + ' pesan lainnya.</div>'
+                : '';
+            return '<div class="alert alert-warning mt-3 mb-0">'
+                + '<strong>Pesan Error:</strong>'
+                + '<ul class="mb-0 mt-1">' + shown + '</ul>' + rest + '</div>';
+        }
+
         function renderCheckSummary(summary) {
             resultBox.style.display = 'block';
             resultSource.textContent = summary.source_rows || 0;
@@ -315,7 +336,7 @@
             resultStale.textContent = summary.would_stale_reset || 0;
             resultError.textContent = (summary.errors || []).length;
 
-            resultDetails.innerHTML = '';
+            resultDetails.innerHTML = renderErrorDetails(summary.errors);
             // Reset baris yang hilang dari Oracle juga perlu dijalankan, walau
             // tidak ada satu pun baris Oracle yang berubah.
             btnSync.disabled = ((summary.would_update || 0) + (summary.would_stale_reset || 0)) === 0;
@@ -335,7 +356,7 @@
             resultStale.textContent = summary.stale_reset || 0;
             resultError.textContent = (summary.errors || []).length;
 
-            let details = '';
+            let details = renderErrorDetails(summary.errors);
             if (errorLogUrl) {
                 details += '<div class="alert alert-secondary mt-3 mb-0"><strong>Log Kesalahan:</strong> <a href="' + errorLogUrl + '" class="alert-link" download>Unduh CSV</a></div>';
             }
