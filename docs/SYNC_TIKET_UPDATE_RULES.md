@@ -20,13 +20,10 @@ flowchart TD
     UPDATE_ONLY --> DONE[(Selesai)]
     NO_CHANGE --> DONE
 
-    ORACLE -.->|nomor tiket TIDAK ada<br/>di hasil query| KE_DIAGRAM_6[Lihat Diagram 6 ⬇<br/>Reset data hilang]
-
     style KE_DIAGRAM_1 fill:#e8eaf6,stroke:#5c6bc0
     style KE_DIAGRAM_2 fill:#e8eaf6,stroke:#5c6bc0
     style KE_DIAGRAM_3 fill:#e8eaf6,stroke:#5c6bc0
     style KE_DIAGRAM_4 fill:#e8eaf6,stroke:#5c6bc0
-    style KE_DIAGRAM_6 fill:#fce4ec,stroke:#c62828
 ```
 
 ### Diagram 1 — Aturan 6 & 7: Dikirim ke PIDE (4) → Identifikasi (5) / Pengendalian Mutu (6)
@@ -176,31 +173,6 @@ flowchart TD
     style C4 fill:#fff9c4,stroke:#f9a825
 ```
 
-### Diagram 6 — Reset: Baris Tiket Hilang dari Oracle
-
-```mermaid
-flowchart TD
-    START[Tiket lokal punya kolom<br/>bersumber Oracle terisi] --> C1{nomor_tiket ada di<br/>hasil query Oracle?}
-    C1 -->|Ya| NORMAL[Diproses aturan 1-9]
-    C1 -->|Tidak| C0{jumlah kandidat<br/>di bawah ambang aman?}
-    C0 -->|Tidak| ABORT[Reset DIBATALKAN seluruhnya<br/>hasil query Oracle tidak utuh]
-    C0 -->|Ya| CLEAR[Kosongkan kolom tarikan/QC ke NULL]
-    CLEAR --> C2{status 5, 6, atau 8?}
-    C2 -->|Ya| REVERT[Status ke 4 DIKIRIM_KE_PIDE<br/>+ tgl_rekam_pide ke NULL]
-    C2 -->|Tidak| KEEP[Status dipertahankan<br/>+ tgl_rekam_pide dipertahankan]
-    REVERT --> ACTION[aksi DIUBAH oleh PIDE<br/>fallback P3DE]
-    KEEP --> ACTION
-
-    style CLEAR fill:#fce4ec,stroke:#c62828,stroke-width:3px
-    style REVERT fill:#fce4ec,stroke:#c62828,stroke-width:3px
-    style ABORT fill:#fff3e0,stroke:#e65100,stroke-width:3px
-    style START fill:#fff3e0,stroke:#e65100
-    style NORMAL fill:#eceff1,stroke:#90a4ae
-    style C0 fill:#fff9c4,stroke:#f9a825
-    style C1 fill:#fff9c4,stroke:#f9a825
-    style C2 fill:#fff9c4,stroke:#f9a825
-```
-
 > **Keterangan singkatan**: `i` = baris_i (Identifikasi), `u` = baris_u (Update), `res` = baris_res (Residual), `cde` = baris_cde (CDE)
 
 ---
@@ -220,7 +192,6 @@ flowchart TD
    - [Aturan 7: Dikirim ke PIDE (4) → Pengendalian Mutu (6)](#aturan-7-dikirim-ke-pide-4--pengendalian-mutu-6)
    - [Aturan 8: Selesai (8) → Pengendalian Mutu (6) — Rematch](#aturan-8-selesai-8--pengendalian-mutu-6--rematch)
    - [Aturan 9: Selesai (8) → Pengendalian Mutu (6) — Revisi Tarikan](#aturan-9-selesai-8--pengendalian-mutu-6--revisi-tarikan)
-   - [Reset: Baris Tiket Hilang dari Oracle](#reset-baris-tiket-hilang-dari-oracle)
 5. [Diagram Alur Keputusan di Status 5](#diagram-alur-keputusan-di-status-5)
 6. [Ringkasan Jejak Audit TiketAction](#ringkasan-jejak-audit-tiketaction)
 7. [Penugasan Peran PIC](#penugasan-peran-pic)
@@ -761,73 +732,6 @@ Syarat terakhir itu yang memisahkan korban asli dari tiket migrasi yang jejaknya
 
 ---
 
-## Reset: Baris Tiket Hilang dari Oracle
-
-**Nama fungsi**: `_stale_tiket_ids()` / `_plan_stale_reset()` / `_stale_reset_detail()`
-
-Baris tarikan bisa **dihapus di Oracle**: kemarin nomor tiket ada di `ZA_REKAP_TARIKAN`, hari ini tidak. Kolom yang sempat terisi di DIAMOND lalu menyimpan angka yang tidak lagi punya dasar di sumber data — dan bisa bertentangan dengan riwayat tiket itu sendiri, misalnya tiket yang dikembalikan ke P3DE pada 13/07 tetapi menyandang `tgl_transfer` 27/07. Setelah semua baris Oracle diproses, sinkronisasi menyapu tiket seperti ini dan mengosongkannya.
-
-### Kondisi Kandidat
-
-| Kondisi | Deskripsi |
-|---------|-----------|
-| Minimal satu kolom di `_STALE_CANDIDATE_FIELDS` tidak NULL | Tiket pernah menerima data tarikan |
-| `nomor_tiket` tidak ada di hasil query Oracle | Barisnya sudah tidak ada di sumber |
-
-> **Tiket migrasi (`old_db=True`) TIDAK dikecualikan.** Tiket hasil migrasi tetap mengalir lewat sinkronisasi ini seperti tiket lain — `PD411040126050601`, korban Aturan 9 yang diperbaiki lewat `fix_tiket_transfer_ulang`, justru `old_db=True`. Menyaringnya akan melewatkan kasus nyata.
-
-> **Keanggotaan diuji di Python**, bukan lewat `exclude(nomor_tiket__in=...)` — puluhan ribu kunci melampaui batas parameter SQLite. Yang dikumpulkan hanya `id`, jadi pemindaiannya tetap murah.
-
-### Ambang Aman (`_STALE_RESET_MAX`, default 20)
-
-Penghapusan baris di Oracle adalah kejadian kecil — beberapa tiket sekali waktu. Jumlah kandidat yang jauh lebih besar **bukan** berarti PIDE menghapus semuanya, melainkan hasil query Oracle-nya sendiri yang tidak utuh: koneksi putus di tengah `fetchall`, tabel/skema salah, atau view yang ternyata terfilter. Reset ini destruktif dan berjalan otomatis lewat Celery, jadi ketika ambang terlampaui **seluruh penyapuan dibatalkan** — tidak satu pun tiket disentuh — lalu dicatat sebagai error dan sebagai baris CSV `Reset Dibatalkan`.
-
-Ini pengaman terhadap seluruh keluarga kegagalan, bukan cuma satu kasus: berapa pun penyebabnya, hasil Oracle yang tidak utuh tidak akan pernah mengosongkan basis data.
-
-Angkanya sengaja ketat. Penghapusan yang sah memang sedikit — kejadian nyata pertama yang ditangani hanya 6 tiket. Kalau suatu saat ada penghapusan besar yang memang disengaja, penyapuan akan menolak jalan dan melaporkan jumlah kandidatnya di hasil **Cek Data**; menaikkan angka ini adalah keputusan sadar setelah melihat angka itu, bukan default yang diam-diam mengizinkan. Ambang yang terlampaui tidak menghalangi bagian lain sinkronisasi — pembaruan kolom dan transisi status tetap berjalan normal.
-
-### Kolom yang Dikosongkan
-
-**Selalu** (`_ORACLE_SOURCED_FIELDS`): `tgl_transfer`, `tgl_rematch`, `baris_i`, `baris_u`, `baris_res`, `baris_cde`, `sudah_qc`, `belum_qc`, `lolos_qc`, `tidak_lolos_qc`, `qc_p` ... `qc_d`.
-
-**`tgl_rekam_pide` hanya bila statusnya dimundurkan.** Tiket yang kembali ke status 4 harus bersih agar Aturan 6/7 bisa mengangkatnya lagi kalau barisnya muncul kembali di Oracle (syaratnya `tgl_rekam_pide is None`). Pada tiket yang statusnya dipertahankan, tanggal itu dibuktikan oleh aksi `IDENTIFIKASI` di jejak audit — menghapusnya justru melawan riwayat tiket itu sendiri.
-
-### Perubahan Status
-
-| Status saat ini | Hasil |
-|-----------------|-------|
-| 5 (Identifikasi), 6 (Pengendalian Mutu), 8 (Selesai) | ke **4 (Dikirim ke PIDE)**, `tgl_rekam_pide` dikosongkan |
-| Lainnya (3 Dikembalikan, 7 Dibatalkan, 1, 2) | Status **dan** `tgl_rekam_pide` dipertahankan |
-
-Hanya status yang bisa **dihasilkan sinkronisasi ini** dari status 4 yang dimundurkan (`_STALE_REVERTIBLE_STATUSES`). Dikembalikan dan Dibatalkan adalah keputusan manusia — kolom tarikannya tetap dikosongkan, statusnya tidak disentuh.
-
-### TiketAction yang Dibuat
-
-| Field | Nilai |
-|-------|-------|
-| **Aksi** | `TiketActionType.DIUBAH` (10) |
-| **Pengguna** | PIC **PIDE** aktif pertama; jika tidak ada, PIC **P3DE** aktif pertama |
-| **Waktu** | `timezone.now()` — penghapusan terdeteksi saat sinkronisasi berjalan; Oracle tidak menyimpan kapan barisnya dihapus |
-| **Catatan** | `'Data tarikan dihapus di Oracle — kolom tarikan/QC dikosongkan[ dan status dikembalikan] (auto-sync)'` |
-
-Jika tidak ada PIC PIDE maupun P3DE aktif, reset tetap diterapkan tetapi peringatan dicatat dan tidak ada `TiketAction` yang dibuat.
-
-### Sinyal Berhenti
-
-Jika `stop_checker()` sudah `True` sebelum atau di tengah penyapuan, reset dilewati atau dihentikan — lebih baik tidak mereset apa pun daripada mereset berdasarkan data separuh.
-
-### Pencatatan (CSV) & Penghitung
-
-| Mode | Kategori | Penghitung |
-|------|----------|-----------|
-| Sinkronisasi | `'Direset (hilang dari Oracle)'` | `stale_reset` |
-| *Dry-run* | `'Akan Direset (hilang dari Oracle)'` | `would_stale_reset` |
-| Keduanya, saat ambang terlampaui | `'Reset Dibatalkan'` | dicatat di `errors` |
-
-Tombol **Update Data** aktif bila `would_update + would_stale_reset > 0`, sehingga reset tetap bisa dijalankan walau tidak ada satu pun baris Oracle yang berubah.
-
----
-
 ## Diagram Alur Keputusan di Status 5
 
 Karena beberapa aturan menargetkan status 5, berikut adalah urutan prioritasnya (semua blok `if` independen, tetapi kondisi dirancang agar saling eksklusif):
@@ -897,7 +801,6 @@ Karena beberapa aturan menargetkan status 5, berikut adalah urutan prioritasnya 
 | 7 (4→6) | `DITRANSFER_KE_PMDE` | PIDE | `tgl_transfer` |
 | 8 (8→6) | `REMATCH` | PIDE | `tgl_rematch` |
 | 9 (8→6) | `DITRANSFER_KE_PMDE` | PIDE | `tgl_transfer` (yang baru) |
-| Reset | `DIUBAH` | PIDE, *fallback* P3DE | `timezone.now()` |
 
 ---
 
@@ -905,9 +808,9 @@ Karena beberapa aturan menargetkan status 5, berikut adalah urutan prioritasnya 
 
 | Peran | Digunakan di | Tujuan |
 |-------|-------------|--------|
-| **PIDE** | Aturan 1, 3, 4, 5, 6, 7, 8, 9 + Reset | Membuat aksi `IDENTIFIKASI`, `DITRANSFER_KE_PMDE`, `DIKEMBALIKAN`, `REMATCH`, atau `DIUBAH` |
+| **PIDE** | Aturan 1, 3, 4, 5, 6, 7, 8, 9 | Membuat aksi `IDENTIFIKASI`, `DITRANSFER_KE_PMDE`, `DIKEMBALIKAN`, atau `REMATCH` |
 | **PMDE** | Aturan 2, 3, 5 | Membuat aksi `PENGENDALIAN_MUTU` dan `SELESAI` |
-| **P3DE** | Aturan 4 + Reset (*fallback*) | Membuat aksi `DIBATALKAN` dan menerima notifikasi; mencatat `DIUBAH` bila tidak ada PIC PIDE aktif |
+| **P3DE** | Aturan 4 | Membuat aksi `DIBATALKAN` dan menerima notifikasi |
 
 PIC diambil sebagai record `TiketPIC` dengan `active=True` untuk setiap tiket. Hanya PIC aktif **pertama** per peran yang digunakan untuk pembuatan `TiketAction`.
 
@@ -947,7 +850,7 @@ PIC diambil sebagai record `TiketPIC` dengan `active=True` untuk setiap tiket. H
   "current": 0, "total": 0, "percentage": 0,
   "would_update": 0, "would_identifikasi": 0, "would_pmde": 0,
   "would_selesai": 0, "would_dikembalikan": 0, "would_rematch": 0,
-  "would_transfer_ulang": 0, "would_stale_reset": 0,
+  "would_transfer_ulang": 0,
   "would_unchanged": 0, "not_found": 0, "errors": 0
 }
 ```
@@ -958,7 +861,7 @@ PIC diambil sebagai record `TiketPIC` dengan `active=True` untuk setiap tiket. H
   "current": 0, "total": 0, "percentage": 0,
   "updated_rows": 0, "status_to_identifikasi": 0, "status_to_pmde": 0,
   "status_to_selesai": 0, "status_to_dikembalikan": 0, "status_to_rematch": 0,
-  "status_to_transfer_ulang": 0, "stale_reset": 0,
+  "status_to_transfer_ulang": 0,
   "not_found": 0, "unchanged": 0, "errors": 0
 }
 ```
@@ -988,7 +891,7 @@ Semua log CSV disimpan di direktori `sync_logs/` di root proyek.
 |-------|-----------|
 | `Timestamp` | Kapan baris dicatat |
 | `Nomor Tiket` | Identifikator tiket |
-| `Kategori` | Salah satu dari: `Baris Diupdate`, `Belum Disinkronisasi`, `Status → Identifikasi`, `Status → Pengendalian Mutu`, `Status → Pengendalian Mutu (rematch)`, `Status → Pengendalian Mutu (transfer ulang)`, `Status → Selesai`, `Status → Dikembalikan`, `Direset (hilang dari Oracle)`, `Reset Dibatalkan`, `Tidak Berubah`, `Error` |
+| `Kategori` | Salah satu dari: `Baris Diupdate`, `Belum Disinkronisasi`, `Status → Identifikasi`, `Status → Pengendalian Mutu`, `Status → Pengendalian Mutu (rematch)`, `Status → Pengendalian Mutu (transfer ulang)`, `Status → Selesai`, `Status → Dikembalikan`, `Tidak Berubah`, `Error` |
 | `Detail` | Konteks tambahan |
 
 Setiap tiket dapat muncul **beberapa kali** jika termasuk dalam beberapa kategori (misalnya, "Baris Diupdate" + "Status → Pengendalian Mutu").
