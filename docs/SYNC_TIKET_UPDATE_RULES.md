@@ -1,7 +1,7 @@
 # Sinkronisasi Oracle — Aturan Transisi Status Tiket
 
 **File**: `diamond_web/views/sync_tiket_update.py`
-**Terakhir diperbarui**: 10 Agustus 2026
+**Terakhir diperbarui**: 26 Agustus 2026
 
 ---
 
@@ -15,7 +15,7 @@ flowchart TD
     CHECK_STATUS -->|4 - Dikirim ke PIDE| KE_DIAGRAM_1[Lihat Diagram 1 ⬇]
     CHECK_STATUS -->|5 - Identifikasi| KE_DIAGRAM_2[Lihat Diagram 2a-2d ⬇]
     CHECK_STATUS -->|6 - Pengendalian Mutu| KE_DIAGRAM_3[Lihat Diagram 3 ⬇]
-    CHECK_STATUS -->|8 - Selesai| KE_DIAGRAM_4[Lihat Diagram 4 ⬇]
+    CHECK_STATUS -->|8 - Selesai| KE_DIAGRAM_4[Lihat Diagram 4 & 5 ⬇]
     CHECK_STATUS -->|Lainnya| UPDATE_ONLY[Update field saja<br/>tanpa transisi status]
     UPDATE_ONLY --> DONE[(Selesai)]
     NO_CHANGE --> DONE
@@ -151,6 +151,28 @@ flowchart TD
     style C3 fill:#fff9c4,stroke:#f9a825
 ```
 
+### Diagram 5 — Aturan 9: Selesai (8) → Pengendalian Mutu (6) — Revisi Tarikan
+
+```mermaid
+flowchart TD
+    START[Status: 8 - Selesai<br/>ditutup Aturan 5A: i=0, u&gt;0] --> C1{tgl_rematch<br/>== null?}
+    C1 -->|Ya| C2{tgl_transfer Oracle<br/>!= tgl_transfer lokal?}
+    C2 -->|Ya| C3{baris_i<br/>&gt; 0?}
+    C3 -->|Ya| C4{belum_qc == null<br/>ATAU<br/>belum_qc != 0?}
+    C4 -->|Ya| RESULT[ATURAN 9<br/>Status Tiket: 8 → 6<br/>PENGENDALIAN_MUTU<br/>aksi DITRANSFER_KE_PMDE oleh PIDE]
+    C2 -->|Tidak| SKIP[Tidak ada transisi<br/>hanya update field]
+    C3 -->|Tidak| SKIP
+    C4 -->|Tidak| SKIP
+
+    style RESULT fill:#e3f2fd,stroke:#1565c0,stroke-width:3px
+    style START fill:#e8f5e9,stroke:#2e7d32
+    style SKIP fill:#eceff1,stroke:#90a4ae
+    style C1 fill:#fff9c4,stroke:#f9a825
+    style C2 fill:#fff9c4,stroke:#f9a825
+    style C3 fill:#fff9c4,stroke:#f9a825
+    style C4 fill:#fff9c4,stroke:#f9a825
+```
+
 > **Keterangan singkatan**: `i` = baris_i (Identifikasi), `u` = baris_u (Update), `res` = baris_res (Residual), `cde` = baris_cde (CDE)
 
 ---
@@ -169,6 +191,7 @@ flowchart TD
    - [Aturan 6: Dikirim ke PIDE (4) → Identifikasi (5)](#aturan-6-dikirim-ke-pide-4--identifikasi-5)
    - [Aturan 7: Dikirim ke PIDE (4) → Pengendalian Mutu (6)](#aturan-7-dikirim-ke-pide-4--pengendalian-mutu-6)
    - [Aturan 8: Selesai (8) → Pengendalian Mutu (6) — Rematch](#aturan-8-selesai-8--pengendalian-mutu-6--rematch)
+   - [Aturan 9: Selesai (8) → Pengendalian Mutu (6) — Revisi Tarikan](#aturan-9-selesai-8--pengendalian-mutu-6--revisi-tarikan)
 5. [Diagram Alur Keputusan di Status 5](#diagram-alur-keputusan-di-status-5)
 6. [Ringkasan Jejak Audit TiketAction](#ringkasan-jejak-audit-tiketaction)
 7. [Penugasan Peran PIC](#penugasan-peran-pic)
@@ -624,6 +647,91 @@ Transisi ini dihitung terpisah dari transisi PMDE lain: `status_to_rematch` (sin
 
 ---
 
+### Aturan 9: Selesai (8) → Pengendalian Mutu (6) — Revisi Tarikan
+
+**Nama variabel**: `needs_transfer_ulang` / `needs_transfer_ulang_transition`
+
+Tiket bisa ditutup langsung dari Identifikasi oleh **Aturan 5A** ketika tarikan pertama hanya berisi baris *update* (`i=0, u>0`) — tanpa pernah melewati PMDE. Beberapa hari kemudian PIC PIDE dapat **merevisi tarikan itu**: transfer ulang dengan `tgl_transfer` baru, dan kali ini `baris_i` ikut terisi. Komposisi barisnya sekarang persis kondisi Aturan 1 — tetapi statusnya sudah terlanjur `Selesai`, sehingga tidak ada aturan yang mengevaluasinya kembali.
+
+Aturan 9 menutup celah itu: **komposisi baris yang sama harus mendarat di status yang sama**, baik datang dari status 5 maupun dari status 8.
+
+#### Kondisi (semua harus benar)
+
+| Kondisi | Deskripsi |
+|---------|-----------|
+| `tiket.status_tiket == STATUS_SELESAI` (8) | Status saat ini adalah Selesai |
+| `tgl_rematch is None` | Bukan *rematch* — eksklusif dari Aturan 8 |
+| `tgl_transfer is not None` | Oracle memiliki tanggal transfer |
+| `tgl_transfer != tiket.tgl_transfer` | Tanggal transfer **berubah** pada sinkronisasi ini |
+| `baris_i is not None and baris_i > 0` | Revisi membawa baris identifikasi |
+| `belum_qc is None or belum_qc != 0` | QC belum selesai |
+
+Tiga syarat terakhir **identik dengan Aturan 1**; dua syarat pertama yang membedakan titik berangkatnya.
+
+> **Kenapa `baris_i > 0` wajib**: kalau revisi tetap menghasilkan `i=0, u>0`, itu komposisi yang justru **ditutup** Aturan 5A — membuka kembali tiket untuk komposisi tersebut akan melawan aturan yang menutupnya, dan tiket terjebak di PMDE selamanya karena tidak ada baris identifikasi yang bisa di-QC.
+
+> **Kenapa perubahan `tgl_transfer` wajib**: tanpa syarat ini aturan berlaku ke setiap tiket Selesai yang `belum_qc`-nya belum nol — saat aturan ini ditulis ada **3.421** tiket seperti itu, dan semuanya akan dibuka kembali sekaligus pada sinkronisasi pertama. Syarat ini membatasi aturan pada tiket yang benar-benar baru direvisi PIDE. Nilai lama dibaca ke `prev_tgl_transfer` **sebelum** blok pembaruan field menimpanya.
+
+#### Perubahan Status
+
+`tiket.status_tiket = STATUS_PENGENDALIAN_MUTU` (6)
+
+Tidak ada field tanggal lain yang ditulis oleh aturan ini. `tgl_transfer` dan kolom baris tetap diperbarui melalui pembaruan field umum.
+
+#### TiketAction yang Dibuat
+
+| Field | Nilai |
+|-------|-------|
+| **Aksi** | `TiketActionType.DITRANSFER_KE_PMDE` (9) |
+| **Pengguna** | PIC **PIDE** aktif pertama untuk tiket ini |
+| **Waktu** | `tgl_transfer or timezone.now()` — tanggal transfer **yang baru** |
+| **Catatan** | `'Tiket ditransfer ulang ke PMDE — revisi tarikan oleh PIDE (I:{baris_i}, U:{baris_u})'` |
+
+Aksi `DITRANSFER_KE_PMDE` / `PENGENDALIAN_MUTU` / `SELESAI` dari putaran tarikan sebelumnya **tidak dihapus atau diubah** — riwayat putaran lama tetap utuh dan aksi baru ditambahkan di atasnya, ditandai tanggal transfer yang berbeda.
+
+#### Fallback
+
+Jika tidak ada PIC PIDE aktif, status tetap diperbarui tetapi peringatan dicatat dan tidak ada `TiketAction` yang dibuat.
+
+#### Pencatatan (CSV)
+
+- **Kategori**: `'Status → Pengendalian Mutu (transfer ulang)'`
+- **Detail**: `'Dari SELESAI ke PENGENDALIAN_MUTU (Tgl Transfer:{lama} → {baru}, I:{baris_i}, U:{baris_u}, Belum QC:{belum_qc})'`
+
+#### Penghitung
+
+`status_to_transfer_ulang` (sinkronisasi) dan `would_transfer_ulang` (*dry-run*) — terpisah dari `status_to_pmde` dan `status_to_rematch`.
+
+> **Catatan**: Sama seperti Aturan 8, setelah dibuka kembali tiket mengikuti Aturan 2 pada sinkronisasi berikutnya — begitu `belum_qc == 0`, tiket kembali ke status 8 dengan aksi `PENGENDALIAN_MUTU` + `SELESAI` yang baru.
+
+#### Perbaikan Retroaktif
+
+Aturan 9 hanya bisa menyala pada sinkronisasi yang **pertama kali** melihat tanggal transfer baru, karena ia membandingkan `tgl_transfer` Oracle dengan yang sudah tersimpan di tiket. Tiket yang direvisi **sebelum** aturan ini ada karena itu tertahan permanen: sinkronisasi sudah terlanjur menyalin `tgl_transfer` (dan kolom baris) yang baru ke record lokal, sehingga setiap sinkronisasi berikutnya tidak melihat perubahan apa pun dan tiket tetap berstatus Selesai.
+
+Perintah `fix_tiket_transfer_ulang` menerapkan apa yang seharusnya dilakukan Aturan 9 pada tiket-tiket itu.
+
+```bash
+python manage.py fix_tiket_transfer_ulang --dry-run     # lihat dulu
+python manage.py fix_tiket_transfer_ulang               # terapkan
+python manage.py fix_tiket_transfer_ulang --tiket PD411040126050601
+```
+
+**Kriteria deteksi** — tiket dianggap tertahan bila semuanya benar:
+
+| Kondisi | Deskripsi |
+|---------|-----------|
+| `status_tiket == 8` dan `tgl_rematch is None` | Selesai, bukan *rematch* |
+| `tgl_transfer is not None` | Punya tanggal transfer |
+| `baris_i > 0` dan `belum_qc != 0` | Komposisi Aturan 1 — datanya bilang tiket ini seharusnya di pengendalian mutu |
+| **Tidak ada** aksi `DITRANSFER_KE_PMDE` ber-*timestamp* sama dengan `tgl_transfer` tiket | Jejak audit tidak pernah mencatat transfer pada tanggal yang kini diklaim tiket |
+
+Syarat terakhir itu yang memisahkan korban asli dari tiket migrasi yang jejaknya direkonstruksi `backfill_old_db_tiket_actions` — jejak hasil rekonstruksi **selalu** punya aksi transfer tepat di `tgl_transfer`-nya. Syarat itu sekaligus membuat perintah ini **idempoten**: perbaikannya membuat persis aksi tersebut, jadi eksekusi kedua tidak menemukan apa-apa.
+
+**Tindakan per tiket**: `status_tiket` 8 → 6, dan satu `TiketAction` `DITRANSFER_KE_PMDE` oleh PIC PIDE aktif, ber-*timestamp* `tgl_transfer` yang berlaku sekarang. Aksi lama **tidak pernah dihapus atau diubah tanggalnya** — putaran yang sudah ditutup memang benar-benar terjadi atas data saat itu, revisinya ditambahkan di atasnya.
+
+
+---
+
 ## Diagram Alur Keputusan di Status 5
 
 Karena beberapa aturan menargetkan status 5, berikut adalah urutan prioritasnya (semua blok `if` independen, tetapi kondisi dirancang agar saling eksklusif):
@@ -692,6 +800,7 @@ Karena beberapa aturan menargetkan status 5, berikut adalah urutan prioritasnya 
 | 7 (4→6) | `IDENTIFIKASI` | PIDE | `tgl_rekam_pide` |
 | 7 (4→6) | `DITRANSFER_KE_PMDE` | PIDE | `tgl_transfer` |
 | 8 (8→6) | `REMATCH` | PIDE | `tgl_rematch` |
+| 9 (8→6) | `DITRANSFER_KE_PMDE` | PIDE | `tgl_transfer` (yang baru) |
 
 ---
 
@@ -699,7 +808,7 @@ Karena beberapa aturan menargetkan status 5, berikut adalah urutan prioritasnya 
 
 | Peran | Digunakan di | Tujuan |
 |-------|-------------|--------|
-| **PIDE** | Aturan 1, 3, 4, 5, 6, 7, 8 | Membuat aksi `IDENTIFIKASI`, `DITRANSFER_KE_PMDE`, `DIKEMBALIKAN`, atau `REMATCH` |
+| **PIDE** | Aturan 1, 3, 4, 5, 6, 7, 8, 9 | Membuat aksi `IDENTIFIKASI`, `DITRANSFER_KE_PMDE`, `DIKEMBALIKAN`, atau `REMATCH` |
 | **PMDE** | Aturan 2, 3, 5 | Membuat aksi `PENGENDALIAN_MUTU` dan `SELESAI` |
 | **P3DE** | Aturan 4 | Membuat aksi `DIBATALKAN` dan menerima notifikasi |
 
@@ -741,6 +850,7 @@ PIC diambil sebagai record `TiketPIC` dengan `active=True` untuk setiap tiket. H
   "current": 0, "total": 0, "percentage": 0,
   "would_update": 0, "would_identifikasi": 0, "would_pmde": 0,
   "would_selesai": 0, "would_dikembalikan": 0, "would_rematch": 0,
+  "would_transfer_ulang": 0,
   "would_unchanged": 0, "not_found": 0, "errors": 0
 }
 ```
@@ -751,6 +861,7 @@ PIC diambil sebagai record `TiketPIC` dengan `active=True` untuk setiap tiket. H
   "current": 0, "total": 0, "percentage": 0,
   "updated_rows": 0, "status_to_identifikasi": 0, "status_to_pmde": 0,
   "status_to_selesai": 0, "status_to_dikembalikan": 0, "status_to_rematch": 0,
+  "status_to_transfer_ulang": 0,
   "not_found": 0, "unchanged": 0, "errors": 0
 }
 ```
@@ -780,7 +891,7 @@ Semua log CSV disimpan di direktori `sync_logs/` di root proyek.
 |-------|-----------|
 | `Timestamp` | Kapan baris dicatat |
 | `Nomor Tiket` | Identifikator tiket |
-| `Kategori` | Salah satu dari: `Baris Diupdate`, `Belum Disinkronisasi`, `Status → Identifikasi`, `Status → Pengendalian Mutu`, `Status → Pengendalian Mutu (rematch)`, `Status → Selesai`, `Status → Dikembalikan`, `Tidak Berubah`, `Error` |
+| `Kategori` | Salah satu dari: `Baris Diupdate`, `Belum Disinkronisasi`, `Status → Identifikasi`, `Status → Pengendalian Mutu`, `Status → Pengendalian Mutu (rematch)`, `Status → Pengendalian Mutu (transfer ulang)`, `Status → Selesai`, `Status → Dikembalikan`, `Tidak Berubah`, `Error` |
 | `Detail` | Konteks tambahan |
 
 Setiap tiket dapat muncul **beberapa kali** jika termasuk dalam beberapa kategori (misalnya, "Baris Diupdate" + "Status → Pengendalian Mutu").

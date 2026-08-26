@@ -22,6 +22,8 @@ This module provides the core logic to:
      → SELESAI (8) (direct, baris-based)
    - SELESAI (8) + tgl_rematch not null + belum_qc > 0
      → PENGENDALIAN_MUTU (6) (rematch reopens QC, timestamped tgl_rematch)
+   - SELESAI (8) + tgl_rematch null + tgl_transfer changed + baris_i > 0
+     + belum_qc != 0 → PENGENDALIAN_MUTU (6) (PIDE revised the tarikan)
 
 See docs/SYNC_TIKET_UPDATE_RULES.md for full documentation.
 """
@@ -214,6 +216,8 @@ def _log_update_result_row(sync_id, nomor_tiket, kategori, detail=''):
         - 'Belum Disinkronisasi' — tiket nomor not found in local DB
         - 'Status → Pengendalian Mutu' — status transition to PMDE
         - 'Status → Pengendalian Mutu (rematch)' — reopened from Selesai
+        - 'Status → Pengendalian Mutu (transfer ulang)' — reopened from Selesai
+          because PIDE revised the tarikan and baris_i is now > 0
         - 'Status → Selesai'     — status transition to Selesai
         - 'Tidak Berubah'        — no changes detected
         - 'Error'                — processing error
@@ -254,7 +258,8 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
 
     Returns:
         dict with keys: source_rows, would_update, would_identifikasi, would_pmde,
-        would_selesai, would_rematch, would_unchanged, errors, updated_keys
+        would_selesai, would_rematch, would_transfer_ulang, would_unchanged,
+        errors, updated_keys
     """
     try:
         if check_id:
@@ -262,6 +267,7 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                 'current': 0, 'total': 0, 'percentage': 0,
                 'would_update': 0, 'would_identifikasi': 0,
                 'would_pmde': 0, 'would_selesai': 0, 'would_rematch': 0,
+                'would_transfer_ulang': 0,
                 'errors': 0,
                 'table_name': 'Menghubungkan ke Oracle...',
             }, timeout=3600)
@@ -292,6 +298,7 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
         would_selesai = 0
         would_dikembalikan = 0
         would_rematch = 0
+        would_transfer_ulang = 0
         would_unchanged = 0
         not_found = 0
         errors = []
@@ -457,6 +464,22 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                     and belum_qc > 0
                 )
 
+                # PIC PIDE merevisi tarikan: transfer ulang dengan tanggal baru,
+                # dan kali ini baris identifikasi ikut terisi. Tiket yang sudah
+                # ditutup lewat Aturan 5 (baris_u saja) kini punya baris_i > 0,
+                # jadi harus melewati pengendalian mutu dulu. Syaratnya sengaja
+                # dibuat sama persis dengan Aturan 1 — komposisi baris yang sama
+                # harus mendarat di status yang sama, dari 5 maupun dari 8.
+                needs_transfer_ulang = (
+                    tiket.status_tiket == STATUS_SELESAI
+                    and tgl_rematch is None
+                    and tgl_transfer is not None
+                    and tgl_transfer != tiket.tgl_transfer
+                    and baris_i is not None
+                    and baris_i > 0
+                    and (belum_qc is None or belum_qc != 0)
+                )
+
                 if needs_identifikasi:
                     changed = True
                 if needs_pmde_from_4:
@@ -472,6 +495,8 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                 if needs_selesai_from_5_baris:
                     changed = True
                 if needs_rematch:
+                    changed = True
+                if needs_transfer_ulang:
                     changed = True
 
                 if not changed:
@@ -501,6 +526,8 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                     would_selesai += 1
                 if needs_rematch:
                     would_rematch += 1
+                if needs_transfer_ulang:
+                    would_transfer_ulang += 1
                 if len(updated_keys) < 5:
                     updated_keys.append(nomor_tiket)
 
@@ -523,7 +550,9 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                         detail_parts.append(f"Status: IDENTIFIKASI → SELESAI (langsung, I:{baris_i}, U:{baris_u}, Res:{baris_res}, CDE:{baris_cde})")
                     if needs_rematch:
                         detail_parts.append(f"Status: SELESAI → PENGENDALIAN_MUTU (rematch, Tgl Rematch:{tgl_rematch}, Belum QC:{belum_qc})")
-                    if not needs_identifikasi and not needs_pmde_from_4 and not needs_pmde and not needs_selesai and not needs_selesai_from_5 and not needs_dikembalikan and not needs_selesai_from_5_baris and not needs_rematch:
+                    if needs_transfer_ulang:
+                        detail_parts.append(f"Status: SELESAI → PENGENDALIAN_MUTU (transfer ulang, Tgl Transfer:{tiket.tgl_transfer} → {tgl_transfer}, I:{baris_i}, U:{baris_u})")
+                    if not detail_parts:
                         detail_parts.append('Data kolom akan diperbarui')
 
                     _log_update_result_row(
@@ -579,6 +608,12 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                             'Akan → Pengendalian Mutu (rematch)',
                             f'Dari SELESAI ke PENGENDALIAN_MUTU (Tgl Rematch:{tgl_rematch}, Belum QC:{belum_qc})'
                         )
+                    if needs_transfer_ulang:
+                        _log_update_result_row(
+                            check_id, nomor_tiket,
+                            'Akan → Pengendalian Mutu (transfer ulang)',
+                            f'Dari SELESAI ke PENGENDALIAN_MUTU (Tgl Transfer:{tiket.tgl_transfer} → {tgl_transfer}, I:{baris_i}, U:{baris_u}, Belum QC:{belum_qc})'
+                        )
 
             except Exception as e:
                 try:
@@ -603,6 +638,7 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                     'would_selesai': would_selesai,
                     'would_dikembalikan': would_dikembalikan,
                     'would_rematch': would_rematch,
+                    'would_transfer_ulang': would_transfer_ulang,
                     'would_unchanged': would_unchanged,
                     'not_found': not_found,
                     'errors': len(errors),
@@ -614,7 +650,8 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
             f'{would_unchanged} unchanged, {not_found} not found in DB, '
             f'{would_identifikasi} → Identifikasi, '
             f'{would_pmde} → PMDE, {would_selesai} → Selesai, '
-            f'{would_dikembalikan} → Dikembalikan, {would_rematch} → PMDE (rematch)'
+            f'{would_dikembalikan} → Dikembalikan, {would_rematch} → PMDE (rematch), '
+            f'{would_transfer_ulang} → PMDE (transfer ulang)'
         )
         return {
             'source_rows': total,
@@ -624,6 +661,7 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
             'would_selesai': would_selesai,
             'would_dikembalikan': would_dikembalikan,
             'would_rematch': would_rematch,
+            'would_transfer_ulang': would_transfer_ulang,
             'would_unchanged': would_unchanged,
             'not_found': not_found,
             'errors': errors,
@@ -635,6 +673,7 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
             'source_rows': 0, 'would_update': 0, 'would_identifikasi': 0,
             'would_pmde': 0, 'would_selesai': 0,
             'would_dikembalikan': 0, 'would_rematch': 0,
+            'would_transfer_ulang': 0,
             'would_unchanged': 0, 'not_found': 0,
             'errors': [str(e)], 'updated_keys': [],
         }
@@ -650,7 +689,8 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
 
     Returns:
         dict with keys: updated_rows, status_to_identifikasi, status_to_pmde,
-        status_to_selesai, status_to_rematch, errors, updated_keys
+        status_to_selesai, status_to_rematch, status_to_transfer_ulang,
+        errors, updated_keys
     """
     try:
         db_vendor = db_connection.vendor
@@ -670,7 +710,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
             return {
                 'updated_rows': 0, 'status_to_identifikasi': 0,
                 'status_to_pmde': 0, 'status_to_selesai': 0,
-                'status_to_rematch': 0,
+                'status_to_rematch': 0, 'status_to_transfer_ulang': 0,
                 'errors': [], 'updated_keys': [],
             }
 
@@ -709,6 +749,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
         status_to_selesai = 0
         status_to_dikembalikan = 0
         status_to_rematch = 0
+        status_to_transfer_ulang = 0
         not_found_count = 0
         unchanged_count = 0
         errors = []
@@ -729,6 +770,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                     'status_to_selesai': status_to_selesai,
                     'status_to_dikembalikan': status_to_dikembalikan,
                     'status_to_rematch': status_to_rematch,
+                    'status_to_transfer_ulang': status_to_transfer_ulang,
                     'not_found': not_found_count,
                     'unchanged': unchanged_count,
                     'errors': len(errors),
@@ -781,6 +823,11 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                 qc_d = row_dict.get('qc_d')
 
                 changed = False
+
+                # Dibaca sebelum blok pembaruan field di bawah menimpanya —
+                # Aturan 9 perlu tahu apakah tgl_transfer benar-benar berubah
+                # pada sinkronisasi ini.
+                prev_tgl_transfer = tiket.tgl_transfer
 
                 if tgl_transfer != tiket.tgl_transfer:
                     tiket.tgl_transfer = tgl_transfer
@@ -941,6 +988,21 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                     and belum_qc is not None
                     and belum_qc > 0
                 )
+                # PIC PIDE merevisi tarikan: transfer ulang dengan tanggal baru,
+                # dan kali ini baris identifikasi ikut terisi. Tiket yang sudah
+                # ditutup lewat Aturan 5 (baris_u saja) kini punya baris_i > 0,
+                # jadi harus melewati pengendalian mutu dulu. Syaratnya sengaja
+                # dibuat sama persis dengan Aturan 1 — komposisi baris yang sama
+                # harus mendarat di status yang sama, dari 5 maupun dari 8.
+                needs_transfer_ulang_transition = (
+                    tiket.status_tiket == STATUS_SELESAI
+                    and tgl_rematch is None
+                    and tgl_transfer is not None
+                    and tgl_transfer != prev_tgl_transfer
+                    and baris_i is not None
+                    and baris_i > 0
+                    and (belum_qc is None or belum_qc != 0)
+                )
 
                 if needs_identifikasi_transition:
                     update_fields.append('status_tiket')
@@ -981,6 +1043,10 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                     tiket.status_tiket = STATUS_SELESAI
                     changed = True
                 if needs_rematch_transition:
+                    update_fields.append('status_tiket')
+                    tiket.status_tiket = STATUS_PENGENDALIAN_MUTU
+                    changed = True
+                if needs_transfer_ulang_transition:
                     update_fields.append('status_tiket')
                     tiket.status_tiket = STATUS_PENGENDALIAN_MUTU
                     changed = True
@@ -1256,6 +1322,34 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                         f'Dari SELESAI ke PENGENDALIAN_MUTU (Tgl Rematch:{tgl_rematch}, Belum QC:{belum_qc})'
                     )
 
+                if needs_transfer_ulang_transition:
+                    status_to_transfer_ulang += 1
+                    tiket_pics = active_pics_map.get(tiket.id, {})
+                    pide_pics = tiket_pics.get(TiketPIC.Role.PIDE, [])
+                    pide_user = pide_pics[0].id_user if pide_pics else None
+                    if pide_user:
+                        # Aksi transfer yang baru, bukan koreksi yang lama: jejak
+                        # Ditransfer/Pengendalian Mutu/Selesai sebelumnya tetap
+                        # utuh sebagai riwayat putaran tarikan yang sudah lewat.
+                        TiketAction.objects.create(
+                            id_tiket=tiket, id_user=pide_user,
+                            timestamp=tgl_transfer or timezone.now(),
+                            action=TiketActionType.DITRANSFER_KE_PMDE,
+                            catatan=(
+                                'Tiket ditransfer ulang ke PMDE — revisi tarikan '
+                                f'oleh PIDE (I:{baris_i}, U:{baris_u})'
+                            )
+                        )
+                        logger.info(f'Tiket {nomor_tiket}: {STATUS_SELESAI} → {STATUS_PENGENDALIAN_MUTU} (transfer ulang, user={pide_user.username})')
+                    else:
+                        logger.warning(f'Tiket {nomor_tiket}: no active PIDE PIC — status updated but no DITRANSFER_KE_PMDE TiketAction')
+
+                    _log_update_result_row(
+                        sync_id, nomor_tiket,
+                        'Status → Pengendalian Mutu (transfer ulang)',
+                        f'Dari SELESAI ke PENGENDALIAN_MUTU (Tgl Transfer:{prev_tgl_transfer} → {tgl_transfer}, I:{baris_i}, U:{baris_u}, Belum QC:{belum_qc})'
+                    )
+
             except Exception as e:
                 error_msg = str(e)[:200]
                 try:
@@ -1272,12 +1366,14 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                 logger.error(f'Failed to update tiket {row_id}: {error_msg}')
 
         return {
+            'source_rows': len(rows),
             'updated_rows': updated_rows,
             'status_to_identifikasi': status_to_identifikasi,
             'status_to_pmde': status_to_pmde,
             'status_to_selesai': status_to_selesai,
             'status_to_dikembalikan': status_to_dikembalikan,
             'status_to_rematch': status_to_rematch,
+            'status_to_transfer_ulang': status_to_transfer_ulang,
             'not_found': not_found_count,
             'unchanged': unchanged_count,
             'errors': errors,
@@ -1286,9 +1382,10 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
     except Exception as e:
         logger.error(f'Tiket update sync failed: {str(e)}', exc_info=True)
         return {
-            'updated_rows': 0, 'status_to_identifikasi': 0,
+            'source_rows': 0, 'updated_rows': 0, 'status_to_identifikasi': 0,
             'status_to_pmde': 0, 'status_to_selesai': 0,
             'status_to_dikembalikan': 0, 'status_to_rematch': 0,
+            'status_to_transfer_ulang': 0,
             'not_found': 0, 'unchanged': 0,
             'errors': [str(e)], 'updated_keys': [],
         }
@@ -1488,6 +1585,7 @@ def sync_tiket_update_progress(request):
                 'current': 0, 'total': 0, 'percentage': 0,
                 'would_update': 0, 'would_identifikasi': 0,
                 'would_pmde': 0, 'would_selesai': 0, 'would_rematch': 0,
+                'would_transfer_ulang': 0,
                 'errors': 0,
             }
 
@@ -1540,7 +1638,8 @@ def sync_tiket_update_progress(request):
             'current': 0, 'total': 0, 'percentage': 0,
             'updated_rows': 0, 'status_to_identifikasi': 0,
             'status_to_pmde': 0, 'status_to_selesai': 0,
-            'status_to_rematch': 0, 'errors': 0,
+            'status_to_rematch': 0, 'status_to_transfer_ulang': 0,
+            'errors': 0,
         }
 
         if is_done:
@@ -1556,7 +1655,7 @@ def sync_tiket_update_progress(request):
                 response_data = {
                     'success': True, 'done': True,
                     'progress': progress_data, 'summary': result,
-                    'message': f"Update selesai: {result.get('updated_rows', 0)} diupdate, {result.get('status_to_identifikasi', 0)} → Identifikasi, {result.get('status_to_pmde', 0)} → PMDE, {result.get('status_to_selesai', 0)} → Selesai, {result.get('status_to_rematch', 0)} → PMDE (rematch)",
+                    'message': f"Update selesai: {result.get('updated_rows', 0)} diupdate, {result.get('status_to_identifikasi', 0)} → Identifikasi, {result.get('status_to_pmde', 0)} → PMDE, {result.get('status_to_selesai', 0)} → Selesai, {result.get('status_to_rematch', 0)} → PMDE (rematch), {result.get('status_to_transfer_ulang', 0)} → PMDE (transfer ulang)",
                 }
                 error_log_path = os.path.join(SYNC_LOGS_DIR, f'tiket_update_failed_rows_{sync_id}.csv')
                 if os.path.exists(error_log_path):
