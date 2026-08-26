@@ -1,12 +1,16 @@
 """Tests for the Oracle tiket-update sync status transitions from DIKIRIM_KE_PIDE (4)
-and the rematch reopen rule.
+and the two reopen-from-Selesai rules.
 
 Covers the tgl_rekam_pide (Oracle tgl_load) backfill rules:
   - 4 + tgl_rekam_pide lokal null + tgl_transfer null      → 5 (Identifikasi)
   - 4 + tgl_rekam_pide lokal null + tgl_transfer not null  → 6 (Pengendalian Mutu)
 
-And the rematch rule:
+The rematch rule:
   - 8 + tgl_rematch not null + belum_qc > 0                → 6 (Pengendalian Mutu)
+
+And the revisi-tarikan rule (PIDE transfer ulang dengan baris_i terisi):
+  - 8 + tgl_rematch null + tgl_transfer berubah + i > 0 + belum_qc != 0
+                                                          → 6 (Pengendalian Mutu)
 """
 from contextlib import contextmanager
 from datetime import datetime
@@ -41,6 +45,7 @@ COLUMNS = [
 
 TGL_LOAD = datetime(2026, 3, 2, 8, 0)
 TGL_TRANSFER = datetime(2026, 3, 10, 9, 30)
+TGL_TRANSFER_BARU = datetime(2026, 3, 24, 11, 0)
 TGL_REMATCH = datetime(2026, 4, 1, 14, 15)
 
 
@@ -288,3 +293,145 @@ class TestCekDryRunDariDikirimKePide:
 
         assert result['would_pmde'] == 1
         assert result['would_identifikasi'] == 0
+
+
+@pytest.fixture
+def tiket_selesai_baris_u(db):
+    """Tiket closed straight from Identifikasi by Aturan 5A — baris_u only.
+
+    This is the state the re-transfer case starts from: PIDE transferred a
+    tarikan with no identification rows, so the tiket skipped PMDE entirely.
+    """
+    tiket = TiketFactory(
+        status_tiket=STATUS_SELESAI,
+        tgl_rekam_pide=TGL_LOAD,
+        tgl_transfer=TGL_TRANSFER,
+        baris_i=0, baris_u=400, baris_res=0, baris_cde=0,
+        belum_qc=0,
+    )
+    TiketPICFactory(id_tiket=tiket, role=TiketPIC.Role.PIDE, active=True)
+    return tiket
+
+
+def _revisi_row(nomor_tiket, **overrides):
+    """Oracle row for a revised tarikan: new transfer date, baris_i now filled."""
+    values = dict(
+        tgl_transfer=TGL_TRANSFER_BARU, tgl_rematch=None,
+        baris_i=250, baris_u=400, belum_qc=151,
+    )
+    values.update(overrides)
+    return _row(nomor_tiket, **values)
+
+
+@pytest.mark.django_db
+class TestTransisiTransferUlangDariSelesai:
+    """Status 8 → 6 when PIDE revises the tarikan and baris_i is now > 0."""
+
+    def test_revisi_dengan_baris_i_membuka_pengendalian_mutu(self, tiket_selesai_baris_u):
+        result = _update_tiket_data(_service([
+            _revisi_row(tiket_selesai_baris_u.nomor_tiket)
+        ]))
+
+        tiket_selesai_baris_u.refresh_from_db()
+        assert tiket_selesai_baris_u.status_tiket == STATUS_PENGENDALIAN_MUTU
+        assert tiket_selesai_baris_u.tgl_transfer == TGL_TRANSFER_BARU
+        assert tiket_selesai_baris_u.baris_i == 250
+        assert tiket_selesai_baris_u.belum_qc == 151
+        assert result['status_to_transfer_ulang'] == 1
+        assert result['status_to_rematch'] == 0
+
+        actions = list(TiketAction.objects.filter(id_tiket=tiket_selesai_baris_u))
+        assert [a.action for a in actions] == [TiketActionType.DITRANSFER_KE_PMDE]
+        assert actions[0].timestamp == TGL_TRANSFER_BARU
+
+    def test_tgl_transfer_sama_tetap_selesai(self, tiket_selesai_baris_u):
+        """Guards the ~3.4k already-closed tikets carrying a stale belum_qc."""
+        result = _update_tiket_data(_service([
+            _revisi_row(tiket_selesai_baris_u.nomor_tiket, tgl_transfer=TGL_TRANSFER)
+        ]))
+
+        tiket_selesai_baris_u.refresh_from_db()
+        assert tiket_selesai_baris_u.status_tiket == STATUS_SELESAI
+        assert result['status_to_transfer_ulang'] == 0
+        assert not TiketAction.objects.filter(id_tiket=tiket_selesai_baris_u).exists()
+
+    def test_revisi_tetap_baris_u_saja_tetap_selesai(self, tiket_selesai_baris_u):
+        """Same composition Aturan 5A closes on — re-transfer must not reopen."""
+        result = _update_tiket_data(_service([
+            _revisi_row(tiket_selesai_baris_u.nomor_tiket, baris_i=0, baris_u=600)
+        ]))
+
+        tiket_selesai_baris_u.refresh_from_db()
+        assert tiket_selesai_baris_u.status_tiket == STATUS_SELESAI
+        assert tiket_selesai_baris_u.baris_u == 600
+        assert result['status_to_transfer_ulang'] == 0
+
+    def test_belum_qc_nol_tetap_selesai(self, tiket_selesai_baris_u):
+        result = _update_tiket_data(_service([
+            _revisi_row(tiket_selesai_baris_u.nomor_tiket, belum_qc=0)
+        ]))
+
+        tiket_selesai_baris_u.refresh_from_db()
+        assert tiket_selesai_baris_u.status_tiket == STATUS_SELESAI
+        assert result['status_to_transfer_ulang'] == 0
+
+    def test_rematch_menang_atas_transfer_ulang(self, tiket_selesai_baris_u):
+        """Both triggers present: the rematch rule owns the transition."""
+        result = _update_tiket_data(_service([
+            _revisi_row(tiket_selesai_baris_u.nomor_tiket, tgl_rematch=TGL_REMATCH)
+        ]))
+
+        tiket_selesai_baris_u.refresh_from_db()
+        assert tiket_selesai_baris_u.status_tiket == STATUS_PENGENDALIAN_MUTU
+        assert result['status_to_rematch'] == 1
+        assert result['status_to_transfer_ulang'] == 0
+
+        actions = list(TiketAction.objects.filter(id_tiket=tiket_selesai_baris_u))
+        assert [a.action for a in actions] == [TiketActionType.REMATCH]
+
+    def test_tanpa_pic_pide_status_tetap_berubah(self, db):
+        tiket = TiketFactory(
+            status_tiket=STATUS_SELESAI, tgl_rekam_pide=TGL_LOAD,
+            tgl_transfer=TGL_TRANSFER, baris_i=0, baris_u=400, belum_qc=0,
+        )
+
+        _update_tiket_data(_service([_revisi_row(tiket.nomor_tiket)]))
+
+        tiket.refresh_from_db()
+        assert tiket.status_tiket == STATUS_PENGENDALIAN_MUTU
+        assert not TiketAction.objects.filter(id_tiket=tiket).exists()
+
+    def test_riwayat_putaran_lama_tetap_utuh(self, tiket_selesai_baris_u):
+        """The closed round's audit trail survives the reopen untouched."""
+        pic = TiketPIC.objects.get(id_tiket=tiket_selesai_baris_u)
+        for action in (TiketActionType.DITRANSFER_KE_PMDE,
+                       TiketActionType.PENGENDALIAN_MUTU,
+                       TiketActionType.SELESAI):
+            TiketAction.objects.create(
+                id_tiket=tiket_selesai_baris_u, id_user=pic.id_user,
+                timestamp=TGL_TRANSFER, action=action, catatan='putaran lama'
+            )
+
+        _update_tiket_data(_service([
+            _revisi_row(tiket_selesai_baris_u.nomor_tiket)
+        ]))
+
+        lama = TiketAction.objects.filter(
+            id_tiket=tiket_selesai_baris_u, catatan='putaran lama'
+        )
+        assert lama.count() == 3
+        assert TiketAction.objects.filter(
+            id_tiket=tiket_selesai_baris_u, timestamp=TGL_TRANSFER_BARU,
+            action=TiketActionType.DITRANSFER_KE_PMDE,
+        ).count() == 1
+
+    def test_dry_run_menghitung_calon_transfer_ulang(self, tiket_selesai_baris_u):
+        result = _check_tiket_update_data(_service([
+            _revisi_row(tiket_selesai_baris_u.nomor_tiket)
+        ]))
+
+        assert result['would_transfer_ulang'] == 1
+        assert result['would_update'] == 1
+
+        tiket_selesai_baris_u.refresh_from_db()
+        assert tiket_selesai_baris_u.status_tiket == STATUS_SELESAI

@@ -59,6 +59,7 @@
                     &rarr; PMDE: <span id="progress-pmde">0</span> |
                     &rarr; Selesai: <span id="progress-selesai">0</span> |
                     &rarr; Rematch: <span id="progress-rematch">0</span> |
+                    &rarr; Transfer Ulang: <span id="progress-transfer-ulang">0</span> |
                     Error: <span id="progress-errors">0</span>
                 </p>
             </div>
@@ -76,6 +77,7 @@
                             <tr><th>Status &rarr; Pengendalian Mutu</th><td id="result-pmde">-</td></tr>
                             <tr><th>Status &rarr; Selesai</th><td id="result-selesai">-</td></tr>
                             <tr><th>Status &rarr; Pengendalian Mutu (rematch)</th><td id="result-rematch">-</td></tr>
+                            <tr><th>Status &rarr; Pengendalian Mutu (transfer ulang)</th><td id="result-transfer-ulang">-</td></tr>
                             <tr><th>Error</th><td id="result-error">-</td></tr>
                         </tbody>
                     </table>
@@ -107,6 +109,7 @@
         const resultPmde = document.getElementById('result-pmde');
         const resultSelesai = document.getElementById('result-selesai');
         const resultRematch = document.getElementById('result-rematch');
+        const resultTransferUlang = document.getElementById('result-transfer-ulang');
         const resultError = document.getElementById('result-error');
         const resultDetails = document.getElementById('result-details');
 
@@ -118,17 +121,26 @@
         const progressPmde = document.getElementById('progress-pmde');
         const progressSelesai = document.getElementById('progress-selesai');
         const progressRematch = document.getElementById('progress-rematch');
+        const progressTransferUlang = document.getElementById('progress-transfer-ulang');
         const progressErrors = document.getElementById('progress-errors');
 
         let currentSyncId = null;
         let currentCheckId = null;
         let syncIntervalId = null;
         let checkIntervalId = null;
-        let lastProgressSnapshot = {
-            current: 0, total: 0, percentage: 0,
-            updated_rows: 0, status_to_identifikasi: 0, status_to_pmde: 0,
-            status_to_selesai: 0, status_to_rematch: 0, errors: 0,
-        };
+        const SYNC_COUNTERS = [
+            'updated_rows', 'status_to_identifikasi', 'status_to_pmde',
+            'status_to_selesai', 'status_to_rematch', 'status_to_transfer_ulang',
+            'errors',
+        ];
+
+        function emptySnapshot() {
+            const snapshot = { current: 0, total: 0, percentage: 0 };
+            SYNC_COUNTERS.forEach(function (key) { snapshot[key] = 0; });
+            return snapshot;
+        }
+
+        let lastProgressSnapshot = emptySnapshot();
 
         const SYNC_ID_KEY = 'tiket_update_sync_id';
         const CHECK_ID_KEY = 'tiket_update_check_id';
@@ -293,6 +305,7 @@
             resultPmde.textContent = summary.would_pmde || 0;
             resultSelesai.textContent = summary.would_selesai || 0;
             resultRematch.textContent = summary.would_rematch || 0;
+            resultTransferUlang.textContent = summary.would_transfer_ulang || 0;
             resultError.textContent = (summary.errors || []).length;
 
             resultDetails.innerHTML = '';
@@ -303,11 +316,13 @@
             resultBox.style.display = 'block';
             resultSource.textContent = summary.source_rows || summary.updated_rows || 0;
             resultUpdated.textContent = summary.updated_rows || 0;
-            resultUnchanged.textContent = summary.source_rows ? (summary.source_rows - (summary.updated_rows || 0)) : '-';
+            resultUnchanged.textContent = summary.unchanged != null ? summary.unchanged : '-';
+            resultNotfound.textContent = summary.not_found != null ? summary.not_found : '-';
             resultIdentifikasi.textContent = summary.status_to_identifikasi || 0;
             resultPmde.textContent = summary.status_to_pmde || 0;
             resultSelesai.textContent = summary.status_to_selesai || 0;
             resultRematch.textContent = summary.status_to_rematch || 0;
+            resultTransferUlang.textContent = summary.status_to_transfer_ulang || 0;
             resultError.textContent = (summary.errors || []).length;
 
             let details = '';
@@ -330,6 +345,7 @@
             progressPmde.textContent = p.would_pmde || 0;
             progressSelesai.textContent = p.would_selesai || 0;
             progressRematch.textContent = p.would_rematch || 0;
+            progressTransferUlang.textContent = p.would_transfer_ulang || 0;
             progressErrors.textContent = p.errors || 0;
         }
 
@@ -340,13 +356,10 @@
                 current: Number(progressData.current || 0),
                 total: Number(progressData.total || 0),
                 percentage: Number(progressData.percentage || 0),
-                updated_rows: Number(progressData.updated_rows || 0),
-                status_to_identifikasi: Number(progressData.status_to_identifikasi || 0),
-                status_to_pmde: Number(progressData.status_to_pmde || 0),
-                status_to_selesai: Number(progressData.status_to_selesai || 0),
-                status_to_rematch: Number(progressData.status_to_rematch || 0),
-                errors: Number(progressData.errors || 0),
             };
+            SYNC_COUNTERS.forEach(function (key) {
+                incoming[key] = Number(progressData[key] || 0);
+            });
 
             const isTransientZero = (
                 incoming.current === 0 && incoming.total === 0 && incoming.percentage === 0 &&
@@ -354,17 +367,10 @@
             );
             if (isTransientZero) return;
 
-            const merged = {
-                current: Math.max(lastProgressSnapshot.current, incoming.current),
-                total: Math.max(lastProgressSnapshot.total, incoming.total),
-                percentage: Math.max(lastProgressSnapshot.percentage, incoming.percentage),
-                updated_rows: Math.max(lastProgressSnapshot.updated_rows, incoming.updated_rows),
-                status_to_identifikasi: Math.max(lastProgressSnapshot.status_to_identifikasi, incoming.status_to_identifikasi),
-                status_to_pmde: Math.max(lastProgressSnapshot.status_to_pmde, incoming.status_to_pmde),
-                status_to_selesai: Math.max(lastProgressSnapshot.status_to_selesai, incoming.status_to_selesai),
-                status_to_rematch: Math.max(lastProgressSnapshot.status_to_rematch, incoming.status_to_rematch),
-                errors: Math.max(lastProgressSnapshot.errors, incoming.errors),
-            };
+            const merged = {};
+            Object.keys(incoming).forEach(function (key) {
+                merged[key] = Math.max(lastProgressSnapshot[key] || 0, incoming[key]);
+            });
             lastProgressSnapshot = merged;
 
             const pct = Math.min(100, merged.percentage || 0);
@@ -376,6 +382,7 @@
             progressPmde.textContent = merged.status_to_pmde || 0;
             progressSelesai.textContent = merged.status_to_selesai || 0;
             progressRematch.textContent = merged.status_to_rematch || 0;
+            progressTransferUlang.textContent = merged.status_to_transfer_ulang || 0;
             progressErrors.textContent = merged.errors || 0;
         }
 
@@ -416,7 +423,7 @@
         btnCheck.addEventListener('click', async function () {
             setLoading(btnCheck, true, '<i class="feather-search me-1"></i>Cek Data', 'Checking...');
             btnSync.disabled = true;
-            lastProgressSnapshot = { current: 0, total: 0, percentage: 0, updated_rows: 0, status_to_identifikasi: 0, status_to_pmde: 0, status_to_selesai: 0, status_to_rematch: 0, errors: 0 };
+            lastProgressSnapshot = emptySnapshot();
             progressBox.style.display = 'block';
             resultBox.style.display = 'none';
             try {
@@ -452,7 +459,7 @@
         btnSync.addEventListener('click', async function () {
             setLoading(btnSync, true, '<i class="feather-upload me-1"></i>Update Data', 'Updating...');
             btnCheck.disabled = true;
-            lastProgressSnapshot = { current: 0, total: 0, percentage: 0, updated_rows: 0, status_to_identifikasi: 0, status_to_pmde: 0, status_to_selesai: 0, status_to_rematch: 0, errors: 0 };
+            lastProgressSnapshot = emptySnapshot();
             progressBox.style.display = 'block';
             resultBox.style.display = 'none';
             btnStop.style.display = 'inline-block';
