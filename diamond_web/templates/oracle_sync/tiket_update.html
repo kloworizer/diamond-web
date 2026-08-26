@@ -26,6 +26,8 @@
                 Update kolom <strong>tarikan/QC</strong> dari Oracle (baris_i, baris_u, baris_res, baris_cde,
                 tgl_transfer, tgl_rematch, sudah_qc, belum_qc, lolos_qc, tidak_lolos_qc, qc_*)
                 dan terapkan <strong>transisi status</strong> otomatis.
+                Tiket yang barisnya sudah <strong>tidak ada lagi di Oracle</strong> dikosongkan kembali
+                kolom tarikan/QC-nya.
             </p>
             <div class="d-flex gap-2 flex-wrap">
                 <button id="btn-test" class="btn btn-secondary" type="button">
@@ -60,6 +62,7 @@
                     &rarr; Selesai: <span id="progress-selesai">0</span> |
                     &rarr; Rematch: <span id="progress-rematch">0</span> |
                     &rarr; Transfer Ulang: <span id="progress-transfer-ulang">0</span> |
+                    Direset: <span id="progress-stale">0</span> |
                     Error: <span id="progress-errors">0</span>
                 </p>
             </div>
@@ -78,6 +81,7 @@
                             <tr><th>Status &rarr; Selesai</th><td id="result-selesai">-</td></tr>
                             <tr><th>Status &rarr; Pengendalian Mutu (rematch)</th><td id="result-rematch">-</td></tr>
                             <tr><th>Status &rarr; Pengendalian Mutu (transfer ulang)</th><td id="result-transfer-ulang">-</td></tr>
+                            <tr><th>Direset (hilang dari Oracle)</th><td id="result-stale">-</td></tr>
                             <tr><th>Error</th><td id="result-error">-</td></tr>
                         </tbody>
                     </table>
@@ -110,6 +114,7 @@
         const resultSelesai = document.getElementById('result-selesai');
         const resultRematch = document.getElementById('result-rematch');
         const resultTransferUlang = document.getElementById('result-transfer-ulang');
+        const resultStale = document.getElementById('result-stale');
         const resultError = document.getElementById('result-error');
         const resultDetails = document.getElementById('result-details');
 
@@ -122,6 +127,7 @@
         const progressSelesai = document.getElementById('progress-selesai');
         const progressRematch = document.getElementById('progress-rematch');
         const progressTransferUlang = document.getElementById('progress-transfer-ulang');
+        const progressStale = document.getElementById('progress-stale');
         const progressErrors = document.getElementById('progress-errors');
 
         let currentSyncId = null;
@@ -131,7 +137,7 @@
         const SYNC_COUNTERS = [
             'updated_rows', 'status_to_identifikasi', 'status_to_pmde',
             'status_to_selesai', 'status_to_rematch', 'status_to_transfer_ulang',
-            'errors',
+            'stale_reset', 'errors',
         ];
 
         function emptySnapshot() {
@@ -306,10 +312,13 @@
             resultSelesai.textContent = summary.would_selesai || 0;
             resultRematch.textContent = summary.would_rematch || 0;
             resultTransferUlang.textContent = summary.would_transfer_ulang || 0;
+            resultStale.textContent = summary.would_stale_reset || 0;
             resultError.textContent = (summary.errors || []).length;
 
             resultDetails.innerHTML = '';
-            btnSync.disabled = (summary.would_update || 0) === 0;
+            // Reset baris yang hilang dari Oracle juga perlu dijalankan, walau
+            // tidak ada satu pun baris Oracle yang berubah.
+            btnSync.disabled = ((summary.would_update || 0) + (summary.would_stale_reset || 0)) === 0;
         }
 
         function renderSyncSummary(summary, errorLogUrl) {
@@ -323,6 +332,7 @@
             resultSelesai.textContent = summary.status_to_selesai || 0;
             resultRematch.textContent = summary.status_to_rematch || 0;
             resultTransferUlang.textContent = summary.status_to_transfer_ulang || 0;
+            resultStale.textContent = summary.stale_reset || 0;
             resultError.textContent = (summary.errors || []).length;
 
             let details = '';
@@ -331,7 +341,7 @@
             }
             resultDetails.innerHTML = details;
 
-            btnSync.disabled = (summary.updated_rows || 0) === 0;
+            btnSync.disabled = ((summary.updated_rows || 0) + (summary.stale_reset || 0)) === 0;
         }
 
         function updateCheckProgress(p) {
@@ -346,6 +356,7 @@
             progressSelesai.textContent = p.would_selesai || 0;
             progressRematch.textContent = p.would_rematch || 0;
             progressTransferUlang.textContent = p.would_transfer_ulang || 0;
+            progressStale.textContent = p.would_stale_reset || 0;
             progressErrors.textContent = p.errors || 0;
         }
 
@@ -383,6 +394,7 @@
             progressSelesai.textContent = merged.status_to_selesai || 0;
             progressRematch.textContent = merged.status_to_rematch || 0;
             progressTransferUlang.textContent = merged.status_to_transfer_ulang || 0;
+            progressStale.textContent = merged.stale_reset || 0;
             progressErrors.textContent = merged.errors || 0;
         }
 

@@ -24,6 +24,10 @@ This module provides the core logic to:
      → PENGENDALIAN_MUTU (6) (rematch reopens QC, timestamped tgl_rematch)
    - SELESAI (8) + tgl_rematch null + tgl_transfer changed + baris_i > 0
      + belum_qc != 0 → PENGENDALIAN_MUTU (6) (PIDE revised the tarikan)
+4. Reset tikets whose Oracle row disappeared: the tarikan/QC columns are
+   cleared, and a status the sync itself produced is rewound to
+   DIKIRIM_KE_PIDE (4). A human-set status (Dikembalikan, Dibatalkan) keeps
+   both its status and its tgl_rekam_pide.
 
 See docs/SYNC_TIKET_UPDATE_RULES.md for full documentation.
 """
@@ -43,6 +47,7 @@ from django.views.decorators.cache import never_cache
 from django.utils import timezone
 from django.core.cache import cache
 from django.db import connection as db_connection
+from django.db.models import Q
 from django.conf import settings
 from django.urls import reverse
 
@@ -140,6 +145,44 @@ _TIKET_UPDATE_ORACLE_SQL = """
     ) b
 """
 
+# Kolom Tiket yang isinya semata-mata hasil tarikan di ZA_REKAP_TARIKAN. Ketika
+# baris tiket hilang dari sana, angka-angka ini tidak lagi punya dasar dan
+# dikosongkan oleh penyapuan di akhir sinkronisasi.
+_ORACLE_SOURCED_FIELDS = (
+    'tgl_transfer', 'tgl_rematch',
+    'baris_i', 'baris_u', 'baris_res', 'baris_cde',
+    'sudah_qc', 'belum_qc', 'lolos_qc', 'tidak_lolos_qc',
+    'qc_p', 'qc_x', 'qc_w', 'qc_f', 'qc_a', 'qc_c', 'qc_n',
+    'qc_y', 'qc_z', 'qc_u', 'qc_e', 'qc_v', 'qc_r', 'qc_d',
+)
+
+# tgl_rekam_pide diperlakukan terpisah: ia juga bersumber dari Oracle (MIN
+# tgl_load), tetapi aksi IDENTIFIKASI di jejak audit ikut membuktikannya. Jadi
+# ia hanya dikosongkan ketika statusnya memang dimundurkan — lihat
+# _plan_stale_reset(). Untuk mencari kandidat, keberadaannya tetap dihitung.
+_STALE_CANDIDATE_FIELDS = _ORACLE_SOURCED_FIELDS + ('tgl_rekam_pide',)
+
+# Hanya status yang bisa dihasilkan sinkronisasi ini dari status 4 yang boleh
+# dimundurkan. Dikembalikan (3) dan Dibatalkan (7) ditetapkan oleh keputusan
+# manusia — kolom tarikannya tetap dikosongkan, statusnya tidak disentuh.
+_STALE_REVERTIBLE_STATUSES = (
+    STATUS_IDENTIFIKASI, STATUS_PENGENDALIAN_MUTU, STATUS_SELESAI,
+)
+
+# Ambang aman penyapuan. Penghapusan baris di Oracle adalah kejadian kecil —
+# beberapa tiket sekali waktu. Jumlah kandidat yang jauh lebih besar bukan
+# berarti PIDE menghapus semuanya, melainkan hasil query Oracle-nya sendiri yang
+# tidak utuh (koneksi putus, tabel/skema salah, view terfilter). Reset ini
+# destruktif dan berjalan otomatis lewat Celery, jadi ketika ambang ini
+# terlampaui penyapuan dibatalkan seluruhnya dan dilaporkan, bukan diterapkan.
+#
+# Sengaja dipasang ketat. Penghapusan yang sah memang sedikit — kejadian nyata
+# pertama yang ditangani hanya 6 tiket. Kalau suatu saat ada penghapusan besar
+# yang memang disengaja, penyapuan akan menolak jalan dan melaporkan jumlah
+# kandidatnya; menaikkan angka ini adalah keputusan sadar yang diambil setelah
+# melihat angka itu, bukan default yang diam-diam mengizinkan.
+_STALE_RESET_MAX = 20
+
 
 def _is_admin_user(user):
     """Check if the given user is an admin user."""
@@ -219,6 +262,8 @@ def _log_update_result_row(sync_id, nomor_tiket, kategori, detail=''):
         - 'Status → Pengendalian Mutu (transfer ulang)' — reopened from Selesai
           because PIDE revised the tarikan and baris_i is now > 0
         - 'Status → Selesai'     — status transition to Selesai
+        - 'Direset (hilang dari Oracle)' — row gone from Oracle, columns cleared
+        - 'Reset Dibatalkan'     — sweep refused, blast radius over the ceiling
         - 'Tidak Berubah'        — no changes detected
         - 'Error'                — processing error
 
@@ -245,6 +290,91 @@ def _log_update_result_row(sync_id, nomor_tiket, kategori, detail=''):
         logger.error(f"Failed to log update result row: {str(e)}")
 
 
+def _chunked(iterable, size):
+    """Yield successive lists of at most *size* items from *iterable*."""
+    batch = []
+    for item in iterable:
+        batch.append(item)
+        if len(batch) >= size:
+            yield batch
+            batch = []
+    if batch:
+        yield batch
+
+
+def _stale_tiket_ids(oracle_keys):
+    """Ids of local tikets carrying tarikan data that Oracle no longer has.
+
+    Membership is tested in Python against *oracle_keys* (every nomor_tiket this
+    run pulled) rather than with ``exclude(nomor_tiket__in=…)`` — tens of
+    thousands of keys blow SQLite's parameter limit. Only ids are collected, so
+    the scan stays cheap even across the whole tiket table.
+
+    Tiket hasil migrasi (``old_db=True``) **tidak** dikecualikan: tiket migrasi
+    tetap mengalir lewat sinkronisasi ini seperti tiket lain, jadi menyaringnya
+    justru melewatkan kasus yang nyata. Pengamannya ada di ``_STALE_RESET_MAX``.
+    """
+    filled = Q()
+    for field in _STALE_CANDIDATE_FIELDS:
+        filled |= Q(**{f'{field}__isnull': False})
+
+    ids = []
+    rows = Tiket.objects.filter(filled).values_list('id', 'nomor_tiket')
+    for pk, nomor_tiket in rows.iterator(chunk_size=2000):
+        if nomor_tiket not in oracle_keys:
+            ids.append(pk)
+    return ids
+
+
+def _plan_stale_reset(tiket):
+    """Return ``(cleared_fields, reverts_status)`` for a stale *tiket*.
+
+    Pure inspection — nothing is mutated, so the dry-run check and the live sync
+    describe exactly the same reset.
+
+    ``tgl_rekam_pide`` ikut dikosongkan **hanya** bila statusnya dimundurkan ke
+    4: tiket yang kembali ke "Dikirim ke PIDE" harus bersih agar Aturan 6/7 bisa
+    mengangkatnya lagi kalau barisnya muncul kembali di Oracle. Pada tiket yang
+    statusnya dipertahankan (Dikembalikan, Dibatalkan), tanggal itu dibuktikan
+    oleh aksi IDENTIFIKASI di jejak audit, jadi menghapusnya justru melawan
+    riwayat tiket itu sendiri.
+    """
+    reverts_status = tiket.status_tiket in _STALE_REVERTIBLE_STATUSES
+
+    fields = _ORACLE_SOURCED_FIELDS
+    if reverts_status:
+        fields = _STALE_CANDIDATE_FIELDS
+
+    cleared = [f for f in fields if getattr(tiket, f) is not None]
+    return cleared, reverts_status
+
+
+def _stale_reset_detail(cleared, reverts_status, old_status):
+    """Build the CSV detail line describing a stale reset."""
+    parts = [
+        'Baris tiket tidak ada lagi di Oracle — kolom dikosongkan: '
+        + (', '.join(cleared) if cleared else '(tidak ada)')
+    ]
+    if reverts_status:
+        parts.append(f'Status: {old_status} → {STATUS_DIKIRIM_KE_PIDE} (DIKIRIM_KE_PIDE)')
+    else:
+        parts.append(f'Status {old_status} dipertahankan (ditetapkan alur kerja, bukan tarikan)')
+    return ' | '.join(parts)
+
+
+def _stale_reset_over_limit(count, operation_id, log_row=True):
+    """Report and refuse a sweep whose blast radius is implausibly large."""
+    message = (
+        f'{count} tiket tidak ditemukan di Oracle — melebihi ambang aman '
+        f'{_STALE_RESET_MAX}. Reset dibatalkan seluruhnya: jumlah sebesar ini '
+        f'menandakan hasil query Oracle tidak utuh, bukan penghapusan baris.'
+    )
+    logger.error(message)
+    if log_row and operation_id:
+        _log_update_result_row(operation_id, '-', 'Reset Dibatalkan', message)
+    return message
+
+
 def _check_tiket_update_data(service, check_id=None, stop_checker=None):
     """Dry-run check of tiket update data from Oracle without modifying DB.
 
@@ -258,8 +388,8 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
 
     Returns:
         dict with keys: source_rows, would_update, would_identifikasi, would_pmde,
-        would_selesai, would_rematch, would_transfer_ulang, would_unchanged,
-        errors, updated_keys
+        would_selesai, would_rematch, would_transfer_ulang, would_stale_reset,
+        would_unchanged, errors, updated_keys
     """
     try:
         if check_id:
@@ -267,7 +397,7 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                 'current': 0, 'total': 0, 'percentage': 0,
                 'would_update': 0, 'would_identifikasi': 0,
                 'would_pmde': 0, 'would_selesai': 0, 'would_rematch': 0,
-                'would_transfer_ulang': 0,
+                'would_transfer_ulang': 0, 'would_stale_reset': 0,
                 'errors': 0,
                 'table_name': 'Menghubungkan ke Oracle...',
             }, timeout=3600)
@@ -299,6 +429,7 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
         would_dikembalikan = 0
         would_rematch = 0
         would_transfer_ulang = 0
+        would_stale_reset = 0
         would_unchanged = 0
         not_found = 0
         errors = []
@@ -639,11 +770,36 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                     'would_dikembalikan': would_dikembalikan,
                     'would_rematch': would_rematch,
                     'would_transfer_ulang': would_transfer_ulang,
+                    'would_stale_reset': would_stale_reset,
                     'would_unchanged': would_unchanged,
                     'not_found': not_found,
                     'errors': len(errors),
                     'table_name': 'Memeriksa baris...',
                 }, timeout=3600)
+
+        # Tiket yang barisnya sudah tidak ada lagi di Oracle. Dilewati bila
+        # pemeriksaan dihentikan di tengah jalan agar angkanya tidak menyesatkan.
+        if not (stop_checker and stop_checker()):
+            stale_ids = _stale_tiket_ids(set(all_nomor_tikets))
+            if len(stale_ids) > _STALE_RESET_MAX:
+                errors.append(_stale_reset_over_limit(len(stale_ids), check_id))
+            else:
+                for batch in _chunked(stale_ids, CHUNK):
+                    if stop_checker and stop_checker():
+                        logger.warning('Stop signal received during stale check')
+                        break
+                    for tiket in Tiket.objects.filter(id__in=batch):
+                        cleared, reverts_status = _plan_stale_reset(tiket)
+                        if not cleared and not reverts_status:
+                            continue
+                        would_stale_reset += 1
+                        if check_id:
+                            _log_update_result_row(
+                                check_id, tiket.nomor_tiket,
+                                'Akan Direset (hilang dari Oracle)',
+                                _stale_reset_detail(
+                                    cleared, reverts_status, tiket.status_tiket)
+                            )
 
         logger.info(
             f'Check complete: {total} oracle rows, {would_update} would update, '
@@ -651,7 +807,8 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
             f'{would_identifikasi} → Identifikasi, '
             f'{would_pmde} → PMDE, {would_selesai} → Selesai, '
             f'{would_dikembalikan} → Dikembalikan, {would_rematch} → PMDE (rematch), '
-            f'{would_transfer_ulang} → PMDE (transfer ulang)'
+            f'{would_transfer_ulang} → PMDE (transfer ulang), '
+            f'{would_stale_reset} direset (hilang dari Oracle)'
         )
         return {
             'source_rows': total,
@@ -662,6 +819,7 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
             'would_dikembalikan': would_dikembalikan,
             'would_rematch': would_rematch,
             'would_transfer_ulang': would_transfer_ulang,
+            'would_stale_reset': would_stale_reset,
             'would_unchanged': would_unchanged,
             'not_found': not_found,
             'errors': errors,
@@ -673,7 +831,7 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
             'source_rows': 0, 'would_update': 0, 'would_identifikasi': 0,
             'would_pmde': 0, 'would_selesai': 0,
             'would_dikembalikan': 0, 'would_rematch': 0,
-            'would_transfer_ulang': 0,
+            'would_transfer_ulang': 0, 'would_stale_reset': 0,
             'would_unchanged': 0, 'not_found': 0,
             'errors': [str(e)], 'updated_keys': [],
         }
@@ -690,7 +848,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
     Returns:
         dict with keys: updated_rows, status_to_identifikasi, status_to_pmde,
         status_to_selesai, status_to_rematch, status_to_transfer_ulang,
-        errors, updated_keys
+        stale_reset, errors, updated_keys
     """
     try:
         db_vendor = db_connection.vendor
@@ -711,6 +869,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                 'updated_rows': 0, 'status_to_identifikasi': 0,
                 'status_to_pmde': 0, 'status_to_selesai': 0,
                 'status_to_rematch': 0, 'status_to_transfer_ulang': 0,
+                'stale_reset': 0,
                 'errors': [], 'updated_keys': [],
             }
 
@@ -750,6 +909,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
         status_to_dikembalikan = 0
         status_to_rematch = 0
         status_to_transfer_ulang = 0
+        stale_reset_count = 0
         not_found_count = 0
         unchanged_count = 0
         errors = []
@@ -771,6 +931,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                     'status_to_dikembalikan': status_to_dikembalikan,
                     'status_to_rematch': status_to_rematch,
                     'status_to_transfer_ulang': status_to_transfer_ulang,
+                    'stale_reset': stale_reset_count,
                     'not_found': not_found_count,
                     'unchanged': unchanged_count,
                     'errors': len(errors),
@@ -1365,6 +1526,90 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                 )
                 logger.error(f'Failed to update tiket {row_id}: {error_msg}')
 
+        # ====== Baris yang hilang dari Oracle ======
+        # Tiket yang pernah menerima data tarikan tetapi nomornya sudah tidak
+        # ada lagi di ZA_REKAP_TARIKAN. Dilewati bila sync dihentikan di tengah
+        # jalan — reset ini destruktif dan hanya boleh dijalankan atas dasar
+        # hasil query yang utuh.
+        if stop_checker and stop_checker():
+            logger.warning('Stop signal received — stale tiket reset skipped')
+        else:
+            stale_ids = _stale_tiket_ids(set(all_nomor_tikets))
+            if len(stale_ids) > _STALE_RESET_MAX:
+                errors.append(_stale_reset_over_limit(len(stale_ids), sync_id))
+                stale_ids = []
+
+            for batch in _chunked(stale_ids, CHUNK):
+                if stop_checker and stop_checker():
+                    logger.warning('Stop signal received during stale tiket reset')
+                    break
+
+                stale_tikets = list(Tiket.objects.filter(id__in=batch))
+                stale_pics_map = {}
+                for pic in TiketPIC.objects.filter(
+                    id_tiket__in=batch, active=True
+                ).select_related('id_user'):
+                    stale_pics_map.setdefault(pic.id_tiket_id, {}).setdefault(
+                        pic.role, []
+                    ).append(pic)
+
+                for tiket in stale_tikets:
+                    try:
+                        cleared, reverts_status = _plan_stale_reset(tiket)
+                        if not cleared and not reverts_status:
+                            continue
+
+                        old_status = tiket.status_tiket
+                        for field in cleared:
+                            setattr(tiket, field, None)
+                        save_fields = list(cleared)
+                        if reverts_status:
+                            tiket.status_tiket = STATUS_DIKIRIM_KE_PIDE
+                            save_fields.append('status_tiket')
+                        tiket.save(update_fields=save_fields)
+                        stale_reset_count += 1
+
+                        detail = _stale_reset_detail(cleared, reverts_status, old_status)
+
+                        # PIDE memegang tarikan; kalau tiket tidak punya PIC PIDE
+                        # aktif, P3DE sebagai pemilik tiket yang mencatat.
+                        tiket_pics = stale_pics_map.get(tiket.id, {})
+                        action_pics = (
+                            tiket_pics.get(TiketPIC.Role.PIDE)
+                            or tiket_pics.get(TiketPIC.Role.P3DE)
+                            or []
+                        )
+                        action_user = action_pics[0].id_user if action_pics else None
+                        if action_user:
+                            TiketAction.objects.create(
+                                id_tiket=tiket, id_user=action_user,
+                                timestamp=timezone.now(),
+                                action=TiketActionType.DIUBAH,
+                                catatan=(
+                                    'Data tarikan dihapus di Oracle — kolom tarikan/QC '
+                                    'dikosongkan dan status dikembalikan (auto-sync)'
+                                    if reverts_status else
+                                    'Data tarikan dihapus di Oracle — kolom tarikan/QC '
+                                    'dikosongkan (auto-sync)'
+                                )
+                            )
+                            logger.info(f'Tiket {tiket.nomor_tiket}: reset — {detail} (user={action_user.username})')
+                        else:
+                            logger.warning(f'Tiket {tiket.nomor_tiket}: no active PIDE/P3DE PIC — reset applied but no TiketAction')
+
+                        _log_update_result_row(
+                            sync_id, tiket.nomor_tiket,
+                            'Direset (hilang dari Oracle)', detail
+                        )
+                    except Exception as e:
+                        error_msg = str(e)[:200]
+                        errors.append(f'Tiket {tiket.nomor_tiket}: {error_msg}')
+                        _log_failed_row(sync_id, tiket.nomor_tiket, error_msg)
+                        _log_update_result_row(
+                            sync_id, tiket.nomor_tiket, 'Error', error_msg
+                        )
+                        logger.error(f'Failed to reset stale tiket {tiket.nomor_tiket}: {error_msg}')
+
         return {
             'source_rows': len(rows),
             'updated_rows': updated_rows,
@@ -1374,6 +1619,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
             'status_to_dikembalikan': status_to_dikembalikan,
             'status_to_rematch': status_to_rematch,
             'status_to_transfer_ulang': status_to_transfer_ulang,
+            'stale_reset': stale_reset_count,
             'not_found': not_found_count,
             'unchanged': unchanged_count,
             'errors': errors,
@@ -1385,7 +1631,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
             'source_rows': 0, 'updated_rows': 0, 'status_to_identifikasi': 0,
             'status_to_pmde': 0, 'status_to_selesai': 0,
             'status_to_dikembalikan': 0, 'status_to_rematch': 0,
-            'status_to_transfer_ulang': 0,
+            'status_to_transfer_ulang': 0, 'stale_reset': 0,
             'not_found': 0, 'unchanged': 0,
             'errors': [str(e)], 'updated_keys': [],
         }
@@ -1585,7 +1831,7 @@ def sync_tiket_update_progress(request):
                 'current': 0, 'total': 0, 'percentage': 0,
                 'would_update': 0, 'would_identifikasi': 0,
                 'would_pmde': 0, 'would_selesai': 0, 'would_rematch': 0,
-                'would_transfer_ulang': 0,
+                'would_transfer_ulang': 0, 'would_stale_reset': 0,
                 'errors': 0,
             }
 
@@ -1602,7 +1848,10 @@ def sync_tiket_update_progress(request):
                     response_data = {
                         'success': True, 'done': True,
                         'progress': progress_data, 'summary': result,
-                        'message': f"Check selesai: {result.get('would_update', 0)} akan diupdate",
+                        'message': (
+                            f"Check selesai: {result.get('would_update', 0)} akan diupdate, "
+                            f"{result.get('would_stale_reset', 0)} akan direset (hilang dari Oracle)"
+                        ),
                     }
                     result_log_path = os.path.join(SYNC_LOGS_DIR, f'tiket_update_result_{check_id}.csv')
                     if os.path.exists(result_log_path):
@@ -1639,7 +1888,7 @@ def sync_tiket_update_progress(request):
             'updated_rows': 0, 'status_to_identifikasi': 0,
             'status_to_pmde': 0, 'status_to_selesai': 0,
             'status_to_rematch': 0, 'status_to_transfer_ulang': 0,
-            'errors': 0,
+            'stale_reset': 0, 'errors': 0,
         }
 
         if is_done:
@@ -1655,7 +1904,7 @@ def sync_tiket_update_progress(request):
                 response_data = {
                     'success': True, 'done': True,
                     'progress': progress_data, 'summary': result,
-                    'message': f"Update selesai: {result.get('updated_rows', 0)} diupdate, {result.get('status_to_identifikasi', 0)} → Identifikasi, {result.get('status_to_pmde', 0)} → PMDE, {result.get('status_to_selesai', 0)} → Selesai, {result.get('status_to_rematch', 0)} → PMDE (rematch), {result.get('status_to_transfer_ulang', 0)} → PMDE (transfer ulang)",
+                    'message': f"Update selesai: {result.get('updated_rows', 0)} diupdate, {result.get('status_to_identifikasi', 0)} → Identifikasi, {result.get('status_to_pmde', 0)} → PMDE, {result.get('status_to_selesai', 0)} → Selesai, {result.get('status_to_rematch', 0)} → PMDE (rematch), {result.get('status_to_transfer_ulang', 0)} → PMDE (transfer ulang), {result.get('stale_reset', 0)} direset (hilang dari Oracle)",
                 }
                 error_log_path = os.path.join(SYNC_LOGS_DIR, f'tiket_update_failed_rows_{sync_id}.csv')
                 if os.path.exists(error_log_path):

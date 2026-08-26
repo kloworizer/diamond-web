@@ -1,5 +1,5 @@
-"""Tests for the Oracle tiket-update sync status transitions from DIKIRIM_KE_PIDE (4)
-and the two reopen-from-Selesai rules.
+"""Tests for the Oracle tiket-update sync status transitions from DIKIRIM_KE_PIDE (4),
+the two reopen-from-Selesai rules, and the reset of rows dropped from Oracle.
 
 Covers the tgl_rekam_pide (Oracle tgl_load) backfill rules:
   - 4 + tgl_rekam_pide lokal null + tgl_transfer null      → 5 (Identifikasi)
@@ -8,9 +8,13 @@ Covers the tgl_rekam_pide (Oracle tgl_load) backfill rules:
 The rematch rule:
   - 8 + tgl_rematch not null + belum_qc > 0                → 6 (Pengendalian Mutu)
 
-And the revisi-tarikan rule (PIDE transfer ulang dengan baris_i terisi):
+The revisi-tarikan rule (PIDE transfer ulang dengan baris_i terisi):
   - 8 + tgl_rematch null + tgl_transfer berubah + i > 0 + belum_qc != 0
                                                           → 6 (Pengendalian Mutu)
+
+And the stale reset — nomor tiket yang hilang dari ZA_REKAP_TARIKAN: kolom
+tarikan/QC dikosongkan; status hasil sinkronisasi mundur ke 4, status hasil
+keputusan manusia (Dikembalikan, Dibatalkan) dipertahankan.
 """
 from contextlib import contextmanager
 from datetime import datetime
@@ -20,6 +24,7 @@ import pytest
 
 from diamond_web.constants.tiket_action_types import TiketActionType
 from diamond_web.constants.tiket_status import (
+    STATUS_DIBATALKAN,
     STATUS_DIKIRIM_KE_PIDE,
     STATUS_IDENTIFIKASI,
     STATUS_PENGENDALIAN_MUTU,
@@ -28,6 +33,7 @@ from diamond_web.constants.tiket_status import (
 from diamond_web.models.tiket_action import TiketAction
 from diamond_web.models.tiket_pic import TiketPIC
 from diamond_web.views.sync_tiket_update import (
+    _STALE_RESET_MAX,
     _check_tiket_update_data,
     _update_tiket_data,
 )
@@ -435,3 +441,154 @@ class TestTransisiTransferUlangDariSelesai:
 
         tiket_selesai_baris_u.refresh_from_db()
         assert tiket_selesai_baris_u.status_tiket == STATUS_SELESAI
+
+
+@pytest.fixture
+def tiket_lain_di_oracle(db):
+    """A tiket Oracle still knows about, so the sweep has something to spare."""
+    return TiketFactory(status_tiket=STATUS_DIKIRIM_KE_PIDE, tgl_rekam_pide=None)
+
+
+@pytest.mark.django_db
+class TestResetTiketHilangDariOracle:
+    """Rows dropped from ZA_REKAP_TARIKAN clear the columns they had filled."""
+
+    def test_tiket_dibatalkan_kehilangan_kolom_tarikan_tapi_status_tetap(
+        self, tiket_lain_di_oracle, db
+    ):
+        """The reported case: returned to P3DE on 13/07, yet carrying a 27/07 transfer."""
+        dibatalkan = TiketFactory(
+            status_tiket=STATUS_DIBATALKAN,
+            tgl_kirim_pide=datetime(2026, 7, 3, 10, 29),
+            tgl_dikembalikan=datetime(2026, 7, 13, 9, 16),
+            tgl_rekam_pide=datetime(2026, 7, 7, 14, 39),
+            tgl_transfer=datetime(2026, 7, 27, 0, 0),
+            baris_i=50_255_172, baris_u=531_222, baris_res=0, baris_cde=0,
+            belum_qc=50_255_172,
+        )
+        TiketPICFactory(id_tiket=dibatalkan, role=TiketPIC.Role.PIDE, active=True)
+
+        result = _update_tiket_data(_service([_row(tiket_lain_di_oracle.nomor_tiket)]))
+
+        dibatalkan.refresh_from_db()
+        assert dibatalkan.tgl_transfer is None
+        assert dibatalkan.baris_i is None
+        assert dibatalkan.baris_u is None
+        assert dibatalkan.belum_qc is None
+        # Status dan tanggal rekam PIDE dipertahankan — keduanya keputusan/jejak
+        # alur kerja, bukan hasil tarikan.
+        assert dibatalkan.status_tiket == STATUS_DIBATALKAN
+        assert dibatalkan.tgl_rekam_pide == datetime(2026, 7, 7, 14, 39)
+        assert dibatalkan.tgl_dikembalikan == datetime(2026, 7, 13, 9, 16)
+        assert result['stale_reset'] == 1
+
+        actions = list(TiketAction.objects.filter(id_tiket=dibatalkan))
+        assert [a.action for a in actions] == [TiketActionType.DIUBAH]
+        assert 'dihapus di Oracle' in actions[0].catatan
+
+    def test_status_hasil_sinkronisasi_mundur_ke_dikirim_ke_pide(
+        self, tiket_selesai, tiket_lain_di_oracle
+    ):
+        tiket_selesai.baris_i = 40
+        tiket_selesai.belum_qc = 7
+        tiket_selesai.save(update_fields=['baris_i', 'belum_qc'])
+
+        result = _update_tiket_data(_service([_row(tiket_lain_di_oracle.nomor_tiket)]))
+
+        tiket_selesai.refresh_from_db()
+        assert tiket_selesai.status_tiket == STATUS_DIKIRIM_KE_PIDE
+        assert tiket_selesai.tgl_transfer is None
+        assert tiket_selesai.baris_i is None
+        assert tiket_selesai.belum_qc is None
+        # Dimundurkan ke 4, jadi harus bersih agar Aturan 6/7 bisa mengangkatnya lagi.
+        assert tiket_selesai.tgl_rekam_pide is None
+        assert result['stale_reset'] == 1
+
+    def test_tiket_migrasi_tidak_dikecualikan(self, tiket_lain_di_oracle, db):
+        """old_db tikets flow through this sync too — PD411040126050601 proved it."""
+        migrasi = TiketFactory(
+            status_tiket=STATUS_SELESAI, old_db=True,
+            tgl_transfer=TGL_TRANSFER, belum_qc=0,
+        )
+
+        result = _update_tiket_data(_service([_row(tiket_lain_di_oracle.nomor_tiket)]))
+
+        migrasi.refresh_from_db()
+        assert migrasi.tgl_transfer is None
+        assert result['stale_reset'] == 1
+
+    def test_tiket_yang_masih_ada_di_oracle_tidak_direset(self, tiket_selesai):
+        result = _update_tiket_data(_service([
+            _row(tiket_selesai.nomor_tiket, tgl_transfer=TGL_TRANSFER, belum_qc=0)
+        ]))
+
+        tiket_selesai.refresh_from_db()
+        assert tiket_selesai.tgl_transfer == TGL_TRANSFER
+        assert result['stale_reset'] == 0
+
+    def test_tiket_tanpa_data_tarikan_dilewati(self, tiket_lain_di_oracle, db):
+        bersih = TiketFactory(status_tiket=STATUS_DIKIRIM_KE_PIDE, tgl_rekam_pide=None)
+
+        result = _update_tiket_data(_service([_row(tiket_lain_di_oracle.nomor_tiket)]))
+
+        bersih.refresh_from_db()
+        assert bersih.status_tiket == STATUS_DIKIRIM_KE_PIDE
+        assert result['stale_reset'] == 0
+
+    def test_melebihi_ambang_membatalkan_seluruh_reset(
+        self, tiket_selesai, tiket_lain_di_oracle, monkeypatch
+    ):
+        """A blast radius over the ceiling means a broken query, not deleted rows."""
+        monkeypatch.setattr(
+            'diamond_web.views.sync_tiket_update._STALE_RESET_MAX', 0)
+
+        result = _update_tiket_data(_service([_row(tiket_lain_di_oracle.nomor_tiket)]))
+
+        tiket_selesai.refresh_from_db()
+        assert tiket_selesai.tgl_transfer == TGL_TRANSFER
+        assert result['stale_reset'] == 0
+        assert any('melebihi ambang aman' in e for e in result['errors'])
+
+    def test_ambang_default_tetap_ketat(self):
+        """Pins the safety ceiling low on purpose.
+
+        This is a policy guard, not an arithmetic one: the sweep nulls columns
+        across the whole tiket table, so the default must stay small enough that
+        a truncated Oracle result can never wipe the database. Raising it is a
+        deliberate decision taken after reading a real candidate count — this
+        assert is here to make an absent-minded bump fail loudly.
+        """
+        assert _STALE_RESET_MAX <= 50
+
+    def test_ambang_dibatalkan_tidak_menghalangi_sisa_sinkronisasi(
+        self, tiket_di_pide, tiket_selesai, monkeypatch
+    ):
+        """An aborted sweep must not cost the run its ordinary updates."""
+        monkeypatch.setattr(
+            'diamond_web.views.sync_tiket_update._STALE_RESET_MAX', 0)
+
+        result = _update_tiket_data(_service([_row(tiket_di_pide.nomor_tiket)]))
+
+        tiket_di_pide.refresh_from_db()
+        assert tiket_di_pide.status_tiket == STATUS_IDENTIFIKASI
+        assert result['status_to_identifikasi'] == 1
+        assert result['stale_reset'] == 0
+
+    def test_dry_run_menghitung_tanpa_mengubah(self, tiket_selesai, tiket_lain_di_oracle):
+        result = _check_tiket_update_data(_service([_row(tiket_lain_di_oracle.nomor_tiket)]))
+
+        assert result['would_stale_reset'] == 1
+
+        tiket_selesai.refresh_from_db()
+        assert tiket_selesai.status_tiket == STATUS_SELESAI
+        assert tiket_selesai.tgl_transfer == TGL_TRANSFER
+
+    def test_stop_membatalkan_reset(self, tiket_selesai, tiket_lain_di_oracle):
+        result = _update_tiket_data(
+            _service([_row(tiket_lain_di_oracle.nomor_tiket)]),
+            stop_checker=lambda: True,
+        )
+
+        tiket_selesai.refresh_from_db()
+        assert tiket_selesai.tgl_transfer == TGL_TRANSFER
+        assert result['stale_reset'] == 0

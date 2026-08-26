@@ -40,6 +40,15 @@
                 </li>
                 {% endif %}
 
+                {% comment %}
+                Kasubdit PDE supervises all three seksi, and its members carry a
+                seksi group of their own so the four entries above resolve the
+                usual data scope. What they supervise they do not operate,
+                though: every seksi and admin section below stays hidden for
+                them, leaving the navigation at those four entries.
+                {% endcomment %}
+                {% if not user|has_group:"kasubdit_pde" %}
+
                 {% if user|has_group:"admin_p3de" or user|has_group:"user_p3de" %}
                 <li class="nxl-item nxl-caption"><label>P3DE</label></li>
                 <li class="nxl-item nxl-hasmenu">
@@ -287,6 +296,8 @@
                     </a>
                 </li>
                 {% endif %}
+
+                {% endif %}{# not kasubdit_pde #}
             </ul>
         </div>
     </div>
