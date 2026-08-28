@@ -716,16 +716,28 @@ python manage.py fix_tiket_transfer_ulang               # terapkan
 python manage.py fix_tiket_transfer_ulang --tiket PD411040126050601
 ```
 
-**Kriteria deteksi** — tiket dianggap tertahan bila semuanya benar:
+**Kriteria deteksi** — komposisinya harus benar semua:
 
 | Kondisi | Deskripsi |
 |---------|-----------|
 | `status_tiket == 8` dan `tgl_rematch is None` | Selesai, bukan *rematch* |
 | `tgl_transfer is not None` | Punya tanggal transfer |
 | `baris_i > 0` dan `belum_qc != 0` | Komposisi Aturan 1 — datanya bilang tiket ini seharusnya di pengendalian mutu |
-| **Tidak ada** aksi `DITRANSFER_KE_PMDE` ber-*timestamp* sama dengan `tgl_transfer` tiket | Jejak audit tidak pernah mencatat transfer pada tanggal yang kini diklaim tiket |
 
-Syarat terakhir itu yang memisahkan korban asli dari tiket migrasi yang jejaknya direkonstruksi `backfill_old_db_tiket_actions` — jejak hasil rekonstruksi **selalu** punya aksi transfer tepat di `tgl_transfer`-nya. Syarat itu sekaligus membuat perintah ini **idempoten**: perbaikannya membuat persis aksi tersebut, jadi eksekusi kedua tidak menemukan apa-apa.
+…**dan salah satu** dari dua sidik jari jejak audit:
+
+| Sidik jari | Deskripsi |
+|-----------|-----------|
+| **A** — tidak ada aksi `DITRANSFER_KE_PMDE` ber-*timestamp* sama dengan `tgl_transfer` tiket | Jejak tidak pernah mencatat transfer pada tanggal yang kini diklaim tiket |
+| **B** — `tgl_transfer` lebih baru dari aksi `SELESAI` terakhir tiket | Transfer yang terjadi *sesudah* penutupan — mustahil pada tiket yang sehat |
+
+Sidik jari **B** ada karena A saja berlubang: kalau `backfill_old_db_tiket_actions` dijalankan **setelah** PIDE merevisi tanggal transfer, ia menulis aksi transfer tepat di `tgl_transfer` yang sudah direvisi, sehingga jejaknya tampak utuh padahal tiketnya masih salah tertutup. `PD508040123120801` persis begitu — ditutup 24/07, tetapi ditransfer 28/07. B menangkapnya lewat kronologi.
+
+Tidak satu pun sidik jari menyala pada tiket migrasi yang sehat: aksi transfernya duduk tepat di `tgl_transfer` (gagal A) dan penutupannya menyusul transfer, bukan mendahului (gagal B). Diverifikasi terhadap 3.392 tiket migrasi yang lolos filter komposisi: nol kecocokan untuk keduanya.
+
+**Idempoten** lewat perubahan statusnya sendiri — perbaikan memindahkan tiket dari status 8, jadi eksekusi kedua tidak bisa melihatnya lagi.
+
+Aksi `DITRANSFER_KE_PMDE` **tidak dibuat** bila jejaknya sudah punya satu di tanggal itu (kasus sidik jari B), supaya tidak menduplikasi.
 
 **Tindakan per tiket**: `status_tiket` 8 → 6, dan satu `TiketAction` `DITRANSFER_KE_PMDE` oleh PIC PIDE aktif, ber-*timestamp* `tgl_transfer` yang berlaku sekarang. Aksi lama **tidak pernah dihapus atau diubah tanggalnya** — putaran yang sudah ditutup memang benar-benar terjadi atas data saat itu, revisinya ditambahkan di atasnya.
 

@@ -110,8 +110,32 @@ class TestFixTiketTransferUlang:
         ).count() == 1
         assert 'Tidak ada tiket' in out
 
-    def test_tiket_dengan_jejak_transfer_cocok_dilewati(self, tiket_tertahan):
-        """A migrated tiket whose backfilled trail matches its tgl_transfer."""
+    def test_tiket_sehat_dengan_jejak_konsisten_dilewati(self, tiket_tertahan):
+        """A migrated tiket whose trail matches AND whose closure follows the transfer."""
+        pide = TiketPIC.objects.get(id_tiket=tiket_tertahan, role=TiketPIC.Role.PIDE)
+        TiketAction.objects.create(
+            id_tiket=tiket_tertahan, id_user=pide.id_user,
+            timestamp=TGL_TRANSFER_BARU,
+            action=TiketActionType.DITRANSFER_KE_PMDE,
+            catatan='Tiket ditransfer ke PMDE (data migrasi)')
+        # Ditutup SETELAH transfer — kronologi yang wajar.
+        TiketAction.objects.filter(
+            id_tiket=tiket_tertahan, action=TiketActionType.SELESAI
+        ).update(timestamp=datetime(2026, 7, 30, 8, 0))
+
+        _run()
+
+        tiket_tertahan.refresh_from_db()
+        assert tiket_tertahan.status_tiket == STATUS_SELESAI
+
+    def test_transfer_lebih_baru_dari_penutupan_tetap_tertangkap(self, tiket_tertahan):
+        """PD508040123120801's shape: the backfill re-dated the transfer action.
+
+        Running backfill_old_db_tiket_actions after PIDE revised tgl_transfer
+        leaves a transfer action sitting on the revised date, so the trail looks
+        intact. The chronology still gives it away — closed 23/07, transferred
+        28/07 — and nothing may be duplicated on that date.
+        """
         pide = TiketPIC.objects.get(id_tiket=tiket_tertahan, role=TiketPIC.Role.PIDE)
         TiketAction.objects.create(
             id_tiket=tiket_tertahan, id_user=pide.id_user,
@@ -119,10 +143,16 @@ class TestFixTiketTransferUlang:
             action=TiketActionType.DITRANSFER_KE_PMDE,
             catatan='Tiket ditransfer ke PMDE (data migrasi)')
 
-        _run()
+        out = _run('--verbose')
 
         tiket_tertahan.refresh_from_db()
-        assert tiket_tertahan.status_tiket == STATUS_SELESAI
+        assert tiket_tertahan.status_tiket == STATUS_PENGENDALIAN_MUTU
+        assert TiketAction.objects.filter(
+            id_tiket=tiket_tertahan,
+            action=TiketActionType.DITRANSFER_KE_PMDE,
+            timestamp=TGL_TRANSFER_BARU,
+        ).count() == 1
+        assert 'tidak diduplikasi' in out
 
     def test_belum_qc_nol_dilewati(self, tiket_tertahan):
         tiket_tertahan.belum_qc = 0

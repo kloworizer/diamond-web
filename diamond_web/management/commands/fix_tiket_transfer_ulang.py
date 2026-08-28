@@ -10,23 +10,41 @@ already copied the new ``tgl_transfer`` (and the new baris counts) into the
 local row, so every later run sees no change and the tiket stays at Selesai
 forever. This command finds them and applies what Aturan 9 would have done.
 
-Detection — a tiket is stranded when all of these hold:
+Detection — a tiket is stranded when the composition says so:
 
   - ``status_tiket == 8`` (Selesai) and ``tgl_rematch`` is NULL
   - ``tgl_transfer`` is set
   - ``baris_i > 0`` and ``belum_qc != 0`` — Aturan 1's composition, i.e. the
     data says this tiket belongs in pengendalian mutu, not closed
-  - **no** ``DITRANSFER_KE_PMDE`` action carries the tiket's current
-    ``tgl_transfer`` — the audit trail never recorded a transfer on the date
-    the tiket now claims
 
-That last condition is what separates a genuine victim from a migrated tiket
-whose trail was reconstructed by ``backfill_old_db_tiket_actions`` (those do
-carry a transfer action on their ``tgl_transfer``). It also makes the command
-idempotent: the fix creates exactly that action, so a second run finds nothing.
+…and **either** of two audit-trail signatures holds:
+
+  A. **no** ``DITRANSFER_KE_PMDE`` action carries the tiket's current
+     ``tgl_transfer`` — the trail never recorded a transfer on the date the
+     tiket now claims; or
+  B. ``tgl_transfer`` is **later than the tiket's last SELESAI action** — a
+     transfer that post-dates the closure, which cannot happen on a healthy
+     tiket.
+
+Signature B exists because A alone has a hole: when
+``backfill_old_db_tiket_actions`` runs *after* PIDE revised the transfer date,
+it writes a transfer action at the already-revised ``tgl_transfer``, so the
+trail looks intact while the tiket is still wrongly closed
+(``PD508040123120801`` is exactly that). B catches it on the chronology
+instead — closed on the 24th, transferred on the 28th.
+
+Neither signature fires on a healthy migrated tiket: its transfer action sits
+on its ``tgl_transfer`` (fails A) and its closure follows the transfer rather
+than preceding it (fails B). Verified against the 3.392 migrated tikets that
+share the composition filter: zero matches for either.
+
+Idempotency comes from the status change itself — the fix moves the tiket off
+status 8, so a second run cannot see it again.
 
 Existing actions are never deleted or re-dated. The closed round genuinely
-happened on the data as it stood then; the revision is appended on top of it.
+happened on the data as it stood then; the revision is appended on top of it —
+and when the trail already carries a transfer at that date (signature B), no
+duplicate is added.
 
 Usage::
 
@@ -38,7 +56,7 @@ Usage::
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from django.db.models import Exists, OuterRef
+from django.db.models import Exists, F, OuterRef, Q, Subquery
 
 from ...constants.tiket_action_types import TiketActionType
 from ...constants.tiket_status import STATUS_PENGENDALIAN_MUTU, STATUS_SELESAI
@@ -97,6 +115,11 @@ class Command(BaseCommand):
 
         for tiket in tikets:
             pide_user = pics.get(tiket.id)
+            # Signature B tikets already carry a transfer action on that date
+            # (written by the backfill) — recording a second one would only
+            # duplicate the trail.
+            needs_action = pide_user is not None and not tiket._transfer_recorded
+
             detail = (
                 f'{tiket.nomor_tiket}: Selesai → Pengendalian Mutu '
                 f'(Tgl Transfer:{tiket.tgl_transfer:%d/%m/%Y}, '
@@ -105,12 +128,14 @@ class Command(BaseCommand):
             if pide_user is None:
                 without_pic.append(tiket.nomor_tiket)
                 detail += ' [tanpa PIC PIDE aktif — TiketAction dilewati]'
+            elif tiket._transfer_recorded:
+                detail += ' [aksi transfer sudah ada di tanggal itu — tidak diduplikasi]'
             if options['verbose'] or dry_run:
                 self.stdout.write('  ' + detail)
 
             if dry_run:
                 reopened += 1
-                actions_created += 1 if pide_user else 0
+                actions_created += 1 if needs_action else 0
                 continue
 
             with transaction.atomic():
@@ -118,7 +143,7 @@ class Command(BaseCommand):
                 tiket.save(update_fields=['status_tiket'])
                 reopened += 1
 
-                if pide_user:
+                if needs_action:
                     TiketAction.objects.create(
                         id_tiket=tiket, id_user=pide_user,
                         timestamp=tiket.tgl_transfer,
@@ -153,6 +178,11 @@ class Command(BaseCommand):
             action=TiketActionType.DITRANSFER_KE_PMDE,
             timestamp=OuterRef('tgl_transfer'),
         )
+        last_selesai = Subquery(
+            TiketAction.objects.filter(
+                id_tiket=OuterRef('pk'), action=TiketActionType.SELESAI,
+            ).order_by('-timestamp').values('timestamp')[:1]
+        )
 
         qs = Tiket.objects.filter(
             status_tiket=STATUS_SELESAI,
@@ -163,9 +193,14 @@ class Command(BaseCommand):
         ).exclude(
             belum_qc=0
         ).annotate(
-            _transfer_recorded=Exists(transfer_recorded)
+            _transfer_recorded=Exists(transfer_recorded),
+            _last_selesai=last_selesai,
         ).filter(
-            _transfer_recorded=False
+            # A: jejak tidak pernah mencatat transfer pada tanggal yang kini
+            # diklaim tiket. B: transfernya justru lebih baru dari penutupannya.
+            # Tiket tanpa aksi SELESAI sama sekali tertangkap lewat cabang A —
+            # perbandingan terhadap NULL di cabang B tidak pernah benar.
+            Q(_transfer_recorded=False) | Q(tgl_transfer__gt=F('_last_selesai'))
         ).order_by('id')
 
         if options['tiket']:
