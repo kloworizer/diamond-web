@@ -17,6 +17,7 @@ Dokumen ini menjelaskan seluruh menu yang muncul di navbar untuk role admin, apa
 - [Fokus: Cara Kerja Menu PIC](#fokus-cara-kerja-menu-pic)
 - [Fokus: Cara Kerja Menu Periode Jenis Data](#fokus-cara-kerja-menu-periode-jenis-data)
 - [Fokus: Cara Kerja Menu Data Prioritas](#fokus-cara-kerja-menu-data-prioritas)
+- [Fokus: Cara Kerja Durasi Jatuh Tempo & Generate Otomatis](#fokus-cara-kerja-durasi-jatuh-tempo--generate-otomatis)
 
 ---
 
@@ -27,13 +28,16 @@ Menu pada navbar muncul secara kondisional berdasarkan grup (role) pengguna. Ter
 | Role | Caption Navbar yang Muncul | Cakupan |
 |------|----------------------------|---------|
 | `admin_p3de` | **Admin P3DE** | Referensi & ILAP P3DE, Data Prioritas, PIC P3DE, Template, Sequence |
-| `admin_pide` | **Admin PIDE** | Durasi Jatuh Tempo PIDE, Nama Tabel, PIC PIDE, Data Prioritas |
-| `admin_pmde` | **Admin PMDE** | Durasi Jatuh Tempo PMDE, PIC PMDE, Data Prioritas |
+| `admin_pide` | **Admin PIDE** | Aturan Durasi Jatuh Tempo, Durasi Jatuh Tempo PIDE, Nama Tabel, PIC PIDE, Data Prioritas |
+| `admin_pmde` | **Admin PMDE** | Aturan Durasi Jatuh Tempo, Durasi Jatuh Tempo PMDE, PIC PMDE, Data Prioritas |
 | `admin` (global) | **Semua caption Admin + Sinkronisasi Data** | Akses penuh seluruh menu admin dan sinkronisasi Oracle |
 
 > **Catatan:** Role `admin` global melihat **semua** blok menu admin (P3DE, PIDE, PMDE) sekaligus, plus blok **Sinkronisasi Data** yang eksklusif untuk `admin`. Admin per-divisi hanya melihat blok divisinya sendiri.
 
-> **Menu bersama:** **Data Prioritas** adalah satu-satunya menu admin yang dikelola bersama oleh ketiga seksi — tautannya muncul di akar blok Admin P3DE, Admin PIDE, maupun Admin PMDE, dan ketiganya menunjuk halaman yang sama persis. Pengguna yang melihat lebih dari satu blok (mis. `admin` global melihat ketiganya) akan menjumpai tautan ini berulang di tiap blok; itu memang disengaja, agar setiap seksi menemukannya di tempat yang sama. Lihat [Fokus: Cara Kerja Menu Data Prioritas](#fokus-cara-kerja-menu-data-prioritas).
+> **Menu bersama:** dua menu admin dikelola lintas seksi, dan tautannya sengaja diulang di akar tiap blok yang berhak — sehingga pengguna yang melihat lebih dari satu blok (mis. `admin` global) menjumpainya berulang. Itu disengaja, agar setiap seksi menemukannya di tempat yang sama.
+>
+> - **Data Prioritas** — ketiga seksi (P3DE, PIDE, PMDE). Lihat [Fokus: Cara Kerja Menu Data Prioritas](#fokus-cara-kerja-menu-data-prioritas).
+> - **Aturan Durasi Jatuh Tempo** — PIDE dan PMDE. Lihat [Fokus: Cara Kerja Durasi Jatuh Tempo & Generate Otomatis](#fokus-cara-kerja-durasi-jatuh-tempo--generate-otomatis).
 
 ---
 
@@ -89,10 +93,13 @@ Pengelolaan nomor urut (sequence) tanda terima data, agar penomoran tanda terima
 
 Muncul untuk role `admin` atau `admin_pide`. Berisi pengelolaan referensi divisi Pengolahan Informasi Data Eksternal.
 
-- **Durasi Jatuh Tempo PIDE** — pengaturan durasi SLA/jatuh tempo untuk proses identifikasi & perekaman di PIDE.
+- **Aturan Durasi Jatuh Tempo** — menu bersama dengan PMDE; menentukan berapa hari yang dipakai Generate Otomatis. Lihat [Fokus: Cara Kerja Durasi Jatuh Tempo & Generate Otomatis](#fokus-cara-kerja-durasi-jatuh-tempo--generate-otomatis).
+- **Durasi Jatuh Tempo PIDE** — pengaturan durasi SLA/jatuh tempo untuk proses identifikasi & perekaman di PIDE. Punya tombol **Generate Otomatis** (tiga langkah), lihat [Fokus: Cara Kerja Durasi Jatuh Tempo & Generate Otomatis](#fokus-cara-kerja-durasi-jatuh-tempo--generate-otomatis).
 - **Nama Tabel** — pengelolaan nama tabel data yang diproses PIDE.
 - **PIC PIDE** — pengelolaan penanggung jawab divisi PIDE. Lihat [Fokus: Cara Kerja Menu PIC](#fokus-cara-kerja-menu-pic).
 - **Data Prioritas** — menu bersama dengan P3DE dan PMDE; halaman yang sama seperti pada blok Admin P3DE. Lihat [Fokus: Cara Kerja Menu Data Prioritas](#fokus-cara-kerja-menu-data-prioritas).
+
+> **Aturan sebelum durasi.** Aturan Durasi Jatuh Tempo sengaja diletakkan tepat di atas Durasi Jatuh Tempo di navbar: aturannyalah yang menentukan angka yang dihasilkan Generate Otomatis, jadi urutan menunya mengikuti urutan pengerjaannya. Berlaku sama di blok Admin PMDE.
 
 ---
 
@@ -100,7 +107,8 @@ Muncul untuk role `admin` atau `admin_pide`. Berisi pengelolaan referensi divisi
 
 Muncul untuk role `admin` atau `admin_pmde`. Berisi pengelolaan referensi divisi Pengendalian Mutu Data Eksternal.
 
-- **Durasi Jatuh Tempo PMDE** — pengaturan durasi SLA/jatuh tempo untuk proses quality control di PMDE.
+- **Aturan Durasi Jatuh Tempo** — menu bersama dengan PIDE; menentukan berapa hari yang dipakai Generate Otomatis. Lihat [Fokus: Cara Kerja Durasi Jatuh Tempo & Generate Otomatis](#fokus-cara-kerja-durasi-jatuh-tempo--generate-otomatis).
+- **Durasi Jatuh Tempo PMDE** — pengaturan durasi SLA/jatuh tempo untuk proses quality control di PMDE. Punya tombol **Generate Otomatis** (tiga langkah), lihat [Fokus: Cara Kerja Durasi Jatuh Tempo & Generate Otomatis](#fokus-cara-kerja-durasi-jatuh-tempo--generate-otomatis).
 - **PIC PMDE** — pengelolaan penanggung jawab divisi PMDE. Lihat [Fokus: Cara Kerja Menu PIC](#fokus-cara-kerja-menu-pic).
 - **Data Prioritas** — menu bersama dengan P3DE dan PIDE; halaman yang sama seperti pada blok Admin P3DE. Lihat [Fokus: Cara Kerja Menu Data Prioritas](#fokus-cara-kerja-menu-data-prioritas).
 
@@ -494,3 +502,84 @@ Yang perlu diketahui sebelum menjalankan Langkah 1:
 > Bedanya nyata: pada data yang ada, **sekitar dua pertiga tiket punya tahun terima berbeda dari Tahun Data**, dan sebagian besar di antaranya diterima pada tahun berikutnya. Tiket untuk data 2025 yang baru diterima Februari 2026 akan dinilai oleh penanda tahun **2026**. Bila yang dimaksud rekap sumber justru tahun data, rentangnya perlu diperpanjang sampai menutupi masa penerimaannya — dan rentang antar tahun tidak boleh tumpang tindih, jadi perlu dirancang lebih dulu.
 
 Rinciannya ada di docstring `diamond_web/management/commands/rebuild_jenis_prioritas_from_temp.py`.
+
+---
+
+## Fokus: Cara Kerja Durasi Jatuh Tempo & Generate Otomatis
+
+Menu **Durasi Jatuh Tempo PIDE** dan **Durasi Jatuh Tempo PMDE** menyimpan berapa hari batas pengerjaan satu Sub Jenis Data untuk satu rentang tanggal. Tabel itulah yang dibaca kolom Jatuh Tempo di menu Identifikasi dan Quality Control.
+
+Mengisinya satu per satu mustahil — ada 11.869 Sub Jenis Data dikali jumlah tahun. Karena itu ada tombol **Generate Otomatis**, dan sejak sekarang angkanya diambil dari menu **Aturan Durasi Jatuh Tempo**, bukan lagi tertanam di kode.
+
+### Menu Aturan Durasi Jatuh Tempo
+
+Satu baris aturan menjawab: *untuk seksi ini, di tahun ini, berapa hari kalau data prioritas dan berapa hari kalau tidak?*
+
+| Field | Keterangan |
+|-------|-----------|
+| **Seksi** | PIDE atau PMDE. Aturan satu seksi tidak pernah terbaca oleh seksi lain. |
+| **Tahun** | Tahun yang diatur. |
+| **Durasi Prioritas** | Hari jatuh tempo bila data berstatus prioritas pada tahun itu. |
+| **Durasi Non Prioritas** | Hari jatuh tempo bila tidak. |
+| **ILAP** | **Opsional.** Diisi bila satu ILAP punya durasi sendiri. |
+| **Sub Jenis Data ILAP** | **Opsional.** Diisi bila satu sub jenis data berbeda dari ILAP-nya. |
+
+> **Yang paling spesifik menang.** Saat Generate Otomatis mencari durasi sebuah Sub Jenis Data, urutan pencariannya: aturan untuk **Sub Jenis Data** itu → aturan untuk **ILAP**-nya → aturan **umum** tahun itu (ILAP dan Sub Jenis Data dikosongkan). Yang pertama ketemu dipakai.
+
+Ini yang membuat dua kebutuhan bisa dilayani sekaligus:
+
+- **Durasi berubah tiap tahun.** PMDE prioritas 45 hari di 2026 dan 35 hari di 2027 cukup dengan menambah satu baris aturan umum untuk 2027 — tanpa ubah kode, tanpa deploy.
+- **Satu pihak punya durasi sendiri.** Data Bea dan Cukai berdurasi 14 hari saat prioritas, bukan 45. Itu tercatat sebagai aturan tingkat Sub Jenis Data, bukan sebagai angka yang kebetulan tidak pernah tersentuh.
+
+Isi awal tabel ini dibuatkan otomatis oleh migrasi `0016_seed_aturan_durasi_jatuh_tempo` dari kondisi yang sudah berjalan — PMDE 45/85, PIDE 35/90, keduanya untuk 2019 s.d. tahun berjalan, ditambah pengecualian 14 hari untuk 36 Sub Jenis Data Bea dan Cukai yang diturunkan dari isi tabel durasi yang ada. **Perilaku sebelum dan sesudah perubahan ini identik.**
+
+> **Tahun tanpa aturan tidak digenerate.** Kalau 2027 tiba dan belum ada barisnya, Generate Otomatis melewati tahun itu dan melaporkannya — bukan menebak angka. Ini disengaja: menebak durasi jatuh tempo diam-diam lebih berbahaya daripada tidak menghasilkan apa-apa.
+
+### Tombol Generate Otomatis
+
+Ada di menu Durasi Jatuh Tempo PIDE dan PMDE, tiga langkah pada keduanya. Setiap langkah menampilkan ringkasan lebih dulu — tidak ada yang ditulis sebelum dikonfirmasi.
+
+| Langkah | Yang dikerjakan |
+|---|---|
+| 1 | **Buat baris yang belum ada** — satu baris per Sub Jenis Data per tahun beraturan, 1 Jan s.d. 31 Des, durasinya dari aturan |
+| 2 | **Sesuaikan durasi dengan prioritas terbaru** — untuk baris yang status prioritasnya berubah sejak dibuat |
+| 3 | **Isi kolom Durasi Jatuh Tempo pada Tiket** yang masih kosong |
+
+Tiga sifat yang penting dipahami:
+
+- **Langkah 1 hanya menambah, tidak pernah menimpa.** Tahun yang sudah punya baris — apa pun isinya, hasil generate sebelumnya maupun setelan tangan — dilewati. Karena itu menjalankan tombol ini berulang aman.
+- **Langkah 2 hanya menyentuh baris yang masih memegang salah satu dari dua angka yang diizinkan aturannya sendiri.** Durasi yang disetel tangan (misal 30) tidak pernah ditimpa. Begitu pula baris 14 hari milik Bea dan Cukai: dibandingkan terhadap aturan Sub Jenis Data itu sendiri (14/85), jadi 14 dikonfirmasi benar — bukan disamakan dengan 45.
+- **Langkah 3 hanya mengisi kolom yang masih kosong.** Tiket yang sudah punya nilai tidak pernah diubah, jadi langkah ini pun aman diulang.
+
+**Tanggal acuan Langkah 3** — tiap seksi mencocokkan tiket ke baris durasi yang masa berlakunya mencakup tanggal berikut:
+
+| Seksi | Tanggal acuan | Alasan |
+|---|---|---|
+| **PMDE** | `tgl_rematch`, atau `tgl_transfer` bila belum pernah rematch | Tiket yang di-rematch memulai hitungannya dari awal — sama dengan cara layar Quality Control menghitung jatuh tempo |
+| **PIDE** | `tgl_kirim_pide` | Tanggal tiket diserahkan ke PIDE; `tgl_rekam_pide` yang lebih belakangan **tidak** menggeser baris durasi yang berlaku |
+
+Tiket yang tanggal acuannya masih kosong — belum ditransfer ke PMDE, atau belum dikirim ke PIDE — dilewati dan dihitung terpisah di ringkasan. Begitu pula tiket yang tanggal acuannya tidak tercakup satu pun masa berlaku durasi Sub Jenis Data-nya.
+
+> ⚠️ **Jangan menghapus seluruh isi tabel durasi lalu generate ulang.** Sebelum aturan pengecualian ada, angka 14 bertahan semata-mata karena Langkah 1 tidak pernah menimpa baris yang ada; menghapus semuanya akan mengubahnya jadi 45 tanpa peringatan. Sekarang pengecualiannya sudah jadi aturan, jadi generate ulang akan menghasilkan 14 kembali — tetapi tetap **periksa dulu** menu Aturan Durasi Jatuh Tempo memuat pengecualian yang Anda perlukan sebelum melakukannya.
+
+### Generate Otomatis PIDE
+
+Menu Durasi Jatuh Tempo PIDE sebelumnya tidak punya tombol ini, dan tabel durasi PIDE **kosong sama sekali** — sehingga jatuh tempo PIDE tidak punya sumber durasi. Tombolnya kini tersedia dan memakai mesin yang sama dengan PMDE, dengan dua perbedaan:
+
+- Angkanya dari aturan seksi PIDE (awalnya prioritas 35 hari, non prioritas 90 hari).
+- Langkah 3 mencocokkan pada **tanggal kirim ke PIDE**, bukan tanggal transfer/rematch milik PMDE.
+
+> **Catatan tentang tiket baru.** Tiket yang direkam sejak sekarang sudah mengisi sendiri kolom Durasi Jatuh Tempo PIDE dan PMDE saat perekaman — tetapi memakai durasi yang berlaku **hari perekaman**, karena saat itu tiket belum dikirim ke PIDE maupun ditransfer ke PMDE. Langkah 3 tidak menyentuh tiket-tiket itu; ia hanya mengisi tiket yang kolomnya masih kosong, terutama tiket lama hasil migrasi.
+
+### Hubungannya dengan Data Prioritas
+
+Ketiganya berurutan. Setelah mengubah penetapan Data Prioritas, urutan lengkapnya:
+
+```
+1. Perbarui Data Prioritas (lewat menu, atau rebuild_jenis_prioritas_from_temp)
+2. python manage.py backfill_tiket_jenis_prioritas --journal prioritas.jsonl
+3. Menu Durasi Jatuh Tempo PMDE → Generate Otomatis  (langkah 2 merapikan durasi)
+4. Menu Durasi Jatuh Tempo PIDE → Generate Otomatis
+```
+
+Langkah 3 dan 4 perlu karena durasi jatuh tempo ikut ditentukan status prioritas: sub jenis data yang baru jadi prioritas berpindah ke durasi prioritas, dan yang kehilangan status prioritasnya kembali ke durasi non prioritas.

@@ -21,6 +21,7 @@ from .jenis_prioritas_data import *
 from .pic import *
 from .nama_tabel import *
 from .durasi_jatuh_tempo import *
+from .aturan_durasi_jatuh_tempo import *
 from .backup_data import *
 from .tanda_terima_data import *
 from .monitoring_penyampaian_data import *

@@ -18,6 +18,7 @@ from .periode_pengiriman import PeriodePengiriman
 from .periode_jenis_data import PeriodeJenisData
 from .pic import PIC
 from .durasi_jatuh_tempo import DurasiJatuhTempo
+from .aturan_durasi_jatuh_tempo import AturanDurasiJatuhTempo
 from .backup_data import BackupData
 from .tanda_terima_data import TandaTerimaData
 from .detil_tanda_terima import DetilTandaTerima

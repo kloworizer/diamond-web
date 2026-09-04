@@ -10,6 +10,7 @@ from django.contrib.auth.models import Group
 from django.db import transaction
 from django.utils import timezone
 
+from ..models.aturan_durasi_jatuh_tempo import AturanDurasiJatuhTempo
 from ..models.durasi_jatuh_tempo import DurasiJatuhTempo
 from ..models.jenis_data_ilap import JenisDataILAP
 from ..models.jenis_prioritas_data import JenisPrioritasData
@@ -18,10 +19,14 @@ from ..forms.durasi_jatuh_tempo import DurasiJatuhTempoForm
 from .mixins import AjaxFormMixin, AdminPIDERequiredMixin, AdminPMDERequiredMixin, SafeDeleteMixin
 from datetime import date as _date
 
-# Durasi Jatuh Tempo PMDE auto-generation rules
-GENERATE_PMDE_START_YEAR = 2019
-GENERATE_PMDE_DURASI_PRIORITAS = 45
-GENERATE_PMDE_DURASI_NON_PRIORITAS = 85
+# Grup seksi pemilik tiap menu Durasi Jatuh Tempo.
+SEKSI_PIDE = 'user_pide'
+SEKSI_PMDE = 'user_pmde'
+
+# Durasi Generate Otomatis dulu berupa konstanta di sini (prioritas 45, non
+# prioritas 85, PMDE saja). Angkanya sekarang data: satu baris
+# AturanDurasiJatuhTempo per seksi per tahun, dengan pengecualian opsional per
+# ILAP atau per sub jenis data. Lihat models/aturan_durasi_jatuh_tempo.py.
 
 # ========== PIDE Section ==========
 
@@ -508,7 +513,19 @@ def _overlaps(start_a, end_a, start_b, end_b):
     return not (end_a < start_b or end_b < start_a)
 
 
-def _pmde_prioritas_ranges():
+def _seksi_group(nama):
+    """Grup seksi, atau None bila belum ada di database."""
+    return Group.objects.filter(name=nama).first()
+
+
+def _seksi_missing_response(nama):
+    return JsonResponse(
+        {'success': False, 'message': f'Grup seksi "{nama}" belum tersedia.'},
+        status=400,
+    )
+
+
+def _prioritas_ranges():
     """The periods each Sub Jenis Data is prioritas, keyed by Sub Jenis Data id.
 
     Prioritas is not a property of the Sub Jenis Data but of a period of it: a
@@ -539,43 +556,48 @@ def _is_prioritas_periode(prioritas_ranges, sub_id, start_date, end_date):
     )
 
 
-def _build_pmde_generate_plan(pmde_group):
-    """Work out which PMDE `DurasiJatuhTempo` rows are missing.
+def _build_generate_plan(seksi):
+    """Work out which `DurasiJatuhTempo` rows are missing for `seksi`.
 
     Rules applied:
     - Every `JenisDataILAP` row is considered, so a Sub Jenis Data that already
-      has PMDE entries still gets the years none of them cover.
-    - One range per year from `GENERATE_PMDE_START_YEAR` up to and including the
-      current year, each covering 01-01 until 31-12 of that year.
-    - `durasi` is decided per year, not per Sub Jenis Data: 45 when a
-      `JenisPrioritasData` period overlaps that year, otherwise 85. A Sub Jenis
-      Data that is prioritas only in some years therefore gets 45 for those years
-      and 85 for the rest.
+      has entries still gets the years none of them cover.
+    - One range per year that `seksi` has an `AturanDurasiJatuhTempo` for, each
+      covering 01-01 until 31-12 of that year. A year with no rule is not
+      generated at all — the durasi would be a guess, so it is reported instead.
+    - `durasi` comes from the rule that best fits the Sub Jenis Data: its own
+      rule, else its ILAP's, else the seksi's general rule for that year. Whether
+      the prioritas or the non-prioritas number applies is decided per year, from
+      the `JenisPrioritasData` periods — so one Sub Jenis Data can take the
+      prioritas durasi in some years and the non-prioritas one in the rest.
 
-    A year is skipped when its range would duplicate or overlap an existing PMDE
-    row for the same Sub Jenis Data, so the non-overlapping invariant holds and
+    A year is skipped when its range would duplicate or overlap an existing row
+    for the same Sub Jenis Data, so the non-overlapping invariant holds and
     nothing already configured by hand is touched.
 
-    Returns a tuple ``(years, plan, skipped)`` where `plan` is a list of
+    Returns ``(years, plan, skipped)`` where `plan` is a list of
     ``{'jenis_data', 'ranges'}`` dicts whose `ranges` are
     ``(start_date, end_date, durasi, is_prioritas)`` tuples, and `skipped` counts
     the ranges dropped as overlapping. Read-only — nothing is saved.
     """
-    current_year = timezone.now().date().year
-    years = list(range(GENERATE_PMDE_START_YEAR, current_year + 1))
+    years = AturanDurasiJatuhTempo.tahun_tersedia(seksi)
+    if not years:
+        return [], [], 0
 
-    candidates = list(JenisDataILAP.objects.order_by('id_sub_jenis_data'))
-
+    aturan = AturanDurasiJatuhTempo.index_for(seksi)
+    candidates = list(
+        JenisDataILAP.objects.order_by('id_sub_jenis_data').only('id', 'id_ilap')
+    )
     if not candidates:
         return years, [], 0
 
-    prioritas_ranges = _pmde_prioritas_ranges()
+    prioritas_ranges = _prioritas_ranges()
 
-    # Existing PMDE ranges per Sub Jenis Data, used to guarantee no duplicate or
+    # Existing ranges per Sub Jenis Data, used to guarantee no duplicate or
     # overlapping range is planned.
     existing_ranges = {}
     for sub_id, start_date, end_date in DurasiJatuhTempo.objects.filter(
-        seksi=pmde_group
+        seksi=seksi
     ).values_list('id_sub_jenis_data_id', 'start_date', 'end_date'):
         existing_ranges.setdefault(sub_id, []).append((start_date, end_date or _date.max))
 
@@ -591,10 +613,11 @@ def _build_pmde_generate_plan(pmde_group):
                 skipped += 1
                 continue
             is_prioritas = _is_prioritas_periode(prioritas_ranges, obj.pk, start_date, end_date)
-            durasi = (
-                GENERATE_PMDE_DURASI_PRIORITAS if is_prioritas
-                else GENERATE_PMDE_DURASI_NON_PRIORITAS
+            durasi = AturanDurasiJatuhTempo.resolve(
+                aturan, obj.pk, obj.id_ilap_id, year, is_prioritas
             )
+            if durasi is None:
+                continue
             ranges.append((start_date, end_date))
             planned_ranges.append((start_date, end_date, durasi, is_prioritas))
         if planned_ranges:
@@ -603,178 +626,64 @@ def _build_pmde_generate_plan(pmde_group):
     return years, plan, skipped
 
 
-@login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde']).exists())
-@require_GET
-def durasi_jatuh_tempo_pmde_generate_preview(request):
-    """Summarise the PMDE `DurasiJatuhTempo` rows that `generate` would create.
-
-    Used to confirm the operation before anything is written. Applies exactly the
-    same rules as `durasi_jatuh_tempo_pmde_generate` — see
-    `_build_pmde_generate_plan` — but saves nothing.
-
-    Returns JSON with `success`, `tahun_awal`/`tahun_akhir`, `total_rows`,
-    `total_jenis_data`, `baris_prioritas`/`baris_non_prioritas` (rows per durasi),
-    `skipped`, and `items`: one entry per affected Sub Jenis Data with its kode,
-    nama, and a `baris` list giving the periode, durasi and prioritas flag of
-    every row to be inserted — durasi is decided per periode, so one Sub Jenis
-    Data can carry both values.
-
-    Side effects: None — read-only endpoint.
-    """
-    pmde_group = Group.objects.filter(name='user_pmde').first()
-    if pmde_group is None:
-        return JsonResponse(
-            {'success': False, 'message': 'Grup seksi "user_pmde" belum tersedia.'},
-            status=400,
-        )
-
-    years, plan, skipped = _build_pmde_generate_plan(pmde_group)
-
-    items = [
-        {
-            'id_sub_jenis_data': entry['jenis_data'].id_sub_jenis_data,
-            'nama_sub_jenis_data': entry['jenis_data'].nama_sub_jenis_data,
-            'jumlah_baris': len(entry['ranges']),
-            'baris': [
-                {
-                    'periode': f"{start.strftime('%d-%m-%Y')} s.d. {end.strftime('%d-%m-%Y')}",
-                    'durasi': durasi,
-                    'is_prioritas': is_prioritas,
-                }
-                for start, end, durasi, is_prioritas in entry['ranges']
-            ],
-        }
-        for entry in plan
-    ]
-
-    all_rows = [row for item in items for row in item['baris']]
-
-    return JsonResponse({
-        'success': True,
-        'tahun_awal': years[0] if years else None,
-        'tahun_akhir': years[-1] if years else None,
-        'total_rows': len(all_rows),
-        'total_jenis_data': len(items),
-        'baris_prioritas': sum(1 for row in all_rows if row['is_prioritas']),
-        'baris_non_prioritas': sum(1 for row in all_rows if not row['is_prioritas']),
-        'durasi_prioritas': GENERATE_PMDE_DURASI_PRIORITAS,
-        'durasi_non_prioritas': GENERATE_PMDE_DURASI_NON_PRIORITAS,
-        'skipped': skipped,
-        'items': items,
-    })
-
-
-@login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde']).exists())
-@require_POST
-def durasi_jatuh_tempo_pmde_generate(request):
-    """Bulk-create the missing PMDE `DurasiJatuhTempo` rows.
-
-    Applies the rules described in `_build_pmde_generate_plan`; the client shows
-    `durasi_jatuh_tempo_pmde_generate_preview` first so the user can confirm what
-    will be inserted.
-
-    Side effects: creates `DurasiJatuhTempo` rows (stamped with audit fields)
-    inside a single transaction.
-
-    Returns JSON with `success`, `created` (rows written), `jenis_data`
-    (Sub Jenis Data touched), `skipped` (ranges skipped as overlapping) and a
-    ready-to-display `message`.
-    """
-    pmde_group = Group.objects.filter(name='user_pmde').first()
-    if pmde_group is None:
-        return JsonResponse(
-            {'success': False, 'message': 'Grup seksi "user_pmde" belum tersedia.'},
-            status=400,
-        )
-
-    years, plan, skipped = _build_pmde_generate_plan(pmde_group)
-
-    if not plan:
-        return JsonResponse({
-            'success': True,
-            'created': 0,
-            'jenis_data': 0,
-            'skipped': skipped,
-            'message': 'Tidak ada Jenis Data yang perlu ditambahkan. Semua tahun sudah punya Durasi Jatuh Tempo PMDE.',
-        })
-
-    today = timezone.now().date()
-    username = (getattr(request.user, 'username', '') or '')[:9]
-
-    new_rows = [
-        DurasiJatuhTempo(
-            id_sub_jenis_data=entry['jenis_data'],
-            seksi=pmde_group,
-            durasi=durasi,
-            start_date=start_date,
-            end_date=end_date,
-            create_date=today,
-            create_by=username,
-            update_date=today,
-            update_by=username,
-        )
-        for entry in plan
-        for start_date, end_date, durasi, _is_prioritas in entry['ranges']
-    ]
-
-    with transaction.atomic():
-        DurasiJatuhTempo.objects.bulk_create(new_rows, batch_size=500)
-
-    return JsonResponse({
-        'success': True,
-        'created': len(new_rows),
-        'jenis_data': len(plan),
-        'skipped': skipped,
-        'message': (
-            f'{len(new_rows)} baris Durasi Jatuh Tempo PMDE berhasil dibuat untuk '
-            f'{len(plan)} Sub Jenis Data (tahun {years[0]}-{years[-1]}).'
-        ),
-    })
-
-
-def _build_pmde_prioritas_sync_plan(pmde_group):
-    """Find the generated PMDE rows whose durasi no longer matches their prioritas.
+def _build_prioritas_sync_plan(seksi):
+    """Find the rows of `seksi` whose durasi no longer matches their prioritas.
 
     A prioritas period can be added or deleted long after the `DurasiJatuhTempo`
-    rows were generated, which leaves rows on the wrong side of the 45/85 rule.
-    Each row is judged against its own periode — the same test
-    `_build_pmde_generate_plan` applies when it creates one — so only the years a
-    `JenisPrioritasData` period actually overlaps become 45, and a year that lost
-    its prioritas goes back to 85 while the Sub Jenis Data's other years stay put.
+    rows were generated, which leaves rows on the wrong side of the rule. Each
+    row is judged against its own periode — the same test
+    :func:`_build_generate_plan` applies when it creates one — so only the years
+    a `JenisPrioritasData` period actually overlaps take the prioritas durasi,
+    and a year that lost its prioritas goes back to the non-prioritas one while
+    the Sub Jenis Data's other years stay put.
 
-    Only rows that still carry one of the two generated values are considered, so
-    a durasi somebody set by hand (say 30) is never overwritten.
+    **Only rows that still hold one of the two numbers their own rule allows are
+    touched.** A durasi somebody set by hand (say 30) is never overwritten — and
+    neither is one governed by a per-ILAP or per-sub-jenis-data exception, since
+    the comparison is made against that Sub Jenis Data's own resolved rule rather
+    than against one global pair of numbers.
 
     Returns a dict with `updates` (list of ``(durasi_row_id, durasi_baru)``
     pairs), `items` (one entry per Sub Jenis Data, each listing the rows that
     change, for the confirmation screen) and the `baris_ke_prioritas` /
     `baris_ke_non_prioritas` row counts. Read-only — nothing is saved.
     """
-    prioritas_ranges = _pmde_prioritas_ranges()
+    prioritas_ranges = _prioritas_ranges()
+    aturan = AturanDurasiJatuhTempo.index_for(seksi)
 
     candidates = DurasiJatuhTempo.objects.filter(
-        seksi=pmde_group,
-        durasi__in=(GENERATE_PMDE_DURASI_PRIORITAS, GENERATE_PMDE_DURASI_NON_PRIORITAS),
+        seksi=seksi
     ).order_by('id_sub_jenis_data__id_sub_jenis_data', 'start_date')
 
     updates = []
     items = {}
     ke_prioritas = 0
     ke_non_prioritas = 0
-    for row_id, sub_id, kode, nama, durasi, start_date, end_date in candidates.values_list(
-        'id', 'id_sub_jenis_data_id',
+    for (
+        row_id, sub_id, ilap_id, kode, nama, durasi, start_date, end_date
+    ) in candidates.values_list(
+        'id', 'id_sub_jenis_data_id', 'id_sub_jenis_data__id_ilap_id',
         'id_sub_jenis_data__id_sub_jenis_data', 'id_sub_jenis_data__nama_sub_jenis_data',
         'durasi', 'start_date', 'end_date',
     ).iterator(chunk_size=2000):
+        tahun = start_date.year
+        durasi_prioritas = AturanDurasiJatuhTempo.resolve(
+            aturan, sub_id, ilap_id, tahun, True
+        )
+        durasi_non_prioritas = AturanDurasiJatuhTempo.resolve(
+            aturan, sub_id, ilap_id, tahun, False
+        )
+        if durasi_prioritas is None or durasi_non_prioritas is None:
+            # Tahun ini belum punya aturan — tidak ada dasar untuk mengubahnya.
+            continue
+        if durasi not in (durasi_prioritas, durasi_non_prioritas):
+            # Diatur di luar aturan (mis. disetel tangan). Jangan disentuh.
+            continue
+
         is_prioritas = _is_prioritas_periode(
             prioritas_ranges, sub_id, start_date, end_date or _date.max
         )
-        durasi_baru = (
-            GENERATE_PMDE_DURASI_PRIORITAS if is_prioritas
-            else GENERATE_PMDE_DURASI_NON_PRIORITAS
-        )
+        durasi_baru = durasi_prioritas if is_prioritas else durasi_non_prioritas
         if durasi == durasi_baru:
             continue
 
@@ -809,69 +718,124 @@ def _build_pmde_prioritas_sync_plan(pmde_group):
     }
 
 
-@login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde']).exists())
-@require_GET
-def durasi_jatuh_tempo_pmde_prioritas_sync_preview(request):
-    """Summarise the durasi values that the prioritas sync step would change.
+def _generate_preview_payload(seksi):
+    """JSON body ringkasan baris yang akan dibuat Generate Otomatis.
 
-    Applies exactly the same rules as `durasi_jatuh_tempo_pmde_prioritas_sync` —
-    see `_build_pmde_prioritas_sync_plan` — but saves nothing.
-
-    Returns JSON with `success`, `total_rows`, `total_jenis_data`,
-    `baris_ke_prioritas`/`baris_ke_non_prioritas`, the two durasi constants, and
-    `items`: one entry per affected Sub Jenis Data whose `baris` list gives the
-    periode, old durasi and new durasi of every row that changes.
-
-    Side effects: None — read-only endpoint.
+    Dipakai kedua seksi lewat endpoint masing-masing, supaya PIDE dan PMDE tidak
+    bisa perlahan berbeda aturan.
     """
-    pmde_group = Group.objects.filter(name='user_pmde').first()
-    if pmde_group is None:
-        return JsonResponse(
-            {'success': False, 'message': 'Grup seksi "user_pmde" belum tersedia.'},
-            status=400,
-        )
+    years, plan, skipped = _build_generate_plan(seksi)
 
-    plan = _build_pmde_prioritas_sync_plan(pmde_group)
+    items = [
+        {
+            'id_sub_jenis_data': entry['jenis_data'].id_sub_jenis_data,
+            'nama_sub_jenis_data': entry['jenis_data'].nama_sub_jenis_data,
+            'jumlah_baris': len(entry['ranges']),
+            'baris': [
+                {
+                    'periode': f"{start.strftime('%d-%m-%Y')} s.d. {end.strftime('%d-%m-%Y')}",
+                    'durasi': durasi,
+                    'is_prioritas': is_prioritas,
+                }
+                for start, end, durasi, is_prioritas in entry['ranges']
+            ],
+        }
+        for entry in plan
+    ]
+
+    all_rows = [row for item in items for row in item['baris']]
+
+    return {
+        'success': True,
+        'tahun_awal': years[0] if years else None,
+        'tahun_akhir': years[-1] if years else None,
+        'tahun_tersedia': years,
+        'total_rows': len(all_rows),
+        'total_jenis_data': len(items),
+        'baris_prioritas': sum(1 for row in all_rows if row['is_prioritas']),
+        'baris_non_prioritas': sum(1 for row in all_rows if not row['is_prioritas']),
+        'skipped': skipped,
+        'items': items,
+        'message_kosong': (
+            'Belum ada Aturan Durasi Jatuh Tempo untuk seksi ini. Isi dulu di menu '
+            'Aturan Durasi Jatuh Tempo — tanpa aturan, durasi tidak bisa ditentukan.'
+        ) if not years else '',
+    }
+
+
+def _generate_apply(request, seksi, label):
+    """Tulis baris yang direncanakan Generate Otomatis untuk `seksi`."""
+    years, plan, skipped = _build_generate_plan(seksi)
+
+    if not years:
+        return JsonResponse({
+            'success': False,
+            'message': (
+                'Belum ada Aturan Durasi Jatuh Tempo untuk seksi ini. Isi dulu di '
+                'menu Aturan Durasi Jatuh Tempo.'
+            ),
+        }, status=400)
+
+    if not plan:
+        return JsonResponse({
+            'success': True,
+            'created': 0,
+            'jenis_data': 0,
+            'skipped': skipped,
+            'message': (
+                f'Tidak ada Jenis Data yang perlu ditambahkan. Semua tahun sudah '
+                f'punya Durasi Jatuh Tempo {label}.'
+            ),
+        })
+
+    today = timezone.now().date()
+    username = (getattr(request.user, 'username', '') or '')[:9]
+
+    new_rows = [
+        DurasiJatuhTempo(
+            id_sub_jenis_data=entry['jenis_data'],
+            seksi=seksi,
+            durasi=durasi,
+            start_date=start_date,
+            end_date=end_date,
+            create_date=today,
+            create_by=username,
+            update_date=today,
+            update_by=username,
+        )
+        for entry in plan
+        for start_date, end_date, durasi, _is_prioritas in entry['ranges']
+    ]
+
+    with transaction.atomic():
+        DurasiJatuhTempo.objects.bulk_create(new_rows, batch_size=500)
 
     return JsonResponse({
+        'success': True,
+        'created': len(new_rows),
+        'jenis_data': len(plan),
+        'skipped': skipped,
+        'message': (
+            f'{len(new_rows)} baris Durasi Jatuh Tempo {label} berhasil dibuat untuk '
+            f'{len(plan)} Sub Jenis Data (tahun {years[0]}-{years[-1]}).'
+        ),
+    })
+
+
+def _prioritas_sync_preview_payload(seksi):
+    plan = _build_prioritas_sync_plan(seksi)
+    return {
         'success': True,
         'total_rows': len(plan['updates']),
         'total_jenis_data': len(plan['items']),
         'baris_ke_prioritas': plan['baris_ke_prioritas'],
         'baris_ke_non_prioritas': plan['baris_ke_non_prioritas'],
-        'durasi_prioritas': GENERATE_PMDE_DURASI_PRIORITAS,
-        'durasi_non_prioritas': GENERATE_PMDE_DURASI_NON_PRIORITAS,
         'items': plan['items'],
-    })
+    }
 
 
-@login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde']).exists())
-@require_POST
-def durasi_jatuh_tempo_pmde_prioritas_sync(request):
-    """Re-apply the 45/85 rule to PMDE rows whose prioritas has since changed.
-
-    Applies the rules described in `_build_pmde_prioritas_sync_plan`; the client
-    shows `durasi_jatuh_tempo_pmde_prioritas_sync_preview` first so the user can
-    confirm what will change.
-
-    Side effects: updates `durasi` (and the audit fields) on the affected
-    `DurasiJatuhTempo` rows inside a single transaction. The rows themselves are
-    kept, so tikets already pointing at them keep their reference and simply pick
-    up the new durasi.
-
-    Returns JSON with `success`, `updated` (rows changed), `jenis_data`
-    (Sub Jenis Data touched) and a ready-to-display `message`.
-    """
-    pmde_group = Group.objects.filter(name='user_pmde').first()
-    if pmde_group is None:
-        return JsonResponse(
-            {'success': False, 'message': 'Grup seksi "user_pmde" belum tersedia.'},
-            status=400,
-        )
-
-    plan = _build_pmde_prioritas_sync_plan(pmde_group)
+def _prioritas_sync_apply(request, seksi, label):
+    plan = _build_prioritas_sync_plan(seksi)
     updates = plan['updates']
 
     if not updates:
@@ -902,53 +866,183 @@ def durasi_jatuh_tempo_pmde_prioritas_sync(request):
         'updated': len(updates),
         'jenis_data': len(plan['items']),
         'message': (
-            f'{len(updates)} baris Durasi Jatuh Tempo PMDE disesuaikan untuk '
-            f'{len(plan["items"])} Sub Jenis Data ('
-            f'{plan["baris_ke_prioritas"]} baris menjadi prioritas, '
-            f'{plan["baris_ke_non_prioritas"]} baris menjadi non-prioritas).'
+            f'{len(updates)} baris Durasi Jatuh Tempo {label} disesuaikan untuk '
+            f'{len(plan["items"])} Sub Jenis Data.'
         ),
     })
 
 
-def _build_pmde_tiket_backfill_plan(pmde_group):
-    """Match every Tiket that still has no `id_durasi_jatuh_tempo_pmde` to a row.
+# ---------------------------------------------------------------------------
+# Endpoint PMDE
+# ---------------------------------------------------------------------------
+
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde']).exists())
+@require_GET
+def durasi_jatuh_tempo_pmde_generate_preview(request):
+    """Summarise the PMDE `DurasiJatuhTempo` rows that `generate` would create.
+
+    Used to confirm the operation before anything is written. Applies exactly the
+    same rules as `durasi_jatuh_tempo_pmde_generate` — see `_build_generate_plan`
+    — but saves nothing. Side effects: None.
+    """
+    seksi = _seksi_group(SEKSI_PMDE)
+    if seksi is None:
+        return _seksi_missing_response(SEKSI_PMDE)
+    return JsonResponse(_generate_preview_payload(seksi))
+
+
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde']).exists())
+@require_POST
+def durasi_jatuh_tempo_pmde_generate(request):
+    """Bulk-create the missing PMDE `DurasiJatuhTempo` rows.
+
+    Applies the rules described in `_build_generate_plan`; the client shows
+    `durasi_jatuh_tempo_pmde_generate_preview` first so the user can confirm what
+    will be inserted. Side effects: creates rows inside a single transaction.
+    """
+    seksi = _seksi_group(SEKSI_PMDE)
+    if seksi is None:
+        return _seksi_missing_response(SEKSI_PMDE)
+    return _generate_apply(request, seksi, 'PMDE')
+
+
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde']).exists())
+@require_GET
+def durasi_jatuh_tempo_pmde_prioritas_sync_preview(request):
+    """Summarise the durasi values that the PMDE prioritas sync would change.
+
+    Same rules as `durasi_jatuh_tempo_pmde_prioritas_sync` — see
+    `_build_prioritas_sync_plan` — but saves nothing. Side effects: None.
+    """
+    seksi = _seksi_group(SEKSI_PMDE)
+    if seksi is None:
+        return _seksi_missing_response(SEKSI_PMDE)
+    return JsonResponse(_prioritas_sync_preview_payload(seksi))
+
+
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde']).exists())
+@require_POST
+def durasi_jatuh_tempo_pmde_prioritas_sync(request):
+    """Re-apply each row's own rule to PMDE rows whose prioritas has changed.
+
+    Side effects: updates `durasi` (and the audit fields) on the affected rows
+    inside a single transaction. The rows themselves are kept, so tikets already
+    pointing at them keep their reference and simply pick up the new durasi.
+    """
+    seksi = _seksi_group(SEKSI_PMDE)
+    if seksi is None:
+        return _seksi_missing_response(SEKSI_PMDE)
+    return _prioritas_sync_apply(request, seksi, 'PMDE')
+
+
+# ---------------------------------------------------------------------------
+# Endpoint PIDE — mesin yang sama, grup seksi dan hak akses berbeda
+# ---------------------------------------------------------------------------
+
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pide']).exists())
+@require_GET
+def durasi_jatuh_tempo_pide_generate_preview(request):
+    """Summarise the PIDE `DurasiJatuhTempo` rows that `generate` would create."""
+    seksi = _seksi_group(SEKSI_PIDE)
+    if seksi is None:
+        return _seksi_missing_response(SEKSI_PIDE)
+    return JsonResponse(_generate_preview_payload(seksi))
+
+
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pide']).exists())
+@require_POST
+def durasi_jatuh_tempo_pide_generate(request):
+    """Bulk-create the missing PIDE `DurasiJatuhTempo` rows."""
+    seksi = _seksi_group(SEKSI_PIDE)
+    if seksi is None:
+        return _seksi_missing_response(SEKSI_PIDE)
+    return _generate_apply(request, seksi, 'PIDE')
+
+
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pide']).exists())
+@require_GET
+def durasi_jatuh_tempo_pide_prioritas_sync_preview(request):
+    """Summarise the durasi values that the PIDE prioritas sync would change."""
+    seksi = _seksi_group(SEKSI_PIDE)
+    if seksi is None:
+        return _seksi_missing_response(SEKSI_PIDE)
+    return JsonResponse(_prioritas_sync_preview_payload(seksi))
+
+
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pide']).exists())
+@require_POST
+def durasi_jatuh_tempo_pide_prioritas_sync(request):
+    """Re-apply each row's own rule to PIDE rows whose prioritas has changed."""
+    seksi = _seksi_group(SEKSI_PIDE)
+    if seksi is None:
+        return _seksi_missing_response(SEKSI_PIDE)
+    return _prioritas_sync_apply(request, seksi, 'PIDE')
+
+
+# Which Tiket column each seksi's backfill fills, and the tiket dates it matches
+# on — in priority order, the first one that is set wins.
+#
+# PMDE counts from tgl_transfer and starts again from tgl_rematch, matching the
+# Deadline in quality_control. PIDE counts from tgl_kirim_pide alone: the tiket
+# is handed to PIDE on that date, and that is the date the durasi is meant to be
+# read at, so a later tgl_rekam_pide does not move which row applies.
+TIKET_BACKFILL = {
+    SEKSI_PMDE: ('id_durasi_jatuh_tempo_pmde', ('tgl_rematch', 'tgl_transfer')),
+    SEKSI_PIDE: ('id_durasi_jatuh_tempo_pide', ('tgl_kirim_pide',)),
+}
+
+
+def _build_tiket_backfill_plan(seksi, kolom, tanggal_fields):
+    """Match every Tiket that still has no durasi for `seksi` to a row.
 
     The match follows the model relation: a tiket points at a `PeriodeJenisData`,
     which names the `JenisDataILAP`, which owns the `DurasiJatuhTempo` rows — of
-    those, the PMDE one whose range covers the tiket's base date is the answer.
+    those, the one for this seksi whose range covers the tiket's base date is the
+    answer.
 
-    The base date is `tgl_rematch` when the tiket has been rematched and
-    `tgl_transfer` otherwise, the same date `quality_control` counts the PMDE
-    deadline from. Tikets that never reached PMDE therefore have no base date and
-    are left untouched, and so is a tiket whose base date falls outside every
-    range configured for its Sub Jenis Data.
+    The base date is the first of `tanggal_fields` that is set — see
+    `TIKET_BACKFILL` for what each seksi counts from and why. A tiket that never
+    reached the seksi therefore has no base date and is left untouched, and so is
+    a tiket whose base date falls outside every range configured for its Sub Jenis
+    Data.
 
     Returns a dict with `matches` (list of ``(tiket_id, durasi_id)`` pairs),
     `per_year` (matched tikets grouped by the year of their base date),
     `unmatched` and `tanpa_tanggal`. Read-only — nothing is saved.
     """
-    # PMDE ranges per Sub Jenis Data, latest start first so the most recently
+    # Ranges per Sub Jenis Data, latest start first so the most recently
     # configured range wins when two of them cover the same date.
     ranges = {}
     for durasi_id, sub_id, start_date, end_date in DurasiJatuhTempo.objects.filter(
-        seksi=pmde_group
+        seksi=seksi
     ).values_list('id', 'id_sub_jenis_data_id', 'start_date', 'end_date'):
         ranges.setdefault(sub_id, []).append((start_date, end_date or _date.max, durasi_id))
     for entries in ranges.values():
         entries.sort(key=lambda entry: entry[0], reverse=True)
 
-    empty = Tiket.objects.filter(id_durasi_jatuh_tempo_pmde__isnull=True)
-    tanpa_tanggal = empty.filter(tgl_transfer__isnull=True, tgl_rematch__isnull=True).count()
+    empty = Tiket.objects.filter(**{f'{kolom}__isnull': True})
+    # Passing every date field to one filter() ANDs them, so this counts the
+    # tikets with none of them set — and exclude() of the same lookup keeps the
+    # tikets with at least one.
+    tanpa_semua_tanggal = {f'{field}__isnull': True for field in tanggal_fields}
+    tanpa_tanggal = empty.filter(**tanpa_semua_tanggal).count()
 
     matches = []
     per_year = {}
     unmatched = 0
-    for tiket_id, sub_id, tgl_transfer, tgl_rematch in empty.exclude(
-        tgl_transfer__isnull=True, tgl_rematch__isnull=True
-    ).values_list(
-        'id', 'id_periode_data__id_sub_jenis_data_ilap_id', 'tgl_transfer', 'tgl_rematch'
+    for row in empty.exclude(**tanpa_semua_tanggal).values_list(
+        'id', 'id_periode_data__id_sub_jenis_data_ilap_id', *tanggal_fields
     ).iterator(chunk_size=2000):
-        base = tgl_rematch or tgl_transfer
+        tiket_id, sub_id = row[0], row[1]
+        base = next((value for value in row[2:] if value), None)
         base_date = base.date() if hasattr(base, 'date') else base
         for start_date, end_date, durasi_id in ranges.get(sub_id, ()):
             if start_date <= base_date <= end_date:
@@ -966,16 +1060,80 @@ def _build_pmde_tiket_backfill_plan(pmde_group):
     }
 
 
+def _tiket_backfill_preview_payload(seksi_name):
+    """Read-only summary of what `_tiket_backfill_apply` would fill in."""
+    seksi = _seksi_group(seksi_name)
+    if seksi is None:
+        return None
+
+    kolom, tanggal_fields = TIKET_BACKFILL[seksi_name]
+    plan = _build_tiket_backfill_plan(seksi, kolom, tanggal_fields)
+
+    return {
+        'success': True,
+        'total_tiket': len(plan['matches']),
+        'per_year': plan['per_year'],
+        'unmatched': plan['unmatched'],
+        'tanpa_tanggal': plan['tanpa_tanggal'],
+    }
+
+
+def _tiket_backfill_apply(seksi_name, label, tanggal_label):
+    """Fill the empty durasi column on the matched tikets.
+
+    Only rows that are currently NULL are considered, so a value already recorded
+    is never overwritten and re-running is a no-op.
+    """
+    seksi = _seksi_group(seksi_name)
+    if seksi is None:
+        return None
+
+    kolom, tanggal_fields = TIKET_BACKFILL[seksi_name]
+    plan = _build_tiket_backfill_plan(seksi, kolom, tanggal_fields)
+    matches = plan['matches']
+
+    if not matches:
+        return {
+            'success': True,
+            'updated': 0,
+            'unmatched': plan['unmatched'],
+            'tanpa_tanggal': plan['tanpa_tanggal'],
+            'message': f'Tidak ada Tiket yang perlu diisi Durasi Jatuh Tempo {label}-nya.',
+        }
+
+    with transaction.atomic():
+        Tiket.objects.bulk_update(
+            [Tiket(id=tiket_id, **{f'{kolom}_id': durasi_id}) for tiket_id, durasi_id in matches],
+            [kolom],
+            batch_size=500,
+        )
+
+    message = f'{len(matches)} Tiket berhasil diisi Durasi Jatuh Tempo {label}-nya.'
+    if plan['unmatched']:
+        message += (
+            f' {plan["unmatched"]} Tiket dilewati karena tidak ada durasi yang '
+            f'berlaku pada {tanggal_label}-nya.'
+        )
+
+    return {
+        'success': True,
+        'updated': len(matches),
+        'unmatched': plan['unmatched'],
+        'tanpa_tanggal': plan['tanpa_tanggal'],
+        'message': message,
+    }
+
+
 @login_required
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde']).exists())
 @require_GET
 def durasi_jatuh_tempo_pmde_tiket_backfill_preview(request):
     """Summarise the tikets that the backfill step would fill in.
 
-    Second step of Generate Otomatis: once the PMDE `DurasiJatuhTempo` rows exist,
+    Third step of Generate Otomatis: once the PMDE `DurasiJatuhTempo` rows exist,
     the tikets that were imported without one can be pointed at them. Applies
     exactly the same matching as `durasi_jatuh_tempo_pmde_tiket_backfill` — see
-    `_build_pmde_tiket_backfill_plan` — but saves nothing.
+    `_build_tiket_backfill_plan` — but saves nothing.
 
     Returns JSON with `success`, `total_tiket` (rows that would be updated),
     `per_year` (breakdown by year of the base date), `unmatched` (tikets whose
@@ -984,22 +1142,10 @@ def durasi_jatuh_tempo_pmde_tiket_backfill_preview(request):
 
     Side effects: None — read-only endpoint.
     """
-    pmde_group = Group.objects.filter(name='user_pmde').first()
-    if pmde_group is None:
-        return JsonResponse(
-            {'success': False, 'message': 'Grup seksi "user_pmde" belum tersedia.'},
-            status=400,
-        )
-
-    plan = _build_pmde_tiket_backfill_plan(pmde_group)
-
-    return JsonResponse({
-        'success': True,
-        'total_tiket': len(plan['matches']),
-        'per_year': plan['per_year'],
-        'unmatched': plan['unmatched'],
-        'tanpa_tanggal': plan['tanpa_tanggal'],
-    })
+    payload = _tiket_backfill_preview_payload(SEKSI_PMDE)
+    if payload is None:
+        return _seksi_missing_response(SEKSI_PMDE)
+    return JsonResponse(payload)
 
 
 @login_required
@@ -1008,9 +1154,9 @@ def durasi_jatuh_tempo_pmde_tiket_backfill_preview(request):
 def durasi_jatuh_tempo_pmde_tiket_backfill(request):
     """Fill the empty `Tiket.id_durasi_jatuh_tempo_pmde` columns.
 
-    Applies the matching described in `_build_pmde_tiket_backfill_plan`; the
-    client shows `durasi_jatuh_tempo_pmde_tiket_backfill_preview` first so the
-    user can confirm how many tikets will be touched.
+    Applies the matching described in `_build_tiket_backfill_plan`; the client
+    shows `durasi_jatuh_tempo_pmde_tiket_backfill_preview` first so the user can
+    confirm how many tikets will be touched.
 
     Side effects: updates `id_durasi_jatuh_tempo_pmde` on the matched tikets
     inside a single transaction. Only rows that are currently NULL are considered,
@@ -1019,46 +1165,38 @@ def durasi_jatuh_tempo_pmde_tiket_backfill(request):
     Returns JSON with `success`, `updated`, `unmatched`, `tanpa_tanggal` and a
     ready-to-display `message`.
     """
-    pmde_group = Group.objects.filter(name='user_pmde').first()
-    if pmde_group is None:
-        return JsonResponse(
-            {'success': False, 'message': 'Grup seksi "user_pmde" belum tersedia.'},
-            status=400,
-        )
+    payload = _tiket_backfill_apply(SEKSI_PMDE, 'PMDE', 'tanggal transfer/rematch')
+    if payload is None:
+        return _seksi_missing_response(SEKSI_PMDE)
+    return JsonResponse(payload)
 
-    plan = _build_pmde_tiket_backfill_plan(pmde_group)
-    matches = plan['matches']
 
-    if not matches:
-        return JsonResponse({
-            'success': True,
-            'updated': 0,
-            'unmatched': plan['unmatched'],
-            'tanpa_tanggal': plan['tanpa_tanggal'],
-            'message': 'Tidak ada Tiket yang perlu diisi Durasi Jatuh Tempo PMDE-nya.',
-        })
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pide']).exists())
+@require_GET
+def durasi_jatuh_tempo_pide_tiket_backfill_preview(request):
+    """Summarise the tikets that the PIDE backfill step would fill in.
 
-    with transaction.atomic():
-        Tiket.objects.bulk_update(
-            [
-                Tiket(id=tiket_id, id_durasi_jatuh_tempo_pmde_id=durasi_id)
-                for tiket_id, durasi_id in matches
-            ],
-            ['id_durasi_jatuh_tempo_pmde'],
-            batch_size=500,
-        )
+    Same shape as the PMDE endpoint, matching on `tgl_kirim_pide` instead — see
+    `TIKET_BACKFILL`. Read-only.
+    """
+    payload = _tiket_backfill_preview_payload(SEKSI_PIDE)
+    if payload is None:
+        return _seksi_missing_response(SEKSI_PIDE)
+    return JsonResponse(payload)
 
-    message = f'{len(matches)} Tiket berhasil diisi Durasi Jatuh Tempo PMDE-nya.'
-    if plan['unmatched']:
-        message += (
-            f' {plan["unmatched"]} Tiket dilewati karena tidak ada durasi yang '
-            'berlaku pada tanggal transfer/rematch-nya.'
-        )
 
-    return JsonResponse({
-        'success': True,
-        'updated': len(matches),
-        'unmatched': plan['unmatched'],
-        'tanpa_tanggal': plan['tanpa_tanggal'],
-        'message': message,
-    })
+@login_required
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pide']).exists())
+@require_POST
+def durasi_jatuh_tempo_pide_tiket_backfill(request):
+    """Fill the empty `Tiket.id_durasi_jatuh_tempo_pide` columns.
+
+    Side effects: updates `id_durasi_jatuh_tempo_pide` on the matched tikets
+    inside a single transaction. Only rows that are currently NULL are considered,
+    so a value already recorded is never overwritten and re-running is a no-op.
+    """
+    payload = _tiket_backfill_apply(SEKSI_PIDE, 'PIDE', 'tanggal kirim ke PIDE')
+    if payload is None:
+        return _seksi_missing_response(SEKSI_PIDE)
+    return JsonResponse(payload)

@@ -243,6 +243,18 @@
 
                 {% if user|has_group:"admin" or user|has_group:"admin_pide" %}
                 <li class="nxl-item nxl-caption"><label>Admin PIDE</label></li>
+                {% comment %}
+                Aturan Durasi Jatuh Tempo berdiri tepat di atas Durasi Jatuh
+                Tempo karena aturan inilah yang menentukan angka yang dihasilkan
+                Generate Otomatis di menu bawahnya — urutan menunya mengikuti
+                urutan pengerjaannya.
+                {% endcomment %}
+                <li class="nxl-item">
+                    <a class="nxl-link" href="{% url 'aturan_durasi_jatuh_tempo_list' %}">
+                        <span class="nxl-micon"><i class="feather-sliders"></i></span>
+                        <span class="nxl-mtext">Aturan Durasi Jatuh Tempo</span>
+                    </a>
+                </li>
                 <li class="nxl-item">
                     <a class="nxl-link" href="{% url 'durasi_jatuh_tempo_pide_list' %}">
                         <span class="nxl-micon"><i class="feather-clock"></i></span>
@@ -262,8 +274,9 @@
                     </a>
                 </li>
                 {% comment %}
-                Menu bersama: sengaja diulang di akar tiap blok admin seksi,
-                supaya tiap seksi menemukannya di tempat yang sama.
+                Menu bersama: Data Prioritas dan Aturan Durasi Jatuh Tempo
+                sengaja diulang di akar tiap blok admin seksi, supaya tiap seksi
+                menemukannya di tempat yang sama.
                 {% endcomment %}
                 <li class="nxl-item">
                     <a class="nxl-link" href="{% url 'jenis_prioritas_data_list' %}">
@@ -275,6 +288,13 @@
 
                 {% if user|has_group:"admin" or user|has_group:"admin_pmde" %}
                 <li class="nxl-item nxl-caption"><label>Admin PMDE</label></li>
+                {# Urutan aturan lalu durasi: lihat catatan di blok Admin PIDE. #}
+                <li class="nxl-item">
+                    <a class="nxl-link" href="{% url 'aturan_durasi_jatuh_tempo_list' %}">
+                        <span class="nxl-micon"><i class="feather-sliders"></i></span>
+                        <span class="nxl-mtext">Aturan Durasi Jatuh Tempo</span>
+                    </a>
+                </li>
                 <li class="nxl-item">
                     <a class="nxl-link" href="{% url 'durasi_jatuh_tempo_pmde_list' %}">
                         <span class="nxl-micon"><i class="feather-clock"></i></span>

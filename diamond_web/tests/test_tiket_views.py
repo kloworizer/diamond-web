@@ -155,9 +155,17 @@ class TestTiketIdentifikasiView:
         pide_group, _ = Group.objects.get_or_create(name='user_pide')
         pmde_group, _ = Group.objects.get_or_create(name='user_pmde')
 
-        # Build ILAP hierarchy: JenisDataILAP → PeriodeJenisData
+        # Build ILAP hierarchy: JenisDataILAP → PeriodeJenisData.
+        # The periode dates are pinned: PeriodeJenisDataFactory draws them at
+        # random, and TiketForm.clean() rejects a Tanggal Terima DIP past the
+        # periode's end_date — so leaving them random made this test pass or fail
+        # depending on the draw.
         jenis_data = JenisDataILAPFactory()
-        periode = PeriodeJenisDataFactory(id_sub_jenis_data_ilap=jenis_data)
+        periode = PeriodeJenisDataFactory(
+            id_sub_jenis_data_ilap=jenis_data,
+            start_date=date(2000, 1, 1),
+            end_date=None,
+        )
         bentuk = BentukDataFactory()
         cara = CaraPenyampaianFactory()
 

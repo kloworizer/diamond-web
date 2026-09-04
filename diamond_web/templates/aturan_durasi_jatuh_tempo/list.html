@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+
+{% block content %}
+<div class="page-header">
+        <div class="page-header-left d-flex align-items-center">
+            <div class="page-header-title">
+                <h5 class="m-b-10">
+                    <i class="feather-clock me-2"></i>Aturan Durasi Jatuh Tempo
+                </h5>
+            </div>
+            <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item"><a href="javascript:void(0);">Admin PIDE / PMDE</a></li>
+                <li class="breadcrumb-item active">Aturan Durasi Jatuh Tempo</li>
+            </ul>
+        </div>
+        <div class="page-header-right ms-auto">
+            <div class="page-header-right-items">
+                <div class="d-flex d-md-none">
+                    <a href="javascript:void(0)" class="page-header-right-close-toggle">
+                        <i class="feather-arrow-left me-2"></i>
+                        <span>Kembali</span>
+                    </a>
+                </div>
+            </div>
+            <div class="d-md-none d-flex align-items-center">
+                <a href="javascript:void(0)" class="page-header-right-open-toggle">
+                    <i class="feather-align-right fs-20"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+    <div class="card stretch stretch-full datatable-card">
+        <div class="card-header">
+            <h5 class="card-title"><i class="feather-clock me-2"></i>Daftar Aturan Durasi Jatuh Tempo</h5>
+            <button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>
+        </div>
+        <div class="card-body custom-card-action p-0">
+            <div class="table-responsive">
+            <table id="aturan-durasi-table" class="table table-hover mb-0" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>Seksi</th>
+                        <th>Tahun</th>
+                        <th>Cakupan</th>
+                        <th>Durasi Prioritas</th>
+                        <th>Durasi Non Prioritas</th>
+                        <th class="col-actions text-center">Aksi</th>
+                    </tr>
+                    <tr id="column-search-row">
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Seksi" data-column="0" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Tahun" data-column="1" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Cakupan" data-column="2" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Durasi" data-column="3" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Durasi" data-column="4" /></th>
+                        <th class="col-actions"></th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+
+        <!-- Modal for Create/Edit/Delete -->
+    <div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" id="modalContent">
+                <!-- Content will be loaded here dynamically via AJAX -->
+            </div>
+        </div>
+    </div>
+    </div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+    (function () {
+        const ajaxUrl = "{% url 'aturan_durasi_jatuh_tempo_data' %}";
+        let table;
+
+            $(document).ready(function () {
+                table = $('#aturan-durasi-table').DataTable({
+                    serverSide: true,
+                    processing: true,
+                    paging: true,
+                    pageLength: 10,
+                    ajax: {
+                        url: ajaxUrl,
+                        dataSrc: 'data',
+                        data: function (d) {
+                            // Add column search values
+                            d.columns_search = [];
+                            $('#column-search-row input').each(function (i) {
+                                d.columns_search[i] = $(this).val();
+                            });
+                            return d;
+                        }
+                    },
+                    columns: [
+                        { data: 'seksi' },
+                        { data: 'tahun' },
+                        { data: 'cakupan' },
+                        { data: 'durasi_prioritas', render: (d) => d + ' hari' },
+                        { data: 'durasi_non_prioritas', render: (d) => d + ' hari' },
+                        { data: 'actions', orderable: false, searchable: false }
+                    ],
+                    columnDefs: [
+                        { targets: 5, className: "col-actions text-center", width: "90px", render: function (data, type, row, meta) { return '<div class="d-flex justify-content-center gap-1">' + data + '</div>'; } }
+                    ],
+                    order: [[1, 'desc']],
+                    searching: false,
+                    layout: {
+                        topStart: null,
+                        topEnd: null,
+                        bottomStart: null,
+                        bottomEnd: null
+                    },
+                    drawCallback: function(settings) {
+                        updatePagination(settings);
+                    }
+                });
+
+                // Add individual column search
+                $('#column-search-row input').on('keyup change', function () {
+                    table.ajax.reload();
+                });
+
+                // Handle create button
+                $('[data-action="create"]').on('click', function () {
+                    loadModal('{% url "aturan_durasi_jatuh_tempo_create" %}', 'Tambah Aturan Durasi Jatuh Tempo');
+                });
+
+                // Handle edit/delete buttons (delegated event)
+                $(document).on('click', '[data-action="edit"]', function (e) {
+                    e.preventDefault();
+                    const url = $(this).data('url');
+                    loadModal(url, 'Ubah Aturan Durasi Jatuh Tempo');
+                });
+
+                $(document).on('click', '[data-action="delete"]', function (e) {
+                    e.preventDefault();
+                    const url = $(this).data('url');
+                    loadModal(url, 'Hapus Aturan Durasi Jatuh Tempo');
+                });
+
+                // Handle form submission
+                $(document).on('submit', '#crudModal form', function (e) {
+                    e.preventDefault();
+                    const form = $(this);
+                    const url = form.attr('action');
+                    const formData = new FormData(form[0]);
+
+                    $.ajax({
+                        url: url,
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        success: function (response) {
+                            if (response.success) {
+                                $('#crudModal').modal('hide');
+                                table.ajax.reload();
+                                showToast(response.message || 'Data berhasil disimpan.', 'success');
+                            } else {
+                                $('#modalContent').html(response.html || response);
+                            }
+                        },
+                        error: function (xhr) {
+                            try {
+                                const response = JSON.parse(xhr.responseText);
+                                if (response.message) {
+                                    showToast(response.message, 'danger');
+                                } else {
+                                    showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                                }
+                            } catch (e) {
+                                showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger');
+                            }
+                        }
+                    });
+                });
+
+                const modalElement = document.getElementById('crudModal');
+                modalElement.addEventListener('hidden.bs.modal', function () {
+                    document.getElementById('modalContent').innerHTML = '';
+                });
+            });
+
+                    function loadModal(url, title) {
+            var dialog = $('#crudModal .modal-dialog');
+            dialog.removeClass('modal-sm modal-lg modal-xl modal-adjustable').addClass('modal-lg');
+            
+            $('#modalContent').html(`
+                <div class="modal-header">
+                    <h5 class="modal-title" id="crudModalLabel">${title}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+            `);
+            $('#crudModal').modal('show');
+
+            $.ajax({
+                url: url,
+                type: 'GET',
+                data: { ajax: '1' },
+                success: function (response) {
+                    var htmlContent = response.html || response;
+                    
+                    // Gracefully redirect to login if session has expired
+                    if (typeof htmlContent === 'string' && htmlContent.indexOf('Login') !== -1 && htmlContent.indexOf('password') !== -1) {
+                        window.location.href = '/accounts/login/?next=' + window.location.pathname;
+                        return;
+                    }
+                    
+                    $('#modalContent').html(htmlContent);
+                    $('#crudModalLabel').text(title);
+                    
+                    var modalSize = $('#modalContent form').data('modal-size') || 'lg';
+                    dialog.removeClass('modal-sm modal-lg modal-xl modal-adjustable');
+                    if (modalSize === 'sm') dialog.addClass('modal-sm');
+                    else if (modalSize === 'lg') dialog.addClass('modal-lg');
+                    else if (modalSize === 'xl') dialog.addClass('modal-xl');
+                    else if (modalSize === 'adjustable') dialog.addClass('modal-adjustable');
+                },
+                error: function () {
+                    $('#modalContent').html(`
+                        <div class="modal-header">
+                            <h5 class="modal-title">${title}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-danger mb-0">Gagal memuat form.</div>
+                        </div>
+                    `);
+                }
+            });
+        }
+
+            function updatePagination(settings) {
+                const api = settings.oInstance.api();
+                const totalPages = Math.ceil(api.page.info().recordsTotal / api.page.info().length);
+                const currentPage = api.page.info().page + 1;
+                let paginationHtml = '';
+
+                // Previous button
+                paginationHtml += '<li><a href="javascript:void(0);" class="' + (currentPage === 1 ? 'disabled' : '') + '" data-page="prev"><i class="bi bi-arrow-left"></i></a></li>';
+
+                // Page numbers
+                for (let i = 1; i <= totalPages; i++) {
+                    paginationHtml += '<li><a href="javascript:void(0);" class="' + (i === currentPage ? 'active' : '') + '" data-page="' + i + '">' + i + '</a></li>';
+                }
+
+                // Next button
+                paginationHtml += '<li><a href="javascript:void(0);" class="' + (currentPage === totalPages ? 'disabled' : '') + '" data-page="next"><i class="bi bi-arrow-right"></i></a></li>';
+
+                $('#pagination-wrapper').html(paginationHtml);
+
+                // Pagination click handlers
+                $('#pagination-wrapper a').on('click', function (e) {
+                    e.preventDefault();
+                    const page = $(this).data('page');
+                    
+                    if (page === 'prev') {
+                        api.page('previous').draw('page');
+                    } else if (page === 'next') {
+                        api.page('next').draw('page');
+                    } else {
+                        api.page(page - 1).draw('page');
+                    }
+                });
+            }
+
+            function showToast(message, type = 'info', title = null) {
+                const toastId = 'toast-' + Date.now();
+                const bgClass = type === 'success' ? 'bg-success' : type === 'danger' ? 'bg-danger' : type === 'warning' ? 'bg-warning' : 'bg-info';
+                const defaultTitles = {
+                    'success': 'Berhasil',
+                    'danger': 'Kesalahan',
+                    'warning': 'Peringatan',
+                    'info': 'Informasi'
+                };
+                const displayTitle = title || defaultTitles[type] || 'Pemberitahuan';
+                const toastHtml = `
+                    <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+                        <div class="toast-header ${bgClass} text-white">
+                            <strong class="me-auto">${displayTitle}</strong>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                    </div>
+                `;
+                $('body').append(toastHtml);
+                const toastElement = document.getElementById(toastId);
+                const toast = new bootstrap.Toast(toastElement);
+                toast.show();
+                toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
+            }
+
+        })();
+    </script>
+    {% endblock %}
+</body>
+
+</html>

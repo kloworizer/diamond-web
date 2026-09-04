@@ -280,6 +280,12 @@ urlpatterns = [
     # Durasi Jatuh Tempo PIDE URLs
     path('durasi-jatuh-tempo-pide/', views.DurasiJatuhTempoPIDEListView.as_view(), name='durasi_jatuh_tempo_pide_list'),
     path('durasi-jatuh-tempo-pide/data/', views.durasi_jatuh_tempo_pide_data, name='durasi_jatuh_tempo_pide_data'),
+    path('durasi-jatuh-tempo-pide/generate/preview/', views.durasi_jatuh_tempo_pide_generate_preview, name='durasi_jatuh_tempo_pide_generate_preview'),
+    path('durasi-jatuh-tempo-pide/generate/', views.durasi_jatuh_tempo_pide_generate, name='durasi_jatuh_tempo_pide_generate'),
+    path('durasi-jatuh-tempo-pide/prioritas-sync/preview/', views.durasi_jatuh_tempo_pide_prioritas_sync_preview, name='durasi_jatuh_tempo_pide_prioritas_sync_preview'),
+    path('durasi-jatuh-tempo-pide/prioritas-sync/', views.durasi_jatuh_tempo_pide_prioritas_sync, name='durasi_jatuh_tempo_pide_prioritas_sync'),
+    path('durasi-jatuh-tempo-pide/tiket-backfill/preview/', views.durasi_jatuh_tempo_pide_tiket_backfill_preview, name='durasi_jatuh_tempo_pide_tiket_backfill_preview'),
+    path('durasi-jatuh-tempo-pide/tiket-backfill/', views.durasi_jatuh_tempo_pide_tiket_backfill, name='durasi_jatuh_tempo_pide_tiket_backfill'),
     path('durasi-jatuh-tempo-pide/create/', views.DurasiJatuhTempoPIDECreateView.as_view(), name='durasi_jatuh_tempo_pide_create'),
     path('durasi-jatuh-tempo-pide/<int:pk>/update/', views.DurasiJatuhTempoPIDEUpdateView.as_view(), name='durasi_jatuh_tempo_pide_update'),
     path('durasi-jatuh-tempo-pide/<int:pk>/delete/', views.DurasiJatuhTempoPIDEDeleteView.as_view(), name='durasi_jatuh_tempo_pide_delete'),
@@ -319,6 +325,11 @@ urlpatterns = [
     path('pic-pmde/<int:pk>/delete/', views.PICPMDEDeleteView.as_view(), name='pic_pmde_delete'),
 
     # Durasi Jatuh Tempo PMDE URLs
+    path('aturan-durasi-jatuh-tempo/', views.AturanDurasiJatuhTempoListView.as_view(), name='aturan_durasi_jatuh_tempo_list'),
+    path('aturan-durasi-jatuh-tempo/data/', views.aturan_durasi_jatuh_tempo_data, name='aturan_durasi_jatuh_tempo_data'),
+    path('aturan-durasi-jatuh-tempo/create/', views.AturanDurasiJatuhTempoCreateView.as_view(), name='aturan_durasi_jatuh_tempo_create'),
+    path('aturan-durasi-jatuh-tempo/<int:pk>/update/', views.AturanDurasiJatuhTempoUpdateView.as_view(), name='aturan_durasi_jatuh_tempo_update'),
+    path('aturan-durasi-jatuh-tempo/<int:pk>/delete/', views.AturanDurasiJatuhTempoDeleteView.as_view(), name='aturan_durasi_jatuh_tempo_delete'),
     path('durasi-jatuh-tempo-pmde/', views.DurasiJatuhTempoPMDEListView.as_view(), name='durasi_jatuh_tempo_pmde_list'),
     path('durasi-jatuh-tempo-pmde/data/', views.durasi_jatuh_tempo_pmde_data, name='durasi_jatuh_tempo_pmde_data'),
     path('durasi-jatuh-tempo-pmde/generate/preview/', views.durasi_jatuh_tempo_pmde_generate_preview, name='durasi_jatuh_tempo_pmde_generate_preview'),

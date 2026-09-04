@@ -183,7 +183,11 @@ class PeriodePengirimanFactory(DjangoModelFactory):
     class Meta:
         model = PeriodePengiriman
 
-    periode_penyampaian = factory.LazyFunction(lambda: fake.word().title())
+    # periode_penyampaian is unique in the database, and fake.word() draws from a
+    # list of a few hundred words — so a long enough run was bound to draw the
+    # same one twice and fail with an IntegrityError somewhere unrelated. The
+    # sequence number makes a collision impossible.
+    periode_penyampaian = factory.Sequence(lambda n: f'{fake.word().title()} {n}')
     periode_penerimaan = factory.LazyFunction(lambda: fake.word().title())
 
 
