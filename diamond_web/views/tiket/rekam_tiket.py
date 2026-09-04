@@ -23,6 +23,7 @@ from ...models.backup_data import BackupData
 from ...models.media_backup import MediaBackup
 from ...constants.tiket_action_types import TiketActionType, PICActionType, BackupActionType
 from ...forms.tiket import TiketForm
+from ...utils.jenis_prioritas import resolve_jenis_prioritas
 from ..mixins import UserFormKwargsMixin, UserP3DERequiredMixin, get_active_p3de_ilap_ids
 from ...constants.tiket_status import STATUS_DIREKAM, STATUS_SELESAI
 
@@ -214,54 +215,60 @@ class ILAPPeriodeDataAPIView(View):
 
 
 class CheckJenisPrioritasAPIView(View):
-    """AJAX API endpoint to check if jenis prioritas data exists for a sub jenis data.
+    """AJAX API endpoint yang menjawab: apakah tiket ini akan jadi Data Prioritas?
 
-    Used during tiket creation to determine if priority data exists for the
-    selected sub jenis data and tahun (year), which may affect workflow or
-    display of additional fields.
+    Dipakai badge "Data Prioritas" pada form Rekam Tiket. Jawabannya sengaja
+    dihitung dengan fungsi yang sama persis dengan yang dipakai
+    ``TiketRekamCreateView.form_valid`` saat menyimpan
+    (:func:`~diamond_web.utils.jenis_prioritas.resolve_jenis_prioritas`), supaya
+    badge tidak pernah menjanjikan sesuatu yang berbeda dari isi tiket.
 
     HTTP Method: GET
+
     URL Parameters:
-    - jenis_data_id: Sub jenis data identifier (e.g., 'KM0330101')
-    - tahun: Year (e.g., '2026')
+    - periode_data_id: pk PeriodeJenisData yang dipilih di form (dari sini Sub
+      Jenis Data ILAP-nya diambil, sama seperti alur penyimpanan).
+    - tanggal: tanggal terima DIP dalam format ISO ``YYYY-MM-DD``.
 
-    Returns JSON with success flag and has_prioritas boolean.
+    Sebelumnya endpoint ini menerima ``jenis_data_id`` + ``tahun`` dan mencocokkan
+    field Tahun record prioritas. Itu ikut berubah bersama aturannya: yang
+    menentukan adalah masa berlaku record terhadap tanggal terima DIP.
 
-    Database Queries:
-    - Filters JenisPrioritasData by:
-        * id_sub_jenis_data_ilap__id_sub_jenis_data = jenis_data_id
-        * tahun = tahun (as string)
-    - Returns existence check result (no full object needed)
+    Returns JSON: ``success``, ``has_prioritas``, dan ``label`` record yang cocok
+    (kosong bila tidak ada).
     """
-    
-    def get(self, request, jenis_data_id, tahun):
-        """Handle GET request: check if priority data exists for sub jenis data and year.
+
+    def get(self, request, periode_data_id, tanggal):
+        """Handle GET request: apakah tiket dengan tanggal terima DIP ini prioritas?
 
         Args:
             request: The HTTP request object.
-            jenis_data_id: Sub jenis data identifier string (e.g., 'KM0330101').
-            tahun: Year string to check priority data existence for.
+            periode_data_id: pk PeriodeJenisData yang dipilih.
+            tanggal: Tanggal terima DIP, format ISO ``YYYY-MM-DD``.
 
         Returns:
-            JsonResponse: With success flag and has_prioritas boolean.
-                         Returns 400 with error message on failure.
-
-        Database Queries:
-            Filters JenisPrioritasData by sub jenis data and year.
+            JsonResponse: ``success``, ``has_prioritas``, ``label``.
+                          400 dengan pesan error bila gagal.
         """
         try:
-            from ...models.jenis_data_ilap import JenisDataILAP
-            
-            # Check if jenis prioritas exists for this jenis data and tahun
-            # jenis_data_id is a string like 'KM0330101'
-            has_prioritas = JenisPrioritasData.objects.filter(
-                id_sub_jenis_data_ilap__id_sub_jenis_data=jenis_data_id,
-                tahun=str(tahun)
-            ).exists()
-            
+            periode_data = PeriodeJenisData.objects.select_related(
+                'id_sub_jenis_data_ilap'
+            ).filter(pk=periode_data_id).first()
+            if periode_data is None:
+                return JsonResponse(
+                    {'success': False, 'error': 'Periode Jenis Data tidak ditemukan'},
+                    status=400,
+                )
+
+            jenis_prioritas = resolve_jenis_prioritas(
+                periode_data.id_sub_jenis_data_ilap,
+                datetime.strptime(tanggal, '%Y-%m-%d').date(),
+            )
+
             return JsonResponse({
                 'success': True,
-                'has_prioritas': has_prioritas
+                'has_prioritas': jenis_prioritas is not None,
+                'label': str(jenis_prioritas) if jenis_prioritas else '',
             })
         except Exception as e:
             return JsonResponse({
@@ -541,14 +548,14 @@ class TiketRekamCreateView(LoginRequiredMixin, UserP3DERequiredMixin, UserFormKw
                 else:  # Data Tersedia
                     self.object.status_tiket = STATUS_DIREKAM
 
-                tahun = form.cleaned_data.get('tahun')
-                if tahun:
-                    jenis_prioritas = JenisPrioritasData.objects.filter(
-                        id_sub_jenis_data_ilap=periode_jenis_data.id_sub_jenis_data_ilap,
-                        tahun=str(tahun)
-                    ).first()
-                    if jenis_prioritas:
-                        self.object.id_jenis_prioritas_data = jenis_prioritas
+                # Prioritas ditentukan oleh masa berlaku record Data Prioritas
+                # terhadap tanggal terima DIP tiket — bukan oleh field Tahun,
+                # yang merupakan tahun isi data dan bisa jauh lebih tua dari
+                # tanggal penerimaannya. Lihat utils/jenis_prioritas.py.
+                self.object.id_jenis_prioritas_data = resolve_jenis_prioritas(
+                    periode_jenis_data.id_sub_jenis_data_ilap,
+                    self.object.tgl_terima_dip,
+                )
 
                 self._set_durasi_fields(periode_jenis_data, today)
                 self.object.save()

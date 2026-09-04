@@ -1116,7 +1116,7 @@ Mapping dari kolom hasil query Oracle ke model Django `Tiket`:
 | `old_db` | `old_db` (selalu 1) | Boolean |
 | `status_tiket` | `status_tiket` (numerik 1-8) | Integer |
 | `id_periode_data` | `periode_jenis_data_obj` (FK via lookup cache) | FK PeriodeJenisData |
-| `id_jenis_prioritas_data` | `jenis_prioritas_data` (parsed via _parse_jenis_prioritas_data) | FK JenisPrioritasData |
+| `id_jenis_prioritas_data` | **tidak diambil dari Oracle** — dicocokkan lokal dari masa berlaku record Data Prioritas terhadap `tgl_terima_dip` (`PrioritasIndex`, lihat `utils/jenis_prioritas.py`). Kolom Oracle `jenis_prioritas_data` diabaikan. | FK JenisPrioritasData |
 | `periode` | `periode_data` (parsed via _map_periode_data) | Integer |
 | `tahun` | `tahun_data` | Integer |
 | `penyampaian` | `penyampaian` (ROW_NUMBER) | Integer |

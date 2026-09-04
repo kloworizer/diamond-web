@@ -47,7 +47,7 @@ Aplikasi ini menggunakan autentikasi berbasis sesi bawaan Django. Semua endpoint
 | Method | URL | Deskripsi | Autentikasi |
 |--------|-----|-------------|------|
 | `GET` | `/api/ilap/<ilap_id>/periode-jenis-data/` | Ambil data periode untuk ILAP | ✓ |
-| `GET` | `/api/check-jenis-prioritas/<jenis_data_id>/<tahun>/` | Periksa status prioritas data | ✓ |
+| `GET` | `/api/check-jenis-prioritas/<periode_data_id>/<tanggal>/` | Periksa status prioritas data pada tanggal terima DIP (`tanggal` format `YYYY-MM-DD`) | ✓ |
 | `GET` | `/api/check-tiket-exists/` | Periksa apakah tiket sudah ada | ✓ |
 | `GET` | `/api/preview-nomor-tiket/` | Pratinjau nomor tiket yang dihasilkan otomatis | ✓ |
 | `GET` | `/api/ilap/<ilap_id>/periode-jenis-data/` | Ambil tipe data periode ILAP | ✓ |

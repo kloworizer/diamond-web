@@ -208,8 +208,18 @@
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'jenis_data_ilap_list' %}">Jenis Data ILAP</a></li>
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'klasifikasi_jenis_data_list' %}">Klasifikasi Jenis Data</a></li>
                         <li class="nxl-item"><a class="nxl-link" href="{% url 'periode_jenis_data_list' %}">Periode Jenis Data</a></li>
-                        <li class="nxl-item"><a class="nxl-link" href="{% url 'jenis_prioritas_data_list' %}">Data Prioritas</a></li>
                     </ul>
+                </li>
+                {% comment %}
+                Data Prioritas dikelola bersama ketiga seksi, jadi tautannya
+                berdiri sendiri di akar tiap blok admin — bukan submenu
+                Kelola ILAP yang khusus P3DE.
+                {% endcomment %}
+                <li class="nxl-item">
+                    <a class="nxl-link" href="{% url 'jenis_prioritas_data_list' %}">
+                        <span class="nxl-micon"><i class="feather-star"></i></span>
+                        <span class="nxl-mtext">Data Prioritas</span>
+                    </a>
                 </li>
                 <li class="nxl-item">
                     <a class="nxl-link" href="{% url 'pic_unified_list' %}?tab=p3de">
@@ -251,6 +261,16 @@
                         <span class="nxl-mtext">PIC PIDE</span>
                     </a>
                 </li>
+                {% comment %}
+                Menu bersama: sengaja diulang di akar tiap blok admin seksi,
+                supaya tiap seksi menemukannya di tempat yang sama.
+                {% endcomment %}
+                <li class="nxl-item">
+                    <a class="nxl-link" href="{% url 'jenis_prioritas_data_list' %}">
+                        <span class="nxl-micon"><i class="feather-star"></i></span>
+                        <span class="nxl-mtext">Data Prioritas</span>
+                    </a>
+                </li>
                 {% endif %}
 
                 {% if user|has_group:"admin" or user|has_group:"admin_pmde" %}
@@ -265,6 +285,13 @@
                     <a class="nxl-link" href="{% url 'pic_unified_list' %}?tab=pmde">
                         <span class="nxl-micon"><i class="feather-user"></i></span>
                         <span class="nxl-mtext">PIC PMDE</span>
+                    </a>
+                </li>
+                {# Menu bersama: lihat catatan di blok Admin PIDE. #}
+                <li class="nxl-item">
+                    <a class="nxl-link" href="{% url 'jenis_prioritas_data_list' %}">
+                        <span class="nxl-micon"><i class="feather-star"></i></span>
+                        <span class="nxl-mtext">Data Prioritas</span>
                     </a>
                 </li>
                 {% endif %}

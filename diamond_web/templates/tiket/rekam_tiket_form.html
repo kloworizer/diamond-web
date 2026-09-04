@@ -113,7 +113,7 @@
                     </div>
                 </div>
 
-                <!-- ILAP and Periode Data -->
+                <!-- ILAP and Jenis Data ILAP -->
                 <div class="row">
                     <div class="col-md-6">
                         {% if form.id_ilap %}
@@ -178,7 +178,15 @@
                     </div>
                 </div>
 
-                <!-- Periode, Tahun, Penyampaian, Jenis Prioritas -->
+                <!-- Periode Data, Tahun Data, Penyampaian, Jenis Prioritas -->
+                <div class="alert alert-light border d-flex align-items-start py-2 px-3 mb-3" role="note" style="font-size: 11.5px;">
+                    <i class="feather-info me-2 text-primary mt-1"></i>
+                    <div>
+                        <strong>Periode Data</strong> dan <strong>Tahun Data</strong> adalah periode dan tahun dari <em>isi data</em> yang diterima,
+                        <strong>bukan</strong> periode/tahun saat tiket ini direkam.
+                        Contoh: data Triwulan IV 2025 yang diterima pada Januari 2026 tetap direkam sebagai Periode Data <em>4</em> dan Tahun Data <em>2025</em>.
+                    </div>
+                </div>
                 <div class="row">
                     <div class="col-md-3">
                         <div class="mb-3">
@@ -186,6 +194,7 @@
                             <div style="max-width: 250px;">
                                 {{ form.periode }}
                             </div>
+                            <small class="text-muted mt-1 d-block" style="font-size: 11px;">Periode dari data yang diterima, bukan periode perekaman.</small>
                             {% if form.periode.errors %}
                                 <div class="invalid-feedback d-block">{{ form.periode.errors }}</div>
                             {% endif %}
@@ -197,6 +206,7 @@
                             <div style="max-width: 250px;">
                                 {{ form.tahun }}
                             </div>
+                            <small class="text-muted mt-1 d-block" style="font-size: 11px;">Tahun dari data yang diterima, bukan tahun perekaman.</small>
                             {% if form.tahun.errors %}
                                 <div class="invalid-feedback d-block">{{ form.tahun.errors }}</div>
                             {% endif %}
@@ -420,7 +430,7 @@
             </div>
             <div class="modal-body px-4 pt-3 pb-2" id="duplicateTiketModalBody">
                 <div class="alert alert-warning py-2 px-3 mb-1" style="font-size: 13px; border-radius: 8px;">
-                    <i class="feather-info me-1"></i> Tiket sudah ada untuk jenis data, periode, dan tahun ini.
+                    <i class="feather-info me-1"></i> Tiket sudah ada untuk jenis data, periode data, dan tahun data ini.
                 </div>
             </div>
             <div class="modal-footer border-top-0 pt-0 px-4 pb-4 mt-2" style="background: transparent !important;">
@@ -507,7 +517,7 @@
                                 </div>
                             </div>
                             <div class="col-4 border-end border-light">
-                                <span class="text-muted d-block" style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 1px;">Periode Tiket</span>
+                                <span class="text-muted d-block" style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 1px;">Periode Data</span>
                                 <div class="fw-bold text-dark d-flex align-items-center">
                                     <i class="feather-calendar text-success me-1" style="font-size: 10px;"></i> <span id="modal-summary-periode">-</span>
                                 </div>
@@ -591,11 +601,11 @@
                     </div>
                     <div class="row g-2" style="font-size: 12.5px;">
                         <div class="col-4">
-                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Periode Tiket</span>
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Periode Data</span>
                             <span id="confirm-periode" class="fw-bold text-dark">-</span>
                         </div>
                         <div class="col-4">
-                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Tahun Tiket</span>
+                            <span style="font-size: 10.5px; color: #94a3b8; display: block; margin-bottom: 2px;">Tahun Data</span>
                             <span id="confirm-tahun" class="fw-bold text-dark">-</span>
                         </div>
                         <div class="col-4">
@@ -825,7 +835,7 @@
 
                                 modalBody.innerHTML = `
                                     <div class="alert alert-warning py-2 px-3 mb-1" style="font-size: 13px; border-radius: 8px;">
-                                        <div class="mb-1"><i class="feather-info me-1"></i> Tiket sudah ada untuk jenis data, periode, dan tahun ini:</div>
+                                        <div class="mb-1"><i class="feather-info me-1"></i> Tiket sudah ada untuk jenis data, periode data, dan tahun data ini:</div>
                                         ${modalLinksHTML}
                                     </div>
                                 `;
@@ -1134,7 +1144,10 @@
             document.getElementById('info-kategori-ilap').textContent = selectedData.kategori_ilap || '-';
             document.getElementById('info-kategori-wilayah').textContent = selectedData.kategori_wilayah || '-';
             document.getElementById('info-jenis-tabel').textContent = selectedData.jenis_tabel || '-';
-            document.getElementById('info-jenis-prioritas').textContent = selectedData.jenis_prioritas || '-';
+            // Badge prioritas sengaja tidak diisi dari selectedData.jenis_prioritas:
+            // field itu hanya menandai "jenis data ini pernah ditetapkan prioritas",
+            // tanpa memandang tanggal. Yang berlaku untuk tiket ini dihitung
+            // checkJenisPrioritas() dari Tanggal Terima DIP.
             document.getElementById('info-klasifikasi').textContent = selectedData.klasifikasi || '-';
             document.getElementById('info-deskripsi-periode').textContent = selectedData.periode_penyampaian || '-';
             document.getElementById('info-periode-penerimaan').textContent = selectedData.periode_penerimaan || '-';
@@ -1167,28 +1180,30 @@
             });
         }
 
+        // Status prioritas ditentukan oleh masa berlaku record Data Prioritas
+        // terhadap Tanggal Terima DIP — bukan oleh Tahun Data. Endpoint yang
+        // dipanggil memakai fungsi yang sama dengan yang dipakai saat menyimpan,
+        // jadi badge ini selalu sama dengan isi tiket nantinya.
         function checkJenisPrioritas() {
             const periodeDataSelect = document.getElementById('id_periode_data');
-            const tahunSelect = document.getElementById('id_tahun');
+            const tglDipInput = document.getElementById('id_tgl_terima_dip');
             const prioritasSpan = document.getElementById('info-jenis-prioritas');
-            
-            if (!periodeDataSelect || !tahunSelect || !prioritasSpan) return;
-            
+
+            if (!periodeDataSelect || !tglDipInput || !prioritasSpan) return;
+
             const periodeDataId = periodeDataSelect.value;
-            const tahun = tahunSelect.value;
-            
-            // If either field is empty, don't check
-            if (!periodeDataId || !tahun) {
+            const tglDip = tglDipInput.value;
+
+            // Selama Tanggal Terima DIP belum diisi, statusnya memang belum bisa
+            // ditentukan — jangan tampilkan tebakan.
+            if (!periodeDataId || !tglDip) {
+                prioritasSpan.textContent = '-';
+                prioritasSpan.className = 'badge bg-soft-secondary text-secondary border border-secondary fw-normal';
                 return;
             }
-            
-            // Get jenis_data_id from the cached data
-            const selectedData = periodeDataCache[periodeDataId];
-            if (!selectedData || !selectedData.jenis_data_id) return;
-            
-            // Call API to check prioritas
-            const url = `/api/check-jenis-prioritas/${selectedData.jenis_data_id}/${tahun}/`;
-            
+
+            const url = `/api/check-jenis-prioritas/${periodeDataId}/${tglDip}/`;
+
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
@@ -1555,11 +1570,14 @@
                 // Trigger on page load if there's a selected value
                 if (periodeDataSelect.value) {
                     updateJenisDataInfo();
+                    checkJenisPrioritas();
                 }
             }
 
-            if (tahunSelect) {
-                tahunSelect.addEventListener('change', checkJenisPrioritas);
+            // Prioritas bergantung pada Tanggal Terima DIP, bukan Tahun Data.
+            const tglDipInputForPrioritas = document.getElementById('id_tgl_terima_dip');
+            if (tglDipInputForPrioritas) {
+                tglDipInputForPrioritas.addEventListener('change', checkJenisPrioritas);
             }
 
             // Helper: show validation modal with detail table
@@ -1617,8 +1635,8 @@
                 const mandatoryConfigs = [
                     { id: 'id_ilap', guide: 'Pilih Nama ILAP (Instansi/Lembaga/Asosiasi/Pihak Lain) sumber data ini' },
                     { id: 'id_periode_data', guide: 'Pilih jenis data ILAP yang sesuai dengan data yang Anda terima.' },
-                    { id: 'id_periode', guide: 'Pilih periode penyampaian data.' },
-                    { id: 'id_tahun', guide: 'Isi tahun penyampaian data dengan format yang benar.' },
+                    { id: 'id_periode', guide: 'Pilih periode dari data yang diterima (bukan periode perekaman tiket).' },
+                    { id: 'id_tahun', guide: 'Pilih tahun dari data yang diterima (bukan tahun perekaman tiket).' },
                     { id: 'id_tgl_terima_dip', guide: 'Pilih tanggal kapan data ini diterima oleh DIP.' },
                     { id: 'id_id_bentuk_data', guide: 'Pilih format bentuk data yang diterima.' },
                     { id: 'id_id_cara_penyampaian', guide: 'Pilih cara data ini disampaikan/dikirimkan.' },
