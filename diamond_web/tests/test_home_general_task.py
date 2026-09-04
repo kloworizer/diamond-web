@@ -680,8 +680,8 @@ class TestHomeDataP3DECategories:
             'belum_rekam_backup_data', **{'order[0][column]': '99'}))
         assert resp.status_code == 200
 
-    def test_ordering_by_sub_jenis_and_tanggal_columns(self, client, authenticated_user):
-        """Ordering by column index 2 (nama_sub_jenis_data) and 3 (tgl_terima_dip)."""
+    def test_ordering_by_sub_jenis_and_periode_columns(self, client, authenticated_user):
+        """Ordering by column index 2 (nama_sub_jenis_data) and 3 (periode_data)."""
         tiket = TiketFactory(status_tiket=1, backup=False)
         self._assign(tiket, authenticated_user)
         client.force_login(authenticated_user)
@@ -896,9 +896,9 @@ class TestHomeDataMasihDiP3dePide:
         client.force_login(pmde_user)
         resp = client.get(reverse('home_data'), _base_params(
             'masih_di_p3de_pide',
-            # Column 4: Jumlah Baris (column 3) shifted Status Tiket one slot
-            # over.
-            **{'order[0][column]': '4', 'order[0][dir]': 'asc'}))
+            # Column 5: Periode Data (3) and Jumlah Baris (4) sit between Jenis
+            # Data and Status Tiket.
+            **{'order[0][column]': '5', 'order[0][dir]': 'asc'}))
         codes = [row['status_tiket_code'] for row in json.loads(resp.content)['data']]
         assert codes == [1, 3, 5]
 
@@ -924,7 +924,9 @@ class TestHomeDataMasihDiP3dePide:
         client.force_login(pmde_user)
         resp = client.get(reverse('home_data'), _base_params(
             'masih_di_p3de_pide',
-            **{'order[0][column]': '3', 'order[0][dir]': 'asc'}))
+            # Column 4: Nomor Tiket, Nama ILAP, Jenis Data, Periode Data, then
+            # Jumlah Baris.
+            **{'order[0][column]': '4', 'order[0][dir]': 'asc'}))
         assert [row['jumlah_baris'] for row in json.loads(resp.content)['data']] == [10, 20, 30]
 
     def test_home_context_carries_the_count(self, client, pmde_user):

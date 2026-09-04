@@ -60,6 +60,101 @@ _UNIT_BUCKETS = {
 # Join path from Tiket to the sub jenis data, and through it to the ILAP.
 _SUB = 'id_periode_data__id_sub_jenis_data_ilap'
 
+# Sortable columns per tiket category. DataTables sends the sorted column as a
+# positional index, so each list must mirror -- index for index -- the column
+# definitions getColumnsForCategory() hands the table in home.html. A column
+# rendered on the page but missing here shifts every later index, which is how
+# "Jml Baris Data Diterima" ended up sorting by nomor_tiket. Prioritas and Aksi
+# are orderable:false and always sit last, so they need no entry.
+_TIKET_ORDER_COLUMNS_DEFAULT = [
+    'nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode_data', 'tgl_terima_dip',
+]
+
+_TIKET_ORDER_COLUMNS = {
+    'belum_rekam_backup_data': [
+        'nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode_data',
+        'baris_diterima', 'tgl_terima_dip',
+    ],
+    'belum_dibuat_tanda_terima': [
+        'nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode_data',
+        'baris_diterima', 'tgl_terima_dip',
+    ],
+    'belum_diteliti': [
+        'nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode_data',
+        'baris_diterima', 'tgl_terima_dip',
+    ],
+    'belum_dikirim_ke_pide': [
+        'nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode_data',
+        'baris_diterima', 'baris_lengkap', 'tgl_terima_dip',
+    ],
+    'pengembalian_seluruhnya_dari_pide': [
+        'nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode_data',
+        'baris_diterima', 'baris_lengkap', 'baris_tidak_lengkap', 'baris_cde',
+        'tgl_terima_dip',
+    ],
+    'pengembalian_sebagian_dari_pide': [
+        'nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode_data',
+        'baris_diterima', 'baris_lengkap', 'baris_tidak_lengkap', 'baris_cde',
+        'tgl_terima_dip',
+    ],
+    'belum_mulai_proses_identifikasi': [
+        'nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode_data',
+        'baris_lengkap', 'tgl_kirim_pide',
+    ],
+    'tiket_dikirim_ke_pide_tanpa_pic': [
+        'nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode_data',
+        'tgl_kirim_pide',
+    ],
+    'dalam_proses_identifikasi': [
+        'nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode_data',
+        'baris_lengkap', 'baris_cde', 'tgl_rekam_pide',
+    ],
+    'dalam_proses_pengendalian_mutu': [
+        'nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode_data',
+        'belum_qc', 'lolos_qc', 'tgl_transfer',
+    ],
+    'tiket_pengendalian_mutu_tanpa_pic': [
+        'nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode_data',
+        'baris_i', 'jenis_tabel', 'tgl_transfer',
+    ],
+    'periode_tiket_null_p3de': [
+        'nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode_data',
+        'status_tiket',
+    ],
+    'special_request': [
+        'nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode_data',
+        'status_tiket', 'tgl_special_request',
+    ],
+    # Status earns a column here: it is the one category spanning more than one
+    # unit, and which unit still holds a tiket is the point. jumlah_baris is
+    # annotated onto the queryset in _build_tiket_base_qs, so it sorts directly
+    # like any other column.
+    'masih_di_p3de_pide': [
+        'nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode_data',
+        'jumlah_baris', 'status_tiket', 'tgl_terima_dip',
+    ],
+}
+
+# Column name -> the ORM field(s) it orders by. Anything absent orders by a
+# field of the same name on Tiket (or an annotation, for jumlah_baris).
+_TIKET_ORDER_FIELDS = {
+    'nama_ilap': (f'{_SUB}__id_ilap__nama_ilap',),
+    'nama_sub_jenis_data': (f'{_SUB}__nama_sub_jenis_data',),
+    'jenis_tabel': (f'{_SUB}__id_jenis_tabel__deskripsi',),
+    # "Periode Data" displays as e.g. "Triwulan II 2026"; sorting that string
+    # would order it alphabetically, so sort by the numbers behind it instead.
+    'periode_data': ('tahun', 'periode'),
+}
+
+# Nullable baris/QC counters, which the table renders as 0. Ordering by the raw
+# column would strand those rows at whichever end the backend puts NULLs (last
+# on PostgreSQL, first on SQLite), so they sort on Coalesce(col, 0) instead and
+# land where the 0 the user sees says they should.
+_TIKET_ORDER_NULL_AS_ZERO = frozenset({
+    'baris_lengkap', 'baris_tidak_lengkap', 'baris_i', 'baris_cde',
+    'belum_qc', 'lolos_qc',
+})
+
 
 def _get_category_metrics(qs):
     """Count the tikets, distinct ILAPs and distinct jenis data of `qs`.
@@ -767,55 +862,20 @@ def home_data(request):
     order_dir = request.GET.get('order[0][dir]', 'asc')
 
     if is_tiket_category:
-        columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'tgl_terima_dip']
-        if category in ('belum_mulai_proses_identifikasi', 'tiket_dikirim_ke_pide_tanpa_pic'):
-            columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'tgl_kirim_pide']
-        elif category == 'dalam_proses_identifikasi':
-            columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'tgl_rekam_pide']
-        elif category == 'dalam_proses_pengendalian_mutu':
-            columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'tgl_transfer']
-        elif category == 'tiket_pengendalian_mutu_tanpa_pic':
-            # Jumlah baris + jenis tabel sit between Jenis Data and the date, so
-            # the ordering indexes DataTables sends must account for them.
-            columns = [
-                'nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data',
-                'baris_i', 'jenis_tabel', 'tgl_transfer',
-            ]
-        elif category == 'periode_tiket_null_p3de':
-            columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'periode', 'tahun', 'status_tiket']
-        elif category == 'special_request':
-            columns = ['nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data', 'status_tiket', 'tgl_special_request']
-        elif category == 'masih_di_p3de_pide':
-            # Status earns a column here: it is the one category spanning more
-            # than one of them, and which unit still holds a tiket is the point.
-            # jumlah_baris is annotated onto the queryset in _build_tiket_base_qs,
-            # so it sorts directly like any other column.
-            columns = [
-                'nomor_tiket', 'nama_ilap', 'nama_sub_jenis_data',
-                'jumlah_baris', 'status_tiket', 'tgl_terima_dip',
-            ]
+        columns = _TIKET_ORDER_COLUMNS.get(category, _TIKET_ORDER_COLUMNS_DEFAULT)
 
         if order_col_index is not None:
             try:
                 idx = int(order_col_index)
-                col = columns[idx] if idx < len(columns) else 'nomor_tiket'
-                if col == 'nama_ilap':
-                    col = 'id_periode_data__id_sub_jenis_data_ilap__id_ilap__nama_ilap'
-                elif col == 'nama_sub_jenis_data':
-                    col = 'id_periode_data__id_sub_jenis_data_ilap__nama_sub_jenis_data'
-                elif col == 'tgl_terima_dip':
-                    col = 'tgl_terima_dip'
-                elif col == 'tgl_kirim_pide':
-                    col = 'tgl_kirim_pide'
-                elif col == 'tgl_rekam_pide':
-                    col = 'tgl_rekam_pide'
-                elif col == 'tgl_transfer':
-                    col = 'tgl_transfer'
-                elif col == 'jenis_tabel':
-                    col = 'id_periode_data__id_sub_jenis_data_ilap__id_jenis_tabel__deskripsi'
-                if order_dir == 'desc':
-                    col = '-' + col
-                qs = qs.order_by(col)
+                col = columns[idx] if 0 <= idx < len(columns) else 'nomor_tiket'
+                prefix = '-' if order_dir == 'desc' else ''
+                if col in _TIKET_ORDER_NULL_AS_ZERO:
+                    qs = qs.annotate(
+                        _order_value=Coalesce(F(col), Value(0))
+                    ).order_by(prefix + '_order_value')
+                else:
+                    fields = _TIKET_ORDER_FIELDS.get(col, (col,))
+                    qs = qs.order_by(*(prefix + f for f in fields))
             except Exception:
                 qs = qs.order_by('-id')
         else:
