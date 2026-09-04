@@ -28,16 +28,15 @@ Menu pada navbar muncul secara kondisional berdasarkan grup (role) pengguna. Ter
 | Role | Caption Navbar yang Muncul | Cakupan |
 |------|----------------------------|---------|
 | `admin_p3de` | **Admin P3DE** | Referensi & ILAP P3DE, Data Prioritas, PIC P3DE, Template, Sequence |
-| `admin_pide` | **Admin PIDE** | Aturan Durasi Jatuh Tempo, Durasi Jatuh Tempo PIDE, Nama Tabel, PIC PIDE, Data Prioritas |
-| `admin_pmde` | **Admin PMDE** | Aturan Durasi Jatuh Tempo, Durasi Jatuh Tempo PMDE, PIC PMDE, Data Prioritas |
+| `admin_pide` | **Admin PIDE** | Aturan Durasi Jatuh Tempo PIDE, Durasi Jatuh Tempo PIDE, Nama Tabel, PIC PIDE, Data Prioritas |
+| `admin_pmde` | **Admin PMDE** | Aturan Durasi Jatuh Tempo PMDE, Durasi Jatuh Tempo PMDE, PIC PMDE, Data Prioritas |
 | `admin` (global) | **Semua caption Admin + Sinkronisasi Data** | Akses penuh seluruh menu admin dan sinkronisasi Oracle |
 
 > **Catatan:** Role `admin` global melihat **semua** blok menu admin (P3DE, PIDE, PMDE) sekaligus, plus blok **Sinkronisasi Data** yang eksklusif untuk `admin`. Admin per-divisi hanya melihat blok divisinya sendiri.
 
-> **Menu bersama:** dua menu admin dikelola lintas seksi, dan tautannya sengaja diulang di akar tiap blok yang berhak — sehingga pengguna yang melihat lebih dari satu blok (mis. `admin` global) menjumpainya berulang. Itu disengaja, agar setiap seksi menemukannya di tempat yang sama.
+> **Menu bersama:** satu menu admin dikelola lintas seksi — **Data Prioritas**, oleh ketiga seksi (P3DE, PIDE, PMDE). Tautannya sengaja diulang di akar tiap blok yang berhak, sehingga pengguna yang melihat lebih dari satu blok (mis. `admin` global) menjumpainya berulang. Itu disengaja, agar setiap seksi menemukannya di tempat yang sama. Lihat [Fokus: Cara Kerja Menu Data Prioritas](#fokus-cara-kerja-menu-data-prioritas).
 >
-> - **Data Prioritas** — ketiga seksi (P3DE, PIDE, PMDE). Lihat [Fokus: Cara Kerja Menu Data Prioritas](#fokus-cara-kerja-menu-data-prioritas).
-> - **Aturan Durasi Jatuh Tempo** — PIDE dan PMDE. Lihat [Fokus: Cara Kerja Durasi Jatuh Tempo & Generate Otomatis](#fokus-cara-kerja-durasi-jatuh-tempo--generate-otomatis).
+> **Aturan Durasi Jatuh Tempo bukan menu bersama.** PIDE dan PMDE punya halamannya masing-masing, dan admin satu seksi tidak melihat apalagi mengubah aturan seksi lain — sama seperti menu Durasi Jatuh Tempo yang dilayaninya. Lihat [Fokus: Cara Kerja Durasi Jatuh Tempo & Generate Otomatis](#fokus-cara-kerja-durasi-jatuh-tempo--generate-otomatis).
 
 ---
 
@@ -93,13 +92,13 @@ Pengelolaan nomor urut (sequence) tanda terima data, agar penomoran tanda terima
 
 Muncul untuk role `admin` atau `admin_pide`. Berisi pengelolaan referensi divisi Pengolahan Informasi Data Eksternal.
 
-- **Aturan Durasi Jatuh Tempo** — menu bersama dengan PMDE; menentukan berapa hari yang dipakai Generate Otomatis. Lihat [Fokus: Cara Kerja Durasi Jatuh Tempo & Generate Otomatis](#fokus-cara-kerja-durasi-jatuh-tempo--generate-otomatis).
+- **Aturan Durasi Jatuh Tempo PIDE** — menentukan berapa hari yang dipakai Generate Otomatis PIDE. Halaman terpisah dari milik PMDE; admin PMDE tidak melihatnya. Lihat [Fokus: Cara Kerja Durasi Jatuh Tempo & Generate Otomatis](#fokus-cara-kerja-durasi-jatuh-tempo--generate-otomatis).
 - **Durasi Jatuh Tempo PIDE** — pengaturan durasi SLA/jatuh tempo untuk proses identifikasi & perekaman di PIDE. Punya tombol **Generate Otomatis** (tiga langkah), lihat [Fokus: Cara Kerja Durasi Jatuh Tempo & Generate Otomatis](#fokus-cara-kerja-durasi-jatuh-tempo--generate-otomatis).
 - **Nama Tabel** — pengelolaan nama tabel data yang diproses PIDE.
 - **PIC PIDE** — pengelolaan penanggung jawab divisi PIDE. Lihat [Fokus: Cara Kerja Menu PIC](#fokus-cara-kerja-menu-pic).
 - **Data Prioritas** — menu bersama dengan P3DE dan PMDE; halaman yang sama seperti pada blok Admin P3DE. Lihat [Fokus: Cara Kerja Menu Data Prioritas](#fokus-cara-kerja-menu-data-prioritas).
 
-> **Aturan sebelum durasi.** Aturan Durasi Jatuh Tempo sengaja diletakkan tepat di atas Durasi Jatuh Tempo di navbar: aturannyalah yang menentukan angka yang dihasilkan Generate Otomatis, jadi urutan menunya mengikuti urutan pengerjaannya. Berlaku sama di blok Admin PMDE.
+> **Aturan sebelum durasi.** Aturan Durasi Jatuh Tempo PIDE sengaja diletakkan tepat di atas Durasi Jatuh Tempo PIDE di navbar: aturannyalah yang menentukan angka yang dihasilkan Generate Otomatis, jadi urutan menunya mengikuti urutan pengerjaannya. Berlaku sama di blok Admin PMDE.
 
 ---
 
@@ -107,7 +106,7 @@ Muncul untuk role `admin` atau `admin_pide`. Berisi pengelolaan referensi divisi
 
 Muncul untuk role `admin` atau `admin_pmde`. Berisi pengelolaan referensi divisi Pengendalian Mutu Data Eksternal.
 
-- **Aturan Durasi Jatuh Tempo** — menu bersama dengan PIDE; menentukan berapa hari yang dipakai Generate Otomatis. Lihat [Fokus: Cara Kerja Durasi Jatuh Tempo & Generate Otomatis](#fokus-cara-kerja-durasi-jatuh-tempo--generate-otomatis).
+- **Aturan Durasi Jatuh Tempo PMDE** — menentukan berapa hari yang dipakai Generate Otomatis PMDE. Halaman terpisah dari milik PIDE; admin PIDE tidak melihatnya. Lihat [Fokus: Cara Kerja Durasi Jatuh Tempo & Generate Otomatis](#fokus-cara-kerja-durasi-jatuh-tempo--generate-otomatis).
 - **Durasi Jatuh Tempo PMDE** — pengaturan durasi SLA/jatuh tempo untuk proses quality control di PMDE. Punya tombol **Generate Otomatis** (tiga langkah), lihat [Fokus: Cara Kerja Durasi Jatuh Tempo & Generate Otomatis](#fokus-cara-kerja-durasi-jatuh-tempo--generate-otomatis).
 - **PIC PMDE** — pengelolaan penanggung jawab divisi PMDE. Lihat [Fokus: Cara Kerja Menu PIC](#fokus-cara-kerja-menu-pic).
 - **Data Prioritas** — menu bersama dengan P3DE dan PIDE; halaman yang sama seperti pada blok Admin P3DE. Lihat [Fokus: Cara Kerja Menu Data Prioritas](#fokus-cara-kerja-menu-data-prioritas).
@@ -513,11 +512,14 @@ Mengisinya satu per satu mustahil — ada 11.869 Sub Jenis Data dikali jumlah ta
 
 ### Menu Aturan Durasi Jatuh Tempo
 
+Ada **dua menu terpisah** — Aturan Durasi Jatuh Tempo PIDE dan Aturan Durasi Jatuh Tempo PMDE — masing-masing di blok admin seksinya sendiri, persis seperti menu Durasi Jatuh Tempo yang dilayaninya. Admin PIDE tidak melihat daftar aturan PMDE dan tidak bisa mengubahnya, begitu pula sebaliknya; hanya `admin` global yang melihat keduanya.
+
+> **Pemisahannya bukan sekadar menyembunyikan tautan.** Setiap halaman menyaring datanya ke seksinya sendiri, dan seksi tidak lagi jadi pilihan di form — halamannya yang menetapkannya. Membuka aturan seksi lain lewat pk-nya langsung berujung 404, dan menyelipkan seksi lain ke dalam POST tidak berpengaruh.
+
 Satu baris aturan menjawab: *untuk seksi ini, di tahun ini, berapa hari kalau data prioritas dan berapa hari kalau tidak?*
 
 | Field | Keterangan |
 |-------|-----------|
-| **Seksi** | PIDE atau PMDE. Aturan satu seksi tidak pernah terbaca oleh seksi lain. |
 | **Tahun** | Tahun yang diatur. |
 | **Durasi Prioritas** | Hari jatuh tempo bila data berstatus prioritas pada tahun itu. |
 | **Durasi Non Prioritas** | Hari jatuh tempo bila tidak. |

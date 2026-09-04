@@ -10,7 +10,7 @@
             </div>
             <div>
                 <h5 class="modal-title fw-bold mb-0" id="crudModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Ubah</h5>
-                <span class="text-muted text-uppercase fw-semibold" style="font-size: 10px; letter-spacing: 0.5px;">Aturan Durasi Jatuh Tempo</span>
+                <span class="text-muted text-uppercase fw-semibold" style="font-size: 10px; letter-spacing: 0.5px;">Aturan Durasi Jatuh Tempo {{ seksi_label }}</span>
             </div>
             {% else %}
             <div class="d-flex align-items-center justify-content-center"
@@ -19,7 +19,7 @@
             </div>
             <div>
                 <h5 class="modal-title fw-bold mb-0" id="crudModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Tambah</h5>
-                <span class="text-muted text-uppercase fw-semibold" style="font-size: 10px; letter-spacing: 0.5px;">Aturan Durasi Jatuh Tempo</span>
+                <span class="text-muted text-uppercase fw-semibold" style="font-size: 10px; letter-spacing: 0.5px;">Aturan Durasi Jatuh Tempo {{ seksi_label }}</span>
             </div>
             {% endif %}
         </div>
@@ -37,6 +37,7 @@
         <div class="alert alert-light border d-flex align-items-start py-2 px-3 mb-3" role="note" style="font-size: 11.5px;">
             <i class="feather-info me-2 text-primary mt-1"></i>
             <div>
+                Aturan ini berlaku untuk seksi <strong>{{ seksi_label }}</strong> saja.
                 Kosongkan <strong>ILAP</strong> dan <strong>Sub Jenis Data</strong> untuk aturan umum tahun tersebut.
                 Isi salah satunya hanya bila ada yang berdurasi berbeda — <strong>yang paling spesifik menang</strong>:
                 Sub Jenis Data mengalahkan ILAP, ILAP mengalahkan aturan umum.

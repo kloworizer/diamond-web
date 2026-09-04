@@ -1,5 +1,4 @@
 from django import forms
-from django.contrib.auth.models import Group
 
 from ..models.aturan_durasi_jatuh_tempo import AturanDurasiJatuhTempo
 from ..models.ilap import ILAP
@@ -12,6 +11,11 @@ SEKSI_LABELS = {'user_pide': 'PIDE', 'user_pmde': 'PMDE'}
 class AturanDurasiJatuhTempoForm(AutoRequiredFormMixin, forms.ModelForm):
     """Form aturan durasi jatuh tempo satu seksi untuk satu tahun.
 
+    Seksi bukan field: menunya sudah terpisah per seksi, jadi view yang
+    menetapkannya lewat kwarg ``seksi``. Menjadikannya pilihan akan membuka
+    jalan bagi admin satu seksi untuk menulis aturan seksi lain lewat POST
+    langsung — justru yang dicegah pemisahan menu ini.
+
     ILAP dan Sub Jenis Data keduanya opsional: dikosongkan berarti aturan umum
     tahun itu. Diisi berarti pengecualian, dan yang paling spesifik menang saat
     Generate Otomatis mencari durasi.
@@ -20,7 +24,7 @@ class AturanDurasiJatuhTempoForm(AutoRequiredFormMixin, forms.ModelForm):
     class Meta:
         model = AturanDurasiJatuhTempo
         fields = [
-            'seksi', 'tahun', 'durasi_prioritas', 'durasi_non_prioritas',
+            'tahun', 'durasi_prioritas', 'durasi_non_prioritas',
             'id_ilap', 'id_sub_jenis_data',
         ]
         widgets = {
@@ -29,15 +33,13 @@ class AturanDurasiJatuhTempoForm(AutoRequiredFormMixin, forms.ModelForm):
             'durasi_non_prioritas': forms.NumberInput(attrs={'min': 1}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, seksi=None, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.fields['seksi'].queryset = Group.objects.filter(
-            name__in=SEKSI_LABELS
-        ).order_by('name')
-        self.fields['seksi'].label_from_instance = (
-            lambda obj: SEKSI_LABELS.get(obj.name, obj.name)
-        )
+        # Dipasang ke instance, bukan ke cleaned_data, supaya sudah ada sebelum
+        # validasi model berjalan — kolomnya NOT NULL.
+        if seksi is not None:
+            self.instance.seksi = seksi
 
         self.fields['id_ilap'].queryset = ILAP.objects.all().order_by('nama_ilap')
         self.fields['id_ilap'].required = False
@@ -51,7 +53,7 @@ class AturanDurasiJatuhTempoForm(AutoRequiredFormMixin, forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        seksi = cleaned_data.get('seksi')
+        seksi = getattr(self.instance, 'seksi', None)
         tahun = cleaned_data.get('tahun')
         id_ilap = cleaned_data.get('id_ilap')
         id_sub = cleaned_data.get('id_sub_jenis_data')

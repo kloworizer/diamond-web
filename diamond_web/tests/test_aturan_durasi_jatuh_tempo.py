@@ -359,26 +359,253 @@ class TestPrioritasSync:
 
 
 # --------------------------------------------------------------------------- #
+# Ringkasan yang ditampilkan sebelum menulis                                  #
+# --------------------------------------------------------------------------- #
+
+@pytest.mark.django_db
+class TestRingkasanPreview:
+    """Layar konfirmasi harus menyebut angka yang benar-benar akan ditulis.
+
+    Sebelum aturan ada, durasinya sepasang konstanta, jadi ringkasannya cukup
+    menyebut satu angka. Sekarang satu seksi bisa memakai beberapa angka
+    sekaligus — aturan umum plus pengecualian — sehingga payload-nya berupa
+    daftar.
+    """
+
+    def test_generate_preview_reports_the_durasi_it_will_write(
+        self, client, admin_pide, seksi_pide, sub_jenis
+    ):
+        _aturan(seksi_pide, prioritas=35, non_prioritas=90)
+        _jadikan_prioritas(sub_jenis)
+
+        client.force_login(admin_pide)
+        payload = client.get(reverse('durasi_jatuh_tempo_pide_generate_preview')).json()
+
+        assert payload['durasi_prioritas'] == [35]
+        assert payload['durasi_non_prioritas'] == []
+
+    def test_generate_preview_lists_every_durasi_when_there_is_an_exception(
+        self, client, admin_pmde, seksi_pmde, sub_jenis, ilap
+    ):
+        """Kasus Bea dan Cukai: sebagian 14, sisanya 45 — keduanya harus muncul,
+        bukan salah satunya saja."""
+        _aturan(seksi_pmde, prioritas=45, non_prioritas=85)
+        _aturan(seksi_pmde, prioritas=14, id_sub_jenis_data=sub_jenis)
+        lain = JenisDataILAPFactory(id_ilap=ilap)
+        _jadikan_prioritas(sub_jenis)
+        _jadikan_prioritas(lain)
+
+        client.force_login(admin_pmde)
+        payload = client.get(reverse('durasi_jatuh_tempo_pmde_generate_preview')).json()
+
+        assert payload['durasi_prioritas'] == [14, 45]
+
+    def test_prioritas_sync_preview_reports_the_allowed_durasi(
+        self, client, admin_pmde, seksi_pmde, sub_jenis
+    ):
+        _aturan(seksi_pmde, prioritas=45, non_prioritas=85)
+        DurasiJatuhTempo.objects.create(
+            id_sub_jenis_data=sub_jenis, seksi=seksi_pmde, durasi=85,
+            start_date=date(TAHUN, 1, 1), end_date=date(TAHUN, 12, 31),
+        )
+        _jadikan_prioritas(sub_jenis)
+
+        client.force_login(admin_pmde)
+        payload = client.get(
+            reverse('durasi_jatuh_tempo_pmde_prioritas_sync_preview')
+        ).json()
+
+        assert payload['durasi_prioritas'] == [45]
+        assert payload['durasi_non_prioritas'] == [85]
+
+    @pytest.mark.parametrize('template', ['pide_list.html', 'pmde_list.html'])
+    def test_every_field_the_template_reads_exists_in_some_payload(
+        self, client, admin_pmde, seksi_pmde, sub_jenis, template
+    ):
+        """Penjaga terhadap bug yang baru saja terjadi.
+
+        Ringkasan Generate Otomatis pernah menampilkan "undefined hari" karena
+        template masih membaca ``data.durasi_prioritas`` setelah kolom itu hilang
+        dari payload. Kesalahan seperti itu tidak terlihat dari sisi Python —
+        JavaScript diam saja dan mencetak ``undefined``.
+
+        Ketiga langkah wizard memakai variabel ``data`` yang berbeda, jadi
+        pemeriksaannya digabung: setiap ``data.<field>`` di template harus ada di
+        salah satu dari tiga payload. Cukup untuk menangkap field yang terhapus
+        dari semuanya, yang persis kasus di atas.
+        """
+        import re
+        from pathlib import Path
+
+        from django.conf import settings
+
+        from diamond_web.views.durasi_jatuh_tempo import (
+            SEKSI_PMDE,
+            _generate_preview_payload,
+            _prioritas_sync_preview_payload,
+            _tiket_backfill_preview_payload,
+        )
+
+        _aturan(seksi_pmde, prioritas=45, non_prioritas=85)
+        _jadikan_prioritas(sub_jenis)
+
+        tersedia = set()
+        tersedia |= set(_generate_preview_payload(seksi_pmde))
+        tersedia |= set(_prioritas_sync_preview_payload(seksi_pmde))
+        tersedia |= set(_tiket_backfill_preview_payload(SEKSI_PMDE))
+
+        berkas = (
+            Path(settings.BASE_DIR)
+            / 'diamond_web' / 'templates' / 'durasi_jatuh_tempo' / template
+        )
+        dibaca = set(re.findall(r'data\.([a-z_]+)', berkas.read_text(encoding='utf-8')))
+
+        assert dibaca <= tersedia, (
+            f'{template} membaca field yang tidak ada di payload mana pun: '
+            f'{sorted(dibaca - tersedia)}'
+        )
+
+
+# --------------------------------------------------------------------------- #
 # Menu aturan                                                                 #
 # --------------------------------------------------------------------------- #
 
 @pytest.mark.django_db
 class TestMenuAturan:
+    """Menunya terpisah per seksi, seperti menu Durasi Jatuh Tempo.
 
-    @pytest.mark.parametrize('group_name', ['admin', 'admin_pide', 'admin_pmde'])
-    def test_every_admin_seksi_can_open_it(self, client, db, group_name):
+    Yang harus dipegang: admin satu seksi tidak melihat, tidak bisa membuka,
+    dan tidak bisa mengubah aturan seksi lain — termasuk lewat POST langsung ke
+    pk milik seksi lain, bukan hanya lewat tautan di navbar.
+    """
+
+    @pytest.mark.parametrize('group_name', ['admin', 'admin_pmde'])
+    def test_pmde_menu_opens_for_its_own_admins(self, client, db, group_name):
         user = UserFactory()
         user.groups.add(Group.objects.get_or_create(name=group_name)[0])
         client.force_login(user)
 
-        assert client.get(reverse('aturan_durasi_jatuh_tempo_list')).status_code == 200
-        assert client.get(reverse('aturan_durasi_jatuh_tempo_data')).status_code == 200
+        assert client.get(reverse('aturan_durasi_jatuh_tempo_pmde_list')).status_code == 200
+        assert client.get(reverse('aturan_durasi_jatuh_tempo_pmde_data')).status_code == 200
+
+    @pytest.mark.parametrize('group_name', ['admin', 'admin_pide'])
+    def test_pide_menu_opens_for_its_own_admins(self, client, db, group_name):
+        user = UserFactory()
+        user.groups.add(Group.objects.get_or_create(name=group_name)[0])
+        client.force_login(user)
+
+        assert client.get(reverse('aturan_durasi_jatuh_tempo_pide_list')).status_code == 200
+        assert client.get(reverse('aturan_durasi_jatuh_tempo_pide_data')).status_code == 200
+
+    def test_a_pide_admin_cannot_open_the_pmde_menu(self, client, admin_pide):
+        client.force_login(admin_pide)
+        assert client.get(reverse('aturan_durasi_jatuh_tempo_pmde_list')).status_code == 403
+        assert client.get(reverse('aturan_durasi_jatuh_tempo_pmde_data')).status_code in (302, 403)
+
+    def test_a_pmde_admin_cannot_open_the_pide_menu(self, client, admin_pmde):
+        client.force_login(admin_pmde)
+        assert client.get(reverse('aturan_durasi_jatuh_tempo_pide_list')).status_code == 403
+        assert client.get(reverse('aturan_durasi_jatuh_tempo_pide_data')).status_code in (302, 403)
 
     def test_a_plain_user_cannot(self, client, db):
         user = UserFactory()
         user.groups.add(Group.objects.get_or_create(name='user_pmde')[0])
         client.force_login(user)
-        assert client.get(reverse('aturan_durasi_jatuh_tempo_list')).status_code == 403
+        assert client.get(reverse('aturan_durasi_jatuh_tempo_pmde_list')).status_code == 403
+
+    def test_the_listing_shows_only_this_seksi_rules(
+        self, client, admin_pmde, seksi_pmde, seksi_pide
+    ):
+        _aturan(seksi_pmde, prioritas=45, non_prioritas=85)
+        _aturan(seksi_pide, prioritas=35, non_prioritas=90)
+
+        client.force_login(admin_pmde)
+        rows = client.get(reverse('aturan_durasi_jatuh_tempo_pmde_data')).json()['data']
+
+        assert len(rows) == 1
+        assert rows[0]['durasi_prioritas'] == 45
+
+    def test_a_pide_admin_cannot_edit_a_pmde_rule_by_its_pk(
+        self, client, admin_pide, seksi_pmde
+    ):
+        """Querysetnya disaring, jadi pk seksi lain berujung 404 — bukan form
+        edit yang terlanjur terbuka."""
+        aturan = _aturan(seksi_pmde, prioritas=45, non_prioritas=85)
+        client.force_login(admin_pide)
+
+        resp = client.post(
+            reverse('aturan_durasi_jatuh_tempo_pide_update', args=[aturan.pk]),
+            {'tahun': TAHUN, 'durasi_prioritas': 1, 'durasi_non_prioritas': 2},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        assert resp.status_code == 404
+        aturan.refresh_from_db()
+        assert aturan.durasi_prioritas == 45
+
+    def test_a_pide_admin_cannot_delete_a_pmde_rule_by_its_pk(
+        self, client, admin_pide, seksi_pmde
+    ):
+        aturan = _aturan(seksi_pmde)
+        client.force_login(admin_pide)
+
+        resp = client.post(
+            reverse('aturan_durasi_jatuh_tempo_pide_delete', args=[aturan.pk]),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        assert resp.status_code == 404
+        assert AturanDurasiJatuhTempo.objects.filter(pk=aturan.pk).exists()
+
+    def test_creating_stamps_the_seksi_of_the_menu_used(
+        self, client, admin_pide, seksi_pide
+    ):
+        """Seksi tidak lagi dikirim form; view yang menetapkannya."""
+        client.force_login(admin_pide)
+
+        client.post(
+            reverse('aturan_durasi_jatuh_tempo_pide_create'),
+            {'tahun': TAHUN, 'durasi_prioritas': 35, 'durasi_non_prioritas': 90},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        aturan = AturanDurasiJatuhTempo.objects.get()
+        assert aturan.seksi == seksi_pide
+        assert aturan.durasi_prioritas == 35
+
+    def test_a_seksi_posted_in_the_form_is_ignored(
+        self, client, admin_pide, seksi_pide, seksi_pmde
+    ):
+        """POST langsung yang menyelipkan seksi PMDE lewat menu PIDE tetap
+        tersimpan sebagai aturan PIDE."""
+        client.force_login(admin_pide)
+
+        client.post(
+            reverse('aturan_durasi_jatuh_tempo_pide_create'),
+            {
+                'seksi': seksi_pmde.pk, 'tahun': TAHUN,
+                'durasi_prioritas': 35, 'durasi_non_prioritas': 90,
+            },
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        assert AturanDurasiJatuhTempo.objects.get().seksi == seksi_pide
+
+    def test_the_same_year_can_exist_once_per_seksi(
+        self, client, admin_pide, seksi_pide, seksi_pmde
+    ):
+        """Duplikat diperiksa per seksi: aturan PMDE tahun yang sama bukan
+        bentrokan bagi PIDE."""
+        _aturan(seksi_pmde, tahun=TAHUN)
+        client.force_login(admin_pide)
+
+        client.post(
+            reverse('aturan_durasi_jatuh_tempo_pide_create'),
+            {'tahun': TAHUN, 'durasi_prioritas': 35, 'durasi_non_prioritas': 90},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        assert AturanDurasiJatuhTempo.objects.filter(seksi=seksi_pide, tahun=TAHUN).count() == 1
 
     def test_a_duplicate_rule_is_rejected_with_a_clear_message(
         self, client, admin_pmde, seksi_pmde
@@ -387,11 +614,8 @@ class TestMenuAturan:
         client.force_login(admin_pmde)
 
         resp = client.post(
-            reverse('aturan_durasi_jatuh_tempo_create'),
-            {
-                'seksi': seksi_pmde.pk, 'tahun': TAHUN,
-                'durasi_prioritas': 40, 'durasi_non_prioritas': 80,
-            },
+            reverse('aturan_durasi_jatuh_tempo_pmde_create'),
+            {'tahun': TAHUN, 'durasi_prioritas': 40, 'durasi_non_prioritas': 80},
             HTTP_X_REQUESTED_WITH='XMLHttpRequest',
         )
 
@@ -405,9 +629,9 @@ class TestMenuAturan:
         ilap_lain = ILAPFactory()
 
         resp = client.post(
-            reverse('aturan_durasi_jatuh_tempo_create'),
+            reverse('aturan_durasi_jatuh_tempo_pmde_create'),
             {
-                'seksi': seksi_pmde.pk, 'tahun': TAHUN,
+                'tahun': TAHUN,
                 'durasi_prioritas': 14, 'durasi_non_prioritas': 85,
                 'id_ilap': ilap_lain.pk, 'id_sub_jenis_data': sub_jenis.pk,
             },

@@ -659,6 +659,11 @@ def _build_prioritas_sync_plan(seksi):
     items = {}
     ke_prioritas = 0
     ke_non_prioritas = 0
+    # Angka yang aturan izinkan pada baris-baris yang diperiksa — itulah yang
+    # membedakan "sesuai aturan" dari "disetel tangan", dan bisa lebih dari satu
+    # karena ada pengecualian per ILAP/Sub Jenis Data.
+    nilai_prioritas = set()
+    nilai_non_prioritas = set()
     for (
         row_id, sub_id, ilap_id, kode, nama, durasi, start_date, end_date
     ) in candidates.values_list(
@@ -676,6 +681,8 @@ def _build_prioritas_sync_plan(seksi):
         if durasi_prioritas is None or durasi_non_prioritas is None:
             # Tahun ini belum punya aturan — tidak ada dasar untuk mengubahnya.
             continue
+        nilai_prioritas.add(durasi_prioritas)
+        nilai_non_prioritas.add(durasi_non_prioritas)
         if durasi not in (durasi_prioritas, durasi_non_prioritas):
             # Diatur di luar aturan (mis. disetel tangan). Jangan disentuh.
             continue
@@ -715,6 +722,8 @@ def _build_prioritas_sync_plan(seksi):
         'items': list(items.values()),
         'baris_ke_prioritas': ke_prioritas,
         'baris_ke_non_prioritas': ke_non_prioritas,
+        'durasi_prioritas': sorted(nilai_prioritas),
+        'durasi_non_prioritas': sorted(nilai_non_prioritas),
     }
 
 
@@ -745,6 +754,9 @@ def _generate_preview_payload(seksi):
 
     all_rows = [row for item in items for row in item['baris']]
 
+    # Angka yang benar-benar akan ditulis, bukan satu pasang tetap: sejak durasi
+    # datang dari AturanDurasiJatuhTempo, satu seksi bisa memakai beberapa angka
+    # sekaligus — aturan umumnya plus pengecualian per ILAP/Sub Jenis Data.
     return {
         'success': True,
         'tahun_awal': years[0] if years else None,
@@ -754,6 +766,8 @@ def _generate_preview_payload(seksi):
         'total_jenis_data': len(items),
         'baris_prioritas': sum(1 for row in all_rows if row['is_prioritas']),
         'baris_non_prioritas': sum(1 for row in all_rows if not row['is_prioritas']),
+        'durasi_prioritas': sorted({r['durasi'] for r in all_rows if r['is_prioritas']}),
+        'durasi_non_prioritas': sorted({r['durasi'] for r in all_rows if not r['is_prioritas']}),
         'skipped': skipped,
         'items': items,
         'message_kosong': (
@@ -830,6 +844,8 @@ def _prioritas_sync_preview_payload(seksi):
         'total_jenis_data': len(plan['items']),
         'baris_ke_prioritas': plan['baris_ke_prioritas'],
         'baris_ke_non_prioritas': plan['baris_ke_non_prioritas'],
+        'durasi_prioritas': plan['durasi_prioritas'],
+        'durasi_non_prioritas': plan['durasi_non_prioritas'],
         'items': plan['items'],
     }
 

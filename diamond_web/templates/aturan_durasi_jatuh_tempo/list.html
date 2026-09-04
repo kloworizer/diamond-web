@@ -7,13 +7,13 @@
         <div class="page-header-left d-flex align-items-center">
             <div class="page-header-title">
                 <h5 class="m-b-10">
-                    <i class="feather-clock me-2"></i>Aturan Durasi Jatuh Tempo
+                    <i class="feather-sliders me-2"></i>Aturan Durasi Jatuh Tempo {{ seksi_label }}
                 </h5>
             </div>
             <ul class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-                <li class="breadcrumb-item"><a href="javascript:void(0);">Admin PIDE / PMDE</a></li>
-                <li class="breadcrumb-item active">Aturan Durasi Jatuh Tempo</li>
+                <li class="breadcrumb-item"><a href="javascript:void(0);">Admin {{ seksi_label }}</a></li>
+                <li class="breadcrumb-item active">Aturan Durasi Jatuh Tempo {{ seksi_label }}</li>
             </ul>
         </div>
         <div class="page-header-right ms-auto">
@@ -36,15 +36,15 @@
     <div class="main-content">
     <div class="card stretch stretch-full datatable-card">
         <div class="card-header">
-            <h5 class="card-title"><i class="feather-clock me-2"></i>Daftar Aturan Durasi Jatuh Tempo</h5>
+            <h5 class="card-title"><i class="feather-sliders me-2"></i>Daftar Aturan Durasi Jatuh Tempo {{ seksi_label }}</h5>
             <button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>
         </div>
         <div class="card-body custom-card-action p-0">
             <div class="table-responsive">
+            {# Tanpa kolom Seksi: halaman ini sudah milik satu seksi saja. #}
             <table id="aturan-durasi-table" class="table table-hover mb-0" style="width:100%">
                 <thead>
                     <tr>
-                        <th>Seksi</th>
                         <th>Tahun</th>
                         <th>Cakupan</th>
                         <th>Durasi Prioritas</th>
@@ -52,11 +52,10 @@
                         <th class="col-actions text-center">Aksi</th>
                     </tr>
                     <tr id="column-search-row">
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Seksi" data-column="0" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Tahun" data-column="1" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Cakupan" data-column="2" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Tahun" data-column="0" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Cakupan" data-column="1" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Durasi" data-column="2" /></th>
                         <th><input type="text" class="form-control form-control-sm" placeholder="Cari Durasi" data-column="3" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Durasi" data-column="4" /></th>
                         <th class="col-actions"></th>
                     </tr>
                 </thead>
@@ -80,7 +79,8 @@
 {% block scripts %}
 <script>
     (function () {
-        const ajaxUrl = "{% url 'aturan_durasi_jatuh_tempo_data' %}";
+        {# Nama URL datang dari view (url_data / url_create), karena satu template ini melayani menu PIDE dan PMDE. #}
+        const ajaxUrl = "{% url url_data %}";
         let table;
 
             $(document).ready(function () {
@@ -102,7 +102,6 @@
                         }
                     },
                     columns: [
-                        { data: 'seksi' },
                         { data: 'tahun' },
                         { data: 'cakupan' },
                         { data: 'durasi_prioritas', render: (d) => d + ' hari' },
@@ -110,9 +109,9 @@
                         { data: 'actions', orderable: false, searchable: false }
                     ],
                     columnDefs: [
-                        { targets: 5, className: "col-actions text-center", width: "90px", render: function (data, type, row, meta) { return '<div class="d-flex justify-content-center gap-1">' + data + '</div>'; } }
+                        { targets: 4, className: "col-actions text-center", width: "90px", render: function (data, type, row, meta) { return '<div class="d-flex justify-content-center gap-1">' + data + '</div>'; } }
                     ],
-                    order: [[1, 'desc']],
+                    order: [[0, 'desc']],
                     searching: false,
                     layout: {
                         topStart: null,
@@ -132,7 +131,7 @@
 
                 // Handle create button
                 $('[data-action="create"]').on('click', function () {
-                    loadModal('{% url "aturan_durasi_jatuh_tempo_create" %}', 'Tambah Aturan Durasi Jatuh Tempo');
+                    loadModal('{% url url_create %}', 'Tambah Aturan Durasi Jatuh Tempo {{ seksi_label }}');
                 });
 
                 // Handle edit/delete buttons (delegated event)
