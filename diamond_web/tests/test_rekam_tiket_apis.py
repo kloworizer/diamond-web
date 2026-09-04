@@ -107,44 +107,73 @@ class TestILAPPeriodeDataAPIView:
 
 @pytest.mark.django_db
 class TestCheckJenisPrioritasAPIView:
-    """Tests for CheckJenisPrioritasAPIView."""
+    """Tests for CheckJenisPrioritasAPIView.
 
-    def test_returns_false_when_no_prioritas(self, client, admin_user, jenis_data_ilap):
-        """Returns has_prioritas=False when no record exists."""
+    The endpoint answers the same question the save does: is a prioritas record
+    in force for this Periode Jenis Data on this Tanggal Terima DIP? It takes the
+    periode data pk and an ISO date; it used to take a sub jenis data code and a
+    year, back when the FK was matched on the record's tahun.
+    """
+
+    def _periode(self, **kwargs):
+        from diamond_web.tests.conftest import PeriodeJenisDataFactory
+        return PeriodeJenisDataFactory(**kwargs)
+
+    def test_returns_false_when_no_prioritas(self, client, admin_user, db):
+        """Returns has_prioritas=False when no record covers that date."""
+        periode = self._periode()
         client.force_login(admin_user)
-        resp = client.get(reverse('check_jenis_prioritas', args=[
-            jenis_data_ilap.id_sub_jenis_data, '2025'
-        ]))
+        resp = client.get(reverse('check_jenis_prioritas', args=[periode.pk, '2025-06-15']))
         assert resp.status_code == 200
         data = json.loads(resp.content)
         assert data['success'] is True
         assert data['has_prioritas'] is False
 
-    def test_returns_true_when_prioritas_exists(self, client, admin_user, db):
-        """Returns has_prioritas=True when JenisPrioritasData exists."""
-        from diamond_web.tests.conftest import JenisPrioritasDataFactory
+    def test_returns_true_when_the_window_covers_the_date(self, client, admin_user, db):
+        """Returns has_prioritas=True when a record is in force on that date."""
         jdilap = JenisDataILAPFactory()
+        periode = self._periode(id_sub_jenis_data_ilap=jdilap)
         JenisPrioritasData.objects.create(
             id_sub_jenis_data_ilap=jdilap,
-            tahun='2025',
-            start_date=date.today() - timedelta(days=30),
+            tahun='2099',
+            start_date=date(2025, 1, 1),
+            end_date=date(2025, 12, 31),
             no_nd='ND-001/2025',
         )
         client.force_login(admin_user)
-        resp = client.get(reverse('check_jenis_prioritas', args=[
-            jdilap.id_sub_jenis_data, '2025'
-        ]))
+        resp = client.get(reverse('check_jenis_prioritas', args=[periode.pk, '2025-06-15']))
         assert resp.status_code == 200
         data = json.loads(resp.content)
         assert data['success'] is True
         assert data['has_prioritas'] is True
+        assert data['label']
 
-    def test_p3de_user_can_access(self, client, authenticated_user, jenis_data_ilap):
+    def test_returns_false_outside_the_window(self, client, admin_user, db):
+        """The record's tahun does not rescue a date outside its window."""
+        jdilap = JenisDataILAPFactory()
+        periode = self._periode(id_sub_jenis_data_ilap=jdilap)
+        JenisPrioritasData.objects.create(
+            id_sub_jenis_data_ilap=jdilap,
+            tahun='2026',
+            start_date=date(2025, 1, 1),
+            end_date=date(2025, 12, 31),
+            no_nd='ND-001/2025',
+        )
+        client.force_login(admin_user)
+        resp = client.get(reverse('check_jenis_prioritas', args=[periode.pk, '2026-06-15']))
+        assert json.loads(resp.content)['has_prioritas'] is False
+
+    def test_unknown_periode_data_is_a_400(self, client, admin_user, db):
+        client.force_login(admin_user)
+        resp = client.get(reverse('check_jenis_prioritas', args=[999999, '2025-06-15']))
+        assert resp.status_code == 400
+        assert json.loads(resp.content)['success'] is False
+
+    def test_p3de_user_can_access(self, client, authenticated_user, db):
         """P3DE user can call this API."""
+        periode = self._periode()
         client.force_login(authenticated_user)
-        resp = client.get(reverse('check_jenis_prioritas', args=[
-            jenis_data_ilap.id_sub_jenis_data, '2025'
-        ]))
+        resp = client.get(reverse('check_jenis_prioritas', args=[periode.pk, '2025-06-15']))
         assert resp.status_code == 200
 
 

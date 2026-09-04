@@ -7,13 +7,13 @@
         <div class="page-header-left d-flex align-items-center">
             <div class="page-header-title">
                 <h5 class="m-b-10">
-                    <i class="feather-star me-2"></i>Jenis Prioritas Data
+                    <i class="feather-sliders me-2"></i>Aturan Durasi Jatuh Tempo {{ seksi_label }}
                 </h5>
             </div>
             <ul class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-                <li class="breadcrumb-item"><a href="javascript:void(0);">Admin P3DE / PIDE / PMDE</a></li>
-                <li class="breadcrumb-item active">Jenis Prioritas Data</li>
+                <li class="breadcrumb-item"><a href="javascript:void(0);">Admin {{ seksi_label }}</a></li>
+                <li class="breadcrumb-item active">Aturan Durasi Jatuh Tempo {{ seksi_label }}</li>
             </ul>
         </div>
         <div class="page-header-right ms-auto">
@@ -36,29 +36,26 @@
     <div class="main-content">
     <div class="card stretch stretch-full datatable-card">
         <div class="card-header">
-            <h5 class="card-title"><i class="feather-star me-2"></i>Daftar Jenis Prioritas Data</h5>
+            <h5 class="card-title"><i class="feather-sliders me-2"></i>Daftar Aturan Durasi Jatuh Tempo {{ seksi_label }}</h5>
             <button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>
         </div>
         <div class="card-body custom-card-action p-0">
             <div class="table-responsive">
-            <table id="jenis-prioritas-data-table" class="table table-hover mb-0" style="width:100%">
+            {# Tanpa kolom Seksi: halaman ini sudah milik satu seksi saja. #}
+            <table id="aturan-durasi-table" class="table table-hover mb-0" style="width:100%">
                 <thead>
                     <tr>
-                        <th>ID Sub Jenis Data</th>
-                        <th>Nama Sub Jenis Data</th>
-                        <th>No ND</th>
                         <th>Tahun</th>
-                        <th>Start Date</th>
-                        <th>End Date</th>
+                        <th>Cakupan</th>
+                        <th>Durasi Prioritas</th>
+                        <th>Durasi Non Prioritas</th>
                         <th class="col-actions text-center">Aksi</th>
                     </tr>
                     <tr id="column-search-row">
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari ID" data-column="0" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Nama" data-column="1" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari No ND" data-column="2" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Tahun" data-column="3" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Start Date" data-column="4" /></th>
-                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari End Date" data-column="5" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Tahun" data-column="0" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Cakupan" data-column="1" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Durasi" data-column="2" /></th>
+                        <th><input type="text" class="form-control form-control-sm" placeholder="Cari Durasi" data-column="3" /></th>
                         <th class="col-actions"></th>
                     </tr>
                 </thead>
@@ -82,11 +79,12 @@
 {% block scripts %}
 <script>
     (function () {
-        const ajaxUrl = "{% url 'jenis_prioritas_data_data' %}";
+        {# Nama URL datang dari view (url_data / url_create), karena satu template ini melayani menu PIDE dan PMDE. #}
+        const ajaxUrl = "{% url url_data %}";
         let table;
 
             $(document).ready(function () {
-                table = $('#jenis-prioritas-data-table').DataTable({
+                table = $('#aturan-durasi-table').DataTable({
                     serverSide: true,
                     processing: true,
                     paging: true,
@@ -104,18 +102,16 @@
                         }
                     },
                     columns: [
-                        { data: 'id_sub_jenis_data' },
-                        { data: 'nama_sub_jenis_data' },
-                        { data: 'no_nd' },
                         { data: 'tahun' },
-                        { data: 'start_date' },
-                        { data: 'end_date' },
+                        { data: 'cakupan' },
+                        { data: 'durasi_prioritas', render: (d) => d + ' hari' },
+                        { data: 'durasi_non_prioritas', render: (d) => d + ' hari' },
                         { data: 'actions', orderable: false, searchable: false }
                     ],
                     columnDefs: [
-                        { targets: 6, className: "col-actions text-center", width: "90px", render: function (data, type, row, meta) { return '<div class="d-flex justify-content-center gap-1">' + data + '</div>'; } }
+                        { targets: 4, className: "col-actions text-center", width: "90px", render: function (data, type, row, meta) { return '<div class="d-flex justify-content-center gap-1">' + data + '</div>'; } }
                     ],
-                    order: [[0, 'asc']],
+                    order: [[0, 'desc']],
                     searching: false,
                     layout: {
                         topStart: null,
@@ -135,20 +131,20 @@
 
                 // Handle create button
                 $('[data-action="create"]').on('click', function () {
-                    loadModal('{% url "jenis_prioritas_data_create" %}', 'Tambah Jenis Prioritas Data');
+                    loadModal('{% url url_create %}', 'Tambah Aturan Durasi Jatuh Tempo {{ seksi_label }}');
                 });
 
                 // Handle edit/delete buttons (delegated event)
                 $(document).on('click', '[data-action="edit"]', function (e) {
                     e.preventDefault();
                     const url = $(this).data('url');
-                    loadModal(url, 'Edit Jenis Prioritas Data');
+                    loadModal(url, 'Ubah Aturan Durasi Jatuh Tempo');
                 });
 
                 $(document).on('click', '[data-action="delete"]', function (e) {
                     e.preventDefault();
                     const url = $(this).data('url');
-                    loadModal(url, 'Hapus Jenis Prioritas Data');
+                    loadModal(url, 'Hapus Aturan Durasi Jatuh Tempo');
                 });
 
                 // Handle form submission

@@ -7,12 +7,19 @@ from django.utils import timezone
 from django.contrib.auth.models import Group
 
 from diamond_web.models import BackupData, DurasiJatuhTempo, JenisDataILAP, Tiket, TiketPIC
-from diamond_web.views.durasi_jatuh_tempo import GENERATE_PMDE_START_YEAR
+from diamond_web.models.aturan_durasi_jatuh_tempo import AturanDurasiJatuhTempo
 from diamond_web.tests.conftest import (
     TiketFactory, TiketPICFactory, UserFactory,
     JenisDataILAPFactory, DurasiJatuhTempoFactory, MediaBackupFactory,
     JenisPrioritasDataFactory, PeriodeJenisDataFactory,
 )
+
+# Tahun awal dan durasi Generate Otomatis PMDE bukan lagi konstanta di view:
+# keduanya kini baris AturanDurasiJatuhTempo, diisi migrasi
+# 0016_seed_aturan_durasi_jatuh_tempo dengan nilai yang sama seperti sebelumnya
+# (2019 s/d tahun berjalan, prioritas 45, non prioritas 85). Test di bawah
+# menguji perilaku yang dihasilkan aturan itu, jadi angkanya diulang di sini.
+GENERATE_PMDE_START_YEAR = 2019
 
 
 # ============================================================
@@ -680,8 +687,14 @@ class TestDurasiJatuhTempoPMDEViews:
             baris['periode']: baris['durasi']
             for baris in by_kode[prioritas.id_sub_jenis_data]['baris']
         }
-        assert durasi_per_periode['01-01-2024 s.d. 31-12-2024'] == 45
-        assert durasi_per_periode['01-01-2023 s.d. 31-12-2023'] == 85
+        # Prioritasnya dibuat untuk tahun berjalan, jadi tahun itulah yang
+        # berdurasi prioritas — bukan tahun tetap yang sempat ditulis di sini.
+        assert durasi_per_periode[
+            f'01-01-{current_year} s.d. 31-12-{current_year}'
+        ] == 45
+        assert durasi_per_periode[
+            f'01-01-{current_year - 1} s.d. 31-12-{current_year - 1}'
+        ] == 85
         assert by_kode[biasa.id_sub_jenis_data]['jumlah_baris'] == len(years)
         assert by_kode[biasa.id_sub_jenis_data]['baris'][0] == {
             'periode': f'01-01-{GENERATE_PMDE_START_YEAR} s.d. 31-12-{GENERATE_PMDE_START_YEAR}',
@@ -837,6 +850,9 @@ class TestDurasiJatuhTempoPMDEViews:
         assert 'Tidak ada Jenis Data' in payload['message']
 
     def test_generate_without_pmde_group_returns_error(self, client, pmde_admin_user):
+        # Aturan durasi menunjuk grup seksi dengan on_delete=PROTECT, jadi
+        # aturannya harus dilepas dulu sebelum grupnya bisa dihapus.
+        AturanDurasiJatuhTempo.objects.filter(seksi__name='user_pmde').delete()
         Group.objects.filter(name='user_pmde').delete()
         JenisDataILAPFactory()
         client.force_login(pmde_admin_user)
@@ -1044,6 +1060,9 @@ class TestDurasiJatuhTempoPMDEPrioritasSync:
         assert payload['total_rows'] == 0
 
     def test_sync_without_pmde_group_returns_error(self, client, pmde_admin_user):
+        # Aturan durasi menunjuk grup seksi dengan on_delete=PROTECT, jadi
+        # aturannya harus dilepas dulu sebelum grupnya bisa dihapus.
+        AturanDurasiJatuhTempo.objects.filter(seksi__name='user_pmde').delete()
         Group.objects.filter(name='user_pmde').delete()
         client.force_login(pmde_admin_user)
         resp = client.post(reverse('durasi_jatuh_tempo_pmde_prioritas_sync'))
@@ -1225,9 +1244,206 @@ class TestDurasiJatuhTempoPMDETiketBackfill:
         assert Tiket.objects.filter(id_durasi_jatuh_tempo_pmde__isnull=True).count() == 0
 
     def test_backfill_without_pmde_group_returns_error(self, client, pmde_admin_user):
+        # Aturan durasi menunjuk grup seksi dengan on_delete=PROTECT, jadi
+        # aturannya harus dilepas dulu sebelum grupnya bisa dihapus.
+        AturanDurasiJatuhTempo.objects.filter(seksi__name='user_pmde').delete()
         Group.objects.filter(name='user_pmde').delete()
         client.force_login(pmde_admin_user)
         resp = client.post(reverse('durasi_jatuh_tempo_pmde_tiket_backfill'))
+        assert resp.status_code == 400
+        assert json.loads(resp.content)['success'] is False
+
+
+# ============================================================
+# Durasi Jatuh Tempo PIDE - Tiket backfill (step 3 of Generate Otomatis)
+# ============================================================
+
+@pytest.mark.django_db
+class TestDurasiJatuhTempoPIDETiketBackfill:
+    """durasi_jatuh_tempo_pide_tiket_backfill(_preview) endpoints.
+
+    Same engine as PMDE, but PIDE matches on tgl_kirim_pide alone — the tiket is
+    handed to PIDE on that date, so a later tgl_rekam_pide must not move which
+    Durasi Jatuh Tempo row applies.
+    """
+
+    def _ensure_user_pide_group(self):
+        group, _ = Group.objects.get_or_create(name='user_pide')
+        return group
+
+    def _tiket(self, jenis, **kwargs):
+        """A tiket on `jenis` with no Durasi Jatuh Tempo PIDE yet."""
+        return TiketFactory(
+            id_periode_data=PeriodeJenisDataFactory(id_sub_jenis_data_ilap=jenis),
+            id_durasi_jatuh_tempo_pide=None,
+            **kwargs,
+        )
+
+    def test_backfill_denied_non_admin(self, client, authenticated_user):
+        client.force_login(authenticated_user)
+        resp = client.post(reverse('durasi_jatuh_tempo_pide_tiket_backfill'))
+        assert resp.status_code in (302, 403)
+
+    def test_backfill_requires_post(self, client, pide_admin_user):
+        client.force_login(pide_admin_user)
+        resp = client.get(reverse('durasi_jatuh_tempo_pide_tiket_backfill'))
+        assert resp.status_code == 405
+
+    def test_preview_denied_non_admin(self, client, authenticated_user):
+        client.force_login(authenticated_user)
+        resp = client.get(reverse('durasi_jatuh_tempo_pide_tiket_backfill_preview'))
+        assert resp.status_code in (302, 403)
+
+    def test_preview_summarises_without_writing(self, client, pide_admin_user):
+        pide_group = self._ensure_user_pide_group()
+        jenis = JenisDataILAPFactory()
+        DurasiJatuhTempoFactory(
+            id_sub_jenis_data=jenis, seksi=pide_group, durasi=90,
+            start_date=date(2019, 1, 1), end_date=date(2019, 12, 31),
+        )
+        tiket = self._tiket(jenis, tgl_kirim_pide=timezone.datetime(2019, 6, 1, 9, 0))
+
+        client.force_login(pide_admin_user)
+        payload = json.loads(client.get(reverse('durasi_jatuh_tempo_pide_tiket_backfill_preview')).content)
+        assert payload['success'] is True
+        assert payload['total_tiket'] == 1
+        assert payload['per_year'] == [{'tahun': 2019, 'jumlah': 1}]
+
+        tiket.refresh_from_db()
+        assert tiket.id_durasi_jatuh_tempo_pide is None
+
+    def test_backfill_fills_from_tgl_kirim_pide(self, client, pide_admin_user):
+        pide_group = self._ensure_user_pide_group()
+        jenis = JenisDataILAPFactory()
+        durasi_2019 = DurasiJatuhTempoFactory(
+            id_sub_jenis_data=jenis, seksi=pide_group, durasi=90,
+            start_date=date(2019, 1, 1), end_date=date(2019, 12, 31),
+        )
+        DurasiJatuhTempoFactory(
+            id_sub_jenis_data=jenis, seksi=pide_group, durasi=35,
+            start_date=date(2020, 1, 1), end_date=date(2020, 12, 31),
+        )
+        tiket = self._tiket(jenis, tgl_kirim_pide=timezone.datetime(2019, 6, 1, 9, 0))
+
+        client.force_login(pide_admin_user)
+        payload = json.loads(client.post(reverse('durasi_jatuh_tempo_pide_tiket_backfill')).content)
+        assert payload['success'] is True
+        assert payload['updated'] == 1
+
+        tiket.refresh_from_db()
+        assert tiket.id_durasi_jatuh_tempo_pide_id == durasi_2019.pk
+
+    def test_backfill_ignores_tgl_rekam_pide(self, client, pide_admin_user):
+        """A later tgl_rekam_pide must not pull the match into the next year.
+
+        This is what separates PIDE from PMDE: PMDE restarts its count at
+        tgl_rematch, PIDE stays on the date it was handed the tiket.
+        """
+        pide_group = self._ensure_user_pide_group()
+        jenis = JenisDataILAPFactory()
+        durasi_2019 = DurasiJatuhTempoFactory(
+            id_sub_jenis_data=jenis, seksi=pide_group, durasi=90,
+            start_date=date(2019, 1, 1), end_date=date(2019, 12, 31),
+        )
+        DurasiJatuhTempoFactory(
+            id_sub_jenis_data=jenis, seksi=pide_group, durasi=35,
+            start_date=date(2020, 1, 1), end_date=date(2020, 12, 31),
+        )
+        tiket = self._tiket(
+            jenis,
+            tgl_kirim_pide=timezone.datetime(2019, 12, 20, 9, 0),
+            tgl_rekam_pide=timezone.datetime(2020, 1, 5, 9, 0),
+        )
+
+        client.force_login(pide_admin_user)
+        client.post(reverse('durasi_jatuh_tempo_pide_tiket_backfill'))
+
+        tiket.refresh_from_db()
+        assert tiket.id_durasi_jatuh_tempo_pide_id == durasi_2019.pk
+
+    def test_backfill_ignores_other_seksi(self, client, pide_admin_user):
+        self._ensure_user_pide_group()
+        pmde_group, _ = Group.objects.get_or_create(name='user_pmde')
+        jenis = JenisDataILAPFactory()
+        DurasiJatuhTempoFactory(
+            id_sub_jenis_data=jenis, seksi=pmde_group, durasi=45,
+            start_date=date(2019, 1, 1), end_date=date(2019, 12, 31),
+        )
+        tiket = self._tiket(jenis, tgl_kirim_pide=timezone.datetime(2019, 6, 1, 9, 0))
+
+        client.force_login(pide_admin_user)
+        payload = json.loads(client.post(reverse('durasi_jatuh_tempo_pide_tiket_backfill')).content)
+        assert payload['updated'] == 0
+        assert payload['unmatched'] == 1
+
+        tiket.refresh_from_db()
+        assert tiket.id_durasi_jatuh_tempo_pide is None
+
+    def test_backfill_skips_tiket_not_yet_sent_to_pide(self, client, pide_admin_user):
+        pide_group = self._ensure_user_pide_group()
+        jenis = JenisDataILAPFactory()
+        DurasiJatuhTempoFactory(
+            id_sub_jenis_data=jenis, seksi=pide_group, durasi=90,
+            start_date=date(2019, 1, 1), end_date=date(2019, 12, 31),
+        )
+        tiket = self._tiket(jenis, tgl_kirim_pide=None)
+
+        client.force_login(pide_admin_user)
+        payload = json.loads(client.post(reverse('durasi_jatuh_tempo_pide_tiket_backfill')).content)
+        assert payload['updated'] == 0
+        assert payload['tanpa_tanggal'] == 1
+
+        tiket.refresh_from_db()
+        assert tiket.id_durasi_jatuh_tempo_pide is None
+
+    def test_backfill_never_overwrites_an_existing_value(self, client, pide_admin_user):
+        pide_group = self._ensure_user_pide_group()
+        jenis = JenisDataILAPFactory()
+        sudah_terisi = DurasiJatuhTempoFactory(
+            id_sub_jenis_data=jenis, seksi=pide_group, durasi=60,
+            start_date=date(2018, 1, 1), end_date=date(2018, 12, 31),
+        )
+        DurasiJatuhTempoFactory(
+            id_sub_jenis_data=jenis, seksi=pide_group, durasi=90,
+            start_date=date(2019, 1, 1), end_date=date(2019, 12, 31),
+        )
+        tiket = TiketFactory(
+            id_periode_data=PeriodeJenisDataFactory(id_sub_jenis_data_ilap=jenis),
+            id_durasi_jatuh_tempo_pide=sudah_terisi,
+            tgl_kirim_pide=timezone.datetime(2019, 6, 1, 9, 0),
+        )
+
+        client.force_login(pide_admin_user)
+        payload = json.loads(client.post(reverse('durasi_jatuh_tempo_pide_tiket_backfill')).content)
+        assert payload['updated'] == 0
+
+        tiket.refresh_from_db()
+        assert tiket.id_durasi_jatuh_tempo_pide_id == sudah_terisi.pk
+
+    def test_backfill_is_idempotent(self, client, pide_admin_user):
+        pide_group = self._ensure_user_pide_group()
+        jenis = JenisDataILAPFactory()
+        DurasiJatuhTempoFactory(
+            id_sub_jenis_data=jenis, seksi=pide_group, durasi=90,
+            start_date=date(2019, 1, 1), end_date=date(2019, 12, 31),
+        )
+        self._tiket(jenis, tgl_kirim_pide=timezone.datetime(2019, 6, 1, 9, 0))
+
+        client.force_login(pide_admin_user)
+        first = json.loads(client.post(reverse('durasi_jatuh_tempo_pide_tiket_backfill')).content)
+        second = json.loads(client.post(reverse('durasi_jatuh_tempo_pide_tiket_backfill')).content)
+        assert first['updated'] == 1
+        assert second['updated'] == 0
+        assert 'Tidak ada Tiket' in second['message']
+        assert Tiket.objects.filter(id_durasi_jatuh_tempo_pide__isnull=True).count() == 0
+
+    def test_backfill_without_pide_group_returns_error(self, client, pide_admin_user):
+        # Aturan durasi menunjuk grup seksi dengan on_delete=PROTECT, jadi
+        # aturannya harus dilepas dulu sebelum grupnya bisa dihapus.
+        AturanDurasiJatuhTempo.objects.filter(seksi__name='user_pide').delete()
+        Group.objects.filter(name='user_pide').delete()
+        client.force_login(pide_admin_user)
+        resp = client.post(reverse('durasi_jatuh_tempo_pide_tiket_backfill'))
         assert resp.status_code == 400
         assert json.loads(resp.content)['success'] is False
 

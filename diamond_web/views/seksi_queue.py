@@ -34,6 +34,7 @@ from ..models.jenis_tabel import JenisTabel
 from ..models.kategori_wilayah import KategoriWilayah
 from ..models.status_penelitian import StatusPenelitian
 from ..models.tiket_pic import TiketPIC
+from ..utils.jenis_prioritas import is_prioritas_pada, prioritas_window_q
 from ..utils.pic_profil import pic_display_name, pic_profil_link
 from ..utils.wilayah import kanwil_value_paths, tiket_in_kanwil_q
 
@@ -63,12 +64,20 @@ JATUH_TEMPO_LIMITS = (10, 30, 60)
 
 
 def prioritas_exists():
-    """Exists() matching tikets whose data was prioritas when it was received."""
+    """Exists() matching tikets whose data was prioritas when it was received.
+
+    The rule itself lives in :mod:`diamond_web.utils.jenis_prioritas`, which the
+    rekam form, the sync and the backfill command read too — this is only its
+    subquery form. Note in particular that a prioritas row with no end date is
+    open-ended here, matching both the admin form's overlap check and
+    :func:`_was_prioritas`; it used to be excluded outright by an `end_date__gte`
+    that no NULL can satisfy.
+    """
+    terima = Cast(OuterRef('tgl_terima_dip'), DateField())
     return Exists(
         JenisPrioritasData.objects.filter(
+            prioritas_window_q(terima),
             id_sub_jenis_data_ilap=OuterRef(SUB),
-            start_date__lte=Cast(OuterRef('tgl_terima_dip'), DateField()),
-            end_date__gte=Cast(OuterRef('tgl_terima_dip'), DateField()),
         )
     )
 
@@ -772,13 +781,7 @@ def _was_prioritas(windows, sub_id, tgl_terima_dip):
     The same rule :func:`prioritas_exists` applies in SQL — a window covering
     tgl_terima_dip — answered against the windows read up front.
     """
-    if tgl_terima_dip is None:
-        return False
-    day = tgl_terima_dip.date() if hasattr(tgl_terima_dip, 'date') else tgl_terima_dip
-    for start_date, end_date in windows.get(sub_id, ()):
-        if start_date <= day and (end_date is None or end_date >= day):
-            return True
-    return False
+    return is_prioritas_pada(windows.get(sub_id, ()), tgl_terima_dip)
 
 
 class Weighting:

@@ -18,8 +18,9 @@ from functools import wraps
 import os
 import csv
 
-from ..models import Tiket, BentukData, CaraPenyampaian, PeriodeJenisData, JenisPrioritasData, StatusPenelitian, PIC, TiketPIC, TiketAction
+from ..models import Tiket, BentukData, CaraPenyampaian, PeriodeJenisData, StatusPenelitian, PIC, TiketPIC, TiketAction
 from ..constants.tiket_action_types import PICActionType
+from ..utils.jenis_prioritas import PrioritasIndex
 from ..utils.oracle_sync import OracleDataSyncService, OracleSyncConfigError
 from ..tasks import sync_tiket_data_task, check_tiket_data_task
 
@@ -980,41 +981,6 @@ def _safe_int(value, default=None):
         return default
 
 
-def _parse_jenis_prioritas_data(jenis_prioritas_str, tahun_override=None):
-    """
-    Parse jenis_prioritas_data from Oracle format: 'PD2717901_2026'
-    Extract id_sub_jenis_data and tahun, then lookup in JenisPrioritasData.
-    Returns (JenisPrioritasData object or None, tahun_value)
-    """
-    if not jenis_prioritas_str:
-        return None, None
-    
-    try:
-        parts = jenis_prioritas_str.split('_')
-        if len(parts) != 2:
-            return None, None
-        
-        id_sub_jenis = parts[0]  # e.g., 'PD2717901'
-        tahun_from_key = parts[1]  # e.g., '2026'
-        lookup_tahun = str(tahun_override) if tahun_override is not None else tahun_from_key
-        
-        jenis_prioritas = JenisPrioritasData.objects.filter(
-            id_sub_jenis_data_ilap__id_sub_jenis_data=id_sub_jenis,
-            tahun=lookup_tahun
-        ).first()
-
-        # Fallback to key-derived year when override year has no master mapping.
-        if not jenis_prioritas and lookup_tahun != tahun_from_key:
-            jenis_prioritas = JenisPrioritasData.objects.filter(
-                id_sub_jenis_data_ilap__id_sub_jenis_data=id_sub_jenis,
-                tahun=tahun_from_key
-            ).first()
-        
-        return jenis_prioritas, _safe_int(tahun_from_key)
-    except Exception:
-        return None, None
-
-
 def _build_periode_lookup_cache():
     """Build a lookup cache mapping id_sub_jenis_data to PeriodeJenisData.
 
@@ -1038,7 +1004,6 @@ def _build_periode_lookup_cache():
 
 def _map_periode_data(
     periode_str,
-    jenis_prioritas_obj=None,
     tahun_value=None,
     nomor_tiket=None,
     periode_lookup_cache=None,
@@ -1332,6 +1297,11 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
             f'Periode lookup cache loaded: {len(periode_lookup_cache)} sub_jenis_data with PeriodeJenisData'
         )
 
+        # Same idea for Data Prioritas: the whole (small) table read once, then
+        # matched in memory per row instead of a query per tiket.
+        prioritas_index = PrioritasIndex()
+        logger.info(f'Prioritas index loaded: {len(prioritas_index)} record(s)')
+
         # Build BentukData and CaraPenyampaian caches for Oracle value lookups
         bentuk_data_cache = _build_bentuk_data_lookup_cache()
         cara_penyampaian_cache = _build_cara_penyampaian_lookup_cache()
@@ -1408,7 +1378,6 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                 # Parse and validate tiket data
                 oracle_tahun = _safe_int(row_dict.get('tahun_data'))
                 jenis_prioritas_str = row_dict.get('jenis_prioritas_data')
-                jenis_prioritas_obj, _ = _parse_jenis_prioritas_data(jenis_prioritas_str, tahun_override=oracle_tahun)
                 tahun_data = oracle_tahun
 
                 if tahun_data is None:
@@ -1420,18 +1389,27 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                 periode_str = row_dict.get('periode_data')
                 periode_jenis_data_obj, periode_value = _map_periode_data(
                     periode_str,
-                    jenis_prioritas_obj=jenis_prioritas_obj,
                     tahun_value=tahun_data,
                     nomor_tiket=nomor_tiket,
                     periode_lookup_cache=periode_lookup_cache,
                 )
-                
+
                 if not periode_jenis_data_obj:
                     error_msg = f"Periode '{periode_str}' not found in database"
                     errors.append(f"Tiket {nomor_tiket}: {error_msg}")
                     _log_failed_row(sync_id, nomor_tiket, periode_str, jenis_prioritas_str, tahun_data, error_msg, row_number=idx+1)
                     continue
-                
+
+                # Prioritas tidak lagi diambil dari kolom jenis_prioritas_data
+                # Oracle (yang berformat <sub>_<tahun> dan dicocokkan lewat field
+                # Tahun). Aturan yang berlaku sekarang satu untuk seluruh
+                # aplikasi: masa berlaku record Data Prioritas terhadap tanggal
+                # terima DIP tiket. Lihat utils/jenis_prioritas.py.
+                tgl_terima_dip = _make_aware_datetime(row_dict.get('tgl_terima_dip')) or timezone.now()
+                jenis_prioritas_obj = prioritas_index.match(
+                    periode_jenis_data_obj.id_sub_jenis_data_ilap_id, tgl_terima_dip
+                )
+
                 status_penelitian_obj = None
                 status_penelitian_str = row_dict.get('status_penelitian', '').strip().lower()
                 if status_penelitian_str:
@@ -1470,7 +1448,7 @@ def _sync_tiket_data(service, sync_id=None, request=None, stop_checker=None):
                     'baris_diterima': row_dict.get('baris_diterima') if row_dict.get('baris_diterima') is not None else 0,
                     'satuan_data': row_dict.get('satuan_data', 1),
                     'tgl_terima_vertikal': _make_aware_datetime(row_dict.get('tgl_terima_vertikal')),
-                    'tgl_terima_dip': _make_aware_datetime(row_dict.get('tgl_terima_dip')) or timezone.now(),
+                    'tgl_terima_dip': tgl_terima_dip,
                     'backup': bool(row_dict.get('backup', 0)),
                     'tanda_terima': bool(row_dict.get('tanda_terima', 0)),
                     'id_status_penelitian': status_penelitian_obj,

@@ -278,8 +278,21 @@ urlpatterns = [
     path('pic-pide/<int:pk>/update/', views.PICPIDEUpdateView.as_view(), name='pic_pide_update'),
     path('pic-pide/<int:pk>/delete/', views.PICPIDEDeleteView.as_view(), name='pic_pide_delete'),
     # Durasi Jatuh Tempo PIDE URLs
+    # Aturan Durasi Jatuh Tempo PIDE URLs
+    path('aturan-durasi-jatuh-tempo-pide/', views.AturanDurasiJatuhTempoPIDEListView.as_view(), name='aturan_durasi_jatuh_tempo_pide_list'),
+    path('aturan-durasi-jatuh-tempo-pide/data/', views.aturan_durasi_jatuh_tempo_pide_data, name='aturan_durasi_jatuh_tempo_pide_data'),
+    path('aturan-durasi-jatuh-tempo-pide/create/', views.AturanDurasiJatuhTempoPIDECreateView.as_view(), name='aturan_durasi_jatuh_tempo_pide_create'),
+    path('aturan-durasi-jatuh-tempo-pide/<int:pk>/update/', views.AturanDurasiJatuhTempoPIDEUpdateView.as_view(), name='aturan_durasi_jatuh_tempo_pide_update'),
+    path('aturan-durasi-jatuh-tempo-pide/<int:pk>/delete/', views.AturanDurasiJatuhTempoPIDEDeleteView.as_view(), name='aturan_durasi_jatuh_tempo_pide_delete'),
+
     path('durasi-jatuh-tempo-pide/', views.DurasiJatuhTempoPIDEListView.as_view(), name='durasi_jatuh_tempo_pide_list'),
     path('durasi-jatuh-tempo-pide/data/', views.durasi_jatuh_tempo_pide_data, name='durasi_jatuh_tempo_pide_data'),
+    path('durasi-jatuh-tempo-pide/generate/preview/', views.durasi_jatuh_tempo_pide_generate_preview, name='durasi_jatuh_tempo_pide_generate_preview'),
+    path('durasi-jatuh-tempo-pide/generate/', views.durasi_jatuh_tempo_pide_generate, name='durasi_jatuh_tempo_pide_generate'),
+    path('durasi-jatuh-tempo-pide/prioritas-sync/preview/', views.durasi_jatuh_tempo_pide_prioritas_sync_preview, name='durasi_jatuh_tempo_pide_prioritas_sync_preview'),
+    path('durasi-jatuh-tempo-pide/prioritas-sync/', views.durasi_jatuh_tempo_pide_prioritas_sync, name='durasi_jatuh_tempo_pide_prioritas_sync'),
+    path('durasi-jatuh-tempo-pide/tiket-backfill/preview/', views.durasi_jatuh_tempo_pide_tiket_backfill_preview, name='durasi_jatuh_tempo_pide_tiket_backfill_preview'),
+    path('durasi-jatuh-tempo-pide/tiket-backfill/', views.durasi_jatuh_tempo_pide_tiket_backfill, name='durasi_jatuh_tempo_pide_tiket_backfill'),
     path('durasi-jatuh-tempo-pide/create/', views.DurasiJatuhTempoPIDECreateView.as_view(), name='durasi_jatuh_tempo_pide_create'),
     path('durasi-jatuh-tempo-pide/<int:pk>/update/', views.DurasiJatuhTempoPIDEUpdateView.as_view(), name='durasi_jatuh_tempo_pide_update'),
     path('durasi-jatuh-tempo-pide/<int:pk>/delete/', views.DurasiJatuhTempoPIDEDeleteView.as_view(), name='durasi_jatuh_tempo_pide_delete'),
@@ -317,6 +330,13 @@ urlpatterns = [
     path('pic-pmde/create/', views.PICPMDECreateView.as_view(), name='pic_pmde_create'),
     path('pic-pmde/<int:pk>/update/', views.PICPMDEUpdateView.as_view(), name='pic_pmde_update'),
     path('pic-pmde/<int:pk>/delete/', views.PICPMDEDeleteView.as_view(), name='pic_pmde_delete'),
+
+    # Aturan Durasi Jatuh Tempo PMDE URLs
+    path('aturan-durasi-jatuh-tempo-pmde/', views.AturanDurasiJatuhTempoPMDEListView.as_view(), name='aturan_durasi_jatuh_tempo_pmde_list'),
+    path('aturan-durasi-jatuh-tempo-pmde/data/', views.aturan_durasi_jatuh_tempo_pmde_data, name='aturan_durasi_jatuh_tempo_pmde_data'),
+    path('aturan-durasi-jatuh-tempo-pmde/create/', views.AturanDurasiJatuhTempoPMDECreateView.as_view(), name='aturan_durasi_jatuh_tempo_pmde_create'),
+    path('aturan-durasi-jatuh-tempo-pmde/<int:pk>/update/', views.AturanDurasiJatuhTempoPMDEUpdateView.as_view(), name='aturan_durasi_jatuh_tempo_pmde_update'),
+    path('aturan-durasi-jatuh-tempo-pmde/<int:pk>/delete/', views.AturanDurasiJatuhTempoPMDEDeleteView.as_view(), name='aturan_durasi_jatuh_tempo_pmde_delete'),
 
     # Durasi Jatuh Tempo PMDE URLs
     path('durasi-jatuh-tempo-pmde/', views.DurasiJatuhTempoPMDEListView.as_view(), name='durasi_jatuh_tempo_pmde_list'),
@@ -357,7 +377,7 @@ urlpatterns = [
     
     # API endpoints
     path('api/ilap/<int:ilap_id>/periode-jenis-data/', views.ILAPPeriodeDataAPIView.as_view(), name='api_ilap_periode_jenis_data'),
-    path('api/check-jenis-prioritas/<str:jenis_data_id>/<int:tahun>/', views.CheckJenisPrioritasAPIView.as_view(), name='check_jenis_prioritas'),
+    path('api/check-jenis-prioritas/<int:periode_data_id>/<str:tanggal>/', views.CheckJenisPrioritasAPIView.as_view(), name='check_jenis_prioritas'),
     path('api/navbar-search/', views.navbar_search, name='navbar_search'),
     path('api/check-tiket-exists/', views.CheckTiketExistsAPIView.as_view(), name='check_tiket_exists'),
     path('api/preview-nomor-tiket/', views.PreviewNomorTiketAPIView.as_view(), name='preview_nomor_tiket'),

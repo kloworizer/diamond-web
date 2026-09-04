@@ -212,19 +212,31 @@ class TestILAPPeriodeDataExceptionFallbacks:
 
 @pytest.mark.django_db
 class TestCheckJenisPrioritasException:
-    """Lines 254-255: except Exception in CheckJenisPrioritasAPIView."""
+    """The except Exception branch in CheckJenisPrioritasAPIView."""
 
-    def test_orm_exception_covers_lines_254_255(self, client):
-        """JenisPrioritasData.objects.filter raises → lines 254-255 executed."""
+    def test_orm_exception_is_reported_as_400(self, client, db):
+        """JenisPrioritasData.objects.filter raises → error branch executed."""
+        from diamond_web.tests.conftest import PeriodeJenisDataFactory
+        periode = PeriodeJenisDataFactory()
         admin = UserFactory(is_staff=True, is_superuser=True)
         admin.groups.add(_get_or_create_group('admin'))
         client.force_login(admin)
         with patch.object(JenisPrioritasData.objects, 'filter', side_effect=Exception('db err')):
-            resp = client.get(reverse('check_jenis_prioritas', args=['KM0330101', '2025']))
+            resp = client.get(reverse('check_jenis_prioritas', args=[periode.pk, '2025-06-15']))
         assert resp.status_code == 400
         data = json.loads(resp.content)
         assert data['success'] is False
         assert 'db err' in data['error']
+
+    def test_a_malformed_date_is_reported_as_400(self, client, db):
+        from diamond_web.tests.conftest import PeriodeJenisDataFactory
+        periode = PeriodeJenisDataFactory()
+        admin = UserFactory(is_staff=True, is_superuser=True)
+        admin.groups.add(_get_or_create_group('admin'))
+        client.force_login(admin)
+        resp = client.get(reverse('check_jenis_prioritas', args=[periode.pk, 'bukan-tanggal']))
+        assert resp.status_code == 400
+        assert json.loads(resp.content)['success'] is False
 
 
 # ===========================================================================
@@ -282,39 +294,68 @@ class TestTiketCreateStatusKetersediaan0:
 
 
 # ===========================================================================
-# Line 485: JenisPrioritasData found for sub_jenis/tahun
+# id_jenis_prioritas_data assigned from the validity window at rekam time
 # ===========================================================================
 
 @pytest.mark.django_db
-class TestTiketCreateJenisPrioritasFound:
-    """Line 485: id_jenis_prioritas_data assigned when JenisPrioritasData exists."""
+class TestTiketCreateJenisPrioritas:
+    """The FK is assigned when a prioritas record is in force on Tgl Terima DIP.
 
-    def test_jenis_prioritas_found_covers_line_485(self, client):
-        """Create JenisPrioritasData for the sub_jenis+tahun → line 485 executed."""
+    The record's ``tahun`` and the tiket's Tahun Data play no part — the form
+    posts today's date as Tgl Terima DIP, so only the window decides.
+    """
+
+    def _admin(self):
         admin = UserFactory(is_staff=True, is_superuser=True)
         admin.groups.add(_get_or_create_group('admin'))
+        return admin
+
+    def test_assigned_when_the_window_is_in_force(self, client):
         jenis_data, pd = _create_full_tiket_setup()
 
-        year = date.today().year
-        # Create JenisPrioritasData for this sub_jenis + year
+        # tahun deliberately far from the tiket's Tahun Data: only the window counts.
         jenis_prioritas = JenisPrioritasData.objects.create(
             id_sub_jenis_data_ilap=jenis_data,
-            tahun=str(year),
+            tahun='2099',
             start_date=date.today() - timedelta(days=30),
             no_nd='ND-TEST-001',
         )
 
-        post_data = _build_tiket_post_data(pd, year=year)
+        post_data = _build_tiket_post_data(pd, year=date.today().year - 1)
         post_data['status_ketersediaan_data'] = 'on'  # checkbox checked → data tersedia
 
-        client.force_login(admin)
+        client.force_login(self._admin())
         resp = client.post(reverse('tiket_rekam_create'), post_data, follow=True)
         assert resp.status_code == 200
 
-        # Tiket should have jenis_prioritas_data assigned
         created_tiket = Tiket.objects.filter(id_periode_data=pd).first()
-        if created_tiket:
-            assert created_tiket.id_jenis_prioritas_data == jenis_prioritas
+        assert created_tiket is not None
+        assert created_tiket.id_jenis_prioritas_data == jenis_prioritas
+
+    def test_not_assigned_when_the_window_has_closed(self, client):
+        """A record matching the tiket's Tahun Data but already expired must not
+        be picked up — that was exactly the old bug."""
+        jenis_data, pd = _create_full_tiket_setup()
+        year = date.today().year
+
+        JenisPrioritasData.objects.create(
+            id_sub_jenis_data_ilap=jenis_data,
+            tahun=str(year),
+            start_date=date(2020, 1, 1),
+            end_date=date(2020, 12, 31),
+            no_nd='ND-TEST-002',
+        )
+
+        post_data = _build_tiket_post_data(pd, year=year)
+        post_data['status_ketersediaan_data'] = 'on'
+
+        client.force_login(self._admin())
+        resp = client.post(reverse('tiket_rekam_create'), post_data, follow=True)
+        assert resp.status_code == 200
+
+        created_tiket = Tiket.objects.filter(id_periode_data=pd).first()
+        assert created_tiket is not None
+        assert created_tiket.id_jenis_prioritas_data is None
 
 
 # ===========================================================================

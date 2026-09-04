@@ -458,7 +458,7 @@ Selain tahapan di atas, ada dua aksi yang **tidak mengubah status** tiket:
 | Endpoint | Fungsi |
 |----------|--------|
 | `/api/ilap/<id>/periode-jenis-data/` | Ambil periode data untuk ILAP tertentu |
-| `/api/check-jenis-prioritas/<jenis_data_id>/<tahun>/` | Cek prioritas data |
+| `/api/check-jenis-prioritas/<periode_data_id>/<tanggal>/` | Cek prioritas data pada tanggal terima DIP |
 | `/api/check-tiket-exists/` | Cek apakah tiket sudah ada |
 | `/api/preview-nomor-tiket/` | Preview nomor tiket |
 | `/api/navbar-search/?q=<term>` | Pencarian global navbar (ILAP, sub jenis data, nomor tiket) |

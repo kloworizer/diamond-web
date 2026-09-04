@@ -39,7 +39,7 @@
             <h5 class="card-title"><i class="feather-clock me-2"></i>Daftar Durasi Jatuh Tempo PMDE</h5>
             <div class="d-flex align-items-center gap-2">
                 <button type="button" class="btn btn-primary" id="btn-generate-durasi"
-                    title="Buat Durasi Jatuh Tempo PMDE untuk tahun yang belum punya (2019 s.d. tahun berjalan), sesuaikan durasi dengan status prioritas terbaru, lalu isi Durasi Jatuh Tempo PMDE pada Tiket yang masih kosong">
+                    title="Buat Durasi Jatuh Tempo PMDE untuk tahun yang belum punya (mengikuti Aturan Durasi Jatuh Tempo), sesuaikan durasi dengan status prioritas terbaru, lalu isi Durasi Jatuh Tempo PMDE pada Tiket yang masih kosong">
                     <i class="feather-zap me-1"></i>Generate Otomatis
                 </button>
                 <button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>
@@ -278,6 +278,18 @@
             return $('<div>').text(value == null ? '' : value).html();
         }
 
+        // Durasi tidak lagi satu angka tetap: ia datang dari Aturan Durasi Jatuh
+        // Tempo, jadi satu seksi bisa memakai beberapa angka sekaligus (aturan
+        // umum plus pengecualian per ILAP/Sub Jenis Data). Server mengirimnya
+        // sebagai daftar; ini yang merangkainya jadi kalimat.
+        function formatDurasi(nilai) {
+            const daftar = Array.isArray(nilai) ? nilai : (nilai == null ? [] : [nilai]);
+            if (!daftar.length) return '&mdash;';
+            if (daftar.length === 1) return `<strong>${escapeHtml(daftar[0])}</strong>`;
+            const awal = daftar.slice(0, -1).map(n => escapeHtml(n)).join(', ');
+            return `<strong>${awal} atau ${escapeHtml(daftar[daftar.length - 1])}</strong>`;
+        }
+
         // Build the "what will be inserted" summary shown before the actual insert
         function renderGenerateSummary(data) {
             const body = $('#generate-summary-body');
@@ -331,8 +343,8 @@
                 <div class="alert alert-info py-2 px-3 mb-3" style="font-size: 12px;">
                     Baris berikut <strong>akan dibuat</strong> untuk Seksi PMDE, satu baris per tahun
                     (${data.tahun_awal} s.d. ${data.tahun_akhir}). Durasi ditentukan per tahun:
-                    ${data.durasi_prioritas} hari bila tahun tersebut termasuk periode prioritas Sub Jenis Data
-                    itu, dan ${data.durasi_non_prioritas} hari bila tidak.
+                    ${formatDurasi(data.durasi_prioritas)} hari bila tahun tersebut termasuk periode prioritas
+                    Sub Jenis Data itu, dan ${formatDurasi(data.durasi_non_prioritas)} hari bila tidak.
                 </div>
                 <div class="row g-2 mb-3">
                     <div class="col-4">
@@ -472,11 +484,11 @@
             body.html(`
                 <div class="alert alert-info py-2 px-3 mb-3" style="font-size: 12px;">
                     Periode berikut tidak lagi sesuai status prioritasnya, sehingga durasinya
-                    <strong>akan disesuaikan</strong> menjadi ${data.durasi_prioritas} hari bila periode itu
-                    termasuk periode prioritas dan ${data.durasi_non_prioritas} hari bila tidak. Penilaian
-                    dilakukan per periode, jadi tahun lain pada Sub Jenis Data yang sama tidak ikut berubah.
-                    Durasi yang diisi manual (selain ${data.durasi_prioritas}/${data.durasi_non_prioritas} hari)
-                    tidak diubah.
+                    <strong>akan disesuaikan</strong> menjadi ${formatDurasi(data.durasi_prioritas)} hari bila
+                    periode itu termasuk periode prioritas dan ${formatDurasi(data.durasi_non_prioritas)} hari
+                    bila tidak &mdash; menurut aturan Sub Jenis Data itu sendiri. Penilaian dilakukan per periode,
+                    jadi tahun lain pada Sub Jenis Data yang sama tidak ikut berubah. Durasi di luar angka yang
+                    aturannya izinkan (mis. disetel tangan) tidak diubah.
                 </div>
                 <div class="row g-2 mb-3">
                     <div class="col-4">

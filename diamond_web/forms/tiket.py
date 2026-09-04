@@ -126,6 +126,12 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
         # Django automatically sets required=True for non-nullable fields and required=False for nullable fields
         # No need to manually set required status - it's inherited from the model
 
+        # periode/tahun refer to the period of the data being received,
+        # not to when the tiket is recorded. Label them explicitly so perekam
+        # tidak mengisinya dengan periode/tahun perekaman.
+        self.fields['periode'].label = 'Periode Data'
+        self.fields['tahun'].label = 'Tahun Data'
+
         # Generate year choices (current year to 20 years back)
         current_year = datetime.now().year
         year_choices = [(year, str(year)) for year in range(current_year - 20, current_year + 1)]

@@ -9,11 +9,17 @@ from django.views.decorators.http import require_GET
 
 from ..models.jenis_prioritas_data import JenisPrioritasData
 from ..forms.jenis_prioritas_data import JenisPrioritasDataForm
-from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, SafeDeleteMixin
+from .mixins import AjaxFormMixin, AdminAnyRequiredMixin, SafeDeleteMixin
 from datetime import date as _date
 
+# Data Prioritas dikelola bersama oleh ketiga seksi: P3DE menetapkan penandaan
+# prioritasnya, sedangkan PIDE dan PMDE memakainya untuk mengurutkan antrean
+# identifikasi dan pengendalian mutu (lihat `seksi_queue.prioritas_exists`).
+# Karena itu keempat view CRUD di bawah memakai AdminAnyRequiredMixin — admin
+# global maupun admin_p3de/admin_pide/admin_pmde — sesuai RBAC_MATRIX.md.
 
-class JenisPrioritasDataListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
+
+class JenisPrioritasDataListView(LoginRequiredMixin, AdminAnyRequiredMixin, TemplateView):
     """List view for `JenisPrioritasData` entries.
 
     Renders `jenis_prioritas_data/list.html`. When redirected from a delete
@@ -37,7 +43,7 @@ class JenisPrioritasDataListView(LoginRequiredMixin, AdminP3DERequiredMixin, Tem
                 pass
         return super().get(request, *args, **kwargs)
 
-class JenisPrioritasDataCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
+class JenisPrioritasDataCreateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, CreateView):
     """Create view for `JenisPrioritasData` entries.
 
     Presents a form (modal-capable) to create a new priority rule for a
@@ -79,7 +85,7 @@ class JenisPrioritasDataCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, A
                 return self.form_invalid(form)
         return super().form_valid(form)
 
-class JenisPrioritasDataUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
+class JenisPrioritasDataUpdateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, UpdateView):
     """Update view for existing `JenisPrioritasData` entries.
 
     Validates updated date ranges against other entries for the same
@@ -116,7 +122,7 @@ class JenisPrioritasDataUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, A
                 return self.form_invalid(form)
         return super().form_valid(form)
 
-class JenisPrioritasDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+class JenisPrioritasDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminAnyRequiredMixin, DeleteView):
     """Delete view for `JenisPrioritasData` entries.
 
     For AJAX `GET` returns the confirmation HTML under `html`. On delete,
@@ -156,7 +162,11 @@ class JenisPrioritasDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3D
         return self.delete(request, *args, **kwargs)
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(
+    lambda u: u.groups.filter(
+        name__in=['admin', 'admin_p3de', 'admin_pide', 'admin_pmde']
+    ).exists()
+)
 @require_GET
 def jenis_prioritas_data_data(request):
     """Server-side DataTables endpoint for `JenisPrioritasData`.
