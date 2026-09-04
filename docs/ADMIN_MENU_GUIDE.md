@@ -15,6 +15,7 @@ Dokumen ini menjelaskan seluruh menu yang muncul di navbar untuk role admin, apa
 - [Menu Admin PMDE](#menu-admin-pmde)
 - [Menu Sinkronisasi Data (Admin Global)](#menu-sinkronisasi-data-admin-global)
 - [Fokus: Cara Kerja Menu PIC](#fokus-cara-kerja-menu-pic)
+- [Fokus: Cara Kerja Menu Periode Jenis Data](#fokus-cara-kerja-menu-periode-jenis-data)
 
 ---
 
@@ -233,3 +234,68 @@ Halaman daftar PIC menampilkan tabel dengan kolom: ILAP, ID Sub Jenis Data, Nama
 - **Pencarian per kolom** (kotak pencarian di bawah setiap judul kolom) dan tombol **Reset Pencarian**.
 - **Pengurutan** kolom serta **paginasi** (server-side).
 - Kolom **Aksi** (tombol Edit & Hapus) **hanya muncul untuk admin**. User biasa dapat melihat daftar tetapi tanpa tombol aksi.
+
+---
+
+## Fokus: Cara Kerja Menu Periode Jenis Data
+
+Menu **Periode Jenis Data** (submenu Kelola ILAP) menentukan seberapa sering suatu Sub Jenis Data ILAP wajib dikirim (Bulanan, Triwulanan, Semesteran, Tahunan, dll). Bagian ini menjelaskan efek yang **tidak langsung terlihat** ketika tipe periode pada record yang sudah dipakai tiket diubah — karena tidak ada validasi yang memblokir aksi ini, walau efeknya cukup luas.
+
+### Apa itu Periode Jenis Data?
+
+Satu record `Periode Jenis Data` memiliki field:
+
+| Field | Keterangan |
+|-------|-----------|
+| **Sub Jenis Data ILAP** | Jenis data yang diatur periodenya. |
+| **Periode Pengiriman** | Tipe periode, diambil dari master **Periode Pengiriman** (Harian, Mingguan, Bulanan, Triwulanan, Semesteran, Tahunan, dll). |
+| **Start Date** | Tanggal mulai berlakunya aturan periode ini. |
+| **End Date** | Tanggal berakhir. **Opsional** — kosong berarti masih berlaku sampai sekarang. |
+| **Akhir Penyampaian** | Jumlah hari batas kirim, dihitung sejak **akhir tiap periode** (mis. akhir bulan untuk tipe Bulanan, akhir tahun untuk tipe Tahunan). |
+
+> **Sub Jenis Data + rentang tanggal tidak boleh tumpang tindih.** Form menolak bila Sub Jenis Data yang sama punya dua record dengan rentang `start_date`–`end_date` yang beririsan. Validasi ini otomatis mendukung pola "tutup periode lama, buat periode baru" di bawah.
+
+### Prinsip Penting: Tiket Lama Terkunci Permanen ke Record yang Sama
+
+Setiap **Tiket** menyimpan referensi (`id_periode_data`) ke **satu record** Periode Jenis Data tertentu — bukan ke tipe periodenya secara langsung. Referensi ini bersifat `PROTECT`: record Periode Jenis Data **tidak bisa dihapus** selama masih dipakai tiket. Tapi field-fieldnya, **termasuk tipe Periode Pengiriman, tetap bisa diedit** kapan saja tanpa penolakan sistem — walau sudah dipakai ratusan tiket.
+
+Yang membuat ini berisiko: label tipe periode ("Bulanan"/"Tahunan"/dst) yang tampil di seluruh aplikasi (detail tiket, daftar tiket, dashboard Home, dokumen ND/Surat, Laporan Register Penerimaan, Laporan Hasil Pengolahan Data Prioritas, Tanda Terima, Profil ILAP/PIC, Nama Tabel, Backup Data) **dihitung ulang setiap kali halaman dibuka**, dengan membaca nilai Periode Pengiriman **yang berlaku sekarang** pada record tersebut — bukan nilai yang berlaku saat tiket itu dibuat.
+
+### Skenario — Mengubah Tipe Periode pada Record yang Sudah Dipakai Tiket (bukan menambah baru)
+
+Misalnya admin membuka record Periode Jenis Data yang sudah lama dipakai (tipe **Bulanan**, dipakai tiket-tiket dengan Periode 1–12), lalu mengubah field **Periode Pengiriman** menjadi **Tahunan** pada record yang sama (tanpa mengubah Start Date), dan menyimpan:
+
+1. **Tersimpan tanpa error.** Tidak ada validasi yang memeriksa apakah record ini sudah dipakai tiket sebelum mengizinkan perubahan tipe periode.
+2. **Nilai `Periode` dan `Tahun` pada tiket lama tidak berubah** di database (tetap 1–12 apa adanya). Yang berubah hanya **tipe periode yang ditempelkan ke tiket itu saat ditampilkan**.
+3. **Tampilan berubah di semua halaman yang memformat periode.** Untuk tipe Tahunan, sistem hanya menampilkan tahunnya saja (mis. "2025") — info bulan (Januari–Desember) yang sebelumnya melekat pada tiket-tiket itu **hilang dari tampilan** (bukan dari data mentah).
+4. **Menu Monitoring Penyampaian Data paling terdampak.** Halaman ini membangkitkan ulang jadwal periode wajib dari Start Date sampai hari ini berdasarkan tipe periode yang berlaku *sekarang*. Begitu berubah ke Tahunan, sistem hanya mengharapkan **1 periode wajib per tahun**, lalu mencocokkannya ke tiket lewat kombinasi (record periode, nomor periode, tahun). Akibatnya:
+   - Tiket lama dengan Periode = 1 (Januari) akan otomatis cocok dan dianggap **"Sudah Menyampaikan"** mewakili seluruh tahun.
+   - **11 tiket bulan lainnya (Februari–Desember) tidak lagi punya slot yang cocok**, sehingga tidak muncul lagi di halaman ini sama sekali — seolah kewajiban tahun tersebut sudah tuntas sejak Januari, padahal aslinya wajib dikirim bulanan. Data tiketnya sendiri tetap ada dan tetap bisa dilihat normal di menu Tiket.
+5. **Batas jatuh tempo (`Akhir Penyampaian`) ikut bergeser maknanya.** Nilai hari yang tadinya dihitung dari akhir bulan kini dihitung dari akhir tahun. Bila nilainya tidak disesuaikan ulang, tanggal jatuh tempo yang dihasilkan bisa tidak relevan.
+6. **Tiket baru ke depan otomatis mengikuti aturan baru** — form Rekam Tiket membatasi pilihan Periode hanya ke nilai "1" untuk tipe Tahunan, jadi secara operasional pengguna tidak bisa lagi merekam data bulanan pada jenis data tersebut setelah perubahan. Ini bagian yang memang sesuai tujuan mengubah ke tahunan.
+
+> **Inti masalahnya:** mengedit tipe periode pada record lama itu retroaktif — mengubah cara *seluruh* histori tiket pada Sub Jenis Data itu dibaca dan dijadwalkan ulang, bukan hanya berlaku untuk tiket baru ke depan.
+
+### Cara yang Direkomendasikan — Tutup Periode Lama, Buat Periode Baru
+
+Untuk mengganti tipe periode suatu Sub Jenis Data tanpa mengganggu histori tiket yang sudah ada:
+
+1. **Jangan edit** field Periode Pengiriman pada record lama.
+2. Buka record lama, isi **End Date** dengan tanggal akhir periode terakhir yang masih memakai aturan lama (mis. 31 Desember tahun terakhir yang masih Bulanan).
+3. Buat **record Periode Jenis Data baru**: Sub Jenis Data yang sama, Periode Pengiriman = **Tahunan**, Start Date = awal periode baru berlaku (mis. 1 Januari tahun berikutnya), dan Akhir Penyampaian disesuaikan dengan aturan tahunan yang baru.
+4. Sistem otomatis memastikan rentang tanggal kedua record ini tidak tumpang tindih (lihat catatan validasi di atas).
+5. **Lakukan cutover tepat di pergantian tahun** (Start Date record Tahunan baru = 1 Januari) — lihat alasannya di bagian *Kolom Penyampaian* di bawah.
+
+Dengan pola ini: tiket-tiket lama tetap terhubung ke record Bulanan yang sudah ditutup (tampilan & Monitoring Penyampaian Data untuk histori tetap benar sebagai bulanan), sementara tiket-tiket baru sejak tanggal cutover otomatis terhubung ke record Tahunan yang baru.
+
+### Kolom Penyampaian pada Tiket — Tidak Ikut Berubah Tampilannya, tapi Ada Risiko Lain
+
+Tiket punya dua field angka yang sering tertukar: **Periode** (1–12, dibahas di atas) dan **Penyampaian** (penghitung pengiriman ulang/resend — 0 untuk kiriman pertama, 1 untuk kiriman kedua, dst., untuk kombinasi Sub Jenis Data + Periode + Tahun yang sama persis).
+
+- **Nilai `Penyampaian` pada tiket lama tidak berubah** bila tipe Periode Pengiriman diedit. Field ini diisi **sekali** saat tiket dibuat — hasil hitung "sudah berapa tiket lain untuk kombinasi ini" — lalu disimpan permanen di baris tiket tersebut.
+- **Tampilannya juga tidak ikut terdampak.** Berbeda dari kolom Periode yang diformat ulang lewat `format_periode()` (sehingga label Bulanan/Tahunan-nya bisa berubah saat dibaca), kolom Penyampaian ditampilkan sebagai angka mentah apa adanya.
+- **Tapi ada risiko tidak langsung pada tiket baru** bila cutover dilakukan **di tengah tahun**: pengecekan duplikat/penomoran Penyampaian saat merekam tiket baru (lihat `DuplicateCheckAPIView` pada `rekam_tiket.py`) mencari tiket lain berdasarkan **kode Sub Jenis Data + Periode + Tahun yang sama** — pencarian ini **tidak dibatasi ke satu record Periode Jenis Data tertentu**, jadi ia menembus lintas record lama (Bulanan) dan record baru (Tahunan) selama kode Sub Jenis Data-nya sama.
+
+  Contoh: bila record Tahunan baru mulai berlaku Juli 2026 (bukan awal tahun), lalu direkam tiket tahunan untuk Tahun 2026 dengan Periode = 1, sistem akan menemukan tiket Bulanan Januari 2026 (Periode = 1, Tahun = 2026) yang sudah ada lebih dulu — dan menganggap tiket tahunan itu sebagai **kiriman ulang (resend)** dari tiket Januari tersebut. Tiket tahunan baru akan muncul di peringatan duplikat dan `Penyampaian`-nya ikut naik (mis. jadi 1), padahal secara konsep keduanya adalah jenis pelaporan berbeda, bukan resend.
+  
+  Inilah alasan cutover **sebaiknya persis di 1 Januari**: dengan begitu tidak ada tahun yang memiliki tiket Bulanan maupun tiket Tahunan dengan Periode = 1 yang sama, sehingga tidak ada tabrakan.
