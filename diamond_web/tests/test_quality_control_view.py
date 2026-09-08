@@ -1,5 +1,5 @@
 """Tests for views/quality_control.py (view + data endpoint)."""
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from itertools import count
 
 import pytest
@@ -33,6 +33,7 @@ from diamond_web.tests.conftest import (
     TiketPICFactory,
     UserFactory,
 )
+from diamond_web.views.seksi_queue import FREE_FORM_FILTERS
 from diamond_web.views.quality_control import (
     FILTER_APPLIERS,
     FILTER_OPTIONS,
@@ -128,6 +129,13 @@ def _qc_bundle(with_durasi=True, with_prioritas=False, tgl_transfer=None,
     }
 
 
+def _set_terima_dip(tiket, day):
+    """Put a tiket's tanggal terima DIP on `day`, late enough in it that a
+    range compared as a timestamp rather than a date would miss its last day."""
+    tiket.tgl_terima_dip = datetime.combine(day, time(23, 30))
+    tiket.save(update_fields=['tgl_terima_dip'])
+
+
 def _jatuh_tempo_bundle(days, **kwargs):
     """A bundle whose jatuh tempo is `days` days from today, negative allowed.
 
@@ -149,6 +157,22 @@ class TestQualityControlView:
         client.force_login(_pmde_admin_user())
         resp = client.get(reverse('quality_control'))
         assert resp.status_code == 200
+
+    def test_panel_renders_the_date_range_filter(self, client):
+        """Tahun Diterima has no dropdown, so nothing else would notice it going.
+
+        The field name is also the request parameter the applier reads, so the
+        two have to keep matching for the filter to reach the queryset at all.
+        """
+        client.force_login(_pmde_admin_user())
+        html = client.get(reverse('quality_control')).content.decode()
+        assert 'id="filter-tgl-terima-dip"' in html
+        assert 'name="tgl_terima_dip"' in html
+        assert 'tgl_terima_dip' in FILTER_APPLIERS
+        # The two periode-vs-tahun labels the page spells out in full, so a
+        # reader can tell the data's own year from the year it arrived in.
+        assert '>Tahun Data<' in html
+        assert '>Periode Data<' in html
 
     def test_page_names_the_payload_keys_the_endpoint_sends(self, client):
         """The shared template reads its variable columns out of a config block.
@@ -362,7 +386,8 @@ class TestQualityControlFilters:
         options = self._options(client)
         # Each filter the backend accepts must also offer options, otherwise
         # the panel would render a dropdown nothing can ever be picked from.
-        assert set(options) == set(FILTER_APPLIERS) == set(FILTER_OPTIONS)
+        # The exceptions are the ones picked from something other than a list.
+        assert set(options) == set(FILTER_APPLIERS) - FREE_FORM_FILTERS == set(FILTER_OPTIONS)
 
     def test_filter_options_reflect_the_scoped_tikets(self, client):
         bundle = _qc_bundle(with_prioritas=True)
@@ -477,6 +502,45 @@ class TestQualityControlFilters:
         bundle = _qc_bundle()
         client.force_login(bundle['pmde_user'])
         assert self._rows(client, tahun='bukan-angka')['recordsFiltered'] == 0
+
+    def test_filter_by_tgl_terima_dip_range(self, client):
+        """Tahun Diterima: both ends of the range arrive in one parameter."""
+        early = _qc_bundle()
+        late = _qc_bundle(pmde_user=early['pmde_user'])
+        _set_terima_dip(early['tiket'], date(2024, 3, 15))
+        _set_terima_dip(late['tiket'], date(2025, 6, 30))
+        client.force_login(early['pmde_user'])
+
+        assert self._rows(client)['recordsFiltered'] == 2
+        assert self._rows(client, tgl_terima_dip='2024-01-01..2025-12-31')['recordsFiltered'] == 2
+
+        only_early = self._rows(client, tgl_terima_dip='2024-01-01..2024-12-31')
+        assert only_early['recordsFiltered'] == 1
+        assert only_early['data'][0]['nomor_tiket'] == early['tiket'].nomor_tiket
+
+        # Either half may be left empty, leaving that end of the range open,
+        # and the last day counts whatever time of day it carries.
+        assert self._rows(client, tgl_terima_dip='2025-01-01..')['recordsFiltered'] == 1
+        assert self._rows(client, tgl_terima_dip='..2024-12-31')['recordsFiltered'] == 1
+        assert self._rows(client, tgl_terima_dip='2025-06-30..2025-06-30')['recordsFiltered'] == 1
+
+    def test_filter_tgl_terima_dip_ignores_unreadable_dates(self, client):
+        """A malformed date is a broken request, not a request for no tikets."""
+        bundle = _qc_bundle()
+        client.force_login(bundle['pmde_user'])
+        assert self._rows(client, tgl_terima_dip='bukan-tanggal..')['recordsFiltered'] == 1
+
+    def test_tgl_terima_dip_range_narrows_the_dropdowns(self, client):
+        """It has no dropdown of its own, so it narrows every other one."""
+        early = _qc_bundle()
+        late = _qc_bundle(pmde_user=early['pmde_user'])
+        _set_terima_dip(early['tiket'], date(2024, 3, 15))
+        _set_terima_dip(late['tiket'], date(2025, 6, 30))
+        client.force_login(early['pmde_user'])
+
+        assert len(self._options(client)['nomor_tiket']) == 2
+        narrowed = self._options(client, tgl_terima_dip='2024-01-01..2024-12-31')
+        assert [o['id'] for o in narrowed['nomor_tiket']] == [early['tiket'].nomor_tiket]
 
     def test_filter_by_periode_with_type_prefix(self, client):
         bundle = _qc_bundle(periode_penerimaan='Bulanan')

@@ -34,6 +34,7 @@ from ..models.jenis_tabel import JenisTabel
 from ..models.kategori_wilayah import KategoriWilayah
 from ..models.status_penelitian import StatusPenelitian
 from ..models.tiket_pic import TiketPIC
+from ..utils.date_range import filter_date_range, parse_date_range
 from ..utils.jenis_prioritas import is_prioritas_pada, prioritas_window_q
 from ..utils.pic_profil import pic_display_name, pic_profil_link
 from ..utils.wilayah import kanwil_value_paths, tiket_in_kanwil_q
@@ -320,6 +321,18 @@ def _filter_periode(qs, values):
     return qs.filter(combined) if combined else qs
 
 
+def _filter_terima_dip(qs, values):
+    """Applier for the Tahun Diterima range, the tanggal terima DIP.
+
+    The only filter here that is not picked from a list: its value is the pair
+    of dates the range picker sends, `"<start>..<end>"`, which carries no comma
+    and so survives `split` as a single value.
+    """
+    for value in values:
+        qs = filter_date_range(qs, 'tgl_terima_dip', parse_date_range(value))
+    return qs
+
+
 def _filter_prioritas(qs, values):
     """Applier for the Prioritas Ya/Tidak dropdown.
 
@@ -359,7 +372,9 @@ def build_filter_appliers(deadline):
 
     The key is both the request parameter and the `filter_options` key the
     template reads back, so adding a filter means adding one entry here, one
-    entry in FILTER_OPTIONS below, and one <select> in the template.
+    entry in FILTER_OPTIONS below, and one <select> in the template — unless it
+    is one of the FREE_FORM_FILTERS, which are picked from something other than
+    a list of options and so have no FILTER_OPTIONS entry.
 
     Only the last one depends on the seksi, jatuh tempo being counted from that
     seksi's own deadline.
@@ -370,6 +385,7 @@ def build_filter_appliers(deadline):
         'periode': _filter_periode,
         'periode_pengiriman': _in(f'{PENGIRIMAN}__periode_penyampaian'),
         'periode_penerimaan': _in(f'{PENGIRIMAN}__periode_penerimaan'),
+        'tgl_terima_dip': _filter_terima_dip,
         'pic_p3de': _pic_in(TiketPIC.Role.P3DE),
         'pic_pide': _pic_in(TiketPIC.Role.PIDE),
         'pic_pmde': _pic_in(TiketPIC.Role.PMDE),
@@ -390,6 +406,12 @@ def build_filter_appliers(deadline):
         # Last, because it is the only applier that has to read rows to decide.
         'jatuh_tempo': _build_filter_jatuh_tempo(deadline),
     }
+
+
+# Filters the panel renders as something other than a dropdown, so they have no
+# option list to build: the Tahun Diterima range is picked from a calendar, and
+# every date is available whether or not a tiket was received on it.
+FREE_FORM_FILTERS = frozenset({'tgl_terima_dip'})
 
 
 # Filters that reach a tiket through a to-many join, so a tiket can match more

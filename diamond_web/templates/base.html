@@ -1243,6 +1243,59 @@
             gap: 6px;
         }
 
+        /* A date-range filter field — one input holding both ends of a range,
+           built by window.initDateRangePicker below: a calendar icon on the
+           left like every other date input in the app, and a clear button on
+           the right that only appears once a range has been picked. */
+        .date-range-field {
+            position: relative;
+        }
+        .date-range-field i.feather-calendar {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 13px;
+            pointer-events: none;
+            z-index: 5;
+        }
+        .date-range-field input {
+            /* Room for the icon on the left and the clear button on the right.
+               The rest of the box — height, corner, border, text size — is
+               left to the filter panel this field sits in, so it can be given
+               the same box as the controls beside it. */
+            padding-left: 28px !important;
+            padding-right: 26px !important;
+            /* The visible field is flatpickr's altInput, which is readonly
+               because a range is picked from the calendar rather than typed.
+               Bootstrap greys every readonly .form-control, and a grey field
+               beside white ones reads as disabled — so it keeps the white
+               ground and the pointer of the control it actually is. */
+            background-color: #ffffff !important;
+            color: #212529;
+            cursor: pointer;
+        }
+        .date-range-field input:hover {
+            border-color: #94a3b8;
+        }
+        .date-range-field .date-range-clear {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 0 3px;
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            font-size: 15px;
+            line-height: 1;
+            z-index: 6;
+        }
+        .date-range-field .date-range-clear:hover {
+            color: #ef4444;
+        }
+
         /* Global date-input icon wrapper. Every <input type="date"> in the app
            gets wrapped in this (see the flatpickr init script below) so a
            calendar icon and flatpickr's altInput line up consistently,
@@ -1444,6 +1497,116 @@
                 observer.observe(document.body, { childList: true, subtree: true });
             });
         })();
+
+        // A date-range filter field, wired here beside the single-date enhancer
+        // above so every range picker in the app reads, writes and clears the
+        // same way. It is opt-in rather than automatic: a range belongs to one
+        // filter panel that has to know when it changes, not to every date
+        // input on the page.
+        //
+        // `input` is a plain <input type="text"> (a type=date input would be
+        // claimed by the enhancer above). The value handed back is the pair the
+        // server parses, "<start>..<end>" — empty while nothing is picked, and
+        // the same day on both ends when only one date is, which is how a
+        // calendar left mid-selection still asks a sensible question.
+        //
+        // `onChange` fires when the picked range actually changes, so closing
+        // the calendar untouched costs no reload.
+        window.initDateRangePicker = function (input, onChange) {
+            if (!input || typeof flatpickr === 'undefined') return null;
+
+            if (!input.closest('.date-range-field')) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'date-range-field';
+                input.parentNode.insertBefore(wrapper, input);
+                wrapper.appendChild(input);
+                const icon = document.createElement('i');
+                icon.className = 'feather-calendar';
+                wrapper.insertBefore(icon, input);
+            }
+
+            let last = '';
+            // A range picked from the calendar always has both ends, but one
+            // arriving in a URL need not: "..2024-12-31" is a question the
+            // server answers and the calendar cannot draw. Such a value is
+            // held as it came and handed back untouched until the user picks
+            // a range of their own, so a shared link keeps filtering what it
+            // filtered for whoever sent it.
+            let openEnded = null;
+
+            const picker = flatpickr(input, {
+                locale: 'id',
+                mode: 'range',
+                dateFormat: 'Y-m-d',
+                altInput: true,
+                altFormat: 'd M Y',
+                allowInput: false,
+                onChange: function () { openEnded = null; },
+                onClose: function () { notify(); }
+            });
+
+            // Added after flatpickr has run, so it sits over the altInput
+            // flatpickr put in front of the original field rather than behind it.
+            const clearBtn = document.createElement('button');
+            clearBtn.type = 'button';
+            clearBtn.className = 'date-range-clear d-none';
+            clearBtn.innerHTML = '&times;';
+            clearBtn.title = 'Hapus rentang tanggal';
+            clearBtn.setAttribute('aria-label', 'Hapus rentang tanggal');
+            input.closest('.date-range-field').appendChild(clearBtn);
+
+            function value() {
+                if (openEnded !== null) return openEnded;
+                const dates = picker.selectedDates;
+                if (!dates.length) return '';
+                return picker.formatDate(dates[0], 'Y-m-d') + '..'
+                     + picker.formatDate(dates[dates.length - 1], 'Y-m-d');
+            }
+
+            function showClear(current) {
+                clearBtn.classList.toggle('d-none', !current);
+            }
+
+            function notify() {
+                const current = value();
+                showClear(current);
+                if (current === last) return;
+                last = current;
+                if (onChange) onChange(current);
+            }
+
+            clearBtn.addEventListener('click', function () {
+                openEnded = null;
+                picker.clear();
+                notify();
+            });
+
+            return {
+                picker: picker,
+                value: value,
+                isSet: function () { return value() !== ''; },
+                // Fills the field from a "<start>..<end>" pair without calling
+                // back: whoever is setting it already knows.
+                set: function (raw) {
+                    raw = String(raw || '');
+                    const parts = raw.split('..');
+                    const picked = parts.filter(Boolean);
+                    if (!picked.length) return;
+                    // Both ends given is a range the calendar can draw; one end
+                    // is shown as the day it names but answered as it was asked.
+                    openEnded = (parts.length === 2 && picked.length === 2) ? null : raw;
+                    picker.setDate(picked, false);
+                    last = value();
+                    showClear(last);
+                },
+                clear: function () {
+                    openEnded = null;
+                    picker.clear();
+                    last = '';
+                    showClear('');
+                }
+            };
+        };
 
         // Enable/disable a date input the way the *user* sees it.
         //

@@ -139,6 +139,22 @@
         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
     }
 
+    /* Tahun Diterima is a calendar rather than a Select2, so it is given the
+       same box as the dropdowns it sits among — a filter panel where one
+       control is taller than the rest reads as a different kind of control.
+       The theme sizes every .form-control in the app to 40px with !important,
+       so matching the 30px dropdowns here takes the same weight — scoped to
+       this panel, where the comparison is being made. */
+    #filter-form .date-range-field input {
+        height: 30px !important;
+        min-height: 30px !important;
+        font-size: 12px !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        border-radius: 6px !important;
+        border-color: #dde3ed;
+    }
+
     /* ── Column divider ──────────────────────────────────────────────── */
     .filter-col-divider { border-left: 1px solid #f1f5f9; }
     @media (max-width: 767px) {
@@ -233,13 +249,13 @@
                                         </div>
                                         <div class="row g-2 mb-2">
                                             <div class="col-6">
-                                                <label for="filter-tahun" class="form-label">Tahun</label>
+                                                <label for="filter-tahun" class="form-label">Tahun Data</label>
                                                 <select class="form-select form-select-sm" id="filter-tahun" name="tahun" data-select2-selector="default" multiple="multiple">
                                                     <option value="">-- Semua --</option>
                                                 </select>
                                             </div>
                                             <div class="col-6">
-                                                <label for="filter-periode" class="form-label">Periode</label>
+                                                <label for="filter-periode" class="form-label">Periode Data</label>
                                                 <select class="form-select form-select-sm" id="filter-periode" name="periode" data-select2-selector="default" multiple="multiple">
                                                     <option value="">-- Semua --</option>
                                                 </select>
@@ -267,6 +283,16 @@
                                                     <option value="">-- Semua --</option>
                                                 </select>
                                             </div>
+                                        </div>
+                                        {% comment %}
+                                        Tanggal terima DIP, picked as a range so a whole year — or any
+                                        stretch inside one — is one selection.
+                                        {% endcomment %}
+                                        <div class="mb-2">
+                                            <label for="filter-tgl-terima-dip" class="form-label">Tahun Diterima</label>
+                                            <input type="text" class="form-control form-control-sm" id="filter-tgl-terima-dip"
+                                                   name="tgl_terima_dip" autocomplete="off"
+                                                   placeholder="Rentang tanggal terima DIP">
                                         </div>
                                     </div>
 
@@ -474,11 +500,18 @@
         const urlParams = new URLSearchParams(window.location.search);
         let table;
         let initialFiltersApplied = false;
+        // The one filter that is not a dropdown: Tahun Diterima, picked from a
+        // calendar. Wired in $(document).ready via base.html's shared helper.
+        let terimaDipRange = null;
 
         // Helper: get comma-separated string from multi-select (or empty string if none selected)
         function getMultiSelectValue(selector) {
             const val = $(selector).val();
             return (val && val.length > 0) ? val.join(',') : '';
+        }
+
+        function getTerimaDipValue() {
+            return terimaDipRange ? terimaDipRange.value() : '';
         }
 
         // ---- Collapsible filter panel ----
@@ -491,6 +524,7 @@
                 const values = Array.isArray(val) ? val : (val ? [val] : []);
                 if (values.filter(function (v) { return v !== '' && v != null; }).length > 0) n += 1;
             });
+            if (getTerimaDipValue()) n += 1;
             return n;
         }
 
@@ -579,6 +613,12 @@
                 $select.val(values).trigger('change');
             });
 
+            const terimaDipValue = (urlParams.get('tgl_terima_dip') || '').trim();
+            if (terimaDipValue && terimaDipRange) {
+                hasInitialFilter = true;
+                terimaDipRange.set(terimaDipValue);
+            }
+
             const periodeValue = normalizePeriodeParam();
             if (periodeValue) {
                 hasInitialFilter = true;
@@ -618,7 +658,8 @@
                 status_penelitian: getMultiSelectValue('#filter-status-penelitian'),
                 status_ketersediaan_data: getMultiSelectValue('#filter-status-ketersediaan-data'),
                 special_request: getMultiSelectValue('#filter-special-request'),
-                nomor_nd_nadine: getMultiSelectValue('#filter-nomor-nd-nadine')
+                nomor_nd_nadine: getMultiSelectValue('#filter-nomor-nd-nadine'),
+                tgl_terima_dip: getTerimaDipValue()
             };
         }
 
@@ -785,6 +826,15 @@
             });
         }
 
+        // Every filter control runs through here: the dropdowns narrow each
+        // other, so changing any one of them re-reads the options as well as
+        // the rows.
+        function applyFilterChange() {
+            updateDynamicDropdowns();
+            table.ajax.reload();
+            updateFilterBadge();
+        }
+
         $(document).ready(function () {
             // Ensure Select2 is initialized on all filter selects (select2-active.min.js
             // may not have run if jQuery wasn't ready yet)
@@ -836,6 +886,7 @@
                         d.status_ketersediaan_data = getMultiSelectValue('#filter-status-ketersediaan-data');
                         d.special_request = getMultiSelectValue('#filter-special-request');
                         d.nomor_nd_nadine = getMultiSelectValue('#filter-nomor-nd-nadine');
+                        d.tgl_terima_dip = getTerimaDipValue();
                         return d;
                     }
                 },
@@ -894,13 +945,14 @@
             });
 
             // Filter dropdowns — dynamic, reload on change
-            $('#filter-form select').on('change', function () {
-                // Update dropdown options dynamically based on filter selections
-                updateDynamicDropdowns();
-                // Reload table with new filters
-                table.ajax.reload();
-                updateFilterBadge();
-            });
+            $('#filter-form select').on('change', applyFilterChange);
+
+            // Tahun Diterima, the one filter picked from a calendar rather than
+            // a dropdown. It narrows the dropdowns like any other filter, so it
+            // goes through the same handler.
+            terimaDipRange = window.initDateRangePicker(
+                document.getElementById('filter-tgl-terima-dip'), applyFilterChange
+            );
 
             // Remember whether the panel was left open, so the choice survives
             // navigation instead of snapping back on every visit.
@@ -925,11 +977,12 @@
                 $('#filter-form')[0].reset();
                 // For multi-select, explicitly set empty array on each select
                 $('#filter-form select').val([]);
+                // form.reset() empties the field flatpickr writes into but not
+                // flatpickr's own state, so the picker is cleared explicitly.
+                if (terimaDipRange) terimaDipRange.clear();
                 // Re-initialize Select2 after reset and reload table
                 initSelect2();
-                updateDynamicDropdowns();
-                table.ajax.reload();
-                updateFilterBadge();
+                applyFilterChange();
             });
 
             // Load filter dropdown options on page load
