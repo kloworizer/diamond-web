@@ -106,11 +106,18 @@ Blocks a page must fill:
                                         </select>
                                     </div>
                                     {% comment %}
-                                    Tanggal terima DIP, picked as a range so a whole year — or any
-                                    stretch inside one — is one selection.
+                                    When the data arrived, asked two ways: the year alone, which is
+                                    how the work is usually grouped, and any stretch of days inside
+                                    one, for the questions a year is too coarse for.
                                     {% endcomment %}
                                     <div class="mb-2">
-                                        <label for="filter-tgl-terima-dip" class="form-label">Tahun Diterima</label>
+                                        <label for="filter-tahun-diterima" class="form-label">Tahun Diterima</label>
+                                        <select class="form-select form-select-sm" id="filter-tahun-diterima" name="tahun_diterima" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="filter-tgl-terima-dip" class="form-label">Tanggal Terima DIP</label>
                                         <input type="text" class="form-control form-control-sm" id="filter-tgl-terima-dip"
                                                name="tgl_terima_dip" autocomplete="off"
                                                placeholder="Rentang tanggal terima DIP">
@@ -387,8 +394,8 @@ Blocks a page must fill:
         border-bottom: 1px solid #f1f5f9 !important;
     }
 
-    /* Tahun Diterima is a calendar rather than a Select2, so it is given the
-       same box as the dropdowns it sits among — a filter panel where one
+    /* Tanggal Terima DIP is a calendar rather than a Select2, so it is given
+       the same box as the dropdowns it sits among — a filter panel where one
        control is taller than the rest reads as a different kind of control.
        The theme sizes every .form-control in the app to 40px with !important,
        so matching the 31px dropdowns here takes the same weight — scoped to
@@ -1117,10 +1124,11 @@ that differ between one seksi and the next.
         // Every dropdown, in the order the backend returns its options. The id
         // of each <select> is the key with underscores swapped for dashes, so
         // adding a filter means adding it here and in the markup above. Only
-        // dropdowns belong in this list — Tahun Diterima is a calendar with no
-        // options to render, so it is carried separately below.
+        // dropdowns belong in this list — Tanggal Terima DIP is a calendar with
+        // no options to render, so it is carried separately below.
         const FILTER_KEYS = [
             'nomor_tiket', 'tahun', 'periode', 'periode_pengiriman', 'periode_penerimaan',
+            'tahun_diterima',
             'pic_p3de', 'pic_pide', 'pic_pmde', 'kategori_ilap', 'ilap', 'jenis_data',
             'sub_jenis_data', 'nama_tabel', 'kanwil', 'kpp', 'kategori_wilayah', 'jenis_tabel',
             'dasar_hukum', 'status_penelitian', 'status_ketersediaan_data',
@@ -1130,8 +1138,8 @@ that differ between one seksi and the next.
         let table;
         let chart = null;
         let initialFiltersApplied = false;
-        // Tahun Diterima, the one filter picked from a calendar rather than a
-        // dropdown, so it is kept out of FILTER_KEYS and carried on its own.
+        // Tanggal Terima DIP, the one filter picked from a calendar rather than
+        // a dropdown, so it is kept out of FILTER_KEYS and carried on its own.
         // Wired in $(document).ready via base.html's shared helper.
         let terimaDipRange = null;
 
@@ -2000,7 +2008,7 @@ that differ between one seksi and the next.
             // Filter dropdowns — dynamic, reload on change
             $('#filter-form').on('change', 'select', applyFilterChange);
 
-            // Tahun Diterima narrows the page like any other filter, so the
+            // Tanggal Terima DIP narrows the page like any other filter, so the
             // calendar goes through the same handler as the dropdowns.
             terimaDipRange = window.initDateRangePicker(
                 document.getElementById('filter-tgl-terima-dip'), applyFilterChange

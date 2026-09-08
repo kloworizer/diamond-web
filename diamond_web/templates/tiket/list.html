@@ -139,8 +139,8 @@
         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
     }
 
-    /* Tahun Diterima is a calendar rather than a Select2, so it is given the
-       same box as the dropdowns it sits among — a filter panel where one
+    /* Tanggal Terima DIP is a calendar rather than a Select2, so it is given
+       the same box as the dropdowns it sits among — a filter panel where one
        control is taller than the rest reads as a different kind of control.
        The theme sizes every .form-control in the app to 40px with !important,
        so matching the 30px dropdowns here takes the same weight — scoped to
@@ -285,11 +285,18 @@
                                             </div>
                                         </div>
                                         {% comment %}
-                                        Tanggal terima DIP, picked as a range so a whole year — or any
-                                        stretch inside one — is one selection.
+                                        When the data arrived, asked two ways: the year alone, which
+                                        is how the work is usually grouped, and any stretch of days
+                                        inside one, for the questions a year is too coarse for.
                                         {% endcomment %}
                                         <div class="mb-2">
-                                            <label for="filter-tgl-terima-dip" class="form-label">Tahun Diterima</label>
+                                            <label for="filter-tahun-diterima" class="form-label">Tahun Diterima</label>
+                                            <select class="form-select form-select-sm" id="filter-tahun-diterima" name="tahun_diterima" data-select2-selector="default" multiple="multiple">
+                                                <option value="">-- Semua --</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label for="filter-tgl-terima-dip" class="form-label">Tanggal Terima DIP</label>
                                             <input type="text" class="form-control form-control-sm" id="filter-tgl-terima-dip"
                                                    name="tgl_terima_dip" autocomplete="off"
                                                    placeholder="Rentang tanggal terima DIP">
@@ -500,8 +507,8 @@
         const urlParams = new URLSearchParams(window.location.search);
         let table;
         let initialFiltersApplied = false;
-        // The one filter that is not a dropdown: Tahun Diterima, picked from a
-        // calendar. Wired in $(document).ready via base.html's shared helper.
+        // The one filter that is not a dropdown: Tanggal Terima DIP, picked from
+        // a calendar. Wired in $(document).ready via base.html's shared helper.
         let terimaDipRange = null;
 
         // Helper: get comma-separated string from multi-select (or empty string if none selected)
@@ -574,6 +581,7 @@
             const paramToSelectMap = {
                 nomor_tiket: '#filter-nomor-tiket',
                 tahun: '#filter-tahun',
+                tahun_diterima: '#filter-tahun-diterima',
                 pic_p3de: '#filter-pic-p3de',
                 pic_pide: '#filter-pic-pide',
                 pic_pmde: '#filter-pic-pmde',
@@ -639,6 +647,7 @@
             return {
                 nomor_tiket: getMultiSelectValue('#filter-nomor-tiket'),
                 tahun: getMultiSelectValue('#filter-tahun'),
+                tahun_diterima: getMultiSelectValue('#filter-tahun-diterima'),
                 periode: getMultiSelectValue('#filter-periode'),
                 pic_p3de: getMultiSelectValue('#filter-pic-p3de'),
                 pic_pide: getMultiSelectValue('#filter-pic-pide'),
@@ -728,6 +737,7 @@
                     const dropdownMap = {
                         'nomor_tiket': '#filter-nomor-tiket',
                         'tahun': '#filter-tahun',
+                        'tahun_diterima': '#filter-tahun-diterima',
                         'periode': '#filter-periode',
                         'pic_p3de': '#filter-pic-p3de',
                         'pic_pide': '#filter-pic-pide',
@@ -798,6 +808,7 @@
                     // Update all dropdowns dynamically
                     updateDropdown('nomor_tiket', '#filter-nomor-tiket');
                     updateDropdown('tahun', '#filter-tahun');
+                    updateDropdown('tahun_diterima', '#filter-tahun-diterima');
                     updateDropdown('periode', '#filter-periode');
                     updateDropdown('pic_p3de', '#filter-pic-p3de');
                     updateDropdown('pic_pide', '#filter-pic-pide');
@@ -866,6 +877,7 @@
                     data: function (d) {
                         d.nomor_tiket = getMultiSelectValue('#filter-nomor-tiket');
                         d.tahun = getMultiSelectValue('#filter-tahun');
+                        d.tahun_diterima = getMultiSelectValue('#filter-tahun-diterima');
                         d.periode = getMultiSelectValue('#filter-periode');
                         d.pic_p3de = getMultiSelectValue('#filter-pic-p3de');
                         d.pic_pide = getMultiSelectValue('#filter-pic-pide');
@@ -947,9 +959,9 @@
             // Filter dropdowns — dynamic, reload on change
             $('#filter-form select').on('change', applyFilterChange);
 
-            // Tahun Diterima, the one filter picked from a calendar rather than
-            // a dropdown. It narrows the dropdowns like any other filter, so it
-            // goes through the same handler.
+            // Tanggal Terima DIP, the one filter picked from a calendar rather
+            // than a dropdown. It narrows the dropdowns like any other filter,
+            // so it goes through the same handler.
             terimaDipRange = window.initDateRangePicker(
                 document.getElementById('filter-tgl-terima-dip'), applyFilterChange
             );
@@ -1009,6 +1021,7 @@
 
                     if (opts.nomor_tiket) opts.nomor_tiket.forEach(item => $('#filter-nomor-tiket').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.tahun) opts.tahun.forEach(item => $('#filter-tahun').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.tahun_diterima) opts.tahun_diterima.forEach(item => $('#filter-tahun-diterima').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.periode) opts.periode.forEach(item => $('#filter-periode').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.pic_p3de) opts.pic_p3de.forEach(item => $('#filter-pic-p3de').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.pic_pide) opts.pic_pide.forEach(item => $('#filter-pic-pide').append(`<option value="${item.id}">${item.name}</option>`));

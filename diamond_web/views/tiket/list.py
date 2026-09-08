@@ -2,6 +2,7 @@
 
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.db.models.functions import ExtractYear
 from django.views.decorators.http import require_GET
 from django.views.generic import TemplateView
 from django.http import JsonResponse
@@ -22,7 +23,9 @@ from ...models.jenis_tabel import JenisTabel
 from ...models.dasar_hukum import DasarHukum
 from ...models.detil_tanda_terima import DetilTandaTerima
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
-from ...utils.date_range import filter_date_range, parse_date_range
+from ...utils.date_range import (
+    filter_date_range, filter_years, parse_date_range, parse_years,
+)
 from ...utils.wilayah import kanwil_value_paths, tiket_in_kanwil_q
 from ..mixins import can_access_tiket_list, is_kasi
 from ...constants.tiket_status import STATUS_LABELS
@@ -33,9 +36,36 @@ from ...models.durasi_jatuh_tempo import DurasiJatuhTempo
 def apply_terima_dip(qs, bounds):
     """Narrow `qs` to the tikets received at DIP within `bounds`, inclusive.
 
-    `bounds` is what `parse_date_range` read out of the Tahun Diterima picker.
+    `bounds` is what `parse_date_range` read out of the Tanggal Terima DIP
+    picker.
     """
     return filter_date_range(qs, 'tgl_terima_dip', bounds)
+
+
+def apply_tahun_diterima(qs, years):
+    """Narrow `qs` to the tikets received at DIP in one of `years`.
+
+    The coarser half of the same question the Tanggal Terima DIP range asks —
+    a year is how this work is usually grouped — so both read `tgl_terima_dip`
+    and picking in both narrows to their overlap. Non-numeric input matches
+    nothing, the way the Tahun Data filter behaves.
+    """
+    if not years:
+        return qs
+    parsed = parse_years(years)
+    return filter_years(qs, 'tgl_terima_dip', parsed) if parsed else qs.none()
+
+
+def tahun_diterima_options(qs):
+    """The years the tikets in `qs` were received at DIP, as dropdown options."""
+    years = (
+        qs.exclude(tgl_terima_dip__isnull=True)
+        .annotate(_tahun_diterima=ExtractYear('tgl_terima_dip'))
+        .values_list('_tahun_diterima', flat=True)
+        .distinct()
+        .order_by('_tahun_diterima')
+    )
+    return [{'id': str(year), 'name': str(year)} for year in years if year is not None]
 
 
 class TiketListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
@@ -120,9 +150,9 @@ def tiket_data(request):
             tiketpic__id_user=request.user
         ).distinct()
 
-    # Tahun Diterima is a date range rather than a dropdown, so it is read once
-    # here and applied both to the rows and to every dropdown's own options —
-    # it has no option list of its own to be excluded from.
+    # Tanggal Terima DIP is a date range rather than a dropdown, so it is read
+    # once here and applied both to the rows and to every dropdown's own
+    # options — it has no option list of its own to be excluded from.
     filter_terima_dip = parse_date_range(request.GET.get('tgl_terima_dip', ''))
 
     # Helper to split comma-separated multi-select values
@@ -164,6 +194,7 @@ def tiket_data(request):
         raw_status_ketersediaan_data = request.GET.get('status_ketersediaan_data', '')
         raw_special_request = request.GET.get('special_request', '')
         raw_nomor_nd_nadine = request.GET.get('nomor_nd_nadine', '')
+        raw_tahun_diterima = request.GET.get('tahun_diterima', '')
 
         filter_nomor_tiket = _split_filter_options(raw_nomor_tiket)
         filter_tahun = _split_filter_options(raw_tahun)
@@ -187,6 +218,19 @@ def tiket_data(request):
         filter_status_ketersediaan_data = _split_filter_options(raw_status_ketersediaan_data)
         filter_special_request = _split_filter_options(raw_special_request)
         filter_nomor_nd_nadine = _split_filter_options(raw_nomor_nd_nadine)
+        filter_tahun_diterima = _split_filter_options(raw_tahun_diterima)
+
+        def _received_scope():
+            """`base_qs` narrowed by both "when it was received" filters.
+
+            Every other dropdown's options are built on top of this. Neither of
+            the two has to be excluded from it: the Tanggal Terima DIP range has
+            no option list of its own, and Tahun Diterima reads its options from
+            the queryset before its own filter joins (see below).
+            """
+            return apply_tahun_diterima(
+                apply_terima_dip(base_qs, filter_terima_dip), filter_tahun_diterima
+            )
 
         # Build a fully filtered queryset based on ALL current selections (except each dropdown's own filter)
         # This ensures changing any dropdown dynamically narrows down the options in all others.
@@ -320,6 +364,13 @@ def tiket_data(request):
             if bool_vals:
                 filtered_qs = filtered_qs.filter(special_request__in=bool_vals)
 
+        # Tahun Diterima is applied last, so the queryset just above it is the
+        # one every other filter has narrowed — which is exactly the set its own
+        # options come from. A dropdown never narrows itself, or the year the
+        # user just picked would be the only one left to pick.
+        tahun_diterima_choices = tahun_diterima_options(filtered_qs)
+        filtered_qs = apply_tahun_diterima(filtered_qs, filter_tahun_diterima)
+
         nomor_options = []
         nomor_seen = set()
         for n in filtered_qs.order_by('id').values_list('nomor_tiket', flat=True):
@@ -329,7 +380,7 @@ def tiket_data(request):
             nomor_options.append({'id': n, 'name': n})
 
         # Tahun options - filter by ALL selections EXCEPT tahun itself
-        tahun_filter_qs = apply_terima_dip(base_qs, filter_terima_dip)
+        tahun_filter_qs = _received_scope()
         if filter_nomor_tiket:
             tahun_filter_qs = tahun_filter_qs.filter(nomor_tiket__in=filter_nomor_tiket)
         if filter_periode:
@@ -431,7 +482,7 @@ def tiket_data(request):
             tahun_options.append({'id': y_str, 'name': y_str})
 
         # Get available periode values from filtered data — exclude periode self-filter
-        periode_filter_qs = apply_terima_dip(base_qs, filter_terima_dip)
+        periode_filter_qs = _received_scope()
         if filter_nomor_tiket:
             periode_filter_qs = periode_filter_qs.filter(nomor_tiket__in=filter_nomor_tiket)
         if filter_tahun:
@@ -618,7 +669,7 @@ def tiket_data(request):
 
         # Get ILAP categories - filter by ALL selections EXCEPT kategori_ilap itself
         # Build from base_qs excluding the kategori_ilap self-filter
-        kategori_ilap_filter_qs = apply_terima_dip(base_qs, filter_terima_dip)
+        kategori_ilap_filter_qs = _received_scope()
         if filter_nomor_tiket:
             kategori_ilap_filter_qs = kategori_ilap_filter_qs.filter(nomor_tiket__in=filter_nomor_tiket)
         if filter_tahun:
@@ -729,7 +780,7 @@ def tiket_data(request):
                 })
         
         # Get ILAPs - filter by ALL selections EXCEPT ilap (to keep dropdown options while other filters narrow down)
-        ilap_filter_qs = apply_terima_dip(base_qs, filter_terima_dip)
+        ilap_filter_qs = _received_scope()
         if filter_nomor_tiket:
             ilap_filter_qs = ilap_filter_qs.filter(nomor_tiket__in=filter_nomor_tiket)
         if filter_tahun:
@@ -840,7 +891,7 @@ def tiket_data(request):
                 })
 
         # Get Jenis Data and Sub Jenis Data - filter by ALL selections EXCEPT jenis_data and sub_jenis_data
-        jenis_filter_qs = apply_terima_dip(base_qs, filter_terima_dip)
+        jenis_filter_qs = _received_scope()
         if filter_nomor_tiket:
             jenis_filter_qs = jenis_filter_qs.filter(nomor_tiket__in=filter_nomor_tiket)
         if filter_tahun:
@@ -1032,7 +1083,7 @@ def tiket_data(request):
                 })
 
         # Status options - filter by ALL selections EXCEPT status itself
-        status_filter_qs = apply_terima_dip(base_qs, filter_terima_dip)
+        status_filter_qs = _received_scope()
         if filter_nomor_tiket:
             status_filter_qs = status_filter_qs.filter(nomor_tiket__in=filter_nomor_tiket)
         if filter_tahun:
@@ -1178,6 +1229,7 @@ def tiket_data(request):
             'filter_options': {
                 'nomor_tiket': nomor_options,
                 'tahun': tahun_options,
+                'tahun_diterima': tahun_diterima_choices,
                 'periode': periode_options,
                 'periode_penerimaan': periode_penerimaan_options,
                 'pic_p3de': pic_p3de_options,
@@ -1245,6 +1297,7 @@ def tiket_data(request):
     filter_status_ketersediaan_data = _split(request.GET.get('status_ketersediaan_data', ''))
     filter_special_request = _split(request.GET.get('special_request', ''))
     filter_nomor_nd_nadine = _split(request.GET.get('nomor_nd_nadine', ''))
+    filter_tahun_diterima = _split(request.GET.get('tahun_diterima', ''))
 
     if filter_nomor_tiket:
         qs = qs.filter(nomor_tiket__in=filter_nomor_tiket)
@@ -1353,6 +1406,7 @@ def tiket_data(request):
         qs = qs.filter(nomor_nd_nadine__in=filter_nomor_nd_nadine)
 
     qs = apply_terima_dip(qs, filter_terima_dip)
+    qs = apply_tahun_diterima(qs, filter_tahun_diterima)
 
     qs = qs.distinct()
 

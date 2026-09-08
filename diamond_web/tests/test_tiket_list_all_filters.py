@@ -217,11 +217,12 @@ class TestGetFilterOptionsAllDimensions:
 
 @pytest.mark.django_db
 class TestTahunDiterimaRange:
-    """Tahun Diterima: a range over tgl_terima_dip, sent as one parameter.
+    """The two filters over tgl_terima_dip: Tahun Diterima and the date range.
 
-    It is the one filter with no dropdown of its own, so besides the rows it
-    is checked against the other dropdowns' options — a range that excludes a
-    tiket has to take that tiket's year out of Tahun Data as well.
+    Tanggal Terima DIP is the one filter with no dropdown of its own, so
+    besides the rows it is checked against the other dropdowns' options — a
+    range that excludes a tiket has to take that tiket's year out of Tahun
+    Data as well.
     """
 
     def _rows(self, **filters):
@@ -283,17 +284,60 @@ class TestTahunDiterimaRange:
         assert self._rows(tgl_terima_dip='bukan-tanggal..')['recordsFiltered'] == 2
         assert self._rows(tgl_terima_dip='')['recordsFiltered'] == 2
 
-    def test_panel_renders_the_date_range_filter(self, client):
-        """The field name is the request parameter `tiket_data` reads back."""
+    def test_filter_by_tahun_diterima(self):
+        """Tahun Diterima: the year of tgl_terima_dip, read like Tahun Data."""
+        early, later = self._two_tikets()
+
+        picked = self._rows(tahun_diterima='2024')
+        assert picked['recordsFiltered'] == 1
+        assert picked['data'][0]['nomor_tiket'] == early.nomor_tiket
+        assert self._rows(tahun_diterima='2024,2025')['recordsFiltered'] == 2
+        assert self._rows(tahun_diterima='2023')['recordsFiltered'] == 0
+        # Non-numeric input matches nothing, the way Tahun Data behaves.
+        assert self._rows(tahun_diterima='bukan-angka')['recordsFiltered'] == 0
+
+        options = self._options()['tahun_diterima']
+        assert [o['id'] for o in options] == ['2024', '2025']
+        assert all(o['id'] == o['name'] for o in options)
+
+    def test_tahun_diterima_and_the_range_narrow_together(self):
+        """Both read tgl_terima_dip, so picking in both is their overlap."""
+        self._two_tikets()
+
+        assert self._rows(
+            tahun_diterima='2024,2025', tgl_terima_dip='2025-01-01..2025-12-31',
+        )['recordsFiltered'] == 1
+        assert self._rows(
+            tahun_diterima='2024', tgl_terima_dip='2025-01-01..2025-12-31',
+        )['recordsFiltered'] == 0
+
+    def test_tahun_diterima_options_never_narrow_themselves(self):
+        """Picking a year must not leave that year as the only one on offer."""
+        self._two_tikets()
+
+        narrowed = self._options(tahun_diterima='2024')
+        assert [o['id'] for o in narrowed['tahun_diterima']] == ['2024', '2025']
+        # It still narrows every other dropdown, though.
+        assert {o['id'] for o in narrowed['tahun']} == {'2024'}
+        # And the range, which has no dropdown of its own, narrows it in turn.
+        by_range = self._options(tgl_terima_dip='2025-01-01..2025-12-31')
+        assert [o['id'] for o in by_range['tahun_diterima']] == ['2025']
+
+    def test_panel_renders_both_received_filters(self, client):
+        """The field names are the request parameters `tiket_data` reads back."""
         user = _admin_user()
         client.force_login(user)
         html = client.get(reverse('tiket_list')).content.decode()
         assert 'id="filter-tgl-terima-dip"' in html
         assert 'name="tgl_terima_dip"' in html
+        assert 'id="filter-tahun-diterima"' in html
+        assert 'name="tahun_diterima"' in html
         # Spelled out in full, so a reader can tell the data's own year from
         # the year it arrived in.
         assert '>Tahun Data<' in html
         assert '>Periode Data<' in html
+        assert '>Tahun Diterima<' in html
+        assert '>Tanggal Terima DIP<' in html
 
     def test_range_narrows_the_other_dropdowns(self):
         self._two_tikets()

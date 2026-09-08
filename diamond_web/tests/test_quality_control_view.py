@@ -159,7 +159,7 @@ class TestQualityControlView:
         assert resp.status_code == 200
 
     def test_panel_renders_the_date_range_filter(self, client):
-        """Tahun Diterima has no dropdown, so nothing else would notice it going.
+        """Tanggal Terima DIP has no dropdown, so nothing else would notice it going.
 
         The field name is also the request parameter the applier reads, so the
         two have to keep matching for the filter to reach the queryset at all.
@@ -169,10 +169,13 @@ class TestQualityControlView:
         assert 'id="filter-tgl-terima-dip"' in html
         assert 'name="tgl_terima_dip"' in html
         assert 'tgl_terima_dip' in FILTER_APPLIERS
-        # The two periode-vs-tahun labels the page spells out in full, so a
-        # reader can tell the data's own year from the year it arrived in.
+        assert '>Tanggal Terima DIP<' in html
+        # The labels the page spells out in full, so a reader can tell the
+        # data's own year and periode from the year it arrived in.
         assert '>Tahun Data<' in html
         assert '>Periode Data<' in html
+        assert '>Tahun Diterima<' in html
+        assert 'name="tahun_diterima"' in html
 
     def test_page_names_the_payload_keys_the_endpoint_sends(self, client):
         """The shared template reads its variable columns out of a config block.
@@ -503,8 +506,43 @@ class TestQualityControlFilters:
         client.force_login(bundle['pmde_user'])
         assert self._rows(client, tahun='bukan-angka')['recordsFiltered'] == 0
 
+    def test_filter_by_tahun_diterima(self, client):
+        """Tahun Diterima: the year of tgl_terima_dip, read like Tahun Data."""
+        early = _qc_bundle()
+        late = _qc_bundle(pmde_user=early['pmde_user'])
+        _set_terima_dip(early['tiket'], date(2024, 3, 15))
+        _set_terima_dip(late['tiket'], date(2025, 6, 30))
+        client.force_login(early['pmde_user'])
+
+        assert [o['id'] for o in self._options(client)['tahun_diterima']] == ['2024', '2025']
+
+        picked = self._rows(client, tahun_diterima='2024')
+        assert picked['recordsFiltered'] == 1
+        assert picked['data'][0]['nomor_tiket'] == early['tiket'].nomor_tiket
+        assert self._rows(client, tahun_diterima='2024,2025')['recordsFiltered'] == 2
+        assert self._rows(client, tahun_diterima='2023')['recordsFiltered'] == 0
+        # Non-numeric input matches nothing, the way Tahun Data behaves.
+        assert self._rows(client, tahun_diterima='bukan-angka')['recordsFiltered'] == 0
+
+    def test_tahun_diterima_and_the_range_narrow_together(self, client):
+        """Both read tgl_terima_dip, so picking in both is their overlap."""
+        early = _qc_bundle()
+        late = _qc_bundle(pmde_user=early['pmde_user'])
+        _set_terima_dip(early['tiket'], date(2024, 3, 15))
+        _set_terima_dip(late['tiket'], date(2025, 6, 30))
+        client.force_login(early['pmde_user'])
+
+        assert self._rows(
+            client, tahun_diterima='2024,2025', tgl_terima_dip='2025-01-01..2025-12-31',
+        )['recordsFiltered'] == 1
+        # A range outside the picked year leaves nothing, rather than either
+        # half quietly winning.
+        assert self._rows(
+            client, tahun_diterima='2024', tgl_terima_dip='2025-01-01..2025-12-31',
+        )['recordsFiltered'] == 0
+
     def test_filter_by_tgl_terima_dip_range(self, client):
-        """Tahun Diterima: both ends of the range arrive in one parameter."""
+        """Tanggal Terima DIP: both ends of the range arrive in one parameter."""
         early = _qc_bundle()
         late = _qc_bundle(pmde_user=early['pmde_user'])
         _set_terima_dip(early['tiket'], date(2024, 3, 15))

@@ -23,7 +23,7 @@ from django.db.models import (
     DateField, Exists, IntegerField, OuterRef, Q, Subquery, Value,
 )
 from django.db.models.expressions import RawSQL
-from django.db.models.functions import Cast, Coalesce
+from django.db.models.functions import Cast, Coalesce, ExtractYear
 from django.utils import timezone
 from django.utils.html import escape
 
@@ -34,7 +34,9 @@ from ..models.jenis_tabel import JenisTabel
 from ..models.kategori_wilayah import KategoriWilayah
 from ..models.status_penelitian import StatusPenelitian
 from ..models.tiket_pic import TiketPIC
-from ..utils.date_range import filter_date_range, parse_date_range
+from ..utils.date_range import (
+    filter_date_range, filter_years, parse_date_range, parse_years,
+)
 from ..utils.jenis_prioritas import is_prioritas_pada, prioritas_window_q
 from ..utils.pic_profil import pic_display_name, pic_profil_link
 from ..utils.wilayah import kanwil_value_paths, tiket_in_kanwil_q
@@ -321,8 +323,18 @@ def _filter_periode(qs, values):
     return qs.filter(combined) if combined else qs
 
 
+def _filter_tahun_diterima(qs, values):
+    """Applier for the Tahun Diterima dropdown, the year of tgl_terima_dip.
+
+    Non-numeric input matches nothing, the way `_int_in` treats the year
+    dropdowns beside it.
+    """
+    years = parse_years(values)
+    return filter_years(qs, 'tgl_terima_dip', years) if years else qs.none()
+
+
 def _filter_terima_dip(qs, values):
-    """Applier for the Tahun Diterima range, the tanggal terima DIP.
+    """Applier for the Tanggal Terima DIP range.
 
     The only filter here that is not picked from a list: its value is the pair
     of dates the range picker sends, `"<start>..<end>"`, which carries no comma
@@ -385,6 +397,8 @@ def build_filter_appliers(deadline):
         'periode': _filter_periode,
         'periode_pengiriman': _in(f'{PENGIRIMAN}__periode_penyampaian'),
         'periode_penerimaan': _in(f'{PENGIRIMAN}__periode_penerimaan'),
+        # When the data arrived, asked two ways — see `_tahun_diterima_options`.
+        'tahun_diterima': _filter_tahun_diterima,
         'tgl_terima_dip': _filter_terima_dip,
         'pic_p3de': _pic_in(TiketPIC.Role.P3DE),
         'pic_pide': _pic_in(TiketPIC.Role.PIDE),
@@ -409,8 +423,8 @@ def build_filter_appliers(deadline):
 
 
 # Filters the panel renders as something other than a dropdown, so they have no
-# option list to build: the Tahun Diterima range is picked from a calendar, and
-# every date is available whether or not a tiket was received on it.
+# option list to build: the Tanggal Terima DIP range is picked from a calendar,
+# and every date is available whether or not a tiket was received on it.
 FREE_FORM_FILTERS = frozenset({'tgl_terima_dip'})
 
 
@@ -522,6 +536,24 @@ def _periode_options(qs):
     return options
 
 
+def _tahun_diterima_options(qs):
+    """The years the tikets in `qs` were received at DIP.
+
+    The dropdown beside the Tanggal Terima DIP range, and the coarser half of
+    the same question: a year is how this work is usually grouped, the range is
+    for the questions a year is too coarse for. Both read `tgl_terima_dip`, so
+    picking in both narrows to their overlap.
+    """
+    years = (
+        qs.exclude(tgl_terima_dip__isnull=True)
+        .annotate(_tahun_diterima=ExtractYear('tgl_terima_dip'))
+        .values_list('_tahun_diterima', flat=True)
+        .distinct()
+        .order_by('_tahun_diterima')
+    )
+    return [{'id': str(year), 'name': str(year)} for year in years if year is not None]
+
+
 def _kanwil_options(qs):
     """Kanwil options covering both the direct and the via-KPP ILAP mappings."""
     options = []
@@ -591,6 +623,7 @@ FILTER_OPTIONS = {
         qs, (f'{PENGIRIMAN}__periode_penyampaian',)),
     'periode_penerimaan': lambda qs: _distinct_options(
         qs, (f'{PENGIRIMAN}__periode_penerimaan',)),
+    'tahun_diterima': _tahun_diterima_options,
     'pic_p3de': lambda qs: _pic_options(qs, TiketPIC.Role.P3DE),
     'pic_pide': lambda qs: _pic_options(qs, TiketPIC.Role.PIDE),
     'pic_pmde': lambda qs: _pic_options(qs, TiketPIC.Role.PMDE),
