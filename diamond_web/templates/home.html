@@ -3911,7 +3911,7 @@
                 if (data.success || data.redirect) {
                     quickAssignModal.hide();
                     // Show success toast
-                    showSuccessToast('Penugasan Berhasil', 'PIC PIDE berhasil di-assign!');
+                    showSuccessToast('Penugasan Berhasil', data.message || 'PIC PIDE berhasil di-assign!');
                     
                     const tr = window.diamondActiveTr;
                     window.diamondActiveTr = null;
@@ -4041,7 +4041,7 @@
                 if (data.success || data.redirect) {
                     quickAssignPmdeModal.hide();
                     // Show success toast
-                    showSuccessToast('Penugasan Berhasil', 'PIC PMDE berhasil di-assign!');
+                    showSuccessToast('Penugasan Berhasil', data.message || 'PIC PMDE berhasil di-assign!');
 
                     const tr = window.diamondActiveTr;
                     window.diamondActiveTr = null;
@@ -4171,7 +4171,7 @@
                 if (data.success || data.redirect) {
                     quickAssignP3deModal.hide();
                     // Show success toast
-                    showSuccessToast('Penugasan Berhasil', 'PIC P3DE berhasil di-assign!');
+                    showSuccessToast('Penugasan Berhasil', data.message || 'PIC P3DE berhasil di-assign!');
 
                     const tr = window.diamondActiveTr;
                     window.diamondActiveTr = null;

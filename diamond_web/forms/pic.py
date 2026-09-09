@@ -16,6 +16,12 @@ class PICForm(AutoRequiredFormMixin, forms.ModelForm):
     def __init__(self, *args, tipe=None, **kwargs):
         super().__init__(*args, **kwargs)
 
+        # Set by clean() when the submission collides with a PIC that is still
+        # active. The create view uses it to re-run the tiket propagation
+        # instead of leaving the admin with an error they cannot act on - see
+        # PICCreateView.form_invalid.
+        self.existing_active_pic = None
+
         # Order dropdown by id_sub_jenis_data (e.g., AS0010101, AS0010102)
         self.fields['id_sub_jenis_data_ilap'].queryset = JenisDataILAP.objects.all().order_by('id_sub_jenis_data')
 
@@ -59,6 +65,10 @@ class PICForm(AutoRequiredFormMixin, forms.ModelForm):
             ))
             return cleaned_data
 
+        # A submission that carries an end_date is closing a PIC, not asking for
+        # an open one, so it must never be answered with an existing open PIC.
+        wants_open_pic = end_date is None
+
         if tipe and id_sub_jenis_data_ilap and id_user and start_date:
             # Check for existing PIC with same user, sub_jenis_data, and start_date
             existing_pic = PIC.objects.filter(
@@ -73,6 +83,11 @@ class PICForm(AutoRequiredFormMixin, forms.ModelForm):
                 existing_pic = existing_pic.exclude(pk=self.instance.pk)
             
             if existing_pic.exists():
+                # A duplicate that is still open is a PIC the tiket should
+                # already have; one that has been closed is not, and genuinely
+                # needs a different start date.
+                if wants_open_pic:
+                    self.existing_active_pic = existing_pic.filter(end_date__isnull=True).first()
                 # Attach error to start_date so it renders inline like Durasi Jatuh Tempo
                 self.add_error('start_date', (
                     f"PIC dengan user '{id_user.username}', sub jenis data '{id_sub_jenis_data_ilap}', "
@@ -93,6 +108,8 @@ class PICForm(AutoRequiredFormMixin, forms.ModelForm):
                 overlapping_pic = overlapping_pic.exclude(pk=self.instance.pk)
             
             if overlapping_pic.exists():
+                if wants_open_pic:
+                    self.existing_active_pic = overlapping_pic.first()
                 # Attach error to start_date to match Durasi Jatuh Tempo inline style
                 self.add_error('start_date', (
                     f"Sudah ada PIC aktif untuk user '{id_user.username}' dan sub jenis data '{id_sub_jenis_data_ilap}'. "

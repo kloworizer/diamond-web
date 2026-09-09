@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import CreateView, UpdateView, DeleteView, TemplateView
 from django.contrib import messages
 from urllib.parse import quote_plus, unquote_plus
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseRedirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_GET
 
@@ -217,6 +217,10 @@ class PICCreateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Cr
     existing one, and will append a `TiketAction` log entry. This side-effect
     is intentional to keep ticket assignments in sync with PIC definitions.
 
+    Submitting a PIC that already exists and is still open is not an error but
+    a request to apply it: the propagation runs against the existing record so
+    tikets that never received it catch up. See `form_invalid`.
+
     Notes:
     - The view supports AJAX via `AjaxFormMixin`: AJAX clients receive a
         JSON redirect payload; non-AJAX clients receive a standard redirect
@@ -274,8 +278,8 @@ class PICCreateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Cr
         form = self.get_form()
         return self.render_form_response(form)
 
-    def form_valid(self, form):
-        """Handle successful form submission and propagate PIC to active tikets.
+    def _propagate_to_open_tikets(self, pic):
+        """Put `pic`'s user on every still-open tiket of its sub jenis data.
 
         Side effects:
         - Queries `Tiket` for entries matching `id_sub_jenis_data_ilap` and
@@ -287,14 +291,6 @@ class PICCreateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Cr
         from django.utils import timezone
         from django.contrib.auth.models import User
 
-        response = super().form_valid(form)
-
-        # Get the newly created PIC object
-        pic = self.object
-
-        # Get admin user for PIC action logging
-        admin_user = User.objects.get(username='admin')
-
         # Map PIC tipe to TiketPIC role
         tipe_to_role = {
             PIC.TipePIC.P3DE: TiketPIC.Role.P3DE,
@@ -302,17 +298,60 @@ class PICCreateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Cr
             PIC.TipePIC.PMDE: TiketPIC.Role.PMDE,
         }
         role = tipe_to_role.get(pic.tipe)
-        current_time = timezone.now()
+        if not role:
+            return
+
+        # Get admin user for PIC action logging
+        admin_user = User.objects.get(username='admin')
         tipe_label = dict(PIC.TipePIC.choices).get(pic.tipe, pic.tipe)
 
-        if role:
-            # Only log to tikets where changes were actually made
-            _assign_pic_to_open_tikets(
-                pic.id_user, role, pic.id_sub_jenis_data_ilap,
-                tipe_label, admin_user, current_time
-            )
+        # Only log to tikets where changes were actually made
+        _assign_pic_to_open_tikets(
+            pic.id_user, role, pic.id_sub_jenis_data_ilap,
+            tipe_label, admin_user, timezone.now()
+        )
 
+    def form_valid(self, form):
+        """Handle successful form submission and propagate PIC to active tikets."""
+        response = super().form_valid(form)
+        self._propagate_to_open_tikets(self.object)
         return response
+
+    def form_invalid(self, form):
+        """Re-sync the tikets when the PIC being assigned already exists.
+
+        A `PIC` row only reaches `TiketPIC` through `form_valid`, and tikets
+        that predate their PIC row - the Oracle sync bulk-inserts `PIC` without
+        ever touching `TiketPIC` - therefore have nobody assigned. Rejecting the
+        submission as a duplicate leaves the admin with no way out: the master
+        record they are told already exists is exactly the one the tiket is
+        missing. So when the collision is with a PIC that is still open, treat
+        the submission as a request to apply that PIC and propagate it.
+
+        A duplicate whose `end_date` has been set is left as an error - that PIC
+        is closed, and really does need a different start date.
+        """
+        existing = getattr(form, 'existing_active_pic', None)
+        # Only the duplicate check may be outstanding; anything else the admin
+        # typed wrong still has to come back as an error.
+        if existing is None or set(form.errors) != {'start_date'}:
+            return super().form_invalid(form)
+
+        self.object = existing
+        self._propagate_to_open_tikets(existing)
+
+        message = (
+            f'{self.get_tipe_display()} "{existing}" sudah terdaftar dan telah '
+            f'diterapkan ke tiket yang masih terbuka.'
+        )
+        if self.is_ajax():
+            return JsonResponse({
+                'success': True,
+                'message': message,
+                'redirect': str(self.get_success_url()),
+            })
+        messages.success(self.request, message)
+        return HttpResponseRedirect(self.get_success_url())
 
 
 class PICUpdateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, UpdateView):

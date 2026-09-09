@@ -709,3 +709,164 @@ class TestPICPMDEDataEndpoint:
         client.force_login(authenticated_user)
         resp = client.get(reverse('pic_pmde_data'))
         assert resp.status_code in (302, 403)
+
+
+# Each PIC tipe, with the tiket status at which a missing PIC actually strands
+# the tiket: P3DE owns it while it is Direkam, PIDE once it is Dikirim ke PIDE,
+# PMDE once it reaches Pengendalian Mutu.
+_RESYNC_CASES = [
+    ('P3DE', TiketPIC.Role.P3DE, 'pic_p3de_create', 'p3de_admin_user', 1),
+    ('PIDE', TiketPIC.Role.PIDE, 'pic_pide_create', 'pide_admin_user', 4),
+    ('PMDE', TiketPIC.Role.PMDE, 'pic_pmde_create', 'pmde_admin_user', 6),
+]
+
+_RESYNC_IDS = [case[0] for case in _RESYNC_CASES]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    'tipe,role,url_name,admin_fixture,stuck_status', _RESYNC_CASES, ids=_RESYNC_IDS
+)
+class TestPICCreateResyncsExistingPIC:
+    """Assigning a PIC that already exists applies it instead of erroring.
+
+    A `PIC` row can predate its `TiketPIC` rows - the Oracle sync bulk-inserts
+    `PIC` for all three tipes and never touches `TiketPIC` - which leaves the
+    tiket with nobody assigned and the admin unable to fix it, because the
+    master record they are told already exists is the one the tiket is missing.
+
+    The behaviour lives in the shared `PICCreateView`, so every tipe is checked
+    against it rather than trusting inheritance.
+    """
+
+    def _login(self, client, request, admin_fixture):
+        client.force_login(request.getfixturevalue(admin_fixture))
+
+    def _pic_user(self, tipe):
+        return _make_user_in_group(f'user_{tipe.lower()}')
+
+    def _post(self, client, url_name, tipe, jenis_data, user, start_date, end_date=None):
+        data = {
+            'tipe': tipe,
+            'id_sub_jenis_data_ilap': jenis_data.pk,
+            'id_user': user.pk,
+            'start_date': str(start_date),
+        }
+        if end_date:
+            data['end_date'] = str(end_date)
+        return client.post(
+            reverse(url_name), data,
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+        )
+
+    def test_duplicate_start_date_assigns_tiket_instead_of_erroring(
+        self, client, request, db, tipe, role, url_name, admin_fixture, stuck_status
+    ):
+        user = self._pic_user(tipe)
+        tiket = TiketFactory(status_tiket=stuck_status)
+        jenis_data = tiket.id_periode_data.id_sub_jenis_data_ilap
+        start = date(2015, 1, 1)
+        PICFactory(
+            tipe=tipe, id_user=user, id_sub_jenis_data_ilap=jenis_data,
+            start_date=start, end_date=None,
+        )
+        assert not TiketPIC.objects.filter(id_tiket=tiket, role=role).exists()
+
+        self._login(client, request, admin_fixture)
+        resp = self._post(client, url_name, tipe, jenis_data, user, start)
+
+        assert resp.status_code == 200
+        assert json.loads(resp.content).get('success') is True
+        assert TiketPIC.objects.get(
+            id_tiket=tiket, id_user=user, role=role
+        ).active is True
+        # The existing master record is applied, never duplicated
+        assert PIC.objects.filter(
+            tipe=tipe, id_user=user, id_sub_jenis_data_ilap=jenis_data
+        ).count() == 1
+
+    def test_overlapping_start_date_assigns_tiket(
+        self, client, request, db, tipe, role, url_name, admin_fixture, stuck_status
+    ):
+        """A different start date against an open PIC resolves the same way."""
+        user = self._pic_user(tipe)
+        tiket = TiketFactory(status_tiket=stuck_status)
+        jenis_data = tiket.id_periode_data.id_sub_jenis_data_ilap
+        PICFactory(
+            tipe=tipe, id_user=user, id_sub_jenis_data_ilap=jenis_data,
+            start_date=date(2015, 1, 1), end_date=None,
+        )
+
+        self._login(client, request, admin_fixture)
+        resp = self._post(client, url_name, tipe, jenis_data, user, date.today())
+
+        assert resp.status_code == 200
+        assert json.loads(resp.content).get('success') is True
+        assert TiketPIC.objects.filter(
+            id_tiket=tiket, id_user=user, role=role, active=True
+        ).exists()
+        assert PIC.objects.filter(
+            tipe=tipe, id_user=user, id_sub_jenis_data_ilap=jenis_data
+        ).count() == 1
+
+    def test_closed_pic_still_rejected(
+        self, client, request, db, tipe, role, url_name, admin_fixture, stuck_status
+    ):
+        """A PIC that has been ended is not applied - it needs a new start date."""
+        user = self._pic_user(tipe)
+        tiket = TiketFactory(status_tiket=stuck_status)
+        jenis_data = tiket.id_periode_data.id_sub_jenis_data_ilap
+        start = date(2015, 1, 1)
+        PICFactory(
+            tipe=tipe, id_user=user, id_sub_jenis_data_ilap=jenis_data,
+            start_date=start, end_date=date(2020, 1, 1),
+        )
+
+        self._login(client, request, admin_fixture)
+        resp = self._post(client, url_name, tipe, jenis_data, user, start)
+
+        assert resp.status_code == 200
+        assert json.loads(resp.content).get('success') is False
+        assert not TiketPIC.objects.filter(id_tiket=tiket, role=role).exists()
+
+    def test_submission_carrying_end_date_still_rejected(
+        self, client, request, db, tipe, role, url_name, admin_fixture, stuck_status
+    ):
+        """Closing a PIC is not a request to assign the open one that exists."""
+        user = self._pic_user(tipe)
+        tiket = TiketFactory(status_tiket=stuck_status)
+        jenis_data = tiket.id_periode_data.id_sub_jenis_data_ilap
+        start = date(2015, 1, 1)
+        PICFactory(
+            tipe=tipe, id_user=user, id_sub_jenis_data_ilap=jenis_data,
+            start_date=start, end_date=None,
+        )
+
+        self._login(client, request, admin_fixture)
+        resp = self._post(
+            client, url_name, tipe, jenis_data, user, start, end_date=date.today()
+        )
+
+        assert resp.status_code == 200
+        assert json.loads(resp.content).get('success') is False
+        assert not TiketPIC.objects.filter(id_tiket=tiket, role=role).exists()
+
+    def test_finished_tiket_is_left_alone(
+        self, client, request, db, tipe, role, url_name, admin_fixture, stuck_status
+    ):
+        """Only still-open tikets catch up; a finished one keeps its history."""
+        user = self._pic_user(tipe)
+        tiket = TiketFactory(status_tiket=8)  # selesai
+        jenis_data = tiket.id_periode_data.id_sub_jenis_data_ilap
+        start = date(2015, 1, 1)
+        PICFactory(
+            tipe=tipe, id_user=user, id_sub_jenis_data_ilap=jenis_data,
+            start_date=start, end_date=None,
+        )
+
+        self._login(client, request, admin_fixture)
+        resp = self._post(client, url_name, tipe, jenis_data, user, start)
+
+        assert resp.status_code == 200
+        assert json.loads(resp.content).get('success') is True
+        assert not TiketPIC.objects.filter(id_tiket=tiket, role=role).exists()
