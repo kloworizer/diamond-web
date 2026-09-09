@@ -136,6 +136,17 @@ def _set_terima_dip(tiket, day):
     tiket.save(update_fields=['tgl_terima_dip'])
 
 
+def _set_permintaan_khusus(tiket, day, active=True):
+    """Give a tiket a permintaan khusus falling due on `day`.
+
+    Stored at the end of that day, the way SpecialRequestForm stores it. Pass
+    `active=False` for the date a switched-off permintaan khusus leaves behind.
+    """
+    tiket.special_request = active
+    tiket.tgl_special_request = datetime.combine(day, time(23, 59, 59))
+    tiket.save(update_fields=['special_request', 'tgl_special_request'])
+
+
 def _jatuh_tempo_bundle(days, **kwargs):
     """A bundle whose jatuh tempo is `days` days from today, negative allowed.
 
@@ -300,6 +311,69 @@ class TestQualityControlData:
 
         expected = (rematch + timedelta(days=7)).date()
         assert row['deadline']['display'] == expected.strftime('%d/%m/%Y')
+
+    def test_permintaan_khusus_due_date_is_the_deadline(self, client):
+        """A date agreed for one tiket beats the durasi its data carries."""
+        bundle = _qc_bundle(durasi=10)
+        khusus = date.today() + timedelta(days=3)
+        _set_permintaan_khusus(bundle['tiket'], khusus)
+        client.force_login(bundle['pmde_user'])
+
+        resp = client.get(reverse(self.url), {'draw': '1', 'start': '0', 'length': '10'})
+        row = next(r for r in resp.json()['data']
+                   if r['nomor_tiket'] == bundle['tiket'].nomor_tiket)
+
+        assert row['deadline']['display'] == khusus.strftime('%d/%m/%Y')
+        assert row['jatuh_tempo']['display'] == '3 hari'
+        assert row['sisa_hari'] == 3
+        # The column holds two kinds of date, so the row says which one it is.
+        assert row['deadline_khusus'] is True
+
+    def test_permintaan_khusus_sets_a_deadline_where_no_durasi_does(self, client):
+        """The agreed date stands on its own, with no durasi behind it."""
+        bundle = _qc_bundle(with_durasi=False)
+        khusus = date.today() + timedelta(days=8)
+        _set_permintaan_khusus(bundle['tiket'], khusus)
+        client.force_login(bundle['pmde_user'])
+
+        resp = client.get(reverse(self.url), {'draw': '1', 'start': '0', 'length': '10'})
+        row = next(r for r in resp.json()['data']
+                   if r['nomor_tiket'] == bundle['tiket'].nomor_tiket)
+
+        assert row['deadline']['display'] == khusus.strftime('%d/%m/%Y')
+        assert row['sisa_hari'] == 8
+
+    def test_due_date_left_by_a_switched_off_permintaan_khusus_is_ignored(self, client):
+        """Switching the permintaan khusus off gives the durasi count back."""
+        bundle = _qc_bundle(durasi=10)
+        _set_permintaan_khusus(
+            bundle['tiket'], date.today() + timedelta(days=3), active=False,
+        )
+        client.force_login(bundle['pmde_user'])
+
+        resp = client.get(reverse(self.url), {'draw': '1', 'start': '0', 'length': '10'})
+        row = next(r for r in resp.json()['data']
+                   if r['nomor_tiket'] == bundle['tiket'].nomor_tiket)
+
+        expected = (bundle['tiket'].tgl_rematch + timedelta(days=10)).date()
+        assert row['deadline']['display'] == expected.strftime('%d/%m/%Y')
+        assert row['deadline_khusus'] is False
+
+    def test_deadline_sorting_follows_the_permintaan_khusus(self, client):
+        """The SQL used for sorting takes the same override the display does."""
+        # Counted from the durasi the second would come first; its permintaan
+        # khusus is what puts it last, so the two orders disagree.
+        first = _jatuh_tempo_bundle(5)
+        second = _jatuh_tempo_bundle(1, pmde_user=first['pmde_user'])
+        _set_permintaan_khusus(second['tiket'], date.today() + timedelta(days=20))
+        client.force_login(first['pmde_user'])
+
+        resp = client.get(reverse(self.url), {
+            'draw': '1', 'start': '0', 'length': '10',
+            'order[0][column]': '5', 'order[0][dir]': 'asc',
+        })
+        nomor = [row['nomor_tiket'] for row in resp.json()['data']]
+        assert nomor == [first['tiket'].nomor_tiket, second['tiket'].nomor_tiket]
 
     def test_deadline_sorting_follows_the_rematch_date(self, client):
         """The SQL used for sorting counts from the same date the display does."""
@@ -621,6 +695,16 @@ class TestQualityControlFilters:
         under_ten = self._rows(client, jatuh_tempo='10')['data']
         assert [row['nomor_tiket'] for row in under_ten] == [near['tiket'].nomor_tiket]
         assert under_ten[0]['jatuh_tempo']['display'] == '5 hari'
+
+    def test_filter_jatuh_tempo_counts_the_permintaan_khusus(self, client):
+        """The dropdown narrows to the deadline the table shows, override and all."""
+        far = _jatuh_tempo_bundle(50)
+        near = _jatuh_tempo_bundle(50, pmde_user=far['pmde_user'])
+        _set_permintaan_khusus(near['tiket'], date.today() + timedelta(days=4))
+        client.force_login(far['pmde_user'])
+
+        under_ten = self._rows(client, jatuh_tempo='10')['data']
+        assert [row['nomor_tiket'] for row in under_ten] == [near['tiket'].nomor_tiket]
 
     def test_filter_jatuh_tempo_takes_the_widest_threshold(self, client):
         first = _jatuh_tempo_bundle(5)

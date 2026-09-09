@@ -20,7 +20,7 @@ from datetime import date
 from django.contrib.auth.models import User
 from django.db import connection as db_connection
 from django.db.models import (
-    DateField, Exists, IntegerField, OuterRef, Q, Subquery, Value,
+    Case, DateField, Exists, IntegerField, OuterRef, Q, Subquery, Value, When,
 )
 from django.db.models.expressions import RawSQL
 from django.db.models.functions import Cast, Coalesce, ExtractYear
@@ -85,6 +85,35 @@ def prioritas_exists():
     )
 
 
+# The columns the permintaan khusus override reads, in the order the functions
+# below take them.
+SPECIAL_FIELDS = ('special_request', 'tgl_special_request')
+
+
+def as_date(value):
+    """A date from either a date or a datetime, leaving None alone."""
+    if value is None:
+        return None
+    return value.date() if hasattr(value, 'date') else value
+
+
+def special_deadline(special_request, tgl_special_request):
+    """The jatuh tempo a permintaan khusus sets, or None when it sets none.
+
+    A permintaan khusus is a date agreed for one tiket, so it answers the
+    deadline question outright — the durasi its sub jenis data carries is the
+    ordinary turnaround, which the agreement replaces.
+
+    Both halves are required. The flag is what makes the date a promise, and the
+    form clears the date whenever the flag goes off (see SpecialRequestForm), so
+    a date left behind on a tiket whose permintaan khusus was switched off is
+    read as no deadline of its own rather than as a live one.
+    """
+    if not special_request or not tgl_special_request:
+        return None
+    return as_date(tgl_special_request)
+
+
 class Deadline:
     """How one seksi counts the deadline of a tiket in its queue.
 
@@ -96,6 +125,10 @@ class Deadline:
     Either seksi may see its count start again — a rematch hands a tiket back to
     PMDE, and identification proper begins after PIDE has received one — so the
     base date is a pair, the later field winning whenever it is set.
+
+    A tiket carrying a permintaan khusus is the exception to all of it: its due
+    date was agreed for that tiket, so it is the deadline for whichever seksi is
+    holding it, whatever the durasi table says. See :func:`special_deadline`.
 
     Args:
         seksi: Name of the auth group the DurasiJatuhTempo rows are keyed by.
@@ -153,8 +186,12 @@ class Deadline:
     def deadline_date_expr(self):
         """The deadline itself as a sortable date column.
 
-        Correlated subquery embedded in RawSQL (no params) to avoid
-        parameter-binding issues with nested expressions.
+        A permintaan khusus short-circuits the count, exactly as
+        :meth:`day` does in Python — the column has to sort by the date the
+        table actually shows.
+
+        The count itself is a correlated subquery embedded in RawSQL (no params)
+        to avoid parameter-binding issues with nested expressions.
         SQLite (dev): DATE(date, '+' || days || ' days')
         PostgreSQL (prod): (date::date + days * INTERVAL '1 day')::date
         """
@@ -182,44 +219,71 @@ class Deadline:
                 + durasi_sql.format(base_date=f'{base}::date')
                 + ", 0) * INTERVAL '1 day')::date"
             )
-        return RawSQL(sql, [], output_field=DateField())
+        return Case(
+            When(
+                Q(special_request=True, tgl_special_request__isnull=False),
+                then=Cast('tgl_special_request', DateField()),
+            ),
+            default=RawSQL(sql, [], output_field=DateField()),
+            output_field=DateField(),
+        )
 
     # -- In Python ------------------------------------------------------------
 
-    def day(self, start_value, restart_value, durasi):
+    def day(self, start_value, restart_value, durasi,
+            special_request=False, tgl_special_request=None):
         """The deadline date, or None when there is no deadline to count.
 
-        Counting starts from the restart date when the tiket has one and from
-        the start date otherwise. A durasi of 0 means no active DurasiJatuhTempo
-        covers that date, so there is nothing to count from — the '-' the table
-        shows in its Deadline and Jatuh Tempo columns, not a deadline of "today".
+        A permintaan khusus answers first: its due date was agreed for this
+        tiket, so it stands whether or not a durasi covers the data and whether
+        or not the tiket has a base date yet.
+
+        Otherwise counting starts from the restart date when the tiket has one
+        and from the start date otherwise. A durasi of 0 means no active
+        DurasiJatuhTempo covers that date, so there is nothing to count from —
+        the '-' the table shows in its Deadline and Jatuh Tempo columns, not a
+        deadline of "today".
         """
+        khusus = special_deadline(special_request, tgl_special_request)
+        if khusus is not None:
+            return khusus
         base_date = restart_value or start_value
         if not base_date or not durasi:
             return None
-        deadline = base_date + timezone.timedelta(days=durasi)
-        return deadline.date() if hasattr(deadline, 'date') else deadline
+        return as_date(base_date + timezone.timedelta(days=durasi))
+
+    @property
+    def row_fields(self):
+        """The columns :meth:`day` takes, in the order it takes them.
+
+        Named once because every caller that reads a whole queue through
+        `values_list` has to lay its tuples out the same way `day` unpacks them.
+        """
+        return (
+            self.start_field, self.restart_field, 'active_durasi', *SPECIAL_FIELDS,
+        )
 
     def day_of(self, tiket):
         """The deadline date of an annotated tiket row."""
-        return self.day(
-            getattr(tiket, self.start_field),
-            getattr(tiket, self.restart_field),
-            tiket.active_durasi,
-        )
+        return self.day(*(getattr(tiket, field) for field in self.row_fields))
 
     def cells(self, tiket):
         """The Deadline and Jatuh Tempo cells of one table row.
 
         `sisa_hari` comes along raw as well, since the frontend colours the row
-        by it rather than by re-parsing the text.
+        by it rather than by re-parsing the text, and `deadline_khusus` says
+        whether the date shown is a permintaan khusus rather than the count from
+        the durasi table — the two are read in the same column, so the one that
+        was agreed per tiket is marked as such.
         """
+        khusus = special_deadline(*(getattr(tiket, field) for field in SPECIAL_FIELDS))
         deadline_day = self.day_of(tiket)
         if deadline_day is None:
             return {
                 'deadline': {'display': '-', 'sort': ''},
                 'jatuh_tempo': {'display': '-', 'sort': ''},
                 'sisa_hari': None,
+                'deadline_khusus': False,
             }
         sisa_hari = (deadline_day - date.today()).days
         return {
@@ -229,24 +293,24 @@ class Deadline:
             },
             'jatuh_tempo': {'display': f'{sisa_hari} hari', 'sort': str(sisa_hari)},
             'sisa_hari': sisa_hari,
+            'deadline_khusus': khusus is not None,
         }
 
     def jatuh_tempo_ids(self, qs, limit):
         """Ids of the tikets in `qs` whose jatuh tempo is under `limit` days.
 
-        Jatuh tempo is not a column: it is the deadline — the tiket's base date
-        plus the durasi that was active then — counted from today, so the
-        comparison is made here over the same computation the table renders and
-        the chart plots, rather than reassembled in SQL a third time.
+        Jatuh tempo is not a column: it is the deadline — the permintaan khusus
+        date, or else the tiket's base date plus the durasi that was active
+        then — counted from today, so the comparison is made here over the same
+        computation the table renders and the chart plots, rather than
+        reassembled in SQL a third time.
         """
-        rows = self.annotate_durasi(qs).values_list(
-            'id', self.start_field, self.restart_field, 'active_durasi',
-        )
+        rows = self.annotate_durasi(qs).values_list('id', *self.row_fields)
 
         today = date.today()
         ids = []
-        for tiket_id, start_value, restart_value, durasi in rows:
-            deadline_day = self.day(start_value, restart_value, durasi)
+        for tiket_id, *deadline_args in rows:
+            deadline_day = self.day(*deadline_args)
             if deadline_day is None:
                 continue
             if (deadline_day - today).days < limit:
@@ -887,23 +951,22 @@ class Weighting:
         """The columns a scored row carries beyond the ones already read."""
         fields = [SUB, 'tgl_terima_dip']
         if self.deadline is not None:
-            fields += [
-                self.deadline.start_field, self.deadline.restart_field, 'active_durasi',
-            ]
+            fields += list(self.deadline.row_fields)
         return fields
 
     def annotate(self, qs):
         """Add whatever the score reads that is not a plain column."""
         return self.deadline.annotate_durasi(qs) if self.deadline is not None else qs
 
-    def _jatuh_tempo_weight(self, start_value, restart_value, durasi):
+    def _jatuh_tempo_weight(self, *deadline_args):
         """The factor for how close this tiket's deadline is.
 
-        A tiket with no deadline to count — no durasi covers its base date — is
-        left at 1: nothing is known about its urgency, and guessing at it would
-        move a PIC up the table for a gap in the reference data.
+        A tiket with no deadline to count — no durasi covers its base date, and
+        no permintaan khusus names a date — is left at 1: nothing is known about
+        its urgency, and guessing at it would move a PIC up the table for a gap
+        in the reference data.
         """
-        deadline_day = self.deadline.day(start_value, restart_value, durasi)
+        deadline_day = self.deadline.day(*deadline_args)
         if deadline_day is None:
             return 1.0
         sisa_hari = (deadline_day - date.today()).days
@@ -926,7 +989,9 @@ class Weighting:
         if _was_prioritas(self.windows, extras[0], extras[1]):
             weight *= self.prioritas_weight
         if self.deadline is not None:
-            weight *= self._jatuh_tempo_weight(*extras[2:5])
+            # The deadline's own columns are last in :attr:`fields`, so whatever
+            # follows tgl_terima_dip is exactly what `day` takes.
+            weight *= self._jatuh_tempo_weight(*extras[2:])
         return baris * weight
 
 
@@ -1232,6 +1297,7 @@ def chart_data(scoped_qs, selected, appliers, deadline, role, no_pic_label,
     """
     styles = pic_styles(scoped_qs, role, no_pic_label)
 
+    deadline_fields = deadline.row_fields
     rows = deadline.annotate_durasi(
         apply_filters(scoped_qs, selected, appliers)
     ).annotate(
@@ -1239,15 +1305,16 @@ def chart_data(scoped_qs, selected, appliers, deadline, role, no_pic_label,
         # `id` keeps DISTINCT (added by the to-many filters) from collapsing two
         # different tikets that happen to agree on every other column here.
     ).values_list(
-        'id', 'pic_id', deadline.start_field, deadline.restart_field,
-        'active_durasi', *progress_fields,
+        'id', 'pic_id', *deadline_fields, *progress_fields,
     )
 
     totals = defaultdict(int)
     days = set()
     today = date.today()
-    for _tiket_id, pic_id, start_value, restart_value, durasi, *progress in rows:
-        deadline_day = deadline.day(start_value, restart_value, durasi)
+    split_at = len(deadline_fields)
+    for _tiket_id, pic_id, *rest in rows:
+        progress = rest[split_at:]
+        deadline_day = deadline.day(*rest[:split_at])
         if deadline_day is None:
             continue
         sisa = (deadline_day - today).days

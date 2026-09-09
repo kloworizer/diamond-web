@@ -1934,7 +1934,19 @@ that differ between one seksi and the next.
                     },
                     {
                         data: 'deadline',
-                        render: { _: 'display', sort: 'sort' }
+                        render: function (data, type, row) {
+                            const cell = data || {};
+                            if (type !== 'display') return cell.sort || '';
+                            const display = cell.display || '-';
+                            // The column holds two different kinds of date: the
+                            // count from the durasi of the tiket's data, and —
+                            // when the tiket carries a permintaan khusus — the
+                            // date agreed for that tiket alone, which overrides
+                            // it. Read down the column they are indistinguishable
+                            // unless the second says so.
+                            if (!row.deadline_khusus) return escapeHtml(display);
+                            return stackedCell(display, 'Permintaan Khusus');
+                        }
                     },
                     {
                         data: 'jatuh_tempo',

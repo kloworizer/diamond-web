@@ -52,3 +52,10 @@ STATUSES_DI_PIDE = (
 # Every status a tiket passes through before PMDE receives it, so a tiket in one
 # of these is still upstream of quality control.
 STATUSES_SEBELUM_PENGENDALIAN_MUTU = STATUSES_DI_P3DE + STATUSES_DI_PIDE
+
+# The statuses a tiket does not leave again: cancelled, or finished. Nobody
+# holds a tiket in one of these, so nothing is left to work on it.
+STATUSES_FINAL = (
+    STATUS_DIBATALKAN,
+    STATUS_SELESAI,
+)

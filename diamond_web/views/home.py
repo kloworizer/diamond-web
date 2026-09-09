@@ -30,6 +30,7 @@ from diamond_web.constants.tiket_status import (
     STATUS_DIKIRIM_KE_PIDE,
     STATUS_IDENTIFIKASI,
     STATUS_PENGENDALIAN_MUTU,
+    STATUSES_FINAL,
     STATUSES_SEBELUM_PENGENDALIAN_MUTU,
     STATUS_LABELS,
 )
@@ -362,9 +363,8 @@ def home(request):
             ).count()
     # Special Request (Permintaan Khusus) — available to any user/kasi role.
     if is_p3de or is_pide or is_pmde:
-        context['special_request_count'] = _scoped(
-            Tiket.objects.filter(special_request=True),
-            _get_special_request_tiket_ids(request.user),
+        context['special_request_count'] = _special_request_qs(
+            Tiket.objects.all(), request.user,
         ).count()
     if settings.DEBUG:
         groups = Group.objects.filter(name__in=['user_p3de', 'user_pide', 'user_pmde']).prefetch_related('user_set')
@@ -446,6 +446,24 @@ def _get_special_request_tiket_ids(user):
     ).values_list('id_tiket', flat=True)
 
 
+def _special_request_qs(qs, user):
+    """The Permintaan Khusus category: tikets flagged special_request, within
+    the user's visibility scope (kasi see all, others see their PIC tikets).
+
+    Tikets that are finished or cancelled are left out. A permintaan khusus is
+    a date somebody is waiting on, so this list is work still to be chased; the
+    flag stays on a closed tiket as part of its history, but nobody has anything
+    left to do about it.
+
+    The card's badge and the table behind it are both built from here, so the
+    count and the list it opens cannot disagree.
+    """
+    return _scoped(
+        qs.filter(special_request=True).exclude(status_tiket__in=STATUSES_FINAL),
+        _get_special_request_tiket_ids(user),
+    )
+
+
 def _build_tiket_base_qs(category, user):
     """Build the base Tiket queryset for a given category and user.
 
@@ -461,13 +479,8 @@ def _build_tiket_base_qs(category, user):
         'id_status_penelitian',
     )
 
-    # Special Request category: tikets flagged special_request within the
-    # user's visibility scope (kasi see all, others see their PIC tikets).
     if category == 'special_request':
-        return _scoped(
-            tiket_qs.filter(special_request=True),
-            _get_special_request_tiket_ids(user),
-        )
+        return _special_request_qs(tiket_qs, user)
 
     # PMDE category: everything still upstream of quality control, scoped by the
     # same rule as Dalam Proses Pengendalian Mutu — the reader's own active PMDE
