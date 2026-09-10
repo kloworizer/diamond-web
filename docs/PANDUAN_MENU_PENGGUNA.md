@@ -123,7 +123,7 @@ Khusus **Admin PIDE** (`admin_pide`):
 | Kategori | Kriteria |
 |---|---|
 | **Jenis Data Tidak Punya PIC Aktif** | Jenis Data ILAP tanpa PIC PIDE aktif. |
-| **Tiket Status Dikirim Ke PIDE Belum Punya PIC** | Tiket berstatus Dikirim ke PIDE tapi belum ada PIC PIDE aktif yang ditugaskan. Baris pada tabel ini punya tombol pintas **"Assign PIC PIDE"** (modal, memilih pengguna dari grup `user_pide`) sehingga admin bisa langsung menugaskan tanpa membuka menu PIC PIDE terpisah. |
+| **Tiket Status Dikirim Ke PIDE dan Identifikasi Belum Punya PIC** | Tiket berstatus **Dikirim ke PIDE** atau **Identifikasi** — selama itu tiket ada di tangan PIDE — tapi belum ada PIC PIDE aktif yang ditugaskan. Baris pada tabel ini punya tombol pintas **"Assign PIC PIDE"** (modal, memilih pengguna dari grup `user_pide`) sehingga admin bisa langsung menugaskan tanpa membuka menu PIC PIDE terpisah. |
 
 #### Kategori untuk PIC PMDE (`user_pmde` / `kasi_pmde`)
 
@@ -139,6 +139,8 @@ Khusus **Admin PMDE** (`admin_pmde`):
 |---|---|
 | **Jenis Data Tidak Punya PIC Aktif** | Jenis Data ILAP tanpa PIC PMDE aktif. |
 | **Tiket Status Pengendalian Mutu Belum Punya PIC** | Tiket berstatus Pengendalian Mutu tapi belum ada PIC PMDE aktif. Tombol pintas **"Assign PIC PMDE"**, sama pola dengan PIDE di atas. |
+
+> Tiket yang kehilangan PIC karena record PIC-nya **dihapus** lewat menu PIC (bukan diberi End Date) tidak bisa diperbaiki dari layar mana pun bila tiketnya sudah berjalan. Pengembaliannya lewat perintah `restore_tiket_pic_dihapus` — lihat [ADMIN_MENU_GUIDE.md](ADMIN_MENU_GUIDE.md#mengembalikan-penugasan-yang-terlanjur-terhapus).
 
 #### Elemen yang sama di setiap tabel kategori
 

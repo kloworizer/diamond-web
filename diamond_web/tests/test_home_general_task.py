@@ -994,6 +994,16 @@ class TestHomeDataAdminCategories:
         assert resp.status_code == 200
         assert json.loads(resp.content)['recordsTotal'] == 1
 
+    def test_tiket_dikirim_ke_pide_tanpa_pic_includes_identifikasi(self, client, db):
+        """A tiket already being identified is still PIDE's, so it belongs here."""
+        user = UserFactory()
+        _add_groups(user, 'admin_pide')
+        _tiket_with_status(4)
+        _tiket_with_status(5)
+        client.force_login(user)
+        resp = client.get(reverse('home_data'), _base_params('tiket_dikirim_ke_pide_tanpa_pic'))
+        assert json.loads(resp.content)['recordsTotal'] == 2
+
     def test_tiket_pengendalian_mutu_tanpa_pic(self, client, db):
         user = UserFactory()
         _add_groups(user, 'admin_pmde')

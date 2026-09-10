@@ -58,6 +58,12 @@ _UNIT_BUCKETS = {
     'pide': (STATUS_DIKIRIM_KE_PIDE, STATUS_IDENTIFIKASI),
 }
 
+# The statuses the PIDE 'belum punya PIC' card covers. A tiket belongs to PIDE
+# from the moment it is handed over until it is transferred to PMDE, so a tiket
+# left unassigned while already being identified is the same gap as one nobody
+# has picked up yet — both need a PIC PIDE.
+_STATUSES_TANPA_PIC_PIDE = (STATUS_DIKIRIM_KE_PIDE, STATUS_IDENTIFIKASI)
+
 # Join path from Tiket to the sub jenis data, and through it to the ILAP.
 _SUB = 'id_periode_data__id_sub_jenis_data_ilap'
 
@@ -307,9 +313,10 @@ def home(request):
                     end_date__isnull=True
                 ))
             ).count()
-            # Admin: Tickets in Dikirim ke PIDE status without an active PIDE PIC
+            # Admin: Tickets held by PIDE (Dikirim ke PIDE / Identifikasi)
+            # without an active PIDE PIC
             context['pide_tiket_dikirim_ke_pide_tanpa_pic_count'] = Tiket.objects.filter(
-                status_tiket=STATUS_DIKIRIM_KE_PIDE
+                status_tiket__in=_STATUSES_TANPA_PIC_PIDE
             ).filter(
                 ~Exists(TiketPIC.objects.filter(
                     id_tiket=OuterRef('pk'),
@@ -535,12 +542,13 @@ def _build_tiket_base_qs(category, user):
             ))
         )
 
-    # Admin category: tickets in Dikirim ke PIDE status without an active PIDE PIC
+    # Admin category: tickets held by PIDE (Dikirim ke PIDE / Identifikasi)
+    # without an active PIDE PIC
     if category == 'tiket_dikirim_ke_pide_tanpa_pic':
         if 'admin_pide' not in user_group_names(user):
             return None
         return tiket_qs.filter(
-            status_tiket=STATUS_DIKIRIM_KE_PIDE
+            status_tiket__in=_STATUSES_TANPA_PIC_PIDE
         ).filter(
             ~Exists(TiketPIC.objects.filter(
                 id_tiket=OuterRef('pk'),
