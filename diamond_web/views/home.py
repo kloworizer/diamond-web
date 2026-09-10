@@ -8,9 +8,10 @@ from datetime import timedelta
 from django.db.models.functions import Concat, Coalesce, NullIf
 from django.contrib.auth.models import Group, User
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.http import JsonResponse
 from django.urls import reverse
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 from diamond_web.views.task_to_do import (
     get_tiket_summary_for_user_p3de,
     get_tiket_summary_for_user_pide,
@@ -1230,6 +1231,191 @@ def home_pic_pmde_users(request):
         for u in users
     ]
     return JsonResponse({'users': data})
+
+
+# ---------------------------------------------------------------------------
+# Isi Otomatis PIC PMDE — meminjam PIC dari Sub Jenis Data satu Nama Tabel I
+# ---------------------------------------------------------------------------
+
+# Berapa baris yang ditampilkan di modal ringkasan sebelum diringkas jadi
+# "... dan N lainnya".
+_AUTO_ASSIGN_PREVIEW_LIMIT = 50
+
+
+def _normalize_nama_tabel(value):
+    """Kunci pencocokan Nama Tabel I antar Sub Jenis Data."""
+    return (value or '').strip().upper()
+
+
+def _nama_user(user):
+    nama = f"{user.first_name} {user.last_name}".strip()
+    return f"{nama} ({user.username})" if nama else user.username
+
+
+def _build_pmde_auto_assign_plan():
+    """Cocokkan Sub Jenis Data tanpa PIC PMDE aktif dengan PIC sesama Nama Tabel I.
+
+    Sub Jenis Data yang bermuara ke Nama Tabel I yang sama dikerjakan orang yang
+    sama, jadi baris yang belum punya PIC PMDE aktif bisa mengambil PIC yang
+    sudah dipegang tabel itu. Hanya tabel yang tidak ambigu yang dipakai: bila
+    PIC PMDE aktif pada tabel tersebut lebih dari satu orang, tidak ada jawaban
+    tunggal yang benar, sehingga barisnya dilewati dan tetap di-assign manual
+    oleh Admin PMDE seperti sekarang.
+
+    Mengembalikan rencana saja — tidak menulis apa pun. `items` berisi pasangan
+    `JenisDataILAP` dan `User` yang akan dibuatkan PIC-nya; sisanya adalah
+    hitungan baris yang dilewati beserta alasannya.
+    """
+    targets = list(
+        JenisDataILAP.objects
+        .filter(~Exists(PIC.objects.filter(
+            id_sub_jenis_data_ilap=OuterRef('pk'),
+            tipe=PIC.TipePIC.PMDE,
+            end_date__isnull=True,
+        )))
+        .select_related('id_ilap')
+        .order_by('id_sub_jenis_data')
+    )
+
+    # Nama Tabel I -> user berbeda yang ditunjuk PIC PMDE aktif tabel itu.
+    kandidat_per_tabel = {}
+    for pic in PIC.objects.filter(
+        tipe=PIC.TipePIC.PMDE, end_date__isnull=True
+    ).select_related('id_user', 'id_sub_jenis_data_ilap'):
+        key = _normalize_nama_tabel(pic.id_sub_jenis_data_ilap.nama_tabel_I)
+        if not key:
+            continue
+        kandidat_per_tabel.setdefault(key, {})[pic.id_user_id] = pic.id_user
+
+    items = []
+    ambigu = []
+    tanpa_rujukan = 0
+    tanpa_tabel = 0
+
+    for jenis_data in targets:
+        key = _normalize_nama_tabel(jenis_data.nama_tabel_I)
+        if not key:
+            tanpa_tabel += 1
+            continue
+        kandidat = kandidat_per_tabel.get(key)
+        if not kandidat:
+            tanpa_rujukan += 1
+            continue
+        if len(kandidat) > 1:
+            ambigu.append({
+                'id_sub_jenis_data': jenis_data.id_sub_jenis_data,
+                'nama_sub_jenis_data': jenis_data.nama_sub_jenis_data,
+                'nama_tabel_I': jenis_data.nama_tabel_I,
+                'jumlah_pic': len(kandidat),
+            })
+            continue
+        items.append({
+            'jenis_data': jenis_data,
+            'user': next(iter(kandidat.values())),
+        })
+
+    return {
+        'items': items,
+        'ambigu': ambigu,
+        'tanpa_rujukan': tanpa_rujukan,
+        'tanpa_tabel': tanpa_tabel,
+        'total_tanpa_pic': len(targets),
+    }
+
+
+@login_required
+@require_GET
+def home_pmde_auto_assign_pic_preview(request):
+    """Ringkas PIC PMDE yang akan diisi otomatis, tanpa menulis apa pun.
+
+    Aturan yang dipakai persis sama dengan `home_pmde_auto_assign_pic` — lihat
+    `_build_pmde_auto_assign_plan`. Hanya untuk anggota grup admin_pmde, sama
+    seperti kartu "Jenis Data Tidak Punya PIC Aktif" yang memanggilnya.
+    """
+    if not request.user.groups.filter(name='admin_pmde').exists():
+        return JsonResponse({'error': 'Forbidden'}, status=403)
+
+    plan = _build_pmde_auto_assign_plan()
+    items = [
+        {
+            'id_sub_jenis_data': item['jenis_data'].id_sub_jenis_data,
+            'nama_sub_jenis_data': item['jenis_data'].nama_sub_jenis_data,
+            'nama_ilap': item['jenis_data'].id_ilap.nama_ilap,
+            'nama_tabel_I': item['jenis_data'].nama_tabel_I,
+            'pic': _nama_user(item['user']),
+        }
+        for item in plan['items']
+    ]
+
+    return JsonResponse({
+        'success': True,
+        'total_tanpa_pic': plan['total_tanpa_pic'],
+        'total_assign': len(items),
+        'total_ambigu': len(plan['ambigu']),
+        'total_tanpa_rujukan': plan['tanpa_rujukan'],
+        'total_tanpa_tabel': plan['tanpa_tabel'],
+        'start_date': timezone.now().date().strftime('%d-%m-%Y'),
+        'items': items[:_AUTO_ASSIGN_PREVIEW_LIMIT],
+        'items_sisa': max(len(items) - _AUTO_ASSIGN_PREVIEW_LIMIT, 0),
+        'ambigu': plan['ambigu'][:_AUTO_ASSIGN_PREVIEW_LIMIT],
+        'ambigu_sisa': max(len(plan['ambigu']) - _AUTO_ASSIGN_PREVIEW_LIMIT, 0),
+    })
+
+
+@login_required
+@require_POST
+def home_pmde_auto_assign_pic(request):
+    """Buat PIC PMDE untuk Sub Jenis Data yang Nama Tabel I-nya punya PIC tunggal.
+
+    Efek samping: membuat baris `PIC` (start date hari ini) dan meneruskannya ke
+    tiket yang masih terbuka lewat `_assign_pic_to_open_tikets` — persis seperti
+    assign manual di `PICCreateView`, supaya tiket berjalan ikut mendapat PIC dan
+    jejaknya tercatat di `TiketAction`. Semua di dalam satu transaksi.
+    """
+    if not request.user.groups.filter(name='admin_pmde').exists():
+        return JsonResponse({'error': 'Forbidden'}, status=403)
+
+    from diamond_web.views.pic import _assign_pic_to_open_tikets
+
+    plan = _build_pmde_auto_assign_plan()
+    if not plan['items']:
+        return JsonResponse({
+            'success': True,
+            'created': 0,
+            'message': 'Tidak ada Sub Jenis Data yang bisa diisi otomatis.',
+        })
+
+    now = timezone.now()
+    today = now.date()
+    username = (getattr(request.user, 'username', '') or '')[:9]
+    # PIC action dicatat atas akun yang sama dengan assign manual, supaya riwayat
+    # tiket terbaca seragam dari mana pun PIC itu datang.
+    admin_user = User.objects.filter(username='admin').first() or request.user
+    tipe_label = dict(PIC.TipePIC.choices)[PIC.TipePIC.PMDE]
+
+    with transaction.atomic():
+        for item in plan['items']:
+            pic = PIC.objects.create(
+                tipe=PIC.TipePIC.PMDE,
+                id_sub_jenis_data_ilap=item['jenis_data'],
+                id_user=item['user'],
+                start_date=today,
+                create_date=today,
+                create_by=username,
+                update_date=today,
+                update_by=username,
+            )
+            _assign_pic_to_open_tikets(
+                pic.id_user, TiketPIC.Role.PMDE, pic.id_sub_jenis_data_ilap,
+                tipe_label, admin_user, now,
+            )
+
+    created = len(plan['items'])
+    return JsonResponse({
+        'success': True,
+        'created': created,
+        'message': f'{created} Sub Jenis Data berhasil diisi PIC PMDE-nya.',
+    })
 
 
 @login_required
