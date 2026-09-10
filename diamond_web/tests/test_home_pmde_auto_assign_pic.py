@@ -6,11 +6,13 @@ hanya bila tabel itu punya tepat satu PIC PMDE aktif. Lebih dari satu berarti
 tidak ada jawaban tunggal, jadi barisnya dilewati untuk di-assign manual.
 """
 import json
+from datetime import date
 from itertools import count
 
 import pytest
 from django.contrib.auth.models import Group
 from django.urls import reverse
+from django.utils import timezone
 
 from diamond_web.models import PIC, TiketPIC
 from diamond_web.tests.conftest import (
@@ -225,6 +227,89 @@ class TestAutoAssignPrefixScope:
         _admin_pmde(client)
         data = json.loads(client.get(reverse('home_pmde_auto_assign_pic_preview')).content)
         assert data['prefixes'] == ['PV', 'PD']
+
+
+@pytest.mark.django_db
+class TestAutoAssignStartDate:
+    """Tanggal Mulai PIC hasil Isi Otomatis tetap 01-01-2015, bukan hari ini."""
+
+    def test_created_pic_starts_2015_01_01(self, client):
+        _admin_pmde(client)
+        pic_user = UserFactory()
+        _pic_pmde_aktif(_jenis_data('TBL_TANGGAL'), pic_user)
+        target = _jenis_data('TBL_TANGGAL')
+
+        client.post(reverse('home_pmde_auto_assign_pic'))
+
+        pic = PIC.objects.get(
+            tipe=PIC.TipePIC.PMDE, id_sub_jenis_data_ilap=target, id_user=pic_user
+        )
+        assert pic.start_date == date(2015, 1, 1)
+        assert pic.end_date is None
+
+    def test_audit_fields_still_record_today(self, client):
+        """Tanggal Mulai tetap, tapi kolom audit tetap kapan barisnya dibuat."""
+        _admin_pmde(client)
+        pic_user = UserFactory()
+        _pic_pmde_aktif(_jenis_data('TBL_AUDIT'), pic_user)
+        target = _jenis_data('TBL_AUDIT')
+
+        client.post(reverse('home_pmde_auto_assign_pic'))
+
+        pic = PIC.objects.get(
+            tipe=PIC.TipePIC.PMDE, id_sub_jenis_data_ilap=target, id_user=pic_user
+        )
+        assert pic.create_date == timezone.now().date()
+        assert pic.create_by
+
+    def test_preview_shows_the_fixed_date(self, client):
+        _admin_pmde(client)
+        data = json.loads(client.get(reverse('home_pmde_auto_assign_pic_preview')).content)
+        assert data['start_date'] == '01-01-2015'
+
+    def test_closed_pic_on_the_same_date_is_not_duplicated(self, client):
+        """Form assign manual menolak kombinasi user + sub jenis + start date yang
+        sama, jadi jalur otomatis tidak boleh membuatnya diam-diam."""
+        _admin_pmde(client)
+        pic_user = UserFactory()
+        _pic_pmde_aktif(_jenis_data('TBL_BENTROK'), pic_user)
+        target = _jenis_data('TBL_BENTROK')
+        PICFactory(
+            tipe=PIC.TipePIC.PMDE,
+            id_sub_jenis_data_ilap=target,
+            id_user=pic_user,
+            start_date=date(2015, 1, 1),
+            end_date=date(2020, 12, 31),
+        )
+
+        data = json.loads(client.get(reverse('home_pmde_auto_assign_pic_preview')).content)
+        assert data['total_assign'] == 0
+        assert data['total_bentrok_tanggal'] == 1
+
+        client.post(reverse('home_pmde_auto_assign_pic'))
+        assert PIC.objects.filter(
+            tipe=PIC.TipePIC.PMDE,
+            id_sub_jenis_data_ilap=target,
+            id_user=pic_user,
+            start_date=date(2015, 1, 1),
+        ).count() == 1
+
+    def test_closed_pic_of_another_user_still_allows_assign(self, client):
+        _admin_pmde(client)
+        pic_user = UserFactory()
+        _pic_pmde_aktif(_jenis_data('TBL_LAIN'), pic_user)
+        target = _jenis_data('TBL_LAIN')
+        PICFactory(
+            tipe=PIC.TipePIC.PMDE,
+            id_sub_jenis_data_ilap=target,
+            id_user=UserFactory(),
+            start_date=date(2015, 1, 1),
+            end_date=date(2020, 12, 31),
+        )
+
+        data = json.loads(client.get(reverse('home_pmde_auto_assign_pic_preview')).content)
+        assert data['total_assign'] == 1
+        assert data['total_bentrok_tanggal'] == 0
 
 
 @pytest.mark.django_db

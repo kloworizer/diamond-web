@@ -4133,14 +4133,18 @@
             function renderAutoAssignPmdeSummary(data) {
                 const body = document.getElementById('auto-assign-pmde-body');
                 const confirmBtn = document.getElementById('btn-auto-assign-pmde-confirm');
-                const dilewati = data.total_ambigu + data.total_tanpa_rujukan + data.total_tanpa_tabel;
+                const dilewati = data.total_ambigu + data.total_tanpa_rujukan
+                    + data.total_tanpa_tabel + data.total_bentrok_tanggal;
                 const lingkup = (data.prefixes || []).join(' dan ');
 
+                const catatanBentrok = data.total_bentrok_tanggal
+                    ? `, dan ${data.total_bentrok_tanggal} karena PIC yang sama pada Sub Jenis Data itu sudah pernah terdaftar dengan Tanggal Mulai ${escapeHtml(data.start_date)}`
+                    : '';
                 const catatanDilewati = dilewati
                     ? `<div class="alert alert-warning py-2 px-3 mt-3 mb-0" style="font-size: 12px;">
                            ${dilewati} Sub Jenis Data ${escapeHtml(lingkup)} dilewati: ${data.total_ambigu} karena Nama Tabel I-nya punya lebih dari satu PIC PMDE aktif
                            (harus di-assign manual), ${data.total_tanpa_rujukan} karena belum ada PIC PMDE aktif pada Nama Tabel I yang sama,
-                           dan ${data.total_tanpa_tabel} karena Nama Tabel I-nya kosong.
+                           ${data.total_tanpa_tabel} karena Nama Tabel I-nya kosong${catatanBentrok}.
                        </div>`
                     : '';
 
@@ -4178,7 +4182,8 @@
                         yang <strong>Nama Tabel I</strong>-nya sama. Yang diproses hanya Sub Jenis Data berawalan
                         <strong>${escapeHtml(lingkup)}</strong>, dan hanya bila PIC PMDE aktif pada tabel itu
                         <strong>tepat satu orang</strong>; bila lebih dari satu, barisnya dilewati untuk di-assign manual.
-                        Tanggal Mulai PIC diisi ${escapeHtml(data.start_date)}, dan PIC langsung diterapkan ke tiket yang masih terbuka.
+                        Tanggal Mulai PIC diisi <strong>${escapeHtml(data.start_date)}</strong>, mengikuti PIC PMDE yang sudah ada,
+                        dan PIC langsung diterapkan ke tiket yang masih terbuka.
                     </div>
                     <div class="row g-2 mb-3">
                         <div class="col-4">

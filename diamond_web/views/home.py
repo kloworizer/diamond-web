@@ -4,7 +4,7 @@ from django.db.models import (
     Count, F, Q, Exists, OuterRef, Max, Subquery, Value, Case, When, IntegerField,
 )
 from django.utils import timezone
-from datetime import timedelta
+from datetime import date, timedelta
 from django.db.models.functions import Concat, Coalesce, NullIf
 from django.contrib.auth.models import Group, User
 from django.contrib.auth.decorators import login_required
@@ -1245,6 +1245,12 @@ _AUTO_ASSIGN_PREVIEW_LIMIT = 50
 # PMDE tetap di-assign manual lewat tombol per baris.
 _AUTO_ASSIGN_PREFIXES = ('PV', 'PD')
 
+# Tanggal Mulai yang dipakai PIC hasil Isi Otomatis. Bukan tanggal hari ini:
+# PIC PMDE yang ada memang bertanggal mulai ini, dan PIC hasil Isi Otomatis
+# meneruskan penugasan yang secara faktual sudah berjalan sejak awal, bukan
+# penugasan baru per hari tombol ditekan.
+_AUTO_ASSIGN_START_DATE = date(2015, 1, 1)
+
 
 def _normalize_nama_tabel(value):
     """Kunci pencocokan Nama Tabel I antar Sub Jenis Data."""
@@ -1300,10 +1306,23 @@ def _build_pmde_auto_assign_plan():
             continue
         kandidat_per_tabel.setdefault(key, {})[pic.id_user_id] = pic.id_user
 
+    # Baris target tidak punya PIC PMDE aktif, tapi bisa punya yang sudah
+    # ditutup. Karena Tanggal Mulai di sini tetap, PIC lama untuk orang yang
+    # sama bisa memakai tanggal yang persis sama — kombinasi yang ditolak form
+    # assign manual, jadi jangan dibuat lewat jalur ini.
+    sudah_ada = set(
+        PIC.objects.filter(
+            tipe=PIC.TipePIC.PMDE,
+            start_date=_AUTO_ASSIGN_START_DATE,
+            id_sub_jenis_data_ilap__in=[jd.pk for jd in targets],
+        ).values_list('id_sub_jenis_data_ilap_id', 'id_user_id')
+    )
+
     items = []
     ambigu = []
     tanpa_rujukan = 0
     tanpa_tabel = 0
+    bentrok_tanggal = 0
 
     for jenis_data in targets:
         key = _normalize_nama_tabel(jenis_data.nama_tabel_I)
@@ -1322,16 +1341,18 @@ def _build_pmde_auto_assign_plan():
                 'jumlah_pic': len(kandidat),
             })
             continue
-        items.append({
-            'jenis_data': jenis_data,
-            'user': next(iter(kandidat.values())),
-        })
+        user = next(iter(kandidat.values()))
+        if (jenis_data.pk, user.pk) in sudah_ada:
+            bentrok_tanggal += 1
+            continue
+        items.append({'jenis_data': jenis_data, 'user': user})
 
     return {
         'items': items,
         'ambigu': ambigu,
         'tanpa_rujukan': tanpa_rujukan,
         'tanpa_tabel': tanpa_tabel,
+        'bentrok_tanggal': bentrok_tanggal,
         'total_tanpa_pic': len(targets),
     }
 
@@ -1368,7 +1389,8 @@ def home_pmde_auto_assign_pic_preview(request):
         'total_ambigu': len(plan['ambigu']),
         'total_tanpa_rujukan': plan['tanpa_rujukan'],
         'total_tanpa_tabel': plan['tanpa_tabel'],
-        'start_date': timezone.now().date().strftime('%d-%m-%Y'),
+        'total_bentrok_tanggal': plan['bentrok_tanggal'],
+        'start_date': _AUTO_ASSIGN_START_DATE.strftime('%d-%m-%Y'),
         'items': items[:_AUTO_ASSIGN_PREVIEW_LIMIT],
         'items_sisa': max(len(items) - _AUTO_ASSIGN_PREVIEW_LIMIT, 0),
         'ambigu': plan['ambigu'][:_AUTO_ASSIGN_PREVIEW_LIMIT],
@@ -1381,10 +1403,11 @@ def home_pmde_auto_assign_pic_preview(request):
 def home_pmde_auto_assign_pic(request):
     """Buat PIC PMDE untuk Sub Jenis Data yang Nama Tabel I-nya punya PIC tunggal.
 
-    Efek samping: membuat baris `PIC` (start date hari ini) dan meneruskannya ke
-    tiket yang masih terbuka lewat `_assign_pic_to_open_tikets` — persis seperti
-    assign manual di `PICCreateView`, supaya tiket berjalan ikut mendapat PIC dan
-    jejaknya tercatat di `TiketAction`. Semua di dalam satu transaksi.
+    Efek samping: membuat baris `PIC` (Tanggal Mulai `_AUTO_ASSIGN_START_DATE`)
+    dan meneruskannya ke tiket yang masih terbuka lewat
+    `_assign_pic_to_open_tikets` — persis seperti assign manual di
+    `PICCreateView`, supaya tiket berjalan ikut mendapat PIC dan jejaknya
+    tercatat di `TiketAction`. Semua di dalam satu transaksi.
     """
     if not request.user.groups.filter(name='admin_pmde').exists():
         return JsonResponse({'error': 'Forbidden'}, status=403)
@@ -1400,6 +1423,7 @@ def home_pmde_auto_assign_pic(request):
         })
 
     now = timezone.now()
+    # Tanggal Mulai PIC tetap; kolom audit tetap mencatat kapan baris ini dibuat.
     today = now.date()
     username = (getattr(request.user, 'username', '') or '')[:9]
     # PIC action dicatat atas akun yang sama dengan assign manual, supaya riwayat
@@ -1413,7 +1437,7 @@ def home_pmde_auto_assign_pic(request):
                 tipe=PIC.TipePIC.PMDE,
                 id_sub_jenis_data_ilap=item['jenis_data'],
                 id_user=item['user'],
-                start_date=today,
+                start_date=_AUTO_ASSIGN_START_DATE,
                 create_date=today,
                 create_by=username,
                 update_date=today,
