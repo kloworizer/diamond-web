@@ -1241,6 +1241,10 @@ def home_pic_pmde_users(request):
 # "... dan N lainnya".
 _AUTO_ASSIGN_PREVIEW_LIMIT = 50
 
+# Isi Otomatis hanya menyentuh Sub Jenis Data berawalan ini. Di luar itu PIC
+# PMDE tetap di-assign manual lewat tombol per baris.
+_AUTO_ASSIGN_PREFIXES = ('PV', 'PD')
+
 
 def _normalize_nama_tabel(value):
     """Kunci pencocokan Nama Tabel I antar Sub Jenis Data."""
@@ -1262,12 +1266,21 @@ def _build_pmde_auto_assign_plan():
     tunggal yang benar, sehingga barisnya dilewati dan tetap di-assign manual
     oleh Admin PMDE seperti sekarang.
 
+    Yang diisi hanya Sub Jenis Data berawalan `_AUTO_ASSIGN_PREFIXES`. Batas itu
+    berlaku pada baris yang diisi, bukan pada sumbernya: PIC tetap dicari dari
+    seluruh Sub Jenis Data satu Nama Tabel I, apa pun awalannya.
+
     Mengembalikan rencana saja — tidak menulis apa pun. `items` berisi pasangan
     `JenisDataILAP` dan `User` yang akan dibuatkan PIC-nya; sisanya adalah
     hitungan baris yang dilewati beserta alasannya.
     """
+    prefix_filter = Q()
+    for prefix in _AUTO_ASSIGN_PREFIXES:
+        prefix_filter |= Q(id_sub_jenis_data__istartswith=prefix)
+
     targets = list(
         JenisDataILAP.objects
+        .filter(prefix_filter)
         .filter(~Exists(PIC.objects.filter(
             id_sub_jenis_data_ilap=OuterRef('pk'),
             tipe=PIC.TipePIC.PMDE,
@@ -1349,6 +1362,7 @@ def home_pmde_auto_assign_pic_preview(request):
 
     return JsonResponse({
         'success': True,
+        'prefixes': list(_AUTO_ASSIGN_PREFIXES),
         'total_tanpa_pic': plan['total_tanpa_pic'],
         'total_assign': len(items),
         'total_ambigu': len(plan['ambigu']),

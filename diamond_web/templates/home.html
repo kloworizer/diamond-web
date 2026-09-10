@@ -2047,7 +2047,7 @@
                         <h5 class="card-title"><i class="feather-users me-2"></i>Jenis Data Tidak Punya PIC Aktif</h5>
                         <div class="d-flex align-items-center gap-2">
                             <button type="button" class="btn btn-primary" id="btn-auto-assign-pic-pmde"
-                                title="Isi PIC PMDE otomatis dari Sub Jenis Data lain yang Nama Tabel I-nya sama, hanya bila tabel itu punya tepat satu PIC PMDE aktif">
+                                title="Isi PIC PMDE otomatis untuk Sub Jenis Data berawalan PV dan PD, diambil dari Sub Jenis Data lain yang Nama Tabel I-nya sama, hanya bila tabel itu punya tepat satu PIC PMDE aktif">
                                 <i class="feather-zap me-1"></i>Isi Otomatis
                             </button>
                         </div>
@@ -4134,10 +4134,11 @@
                 const body = document.getElementById('auto-assign-pmde-body');
                 const confirmBtn = document.getElementById('btn-auto-assign-pmde-confirm');
                 const dilewati = data.total_ambigu + data.total_tanpa_rujukan + data.total_tanpa_tabel;
+                const lingkup = (data.prefixes || []).join(' dan ');
 
                 const catatanDilewati = dilewati
                     ? `<div class="alert alert-warning py-2 px-3 mt-3 mb-0" style="font-size: 12px;">
-                           ${dilewati} Sub Jenis Data dilewati: ${data.total_ambigu} karena Nama Tabel I-nya punya lebih dari satu PIC PMDE aktif
+                           ${dilewati} Sub Jenis Data ${escapeHtml(lingkup)} dilewati: ${data.total_ambigu} karena Nama Tabel I-nya punya lebih dari satu PIC PMDE aktif
                            (harus di-assign manual), ${data.total_tanpa_rujukan} karena belum ada PIC PMDE aktif pada Nama Tabel I yang sama,
                            dan ${data.total_tanpa_tabel} karena Nama Tabel I-nya kosong.
                        </div>`
@@ -4148,7 +4149,7 @@
                     document.getElementById('btn-auto-assign-pmde-cancel').textContent = 'Tutup';
                     body.innerHTML = `
                         <div class="alert alert-info mb-0" style="font-size: 12.5px;">
-                            Tidak ada Sub Jenis Data yang bisa diisi otomatis.
+                            Tidak ada Sub Jenis Data berawalan <strong>${escapeHtml(lingkup)}</strong> yang bisa diisi otomatis.
                         </div>
                         ${catatanDilewati}
                     `;
@@ -4174,9 +4175,10 @@
                 body.innerHTML = `
                     <div class="alert alert-info py-2 px-3 mb-3" style="font-size: 12px;">
                         Sub Jenis Data berikut <strong>akan diisi</strong> PIC PMDE-nya, diambil dari Sub Jenis Data lain
-                        yang <strong>Nama Tabel I</strong>-nya sama. Hanya tabel yang PIC PMDE aktifnya <strong>tepat satu orang</strong>
-                        yang diproses; bila lebih dari satu, barisnya dilewati untuk di-assign manual. Tanggal Mulai PIC diisi
-                        ${escapeHtml(data.start_date)}, dan PIC langsung diterapkan ke tiket yang masih terbuka.
+                        yang <strong>Nama Tabel I</strong>-nya sama. Yang diproses hanya Sub Jenis Data berawalan
+                        <strong>${escapeHtml(lingkup)}</strong>, dan hanya bila PIC PMDE aktif pada tabel itu
+                        <strong>tepat satu orang</strong>; bila lebih dari satu, barisnya dilewati untuk di-assign manual.
+                        Tanggal Mulai PIC diisi ${escapeHtml(data.start_date)}, dan PIC langsung diterapkan ke tiket yang masih terbuka.
                     </div>
                     <div class="row g-2 mb-3">
                         <div class="col-4">
@@ -4193,7 +4195,7 @@
                         </div>
                         <div class="col-4">
                             <div class="p-3 rounded" style="background: #f8fafc; border: 1px solid #e2e8f0;">
-                                <span class="text-muted d-block mb-1" style="font-size: 11px;">Tanpa PIC Aktif</span>
+                                <span class="text-muted d-block mb-1" style="font-size: 11px;">${escapeHtml(lingkup)} Tanpa PIC</span>
                                 <span class="fw-bold text-dark" style="font-size: 18px;">${data.total_tanpa_pic}</span>
                             </div>
                         </div>

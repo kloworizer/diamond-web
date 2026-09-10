@@ -1,11 +1,12 @@
 """Isi Otomatis PIC PMDE — mengambil PIC dari Sub Jenis Data satu Nama Tabel I.
 
-Aturan yang diuji: Sub Jenis Data tanpa PIC PMDE aktif mengambil PIC PMDE dari
-Sub Jenis Data lain yang `nama_tabel_I`-nya sama, tetapi hanya bila tabel itu
-punya tepat satu PIC PMDE aktif. Lebih dari satu berarti tidak ada jawaban
-tunggal, jadi barisnya dilewati untuk di-assign manual.
+Aturan yang diuji: Sub Jenis Data berawalan PV/PD yang tanpa PIC PMDE aktif
+mengambil PIC PMDE dari Sub Jenis Data lain yang `nama_tabel_I`-nya sama, tetapi
+hanya bila tabel itu punya tepat satu PIC PMDE aktif. Lebih dari satu berarti
+tidak ada jawaban tunggal, jadi barisnya dilewati untuk di-assign manual.
 """
 import json
+from itertools import count
 
 import pytest
 from django.contrib.auth.models import Group
@@ -16,6 +17,17 @@ from diamond_web.tests.conftest import (
     JenisDataILAPFactory, PeriodeJenisDataFactory, PeriodePengirimanFactory,
     PICFactory, TiketFactory, UserFactory,
 )
+
+# id_sub_jenis_data harus unik dan awalannya menentukan lingkup fitur, jadi
+# setiap baris dibuat dengan awalan yang diminta plus nomor urut sendiri.
+_KODE_SEQ = count()
+
+
+def _jenis_data(nama_tabel_I, prefix='PV'):
+    return JenisDataILAPFactory(
+        nama_tabel_I=nama_tabel_I,
+        id_sub_jenis_data=f'{prefix}{next(_KODE_SEQ):07d}',
+    )
 
 
 def _add_groups(user, *names):
@@ -71,9 +83,9 @@ class TestAutoAssignPlan:
     def test_single_pic_on_table_is_borrowed(self, client):
         _admin_pmde(client)
         pic_user = UserFactory()
-        sumber = JenisDataILAPFactory(nama_tabel_I='KPDE_PEMDA_KEBUN_IUP')
+        sumber = _jenis_data('KPDE_PEMDA_KEBUN_IUP')
         _pic_pmde_aktif(sumber, pic_user)
-        target = JenisDataILAPFactory(nama_tabel_I='KPDE_PEMDA_KEBUN_IUP')
+        target = _jenis_data('KPDE_PEMDA_KEBUN_IUP')
 
         resp = client.get(reverse('home_pmde_auto_assign_pic_preview'))
         data = json.loads(resp.content)
@@ -92,9 +104,9 @@ class TestAutoAssignPlan:
 
     def test_two_pics_on_table_are_skipped(self, client):
         _admin_pmde(client)
-        _pic_pmde_aktif(JenisDataILAPFactory(nama_tabel_I='TBL_AMBIGU'), UserFactory())
-        _pic_pmde_aktif(JenisDataILAPFactory(nama_tabel_I='TBL_AMBIGU'), UserFactory())
-        target = JenisDataILAPFactory(nama_tabel_I='TBL_AMBIGU')
+        _pic_pmde_aktif(_jenis_data('TBL_AMBIGU'), UserFactory())
+        _pic_pmde_aktif(_jenis_data('TBL_AMBIGU'), UserFactory())
+        target = _jenis_data('TBL_AMBIGU')
 
         data = json.loads(client.get(reverse('home_pmde_auto_assign_pic_preview')).content)
         assert data['total_assign'] == 0
@@ -108,9 +120,9 @@ class TestAutoAssignPlan:
         """Dua baris PIC PMDE aktif dengan orang yang sama tetap satu jawaban."""
         _admin_pmde(client)
         pic_user = UserFactory()
-        _pic_pmde_aktif(JenisDataILAPFactory(nama_tabel_I='TBL_SAMA'), pic_user)
-        _pic_pmde_aktif(JenisDataILAPFactory(nama_tabel_I='TBL_SAMA'), pic_user)
-        target = JenisDataILAPFactory(nama_tabel_I='TBL_SAMA')
+        _pic_pmde_aktif(_jenis_data('TBL_SAMA'), pic_user)
+        _pic_pmde_aktif(_jenis_data('TBL_SAMA'), pic_user)
+        _jenis_data('TBL_SAMA')
 
         data = json.loads(client.get(reverse('home_pmde_auto_assign_pic_preview')).content)
         assert data['total_assign'] == 1
@@ -120,11 +132,11 @@ class TestAutoAssignPlan:
         _admin_pmde(client)
         PICFactory(
             tipe=PIC.TipePIC.PMDE,
-            id_sub_jenis_data_ilap=JenisDataILAPFactory(nama_tabel_I='TBL_TUTUP'),
+            id_sub_jenis_data_ilap=_jenis_data('TBL_TUTUP'),
             id_user=UserFactory(),
             end_date='2024-01-01',
         )
-        JenisDataILAPFactory(nama_tabel_I='TBL_TUTUP')
+        _jenis_data('TBL_TUTUP')
 
         data = json.loads(client.get(reverse('home_pmde_auto_assign_pic_preview')).content)
         assert data['total_assign'] == 0
@@ -134,19 +146,19 @@ class TestAutoAssignPlan:
         _admin_pmde(client)
         PICFactory(
             tipe=PIC.TipePIC.PIDE,
-            id_sub_jenis_data_ilap=JenisDataILAPFactory(nama_tabel_I='TBL_PIDE'),
+            id_sub_jenis_data_ilap=_jenis_data('TBL_PIDE'),
             id_user=UserFactory(),
             end_date=None,
         )
-        JenisDataILAPFactory(nama_tabel_I='TBL_PIDE')
+        _jenis_data('TBL_PIDE')
 
         data = json.loads(client.get(reverse('home_pmde_auto_assign_pic_preview')).content)
         assert data['total_assign'] == 0
 
     def test_blank_nama_tabel_is_skipped(self, client):
         _admin_pmde(client)
-        _pic_pmde_aktif(JenisDataILAPFactory(nama_tabel_I=''), UserFactory())
-        JenisDataILAPFactory(nama_tabel_I='   ')
+        _pic_pmde_aktif(_jenis_data(''), UserFactory())
+        _jenis_data('   ')
 
         data = json.loads(client.get(reverse('home_pmde_auto_assign_pic_preview')).content)
         assert data['total_assign'] == 0
@@ -155,8 +167,8 @@ class TestAutoAssignPlan:
     def test_table_name_matched_case_insensitively(self, client):
         _admin_pmde(client)
         pic_user = UserFactory()
-        _pic_pmde_aktif(JenisDataILAPFactory(nama_tabel_I='kpde_pemda'), pic_user)
-        JenisDataILAPFactory(nama_tabel_I=' KPDE_PEMDA ')
+        _pic_pmde_aktif(_jenis_data('kpde_pemda'), pic_user)
+        _jenis_data(' KPDE_PEMDA ')
 
         data = json.loads(client.get(reverse('home_pmde_auto_assign_pic_preview')).content)
         assert data['total_assign'] == 1
@@ -170,6 +182,52 @@ class TestAutoAssignPlan:
 
 
 @pytest.mark.django_db
+class TestAutoAssignPrefixScope:
+    """Hanya Sub Jenis Data berawalan PV dan PD yang diisi otomatis."""
+
+    def test_pd_prefix_is_filled(self, client):
+        _admin_pmde(client)
+        pic_user = UserFactory()
+        _pic_pmde_aktif(_jenis_data('TBL_PD', prefix='PD'), pic_user)
+        target = _jenis_data('TBL_PD', prefix='PD')
+
+        data = json.loads(client.get(reverse('home_pmde_auto_assign_pic_preview')).content)
+        assert data['total_assign'] == 1
+        assert data['items'][0]['id_sub_jenis_data'] == target.id_sub_jenis_data
+
+    @pytest.mark.parametrize('prefix', ['AS', 'LM', 'BU'])
+    def test_other_prefixes_are_left_alone(self, client, prefix):
+        _admin_pmde(client)
+        _pic_pmde_aktif(_jenis_data('TBL_LUAR'), UserFactory())
+        target = _jenis_data('TBL_LUAR', prefix=prefix)
+
+        data = json.loads(client.get(reverse('home_pmde_auto_assign_pic_preview')).content)
+        assert data['total_assign'] == 0
+        # Di luar lingkup: tidak dihitung sebagai dilewati, tapi juga tidak diisi.
+        assert data['total_tanpa_pic'] == 0
+
+        client.post(reverse('home_pmde_auto_assign_pic'))
+        assert not PIC.objects.filter(id_sub_jenis_data_ilap=target).exists()
+
+    def test_source_may_come_from_any_prefix(self, client):
+        """Batas PV/PD berlaku pada baris yang diisi, bukan pada sumber PIC-nya."""
+        _admin_pmde(client)
+        pic_user = UserFactory()
+        _pic_pmde_aktif(_jenis_data('TBL_CAMPUR', prefix='LM'), pic_user)
+        target = _jenis_data('TBL_CAMPUR', prefix='PV')
+
+        data = json.loads(client.get(reverse('home_pmde_auto_assign_pic_preview')).content)
+        assert data['total_assign'] == 1
+        assert data['items'][0]['id_sub_jenis_data'] == target.id_sub_jenis_data
+        assert pic_user.username in data['items'][0]['pic']
+
+    def test_preview_reports_the_prefixes_it_used(self, client):
+        _admin_pmde(client)
+        data = json.loads(client.get(reverse('home_pmde_auto_assign_pic_preview')).content)
+        assert data['prefixes'] == ['PV', 'PD']
+
+
+@pytest.mark.django_db
 class TestAutoAssignPropagation:
     def test_open_tiket_receives_the_pic(self, client):
         """PIC baru harus ikut menempel ke tiket yang masih berjalan.
@@ -179,8 +237,8 @@ class TestAutoAssignPropagation:
         """
         _admin_pmde(client)
         pic_user = UserFactory()
-        _pic_pmde_aktif(JenisDataILAPFactory(nama_tabel_I='TBL_TIKET'), pic_user)
-        target = JenisDataILAPFactory(nama_tabel_I='TBL_TIKET')
+        _pic_pmde_aktif(_jenis_data('TBL_TIKET'), pic_user)
+        target = _jenis_data('TBL_TIKET')
         periode = PeriodeJenisDataFactory(
             id_sub_jenis_data_ilap=target,
             id_periode_pengiriman=PeriodePengirimanFactory(
