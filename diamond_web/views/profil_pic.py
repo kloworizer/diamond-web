@@ -184,8 +184,8 @@ def summarise_ilap(penugasan_list):
         penugasan_list (list): Entries from :func:`build_penugasan_list`.
 
     Returns:
-        list: Dicts of ``{'ilap', 'count', 'aktif'}``, active ILAPs first and
-        then by name.
+        list: Dicts of ``{'ilap', 'count', 'aktif'}``, busiest ILAPs first —
+        by the number of sub jenis data behind them — and then by name.
     """
     entries = {}
     for item in penugasan_list:
@@ -204,11 +204,38 @@ def summarise_ilap(penugasan_list):
         {'ilap': e['ilap'], 'count': len(e['jenis_data']), 'aktif': e['aktif']}
         for e in entries.values()
     ]
-    result.sort(key=lambda e: (not e['aktif'], e['ilap'].nama_ilap.lower()))
+    result.sort(key=lambda e: (-e['count'], e['ilap'].nama_ilap.lower()))
     return result
 
 
-def summarise_jenis_data(penugasan_list):
+def count_tiket_per_jenis_data(pic_user):
+    """Return how many distinct tikets `pic_user` holds, per sub jenis data.
+
+    Feeds the "jumlah" a reader sorts :func:`summarise_jenis_data` by — the same
+    role a nama tabel's sub jenis data count plays for :func:`summarise_ilap` and
+    :func:`summarise_nama_tabel`, except a sub jenis data has no smaller unit
+    left to count, so the tiket itself is what is counted here.
+
+    Args:
+        pic_user (User): The person whose tikets are counted.
+
+    Returns:
+        dict: ``{sub_jenis_data_pk: count}``, absent for a sub jenis data with
+        no tiket.
+    """
+    rows = (
+        TiketPIC.objects
+        .filter(id_user=pic_user)
+        .values('id_tiket__id_periode_data__id_sub_jenis_data_ilap')
+        .annotate(total=Count('id_tiket', distinct=True))
+    )
+    return {
+        row['id_tiket__id_periode_data__id_sub_jenis_data_ilap']: row['total']
+        for row in rows
+    }
+
+
+def summarise_jenis_data(penugasan_list, tiket_counts):
     """Collapse `penugasan_list` to one entry per sub jenis data.
 
     The same sub jenis data appears once per stretch of assignment, and a person
@@ -217,10 +244,12 @@ def summarise_jenis_data(penugasan_list):
 
     Args:
         penugasan_list (list): Entries from :func:`build_penugasan_list`.
+        tiket_counts (dict): From :func:`count_tiket_per_jenis_data`.
 
     Returns:
-        list: Dicts of ``{'jenis_data', 'ilap', 'tipe_labels', 'aktif'}``,
-        active entries first and then by name.
+        list: Dicts of ``{'jenis_data', 'ilap', 'tipe_labels', 'aktif',
+        'count'}``, busiest sub jenis data first — by tiket count — and then by
+        name.
     """
     entries = {}
     for item in penugasan_list:
@@ -232,6 +261,7 @@ def summarise_jenis_data(penugasan_list):
                 'ilap': item['ilap'],
                 'tipe_labels': [],
                 'aktif': False,
+                'count': tiket_counts.get(jenis_data.pk, 0),
             }
         if item['tipe_label'] not in entry['tipe_labels']:
             entry['tipe_labels'].append(item['tipe_label'])
@@ -239,7 +269,7 @@ def summarise_jenis_data(penugasan_list):
 
     result = list(entries.values())
     result.sort(
-        key=lambda e: (not e['aktif'], (e['jenis_data'].nama_sub_jenis_data or '').lower())
+        key=lambda e: (-e['count'], (e['jenis_data'].nama_sub_jenis_data or '').lower())
     )
     return result
 
@@ -339,6 +369,43 @@ def summarise_nama_tabel_aktivitas(nama_tabel_list):
     }
 
 
+def summarise_jenis_data_aktivitas(jenis_data_list):
+    """Split `jenis_data_list` into sub jenis data still fed and the dormant.
+
+    The same split as :func:`summarise_nama_tabel_aktivitas`, one level down:
+    a sub jenis data counts as active when *any* tiket landed against it within
+    the last :data:`NAMA_TABEL_AKTIF_TAHUN` years, whoever it was PIC'd by —
+    whether data is still flowing is a property of the sub jenis data, not of
+    this person's stretch of holding it.
+
+    A sub jenis data with no tiket at all is counted as dormant, the same as a
+    nama tabel with none.
+
+    Args:
+        jenis_data_list (list): Entries from :func:`summarise_jenis_data`.
+
+    Returns:
+        dict: ``{'aktif', 'tidak_aktif', 'tahun'}`` — the two counts and the
+        number of years behind the split.
+    """
+    ids = [entry['jenis_data'].pk for entry in jenis_data_list]
+    aktif = 0
+    if ids:
+        aktif = len(set(
+            Tiket.objects
+            .filter(
+                id_periode_data__id_sub_jenis_data_ilap__in=ids,
+                tgl_terima_dip__gte=_years_ago(NAMA_TABEL_AKTIF_TAHUN),
+            )
+            .values_list('id_periode_data__id_sub_jenis_data_ilap', flat=True)
+        ))
+    return {
+        'aktif': aktif,
+        'tidak_aktif': len(ids) - aktif,
+        'tahun': NAMA_TABEL_AKTIF_TAHUN,
+    }
+
+
 def summarise_tiket_status(pic_user):
     """Break the tikets of `pic_user` down by status, in workflow order.
 
@@ -385,8 +452,8 @@ def summarise_nama_tabel(penugasan_list):
         penugasan_list (list): Entries from :func:`build_penugasan_list`.
 
     Returns:
-        list: Dicts of ``{'nama_tabel', 'count', 'aktif'}``, active tables first
-        and then by name.
+        list: Dicts of ``{'nama_tabel', 'count', 'aktif'}``, busiest tables
+        first — by the number of sub jenis data behind them — and then by name.
     """
     entries = {}
     for item in penugasan_list:
@@ -405,7 +472,7 @@ def summarise_nama_tabel(penugasan_list):
         {'nama_tabel': e['nama_tabel'], 'count': len(e['jenis_data']), 'aktif': e['aktif']}
         for e in entries.values()
     ]
-    result.sort(key=lambda e: (not e['aktif'], e['nama_tabel'].lower()))
+    result.sort(key=lambda e: (-e['count'], e['nama_tabel'].lower()))
     return result
 
 
@@ -429,8 +496,9 @@ class ProfilPICDetailView(LoginRequiredMixin, TemplateView):
                   rather than per assignment.
                 - tiket_total (int): Distinct tikets they are a PIC of. The rows
                   are loaded server-side by :func:`profil_pic_tiket_data`.
-                - ilap_wilayah, nama_tabel_aktivitas, tiket_status: The
-                  breakdowns shown under the matching summary tile.
+                - ilap_wilayah, nama_tabel_aktivitas, jenis_data_aktivitas,
+                  tiket_status: The breakdowns shown under the matching summary
+                  tile.
         """
         context = super().get_context_data(**kwargs)
         pic_user = get_viewable_pic_user(self.request, self.kwargs['username'])
@@ -448,7 +516,9 @@ class ProfilPICDetailView(LoginRequiredMixin, TemplateView):
         ]
 
         context['ilap_list'] = summarise_ilap(penugasan_list)
-        context['jenis_data_list'] = summarise_jenis_data(penugasan_list)
+        context['jenis_data_list'] = summarise_jenis_data(
+            penugasan_list, count_tiket_per_jenis_data(pic_user)
+        )
         context['nama_tabel_list'] = summarise_nama_tabel(penugasan_list)
 
         context['tiket_total'] = TiketPIC.objects.filter(
@@ -461,6 +531,9 @@ class ProfilPICDetailView(LoginRequiredMixin, TemplateView):
         context['ilap_wilayah'] = summarise_ilap_wilayah(context['ilap_list'])
         context['nama_tabel_aktivitas'] = summarise_nama_tabel_aktivitas(
             context['nama_tabel_list']
+        )
+        context['jenis_data_aktivitas'] = summarise_jenis_data_aktivitas(
+            context['jenis_data_list']
         )
         context['tiket_status'] = summarise_tiket_status(pic_user)
 

@@ -182,7 +182,8 @@ class TestProfilPICDetailView:
         assert resp.context['ilap_list'][0]['aktif'] is False
         assert resp.context['jenis_data_list'][0]['aktif'] is False
 
-    def test_active_entries_sort_ahead_of_ended_ones(self, client):
+    def test_tied_entries_sort_alphabetically(self, client):
+        """With no busier table to prefer, the tie falls back to the name."""
         import datetime
 
         pic_user = UserFactory()
@@ -193,7 +194,54 @@ class TestProfilPICDetailView:
         resp = client.get(reverse('profil_pic_detail', args=[pic_user.username]))
 
         names = [e['nama_tabel'] for e in resp.context['nama_tabel_list']]
-        assert names == ['ZZZ_AKTIF', 'AAA_SELESAI']
+        assert names == ['AAA_SELESAI', 'ZZZ_AKTIF']
+
+    def test_busier_tables_sort_ahead_regardless_of_active_status(self, client):
+        """Ordering is purely by count — an ended table with more sub jenis
+        data still outranks an active one with fewer."""
+        import datetime
+
+        pic_user = UserFactory()
+        _pic_of(pic_user, nama_tabel='ZZZ_AKTIF', end_date=None)
+        busy = 'AAA_SELESAI'
+        _pic_of(pic_user, nama_tabel=busy, end_date=datetime.date(2024, 1, 1))
+        _pic_of(pic_user, nama_tabel=busy, end_date=datetime.date(2024, 1, 1))
+        _logged_in(client)
+
+        resp = client.get(reverse('profil_pic_detail', args=[pic_user.username]))
+
+        names = [e['nama_tabel'] for e in resp.context['nama_tabel_list']]
+        assert names == ['AAA_SELESAI', 'ZZZ_AKTIF']
+
+    def test_jenis_data_sorted_by_tiket_count_desc(self, client):
+        """Sub jenis data have no smaller unit to count, so it is tikets."""
+        pic_user = UserFactory()
+        quiet = _pic_of(pic_user, nama_tabel='ZZZ_QUIET')
+        busy = _pic_of(pic_user, nama_tabel='AAA_BUSY')
+        TiketPICFactory(
+            id_user=pic_user,
+            id_tiket=TiketFactory(
+                id_periode_data=PeriodeJenisDataFactory(
+                    id_sub_jenis_data_ilap=quiet.id_sub_jenis_data_ilap
+                )
+            ),
+        )
+        for _ in range(3):
+            TiketPICFactory(
+                id_user=pic_user,
+                id_tiket=TiketFactory(
+                    id_periode_data=PeriodeJenisDataFactory(
+                        id_sub_jenis_data_ilap=busy.id_sub_jenis_data_ilap
+                    )
+                ),
+            )
+        _logged_in(client)
+
+        resp = client.get(reverse('profil_pic_detail', args=[pic_user.username]))
+
+        jenis_data_list = resp.context['jenis_data_list']
+        assert [e['count'] for e in jenis_data_list] == [3, 1]
+        assert jenis_data_list[0]['jenis_data'].pk == busy.id_sub_jenis_data_ilap.pk
 
     def test_assignments_of_every_tipe_are_gathered(self, client):
         """The page collects the person's work whatever tipe it was held under."""
@@ -351,6 +399,53 @@ class TestSummaryBreakdowns:
 
         assert aktivitas['aktif'] == 1
 
+    def test_jenis_data_with_a_recent_tiket_is_aktif(self, client):
+        import datetime
+
+        pic_user = UserFactory()
+        pic = _pic_of(pic_user, nama_tabel='KPDE_SD_AKTIF')
+        periode = PeriodeJenisDataFactory(
+            id_sub_jenis_data_ilap=pic.id_sub_jenis_data_ilap
+        )
+        TiketFactory(
+            id_periode_data=periode,
+            tgl_terima_dip=datetime.datetime.now() - datetime.timedelta(days=30),
+        )
+        _logged_in(client)
+
+        aktivitas = self._context(client, pic_user)['jenis_data_aktivitas']
+
+        assert aktivitas == {'aktif': 1, 'tidak_aktif': 0, 'tahun': 2}
+
+    def test_jenis_data_whose_last_tiket_is_older_is_tidak_aktif(self, client):
+        import datetime
+
+        pic_user = UserFactory()
+        pic = _pic_of(pic_user, nama_tabel='KPDE_SD_DORMANT')
+        periode = PeriodeJenisDataFactory(
+            id_sub_jenis_data_ilap=pic.id_sub_jenis_data_ilap
+        )
+        TiketFactory(
+            id_periode_data=periode,
+            tgl_terima_dip=datetime.datetime.now() - datetime.timedelta(days=365 * 3),
+        )
+        _logged_in(client)
+
+        aktivitas = self._context(client, pic_user)['jenis_data_aktivitas']
+
+        assert aktivitas['aktif'] == 0
+        assert aktivitas['tidak_aktif'] == 1
+
+    def test_jenis_data_without_any_tiket_is_tidak_aktif(self, client):
+        pic_user = UserFactory()
+        _pic_of(pic_user, nama_tabel='KPDE_SD_KOSONG')
+        _logged_in(client)
+
+        aktivitas = self._context(client, pic_user)['jenis_data_aktivitas']
+
+        assert aktivitas['aktif'] == 0
+        assert aktivitas['tidak_aktif'] == 1
+
     def test_tiket_split_by_status_in_workflow_order(self, client):
         pic_user = UserFactory()
         for status in (8, 1, 6):
@@ -399,6 +494,8 @@ class TestSummaryBreakdowns:
         assert context['tiket_status'] == []
         assert context['nama_tabel_aktivitas']['aktif'] == 0
         assert context['nama_tabel_aktivitas']['tidak_aktif'] == 0
+        assert context['jenis_data_aktivitas']['aktif'] == 0
+        assert context['jenis_data_aktivitas']['tidak_aktif'] == 0
 
 
 @pytest.mark.django_db
