@@ -4,6 +4,7 @@ from datetime import date, datetime, timedelta
 from io import BytesIO
 
 import pytest
+from django.contrib.auth.models import Group
 from django.core.files.base import ContentFile
 from django.urls import reverse
 from docx import Document
@@ -12,10 +13,12 @@ from diamond_web.constants.tiket_action_types import TiketActionType
 from diamond_web.constants.tiket_status import STATUS_PENGENDALIAN_MUTU, STATUS_SELESAI
 from diamond_web.models.docx_template import DocxTemplate
 from diamond_web.models.tiket_action import TiketAction
+from diamond_web.models.tiket_pic import TiketPIC
 from diamond_web.tests.conftest import (
     JenisDataILAPFactory,
     PeriodeJenisDataFactory,
     TiketFactory,
+    TiketPICFactory,
     UserFactory,
 )
 
@@ -27,8 +30,8 @@ def _ago(days):
     return datetime.now() - timedelta(days=days)
 
 
-def _tiket(nama_tabel_i, selesai_days_ago=(), status_tiket=STATUS_SELESAI):
-    """A tiket with one SELESAI action per entry of `selesai_days_ago`.
+def _tiket(nama_tabel_i, pic, selesai_days_ago=(), status_tiket=STATUS_SELESAI, pic_active=True):
+    """A tiket of PMDE PIC `pic` with one SELESAI action per `selesai_days_ago`.
 
     It is received long before, so only the Selesai action can put it in
     the one-month window.
@@ -41,6 +44,7 @@ def _tiket(nama_tabel_i, selesai_days_ago=(), status_tiket=STATUS_SELESAI):
             id_tiket=tiket, id_user=UserFactory(), timestamp=_ago(days),
             action=TiketActionType.SELESAI, catatan='selesai',
         )
+    TiketPICFactory(id_tiket=tiket, id_user=pic, role=TiketPIC.Role.PMDE, active=pic_active)
     return tiket
 
 
@@ -50,18 +54,29 @@ def _media_root(settings, tmp_path):
 
 
 @pytest.fixture
-def tikets(db):
+def other_pic(db):
+    user = UserFactory()
+    user.groups.add(Group.objects.get_or_create(name='user_pmde')[0])
+    return user
+
+
+@pytest.fixture
+def tikets(db, pmde_user, other_pic):
+    me = pmde_user
     return {
-        'adhoc_recent': _tiket('KPDE_ADHOC_BI_PADAN', selesai_days_ago=[3]),
-        'adhoc_lowercase': _tiket('kpde_adhoc_lain', selesai_days_ago=[10]),
+        'adhoc_recent': _tiket('KPDE_ADHOC_BI_PADAN', me, selesai_days_ago=[3]),
+        'adhoc_lowercase': _tiket('kpde_adhoc_lain', me, selesai_days_ago=[10]),
         # Finished twice: the latest finish is what counts.
-        'adhoc_refinished': _tiket('KPDE_ADHOC_ULANG', selesai_days_ago=[50, 5]),
-        'adhoc_old': _tiket('KPDE_ADHOC_LAMA', selesai_days_ago=[45]),
+        'adhoc_refinished': _tiket('KPDE_ADHOC_ULANG', me, selesai_days_ago=[50, 5]),
+        'adhoc_old': _tiket('KPDE_ADHOC_LAMA', me, selesai_days_ago=[45]),
         # Reopened after a recent finish: no longer Selesai.
-        'adhoc_reopened': _tiket('KPDE_ADHOC_BUKA', selesai_days_ago=[3], status_tiket=STATUS_PENGENDALIAN_MUTU),
+        'adhoc_reopened': _tiket('KPDE_ADHOC_BUKA', me, selesai_days_ago=[3], status_tiket=STATUS_PENGENDALIAN_MUTU),
         # Status Selesai but no Selesai action in the trail: no finish date.
-        'adhoc_no_action': _tiket('KPDE_ADHOC_TANPA_AKSI'),
-        'regular_recent': _tiket('KPDE_PBB_P2', selesai_days_ago=[3]),
+        'adhoc_no_action': _tiket('KPDE_ADHOC_TANPA_AKSI', me),
+        'regular_recent': _tiket('KPDE_PBB_P2', me, selesai_days_ago=[3]),
+        # Another PMDE PIC's tiket, and one I am no longer the active PIC of.
+        'adhoc_other_pic': _tiket('KPDE_ADHOC_PIC_LAIN', other_pic, selesai_days_ago=[3]),
+        'adhoc_pic_inactive': _tiket('KPDE_ADHOC_PIC_NONAKTIF', me, selesai_days_ago=[3], pic_active=False),
     }
 
 
@@ -131,6 +146,25 @@ class TestListing:
         assert row.tgl_selesai.date() == _ago(5).date()
         assert _ago(5).strftime('%d/%m/%Y') in resp.content.decode()
 
+    def test_other_pic_tikets_are_hidden(self, client, pmde_user, other_pic, tikets):
+        client.force_login(pmde_user)
+        resp = client.get(reverse(URL_NAME))
+        shown = {t.pk for t in resp.context['tickets']}
+        assert tikets['adhoc_other_pic'].pk not in shown
+        assert tikets['adhoc_pic_inactive'].pk not in shown
+        assert tikets['adhoc_other_pic'].nomor_tiket not in resp.content.decode()
+
+        client.force_login(other_pic)
+        resp = client.get(reverse(URL_NAME))
+        assert [t.pk for t in resp.context['tickets']] == [tikets['adhoc_other_pic'].pk]
+        assert {i.pk for i in resp.context['ilap_options']} == {
+            tikets['adhoc_other_pic'].id_periode_data.id_sub_jenis_data_ilap.id_ilap_id,
+        }
+
+    def test_admin_pmde_sees_only_own_tikets_too(self, client, pmde_admin_user, tikets):
+        client.force_login(pmde_admin_user)
+        assert list(client.get(reverse(URL_NAME)).context['tickets']) == []
+
     def test_ilap_filter_and_options(self, client, pmde_user, tikets):
         client.force_login(pmde_user)
         ilap = tikets['adhoc_recent'].id_periode_data.id_sub_jenis_data_ilap.id_ilap
@@ -173,6 +207,15 @@ class TestGenerate:
         client.force_login(pmde_user)
         resp = client.post(reverse(URL_NAME), self._post_data(
             tikets['adhoc_recent'].pk, tikets['regular_recent'].pk, tikets['adhoc_old'].pk,
+        ))
+        doc = Document(BytesIO(resp.content))
+        assert [r.cells[0].text for r in doc.tables[0].rows] == [tikets['adhoc_recent'].nomor_tiket]
+
+    def test_other_pic_tiket_cannot_be_generated(self, client, pmde_user, tikets):
+        _nd_template('ND PENGANTAR KE PDI')
+        client.force_login(pmde_user)
+        resp = client.post(reverse(URL_NAME), self._post_data(
+            tikets['adhoc_recent'].pk, tikets['adhoc_other_pic'].pk,
         ))
         doc = Document(BytesIO(resp.content))
         assert [r.cells[0].text for r in doc.tables[0].rows] == [tikets['adhoc_recent'].nomor_tiket]

@@ -32,9 +32,11 @@ from ..models.ilap import ILAP
 from ..models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ..models.tiket import Tiket
 from ..models.tiket_action import TiketAction
+from ..models.tiket_pic import TiketPIC
 from ..utils import format_number_with_separator, format_periode
 from ..utils.docx_template import fill_template_with_data
-from .mixins import get_active_p3de_ilap_ids
+from .mixins import get_active_p3de_ilap_ids, is_kasi_pmde
+from .seksi_queue import pic_scope
 
 
 def _is_p3de_user(user):
@@ -549,8 +551,11 @@ ADHOC_ORDERING = (
 )
 
 
-def _adhoc_queryset(tanggal_mulai, tanggal_selesai, ilap_id=''):
-    """Finished adhoc tikets whose Selesai action falls between the two dates.
+def _adhoc_queryset(user, tanggal_mulai, tanggal_selesai, ilap_id=''):
+    """Finished adhoc tikets of `user` whose Selesai action falls between the dates.
+
+    Like Quality Control, each PMDE PIC sees only the tikets they are the
+    active PMDE PIC for; another PIC's tikets are left out entirely.
 
     The tiket has no finish date of its own; it is read from the trail, as
     the latest SELESAI action — a tiket reopened and finished again counts
@@ -569,6 +574,7 @@ def _adhoc_queryset(tanggal_mulai, tanggal_selesai, ilap_id=''):
         tgl_selesai__date__gte=tanggal_mulai,
         tgl_selesai__date__lte=tanggal_selesai,
     )
+    qs = pic_scope(qs, user, TiketPIC.Role.PMDE, is_kasi_pmde)
     if ilap_id and ilap_id != 'semua':
         qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap_id=ilap_id)
     return qs.select_related(
@@ -587,7 +593,7 @@ def _adhoc_queryset(tanggal_mulai, tanggal_selesai, ilap_id=''):
 def bulk_nd_pengantar_pdi(request):
     """PMDE: generate the ND Pengantar ke PDI for adhoc data.
 
-    Lists the adhoc tikets (nama tabel I containing "adhoc") finished within
+    Lists the user's adhoc tikets (nama tabel I containing "adhoc") finished within
     the chosen range — the last month by default — and fills the
     ``nd_pengantar_pdi`` template for the ones ticked.
     """
@@ -602,7 +608,7 @@ def bulk_nd_pengantar_pdi(request):
     if request.method == 'POST':
         selected_ids = request.POST.getlist('ticket_ids')
         selected_tickets = list(
-            _adhoc_queryset(tanggal_mulai, tanggal_selesai, ilap_id)
+            _adhoc_queryset(request.user, tanggal_mulai, tanggal_selesai, ilap_id)
             .filter(id__in=selected_ids)
             .order_by(*ADHOC_ORDERING)
         )
@@ -618,13 +624,13 @@ def bulk_nd_pengantar_pdi(request):
 
     # ILAP options: only those with adhoc data in the range, whatever ILAP is picked.
     ilap_options = ILAP.objects.filter(
-        id__in=_adhoc_queryset(tanggal_mulai, tanggal_selesai).values(
+        id__in=_adhoc_queryset(request.user, tanggal_mulai, tanggal_selesai).values(
             'id_periode_data__id_sub_jenis_data_ilap__id_ilap_id'
         )
     ).order_by('nama_ilap')
 
     tickets = list(
-        _adhoc_queryset(tanggal_mulai, tanggal_selesai, ilap_id).order_by(*ADHOC_ORDERING)
+        _adhoc_queryset(request.user, tanggal_mulai, tanggal_selesai, ilap_id).order_by(*ADHOC_ORDERING)
     )
 
     return render(request, 'bulk_documents/nd_pengantar_pdi.html', {
