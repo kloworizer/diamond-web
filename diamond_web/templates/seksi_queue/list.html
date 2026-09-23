@@ -582,6 +582,15 @@ Blocks a page must fill:
         --sq-hue-ink: var(--sq-blue-ink);
     }
 
+    /* Red for the prioritas part of the queue this page is about — the colour
+       this app marks urgency in — set straight after it, being part of it. */
+    .sq-summary-group-priority,
+    .sq-summary-table td.sq-cell-priority {
+        --sq-hue: var(--sq-red);
+        --sq-hue-soft: var(--sq-red-soft);
+        --sq-hue-ink: var(--sq-red-ink);
+    }
+
     .sq-summary-group-upstream,
     .sq-summary-table td.sq-cell-upstream {
         --sq-hue: var(--sq-orange);
@@ -940,6 +949,21 @@ Blocks a page must fill:
         background-color: var(--sq-hue);
     }
 
+    /* The nama tabel under a jenis tabel line: a level further in, so set
+       further in and quieter than the line they add up to, and without a dot —
+       the hue belongs to the jenis tabel above, not to each table. */
+    .sq-summary-table tbody td.sq-summary-rincian-name {
+        padding-left: 46px !important;
+        font-size: 10.5px;
+        color: #8391a5;
+        font-weight: 400 !important;
+        max-width: 260px;
+    }
+
+    .sq-summary-table tbody tr.sq-summary-row-rincian td {
+        font-size: 10.5px;
+    }
+
     /* Which question the lines under it answer. Two sets of names beneath one
        PIC would otherwise read as one list — "Regional" says nothing about
        whether it is a kind of table or a reach until this line says so. */
@@ -978,6 +1002,10 @@ Blocks a page must fill:
        still belongs to the group they are in. */
     .sq-summary-table tfoot td.sq-group-own {
         background-color: var(--sq-blue-soft);
+    }
+
+    .sq-summary-table tfoot td.sq-group-priority {
+        background-color: var(--sq-red-soft);
     }
 
     .sq-summary-table tfoot td.sq-group-upstream {
@@ -1434,7 +1462,48 @@ that differ between one seksi and the next.
                         appendSectionCells($detail, split[entryIndex] || {}, variants[index]);
                     });
                     $body.append($detail);
+                    if (entry.rincian) {
+                        appendRincianLines($body, sections, keys, variants,
+                                           dimension.key, entryIndex, loads[entryIndex] || 0);
+                    }
                 });
+            });
+        }
+
+        // The nama tabel behind one detail line, a line each. Unlike the
+        // entries these are not a fixed list — each group carries only the
+        // tables its own tikets are in — so the lines are the tables found in
+        // any group, each reading zero in the groups that hold none of it.
+        // Heaviest first, the order the table itself opens in, with the bars
+        // drawn against the detail line they add up to.
+        function appendRincianLines($body, sections, keys, variants, splitKey, entryIndex, parentBeban) {
+            const byName = {};
+            keys.forEach(function (key) {
+                const split = ((sections[key] || {}).splits || {})[splitKey] || [];
+                ((split[entryIndex] || {}).rincian || []).forEach(function (line) {
+                    const table = byName[line.name]
+                        || (byName[line.name] = { name: line.name, beban: 0, sections: {} });
+                    table.beban += line.beban || 0;
+                    table.sections[key] = line;
+                });
+            });
+            const tables = Object.keys(byName).map(function (name) { return byName[name]; });
+            tables.sort(function (a, b) {
+                return (b.beban - a.beban) || a.name.localeCompare(b.name);
+            });
+            tables.forEach(function (table) {
+                const $line = $('<tr>').addClass('sq-summary-row-kind sq-summary-row-rincian').append(
+                    $('<td>').addClass('sq-summary-pic sq-summary-rincian-name')
+                        .attr('title', table.name).text(table.name),
+                    bebanCell(table.beban, parentBeban ? table.beban / parentBeban : 0)
+                );
+                // A group holding none of this table reads zero, as an empty
+                // entry line does, rather than the dash left for a missing figure.
+                keys.forEach(function (key, index) {
+                    appendSectionCells($line, table.sections[key] || { tikets: 0, baris: 0 },
+                                       variants[index]);
+                });
+                $body.append($line);
             });
         }
 

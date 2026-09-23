@@ -40,8 +40,9 @@ by — see SUMMARY_DEFAULT_SORT.
 Context (see the page's view):
     summary_sections: `{key, label, variant}` per group, in column order.
     summary_details: `{key, label, entries}` per dimension the lines detail,
-        each entry `{name, hue}` in the order every breakdown reads, `hue` being
-        the palette slot its dot is marked in.
+        each entry `{name, hue, rincian}` in the order every breakdown reads,
+        `hue` being the palette slot its dot is marked in and `rincian` whether
+        the nama tabel behind it follow as lines of their own.
     summary_section_keys / summary_section_variants: the same keys and variants
         comma separated, for the JS below.
 {% endcomment %}
@@ -110,6 +111,8 @@ itself and the two cannot drift apart.
             {{ beban_info.selesai_hari }} hari. Bobot jatuh tempo hanya berlaku pada
             {{ beban_info.jatuh_tempo_antrean }}, karena hanya antrean itu yang punya
             tenggat milik seksi ini; tiket tanpa tenggat dihitung &times;1.
+            Kolom Prioritas adalah bagian dari Proses QC, sehingga tidak ditimbang
+            lagi — barisnya sudah dihitung di sana, termasuk bobot prioritasnya.
         </p>
     </div>
 </div>

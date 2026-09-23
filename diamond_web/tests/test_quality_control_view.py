@@ -1,4 +1,5 @@
 """Tests for views/quality_control.py (view + data endpoint)."""
+import json
 from datetime import date, datetime, time, timedelta
 from itertools import count
 
@@ -1690,7 +1691,7 @@ class TestSummaryPerPic(SummaryEndpoint):
         }
         for row in rows.values():
             assert set(row['sections']) == {
-                'qc', 'p3de', 'pide', 'selesai', 'selesai_tahun',
+                'qc', 'prioritas', 'p3de', 'pide', 'selesai', 'selesai_tahun',
             }
 
         theirs_row = rows[theirs['pmde_user'].get_full_name()]
@@ -1716,6 +1717,81 @@ class TestSummaryPerPic(SummaryEndpoint):
                 entry['name'] for entry in held['splits'][split]
             ]
             assert all(entry['tikets'] == 0 for entry in empty)
+
+    def test_prioritas_is_the_part_of_proses_qc_that_is_prioritas(self, client):
+        first = _qc_bundle(with_prioritas=True, belum_qc=70)
+        _qc_bundle(pmde_user=first['pmde_user'], with_prioritas=False, belum_qc=30)
+        # Prioritas upstream of QC is not in the column: it is not in QC yet.
+        upstream = _upstream_bundle(
+            STATUS_DIREKAM, pmde_user=first['pmde_user'], baris_lengkap=500,
+        )
+        JenisPrioritasDataFactory(
+            id_sub_jenis_data_ilap=upstream['tiket'].id_periode_data.id_sub_jenis_data_ilap,
+            start_date=date(2000, 1, 1), end_date=None,
+        )
+        client.force_login(first['pmde_user'])
+
+        payload = self._summary(client)
+        row = self._rows(client)[first['pmde_user'].get_full_name()]
+        assert row['sections']['qc']['baris'] == 100
+        assert row['sections']['prioritas']['tikets'] == 1
+        assert row['sections']['prioritas']['baris'] == 70
+        assert payload['prioritas']['baris'] == 70
+
+    def test_prioritas_is_not_weighed_twice(self, client):
+        """Its rows are already in the Indeks Beban under Proses QC."""
+        bundle = _qc_bundle(with_prioritas=True, belum_qc=1000)
+        client.force_login(bundle['pmde_user'])
+
+        payload = self._summary(client)
+        assert payload['prioritas']['beban'] == 0
+        row = payload['rows'][0]
+        assert row['beban'] == sum(
+            section['beban'] for section in row['sections'].values()
+        ) == row['sections']['qc']['beban'] > 0
+
+    def test_every_jenis_tabel_is_broken_down_by_nama_tabel(self, client):
+        identified, unidentified, _unstructured = _seeded_kinds()
+        first = _qc_bundle(jenis_tabel=identified, belum_qc=60)
+        second = _qc_bundle(
+            pmde_user=first['pmde_user'], jenis_tabel=identified, belum_qc=25,
+        )
+        other = _qc_bundle(
+            pmde_user=first['pmde_user'], jenis_tabel=unidentified, belum_qc=10,
+        )
+        for bundle, name in ((first, 'TBL_A'), (second, 'TBL_B'), (other, 'TBL_C')):
+            bundle['jenis_data'].nama_tabel_I = name
+            bundle['jenis_data'].save(update_fields=['nama_tabel_I'])
+        client.force_login(first['pmde_user'])
+
+        row = self._rows(client)[first['pmde_user'].get_full_name()]
+        entries = _entries(row['sections']['qc'])
+        assert [_counts(line) for line in entries['Diidentifikasi']['rincian']] == [
+            {'name': 'TBL_A', 'tikets': 1, 'baris': 60},
+            {'name': 'TBL_B', 'tikets': 1, 'baris': 25},
+        ]
+        # Every jenis tabel, each by what it holds; kategori wilayah is not.
+        assert [_counts(line) for line in entries['Tidak Diidentifikasi']['rincian']] == [
+            {'name': 'TBL_C', 'tikets': 1, 'baris': 10},
+        ]
+        assert entries['Tidak Terstruktur']['rincian'] == []
+        assert all('rincian' not in entry
+                   for entry in row['sections']['qc']['splits']['kategori_wilayah'])
+        assert entries['Diidentifikasi']['rincian'][0]['beban'] > 0
+
+    def test_the_page_marks_the_lines_that_are_broken_down(self, client):
+        bundle = _qc_bundle()
+        client.force_login(bundle['pmde_user'])
+        html = client.get(reverse('quality_control')).content.decode()
+
+        start = html.index('id="sq-summary-details"')
+        start = html.index('>', start) + 1
+        details = json.loads(html[start:html.index('</script>', start)])
+        by_dimension = {
+            dimension['key']: {entry['rincian'] for entry in dimension['entries']}
+            for dimension in details
+        }
+        assert by_dimension == {'jenis_tabel': {True}, 'kategori_wilayah': {False}}
 
     def test_each_line_splits_its_sections_by_jenis_tabel(self, client):
         identified, unidentified, _unstructured = _seeded_kinds()
@@ -1808,9 +1884,13 @@ class TestSummaryPerPic(SummaryEndpoint):
         assert head[:head.index('</thead>')].count('<tr>') == 1
         # The JS fills a line's cells in this order; the header above them was
         # rendered from the same list.
-        assert 'data-summary-sections="qc,p3de,pide,selesai,selesai_tahun"' in html
         assert (
-            'data-summary-variants="own,upstream,upstream-alt,done,done-alt"' in html
+            'data-summary-sections="qc,prioritas,p3de,pide,selesai,selesai_tahun"'
+            in html
+        )
+        assert (
+            'data-summary-variants="own,priority,upstream,upstream-alt,done,done-alt"'
+            in html
         )
         # The table opens on the heaviest QC load rather than alphabetically.
         assert 'data-summary-sort="beban" data-summary-sort-desc="1"' in html

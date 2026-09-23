@@ -843,24 +843,35 @@ class Split:
         label: What to call the dimension where it is shown.
         path: The field path holding the id of the entry a tiket belongs to.
         entries: `(id, name)` pairs, in the order the lines should read.
+        rincian_path: The field path every entry is broken down a level
+            further by, or None for a split read at one level only. Unlike the
+            entries themselves these are not listed up front — only the names
+            a tiket actually carries get a line — since the values there are
+            open-ended rather than a reference table.
     """
 
-    def __init__(self, key, label, path, entries):
+    def __init__(self, key, label, path, entries, rincian_path=None):
         self.key = key
         self.label = label
         self.path = path
         self.entries = entries
+        self.rincian_path = rincian_path
 
 
-def jenis_tabel_split():
+def jenis_tabel_split(rincian=False):
     """The split by jenis tabel — what decides how a tiket's data is handled.
 
     Read fresh for each page's summary, so every section of it reads its lines
     in the same order and they can be compared straight across.
+
+    Args:
+        rincian: Whether every jenis tabel line is broken down further by the
+            nama tabel of the tiket's data.
     """
     return Split(
         'jenis_tabel', 'Jenis Tabel', f'{SUB}__id_jenis_tabel__id',
         list(JenisTabel.objects.order_by('id').values_list('id', 'deskripsi')),
+        rincian_path=f'{SUB}__nama_tabel_I' if rincian else None,
     )
 
 
@@ -1002,13 +1013,19 @@ def _empty_section(splits):
     there is a fact worth reading, and a line that vanished under a filter would
     shuffle the ones around it.
     """
+    def entry(split, name):
+        line = {'name': name, 'tikets': 0, 'baris': 0, 'beban': 0.0}
+        if split.rincian_path:
+            line['rincian'] = {}
+        return line
+
     return {
         'tikets': 0,
         'baris': 0,
         'beban': 0.0,
         'splits': {
             split.key: {
-                entry_id: {'name': name, 'tikets': 0, 'baris': 0, 'beban': 0.0}
+                entry_id: entry(split, name)
                 for entry_id, name in split.entries
             }
             for split in splits
@@ -1016,23 +1033,37 @@ def _empty_section(splits):
     }
 
 
-def _count_tiket(section, split_keys, entry_ids, baris, beban):
+def _add(line, baris, beban):
+    line['tikets'] += 1
+    line['baris'] += baris
+    line['beban'] += beban
+
+
+def _count_tiket(section, splits, entry_ids, rincian_names, baris, beban):
     """Add one tiket, its rows and its weighted load to `section`.
 
     A tiket whose value on a split is not one of that split's entries — an unset
     one, or a reference row read after the section was built — still counts
     towards the totals, since it is a tiket in the queue, but has no line to
     land in there.
+
+    `rincian_names` holds one name per split that has a :attr:`Split.rincian_path`,
+    in split order; a tiket lands in the line for its name under its entry as
+    well, which is created the first time the name is seen.
     """
-    section['tikets'] += 1
-    section['baris'] += baris
-    section['beban'] += beban
-    for key, entry_id in zip(split_keys, entry_ids):
-        entry = section['splits'][key].get(entry_id)
-        if entry is not None:
-            entry['tikets'] += 1
-            entry['baris'] += baris
-            entry['beban'] += beban
+    _add(section, baris, beban)
+    names = iter(rincian_names)
+    for split, entry_id in zip(splits, entry_ids):
+        name = next(names) if split.rincian_path else None
+        entry = section['splits'][split.key].get(entry_id)
+        if entry is None:
+            continue
+        _add(entry, baris, beban)
+        if 'rincian' in entry:
+            name = name or '-'
+            if name not in entry['rincian']:
+                entry['rincian'][name] = {'name': name, 'tikets': 0, 'baris': 0, 'beban': 0.0}
+            _add(entry['rincian'][name], baris, beban)
 
 
 def _finished(section):
@@ -1041,14 +1072,21 @@ def _finished(section):
     The load is rounded on the way out: it is an index built from ratios, and
     the digits past the point would read as a precision it does not have.
     """
+    def finished_entry(entry):
+        entry = dict(entry, beban=round(entry['beban']))
+        if 'rincian' in entry:
+            entry['rincian'] = [
+                dict(line, beban=round(line['beban']))
+                for _name, line in sorted(entry['rincian'].items())
+            ]
+        return entry
+
     return {
         'tikets': section['tikets'],
         'baris': section['baris'],
         'beban': round(section['beban']),
         'splits': {
-            key: [
-                dict(entry, beban=round(entry['beban'])) for entry in entries.values()
-            ]
+            key: [finished_entry(entry) for entry in entries.values()]
             for key, entries in section['splits'].items()
         },
     }
@@ -1083,6 +1121,7 @@ def _row_columns(splits, baris_fields, weighting, *leading):
     """
     columns = list(leading)
     columns += [split.path for split in splits]
+    columns += [split.rincian_path for split in splits if split.rincian_path]
     columns += list(baris_fields)
     if weighting is not None:
         columns += weighting.fields
@@ -1097,19 +1136,31 @@ def _accumulate(qs, splits, baris_fields, baris_of, weighting=None):
     tiket matched twice into one row instead of counting it twice.
     """
     section = _empty_section(splits)
-    keys = [split.key for split in splits]
-    depth = len(splits)
-    end = 1 + depth + len(baris_fields)
+    depth, start, end = _row_offsets(splits, baris_fields, 1)
 
     if weighting is not None:
         qs = weighting.annotate(qs)
     rows = qs.values_list(*_row_columns(splits, baris_fields, weighting, 'id'))
     for row in rows:
-        entry_ids = row[1:1 + depth]
-        baris = baris_of(*row[1 + depth:end])
+        entry_ids = row[1:depth]
+        baris = baris_of(*row[start:end])
         beban = weighting.score(baris, entry_ids, row[end:]) if weighting else 0.0
-        _count_tiket(section, keys, entry_ids, baris, beban)
+        _count_tiket(section, splits, entry_ids, row[depth:start], baris, beban)
     return section
+
+
+def _row_offsets(splits, baris_fields, leading):
+    """Where the groups of a :func:`_row_columns` tuple end, after `leading`.
+
+    Returns:
+        tuple: `(entries_end, rincian_end, baris_end)` — the split entry ids run
+        from `leading` to the first, the rincian names from there to the
+        second, the baris fields to the third, and the weighting's own columns
+        from there to the end.
+    """
+    entries_end = leading + len(splits)
+    rincian_end = entries_end + sum(1 for split in splits if split.rincian_path)
+    return entries_end, rincian_end, rincian_end + len(baris_fields)
 
 
 def queue_breakdown_per_pic(qs, splits, baris_fields, baris_of, role, weighting=None):
@@ -1129,9 +1180,7 @@ def queue_breakdown_per_pic(qs, splits, baris_fields, baris_of, role, weighting=
     """
     per_pic = {}
     total = _empty_section(splits)
-    keys = [split.key for split in splits]
-    depth = len(splits)
-    end = 2 + depth + len(baris_fields)
+    depth, start, end = _row_offsets(splits, baris_fields, 2)
 
     if weighting is not None:
         qs = weighting.annotate(qs)
@@ -1140,13 +1189,14 @@ def queue_breakdown_per_pic(qs, splits, baris_fields, baris_of, role, weighting=
     )
     for row in rows:
         pic_id = row[1]
-        entry_ids = row[2:2 + depth]
-        baris = baris_of(*row[2 + depth:end])
+        entry_ids = row[2:depth]
+        rincian_names = row[depth:start]
+        baris = baris_of(*row[start:end])
         beban = weighting.score(baris, entry_ids, row[end:]) if weighting else 0.0
-        _count_tiket(total, keys, entry_ids, baris, beban)
+        _count_tiket(total, splits, entry_ids, rincian_names, baris, beban)
         if pic_id not in per_pic:
             per_pic[pic_id] = _empty_section(splits)
-        _count_tiket(per_pic[pic_id], keys, entry_ids, baris, beban)
+        _count_tiket(per_pic[pic_id], splits, entry_ids, rincian_names, baris, beban)
 
     return {pic_id: _finished(section) for pic_id, section in per_pic.items()}, _finished(total)
 
