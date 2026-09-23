@@ -65,6 +65,11 @@ _UNIT_BUCKETS = {
 # has picked up yet — both need a PIC PIDE.
 _STATUSES_TANPA_PIC_PIDE = (STATUS_DIKIRIM_KE_PIDE, STATUS_IDENTIFIKASI)
 
+# Jenis data with no Nama Tabel I yet. The column is NOT NULL in the model, but
+# rows loaded from the legacy/Oracle side can carry NULL, and "kosongkan" on the
+# Nama Tabel page writes '' — both mean the same thing to an admin.
+_NAMA_TABEL_I_KOSONG = Q(nama_tabel_I__isnull=True) | Q(nama_tabel_I='')
+
 # Join path from Tiket to the sub jenis data, and through it to the ILAP.
 _SUB = 'id_periode_data__id_sub_jenis_data_ilap'
 
@@ -324,6 +329,10 @@ def home(request):
                     role=TiketPIC.Role.PIDE,
                     active=True
                 ))
+            ).count()
+            # Admin: Jenis Data ILAP whose Nama Tabel I has not been filled in
+            context['pide_jenis_data_nama_tabel_kosong_count'] = JenisDataILAP.objects.filter(
+                _NAMA_TABEL_I_KOSONG
             ).count()
     if is_pmde:
         context['tiket_summary_pmde'] = get_tiket_summary_for_user_pmde(request.user)
@@ -655,6 +664,15 @@ def _build_jenis_data_tanpa_pic_qs(category, user):
     ).select_related('id_ilap')
 
 
+def _build_jenis_data_nama_tabel_kosong_qs(user):
+    """Base JenisDataILAP queryset for the admin PIDE 'Nama Tabel masih kosong' view."""
+    if 'admin_pide' not in user_group_names(user):
+        return None
+    return JenisDataILAP.objects.filter(
+        _NAMA_TABEL_I_KOSONG
+    ).select_related('id_ilap', 'id_jenis_tabel')
+
+
 @login_required
 @require_GET
 def home_data(request):
@@ -698,6 +716,7 @@ def home_data(request):
     }
     jenis_data_categories = {
         'jenis_data_tanpa_pic_p3de', 'jenis_data_tanpa_pic_pide', 'jenis_data_tanpa_pic_pmde',
+        'jenis_data_nama_tabel_kosong_pide',
     }
 
     is_tiket_category = category in tiket_categories
@@ -705,6 +724,8 @@ def home_data(request):
 
     if is_tiket_category:
         qs = _build_tiket_base_qs(category, request.user)
+    elif category == 'jenis_data_nama_tabel_kosong_pide':
+        qs = _build_jenis_data_nama_tabel_kosong_qs(request.user)
     elif is_jenis_data_category:
         qs = _build_jenis_data_tanpa_pic_qs(category, request.user)
     else:
@@ -904,6 +925,8 @@ def home_data(request):
             qs = qs.order_by('-id')
     elif is_jenis_data_category:
         columns = ['id_sub_jenis_data', 'nama_ilap', 'nama_jenis_data', 'nama_sub_jenis_data']
+        if category == 'jenis_data_nama_tabel_kosong_pide':
+            columns += ['id_jenis_tabel__deskripsi', 'nama_tabel_I', 'nama_tabel_U']
         if order_col_index is not None:
             try:
                 idx = int(order_col_index)
@@ -1144,15 +1167,33 @@ def home_data(request):
                     f'<i class="feather-user-plus"></i></button>'
                     f'</div>'
                 )
+            elif category == 'jenis_data_nama_tabel_kosong_pide':
+                # Reuses the Nama Tabel page's own edit form, loaded into a home modal.
+                update_url = reverse('nama_tabel_update', args=[obj.pk]) + '?ajax=1'
+                action_html = (
+                    f'<div class="d-flex justify-content-center gap-1">'
+                    f'<button type="button" class="btn btn-sm btn-warning text-white btn-home-ajax-modal" '
+                    f'data-url="{update_url}" data-target="#homeNamaTabelModal" '
+                    f'title="Isi Nama Tabel">'
+                    f'<i class="feather-edit-2"></i></button>'
+                    f'</div>'
+                )
 
-            data.append({
+            row = {
                 'id_sub_jenis_data': obj.id_sub_jenis_data,
                 'nama_ilap': obj.id_ilap.nama_ilap,
                 'nama_jenis_data': obj.nama_jenis_data,
                 'nama_sub_jenis_data': obj.nama_sub_jenis_data,
                 'nama_tabel_I': obj.nama_tabel_I or '-',
                 'actions': action_html,
-            })
+            }
+            if category == 'jenis_data_nama_tabel_kosong_pide':
+                # Raw values: the columns show an explicit "kosong" marker, and
+                # '-' would otherwise be stacked above Sub Jenis Data as a name.
+                row['nama_tabel_I'] = obj.nama_tabel_I or ''
+                row['nama_tabel_U'] = obj.nama_tabel_U or ''
+                row['jenis_tabel'] = obj.id_jenis_tabel.deskripsi if obj.id_jenis_tabel else '-'
+            data.append(row)
 
     return JsonResponse({
         'draw': draw,

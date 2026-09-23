@@ -160,6 +160,16 @@
                 </li>
                 <li class="nxl-item nxl-hasmenu">
                     <a class="nxl-link" href="javascript:void(0);">
+                        <span class="nxl-micon"><i class="feather-file"></i></span>
+                        <span class="nxl-mtext">Generate Template</span>
+                        <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+                    </a>
+                    <ul class="nxl-submenu">
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'bulk_nd_pengantar_pdi' %}">ND Pengantar ke PDI</a></li>
+                    </ul>
+                </li>
+                <li class="nxl-item nxl-hasmenu">
+                    <a class="nxl-link" href="javascript:void(0);">
                         <span class="nxl-micon"><i class="feather-pie-chart"></i></span>
                         <span class="nxl-mtext">Laporan</span>
                         <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
@@ -306,6 +316,13 @@
                     <a class="nxl-link" href="{% url 'pic_unified_list' %}?tab=pmde">
                         <span class="nxl-micon"><i class="feather-user"></i></span>
                         <span class="nxl-mtext">PIC PMDE</span>
+                    </a>
+                </li>
+                {# Hanya template milik PMDE yang tampil untuk admin PMDE. #}
+                <li class="nxl-item">
+                    <a class="nxl-link" href="{% url 'docx_template_list' %}">
+                        <span class="nxl-micon"><i class="feather-file"></i></span>
+                        <span class="nxl-mtext">Template Dokumen</span>
                     </a>
                 </li>
                 {# Menu bersama: lihat catatan di blok Admin PIDE. #}

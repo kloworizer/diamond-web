@@ -36,6 +36,12 @@
                 {% endfor %}
             </div>
         {% endif %}
+        {% if form.instance.pk %}
+        <div class="mb-3 p-2 rounded" style="background-color: #f8fafc; border: 1px solid #e2e8f0; font-size: 12.5px;">
+            <div class="fw-semibold text-dark">{{ form.instance.id_sub_jenis_data }} &middot; {{ form.instance.nama_sub_jenis_data|default:"-" }}</div>
+            <div class="text-muted">{{ form.instance.id_ilap.nama_ilap }} &middot; {{ form.instance.nama_jenis_data|default:"-" }}</div>
+        </div>
+        {% endif %}
         {{ form|crispy }}
     </div>
     <div class="modal-footer border-top-0 pt-0 px-4 pb-4" style="border-top: none !important; background: transparent !important;">

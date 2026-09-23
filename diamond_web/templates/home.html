@@ -736,6 +736,15 @@
                             {% endif %}
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="jenis_data_nama_tabel_kosong_pide">
+                            <span class="icon-bg-soft icon-bg-soft-orange"><i class="feather-database" style="color:#FF8D28"></i></span>
+                            <span>Jenis Data Nama Tabel I/U Masih Kosong</span>
+                            {% if pide_jenis_data_nama_tabel_kosong_count %}
+                            <span class="badge bg-warning ms-auto">{{ pide_jenis_data_nama_tabel_kosong_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
                 </ul>
                 {% endif %}
             </div>
@@ -1708,6 +1717,29 @@
                         </div>
                     </div>
                 </div>
+                <!-- Admin: Jenis Data Nama Tabel I/U Masih Kosong - PIDE -->
+                <div class="card stretch stretch-full datatable-card" data-category="jenis_data_nama_tabel_kosong_pide" style="display:none;">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-jenis_data_nama_tabel_kosong_pide" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>ID Sub Jenis Data</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
+                                        <th>Sub Jenis Data</th>
+                                        <th>Jenis Tabel</th>
+                                        <th>Nama Tabel I</th>
+                                        <th>Nama Tabel U</th>
+                                        <th class="col-actions">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
                 <!-- Admin: Tiket Status Dikirim Ke PIDE Belum Punya PIC - PIDE -->
                 <div class="card stretch stretch-full datatable-card" data-category="tiket_dikirim_ke_pide_tanpa_pic" style="display:none;">
                     <div class="card-header" style="display: block;">
@@ -2515,6 +2547,19 @@
     </div>
 </div>
 
+{% if is_admin_pide %}
+<!-- Home Nama Tabel Modal (Admin PIDE) — the loaded form carries its own header -->
+<div class="modal fade" id="homeNamaTabelModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+            <div class="modal-form-container" id="home-nama-tabel-form-container">
+                <!-- Form loaded via AJAX -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
 
@@ -2630,6 +2675,23 @@
             { data: 'nama_ilap', title: 'Nama ILAP' },
             { data: 'nama_jenis_data', title: 'Jenis Data' },
             { data: 'nama_sub_jenis_data', title: 'Sub Jenis Data' },
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false, className: 'col-actions' }
+        ];
+
+        function renderNamaTabel(data, type) {
+            if (type !== 'display') return data || '';
+            if (!data) return '<span class="badge bg-soft-warning text-warning border border-warning">Kosong</span>';
+            return '<span class="font-monospace" style="font-size: 12px;">' + String(data).replace(/</g, '&lt;') + '</span>';
+        }
+
+        const jenisDataNamaTabelKosongColumns = [
+            { data: 'id_sub_jenis_data', title: 'ID Sub Jenis Data' },
+            { data: 'nama_ilap', title: 'Nama ILAP' },
+            { data: 'nama_jenis_data', title: 'Jenis Data' },
+            { data: 'nama_sub_jenis_data', title: 'Sub Jenis Data' },
+            { data: 'jenis_tabel', title: 'Jenis Tabel' },
+            { data: 'nama_tabel_I', title: 'Nama Tabel I', render: renderNamaTabel },
+            { data: 'nama_tabel_U', title: 'Nama Tabel U', render: renderNamaTabel },
             { data: 'actions', title: 'Aksi', orderable: false, searchable: false, className: 'col-actions' }
         ];
 
@@ -3297,6 +3359,9 @@
                 }
             }
             return cols;
+            }
+            if (category === 'jenis_data_nama_tabel_kosong_pide') {
+                return jenisDataNamaTabelKosongColumns.slice();
             }
             if (category.startsWith('jenis_data_tanpa_pic')) {
                 let cols = jenisDataTanpaPicColumns;
@@ -5366,6 +5431,8 @@
                                 datatableTables['belum_dibuat_tanda_terima'].ajax.reload(null, false);
                             } else if (targetId === '#homeIdentifikasiModal' && datatableTables['belum_mulai_proses_identifikasi']) {
                                 datatableTables['belum_mulai_proses_identifikasi'].ajax.reload(null, false);
+                            } else if (targetId === '#homeNamaTabelModal' && datatableTables['jenis_data_nama_tabel_kosong_pide']) {
+                                datatableTables['jenis_data_nama_tabel_kosong_pide'].ajax.reload(null, false);
                             }
                             refreshSidebarBadges();
                         };

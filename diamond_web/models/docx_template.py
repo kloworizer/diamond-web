@@ -17,13 +17,34 @@ class DocxTemplate(models.Model):
         ('lampiran_tanda_terima_regional', 'Lampiran Tanda Terima ILAP Regional'),
         ('register_penerimaan_data', 'Register Penerimaan Data'),
         ('nd_pengantar_pide', 'ND Pengantar ke PIDE'),
+        ('nd_pengantar_pdi', 'ND Pengantar ke PDI'),
         ('surat_klarifikasi', 'Surat Klarifikasi'),
         ('surat_pkdi_nasional_internasional_lengkap', 'Surat PKDI ILAP Nasional/Internasional Lengkap'),
         ('surat_pkdi_nasional_internasional_sebagian', 'Surat PKDI ILAP Nasional/Internasional Lengkap Sebagian'),
         ('surat_pkdi_regional_lengkap', 'Surat PKDI ILAP Regional Lengkap'),
         ('surat_pkdi_regional_sebagian', 'Surat PKDI ILAP Regional Lengkap Sebagian'),
     ]
-    
+
+    # The seksi owning each jenis dokumen: only that seksi's admins (and the
+    # global admin) manage its templates. Anything not listed here is P3DE's.
+    PMDE_DOCUMENT_TYPES = ('nd_pengantar_pdi',)
+
+    @classmethod
+    def jenis_dokumen_for_user(cls, user):
+        """The jenis dokumen whose templates `user` may manage, as a set."""
+        all_types = {value for value, _ in cls.DOCUMENT_TYPE_CHOICES}
+        if not user or not user.is_authenticated:
+            return set()
+        groups = set(user.groups.values_list('name', flat=True))
+        if user.is_superuser or 'admin' in groups:
+            return all_types
+        allowed = set()
+        if 'admin_p3de' in groups:
+            allowed |= all_types - set(cls.PMDE_DOCUMENT_TYPES)
+        if 'admin_pmde' in groups:
+            allowed |= set(cls.PMDE_DOCUMENT_TYPES)
+        return allowed
+
     nama_template = models.CharField(
         max_length=255,
         help_text="Nama template dokumen"

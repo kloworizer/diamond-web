@@ -222,6 +222,7 @@ urlpatterns = [
     # Bulk Document Generation (P3DE)
     path('bulk-generate/pkdi-klarifikasi/', views.bulk_pkdi_klarifikasi, name='bulk_pkdi_klarifikasi'),
     path('bulk-generate/nd-pengantar-pide/', views.bulk_nd_pengantar_pide, name='bulk_nd_pengantar_pide'),
+    path('bulk-generate/nd-pengantar-pdi/', views.bulk_nd_pengantar_pdi, name='bulk_nd_pengantar_pdi'),
     # Tanda Terima Data URLs
     path('tanda-terima-data/', views.TandaTerimaDataListView.as_view(), name='tanda_terima_data_list'),
     path('tanda-terima-data/data/', views.tanda_terima_data_data, name='tanda_terima_data_data'),
