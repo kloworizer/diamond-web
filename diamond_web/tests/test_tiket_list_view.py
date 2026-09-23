@@ -1,4 +1,5 @@
 """Tests for tiket/list.py – TiketListView and tiket_data endpoint."""
+from datetime import timedelta
 import json
 import pytest
 from django.urls import reverse
@@ -426,3 +427,75 @@ class TestTiketDataEndpoint:
         assert resp.status_code == 200
         data = json.loads(resp.content)
         assert 'filter_options' in data
+
+
+# ============================================================
+# Prioritas filter
+# ============================================================
+
+def _prioritas_pair():
+    """One tiket whose data was prioritas when received, and one whose was not."""
+    prioritas = TiketFactory()
+    biasa = TiketFactory()
+    JenisPrioritasDataFactory(
+        id_sub_jenis_data_ilap=prioritas.id_periode_data.id_sub_jenis_data_ilap,
+        start_date=(prioritas.tgl_terima_dip - timedelta(days=30)).date(),
+        end_date=(prioritas.tgl_terima_dip + timedelta(days=30)).date(),
+    )
+    return prioritas, biasa
+
+
+def _nomor_tikets(resp):
+    return {row['nomor_tiket'] for row in json.loads(resp.content)['data']}
+
+
+@pytest.mark.django_db
+class TestTiketDataPrioritasFilter:
+    """The Prioritas Ya/Tidak dropdown, the same rule Quality Control filters on."""
+
+    def _get(self, client, **params):
+        return client.get(reverse('tiket_data'), {
+            'draw': '1', 'start': '0', 'length': '50', **params,
+        })
+
+    def test_ya_keeps_only_prioritas(self, client, admin_user):
+        prioritas, biasa = _prioritas_pair()
+        client.force_login(admin_user)
+        assert _nomor_tikets(self._get(client, prioritas='1')) == {prioritas.nomor_tiket}
+
+    def test_tidak_keeps_only_non_prioritas(self, client, admin_user):
+        prioritas, biasa = _prioritas_pair()
+        client.force_login(admin_user)
+        assert _nomor_tikets(self._get(client, prioritas='0')) == {biasa.nomor_tiket}
+
+    def test_both_is_no_filter(self, client, admin_user):
+        prioritas, biasa = _prioritas_pair()
+        client.force_login(admin_user)
+        assert _nomor_tikets(self._get(client, prioritas='1,0')) == {
+            prioritas.nomor_tiket, biasa.nomor_tiket,
+        }
+
+    def test_options_offer_both_values(self, client, admin_user):
+        _prioritas_pair()
+        client.force_login(admin_user)
+        opts = json.loads(self._get(client, get_filter_options='1').content)['filter_options']
+        assert opts['prioritas'] == [{'id': '1', 'name': 'Ya'}, {'id': '0', 'name': 'Tidak'}]
+
+    def test_options_do_not_narrow_themselves(self, client, admin_user):
+        """Picking Ya still offers Tidak, but narrows every other dropdown."""
+        prioritas, biasa = _prioritas_pair()
+        client.force_login(admin_user)
+        opts = json.loads(
+            self._get(client, get_filter_options='1', prioritas='1').content
+        )['filter_options']
+        assert {o['id'] for o in opts['prioritas']} == {'1', '0'}
+        assert {o['id'] for o in opts['nomor_tiket']} == {prioritas.nomor_tiket}
+        assert {o['id'] for o in opts['tahun']} == {str(prioritas.tahun)}
+
+    def test_options_narrowed_by_other_filters(self, client, admin_user):
+        prioritas, biasa = _prioritas_pair()
+        client.force_login(admin_user)
+        opts = json.loads(
+            self._get(client, get_filter_options='1', nomor_tiket=biasa.nomor_tiket).content
+        )['filter_options']
+        assert opts['prioritas'] == [{'id': '0', 'name': 'Tidak'}]

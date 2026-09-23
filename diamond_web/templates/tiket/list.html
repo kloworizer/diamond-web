@@ -454,11 +454,17 @@
                                                 </select>
                                             </div>
                                             <div class="col-6">
-                                                <label for="filter-nomor-nd-nadine" class="form-label">Nomor ND Nadine</label>
-                                                <select class="form-select form-select-sm" id="filter-nomor-nd-nadine" name="nomor_nd_nadine" data-select2-selector="default" multiple="multiple">
+                                                <label for="filter-prioritas" class="form-label">Prioritas</label>
+                                                <select class="form-select form-select-sm" id="filter-prioritas" name="prioritas" data-select2-selector="default" multiple="multiple">
                                                     <option value="">-- Semua --</option>
                                                 </select>
                                             </div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label for="filter-nomor-nd-nadine" class="form-label">Nomor ND Nadine</label>
+                                            <select class="form-select form-select-sm" id="filter-nomor-nd-nadine" name="nomor_nd_nadine" data-select2-selector="default" multiple="multiple">
+                                                <option value="">-- Semua --</option>
+                                            </select>
                                         </div>
                                     </div>
 
@@ -600,6 +606,7 @@
                 status_penelitian: '#filter-status-penelitian',
                 status_ketersediaan_data: '#filter-status-ketersediaan-data',
                 special_request: '#filter-special-request',
+                prioritas: '#filter-prioritas',
                 nomor_nd_nadine: '#filter-nomor-nd-nadine'
             };
 
@@ -667,6 +674,7 @@
                 status_penelitian: getMultiSelectValue('#filter-status-penelitian'),
                 status_ketersediaan_data: getMultiSelectValue('#filter-status-ketersediaan-data'),
                 special_request: getMultiSelectValue('#filter-special-request'),
+                prioritas: getMultiSelectValue('#filter-prioritas'),
                 nomor_nd_nadine: getMultiSelectValue('#filter-nomor-nd-nadine'),
                 tgl_terima_dip: getTerimaDipValue()
             };
@@ -757,6 +765,7 @@
                         'status_penelitian': '#filter-status-penelitian',
                         'status_ketersediaan_data': '#filter-status-ketersediaan-data',
                         'special_request': '#filter-special-request',
+                        'prioritas': '#filter-prioritas',
                         'nomor_nd_nadine': '#filter-nomor-nd-nadine'
                     };
 
@@ -828,6 +837,7 @@
                     updateDropdown('status_penelitian', '#filter-status-penelitian');
                     updateDropdown('status_ketersediaan_data', '#filter-status-ketersediaan-data');
                     updateDropdown('special_request', '#filter-special-request');
+                    updateDropdown('prioritas', '#filter-prioritas');
                     updateDropdown('nomor_nd_nadine', '#filter-nomor-nd-nadine');
                 },
                 error: function () {
@@ -897,6 +907,7 @@
                         d.status_penelitian = getMultiSelectValue('#filter-status-penelitian');
                         d.status_ketersediaan_data = getMultiSelectValue('#filter-status-ketersediaan-data');
                         d.special_request = getMultiSelectValue('#filter-special-request');
+                        d.prioritas = getMultiSelectValue('#filter-prioritas');
                         d.nomor_nd_nadine = getMultiSelectValue('#filter-nomor-nd-nadine');
                         d.tgl_terima_dip = getTerimaDipValue();
                         return d;
@@ -1041,6 +1052,7 @@
                     if (opts.status_penelitian) opts.status_penelitian.forEach(item => $('#filter-status-penelitian').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.status_ketersediaan_data) opts.status_ketersediaan_data.forEach(item => $('#filter-status-ketersediaan-data').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.special_request) opts.special_request.forEach(item => $('#filter-special-request').append(`<option value="${item.id}">${item.name}</option>`));
+                    if (opts.prioritas) opts.prioritas.forEach(item => $('#filter-prioritas').append(`<option value="${item.id}">${item.name}</option>`));
                     if (opts.nomor_nd_nadine) opts.nomor_nd_nadine.forEach(item => $('#filter-nomor-nd-nadine').append(`<option value="${item.id}">${item.name}</option>`));
 
                     // Re-initialize Select2 on all filter selects

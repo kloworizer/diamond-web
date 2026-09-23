@@ -119,6 +119,33 @@
         font-size: 11px;
         color: #94a3b8;
     }
+
+    /* Copy button, sitting opposite the card title. Quiet until hovered, so it
+       does not compete with the heading it belongs to. */
+    .nama-tabel-chip-card .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .nama-tabel-copy-btn {
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        line-height: 1;
+        padding: 5px 9px;
+        flex-shrink: 0;
+    }
+
+    .nama-tabel-copy-btn:hover {
+        border-color: #0c92ff;
+        color: #0c92ff;
+    }
+
+    .nama-tabel-copy-btn.is-copied {
+        border-color: #10b981;
+        color: #10b981;
+    }
 </style>
 
 <div class="page-header">
@@ -158,18 +185,31 @@
 
     <div class="row">
         <div class="col-lg-6">
-            <div class="card shadow-sm mb-4">
+            <div class="card shadow-sm mb-4 nama-tabel-chip-card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
                         <i class="feather-layers me-2"></i>Sub Jenis Data yang Mengisi Tabel Ini
                     </h5>
+                    {% if jenis_data_list %}
+                    {% comment %}
+                    The list to copy is built here rather than scraped back out
+                    of the chips: what a reader pastes into a query or a
+                    spreadsheet is the plain identifier and name, one per line.
+                    {% endcomment %}
+                    <button type="button" class="btn btn-sm btn-light nama-tabel-copy-btn"
+                            data-copy-label="Daftar sub jenis data"
+                            data-copy-text="{% for entry in jenis_data_list %}{{ entry.jenis_data.id_sub_jenis_data }} - {{ entry.nama }}{% if not forloop.last %}&#10;{% endif %}{% endfor %}"
+                            title="Salin {{ jenis_data_list|length }} sub jenis data ke clipboard">
+                        <i class="feather-copy"></i>
+                    </button>
+                    {% endif %}
                 </div>
                 <div class="card-body">
                     {% comment %}
-                    One chip per distinct name. A name recorded against several
-                    sub jenis data carries the count, so the collapsed list is
-                    not mistaken for the full set; the link opens the first of
-                    them.
+                    One chip per distinct name, busiest first. A name recorded
+                    against several sub jenis data carries the count, so the
+                    collapsed list is not mistaken for the full set; the link
+                    opens the first of them.
                     {% endcomment %}
                     <div class="nama-tabel-chip-list">
                         {% for entry in jenis_data_list %}
@@ -186,19 +226,32 @@
             </div>
         </div>
         <div class="col-lg-6">
-            <div class="card shadow-sm mb-4">
+            <div class="card shadow-sm mb-4 nama-tabel-chip-card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
                         <i class="feather-briefcase me-2"></i>ILAP Sumber Data
                     </h5>
+                    {% if ilap_list %}
+                    <button type="button" class="btn btn-sm btn-light nama-tabel-copy-btn"
+                            data-copy-label="Daftar ILAP"
+                            data-copy-text="{% for entry in ilap_list %}{{ entry.ilap.id_ilap }} - {{ entry.ilap.nama_ilap }}{% if not forloop.last %}&#10;{% endif %}{% endfor %}"
+                            title="Salin {{ ilap_list|length }} ILAP ke clipboard">
+                        <i class="feather-copy"></i>
+                    </button>
+                    {% endif %}
                 </div>
                 <div class="card-body">
+                    {% comment %}
+                    One chip per ILAP, busiest first — by how many of the
+                    table's sub jenis data it is the source of.
+                    {% endcomment %}
                     <div class="nama-tabel-chip-list">
-                        {% for ilap in ilap_list %}
-                        <a class="nama-tabel-chip" href="{% url 'profil_ilap_detail' ilap.id_ilap %}"
-                           title="{{ ilap.nama_ilap }}">
-                            <span class="chip-code">{{ ilap.id_ilap }}</span>
-                            {{ ilap.nama_ilap }}
+                        {% for entry in ilap_list %}
+                        <a class="nama-tabel-chip" href="{% url 'profil_ilap_detail' entry.ilap.id_ilap %}"
+                           title="{{ entry.ilap.id_ilap }} &ndash; {{ entry.ilap.nama_ilap }}">
+                            <span class="chip-code">{{ entry.ilap.id_ilap }}</span>
+                            {{ entry.ilap.nama_ilap }}
+                            {% if entry.count > 1 %}<span class="chip-code">&times;{{ entry.count }}</span>{% endif %}
                         </a>
                         {% empty %}
                         <span class="text-muted">Tidak ada ILAP.</span>
@@ -287,6 +340,70 @@
 
 {% block scripts %}
 <script>
+    // Copy a card's list to the clipboard, one entry per line. The text is
+    // built server-side into data-copy-text, so what lands in the clipboard is
+    // the plain list rather than whatever the chips happen to render.
+    //
+    // navigator.clipboard is unavailable on plain HTTP, which is how this app is
+    // reached inside the office network, so the textarea fallback is not a
+    // legacy branch here — it is the path most users take.
+    (function () {
+        function fallbackCopy(text, onSuccess, onError) {
+            var textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                if (document.execCommand('copy')) onSuccess();
+                else onError(new Error('execCommand failed'));
+            } catch (err) {
+                onError(err);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function flash(btn, label, jumlah) {
+            var icon = btn.querySelector('i');
+            btn.classList.add('is-copied');
+            if (icon) icon.className = 'feather-check';
+            setTimeout(function () {
+                btn.classList.remove('is-copied');
+                if (icon) icon.className = 'feather-copy';
+            }, 2000);
+            if (typeof showToast === 'function') {
+                showToast(label + ' (' + jumlah + ' baris) berhasil disalin!', 'success');
+            }
+        }
+
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.nama-tabel-copy-btn');
+            if (!btn) return;
+
+            var text = btn.getAttribute('data-copy-text') || '';
+            var label = btn.getAttribute('data-copy-label') || 'Daftar';
+            if (!text) return;
+            var jumlah = text.split('\n').length;
+
+            var onSuccess = function () { flash(btn, label, jumlah); };
+            var onError = function (err) {
+                console.error('Gagal menyalin teks: ', err);
+                if (typeof showToast === 'function') showToast('Gagal menyalin teks.', 'danger');
+                else alert('Gagal menyalin teks.');
+            };
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(onSuccess).catch(function () {
+                    fallbackCopy(text, onSuccess, onError);
+                });
+            } else {
+                fallbackCopy(text, onSuccess, onError);
+            }
+        });
+    })();
+
     $(document).ready(function () {
         $('#nama-tabel-tiket-table').DataTable({
             serverSide: true,

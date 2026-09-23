@@ -71,7 +71,8 @@ class TestNamaTabelDetailView:
         context = client.get(reverse('nama_tabel_detail', args=['KPDE_X'])).context
         assert context['nama_tabel'] == 'KPDE_X'
         assert context['jenis_data_total'] == 3
-        assert [i.id_ilap for i in context['ilap_list']] == [ilap.id_ilap]
+        assert [e['ilap'].id_ilap for e in context['ilap_list']] == [ilap.id_ilap]
+        assert context['ilap_list'][0]['count'] == 3
 
     def test_sub_jenis_data_list_is_distinct_by_name(self, client):
         """One table collects the same name many times over; the list shows it once."""
@@ -82,10 +83,45 @@ class TestNamaTabelDetailView:
 
         context = client.get(reverse('nama_tabel_detail', args=['KPDE_X'])).context
         entries = context['jenis_data_list']
-        assert [e['nama'] for e in entries] == ['Penjualan', 'Rekapitulasi']
+        # Busiest name first — the same ordering profil_pic.py uses for a
+        # person's sub jenis data.
+        assert [e['nama'] for e in entries] == ['Rekapitulasi', 'Penjualan']
         assert context['jenis_data_total'] == 2
         # The count is what keeps the collapsed list from reading as the whole set.
         assert {e['nama']: e['count'] for e in entries} == {'Rekapitulasi': 4, 'Penjualan': 1}
+
+    def test_sub_jenis_data_list_ties_break_by_name(self, client):
+        JenisDataILAPFactory(nama_tabel_I='KPDE_X', nama_sub_jenis_data='Zebra')
+        JenisDataILAPFactory(nama_tabel_I='KPDE_X', nama_sub_jenis_data='Ambon')
+        _logged_in(client)
+
+        entries = client.get(reverse('nama_tabel_detail', args=['KPDE_X'])).context['jenis_data_list']
+        assert [e['nama'] for e in entries] == ['Ambon', 'Zebra']
+
+    def test_ilap_list_is_busiest_first(self, client):
+        """The ILAP behind the most sub jenis data of the table comes first."""
+        busy = ILAPFactory(nama_ilap='Busy ILAP')
+        quiet = ILAPFactory(nama_ilap='Quiet ILAP')
+        for _ in range(3):
+            JenisDataILAPFactory(nama_tabel_I='KPDE_X', id_ilap=busy)
+        JenisDataILAPFactory(nama_tabel_I='KPDE_X', id_ilap=quiet)
+        _logged_in(client)
+
+        entries = client.get(reverse('nama_tabel_detail', args=['KPDE_X'])).context['ilap_list']
+        assert [e['ilap'].id_ilap for e in entries] == [busy.id_ilap, quiet.id_ilap]
+        assert {e['ilap'].id_ilap: e['count'] for e in entries} == {
+            busy.id_ilap: 3, quiet.id_ilap: 1,
+        }
+
+    def test_ilap_list_ties_break_by_name(self, client):
+        zebra = ILAPFactory(nama_ilap='Zebra ILAP')
+        ambon = ILAPFactory(nama_ilap='Ambon ILAP')
+        JenisDataILAPFactory(nama_tabel_I='KPDE_X', id_ilap=zebra)
+        JenisDataILAPFactory(nama_tabel_I='KPDE_X', id_ilap=ambon)
+        _logged_in(client)
+
+        entries = client.get(reverse('nama_tabel_detail', args=['KPDE_X'])).context['ilap_list']
+        assert [e['ilap'].id_ilap for e in entries] == [ambon.id_ilap, zebra.id_ilap]
 
     def test_distinct_entry_still_links_to_a_sub_jenis_data(self, client):
         first = JenisDataILAPFactory(nama_tabel_I='KPDE_X', nama_sub_jenis_data='Rekapitulasi')

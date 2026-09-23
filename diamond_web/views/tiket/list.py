@@ -28,6 +28,7 @@ from ...utils.date_range import (
 )
 from ...utils.wilayah import kanwil_value_paths, tiket_in_kanwil_q
 from ..mixins import can_access_tiket_list, is_kasi
+from ..seksi_queue import prioritas_exists
 from ...constants.tiket_status import STATUS_LABELS
 from .documents import _is_p3de_user, _format_periode_tiket
 from ...models.durasi_jatuh_tempo import DurasiJatuhTempo
@@ -66,6 +67,29 @@ def tahun_diterima_options(qs):
         .order_by('_tahun_diterima')
     )
     return [{'id': str(year), 'name': str(year)} for year in years if year is not None]
+
+
+def apply_prioritas(qs, values):
+    """Narrow `qs` by the Prioritas Ya/Tidak dropdown.
+
+    The same rule the Quality Control and Identifikasi panels filter on: was the
+    data prioritas on the day the tiket was received. Selecting both is the same
+    as selecting neither, so it falls through without adding a clause.
+    """
+    wanted = {value == '1' for value in values}
+    if len(wanted) != 1:
+        return qs
+    return qs.filter(prioritas_exists()) if wanted.pop() else qs.exclude(prioritas_exists())
+
+
+def prioritas_options(qs):
+    """Ya/Tidak options for prioritas, offering only the values `qs` has."""
+    options = []
+    if qs.filter(prioritas_exists()).exists():
+        options.append({'id': '1', 'name': 'Ya'})
+    if qs.exclude(prioritas_exists()).exists():
+        options.append({'id': '0', 'name': 'Tidak'})
+    return options
 
 
 class TiketListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
@@ -195,6 +219,7 @@ def tiket_data(request):
         raw_special_request = request.GET.get('special_request', '')
         raw_nomor_nd_nadine = request.GET.get('nomor_nd_nadine', '')
         raw_tahun_diterima = request.GET.get('tahun_diterima', '')
+        raw_prioritas = request.GET.get('prioritas', '')
 
         filter_nomor_tiket = _split_filter_options(raw_nomor_tiket)
         filter_tahun = _split_filter_options(raw_tahun)
@@ -219,17 +244,22 @@ def tiket_data(request):
         filter_special_request = _split_filter_options(raw_special_request)
         filter_nomor_nd_nadine = _split_filter_options(raw_nomor_nd_nadine)
         filter_tahun_diterima = _split_filter_options(raw_tahun_diterima)
+        filter_prioritas = _split_filter_options(raw_prioritas)
 
         def _received_scope():
-            """`base_qs` narrowed by both "when it was received" filters.
+            """`base_qs` narrowed by both "when it was received" filters and Prioritas.
 
-            Every other dropdown's options are built on top of this. Neither of
-            the two has to be excluded from it: the Tanggal Terima DIP range has
-            no option list of its own, and Tahun Diterima reads its options from
-            the queryset before its own filter joins (see below).
+            Every other dropdown's options are built on top of this. None of
+            the three has to be excluded from it: the Tanggal Terima DIP range
+            has no option list of its own, and Tahun Diterima and Prioritas read
+            their options from the queryset before their own filter joins (see
+            below).
             """
-            return apply_tahun_diterima(
-                apply_terima_dip(base_qs, filter_terima_dip), filter_tahun_diterima
+            return apply_prioritas(
+                apply_tahun_diterima(
+                    apply_terima_dip(base_qs, filter_terima_dip), filter_tahun_diterima
+                ),
+                filter_prioritas,
             )
 
         # Build a fully filtered queryset based on ALL current selections (except each dropdown's own filter)
@@ -364,10 +394,14 @@ def tiket_data(request):
             if bool_vals:
                 filtered_qs = filtered_qs.filter(special_request__in=bool_vals)
 
-        # Tahun Diterima is applied last, so the queryset just above it is the
-        # one every other filter has narrowed — which is exactly the set its own
-        # options come from. A dropdown never narrows itself, or the year the
-        # user just picked would be the only one left to pick.
+        # Prioritas and Tahun Diterima are applied last, so each one's options
+        # come from the queryset every other filter has narrowed. A dropdown
+        # never narrows itself, or the value the user just picked would be the
+        # only one left to pick.
+        prioritas_choices = prioritas_options(
+            apply_tahun_diterima(filtered_qs, filter_tahun_diterima)
+        )
+        filtered_qs = apply_prioritas(filtered_qs, filter_prioritas)
         tahun_diterima_choices = tahun_diterima_options(filtered_qs)
         filtered_qs = apply_tahun_diterima(filtered_qs, filter_tahun_diterima)
 
@@ -1249,6 +1283,7 @@ def tiket_data(request):
                 'status_penelitian': status_penelitian_options,
                 'status_ketersediaan_data': status_ketersediaan_data_options,
                 'special_request': special_request_options,
+                'prioritas': prioritas_choices,
                 'nomor_nd_nadine': nomor_nd_nadine_options,
             }
         })
@@ -1298,6 +1333,7 @@ def tiket_data(request):
     filter_special_request = _split(request.GET.get('special_request', ''))
     filter_nomor_nd_nadine = _split(request.GET.get('nomor_nd_nadine', ''))
     filter_tahun_diterima = _split(request.GET.get('tahun_diterima', ''))
+    filter_prioritas = _split(request.GET.get('prioritas', ''))
 
     if filter_nomor_tiket:
         qs = qs.filter(nomor_tiket__in=filter_nomor_tiket)
@@ -1407,6 +1443,7 @@ def tiket_data(request):
 
     qs = apply_terima_dip(qs, filter_terima_dip)
     qs = apply_tahun_diterima(qs, filter_tahun_diterima)
+    qs = apply_prioritas(qs, filter_prioritas)
 
     qs = qs.distinct()
 
