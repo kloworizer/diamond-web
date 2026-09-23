@@ -1298,6 +1298,9 @@ def _build_pmde_auto_assign_plan():
 
     # Nama Tabel I -> user berbeda yang ditunjuk PIC PMDE aktif tabel itu.
     kandidat_per_tabel = {}
+    # Nama Tabel I -> user -> Sub Jenis Data tempat PIC itu aktif, untuk
+    # menjelaskan baris ambigu: siapa saja PIC-nya dan dari baris mana.
+    sumber_per_tabel = {}
     for pic in PIC.objects.filter(
         tipe=PIC.TipePIC.PMDE, end_date__isnull=True
     ).select_related('id_user', 'id_sub_jenis_data_ilap'):
@@ -1305,6 +1308,9 @@ def _build_pmde_auto_assign_plan():
         if not key:
             continue
         kandidat_per_tabel.setdefault(key, {})[pic.id_user_id] = pic.id_user
+        sumber_per_tabel.setdefault(key, {}).setdefault(pic.id_user_id, []).append(
+            pic.id_sub_jenis_data_ilap.id_sub_jenis_data
+        )
 
     # Baris target tidak punya PIC PMDE aktif, tapi bisa punya yang sudah
     # ditutup. Karena Tanggal Mulai di sini tetap, PIC lama untuk orang yang
@@ -1320,30 +1326,39 @@ def _build_pmde_auto_assign_plan():
 
     items = []
     ambigu = []
-    tanpa_rujukan = 0
-    tanpa_tabel = 0
-    bentrok_tanggal = 0
+    tanpa_rujukan = []
+    tanpa_tabel = []
+    bentrok_tanggal = []
 
     for jenis_data in targets:
+        baris = {
+            'id_sub_jenis_data': jenis_data.id_sub_jenis_data,
+            'nama_sub_jenis_data': jenis_data.nama_sub_jenis_data,
+            'nama_ilap': jenis_data.id_ilap.nama_ilap,
+            'nama_tabel_I': jenis_data.nama_tabel_I,
+        }
         key = _normalize_nama_tabel(jenis_data.nama_tabel_I)
         if not key:
-            tanpa_tabel += 1
+            tanpa_tabel.append(baris)
             continue
         kandidat = kandidat_per_tabel.get(key)
         if not kandidat:
-            tanpa_rujukan += 1
+            tanpa_rujukan.append(baris)
             continue
         if len(kandidat) > 1:
-            ambigu.append({
-                'id_sub_jenis_data': jenis_data.id_sub_jenis_data,
-                'nama_sub_jenis_data': jenis_data.nama_sub_jenis_data,
-                'nama_tabel_I': jenis_data.nama_tabel_I,
-                'jumlah_pic': len(kandidat),
-            })
+            baris['pic'] = [
+                {
+                    'nama': _nama_user(user),
+                    'sumber': sorted(sumber_per_tabel[key][user_id]),
+                }
+                for user_id, user in kandidat.items()
+            ]
+            ambigu.append(baris)
             continue
         user = next(iter(kandidat.values()))
         if (jenis_data.pk, user.pk) in sudah_ada:
-            bentrok_tanggal += 1
+            baris['pic'] = _nama_user(user)
+            bentrok_tanggal.append(baris)
             continue
         items.append({'jenis_data': jenis_data, 'user': user})
 
@@ -1355,6 +1370,28 @@ def _build_pmde_auto_assign_plan():
         'bentrok_tanggal': bentrok_tanggal,
         'total_tanpa_pic': len(targets),
     }
+
+
+def _group_by_nama_tabel(rows):
+    """Kelompokkan baris yang dilewati per Nama Tabel I, urut nama tabel.
+
+    Satu tabel bisa melewati puluhan Sub Jenis Data dengan alasan yang sama,
+    jadi rinciannya dibaca per tabel, bukan per baris.
+    """
+    groups = {}
+    for row in rows:
+        key = _normalize_nama_tabel(row['nama_tabel_I'])
+        group = groups.setdefault(key, {
+            'nama_tabel_I': (row['nama_tabel_I'] or '').strip(),
+            'pic': row.get('pic', []),
+            'sub_jenis_data': [],
+        })
+        group['sub_jenis_data'].append({
+            'id_sub_jenis_data': row['id_sub_jenis_data'],
+            'nama_sub_jenis_data': row['nama_sub_jenis_data'],
+            'nama_ilap': row['nama_ilap'],
+        })
+    return [groups[key] for key in sorted(groups)]
 
 
 @login_required
@@ -1387,14 +1424,18 @@ def home_pmde_auto_assign_pic_preview(request):
         'total_tanpa_pic': plan['total_tanpa_pic'],
         'total_assign': len(items),
         'total_ambigu': len(plan['ambigu']),
-        'total_tanpa_rujukan': plan['tanpa_rujukan'],
-        'total_tanpa_tabel': plan['tanpa_tabel'],
-        'total_bentrok_tanggal': plan['bentrok_tanggal'],
+        'total_tanpa_rujukan': len(plan['tanpa_rujukan']),
+        'total_tanpa_tabel': len(plan['tanpa_tabel']),
+        'total_bentrok_tanggal': len(plan['bentrok_tanggal']),
         'start_date': _AUTO_ASSIGN_START_DATE.strftime('%d-%m-%Y'),
         'items': items[:_AUTO_ASSIGN_PREVIEW_LIMIT],
         'items_sisa': max(len(items) - _AUTO_ASSIGN_PREVIEW_LIMIT, 0),
-        'ambigu': plan['ambigu'][:_AUTO_ASSIGN_PREVIEW_LIMIT],
-        'ambigu_sisa': max(len(plan['ambigu']) - _AUTO_ASSIGN_PREVIEW_LIMIT, 0),
+        # Rincian yang dilewati dikirim utuh (tidak dipotong seperti `items`):
+        # Admin PMDE memakainya untuk tahu baris mana yang harus dibereskan.
+        'ambigu': _group_by_nama_tabel(plan['ambigu']),
+        'tanpa_rujukan': _group_by_nama_tabel(plan['tanpa_rujukan']),
+        'tanpa_tabel': plan['tanpa_tabel'],
+        'bentrok_tanggal': _group_by_nama_tabel(plan['bentrok_tanggal']),
     })
 
 

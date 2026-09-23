@@ -113,7 +113,9 @@ class TestAutoAssignPlan:
         data = json.loads(client.get(reverse('home_pmde_auto_assign_pic_preview')).content)
         assert data['total_assign'] == 0
         assert data['total_ambigu'] == 1
-        assert data['ambigu'][0]['id_sub_jenis_data'] == target.id_sub_jenis_data
+        group = data['ambigu'][0]
+        assert group['nama_tabel_I'] == 'TBL_AMBIGU'
+        assert [r['id_sub_jenis_data'] for r in group['sub_jenis_data']] == [target.id_sub_jenis_data]
 
         client.post(reverse('home_pmde_auto_assign_pic'))
         assert not PIC.objects.filter(id_sub_jenis_data_ilap=target).exists()
@@ -340,3 +342,57 @@ class TestAutoAssignPropagation:
             role=TiketPIC.Role.PMDE,
             active=True,
         ).exists()
+
+
+@pytest.mark.django_db
+class TestAutoAssignRincianDilewati:
+    """Preview merinci setiap baris yang dilewati, dikelompokkan per Nama Tabel I."""
+
+    def _preview(self, client):
+        return json.loads(client.get(reverse('home_pmde_auto_assign_pic_preview')).content)
+
+    def test_ambigu_lists_each_pic_and_its_source_rows(self, client):
+        _admin_pmde(client)
+        user_a = UserFactory(first_name='Ani', last_name='', username='ani')
+        user_b = UserFactory(first_name='Budi', last_name='', username='budi')
+        sumber_a = _jenis_data('TBL_DUA')
+        sumber_b = _jenis_data('TBL_DUA')
+        _pic_pmde_aktif(sumber_a, user_a)
+        _pic_pmde_aktif(sumber_b, user_b)
+        _jenis_data('TBL_DUA')
+
+        group = self._preview(client)['ambigu'][0]
+        pic = {p['nama']: p['sumber'] for p in group['pic']}
+        assert pic == {
+            'Ani (ani)': [sumber_a.id_sub_jenis_data],
+            'Budi (budi)': [sumber_b.id_sub_jenis_data],
+        }
+
+    def test_rows_of_one_table_share_one_group(self, client):
+        _admin_pmde(client)
+        _pic_pmde_aktif(_jenis_data('TBL_X'), UserFactory())
+        _pic_pmde_aktif(_jenis_data('TBL_X'), UserFactory())
+        _jenis_data('TBL_X')
+        _jenis_data('tbl_x ')
+
+        data = self._preview(client)
+        assert data['total_ambigu'] == 2
+        assert len(data['ambigu']) == 1
+        assert len(data['ambigu'][0]['sub_jenis_data']) == 2
+
+    def test_tanpa_rujukan_is_not_truncated(self, client):
+        _admin_pmde(client)
+        for i in range(60):
+            _jenis_data(f'TBL_KOSONG_{i:02d}')
+
+        data = self._preview(client)
+        assert data['total_tanpa_rujukan'] == 60
+        assert len(data['tanpa_rujukan']) == 60
+        assert data['tanpa_rujukan'][0]['nama_tabel_I'] == 'TBL_KOSONG_00'
+
+    def test_tanpa_tabel_lists_the_rows(self, client):
+        _admin_pmde(client)
+        target = _jenis_data('')
+
+        data = self._preview(client)
+        assert [r['id_sub_jenis_data'] for r in data['tanpa_tabel']] == [target.id_sub_jenis_data]

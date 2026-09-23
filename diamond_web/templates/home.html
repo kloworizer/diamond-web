@@ -4130,6 +4130,107 @@
                 return div.innerHTML;
             };
 
+            // Sub Jenis Data yang dilewati, sebagai badge ID dengan nama di tooltip.
+            const renderIdBadges = (rows) => rows.map(row => `
+                <span class="badge bg-light text-dark border fw-normal me-1 mb-1" style="font-size: 11px;"
+                      title="${escapeHtml(row.nama_sub_jenis_data)} — ${escapeHtml(row.nama_ilap)}">${escapeHtml(row.id_sub_jenis_data)}</span>
+            `).join('');
+
+            const RINCIAN_SUMBER_LIMIT = 5;
+
+            // Satu blok per Nama Tabel I. `data-search` dipakai kotak pencarian.
+            function renderRincianGroup(group, withPic) {
+                const ids = group.sub_jenis_data.map(r => r.id_sub_jenis_data).join(' ');
+                let picHtml = '';
+                if (withPic && Array.isArray(group.pic)) {
+                    picHtml = `<ul class="mb-1 ps-3" style="font-size: 11.5px;">${group.pic.map(p => {
+                        const sisa = p.sumber.length - RINCIAN_SUMBER_LIMIT;
+                        const sumber = p.sumber.slice(0, RINCIAN_SUMBER_LIMIT).map(escapeHtml).join(', ')
+                            + (sisa > 0 ? `, +${sisa} lainnya` : '');
+                        return `<li><strong>${escapeHtml(p.nama)}</strong> <span class="text-muted">— PIC aktif di ${sumber}</span></li>`;
+                    }).join('')}</ul>`;
+                } else if (withPic && group.pic) {
+                    picHtml = `<div class="mb-1" style="font-size: 11.5px;">PIC: <strong>${escapeHtml(group.pic)}</strong></div>`;
+                }
+                return `
+                    <div class="rincian-group border-bottom py-2"
+                         data-search="${escapeHtml((group.nama_tabel_I + ' ' + ids).toLowerCase())}">
+                        <div class="font-monospace fw-semibold mb-1" style="font-size: 12px;">
+                            ${escapeHtml(group.nama_tabel_I)}
+                            <span class="badge ms-1 fw-normal" style="background: #f1f5f9; color: #475569; font-family: inherit;">${group.sub_jenis_data.length} dilewati</span>
+                        </div>
+                        ${picHtml}
+                        <div>${renderIdBadges(group.sub_jenis_data)}</div>
+                    </div>
+                `;
+            }
+
+            function renderRincianSection(judul, keterangan, total, body) {
+                if (!total) return '';
+                return `
+                    <details class="rincian-section border rounded mb-2">
+                        <summary class="px-3 py-2 fw-semibold" style="font-size: 12.5px; cursor: pointer;">
+                            ${judul} <span class="badge ms-1" style="background: #fef3c7; color: #92400e;">${total}</span>
+                        </summary>
+                        <div class="px-3 pb-2">
+                            <div class="text-muted mb-1" style="font-size: 11.5px;">${keterangan}</div>
+                            <div style="max-height: 320px; overflow-y: auto;">${body}</div>
+                        </div>
+                    </details>
+                `;
+            }
+
+            function renderRincianDilewati(data) {
+                const ambigu = (data.ambigu || []).map(g => renderRincianGroup(g, true)).join('');
+                const tanpaRujukan = (data.tanpa_rujukan || []).map(g => renderRincianGroup(g, false)).join('');
+                const bentrok = (data.bentrok_tanggal || []).map(g => renderRincianGroup(g, true)).join('');
+                const tanpaTabel = (data.tanpa_tabel || []).map(row => `
+                    <div class="rincian-group border-bottom py-1" style="font-size: 12px;"
+                         data-search="${escapeHtml((row.id_sub_jenis_data + ' ' + row.nama_sub_jenis_data).toLowerCase())}">
+                        <span class="fw-semibold">${escapeHtml(row.id_sub_jenis_data)}</span>
+                        — ${escapeHtml(row.nama_sub_jenis_data)}
+                        <span class="text-muted">(${escapeHtml(row.nama_ilap)})</span>
+                    </div>
+                `).join('');
+
+                return `
+                    <input type="search" class="form-control form-control-sm mb-2" id="auto-assign-pmde-rincian-filter"
+                           placeholder="Cari Nama Tabel I atau ID Sub Jenis Data...">
+                    ${renderRincianSection(
+                        'Nama Tabel I punya lebih dari satu PIC PMDE aktif',
+                        'Pilih salah satu PIC secara manual, atau tutup PIC yang tidak lagi berlaku pada Sub Jenis Data sumbernya.',
+                        data.total_ambigu, ambigu)}
+                    ${renderRincianSection(
+                        'Belum ada PIC PMDE aktif pada Nama Tabel I yang sama',
+                        'Tidak ada Sub Jenis Data lain dengan Nama Tabel I ini yang PIC PMDE-nya masih aktif.',
+                        data.total_tanpa_rujukan, tanpaRujukan)}
+                    ${renderRincianSection(
+                        'Nama Tabel I kosong',
+                        'Isi Nama Tabel I pada Sub Jenis Data ini, atau assign PIC-nya manual.',
+                        data.total_tanpa_tabel, tanpaTabel)}
+                    ${renderRincianSection(
+                        `PIC sudah pernah terdaftar dengan Tanggal Mulai ${escapeHtml(data.start_date)}`,
+                        'PIC yang sama pernah ditugaskan lalu ditutup; aktifkan kembali lewat menu PIC.',
+                        data.total_bentrok_tanggal, bentrok)}
+                `;
+            }
+
+            // Kotak pencarian dibuat ulang setiap render, jadi dengarkan dari body.
+            document.getElementById('auto-assign-pmde-body').addEventListener('input', function(e) {
+                if (e.target.id !== 'auto-assign-pmde-rincian-filter') return;
+                const q = e.target.value.trim().toLowerCase();
+                this.querySelectorAll('.rincian-section').forEach(section => {
+                    let cocok = 0;
+                    section.querySelectorAll('.rincian-group').forEach(el => {
+                        const tampil = !q || el.dataset.search.includes(q);
+                        el.hidden = !tampil;
+                        if (tampil) cocok++;
+                    });
+                    section.hidden = !!q && !cocok;
+                    section.open = !!q && cocok > 0;
+                });
+            });
+
             function renderAutoAssignPmdeSummary(data) {
                 const body = document.getElementById('auto-assign-pmde-body');
                 const confirmBtn = document.getElementById('btn-auto-assign-pmde-confirm');
@@ -4141,11 +4242,12 @@
                     ? `, dan ${data.total_bentrok_tanggal} karena PIC yang sama pada Sub Jenis Data itu sudah pernah terdaftar dengan Tanggal Mulai ${escapeHtml(data.start_date)}`
                     : '';
                 const catatanDilewati = dilewati
-                    ? `<div class="alert alert-warning py-2 px-3 mt-3 mb-0" style="font-size: 12px;">
+                    ? `<div class="alert alert-warning py-2 px-3 mt-3 mb-2" style="font-size: 12px;">
                            ${dilewati} Sub Jenis Data ${escapeHtml(lingkup)} dilewati: ${data.total_ambigu} karena Nama Tabel I-nya punya lebih dari satu PIC PMDE aktif
                            (harus di-assign manual), ${data.total_tanpa_rujukan} karena belum ada PIC PMDE aktif pada Nama Tabel I yang sama,
-                           ${data.total_tanpa_tabel} karena Nama Tabel I-nya kosong${catatanBentrok}.
-                       </div>`
+                           ${data.total_tanpa_tabel} karena Nama Tabel I-nya kosong${catatanBentrok}. Rinciannya di bawah.
+                       </div>
+                       ${renderRincianDilewati(data)}`
                     : '';
 
                 if (!data.total_assign) {
