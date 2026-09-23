@@ -830,39 +830,39 @@ def _pic_data_common(request, tipe):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de', 'kasi_p3de']).exists())
 @require_GET
 def pic_p3de_data(request):
     """DataTables endpoint for P3DE `PIC` rows.
 
     Permissions: user must be logged in and a member of `admin`,
-    `admin_p3de`, or `user_p3de`. Returns the same JSON shape as
+    `admin_p3de`, `user_p3de`, or `kasi_p3de`. Returns the same JSON shape as
     `_pic_data_common`. Action buttons are only included for admin users.
     """
     return _pic_data_common(request, PIC.TipePIC.P3DE)
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pide', 'user_pide']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pide', 'user_pide', 'kasi_pide']).exists())
 @require_GET
 def pic_pide_data(request):
     """DataTables endpoint for PIDE `PIC` rows.
 
     Permissions: user must be logged in and a member of `admin`,
-    `admin_pide`, or `user_pide`. Returns the same JSON shape as
+    `admin_pide`, `user_pide`, or `kasi_pide`. Returns the same JSON shape as
     `_pic_data_common`. Action buttons are only included for admin users.
     """
     return _pic_data_common(request, PIC.TipePIC.PIDE)
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde', 'user_pmde']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_pmde', 'user_pmde', 'kasi_pmde']).exists())
 @require_GET
 def pic_pmde_data(request):
     """DataTables endpoint for PMDE `PIC` rows.
 
     Permissions: user must be logged in and a member of `admin`,
-    `admin_pmde`, or `user_pmde`. Returns the same JSON shape as
+    `admin_pmde`, `user_pmde`, or `kasi_pmde`. Returns the same JSON shape as
     `_pic_data_common`. Action buttons are only included for admin users.
     """
     return _pic_data_common(request, PIC.TipePIC.PMDE)
@@ -875,7 +875,14 @@ class UnifiedPICListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         user = self.request.user
         if user.is_superuser:
             return True
-        allowed_groups = ['admin', 'admin_p3de', 'user_p3de', 'admin_pide', 'user_pide', 'admin_pmde', 'user_pmde']
+        # Kasi see their seksi's PIC the way its pelaksana do: read-only, since
+        # the Tambah/Edit/Hapus controls stay behind the admin_* groups.
+        allowed_groups = [
+            'admin',
+            'admin_p3de', 'user_p3de', 'kasi_p3de',
+            'admin_pide', 'user_pide', 'kasi_pide',
+            'admin_pmde', 'user_pmde', 'kasi_pmde',
+        ]
         return user.groups.filter(name__in=allowed_groups).exists()
 
     def get(self, request, *args, **kwargs):
@@ -896,9 +903,9 @@ class UnifiedPICListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         user = self.request.user
         is_central_admin = user.is_superuser or user.groups.filter(name='admin').exists()
         
-        can_view_p3de = is_central_admin or user.groups.filter(name__in=['admin_p3de', 'user_p3de']).exists()
-        can_view_pide = is_central_admin or user.groups.filter(name__in=['admin_pide', 'user_pide']).exists()
-        can_view_pmde = is_central_admin or user.groups.filter(name__in=['admin_pmde', 'user_pmde']).exists()
+        can_view_p3de = is_central_admin or user.groups.filter(name__in=['admin_p3de', 'user_p3de', 'kasi_p3de']).exists()
+        can_view_pide = is_central_admin or user.groups.filter(name__in=['admin_pide', 'user_pide', 'kasi_pide']).exists()
+        can_view_pmde = is_central_admin or user.groups.filter(name__in=['admin_pmde', 'user_pmde', 'kasi_pmde']).exists()
 
         context['is_admin_p3de'] = user.is_superuser or user.groups.filter(name__in=['admin', 'admin_p3de']).exists()
         context['is_admin_pide'] = user.is_superuser or user.groups.filter(name__in=['admin', 'admin_pide']).exists()
@@ -971,11 +978,11 @@ class UnifiedPICListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         })
         # Determine default tab based on user's primary group
         default_tab = 'matrix'
-        if user.groups.filter(name__in=['admin_p3de', 'user_p3de']).exists():
+        if user.groups.filter(name__in=['admin_p3de', 'user_p3de', 'kasi_p3de']).exists():
             default_tab = 'p3de'
-        elif user.groups.filter(name__in=['admin_pide', 'user_pide']).exists():
+        elif user.groups.filter(name__in=['admin_pide', 'user_pide', 'kasi_pide']).exists():
             default_tab = 'pide'
-        elif user.groups.filter(name__in=['admin_pmde', 'user_pmde']).exists():
+        elif user.groups.filter(name__in=['admin_pmde', 'user_pmde', 'kasi_pmde']).exists():
             default_tab = 'pmde'
             
         context['default_tab'] = default_tab
