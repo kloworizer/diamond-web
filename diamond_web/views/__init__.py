@@ -18,6 +18,7 @@ from .klasifikasi_jenis_data import *
 from .periode_pengiriman import *
 from .periode_jenis_data import *
 from .jenis_prioritas_data import *
+from .jenis_prioritas_sync import *
 from .pic import *
 from .nama_tabel import *
 from .durasi_jatuh_tempo import *

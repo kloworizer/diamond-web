@@ -994,6 +994,16 @@ class TestHomeDataAdminCategories:
         assert resp.status_code == 200
         assert json.loads(resp.content)['recordsTotal'] == 1
 
+    def test_tiket_dikirim_ke_pide_tanpa_pic_includes_identifikasi(self, client, db):
+        """A tiket already being identified is still PIDE's, so it belongs here."""
+        user = UserFactory()
+        _add_groups(user, 'admin_pide')
+        _tiket_with_status(4)
+        _tiket_with_status(5)
+        client.force_login(user)
+        resp = client.get(reverse('home_data'), _base_params('tiket_dikirim_ke_pide_tanpa_pic'))
+        assert json.loads(resp.content)['recordsTotal'] == 2
+
     def test_tiket_pengendalian_mutu_tanpa_pic(self, client, db):
         user = UserFactory()
         _add_groups(user, 'admin_pmde')
@@ -1038,3 +1048,73 @@ class TestHomeDataAdminCategories:
         resp = client.get(reverse('home_data'), _base_params('jenis_data_tanpa_pic_pmde'))
         assert resp.status_code == 200
         assert json.loads(resp.content)['recordsTotal'] >= 1
+
+
+# ============================================================
+# Admin PIDE: Jenis Data Nama Tabel I/U Masih Kosong
+# ============================================================
+
+@pytest.mark.django_db
+class TestHomeJenisDataNamaTabelKosong:
+    CATEGORY = 'jenis_data_nama_tabel_kosong_pide'
+
+    def _admin(self, client):
+        user = UserFactory()
+        _add_groups(user, 'user_pide', 'admin_pide')
+        client.force_login(user)
+        return user
+
+    def test_denied_for_non_admin(self, client, pide_user):
+        client.force_login(pide_user)
+        resp = client.get(reverse('home_data'), _base_params(self.CATEGORY))
+        assert resp.status_code == 403
+
+    def test_lists_only_rows_without_nama_tabel_i(self, client, db):
+        self._admin(client)
+        kosong = JenisDataILAPFactory(nama_tabel_I='', nama_tabel_U='')
+        JenisDataILAPFactory(nama_tabel_I='TBL_I', nama_tabel_U='TBL_U')
+        resp = client.get(reverse('home_data'), _base_params(self.CATEGORY))
+        assert resp.status_code == 200
+        data = json.loads(resp.content)
+        assert data['recordsTotal'] == 1
+        row = data['data'][0]
+        assert row['id_sub_jenis_data'] == kosong.id_sub_jenis_data
+        assert row['nama_tabel_I'] == ''
+        assert row['nama_tabel_U'] == ''
+        assert row['jenis_tabel'] == kosong.id_jenis_tabel.deskripsi
+        assert reverse('nama_tabel_update', args=[kosong.pk]) in row['actions']
+        assert 'homeNamaTabelModal' in row['actions']
+
+    def test_ordering_by_extra_columns(self, client, db):
+        self._admin(client)
+        JenisDataILAPFactory(nama_tabel_I='', nama_tabel_U='B')
+        JenisDataILAPFactory(nama_tabel_I='', nama_tabel_U='A')
+        resp = client.get(reverse('home_data'), _base_params(
+            self.CATEGORY, **{'order[0][column]': '6', 'order[0][dir]': 'asc'}))
+        assert [r['nama_tabel_U'] for r in json.loads(resp.content)['data']] == ['A', 'B']
+
+    def test_sidebar_count_and_menu(self, client, db):
+        self._admin(client)
+        JenisDataILAPFactory(nama_tabel_I='', nama_tabel_U='')
+        JenisDataILAPFactory(nama_tabel_I='TBL_I', nama_tabel_U='TBL_U')
+        resp = client.get(reverse('home'))
+        assert resp.context['pide_jenis_data_nama_tabel_kosong_count'] == 1
+        assert f'data-filter="{self.CATEGORY}"' in resp.content.decode()
+
+    def test_quick_update_fills_nama_tabel_and_leaves_list(self, client, db):
+        self._admin(client)
+        kosong = JenisDataILAPFactory(nama_tabel_I='', nama_tabel_U='')
+        url = reverse('nama_tabel_update', args=[kosong.pk])
+
+        form = client.get(url, {'ajax': '1'}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        assert form.status_code == 200
+        assert kosong.id_sub_jenis_data in json.loads(form.content)['html']
+
+        resp = client.post(url, {'nama_tabel_I': 'TBL_BARU_I', 'nama_tabel_U': 'TBL_BARU_U'},
+                           HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        assert json.loads(resp.content)['success'] is True
+        kosong.refresh_from_db()
+        assert (kosong.nama_tabel_I, kosong.nama_tabel_U) == ('TBL_BARU_I', 'TBL_BARU_U')
+
+        data = json.loads(client.get(reverse('home_data'), _base_params(self.CATEGORY)).content)
+        assert data['recordsTotal'] == 0

@@ -1,30 +1,42 @@
-"""Bulk DOCX generation pages for P3DE users.
+"""Bulk DOCX generation pages.
 
-Page 1:
+Page 1 (P3DE):
 - Generate PKDI / PKDI Sebagian / Klarifikasi for multiple tickets.
 
-Page 2:
+Page 2 (P3DE):
 - Generate ND Pengantar PIDE for multiple tickets with status Dikirim ke PIDE.
+
+Page 3 (PMDE):
+- Generate ND Pengantar PDI for adhoc data finished in a date range.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from io import BytesIO
+from urllib.parse import urlencode
+
+from dateutil.relativedelta import relativedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import HttpResponse
+from django.db.models import OuterRef, Subquery
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
-from ..constants.tiket_status import STATUS_DIKIRIM_KE_PIDE
+from ..constants.tiket_action_types import TiketActionType
+from ..constants.tiket_status import STATUS_DIKIRIM_KE_PIDE, STATUS_SELESAI
 from ..models.detil_tanda_terima import DetilTandaTerima
 from ..models.docx_template import DocxTemplate
 from ..models.ilap import ILAP
 from ..models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ..models.tiket import Tiket
+from ..models.tiket_action import TiketAction
+from ..models.tiket_pic import TiketPIC
 from ..utils import format_number_with_separator, format_periode
 from ..utils.docx_template import fill_template_with_data
-from .mixins import get_active_p3de_ilap_ids
+from .mixins import get_active_p3de_ilap_ids, is_kasi_pmde
+from .seksi_queue import pic_scope
 
 
 def _is_p3de_user(user):
@@ -33,6 +45,14 @@ def _is_p3de_user(user):
     if user.is_superuser or user.groups.filter(name='admin').exists():
         return True
     return user.groups.filter(name='user_p3de').exists()
+
+
+def _is_pmde_user(user):
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    return user.groups.filter(name__in=['admin', 'admin_pmde', 'user_pmde']).exists()
 
 
 def _format_date_indonesian(date_obj):
@@ -128,6 +148,7 @@ def _generate_docx_for_tickets(selected_tickets, doc_type, title_prefix):
         'pkdi_sebagian': f'surat_pkdi_{region_type}_sebagian',
         'klarifikasi': 'surat_klarifikasi',
         'nd_pengantar': 'nd_pengantar_pide',
+        'nd_pengantar_pdi': 'nd_pengantar_pdi',
     }
     template_jenis = template_type_map.get(doc_type)
 
@@ -515,4 +536,108 @@ def bulk_nd_pengantar_pide(request):
         'tickets': tickets,
         'selected_ilap_id': str(ilap_id),
         'selected_tanggal_kirim_pide': tanggal_kirim_pide,
+    })
+
+
+# Adhoc data is not a flag of its own: it is recognised by its bank data table,
+# every one of which is named KPDE_ADHOC_<...>.
+ADHOC_NAMA_TABEL_KEYWORD = 'adhoc'
+
+# The page and the generated lampiran list the tikets in the same order.
+ADHOC_ORDERING = (
+    'id_periode_data__id_sub_jenis_data_ilap__id_ilap__nama_ilap',
+    'tgl_selesai',
+    'id',
+)
+
+
+def _adhoc_queryset(user, tanggal_mulai, tanggal_selesai, ilap_id=''):
+    """Finished adhoc tikets of `user` whose Selesai action falls between the dates.
+
+    Like Quality Control, each PMDE PIC sees only the tikets they are the
+    active PMDE PIC for; another PIC's tikets are left out entirely.
+
+    The tiket has no finish date of its own; it is read from the trail, as
+    the latest SELESAI action — a tiket reopened and finished again counts
+    from its last finish. Each row carries it as ``tgl_selesai``.
+    """
+    tgl_selesai = TiketAction.objects.filter(
+        id_tiket=OuterRef('pk'),
+        action=TiketActionType.SELESAI,
+    ).order_by('-timestamp').values('timestamp')[:1]
+    qs = Tiket.objects.filter(
+        id_periode_data__id_sub_jenis_data_ilap__nama_tabel_I__icontains=ADHOC_NAMA_TABEL_KEYWORD,
+        status_tiket=STATUS_SELESAI,
+    ).annotate(
+        tgl_selesai=Subquery(tgl_selesai),
+    ).filter(
+        tgl_selesai__date__gte=tanggal_mulai,
+        tgl_selesai__date__lte=tanggal_selesai,
+    )
+    qs = pic_scope(qs, user, TiketPIC.Role.PMDE, is_kasi_pmde)
+    if ilap_id and ilap_id != 'semua':
+        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap_id=ilap_id)
+    return qs.select_related(
+        'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
+        'id_periode_data__id_periode_pengiriman',
+        'id_periode_data__id_sub_jenis_data_ilap__id_status_data',
+        'id_status_penelitian',
+    ).prefetch_related(
+        'id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata_set__id_klasifikasi_tabel',
+    )
+
+
+@login_required
+@user_passes_test(_is_pmde_user)
+@require_http_methods(['GET', 'POST', 'HEAD'])
+def bulk_nd_pengantar_pdi(request):
+    """PMDE: generate the ND Pengantar ke PDI for adhoc data.
+
+    Lists the user's adhoc tikets (nama tabel I containing "adhoc") finished within
+    the chosen range — the last month by default — and fills the
+    ``nd_pengantar_pdi`` template for the ones ticked.
+    """
+    params = request.POST if request.method == 'POST' else request.GET
+    today = date.today()
+    tanggal_mulai = _parse_date(params.get('tanggal_mulai')) or (today - relativedelta(months=1))
+    tanggal_selesai = _parse_date(params.get('tanggal_selesai')) or today
+    if tanggal_mulai > tanggal_selesai:
+        tanggal_mulai, tanggal_selesai = tanggal_selesai, tanggal_mulai
+    ilap_id = params.get('ilap_id', '')
+
+    if request.method == 'POST':
+        selected_ids = request.POST.getlist('ticket_ids')
+        selected_tickets = list(
+            _adhoc_queryset(request.user, tanggal_mulai, tanggal_selesai, ilap_id)
+            .filter(id__in=selected_ids)
+            .order_by(*ADHOC_ORDERING)
+        )
+        if not selected_tickets:
+            messages.warning(request, 'Pilih minimal 1 tiket untuk digenerate.')
+            query = urlencode({
+                'tanggal_mulai': tanggal_mulai.isoformat(),
+                'tanggal_selesai': tanggal_selesai.isoformat(),
+                'ilap_id': ilap_id,
+            })
+            return redirect(f"{reverse('bulk_nd_pengantar_pdi')}?{query}")
+        return _generate_docx_for_tickets(selected_tickets, 'nd_pengantar_pdi', 'nd_pengantar_pdi')
+
+    # ILAP options: only those with adhoc data in the range, whatever ILAP is picked.
+    ilap_options = ILAP.objects.filter(
+        id__in=_adhoc_queryset(request.user, tanggal_mulai, tanggal_selesai).values(
+            'id_periode_data__id_sub_jenis_data_ilap__id_ilap_id'
+        )
+    ).order_by('nama_ilap')
+
+    tickets = list(
+        _adhoc_queryset(request.user, tanggal_mulai, tanggal_selesai, ilap_id).order_by(*ADHOC_ORDERING)
+    )
+
+    return render(request, 'bulk_documents/nd_pengantar_pdi.html', {
+        'page_title': 'Generate ND Pengantar ke PDI',
+        'ilap_options': ilap_options,
+        'tickets': tickets,
+        'selected_ilap_id': str(ilap_id),
+        'selected_tanggal_mulai': tanggal_mulai.isoformat(),
+        'selected_tanggal_selesai': tanggal_selesai.isoformat(),
     })

@@ -102,8 +102,12 @@ class QualityControlView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
                 # position and wrapping after the palette runs out — see the
                 # .sq-kind-* rules. Decided here rather than in the template
                 # because the template language has no modulo.
+                # `rincian` marks the lines followed by the nama tabel behind
+                # them; the names themselves arrive with the figures, being
+                # whatever the PIC's tikets happen to carry.
                 'entries': [
-                    {'name': name, 'hue': index % SUMMARY_KIND_HUES}
+                    {'name': name, 'hue': index % SUMMARY_KIND_HUES,
+                     'rincian': split.rincian_path is not None}
                     for index, (_entry_id, name) in enumerate(split.entries)
                 ],
             }
@@ -214,10 +218,17 @@ def _sudah_qc(sudah_qc):
 # itself breaks — which queue, then how far back it reaches — they set two short
 # lines instead of one long one and the columns come out even. `label` is the
 # same words in one line, for everywhere the name is read rather than headed.
+#
+# Prioritas is not a queue of its own but the part of Proses QC whose data was
+# prioritas when it arrived — the same rule the Prioritas filter and column
+# read. It sits beside the queue it is part of, and it is left out of the Indeks
+# Beban (see SECTION_WEIGHTS): those rows are already weighed under Proses QC,
+# prioritas factor and all, and counting them again would weigh them twice.
 SUMMARY_SECTIONS = tuple(
     dict(section, label=' '.join(section['lines']))
     for section in (
         {'key': 'qc', 'lines': ('Proses QC',), 'variant': 'own'},
+        {'key': 'prioritas', 'lines': ('Prioritas',), 'variant': 'priority'},
         {'key': 'p3de', 'lines': ('Masih di P3DE',), 'variant': 'upstream'},
         {'key': 'pide', 'lines': ('Masih di PIDE',), 'variant': 'upstream-alt'},
         {'key': 'selesai', 'lines': ('Selesai QC', '90 Hari Terakhir'),
@@ -346,7 +357,9 @@ def summary_splits():
     each other — a line per pairing would be the two of them multiplied, and
     nobody reads a load that way.
     """
-    return [sq.jenis_tabel_split(), sq.kategori_wilayah_split()]
+    # Every jenis tabel line is broken down again by nama tabel: which tables
+    # make up a figure is the question a reader of it asks next.
+    return [sq.jenis_tabel_split(rincian=True), sq.kategori_wilayah_split()]
 
 
 def _beban_info(splits):
@@ -376,6 +389,7 @@ def _beban_info(splits):
         'antrean': [
             {'label': section['label'], 'bobot': SECTION_WEIGHTS[section['key']]}
             for section in SUMMARY_SECTIONS
+            if section['key'] in SECTION_WEIGHTS
         ],
         'jatuh_tempo': jatuh_tempo_bands(),
         'jatuh_tempo_antrean': ', '.join(
@@ -458,13 +472,12 @@ def _summary_sections(user, selected):
             weighting(key),
         )
 
+    in_qc = sq.apply_filters(_scoped_queryset(user), selected, FILTER_APPLIERS)
     return {
-        'qc': (
-            sq.apply_filters(_scoped_queryset(user), selected, FILTER_APPLIERS),
-            splits,
-            ('belum_qc',),
-            _belum_qc,
-            weighting('qc'),
+        'qc': (in_qc, splits, ('belum_qc',), _belum_qc, weighting('qc')),
+        # Unweighted: these rows are already in the Indeks Beban under 'qc'.
+        'prioritas': (
+            in_qc.filter(sq.prioritas_exists()), splits, ('belum_qc',), _belum_qc, None,
         ),
         'p3de': upstream('p3de', STATUSES_DI_P3DE),
         'pide': upstream('pide', STATUSES_DI_PIDE),

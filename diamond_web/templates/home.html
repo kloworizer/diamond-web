@@ -730,9 +730,18 @@
                     <li class="nav-item">
                         <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="tiket_dikirim_ke_pide_tanpa_pic">
                             <span class="icon-bg-soft icon-bg-soft-red"><i class="feather-send" style="color:#EF4444"></i></span>
-                            <span>Tiket Status Dikirim Ke PIDE Belum Punya PIC</span>
+                            <span>Tiket Status Dikirim Ke PIDE dan Identifikasi Belum Punya PIC</span>
                             {% if pide_tiket_dikirim_ke_pide_tanpa_pic_count %}
                             <span class="badge bg-danger ms-auto">{{ pide_tiket_dikirim_ke_pide_tanpa_pic_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link tiket-filter-link" href="javascript:void(0);" data-filter="jenis_data_nama_tabel_kosong_pide">
+                            <span class="icon-bg-soft icon-bg-soft-orange"><i class="feather-database" style="color:#FF8D28"></i></span>
+                            <span>Jenis Data Nama Tabel I/U Masih Kosong</span>
+                            {% if pide_jenis_data_nama_tabel_kosong_count %}
+                            <span class="badge bg-warning ms-auto">{{ pide_jenis_data_nama_tabel_kosong_count }}</span>
                             {% endif %}
                         </a>
                     </li>
@@ -1708,6 +1717,29 @@
                         </div>
                     </div>
                 </div>
+                <!-- Admin: Jenis Data Nama Tabel I/U Masih Kosong - PIDE -->
+                <div class="card stretch stretch-full datatable-card" data-category="jenis_data_nama_tabel_kosong_pide" style="display:none;">
+                    <div class="card-body custom-card-action p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 tiket-datatable" id="table-jenis_data_nama_tabel_kosong_pide" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>ID Sub Jenis Data</th>
+                                        <th>Nama ILAP</th>
+                                        <th>Jenis Data</th>
+                                        <th>Sub Jenis Data</th>
+                                        <th>Jenis Tabel</th>
+                                        <th>Nama Tabel I</th>
+                                        <th>Nama Tabel U</th>
+                                        <th class="col-actions">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
                 <!-- Admin: Tiket Status Dikirim Ke PIDE Belum Punya PIC - PIDE -->
                 <div class="card stretch stretch-full datatable-card" data-category="tiket_dikirim_ke_pide_tanpa_pic" style="display:none;">
                     <div class="card-header" style="display: block;">
@@ -2043,6 +2075,15 @@
                 {% if is_admin_pmde %}
                 <!-- Admin: Jenis Data Tidak Punya PIC Aktif - PMDE -->
                 <div class="card stretch stretch-full datatable-card" data-category="jenis_data_tanpa_pic_pmde" style="display:none;">
+                    <div class="card-header">
+                        <h5 class="card-title"><i class="feather-users me-2"></i>Jenis Data Tidak Punya PIC Aktif</h5>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn btn-primary" id="btn-auto-assign-pic-pmde"
+                                title="Isi PIC PMDE otomatis untuk Sub Jenis Data berawalan PV dan PD, diambil dari Sub Jenis Data lain yang Nama Tabel I-nya sama, hanya bila tabel itu punya tepat satu PIC PMDE aktif">
+                                <i class="feather-zap me-1"></i>Isi Otomatis
+                            </button>
+                        </div>
+                    </div>
                     <div class="card-body custom-card-action p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 tiket-datatable" id="table-jenis_data_tanpa_pic_pmde" style="width:100%">
@@ -2316,6 +2357,36 @@
     </div>
 </div>
 
+<!-- Modal: ringkasan PIC PMDE yang akan diisi otomatis -->
+<div class="modal fade" id="autoAssignPicPmdeModal" tabindex="-1" aria-labelledby="autoAssignPicPmdeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header d-flex align-items-center py-3 px-4" style="border-bottom: 1px solid #f1f5f9 !important;">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center justify-content-center"
+                        style="width: 38px; height: 38px; border-radius: 50%; background-color: #e0f2fe; color: #0284c7;">
+                        <i class="feather-zap" style="font-size: 18px;"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="autoAssignPicPmdeModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Ringkasan Isi Otomatis PIC PMDE</h5>
+                        <span class="text-muted text-uppercase fw-semibold" style="font-size: 10px; letter-spacing: 0.5px;">Berdasarkan Nama Tabel I</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body px-4 pt-3 pb-2" id="auto-assign-pmde-body">
+                <!-- Diisi JS sebelum modal ditampilkan -->
+            </div>
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4" style="border-top: none !important; background: transparent !important;">
+                <button type="button" class="btn btn-figma-outline" data-bs-dismiss="modal" id="btn-auto-assign-pmde-cancel">Batal</button>
+                <button type="button" class="btn btn-primary" id="btn-auto-assign-pmde-confirm">
+                    <i class="feather-check me-1"></i>PROSES
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Quick-Assign PIC P3DE -->
 <div class="modal fade" id="quickAssignPicP3deModal" tabindex="-1" aria-labelledby="quickAssignPicP3deModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
@@ -2476,6 +2547,19 @@
     </div>
 </div>
 
+{% if is_admin_pide %}
+<!-- Home Nama Tabel Modal (Admin PIDE) — the loaded form carries its own header -->
+<div class="modal fade" id="homeNamaTabelModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+            <div class="modal-form-container" id="home-nama-tabel-form-container">
+                <!-- Form loaded via AJAX -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
 
@@ -2591,6 +2675,23 @@
             { data: 'nama_ilap', title: 'Nama ILAP' },
             { data: 'nama_jenis_data', title: 'Jenis Data' },
             { data: 'nama_sub_jenis_data', title: 'Sub Jenis Data' },
+            { data: 'actions', title: 'Aksi', orderable: false, searchable: false, className: 'col-actions' }
+        ];
+
+        function renderNamaTabel(data, type) {
+            if (type !== 'display') return data || '';
+            if (!data) return '<span class="badge bg-soft-warning text-warning border border-warning">Kosong</span>';
+            return '<span class="font-monospace" style="font-size: 12px;">' + String(data).replace(/</g, '&lt;') + '</span>';
+        }
+
+        const jenisDataNamaTabelKosongColumns = [
+            { data: 'id_sub_jenis_data', title: 'ID Sub Jenis Data' },
+            { data: 'nama_ilap', title: 'Nama ILAP' },
+            { data: 'nama_jenis_data', title: 'Jenis Data' },
+            { data: 'nama_sub_jenis_data', title: 'Sub Jenis Data' },
+            { data: 'jenis_tabel', title: 'Jenis Tabel' },
+            { data: 'nama_tabel_I', title: 'Nama Tabel I', render: renderNamaTabel },
+            { data: 'nama_tabel_U', title: 'Nama Tabel U', render: renderNamaTabel },
             { data: 'actions', title: 'Aksi', orderable: false, searchable: false, className: 'col-actions' }
         ];
 
@@ -3259,6 +3360,9 @@
             }
             return cols;
             }
+            if (category === 'jenis_data_nama_tabel_kosong_pide') {
+                return jenisDataNamaTabelKosongColumns.slice();
+            }
             if (category.startsWith('jenis_data_tanpa_pic')) {
                 let cols = jenisDataTanpaPicColumns;
             // Clone columns so we don't modify the global ones (important since they are shared)
@@ -3911,7 +4015,7 @@
                 if (data.success || data.redirect) {
                     quickAssignModal.hide();
                     // Show success toast
-                    showSuccessToast('Penugasan Berhasil', 'PIC PIDE berhasil di-assign!');
+                    showSuccessToast('Penugasan Berhasil', data.message || 'PIC PIDE berhasil di-assign!');
                     
                     const tr = window.diamondActiveTr;
                     window.diamondActiveTr = null;
@@ -4041,7 +4145,7 @@
                 if (data.success || data.redirect) {
                     quickAssignPmdeModal.hide();
                     // Show success toast
-                    showSuccessToast('Penugasan Berhasil', 'PIC PMDE berhasil di-assign!');
+                    showSuccessToast('Penugasan Berhasil', data.message || 'PIC PMDE berhasil di-assign!');
 
                     const tr = window.diamondActiveTr;
                     window.diamondActiveTr = null;
@@ -4075,6 +4179,273 @@
                 errorBox.style.display = 'block';
             });
         });
+
+        // --- Isi Otomatis PIC PMDE dari Sub Jenis Data satu Nama Tabel I ---
+        // Preview dulu, baru tulis: tombol yang sama yang menampilkan ringkasan
+        // juga yang memprosesnya, seperti Generate Otomatis di Durasi Jatuh Tempo.
+        const autoAssignPmdeBtn = document.getElementById('btn-auto-assign-pic-pmde');
+        if (autoAssignPmdeBtn) {
+            const autoAssignPmdeModal = new bootstrap.Modal(document.getElementById('autoAssignPicPmdeModal'));
+            const autoAssignPmdePreviewUrl = "{% url 'home_pmde_auto_assign_pic_preview' %}";
+            const autoAssignPmdeApplyUrl = "{% url 'home_pmde_auto_assign_pic' %}";
+
+            const escapeHtml = (value) => {
+                const div = document.createElement('div');
+                div.textContent = value == null ? '' : value;
+                return div.innerHTML;
+            };
+
+            // Sub Jenis Data yang dilewati, sebagai badge ID dengan nama di tooltip.
+            const renderIdBadges = (rows) => rows.map(row => `
+                <span class="badge bg-light text-dark border fw-normal me-1 mb-1" style="font-size: 11px;"
+                      title="${escapeHtml(row.nama_sub_jenis_data)} — ${escapeHtml(row.nama_ilap)}">${escapeHtml(row.id_sub_jenis_data)}</span>
+            `).join('');
+
+            const RINCIAN_SUMBER_LIMIT = 5;
+
+            // Satu blok per Nama Tabel I. `data-search` dipakai kotak pencarian.
+            function renderRincianGroup(group, withPic) {
+                const ids = group.sub_jenis_data.map(r => r.id_sub_jenis_data).join(' ');
+                let picHtml = '';
+                if (withPic && Array.isArray(group.pic)) {
+                    picHtml = `<ul class="mb-1 ps-3" style="font-size: 11.5px;">${group.pic.map(p => {
+                        const sisa = p.sumber.length - RINCIAN_SUMBER_LIMIT;
+                        const sumber = p.sumber.slice(0, RINCIAN_SUMBER_LIMIT).map(escapeHtml).join(', ')
+                            + (sisa > 0 ? `, +${sisa} lainnya` : '');
+                        return `<li><strong>${escapeHtml(p.nama)}</strong> <span class="text-muted">— PIC aktif di ${sumber}</span></li>`;
+                    }).join('')}</ul>`;
+                } else if (withPic && group.pic) {
+                    picHtml = `<div class="mb-1" style="font-size: 11.5px;">PIC: <strong>${escapeHtml(group.pic)}</strong></div>`;
+                }
+                return `
+                    <div class="rincian-group border-bottom py-2"
+                         data-search="${escapeHtml((group.nama_tabel_I + ' ' + ids).toLowerCase())}">
+                        <div class="font-monospace fw-semibold mb-1" style="font-size: 12px;">
+                            ${escapeHtml(group.nama_tabel_I)}
+                            <span class="badge ms-1 fw-normal" style="background: #f1f5f9; color: #475569; font-family: inherit;">${group.sub_jenis_data.length} dilewati</span>
+                        </div>
+                        ${picHtml}
+                        <div>${renderIdBadges(group.sub_jenis_data)}</div>
+                    </div>
+                `;
+            }
+
+            function renderRincianSection(judul, keterangan, total, body) {
+                if (!total) return '';
+                return `
+                    <details class="rincian-section border rounded mb-2">
+                        <summary class="px-3 py-2 fw-semibold" style="font-size: 12.5px; cursor: pointer;">
+                            ${judul} <span class="badge ms-1" style="background: #fef3c7; color: #92400e;">${total}</span>
+                        </summary>
+                        <div class="px-3 pb-2">
+                            <div class="text-muted mb-1" style="font-size: 11.5px;">${keterangan}</div>
+                            <div style="max-height: 320px; overflow-y: auto;">${body}</div>
+                        </div>
+                    </details>
+                `;
+            }
+
+            function renderRincianDilewati(data) {
+                const ambigu = (data.ambigu || []).map(g => renderRincianGroup(g, true)).join('');
+                const tanpaRujukan = (data.tanpa_rujukan || []).map(g => renderRincianGroup(g, false)).join('');
+                const bentrok = (data.bentrok_tanggal || []).map(g => renderRincianGroup(g, true)).join('');
+                const tanpaTabel = (data.tanpa_tabel || []).map(row => `
+                    <div class="rincian-group border-bottom py-1" style="font-size: 12px;"
+                         data-search="${escapeHtml((row.id_sub_jenis_data + ' ' + row.nama_sub_jenis_data).toLowerCase())}">
+                        <span class="fw-semibold">${escapeHtml(row.id_sub_jenis_data)}</span>
+                        — ${escapeHtml(row.nama_sub_jenis_data)}
+                        <span class="text-muted">(${escapeHtml(row.nama_ilap)})</span>
+                    </div>
+                `).join('');
+
+                return `
+                    <input type="search" class="form-control form-control-sm mb-2" id="auto-assign-pmde-rincian-filter"
+                           placeholder="Cari Nama Tabel I atau ID Sub Jenis Data...">
+                    ${renderRincianSection(
+                        'Nama Tabel I punya lebih dari satu PIC PMDE aktif',
+                        'Pilih salah satu PIC secara manual, atau tutup PIC yang tidak lagi berlaku pada Sub Jenis Data sumbernya.',
+                        data.total_ambigu, ambigu)}
+                    ${renderRincianSection(
+                        'Belum ada PIC PMDE aktif pada Nama Tabel I yang sama',
+                        'Tidak ada Sub Jenis Data lain dengan Nama Tabel I ini yang PIC PMDE-nya masih aktif.',
+                        data.total_tanpa_rujukan, tanpaRujukan)}
+                    ${renderRincianSection(
+                        'Nama Tabel I kosong',
+                        'Isi Nama Tabel I pada Sub Jenis Data ini, atau assign PIC-nya manual.',
+                        data.total_tanpa_tabel, tanpaTabel)}
+                    ${renderRincianSection(
+                        `PIC sudah pernah terdaftar dengan Tanggal Mulai ${escapeHtml(data.start_date)}`,
+                        'PIC yang sama pernah ditugaskan lalu ditutup; aktifkan kembali lewat menu PIC.',
+                        data.total_bentrok_tanggal, bentrok)}
+                `;
+            }
+
+            // Kotak pencarian dibuat ulang setiap render, jadi dengarkan dari body.
+            document.getElementById('auto-assign-pmde-body').addEventListener('input', function(e) {
+                if (e.target.id !== 'auto-assign-pmde-rincian-filter') return;
+                const q = e.target.value.trim().toLowerCase();
+                this.querySelectorAll('.rincian-section').forEach(section => {
+                    let cocok = 0;
+                    section.querySelectorAll('.rincian-group').forEach(el => {
+                        const tampil = !q || el.dataset.search.includes(q);
+                        el.hidden = !tampil;
+                        if (tampil) cocok++;
+                    });
+                    section.hidden = !!q && !cocok;
+                    section.open = !!q && cocok > 0;
+                });
+            });
+
+            function renderAutoAssignPmdeSummary(data) {
+                const body = document.getElementById('auto-assign-pmde-body');
+                const confirmBtn = document.getElementById('btn-auto-assign-pmde-confirm');
+                const dilewati = data.total_ambigu + data.total_tanpa_rujukan
+                    + data.total_tanpa_tabel + data.total_bentrok_tanggal;
+                const lingkup = (data.prefixes || []).join(' dan ');
+
+                const catatanBentrok = data.total_bentrok_tanggal
+                    ? `, dan ${data.total_bentrok_tanggal} karena PIC yang sama pada Sub Jenis Data itu sudah pernah terdaftar dengan Tanggal Mulai ${escapeHtml(data.start_date)}`
+                    : '';
+                const catatanDilewati = dilewati
+                    ? `<div class="alert alert-warning py-2 px-3 mt-3 mb-2" style="font-size: 12px;">
+                           ${dilewati} Sub Jenis Data ${escapeHtml(lingkup)} dilewati: ${data.total_ambigu} karena Nama Tabel I-nya punya lebih dari satu PIC PMDE aktif
+                           (harus di-assign manual), ${data.total_tanpa_rujukan} karena belum ada PIC PMDE aktif pada Nama Tabel I yang sama,
+                           ${data.total_tanpa_tabel} karena Nama Tabel I-nya kosong${catatanBentrok}. Rinciannya di bawah.
+                       </div>
+                       ${renderRincianDilewati(data)}`
+                    : '';
+
+                if (!data.total_assign) {
+                    confirmBtn.style.display = 'none';
+                    document.getElementById('btn-auto-assign-pmde-cancel').textContent = 'Tutup';
+                    body.innerHTML = `
+                        <div class="alert alert-info mb-0" style="font-size: 12.5px;">
+                            Tidak ada Sub Jenis Data berawalan <strong>${escapeHtml(lingkup)}</strong> yang bisa diisi otomatis.
+                        </div>
+                        ${catatanDilewati}
+                    `;
+                    return;
+                }
+
+                confirmBtn.style.display = '';
+                confirmBtn.innerHTML = '<i class="feather-check me-1"></i>PROSES';
+                document.getElementById('btn-auto-assign-pmde-cancel').textContent = 'Batal';
+
+                const rows = data.items.map(item => `
+                    <tr>
+                        <td class="fw-semibold">${escapeHtml(item.id_sub_jenis_data)}</td>
+                        <td>${escapeHtml(item.nama_sub_jenis_data)}</td>
+                        <td class="font-monospace" style="font-size: 11.5px;">${escapeHtml(item.nama_tabel_I)}</td>
+                        <td>${escapeHtml(item.pic)}</td>
+                    </tr>
+                `).join('');
+                const sisaRow = data.items_sisa
+                    ? `<tr><td colspan="4" class="text-center text-muted" style="font-size: 11.5px;">... dan ${data.items_sisa} Sub Jenis Data lainnya</td></tr>`
+                    : '';
+
+                body.innerHTML = `
+                    <div class="alert alert-info py-2 px-3 mb-3" style="font-size: 12px;">
+                        Sub Jenis Data berikut <strong>akan diisi</strong> PIC PMDE-nya, diambil dari Sub Jenis Data lain
+                        yang <strong>Nama Tabel I</strong>-nya sama. Yang diproses hanya Sub Jenis Data berawalan
+                        <strong>${escapeHtml(lingkup)}</strong>, dan hanya bila PIC PMDE aktif pada tabel itu
+                        <strong>tepat satu orang</strong>; bila lebih dari satu, barisnya dilewati untuk di-assign manual.
+                        Tanggal Mulai PIC diisi <strong>${escapeHtml(data.start_date)}</strong>, mengikuti PIC PMDE yang sudah ada,
+                        dan PIC langsung diterapkan ke tiket yang masih terbuka.
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-4">
+                            <div class="p-3 rounded" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                                <span class="text-muted d-block mb-1" style="font-size: 11px;">Akan Diisi</span>
+                                <span class="fw-bold text-dark" style="font-size: 18px;">${data.total_assign}</span>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-3 rounded" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                                <span class="text-muted d-block mb-1" style="font-size: 11px;">Lebih dari 1 PIC</span>
+                                <span class="fw-bold text-dark" style="font-size: 18px;">${data.total_ambigu}</span>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-3 rounded" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                                <span class="text-muted d-block mb-1" style="font-size: 11px;">${escapeHtml(lingkup)} Tanpa PIC</span>
+                                <span class="fw-bold text-dark" style="font-size: 18px;">${data.total_tanpa_pic}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0" style="font-size: 12.5px;">
+                            <thead>
+                                <tr>
+                                    <th>ID Sub Jenis Data</th>
+                                    <th>Nama Sub Jenis Data</th>
+                                    <th>Nama Tabel I</th>
+                                    <th>PIC PMDE</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}${sisaRow}</tbody>
+                        </table>
+                    </div>
+                    ${catatanDilewati}
+                `;
+            }
+
+            autoAssignPmdeBtn.addEventListener('click', function() {
+                const originalHtml = this.innerHTML;
+                this.disabled = true;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Memeriksa...';
+
+                fetch(autoAssignPmdePreviewUrl)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (!data.success) {
+                            showToast(data.error || 'Gagal memuat ringkasan.', 'danger');
+                            return;
+                        }
+                        renderAutoAssignPmdeSummary(data);
+                        autoAssignPmdeModal.show();
+                    })
+                    .catch(() => showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger'))
+                    .finally(() => {
+                        this.disabled = false;
+                        this.innerHTML = originalHtml;
+                    });
+            });
+
+            document.getElementById('btn-auto-assign-pmde-confirm').addEventListener('click', function() {
+                const originalHtml = this.innerHTML;
+                this.disabled = true;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Memproses...';
+
+                fetch(autoAssignPmdeApplyUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': qaCsrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (!data.success) {
+                            showToast(data.error || data.message || 'Gagal mengisi PIC PMDE.', 'danger');
+                            return;
+                        }
+                        autoAssignPmdeModal.hide();
+                        showToast(data.message, data.created ? 'success' : 'info');
+                        if (datatableTables['jenis_data_tanpa_pic_pmde']) {
+                            datatableTables['jenis_data_tanpa_pic_pmde'].ajax.reload(null, false);
+                        }
+                        if (datatableTables['tiket_pengendalian_mutu_tanpa_pic']) {
+                            datatableTables['tiket_pengendalian_mutu_tanpa_pic'].ajax.reload(null, false);
+                        }
+                        refreshSidebarBadges();
+                    })
+                    .catch(() => showToast('Terjadi kesalahan. Silakan coba lagi.', 'danger'))
+                    .finally(() => {
+                        this.disabled = false;
+                        this.innerHTML = originalHtml;
+                    });
+            });
+        }
 
         // Open modal when Assign PIC P3DE button is clicked (delegated)
         document.addEventListener('click', function(e) {
@@ -4171,7 +4542,7 @@
                 if (data.success || data.redirect) {
                     quickAssignP3deModal.hide();
                     // Show success toast
-                    showSuccessToast('Penugasan Berhasil', 'PIC P3DE berhasil di-assign!');
+                    showSuccessToast('Penugasan Berhasil', data.message || 'PIC P3DE berhasil di-assign!');
 
                     const tr = window.diamondActiveTr;
                     window.diamondActiveTr = null;
@@ -5060,6 +5431,8 @@
                                 datatableTables['belum_dibuat_tanda_terima'].ajax.reload(null, false);
                             } else if (targetId === '#homeIdentifikasiModal' && datatableTables['belum_mulai_proses_identifikasi']) {
                                 datatableTables['belum_mulai_proses_identifikasi'].ajax.reload(null, false);
+                            } else if (targetId === '#homeNamaTabelModal' && datatableTables['jenis_data_nama_tabel_kosong_pide']) {
+                                datatableTables['jenis_data_nama_tabel_kosong_pide'].ajax.reload(null, false);
                             }
                             refreshSidebarBadges();
                         };

@@ -106,7 +106,22 @@
                 </li>
                 {% endif %}
 
-                {# Kasi PIDE get the Identifikasi page (unscoped), not the entries below. #}
+                {% comment %}
+                Kasi P3DE operate none of the menus above, but see the seksi's
+                PIC the way its pelaksana do (read-only). Skipped when they
+                already hold a P3DE group, so the entry is not listed twice.
+                {% endcomment %}
+                {% if user|has_group:"kasi_p3de" and not user|has_group:"admin_p3de" and not user|has_group:"user_p3de" %}
+                <li class="nxl-item nxl-caption"><label>P3DE</label></li>
+                <li class="nxl-item">
+                    <a class="nxl-link" href="{% url 'pic_unified_list' %}?tab=p3de">
+                        <span class="nxl-micon"><i class="feather-user"></i></span>
+                        <span class="nxl-mtext">PIC P3DE</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                {# Kasi PIDE get the Identifikasi page (unscoped) and PIC PIDE, not the other entries below. #}
                 {% if user|has_group:"admin_pide" or user|has_group:"user_pide" or user|has_group:"kasi_pide" %}
                 <li class="nxl-item nxl-caption"><label>PIDE</label></li>
                 <li class="nxl-item">
@@ -117,13 +132,16 @@
                 </li>
                 {% endif %}
 
-                {% if user|has_group:"admin_pide" or user|has_group:"user_pide" %}
+                {% if user|has_group:"admin_pide" or user|has_group:"user_pide" or user|has_group:"kasi_pide" %}
                 <li class="nxl-item">
                     <a class="nxl-link" href="{% url 'pic_unified_list' %}?tab=pide">
                         <span class="nxl-micon"><i class="feather-user"></i></span>
                         <span class="nxl-mtext">PIC PIDE</span>
                     </a>
                 </li>
+                {% endif %}
+
+                {% if user|has_group:"admin_pide" or user|has_group:"user_pide" %}
                 <li class="nxl-item nxl-hasmenu">
                     <a class="nxl-link" href="javascript:void(0);">
                         <span class="nxl-micon"><i class="feather-pie-chart"></i></span>
@@ -140,7 +158,7 @@
                 </li>
                 {% endif %}
 
-                {# Kasi PMDE get the Quality Control page (unscoped), not the entries below. #}
+                {# Kasi PMDE get the Quality Control page (unscoped) and PIC PMDE, not the other entries below. #}
                 {% if user|has_group:"admin_pmde" or user|has_group:"user_pmde" or user|has_group:"kasi_pmde" %}
                 <li class="nxl-item nxl-caption"><label>PMDE</label></li>
                 <li class="nxl-item">
@@ -151,12 +169,25 @@
                 </li>
                 {% endif %}
 
-                {% if user|has_group:"admin_pmde" or user|has_group:"user_pmde" %}
+                {% if user|has_group:"admin_pmde" or user|has_group:"user_pmde" or user|has_group:"kasi_pmde" %}
                 <li class="nxl-item">
                     <a class="nxl-link" href="{% url 'pic_unified_list' %}?tab=pmde">
                         <span class="nxl-micon"><i class="feather-user"></i></span>
                         <span class="nxl-mtext">PIC PMDE</span>
                     </a>
+                </li>
+                {% endif %}
+
+                {% if user|has_group:"admin_pmde" or user|has_group:"user_pmde" %}
+                <li class="nxl-item nxl-hasmenu">
+                    <a class="nxl-link" href="javascript:void(0);">
+                        <span class="nxl-micon"><i class="feather-file"></i></span>
+                        <span class="nxl-mtext">Generate Template</span>
+                        <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+                    </a>
+                    <ul class="nxl-submenu">
+                        <li class="nxl-item"><a class="nxl-link" href="{% url 'bulk_nd_pengantar_pdi' %}">ND Pengantar ke PDI</a></li>
+                    </ul>
                 </li>
                 <li class="nxl-item nxl-hasmenu">
                     <a class="nxl-link" href="javascript:void(0);">
@@ -308,6 +339,13 @@
                         <span class="nxl-mtext">PIC PMDE</span>
                     </a>
                 </li>
+                {# Hanya template milik PMDE yang tampil untuk admin PMDE. #}
+                <li class="nxl-item">
+                    <a class="nxl-link" href="{% url 'docx_template_list' %}">
+                        <span class="nxl-micon"><i class="feather-file"></i></span>
+                        <span class="nxl-mtext">Template Dokumen</span>
+                    </a>
+                </li>
                 {# Menu bersama: lihat catatan di blok Admin PIDE. #}
                 <li class="nxl-item">
                     <a class="nxl-link" href="{% url 'jenis_prioritas_data_list' %}">
@@ -319,18 +357,6 @@
 
                 {% if user|has_group:"admin"%}
                 <li class="nxl-item nxl-caption"><label>Sinkronisasi Data</label></li>
-                <li class="nxl-item">
-                    <a class="nxl-link" href="{% url 'oracle_sync_page' %}">
-                        <span class="nxl-micon"><i class="feather-refresh-cw"></i></span>
-                        <span class="nxl-mtext">Sinkronisasi Data Referensi</span>
-                    </a>
-                </li>
-                <li class="nxl-item">
-                    <a class="nxl-link" href="{% url 'sync_tiket_page' %}">
-                        <span class="nxl-micon"><i class="feather-refresh-cw"></i></span>
-                        <span class="nxl-mtext">Sinkronisasi Data Tiket</span>
-                    </a>
-                </li>
                 <li class="nxl-item">
                     <a class="nxl-link" href="{% url 'sync_tiket_update_page' %}">
                         <span class="nxl-micon"><i class="feather-download"></i></span>

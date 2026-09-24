@@ -1,7 +1,7 @@
 """Views for DOCX Template management."""
 
 from django.urls import reverse_lazy
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import CreateView, UpdateView, DeleteView, TemplateView
 from django.contrib import messages
 from urllib.parse import quote_plus, unquote_plus
@@ -12,10 +12,51 @@ from django.shortcuts import render, get_object_or_404
 
 from ..models.docx_template import DocxTemplate
 from ..forms.docx_template import DocxTemplateForm
-from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, SafeDeleteMixin
+from .mixins import AjaxFormMixin, SafeDeleteMixin
 
 
-class DocxTemplateListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
+# Template Dokumen is shared by the P3DE and PMDE admins, each managing only
+# the jenis dokumen its seksi owns (see DocxTemplate.jenis_dokumen_for_user).
+# A template of the other seksi is simply not there for them: it is left out
+# of the list and answers 404 when reached by URL.
+
+def _can_manage_templates(user):
+    return bool(DocxTemplate.jenis_dokumen_for_user(user))
+
+
+def _templates_for(user):
+    return DocxTemplate.objects.filter(
+        jenis_dokumen__in=DocxTemplate.jenis_dokumen_for_user(user)
+    )
+
+
+def _admin_breadcrumb(user):
+    groups = set(user.groups.values_list('name', flat=True))
+    if user.is_superuser or 'admin' in groups or {'admin_p3de', 'admin_pmde'} <= groups:
+        return 'Admin'
+    return 'Admin PMDE' if 'admin_pmde' in groups else 'Admin P3DE'
+
+
+class DocxTemplateAccessMixin(UserPassesTestMixin):
+    """Admins of a seksi owning at least one jenis dokumen; scoped to those."""
+    raise_exception = True
+
+    def test_func(self):
+        return _can_manage_templates(self.request.user)
+
+    def get_queryset(self):
+        return _templates_for(self.request.user)
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        field = form.fields.get('jenis_dokumen')  # absent on the delete form
+        if field is not None:
+            allowed = DocxTemplate.jenis_dokumen_for_user(self.request.user)
+            field.choices = [(v, l) for v, l in field.choices if v == '' or v in allowed]
+        return form
+
+
+class DocxTemplateListView(LoginRequiredMixin, DocxTemplateAccessMixin, TemplateView):
     """List view for `DocxTemplate` entries."""
     template_name = 'docx_template/list.html'
 
@@ -33,11 +74,12 @@ class DocxTemplateListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateV
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['templates'] = DocxTemplate.objects.all().order_by('-updated_at')
+        context['templates'] = _templates_for(self.request.user).order_by('-updated_at')
+        context['admin_breadcrumb'] = _admin_breadcrumb(self.request.user)
         return context
 
 
-class DocxTemplateCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
+class DocxTemplateCreateView(LoginRequiredMixin, DocxTemplateAccessMixin, AjaxFormMixin, CreateView):
     """Create view for `DocxTemplate`."""
     model = DocxTemplate
     form_class = DocxTemplateForm
@@ -57,7 +99,7 @@ class DocxTemplateCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFor
         return self.render_form_response(form)
 
 
-class DocxTemplateUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
+class DocxTemplateUpdateView(LoginRequiredMixin, DocxTemplateAccessMixin, AjaxFormMixin, UpdateView):
     """Update view for `DocxTemplate`."""
     model = DocxTemplate
     form_class = DocxTemplateForm
@@ -78,7 +120,7 @@ class DocxTemplateUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFor
         return self.render_form_response(form)
 
 
-class DocxTemplateDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, SafeDeleteMixin, DeleteView):
+class DocxTemplateDeleteView(LoginRequiredMixin, DocxTemplateAccessMixin, SafeDeleteMixin, DeleteView):
     """Delete view for `DocxTemplate`."""
     model = DocxTemplate
     template_name = 'docx_template/confirm_delete.html'
@@ -106,12 +148,11 @@ class DocxTemplateDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, SafeDel
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.groups.filter(name='admin').exists() or u.groups.filter(name='admin_p3de').exists())
+@user_passes_test(_can_manage_templates)
 @require_GET
 def docx_template_data(request):
     """Return template data as JSON for DataTable."""
-    # Get all templates
-    queryset = DocxTemplate.objects.all().order_by('-updated_at')
+    queryset = _templates_for(request.user).order_by('-updated_at')
     
     # Handle DataTable server-side parameters
     draw = int(request.GET.get('draw', 1))
@@ -166,14 +207,14 @@ def docx_template_data(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.is_superuser or u.groups.filter(name='admin').exists() or u.groups.filter(name='admin_p3de').exists())
+@user_passes_test(_can_manage_templates)
 @require_GET
 def docx_template_download(request, pk):
     """Download template DOCX file."""
     import logging
     
     logger = logging.getLogger(__name__)
-    template = get_object_or_404(DocxTemplate, pk=pk)
+    template = get_object_or_404(_templates_for(request.user), pk=pk)
     
     if not template.file_template:
         logger.warning(f'Template {pk} ({template.nama_template}) has no file_template')

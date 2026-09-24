@@ -259,7 +259,10 @@ def _distinct_by_nama(rows):
         rows (iterable): JenisDataILAP rows sharing a nama tabel.
 
     Returns:
-        list: Dicts of ``{'nama', 'jenis_data', 'count'}``, sorted by name.
+        list: Dicts of ``{'nama', 'jenis_data', 'count'}``, busiest name first —
+        by how many rows it stands for, mirroring the ordering
+        :func:`~diamond_web.views.profil_pic.summarise_jenis_data` uses — and
+        then by name.
     """
     entries = {}
     for row in rows:
@@ -269,7 +272,37 @@ def _distinct_by_nama(rows):
             entries[nama] = {'nama': nama, 'jenis_data': row, 'count': 1}
         else:
             entry['count'] += 1
-    return sorted(entries.values(), key=lambda entry: entry['nama'].lower())
+    return sorted(
+        entries.values(), key=lambda entry: (-entry['count'], entry['nama'].lower())
+    )
+
+
+def _nama_tabel_ilap_list(rows):
+    """Collapse `rows` to one entry per ILAP feeding this table.
+
+    Mirrors the busiest-first ordering
+    :func:`~diamond_web.views.profil_pic.summarise_ilap` uses for a person's
+    ILAPs: the one behind the most sub jenis data comes first, so a reader sees
+    where most of the table's rows actually come from.
+
+    Args:
+        rows (iterable): JenisDataILAP rows sharing a nama tabel.
+
+    Returns:
+        list: Dicts of ``{'ilap', 'count'}``, busiest ILAP first and then by
+        name. Rows with no ILAP recorded are left out.
+    """
+    entries = {}
+    for row in rows:
+        if not row.id_ilap:
+            continue
+        entry = entries.get(row.id_ilap.id_ilap)
+        if entry is None:
+            entry = entries[row.id_ilap.id_ilap] = {'ilap': row.id_ilap, 'count': 0}
+        entry['count'] += 1
+    result = list(entries.values())
+    result.sort(key=lambda e: (-e['count'], e['ilap'].nama_ilap.lower()))
+    return result
 
 
 def _nama_tabel_pic_groups(rows):
@@ -345,12 +378,7 @@ class NamaTabelDetailView(LoginRequiredMixin, TemplateView):
         context['nama_tabel'] = rows[0].nama_tabel_I  # as recorded, not as typed
         context['jenis_data_list'] = _distinct_by_nama(rows)
         context['jenis_data_total'] = len(context['jenis_data_list'])
-        # Distinct ILAPs, in the order the sub jenis data list introduces them.
-        ilaps = {}
-        for row in rows:
-            if row.id_ilap and row.id_ilap.id_ilap not in ilaps:
-                ilaps[row.id_ilap.id_ilap] = row.id_ilap
-        context['ilap_list'] = list(ilaps.values())
+        context['ilap_list'] = _nama_tabel_ilap_list(rows)
         context['pic_groups'] = _nama_tabel_pic_groups(rows)
         context['tiket_total'] = Tiket.objects.filter(
             id_periode_data__id_sub_jenis_data_ilap__in=rows

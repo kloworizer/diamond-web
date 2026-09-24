@@ -1,5 +1,6 @@
 """Tests for views/quality_control.py (view + data endpoint)."""
-from datetime import date, datetime, timedelta
+import json
+from datetime import date, datetime, time, timedelta
 from itertools import count
 
 import pytest
@@ -33,6 +34,7 @@ from diamond_web.tests.conftest import (
     TiketPICFactory,
     UserFactory,
 )
+from diamond_web.views.seksi_queue import FREE_FORM_FILTERS
 from diamond_web.views.quality_control import (
     FILTER_APPLIERS,
     FILTER_OPTIONS,
@@ -128,6 +130,24 @@ def _qc_bundle(with_durasi=True, with_prioritas=False, tgl_transfer=None,
     }
 
 
+def _set_terima_dip(tiket, day):
+    """Put a tiket's tanggal terima DIP on `day`, late enough in it that a
+    range compared as a timestamp rather than a date would miss its last day."""
+    tiket.tgl_terima_dip = datetime.combine(day, time(23, 30))
+    tiket.save(update_fields=['tgl_terima_dip'])
+
+
+def _set_permintaan_khusus(tiket, day, active=True):
+    """Give a tiket a permintaan khusus falling due on `day`.
+
+    Stored at the end of that day, the way SpecialRequestForm stores it. Pass
+    `active=False` for the date a switched-off permintaan khusus leaves behind.
+    """
+    tiket.special_request = active
+    tiket.tgl_special_request = datetime.combine(day, time(23, 59, 59))
+    tiket.save(update_fields=['special_request', 'tgl_special_request'])
+
+
 def _jatuh_tempo_bundle(days, **kwargs):
     """A bundle whose jatuh tempo is `days` days from today, negative allowed.
 
@@ -149,6 +169,25 @@ class TestQualityControlView:
         client.force_login(_pmde_admin_user())
         resp = client.get(reverse('quality_control'))
         assert resp.status_code == 200
+
+    def test_panel_renders_the_date_range_filter(self, client):
+        """Tanggal Terima DIP has no dropdown, so nothing else would notice it going.
+
+        The field name is also the request parameter the applier reads, so the
+        two have to keep matching for the filter to reach the queryset at all.
+        """
+        client.force_login(_pmde_admin_user())
+        html = client.get(reverse('quality_control')).content.decode()
+        assert 'id="filter-tgl-terima-dip"' in html
+        assert 'name="tgl_terima_dip"' in html
+        assert 'tgl_terima_dip' in FILTER_APPLIERS
+        assert '>Tanggal Terima DIP<' in html
+        # The labels the page spells out in full, so a reader can tell the
+        # data's own year and periode from the year it arrived in.
+        assert '>Tahun Data<' in html
+        assert '>Periode Data<' in html
+        assert '>Tahun Diterima<' in html
+        assert 'name="tahun_diterima"' in html
 
     def test_page_names_the_payload_keys_the_endpoint_sends(self, client):
         """The shared template reads its variable columns out of a config block.
@@ -274,6 +313,69 @@ class TestQualityControlData:
         expected = (rematch + timedelta(days=7)).date()
         assert row['deadline']['display'] == expected.strftime('%d/%m/%Y')
 
+    def test_permintaan_khusus_due_date_is_the_deadline(self, client):
+        """A date agreed for one tiket beats the durasi its data carries."""
+        bundle = _qc_bundle(durasi=10)
+        khusus = date.today() + timedelta(days=3)
+        _set_permintaan_khusus(bundle['tiket'], khusus)
+        client.force_login(bundle['pmde_user'])
+
+        resp = client.get(reverse(self.url), {'draw': '1', 'start': '0', 'length': '10'})
+        row = next(r for r in resp.json()['data']
+                   if r['nomor_tiket'] == bundle['tiket'].nomor_tiket)
+
+        assert row['deadline']['display'] == khusus.strftime('%d/%m/%Y')
+        assert row['jatuh_tempo']['display'] == '3 hari'
+        assert row['sisa_hari'] == 3
+        # The column holds two kinds of date, so the row says which one it is.
+        assert row['deadline_khusus'] is True
+
+    def test_permintaan_khusus_sets_a_deadline_where_no_durasi_does(self, client):
+        """The agreed date stands on its own, with no durasi behind it."""
+        bundle = _qc_bundle(with_durasi=False)
+        khusus = date.today() + timedelta(days=8)
+        _set_permintaan_khusus(bundle['tiket'], khusus)
+        client.force_login(bundle['pmde_user'])
+
+        resp = client.get(reverse(self.url), {'draw': '1', 'start': '0', 'length': '10'})
+        row = next(r for r in resp.json()['data']
+                   if r['nomor_tiket'] == bundle['tiket'].nomor_tiket)
+
+        assert row['deadline']['display'] == khusus.strftime('%d/%m/%Y')
+        assert row['sisa_hari'] == 8
+
+    def test_due_date_left_by_a_switched_off_permintaan_khusus_is_ignored(self, client):
+        """Switching the permintaan khusus off gives the durasi count back."""
+        bundle = _qc_bundle(durasi=10)
+        _set_permintaan_khusus(
+            bundle['tiket'], date.today() + timedelta(days=3), active=False,
+        )
+        client.force_login(bundle['pmde_user'])
+
+        resp = client.get(reverse(self.url), {'draw': '1', 'start': '0', 'length': '10'})
+        row = next(r for r in resp.json()['data']
+                   if r['nomor_tiket'] == bundle['tiket'].nomor_tiket)
+
+        expected = (bundle['tiket'].tgl_rematch + timedelta(days=10)).date()
+        assert row['deadline']['display'] == expected.strftime('%d/%m/%Y')
+        assert row['deadline_khusus'] is False
+
+    def test_deadline_sorting_follows_the_permintaan_khusus(self, client):
+        """The SQL used for sorting takes the same override the display does."""
+        # Counted from the durasi the second would come first; its permintaan
+        # khusus is what puts it last, so the two orders disagree.
+        first = _jatuh_tempo_bundle(5)
+        second = _jatuh_tempo_bundle(1, pmde_user=first['pmde_user'])
+        _set_permintaan_khusus(second['tiket'], date.today() + timedelta(days=20))
+        client.force_login(first['pmde_user'])
+
+        resp = client.get(reverse(self.url), {
+            'draw': '1', 'start': '0', 'length': '10',
+            'order[0][column]': '5', 'order[0][dir]': 'asc',
+        })
+        nomor = [row['nomor_tiket'] for row in resp.json()['data']]
+        assert nomor == [first['tiket'].nomor_tiket, second['tiket'].nomor_tiket]
+
     def test_deadline_sorting_follows_the_rematch_date(self, client):
         """The SQL used for sorting counts from the same date the display does."""
         # Transferred earlier but rematched later, so the two orders disagree.
@@ -362,7 +464,8 @@ class TestQualityControlFilters:
         options = self._options(client)
         # Each filter the backend accepts must also offer options, otherwise
         # the panel would render a dropdown nothing can ever be picked from.
-        assert set(options) == set(FILTER_APPLIERS) == set(FILTER_OPTIONS)
+        # The exceptions are the ones picked from something other than a list.
+        assert set(options) == set(FILTER_APPLIERS) - FREE_FORM_FILTERS == set(FILTER_OPTIONS)
 
     def test_filter_options_reflect_the_scoped_tikets(self, client):
         bundle = _qc_bundle(with_prioritas=True)
@@ -478,6 +581,80 @@ class TestQualityControlFilters:
         client.force_login(bundle['pmde_user'])
         assert self._rows(client, tahun='bukan-angka')['recordsFiltered'] == 0
 
+    def test_filter_by_tahun_diterima(self, client):
+        """Tahun Diterima: the year of tgl_terima_dip, read like Tahun Data."""
+        early = _qc_bundle()
+        late = _qc_bundle(pmde_user=early['pmde_user'])
+        _set_terima_dip(early['tiket'], date(2024, 3, 15))
+        _set_terima_dip(late['tiket'], date(2025, 6, 30))
+        client.force_login(early['pmde_user'])
+
+        assert [o['id'] for o in self._options(client)['tahun_diterima']] == ['2024', '2025']
+
+        picked = self._rows(client, tahun_diterima='2024')
+        assert picked['recordsFiltered'] == 1
+        assert picked['data'][0]['nomor_tiket'] == early['tiket'].nomor_tiket
+        assert self._rows(client, tahun_diterima='2024,2025')['recordsFiltered'] == 2
+        assert self._rows(client, tahun_diterima='2023')['recordsFiltered'] == 0
+        # Non-numeric input matches nothing, the way Tahun Data behaves.
+        assert self._rows(client, tahun_diterima='bukan-angka')['recordsFiltered'] == 0
+
+    def test_tahun_diterima_and_the_range_narrow_together(self, client):
+        """Both read tgl_terima_dip, so picking in both is their overlap."""
+        early = _qc_bundle()
+        late = _qc_bundle(pmde_user=early['pmde_user'])
+        _set_terima_dip(early['tiket'], date(2024, 3, 15))
+        _set_terima_dip(late['tiket'], date(2025, 6, 30))
+        client.force_login(early['pmde_user'])
+
+        assert self._rows(
+            client, tahun_diterima='2024,2025', tgl_terima_dip='2025-01-01..2025-12-31',
+        )['recordsFiltered'] == 1
+        # A range outside the picked year leaves nothing, rather than either
+        # half quietly winning.
+        assert self._rows(
+            client, tahun_diterima='2024', tgl_terima_dip='2025-01-01..2025-12-31',
+        )['recordsFiltered'] == 0
+
+    def test_filter_by_tgl_terima_dip_range(self, client):
+        """Tanggal Terima DIP: both ends of the range arrive in one parameter."""
+        early = _qc_bundle()
+        late = _qc_bundle(pmde_user=early['pmde_user'])
+        _set_terima_dip(early['tiket'], date(2024, 3, 15))
+        _set_terima_dip(late['tiket'], date(2025, 6, 30))
+        client.force_login(early['pmde_user'])
+
+        assert self._rows(client)['recordsFiltered'] == 2
+        assert self._rows(client, tgl_terima_dip='2024-01-01..2025-12-31')['recordsFiltered'] == 2
+
+        only_early = self._rows(client, tgl_terima_dip='2024-01-01..2024-12-31')
+        assert only_early['recordsFiltered'] == 1
+        assert only_early['data'][0]['nomor_tiket'] == early['tiket'].nomor_tiket
+
+        # Either half may be left empty, leaving that end of the range open,
+        # and the last day counts whatever time of day it carries.
+        assert self._rows(client, tgl_terima_dip='2025-01-01..')['recordsFiltered'] == 1
+        assert self._rows(client, tgl_terima_dip='..2024-12-31')['recordsFiltered'] == 1
+        assert self._rows(client, tgl_terima_dip='2025-06-30..2025-06-30')['recordsFiltered'] == 1
+
+    def test_filter_tgl_terima_dip_ignores_unreadable_dates(self, client):
+        """A malformed date is a broken request, not a request for no tikets."""
+        bundle = _qc_bundle()
+        client.force_login(bundle['pmde_user'])
+        assert self._rows(client, tgl_terima_dip='bukan-tanggal..')['recordsFiltered'] == 1
+
+    def test_tgl_terima_dip_range_narrows_the_dropdowns(self, client):
+        """It has no dropdown of its own, so it narrows every other one."""
+        early = _qc_bundle()
+        late = _qc_bundle(pmde_user=early['pmde_user'])
+        _set_terima_dip(early['tiket'], date(2024, 3, 15))
+        _set_terima_dip(late['tiket'], date(2025, 6, 30))
+        client.force_login(early['pmde_user'])
+
+        assert len(self._options(client)['nomor_tiket']) == 2
+        narrowed = self._options(client, tgl_terima_dip='2024-01-01..2024-12-31')
+        assert [o['id'] for o in narrowed['nomor_tiket']] == [early['tiket'].nomor_tiket]
+
     def test_filter_by_periode_with_type_prefix(self, client):
         bundle = _qc_bundle(periode_penerimaan='Bulanan')
         client.force_login(bundle['pmde_user'])
@@ -519,6 +696,16 @@ class TestQualityControlFilters:
         under_ten = self._rows(client, jatuh_tempo='10')['data']
         assert [row['nomor_tiket'] for row in under_ten] == [near['tiket'].nomor_tiket]
         assert under_ten[0]['jatuh_tempo']['display'] == '5 hari'
+
+    def test_filter_jatuh_tempo_counts_the_permintaan_khusus(self, client):
+        """The dropdown narrows to the deadline the table shows, override and all."""
+        far = _jatuh_tempo_bundle(50)
+        near = _jatuh_tempo_bundle(50, pmde_user=far['pmde_user'])
+        _set_permintaan_khusus(near['tiket'], date.today() + timedelta(days=4))
+        client.force_login(far['pmde_user'])
+
+        under_ten = self._rows(client, jatuh_tempo='10')['data']
+        assert [row['nomor_tiket'] for row in under_ten] == [near['tiket'].nomor_tiket]
 
     def test_filter_jatuh_tempo_takes_the_widest_threshold(self, client):
         first = _jatuh_tempo_bundle(5)
@@ -1504,7 +1691,7 @@ class TestSummaryPerPic(SummaryEndpoint):
         }
         for row in rows.values():
             assert set(row['sections']) == {
-                'qc', 'p3de', 'pide', 'selesai', 'selesai_tahun',
+                'qc', 'prioritas', 'p3de', 'pide', 'selesai', 'selesai_tahun',
             }
 
         theirs_row = rows[theirs['pmde_user'].get_full_name()]
@@ -1530,6 +1717,81 @@ class TestSummaryPerPic(SummaryEndpoint):
                 entry['name'] for entry in held['splits'][split]
             ]
             assert all(entry['tikets'] == 0 for entry in empty)
+
+    def test_prioritas_is_the_part_of_proses_qc_that_is_prioritas(self, client):
+        first = _qc_bundle(with_prioritas=True, belum_qc=70)
+        _qc_bundle(pmde_user=first['pmde_user'], with_prioritas=False, belum_qc=30)
+        # Prioritas upstream of QC is not in the column: it is not in QC yet.
+        upstream = _upstream_bundle(
+            STATUS_DIREKAM, pmde_user=first['pmde_user'], baris_lengkap=500,
+        )
+        JenisPrioritasDataFactory(
+            id_sub_jenis_data_ilap=upstream['tiket'].id_periode_data.id_sub_jenis_data_ilap,
+            start_date=date(2000, 1, 1), end_date=None,
+        )
+        client.force_login(first['pmde_user'])
+
+        payload = self._summary(client)
+        row = self._rows(client)[first['pmde_user'].get_full_name()]
+        assert row['sections']['qc']['baris'] == 100
+        assert row['sections']['prioritas']['tikets'] == 1
+        assert row['sections']['prioritas']['baris'] == 70
+        assert payload['prioritas']['baris'] == 70
+
+    def test_prioritas_is_not_weighed_twice(self, client):
+        """Its rows are already in the Indeks Beban under Proses QC."""
+        bundle = _qc_bundle(with_prioritas=True, belum_qc=1000)
+        client.force_login(bundle['pmde_user'])
+
+        payload = self._summary(client)
+        assert payload['prioritas']['beban'] == 0
+        row = payload['rows'][0]
+        assert row['beban'] == sum(
+            section['beban'] for section in row['sections'].values()
+        ) == row['sections']['qc']['beban'] > 0
+
+    def test_every_jenis_tabel_is_broken_down_by_nama_tabel(self, client):
+        identified, unidentified, _unstructured = _seeded_kinds()
+        first = _qc_bundle(jenis_tabel=identified, belum_qc=60)
+        second = _qc_bundle(
+            pmde_user=first['pmde_user'], jenis_tabel=identified, belum_qc=25,
+        )
+        other = _qc_bundle(
+            pmde_user=first['pmde_user'], jenis_tabel=unidentified, belum_qc=10,
+        )
+        for bundle, name in ((first, 'TBL_A'), (second, 'TBL_B'), (other, 'TBL_C')):
+            bundle['jenis_data'].nama_tabel_I = name
+            bundle['jenis_data'].save(update_fields=['nama_tabel_I'])
+        client.force_login(first['pmde_user'])
+
+        row = self._rows(client)[first['pmde_user'].get_full_name()]
+        entries = _entries(row['sections']['qc'])
+        assert [_counts(line) for line in entries['Diidentifikasi']['rincian']] == [
+            {'name': 'TBL_A', 'tikets': 1, 'baris': 60},
+            {'name': 'TBL_B', 'tikets': 1, 'baris': 25},
+        ]
+        # Every jenis tabel, each by what it holds; kategori wilayah is not.
+        assert [_counts(line) for line in entries['Tidak Diidentifikasi']['rincian']] == [
+            {'name': 'TBL_C', 'tikets': 1, 'baris': 10},
+        ]
+        assert entries['Tidak Terstruktur']['rincian'] == []
+        assert all('rincian' not in entry
+                   for entry in row['sections']['qc']['splits']['kategori_wilayah'])
+        assert entries['Diidentifikasi']['rincian'][0]['beban'] > 0
+
+    def test_the_page_marks_the_lines_that_are_broken_down(self, client):
+        bundle = _qc_bundle()
+        client.force_login(bundle['pmde_user'])
+        html = client.get(reverse('quality_control')).content.decode()
+
+        start = html.index('id="sq-summary-details"')
+        start = html.index('>', start) + 1
+        details = json.loads(html[start:html.index('</script>', start)])
+        by_dimension = {
+            dimension['key']: {entry['rincian'] for entry in dimension['entries']}
+            for dimension in details
+        }
+        assert by_dimension == {'jenis_tabel': {True}, 'kategori_wilayah': {False}}
 
     def test_each_line_splits_its_sections_by_jenis_tabel(self, client):
         identified, unidentified, _unstructured = _seeded_kinds()
@@ -1622,9 +1884,13 @@ class TestSummaryPerPic(SummaryEndpoint):
         assert head[:head.index('</thead>')].count('<tr>') == 1
         # The JS fills a line's cells in this order; the header above them was
         # rendered from the same list.
-        assert 'data-summary-sections="qc,p3de,pide,selesai,selesai_tahun"' in html
         assert (
-            'data-summary-variants="own,upstream,upstream-alt,done,done-alt"' in html
+            'data-summary-sections="qc,prioritas,p3de,pide,selesai,selesai_tahun"'
+            in html
+        )
+        assert (
+            'data-summary-variants="own,priority,upstream,upstream-alt,done,done-alt"'
+            in html
         )
         # The table opens on the heaviest QC load rather than alphabetically.
         assert 'data-summary-sort="beban" data-summary-sort-desc="1"' in html

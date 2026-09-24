@@ -31,6 +31,7 @@ class Command(BaseCommand):
             'lampiran_tanda_terima_regional.docx': 'lampiran_tanda_terima_regional',
             'register_penerimaan_data.docx': 'register_penerimaan_data',
             'nd_pengantar_pide.docx': 'nd_pengantar_pide',
+            'nd_pengantar_pdi.docx': 'nd_pengantar_pdi',
             'surat_klarifikasi.docx': 'surat_klarifikasi',
             'surat_pkdi_nasional_internasional_lengkap.docx': 'surat_pkdi_nasional_internasional_lengkap',
             'surat_pkdi_nasional_internasional_sebagian.docx': 'surat_pkdi_nasional_internasional_sebagian',

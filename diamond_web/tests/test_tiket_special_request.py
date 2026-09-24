@@ -13,6 +13,11 @@ from django.urls import reverse
 from diamond_web.models import Tiket, TiketPIC
 from diamond_web.models.tiket_action import TiketAction
 from diamond_web.constants.tiket_action_types import SpecialRequestActionType
+from diamond_web.constants.tiket_status import (
+    STATUS_DIBATALKAN,
+    STATUS_DIREKAM,
+    STATUS_SELESAI,
+)
 from diamond_web.forms.special_request import SpecialRequestForm
 from diamond_web.tests.conftest import (
     TiketFactory, TiketPICFactory, PICFactory, UserFactory,
@@ -21,6 +26,7 @@ from diamond_web.tests.conftest import (
 from diamond_web.tests.test_rekam_tiket_gaps import (
     _build_tiket_post_data, _create_full_tiket_setup, _get_or_create_group,
 )
+from diamond_web.views.home import _TIKET_ORDER_COLUMNS
 
 
 # ============================================================
@@ -749,6 +755,35 @@ class TestSpecialRequestHomeTask:
         resp = client.get(reverse('home'))
         assert resp.context['special_request_count'] == 2
 
+    def test_count_excludes_selesai_and_dibatalkan(self, client, authenticated_user):
+        """A closed tiket keeps the flag but leaves the list: nothing to chase."""
+        pjd = PeriodeJenisDataFactory()
+        for status in (STATUS_DIREKAM, STATUS_SELESAI, STATUS_DIBATALKAN):
+            tiket = TiketFactory(special_request=True, status_tiket=status,
+                                 id_periode_data=pjd)
+            TiketPICFactory(id_tiket=tiket, id_user=authenticated_user,
+                            role=TiketPIC.Role.P3DE, active=True)
+        client.force_login(authenticated_user)
+        resp = client.get(reverse('home'))
+        assert resp.context['special_request_count'] == 1
+
+    def test_data_endpoint_excludes_selesai_and_dibatalkan(self, client, authenticated_user):
+        """The badge and the table it opens have to agree on what is listed."""
+        pjd = PeriodeJenisDataFactory()
+        tikets = {}
+        for status in (STATUS_DIREKAM, STATUS_SELESAI, STATUS_DIBATALKAN):
+            tikets[status] = TiketFactory(special_request=True, status_tiket=status,
+                                          id_periode_data=pjd)
+            TiketPICFactory(id_tiket=tikets[status], id_user=authenticated_user,
+                            role=TiketPIC.Role.P3DE, active=True)
+        client.force_login(authenticated_user)
+        resp = client.get(reverse('home_data'), {
+            'draw': '1', 'start': '0', 'length': '100',
+            'category': 'special_request',
+        })
+        nomors = {row['nomor_tiket'] for row in json.loads(resp.content)['data']}
+        assert nomors == {tikets[STATUS_DIREKAM].nomor_tiket}
+
     def test_data_endpoint_returns_only_pic_special_request(self, client, authenticated_user):
         pjd = PeriodeJenisDataFactory()
         special = TiketFactory(special_request=True, id_periode_data=pjd)
@@ -800,6 +835,22 @@ class TestSpecialRequestHomeTask:
         assert row['tgl_special_request'] == '20-08-2026'
         assert row['tgl_special_request_order'] == '2026-08-20'
 
+    # Where the Jatuh Tempo column sits in the table, which is the index
+    # DataTables sends when its header is clicked. Sorting is positional, so a
+    # column added ahead of it moves this number — hence the assert below,
+    # which says out loud which column the index has to name.
+    JATUH_TEMPO_COLUMN = 5
+
+    def test_due_date_is_the_column_the_index_names(self):
+        """The order index means nothing unless it lands on the right column.
+
+        The test below sorts by position, the way the page does. It used to send
+        4, which is Status Tiket: both its tikets share a status, so the rows
+        came back in an arbitrary order that happened not to be the one asserted.
+        """
+        columns = _TIKET_ORDER_COLUMNS['special_request']
+        assert columns[self.JATUH_TEMPO_COLUMN] == 'tgl_special_request'
+
     def test_data_can_be_ordered_by_due_date(self, client, authenticated_user):
         pjd = PeriodeJenisDataFactory()
         later = TiketFactory(special_request=True, id_periode_data=pjd,
@@ -810,10 +861,17 @@ class TestSpecialRequestHomeTask:
             TiketPICFactory(id_tiket=t, id_user=authenticated_user,
                             role=TiketPIC.Role.P3DE, active=True)
         client.force_login(authenticated_user)
-        resp = client.get(reverse('home_data'), {
-            'draw': '1', 'start': '0', 'length': '10',
-            'category': 'special_request',
-            'order[0][column]': '4', 'order[0][dir]': 'asc',
-        })
-        rows = json.loads(resp.content)['data']
-        assert [r['nomor_tiket'] for r in rows] == [earlier.nomor_tiket, later.nomor_tiket]
+
+        def nomors(direction):
+            resp = client.get(reverse('home_data'), {
+                'draw': '1', 'start': '0', 'length': '10',
+                'category': 'special_request',
+                'order[0][column]': str(self.JATUH_TEMPO_COLUMN),
+                'order[0][dir]': direction,
+            })
+            return [r['nomor_tiket'] for r in json.loads(resp.content)['data']]
+
+        # Both directions, so a sort that ignores the column entirely — the way
+        # the old index did — cannot pass by landing on the expected order once.
+        assert nomors('asc') == [earlier.nomor_tiket, later.nomor_tiket]
+        assert nomors('desc') == [later.nomor_tiket, earlier.nomor_tiket]

@@ -253,6 +253,23 @@
                 <div class="pic-stat">
                     <span class="pic-stat-label">Sub Jenis Data</span>
                     <p class="pic-stat-value">{{ jenis_data_list|length }}</p>
+                    {% if jenis_data_list %}
+                    {% comment %}
+                    Aktif means a tiket has landed against the sub jenis data
+                    within the last two years, whoever it was PIC'd by — the
+                    same criteria as the Nama Tabel breakdown, one level down.
+                    {% endcomment %}
+                    <ul class="pic-stat-breakdown">
+                        <li>
+                            <span title="Ada tiket masuk dalam {{ jenis_data_aktivitas.tahun }} tahun terakhir">Aktif</span>
+                            <span class="breakdown-count">{{ jenis_data_aktivitas.aktif }}</span>
+                        </li>
+                        <li>
+                            <span title="Tiket terakhir lebih dari {{ jenis_data_aktivitas.tahun }} tahun lalu">Tidak Aktif</span>
+                            <span class="breakdown-count">{{ jenis_data_aktivitas.tidak_aktif }}</span>
+                        </li>
+                    </ul>
+                    {% endif %}
                 </div>
                 <div class="pic-stat">
                     <span class="pic-stat-label">Nama Tabel</span>
@@ -390,6 +407,7 @@
                    title="{{ entry.jenis_data.id_sub_jenis_data }} &ndash; {{ entry.jenis_data.nama_sub_jenis_data }} ({{ entry.tipe_labels|join:', ' }})">
                     <span class="chip-code">{{ entry.jenis_data.id_sub_jenis_data }}</span>
                     {{ entry.jenis_data.nama_sub_jenis_data }}
+                    {% if entry.count > 1 %}<span class="chip-code">&times;{{ entry.count }}</span>{% endif %}
                 </a>
                 {% empty %}
                 <span class="text-muted">Belum ada sub jenis data.</span>

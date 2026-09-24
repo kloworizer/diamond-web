@@ -17,6 +17,8 @@ urlpatterns = [
     path('home/pic-pide-users/', views.home_pic_pide_users, name='home_pic_pide_users'),
     path('home/pic-pmde-users/', views.home_pic_pmde_users, name='home_pic_pmde_users'),
     path('home/pic-p3de-users/', views.home_pic_p3de_users, name='home_pic_p3de_users'),
+    path('home/pmde/auto-assign-pic/preview/', views.home_pmde_auto_assign_pic_preview, name='home_pmde_auto_assign_pic_preview'),
+    path('home/pmde/auto-assign-pic/', views.home_pmde_auto_assign_pic, name='home_pmde_auto_assign_pic'),
     path('home/starred-tiket/', views.toggle_starred_tiket, name='toggle_starred_tiket'),
     path('home/starred-tiket/list/', views.get_starred_tikets, name='get_starred_tikets'),
         path('docs/', views.docs_index, name='docs_index'),
@@ -187,6 +189,8 @@ urlpatterns = [
     # Jenis Prioritas Data URLs
     path('jenis-prioritas-data/', views.JenisPrioritasDataListView.as_view(), name='jenis_prioritas_data_list'),
     path('jenis-prioritas-data/data/', views.jenis_prioritas_data_data, name='jenis_prioritas_data_data'),
+    path('jenis-prioritas-data/tiket-backfill/preview/', views.jenis_prioritas_data_tiket_backfill_preview, name='jenis_prioritas_data_tiket_backfill_preview'),
+    path('jenis-prioritas-data/tiket-backfill/', views.jenis_prioritas_data_tiket_backfill, name='jenis_prioritas_data_tiket_backfill'),
     path('jenis-prioritas-data/create/', views.JenisPrioritasDataCreateView.as_view(), name='jenis_prioritas_data_create'),
     path('jenis-prioritas-data/<int:pk>/update/', views.JenisPrioritasDataUpdateView.as_view(), name='jenis_prioritas_data_update'),
     path('jenis-prioritas-data/<int:pk>/delete/', views.JenisPrioritasDataDeleteView.as_view(), name='jenis_prioritas_data_delete'),
@@ -220,6 +224,7 @@ urlpatterns = [
     # Bulk Document Generation (P3DE)
     path('bulk-generate/pkdi-klarifikasi/', views.bulk_pkdi_klarifikasi, name='bulk_pkdi_klarifikasi'),
     path('bulk-generate/nd-pengantar-pide/', views.bulk_nd_pengantar_pide, name='bulk_nd_pengantar_pide'),
+    path('bulk-generate/nd-pengantar-pdi/', views.bulk_nd_pengantar_pdi, name='bulk_nd_pengantar_pdi'),
     # Tanda Terima Data URLs
     path('tanda-terima-data/', views.TandaTerimaDataListView.as_view(), name='tanda_terima_data_list'),
     path('tanda-terima-data/data/', views.tanda_terima_data_data, name='tanda_terima_data_data'),

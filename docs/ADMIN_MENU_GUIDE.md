@@ -218,6 +218,42 @@ Saat admin menekan **Hapus** pada sebuah PIC:
 > - **Isi End Date** → penugasan tiket dinonaktifkan tetapi **tetap tersimpan** (histori terjaga). Bisa diaktifkan kembali dengan mengosongkan End Date.
 > - **Hapus** → penugasan tiket **benar-benar dihapus**. Gunakan hanya bila data PIC salah/tidak diperlukan. Untuk pemberhentian normal, **lebih disarankan mengisi End Date**.
 
+#### Mengembalikan Penugasan yang Terlanjur Terhapus
+
+Tidak ada layar di aplikasi yang bisa memasang kembali penugasan pada tiket yang sudah berjalan — menambahkan PIC baru hanya menyentuh tiket berjalan, dan tiket yang sudah lewat tetap kosong. Perbaikannya lewat perintah manajemen (dijalankan operator/administrator sistem di server):
+
+```
+# Lihat dulu apa yang akan dikembalikan, tanpa menyentuh database
+python manage.py restore_tiket_pic_dihapus --dry-run
+
+# Jalankan
+python manage.py restore_tiket_pic_dihapus
+
+# Persempit ke satu divisi atau satu user yang PIC-nya terhapus
+python manage.py restore_tiket_pic_dihapus --tipe PIDE --dry-run
+python manage.py restore_tiket_pic_dihapus --user 910223210
+```
+
+Perilaku perintah ini:
+
+- **Cakupannya persis kerusakannya**: hanya tiket yang punya riwayat `PIC PIDE <user> dihapus` (atau P3DE/PMDE) yang diproses. Tiket yang tidak pernah kehilangan apa pun tidak disentuh. Riwayat "tidak aktif" dari pengisian End Date **bukan** penghapusan, jadi tidak ikut terbawa.
+- **Rujukannya tabel PIC hari ini, bukan nama pada catatan.** Yang dipasang kembali adalah **PIC aktif** (End Date kosong) dari Sub Jenis Data tiket tsb. untuk divisi itu — bisa jadi orang yang berbeda dari yang dulu dihapus, karena memang itulah PIC-nya sekarang.
+- **Sub Jenis Data yang tidak punya PIC aktif dilaporkan, bukan ditebak.** Tetapkan dulu PIC-nya lewat menu PIC, lalu jalankan ulang.
+- **Riwayat aksi tetap utuh**: baris `... dihapus` tidak dihapus, dan tiap penugasan yang dikembalikan menulis barisnya sendiri bertanda `(dikembalikan)`, sehingga riwayatnya terbaca apa adanya — dihapus, lalu dikembalikan.
+- Aman dijalankan berulang: penugasan yang sudah aktif dilewati, dan penugasan lama yang sekadar dinonaktifkan diaktifkan kembali (bukan dibuat ganda).
+
+| Opsi | Guna |
+|---|---|
+| `--dry-run` | Laporkan rencananya, jangan tulis apa pun. |
+| `--tipe P3DE\|PIDE\|PMDE` | Batasi ke satu divisi. Bisa diulang. Default: ketiganya. |
+| `--user USERNAME` | Batasi ke penghapusan atas username tsb. (sesuai yang tertulis pada catatan). Bisa diulang. |
+| `--tiket NOMOR` | Batasi ke nomor tiket tertentu. Bisa diulang. |
+| `--limit N` | Kembalikan paling banyak N pasangan tiket/divisi (untuk uji coba sebagian). |
+| `--system-user USERNAME` | User yang dicatat pada baris Riwayat Aksi. Default `admin`. |
+| `--batch-size N` | Baris per transaksi. Default 2000. |
+
+Rinciannya ada di docstring `diamond_web/management/commands/restore_tiket_pic_dihapus.py`, atau lewat `python manage.py help restore_tiket_pic_dihapus`.
+
 ### Ringkasan Efek ke Tiket
 
 | Aksi admin | Penugasan pada tiket (`TiketPIC`) | Riwayat tiket (`TiketAction`) | Cakupan tiket |
@@ -227,7 +263,7 @@ Saat admin menekan **Hapus** pada sebuah PIC:
 | **Edit — isi End Date** | Penugasan user dinonaktifkan (data tetap ada) | *Tidak Aktif* | Semua tiket dengan Sub Jenis Data tsb. |
 | **Edit — kosongkan End Date** | Penugasan user diaktifkan kembali / dibuat | *Diaktifkan Kembali* atau *Ditambahkan* | Tiket berjalan |
 | **Edit — ganti User + isi End Date** | Hanya user lama dinonaktifkan, tidak ada pengganti | *Tidak Aktif* | Tiket berjalan |
-| **Hapus** PIC | Penugasan **dihapus permanen** | *Tidak Aktif* (catatan: dihapus) | Semua tiket dengan Sub Jenis Data tsb. |
+| **Hapus** PIC | Penugasan **dihapus permanen** (bisa dikembalikan lewat `restore_tiket_pic_dihapus`) | *Tidak Aktif* (catatan: dihapus) | Semua tiket dengan Sub Jenis Data tsb. |
 
 > Perubahan **Start Date** saja tidak berpengaruh ke penugasan tiket.
 

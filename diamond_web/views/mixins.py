@@ -702,6 +702,7 @@ class AjaxFormMixin:
         """
         self._apply_audit_fields(form)
         self.object = form.save()
+        self.after_save(form)
         message = self.get_success_message(form)
         if self.is_ajax():
             # For AJAX requests, return the message in the JSON response
@@ -719,6 +720,10 @@ class AjaxFormMixin:
         if message:
             messages.success(self.request, message)
         return super().form_valid(form)
+
+    def after_save(self, form):  # noqa: ARG002
+        """Hook run right after `form.save()`, before the success message is
+        built. Override for follow-up writes that the message should report."""
 
     def form_invalid(self, form):
         """Return form HTML for AJAX invalid submissions, otherwise default."""

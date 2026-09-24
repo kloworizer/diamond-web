@@ -82,13 +82,13 @@ Blocks a page must fill:
                                 </div>
                                 <div class="col-md-4">
                                     <div class="mb-2">
-                                        <label for="filter-tahun" class="form-label">Tahun</label>
+                                        <label for="filter-tahun" class="form-label">Tahun Data</label>
                                         <select class="form-select form-select-sm" id="filter-tahun" name="tahun" data-select2-selector="default" multiple="multiple">
                                             <option value="">-- Semua --</option>
                                         </select>
                                     </div>
                                     <div class="mb-2">
-                                        <label for="filter-periode" class="form-label">Periode</label>
+                                        <label for="filter-periode" class="form-label">Periode Data</label>
                                         <select class="form-select form-select-sm" id="filter-periode" name="periode" data-select2-selector="default" multiple="multiple">
                                             <option value="">-- Semua --</option>
                                         </select>
@@ -104,6 +104,23 @@ Blocks a page must fill:
                                         <select class="form-select form-select-sm" id="filter-periode-penerimaan" name="periode_penerimaan" data-select2-selector="default" multiple="multiple">
                                             <option value="">-- Semua --</option>
                                         </select>
+                                    </div>
+                                    {% comment %}
+                                    When the data arrived, asked two ways: the year alone, which is
+                                    how the work is usually grouped, and any stretch of days inside
+                                    one, for the questions a year is too coarse for.
+                                    {% endcomment %}
+                                    <div class="mb-2">
+                                        <label for="filter-tahun-diterima" class="form-label">Tahun Diterima</label>
+                                        <select class="form-select form-select-sm" id="filter-tahun-diterima" name="tahun_diterima" data-select2-selector="default" multiple="multiple">
+                                            <option value="">-- Semua --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="filter-tgl-terima-dip" class="form-label">Tanggal Terima DIP</label>
+                                        <input type="text" class="form-control form-control-sm" id="filter-tgl-terima-dip"
+                                               name="tgl_terima_dip" autocomplete="off"
+                                               placeholder="Rentang tanggal terima DIP">
                                     </div>
                                     <div class="mb-2">
                                         <label for="filter-pic-p3de" class="form-label">PIC P3DE</label>
@@ -377,6 +394,22 @@ Blocks a page must fill:
         border-bottom: 1px solid #f1f5f9 !important;
     }
 
+    /* Tanggal Terima DIP is a calendar rather than a Select2, so it is given
+       the same box as the dropdowns it sits among — a filter panel where one
+       control is taller than the rest reads as a different kind of control.
+       The theme sizes every .form-control in the app to 40px with !important,
+       so matching the 31px dropdowns here takes the same weight — scoped to
+       this panel, where the comparison is being made. */
+    #filter-form .date-range-field input {
+        height: 31px !important;
+        min-height: 31px !important;
+        font-size: 14px !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        border-radius: 0.2rem !important;
+        border-color: #e5e7eb;
+    }
+
     /* Summary sections. All three read top to bottom in one order — whose queue,
        how many tikets, how many rows, then the split — so the eye lands on the
        same figure in each and can compare them without hunting. The identity is
@@ -547,6 +580,15 @@ Blocks a page must fill:
         --sq-hue: var(--sq-blue);
         --sq-hue-soft: var(--sq-blue-soft);
         --sq-hue-ink: var(--sq-blue-ink);
+    }
+
+    /* Red for the prioritas part of the queue this page is about — the colour
+       this app marks urgency in — set straight after it, being part of it. */
+    .sq-summary-group-priority,
+    .sq-summary-table td.sq-cell-priority {
+        --sq-hue: var(--sq-red);
+        --sq-hue-soft: var(--sq-red-soft);
+        --sq-hue-ink: var(--sq-red-ink);
     }
 
     .sq-summary-group-upstream,
@@ -907,6 +949,21 @@ Blocks a page must fill:
         background-color: var(--sq-hue);
     }
 
+    /* The nama tabel under a jenis tabel line: a level further in, so set
+       further in and quieter than the line they add up to, and without a dot —
+       the hue belongs to the jenis tabel above, not to each table. */
+    .sq-summary-table tbody td.sq-summary-rincian-name {
+        padding-left: 46px !important;
+        font-size: 10.5px;
+        color: #8391a5;
+        font-weight: 400 !important;
+        max-width: 260px;
+    }
+
+    .sq-summary-table tbody tr.sq-summary-row-rincian td {
+        font-size: 10.5px;
+    }
+
     /* Which question the lines under it answer. Two sets of names beneath one
        PIC would otherwise read as one list — "Regional" says nothing about
        whether it is a kind of table or a reach until this line says so. */
@@ -945,6 +1002,10 @@ Blocks a page must fill:
        still belongs to the group they are in. */
     .sq-summary-table tfoot td.sq-group-own {
         background-color: var(--sq-blue-soft);
+    }
+
+    .sq-summary-table tfoot td.sq-group-priority {
+        background-color: var(--sq-red-soft);
     }
 
     .sq-summary-table tfoot td.sq-group-upstream {
@@ -1090,9 +1151,12 @@ that differ between one seksi and the next.
 
         // Every dropdown, in the order the backend returns its options. The id
         // of each <select> is the key with underscores swapped for dashes, so
-        // adding a filter means adding it here and in the markup above.
+        // adding a filter means adding it here and in the markup above. Only
+        // dropdowns belong in this list — Tanggal Terima DIP is a calendar with
+        // no options to render, so it is carried separately below.
         const FILTER_KEYS = [
             'nomor_tiket', 'tahun', 'periode', 'periode_pengiriman', 'periode_penerimaan',
+            'tahun_diterima',
             'pic_p3de', 'pic_pide', 'pic_pmde', 'kategori_ilap', 'ilap', 'jenis_data',
             'sub_jenis_data', 'nama_tabel', 'kanwil', 'kpp', 'kategori_wilayah', 'jenis_tabel',
             'dasar_hukum', 'status_penelitian', 'status_ketersediaan_data',
@@ -1102,6 +1166,10 @@ that differ between one seksi and the next.
         let table;
         let chart = null;
         let initialFiltersApplied = false;
+        // Tanggal Terima DIP, the one filter picked from a calendar rather than
+        // a dropdown, so it is kept out of FILTER_KEYS and carried on its own.
+        // Wired in $(document).ready via base.html's shared helper.
+        let terimaDipRange = null;
 
         function selectorFor(key) {
             return '#filter-' + key.replace(/_/g, '-');
@@ -1112,11 +1180,16 @@ that differ between one seksi and the next.
             return (val && val.length > 0) ? val.join(',') : '';
         }
 
+        function getTerimaDipValue() {
+            return terimaDipRange ? terimaDipRange.value() : '';
+        }
+
         function getCurrentFilterValues() {
             const values = {};
             FILTER_KEYS.forEach(function (key) {
                 values[key] = getMultiSelectValue(selectorFor(key));
             });
+            values.tgl_terima_dip = getTerimaDipValue();
             return values;
         }
 
@@ -1128,6 +1201,7 @@ that differ between one seksi and the next.
                 const values = Array.isArray(val) ? val : (val ? [val] : []);
                 if (values.filter(function (v) { return v !== '' && v != null; }).length > 0) n += 1;
             });
+            if (getTerimaDipValue()) n += 1;
             return n;
         }
 
@@ -1172,6 +1246,12 @@ that differ between one seksi and the next.
                 });
                 $select.val(values).trigger('change.select2');
             });
+
+            const terimaDip = (urlParams.get('tgl_terima_dip') || '').trim();
+            if (terimaDip && terimaDipRange) {
+                hasInitialFilter = true;
+                terimaDipRange.set(terimaDip);
+            }
 
             return hasInitialFilter;
         }
@@ -1382,7 +1462,48 @@ that differ between one seksi and the next.
                         appendSectionCells($detail, split[entryIndex] || {}, variants[index]);
                     });
                     $body.append($detail);
+                    if (entry.rincian) {
+                        appendRincianLines($body, sections, keys, variants,
+                                           dimension.key, entryIndex, loads[entryIndex] || 0);
+                    }
                 });
+            });
+        }
+
+        // The nama tabel behind one detail line, a line each. Unlike the
+        // entries these are not a fixed list — each group carries only the
+        // tables its own tikets are in — so the lines are the tables found in
+        // any group, each reading zero in the groups that hold none of it.
+        // Heaviest first, the order the table itself opens in, with the bars
+        // drawn against the detail line they add up to.
+        function appendRincianLines($body, sections, keys, variants, splitKey, entryIndex, parentBeban) {
+            const byName = {};
+            keys.forEach(function (key) {
+                const split = ((sections[key] || {}).splits || {})[splitKey] || [];
+                ((split[entryIndex] || {}).rincian || []).forEach(function (line) {
+                    const table = byName[line.name]
+                        || (byName[line.name] = { name: line.name, beban: 0, sections: {} });
+                    table.beban += line.beban || 0;
+                    table.sections[key] = line;
+                });
+            });
+            const tables = Object.keys(byName).map(function (name) { return byName[name]; });
+            tables.sort(function (a, b) {
+                return (b.beban - a.beban) || a.name.localeCompare(b.name);
+            });
+            tables.forEach(function (table) {
+                const $line = $('<tr>').addClass('sq-summary-row-kind sq-summary-row-rincian').append(
+                    $('<td>').addClass('sq-summary-pic sq-summary-rincian-name')
+                        .attr('title', table.name).text(table.name),
+                    bebanCell(table.beban, parentBeban ? table.beban / parentBeban : 0)
+                );
+                // A group holding none of this table reads zero, as an empty
+                // entry line does, rather than the dash left for a missing figure.
+                keys.forEach(function (key, index) {
+                    appendSectionCells($line, table.sections[key] || { tikets: 0, baris: 0 },
+                                       variants[index]);
+                });
+                $body.append($line);
             });
         }
 
@@ -1816,6 +1937,17 @@ that differ between one seksi and the next.
             });
         }
 
+        // Every filter control runs through here: the panel scopes the table,
+        // the tiles and the chart together, and the dropdowns narrow each
+        // other, so a change to any one of them redraws all four.
+        function applyFilterChange() {
+            loadFilterOptions();
+            table.ajax.reload();
+            loadSummary();
+            loadChartData();
+            updateFilterBadge();
+        }
+
         $(document).ready(function () {
             // select2-active.min.js may not have run if jQuery wasn't ready yet.
             initSelect2($('#filter-form select'));
@@ -1871,7 +2003,19 @@ that differ between one seksi and the next.
                     },
                     {
                         data: 'deadline',
-                        render: { _: 'display', sort: 'sort' }
+                        render: function (data, type, row) {
+                            const cell = data || {};
+                            if (type !== 'display') return cell.sort || '';
+                            const display = cell.display || '-';
+                            // The column holds two different kinds of date: the
+                            // count from the durasi of the tiket's data, and —
+                            // when the tiket carries a permintaan khusus — the
+                            // date agreed for that tiket alone, which overrides
+                            // it. Read down the column they are indistinguishable
+                            // unless the second says so.
+                            if (!row.deadline_khusus) return escapeHtml(display);
+                            return stackedCell(display, 'Permintaan Khusus');
+                        }
                     },
                     {
                         data: 'jatuh_tempo',
@@ -1943,13 +2087,13 @@ that differ between one seksi and the next.
             applyKindVisibility();
 
             // Filter dropdowns — dynamic, reload on change
-            $('#filter-form').on('change', 'select', function () {
-                loadFilterOptions();
-                table.ajax.reload();
-                loadSummary();
-                loadChartData();
-                updateFilterBadge();
-            });
+            $('#filter-form').on('change', 'select', applyFilterChange);
+
+            // Tanggal Terima DIP narrows the page like any other filter, so the
+            // calendar goes through the same handler as the dropdowns.
+            terimaDipRange = window.initDateRangePicker(
+                document.getElementById('filter-tgl-terima-dip'), applyFilterChange
+            );
 
             // Remember whether the panel was left open, so the choice survives
             // navigation instead of snapping back on every visit.
@@ -1967,12 +2111,11 @@ that differ between one seksi and the next.
                 $('#filter-form')[0].reset();
                 // For multi-select, explicitly set empty array on each select
                 $('#filter-form select').val([]);
+                // form.reset() empties the field flatpickr writes into but not
+                // flatpickr's own state, so the picker is cleared explicitly.
+                if (terimaDipRange) terimaDipRange.clear();
                 initSelect2($('#filter-form select'));
-                loadFilterOptions();
-                table.ajax.reload();
-                loadSummary();
-                loadChartData();
-                updateFilterBadge();
+                applyFilterChange();
             });
 
             loadFilterOptions(function () {

@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+
+<div class="page-header">
+    <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+            <h5 class="m-b-10">
+                <i class="ri-file-paper-2-line me-2 text-primary" style="font-size: 20px;"></i>{{ page_title }}
+            </h5>
+        </div>
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="javascript:void(0);">PMDE</a></li>
+            <li class="breadcrumb-item active">Generate ND Pengantar ke PDI</li>
+        </ul>
+    </div>
+    <div class="page-header-right ms-auto">
+        <div class="page-header-right-items">
+            <div class="d-flex d-md-none">
+                <a href="javascript:void(0)" class="page-header-right-close-toggle">
+                    <i class="feather-arrow-left me-2"></i>
+                    <span>Kembali</span>
+                </a>
+            </div>
+        </div>
+        <div class="d-md-none d-flex align-items-center">
+            <a href="javascript:void(0)" class="page-header-right-open-toggle">
+                <i class="feather-align-right fs-20"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="main-content">
+    <!-- Filter Card -->
+    <div class="card stretch stretch-full mb-4">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <h5 class="card-title mb-0" style="font-size: 15px; font-weight: 700; color: #0f172a;">
+                <i class="feather-filter me-2 text-primary"></i>Filter Data Adhoc
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Tanggal Selesai (Dari)</label>
+                    <input type="date" name="tanggal_mulai" class="form-control" value="{{ selected_tanggal_mulai }}" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Tanggal Selesai (Sampai)</label>
+                    <input type="date" name="tanggal_selesai" class="form-control" value="{{ selected_tanggal_selesai }}" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">ILAP</label>
+                    <select name="ilap_id" class="form-select">
+                        <option value="">-- Semua ILAP --</option>
+                        {% for ilap in ilap_options %}
+                        <option value="{{ ilap.id }}" {% if selected_ilap_id == ilap.id|stringformat:"s" %}selected{% endif %}>
+                            {{ ilap.nama_ilap }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary btn-filter w-100"><i class="ri-search-line"></i> Tampilkan</button>
+                </div>
+            </form>
+            <div class="text-muted fs-12 mt-2">
+                <i class="feather-info me-1"></i>Data adhoc: tiket berstatus Selesai yang Nama Tabel I-nya mengandung "ADHOC" dan Anda PIC PMDE aktifnya. Tanggal selesai diambil dari riwayat tiket (aksi Selesai terakhir); default 1 bulan terakhir.
+            </div>
+        </div>
+    </div>
+
+    <!-- Ticket List Card -->
+    <div class="card stretch stretch-full">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <h5 class="card-title mb-0" style="font-size: 15px; font-weight: 700; color: #0f172a;">
+                <i class="feather-list me-2 text-primary"></i>Daftar Tiket Data Adhoc
+                <span class="badge bg-soft-primary text-primary ms-1">{{ tickets|length }}</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{% url 'bulk_nd_pengantar_pdi' %}">
+                {% csrf_token %}
+                <input type="hidden" name="ilap_id" value="{{ selected_ilap_id }}">
+                <input type="hidden" name="tanggal_mulai" value="{{ selected_tanggal_mulai }}">
+                <input type="hidden" name="tanggal_selesai" value="{{ selected_tanggal_selesai }}">
+
+                {% if tickets %}
+                <div class="table-frame mb-3">
+                    <table class="table table-hover table-striped table-compact mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;" class="text-center">
+                                    <input type="checkbox" id="check-all" class="form-check-input" style="cursor: pointer;">
+                                </th>
+                                <th>Nomor Tiket</th>
+                                <th>ILAP</th>
+                                <th>Jenis Data</th>
+                                <th>Nama Tabel I</th>
+                                <th>Periode Data</th>
+                                <th class="text-end">Baris Diterima</th>
+                                <th>Tgl Selesai</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in tickets %}
+                            {% with sub=t.id_periode_data.id_sub_jenis_data_ilap %}
+                            <tr>
+                                <td class="text-center">
+                                    <input type="checkbox" name="ticket_ids" value="{{ t.id }}" class="ticket-check form-check-input" style="cursor: pointer;">
+                                </td>
+                                <td class="fw-semibold text-dark"><a href="{% url 'tiket_detail' t.pk %}" target="_blank" rel="noopener">{{ t.nomor_tiket }}</a></td>
+                                <td>{% if sub and sub.id_ilap %}{{ sub.id_ilap.nama_ilap }}{% else %}-{% endif %}</td>
+                                <td>{% if sub %}{{ sub.nama_sub_jenis_data }}{% else %}-{% endif %}</td>
+                                <td class="text-muted">{% if sub %}{{ sub.nama_tabel_I }}{% else %}-{% endif %}</td>
+                                <td><span class="badge bg-light text-secondary border px-2.5 py-1">{{ t.periode }} / {{ t.tahun }}</span></td>
+                                <td class="text-end fw-semibold text-dark">{{ t.baris_diterima|default:0 }}</td>
+                                <td>{% if t.tgl_selesai %}{{ t.tgl_selesai|date:"d/m/Y" }}{% else %}-{% endif %}</td>
+                            </tr>
+                            {% endwith %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-end mt-4">
+                    <button type="submit" class="btn btn-figma-primary" id="generate-btn" disabled>
+                        <i class="ri-download-2-line"></i> GENERATE ND PENGANTAR KE PDI
+                    </button>
+                </div>
+                {% else %}
+                <div class="alert alert-warning mb-0 d-flex align-items-center py-3" style="background-color: #fffbeb; color: #b45309; border: 1px solid #fef3c7;">
+                    <i class="feather-info me-2 fs-16"></i>
+                    <div>Tidak ada tiket data adhoc yang selesai pada rentang ini. Atur filter di atas, lalu klik <strong>Tampilkan</strong>.</div>
+                </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        const checkAll = document.getElementById('check-all');
+        const checks = document.querySelectorAll('.ticket-check');
+        const generateBtn = document.getElementById('generate-btn');
+
+        function updateButtonState() {
+            if (!generateBtn) return;
+            const checked = document.querySelectorAll('.ticket-check:checked').length;
+            generateBtn.disabled = checked === 0;
+        }
+
+        if (checkAll) {
+            checkAll.addEventListener('change', function () {
+                checks.forEach((c) => {
+                    c.checked = checkAll.checked;
+                });
+                updateButtonState();
+            });
+        }
+
+        checks.forEach((c) => {
+            c.addEventListener('change', function () {
+                if (checkAll && !c.checked) {
+                    checkAll.checked = false;
+                }
+                updateButtonState();
+            });
+        });
+
+        if (generateBtn) {
+            generateBtn.addEventListener('click', function () {
+                // Call global download toast notification before download starts
+                showDownloadToast();
+            });
+        }
+
+        updateButtonState();
+    })();
+</script>
+{% endblock %}

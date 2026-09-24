@@ -818,15 +818,20 @@ class TestPICCreateView:
         assert resp.status_code in (200, 302)
 
     @pytest.mark.django_db
-    def test_create_post_duplicate_raises_form_error(self, client, p3de_admin, db):
-        """Duplicate PIC returns form error."""
+    def test_create_post_duplicate_of_closed_pic_raises_form_error(self, client, p3de_admin, db):
+        """Duplicate of a PIC that has been ended returns a form error.
+
+        A duplicate of a PIC that is still open is applied to the tikets
+        instead - see TestPICCreateResyncsExistingPIC in test_pic_crud_views.
+        """
         user_for_pic = UserFactory()
         grp, _ = Group.objects.get_or_create(name='user_p3de')
         user_for_pic.groups.add(grp)
         jdi = JenisDataILAPFactory()
         # Create the first one
         PICFactory(tipe=PIC.TipePIC.P3DE, id_sub_jenis_data_ilap=jdi,
-                   id_user=user_for_pic, start_date=datetime.date(2024, 1, 1), end_date=None)
+                   id_user=user_for_pic, start_date=datetime.date(2024, 1, 1),
+                   end_date=datetime.date(2024, 12, 31))
 
         client.force_login(p3de_admin)
         resp = client.post(

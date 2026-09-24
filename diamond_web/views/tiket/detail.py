@@ -29,6 +29,7 @@ from ...constants.tiket_action_types import (
     get_action_badge_class,
 )
 from ...utils import format_number_with_separator, format_periode
+from ...utils.jenis_prioritas import resolve_jenis_prioritas
 from ..mixins import is_admin_p3de, is_kasi
 
 
@@ -132,8 +133,13 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         except Exception:
             klasifikasi_items = []
         
-        # Jenis prioritas from tiket (transaction)
-        jenis_prioritas_text = 'Ya' if self.object.id_jenis_prioritas_data else 'Tidak'
+        # Prioritas dinilai langsung dari aturan Data Prioritas, sama seperti
+        # filter Prioritas di daftar tiket dan antrean seksi. FK
+        # id_jenis_prioritas_data hanya ditulis sekali saat tiket direkam, jadi
+        # record prioritas yang ditambah/diubah admin sesudahnya tidak tercermin.
+        is_prioritas = resolve_jenis_prioritas(jenis_data, self.object.tgl_terima_dip) is not None
+        context['is_prioritas'] = is_prioritas
+        jenis_prioritas_text = 'Ya' if is_prioritas else 'Tidak'
         
         # Format periode based on deskripsi (using periode penerimaan instead of periode penyampaian)
         periode_formatted = format_periode(

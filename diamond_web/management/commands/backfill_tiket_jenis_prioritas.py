@@ -6,10 +6,10 @@ untuk Sub Jenis Data-nya mencakup **tanggal terima DIP** tiket itu
 berlaku). Aturannya ada di :mod:`diamond_web.utils.jenis_prioritas` dan dipakai
 sama persis oleh form Rekam Tiket, sync, dan antrean seksi.
 
-Kolom itu tetap perlu diselaraskan berkala karena aplikasi hanya menulisnya
-**sekali, saat tiket direkam**. Begitu admin menambah, mengubah, atau menutup
-sebuah record Data Prioritas, tiket-tiket yang sudah terlanjur direkam tidak ikut
-menyesuaikan sendiri. Perintah ini yang menyesuaikannya.
+Tambah/ubah/hapus record lewat form Data Prioritas sudah menyesuaikan tiket Sub
+Jenis Data-nya sendiri, begitu pula tombol Sinkronisasi Prioritas di halaman itu
+(lihat ``utils/tiket_prioritas.py``). Perintah ini untuk perubahan di luar jalur
+itu — impor massal, ``rebuild_jenis_prioritas_from_temp``, atau data lama.
 
 Selain itu, tiket yang direkam sebelum perbaikan aturan ini masih membawa hasil
 pencocokan lama yang salah: form rekam dan sync dulu mencocokkan **field Tahun**

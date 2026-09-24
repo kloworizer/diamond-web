@@ -4,13 +4,14 @@ from django.db.models import (
     Count, F, Q, Exists, OuterRef, Max, Subquery, Value, Case, When, IntegerField,
 )
 from django.utils import timezone
-from datetime import timedelta
+from datetime import date, timedelta
 from django.db.models.functions import Concat, Coalesce, NullIf
 from django.contrib.auth.models import Group, User
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.http import JsonResponse
 from django.urls import reverse
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 from diamond_web.views.task_to_do import (
     get_tiket_summary_for_user_p3de,
     get_tiket_summary_for_user_pide,
@@ -30,6 +31,7 @@ from diamond_web.constants.tiket_status import (
     STATUS_DIKIRIM_KE_PIDE,
     STATUS_IDENTIFIKASI,
     STATUS_PENGENDALIAN_MUTU,
+    STATUSES_FINAL,
     STATUSES_SEBELUM_PENGENDALIAN_MUTU,
     STATUS_LABELS,
 )
@@ -56,6 +58,17 @@ _UNIT_BUCKETS = {
     'p3de': (STATUS_DIREKAM, STATUS_DITELITI, STATUS_DIKEMBALIKAN),
     'pide': (STATUS_DIKIRIM_KE_PIDE, STATUS_IDENTIFIKASI),
 }
+
+# The statuses the PIDE 'belum punya PIC' card covers. A tiket belongs to PIDE
+# from the moment it is handed over until it is transferred to PMDE, so a tiket
+# left unassigned while already being identified is the same gap as one nobody
+# has picked up yet — both need a PIC PIDE.
+_STATUSES_TANPA_PIC_PIDE = (STATUS_DIKIRIM_KE_PIDE, STATUS_IDENTIFIKASI)
+
+# Jenis data with no Nama Tabel I yet. The column is NOT NULL in the model, but
+# rows loaded from the legacy/Oracle side can carry NULL, and "kosongkan" on the
+# Nama Tabel page writes '' — both mean the same thing to an admin.
+_NAMA_TABEL_I_KOSONG = Q(nama_tabel_I__isnull=True) | Q(nama_tabel_I='')
 
 # Join path from Tiket to the sub jenis data, and through it to the ILAP.
 _SUB = 'id_periode_data__id_sub_jenis_data_ilap'
@@ -306,15 +319,20 @@ def home(request):
                     end_date__isnull=True
                 ))
             ).count()
-            # Admin: Tickets in Dikirim ke PIDE status without an active PIDE PIC
+            # Admin: Tickets held by PIDE (Dikirim ke PIDE / Identifikasi)
+            # without an active PIDE PIC
             context['pide_tiket_dikirim_ke_pide_tanpa_pic_count'] = Tiket.objects.filter(
-                status_tiket=STATUS_DIKIRIM_KE_PIDE
+                status_tiket__in=_STATUSES_TANPA_PIC_PIDE
             ).filter(
                 ~Exists(TiketPIC.objects.filter(
                     id_tiket=OuterRef('pk'),
                     role=TiketPIC.Role.PIDE,
                     active=True
                 ))
+            ).count()
+            # Admin: Jenis Data ILAP whose Nama Tabel I has not been filled in
+            context['pide_jenis_data_nama_tabel_kosong_count'] = JenisDataILAP.objects.filter(
+                _NAMA_TABEL_I_KOSONG
             ).count()
     if is_pmde:
         context['tiket_summary_pmde'] = get_tiket_summary_for_user_pmde(request.user)
@@ -362,9 +380,8 @@ def home(request):
             ).count()
     # Special Request (Permintaan Khusus) — available to any user/kasi role.
     if is_p3de or is_pide or is_pmde:
-        context['special_request_count'] = _scoped(
-            Tiket.objects.filter(special_request=True),
-            _get_special_request_tiket_ids(request.user),
+        context['special_request_count'] = _special_request_qs(
+            Tiket.objects.all(), request.user,
         ).count()
     if settings.DEBUG:
         groups = Group.objects.filter(name__in=['user_p3de', 'user_pide', 'user_pmde']).prefetch_related('user_set')
@@ -446,6 +463,24 @@ def _get_special_request_tiket_ids(user):
     ).values_list('id_tiket', flat=True)
 
 
+def _special_request_qs(qs, user):
+    """The Permintaan Khusus category: tikets flagged special_request, within
+    the user's visibility scope (kasi see all, others see their PIC tikets).
+
+    Tikets that are finished or cancelled are left out. A permintaan khusus is
+    a date somebody is waiting on, so this list is work still to be chased; the
+    flag stays on a closed tiket as part of its history, but nobody has anything
+    left to do about it.
+
+    The card's badge and the table behind it are both built from here, so the
+    count and the list it opens cannot disagree.
+    """
+    return _scoped(
+        qs.filter(special_request=True).exclude(status_tiket__in=STATUSES_FINAL),
+        _get_special_request_tiket_ids(user),
+    )
+
+
 def _build_tiket_base_qs(category, user):
     """Build the base Tiket queryset for a given category and user.
 
@@ -461,13 +496,8 @@ def _build_tiket_base_qs(category, user):
         'id_status_penelitian',
     )
 
-    # Special Request category: tikets flagged special_request within the
-    # user's visibility scope (kasi see all, others see their PIC tikets).
     if category == 'special_request':
-        return _scoped(
-            tiket_qs.filter(special_request=True),
-            _get_special_request_tiket_ids(user),
-        )
+        return _special_request_qs(tiket_qs, user)
 
     # PMDE category: everything still upstream of quality control, scoped by the
     # same rule as Dalam Proses Pengendalian Mutu — the reader's own active PMDE
@@ -522,12 +552,13 @@ def _build_tiket_base_qs(category, user):
             ))
         )
 
-    # Admin category: tickets in Dikirim ke PIDE status without an active PIDE PIC
+    # Admin category: tickets held by PIDE (Dikirim ke PIDE / Identifikasi)
+    # without an active PIDE PIC
     if category == 'tiket_dikirim_ke_pide_tanpa_pic':
         if 'admin_pide' not in user_group_names(user):
             return None
         return tiket_qs.filter(
-            status_tiket=STATUS_DIKIRIM_KE_PIDE
+            status_tiket__in=_STATUSES_TANPA_PIC_PIDE
         ).filter(
             ~Exists(TiketPIC.objects.filter(
                 id_tiket=OuterRef('pk'),
@@ -633,6 +664,15 @@ def _build_jenis_data_tanpa_pic_qs(category, user):
     ).select_related('id_ilap')
 
 
+def _build_jenis_data_nama_tabel_kosong_qs(user):
+    """Base JenisDataILAP queryset for the admin PIDE 'Nama Tabel masih kosong' view."""
+    if 'admin_pide' not in user_group_names(user):
+        return None
+    return JenisDataILAP.objects.filter(
+        _NAMA_TABEL_I_KOSONG
+    ).select_related('id_ilap', 'id_jenis_tabel')
+
+
 @login_required
 @require_GET
 def home_data(request):
@@ -676,6 +716,7 @@ def home_data(request):
     }
     jenis_data_categories = {
         'jenis_data_tanpa_pic_p3de', 'jenis_data_tanpa_pic_pide', 'jenis_data_tanpa_pic_pmde',
+        'jenis_data_nama_tabel_kosong_pide',
     }
 
     is_tiket_category = category in tiket_categories
@@ -683,6 +724,8 @@ def home_data(request):
 
     if is_tiket_category:
         qs = _build_tiket_base_qs(category, request.user)
+    elif category == 'jenis_data_nama_tabel_kosong_pide':
+        qs = _build_jenis_data_nama_tabel_kosong_qs(request.user)
     elif is_jenis_data_category:
         qs = _build_jenis_data_tanpa_pic_qs(category, request.user)
     else:
@@ -882,6 +925,8 @@ def home_data(request):
             qs = qs.order_by('-id')
     elif is_jenis_data_category:
         columns = ['id_sub_jenis_data', 'nama_ilap', 'nama_jenis_data', 'nama_sub_jenis_data']
+        if category == 'jenis_data_nama_tabel_kosong_pide':
+            columns += ['id_jenis_tabel__deskripsi', 'nama_tabel_I', 'nama_tabel_U']
         if order_col_index is not None:
             try:
                 idx = int(order_col_index)
@@ -1122,15 +1167,33 @@ def home_data(request):
                     f'<i class="feather-user-plus"></i></button>'
                     f'</div>'
                 )
+            elif category == 'jenis_data_nama_tabel_kosong_pide':
+                # Reuses the Nama Tabel page's own edit form, loaded into a home modal.
+                update_url = reverse('nama_tabel_update', args=[obj.pk]) + '?ajax=1'
+                action_html = (
+                    f'<div class="d-flex justify-content-center gap-1">'
+                    f'<button type="button" class="btn btn-sm btn-warning text-white btn-home-ajax-modal" '
+                    f'data-url="{update_url}" data-target="#homeNamaTabelModal" '
+                    f'title="Isi Nama Tabel">'
+                    f'<i class="feather-edit-2"></i></button>'
+                    f'</div>'
+                )
 
-            data.append({
+            row = {
                 'id_sub_jenis_data': obj.id_sub_jenis_data,
                 'nama_ilap': obj.id_ilap.nama_ilap,
                 'nama_jenis_data': obj.nama_jenis_data,
                 'nama_sub_jenis_data': obj.nama_sub_jenis_data,
                 'nama_tabel_I': obj.nama_tabel_I or '-',
                 'actions': action_html,
-            })
+            }
+            if category == 'jenis_data_nama_tabel_kosong_pide':
+                # Raw values: the columns show an explicit "kosong" marker, and
+                # '-' would otherwise be stacked above Sub Jenis Data as a name.
+                row['nama_tabel_I'] = obj.nama_tabel_I or ''
+                row['nama_tabel_U'] = obj.nama_tabel_U or ''
+                row['jenis_tabel'] = obj.id_jenis_tabel.deskripsi if obj.id_jenis_tabel else '-'
+            data.append(row)
 
     return JsonResponse({
         'draw': draw,
@@ -1209,6 +1272,270 @@ def home_pic_pmde_users(request):
         for u in users
     ]
     return JsonResponse({'users': data})
+
+
+# ---------------------------------------------------------------------------
+# Isi Otomatis PIC PMDE — meminjam PIC dari Sub Jenis Data satu Nama Tabel I
+# ---------------------------------------------------------------------------
+
+# Berapa baris yang ditampilkan di modal ringkasan sebelum diringkas jadi
+# "... dan N lainnya".
+_AUTO_ASSIGN_PREVIEW_LIMIT = 50
+
+# Isi Otomatis hanya menyentuh Sub Jenis Data berawalan ini. Di luar itu PIC
+# PMDE tetap di-assign manual lewat tombol per baris.
+_AUTO_ASSIGN_PREFIXES = ('PV', 'PD')
+
+# Tanggal Mulai yang dipakai PIC hasil Isi Otomatis. Bukan tanggal hari ini:
+# PIC PMDE yang ada memang bertanggal mulai ini, dan PIC hasil Isi Otomatis
+# meneruskan penugasan yang secara faktual sudah berjalan sejak awal, bukan
+# penugasan baru per hari tombol ditekan.
+_AUTO_ASSIGN_START_DATE = date(2015, 1, 1)
+
+
+def _normalize_nama_tabel(value):
+    """Kunci pencocokan Nama Tabel I antar Sub Jenis Data."""
+    return (value or '').strip().upper()
+
+
+def _nama_user(user):
+    nama = f"{user.first_name} {user.last_name}".strip()
+    return f"{nama} ({user.username})" if nama else user.username
+
+
+def _build_pmde_auto_assign_plan():
+    """Cocokkan Sub Jenis Data tanpa PIC PMDE aktif dengan PIC sesama Nama Tabel I.
+
+    Sub Jenis Data yang bermuara ke Nama Tabel I yang sama dikerjakan orang yang
+    sama, jadi baris yang belum punya PIC PMDE aktif bisa mengambil PIC yang
+    sudah dipegang tabel itu. Hanya tabel yang tidak ambigu yang dipakai: bila
+    PIC PMDE aktif pada tabel tersebut lebih dari satu orang, tidak ada jawaban
+    tunggal yang benar, sehingga barisnya dilewati dan tetap di-assign manual
+    oleh Admin PMDE seperti sekarang.
+
+    Yang diisi hanya Sub Jenis Data berawalan `_AUTO_ASSIGN_PREFIXES`. Batas itu
+    berlaku pada baris yang diisi, bukan pada sumbernya: PIC tetap dicari dari
+    seluruh Sub Jenis Data satu Nama Tabel I, apa pun awalannya.
+
+    Mengembalikan rencana saja — tidak menulis apa pun. `items` berisi pasangan
+    `JenisDataILAP` dan `User` yang akan dibuatkan PIC-nya; sisanya adalah
+    hitungan baris yang dilewati beserta alasannya.
+    """
+    prefix_filter = Q()
+    for prefix in _AUTO_ASSIGN_PREFIXES:
+        prefix_filter |= Q(id_sub_jenis_data__istartswith=prefix)
+
+    targets = list(
+        JenisDataILAP.objects
+        .filter(prefix_filter)
+        .filter(~Exists(PIC.objects.filter(
+            id_sub_jenis_data_ilap=OuterRef('pk'),
+            tipe=PIC.TipePIC.PMDE,
+            end_date__isnull=True,
+        )))
+        .select_related('id_ilap')
+        .order_by('id_sub_jenis_data')
+    )
+
+    # Nama Tabel I -> user berbeda yang ditunjuk PIC PMDE aktif tabel itu.
+    kandidat_per_tabel = {}
+    # Nama Tabel I -> user -> Sub Jenis Data tempat PIC itu aktif, untuk
+    # menjelaskan baris ambigu: siapa saja PIC-nya dan dari baris mana.
+    sumber_per_tabel = {}
+    for pic in PIC.objects.filter(
+        tipe=PIC.TipePIC.PMDE, end_date__isnull=True
+    ).select_related('id_user', 'id_sub_jenis_data_ilap'):
+        key = _normalize_nama_tabel(pic.id_sub_jenis_data_ilap.nama_tabel_I)
+        if not key:
+            continue
+        kandidat_per_tabel.setdefault(key, {})[pic.id_user_id] = pic.id_user
+        sumber_per_tabel.setdefault(key, {}).setdefault(pic.id_user_id, []).append(
+            pic.id_sub_jenis_data_ilap.id_sub_jenis_data
+        )
+
+    # Baris target tidak punya PIC PMDE aktif, tapi bisa punya yang sudah
+    # ditutup. Karena Tanggal Mulai di sini tetap, PIC lama untuk orang yang
+    # sama bisa memakai tanggal yang persis sama — kombinasi yang ditolak form
+    # assign manual, jadi jangan dibuat lewat jalur ini.
+    sudah_ada = set(
+        PIC.objects.filter(
+            tipe=PIC.TipePIC.PMDE,
+            start_date=_AUTO_ASSIGN_START_DATE,
+            id_sub_jenis_data_ilap__in=[jd.pk for jd in targets],
+        ).values_list('id_sub_jenis_data_ilap_id', 'id_user_id')
+    )
+
+    items = []
+    ambigu = []
+    tanpa_rujukan = []
+    tanpa_tabel = []
+    bentrok_tanggal = []
+
+    for jenis_data in targets:
+        baris = {
+            'id_sub_jenis_data': jenis_data.id_sub_jenis_data,
+            'nama_sub_jenis_data': jenis_data.nama_sub_jenis_data,
+            'nama_ilap': jenis_data.id_ilap.nama_ilap,
+            'nama_tabel_I': jenis_data.nama_tabel_I,
+        }
+        key = _normalize_nama_tabel(jenis_data.nama_tabel_I)
+        if not key:
+            tanpa_tabel.append(baris)
+            continue
+        kandidat = kandidat_per_tabel.get(key)
+        if not kandidat:
+            tanpa_rujukan.append(baris)
+            continue
+        if len(kandidat) > 1:
+            baris['pic'] = [
+                {
+                    'nama': _nama_user(user),
+                    'sumber': sorted(sumber_per_tabel[key][user_id]),
+                }
+                for user_id, user in kandidat.items()
+            ]
+            ambigu.append(baris)
+            continue
+        user = next(iter(kandidat.values()))
+        if (jenis_data.pk, user.pk) in sudah_ada:
+            baris['pic'] = _nama_user(user)
+            bentrok_tanggal.append(baris)
+            continue
+        items.append({'jenis_data': jenis_data, 'user': user})
+
+    return {
+        'items': items,
+        'ambigu': ambigu,
+        'tanpa_rujukan': tanpa_rujukan,
+        'tanpa_tabel': tanpa_tabel,
+        'bentrok_tanggal': bentrok_tanggal,
+        'total_tanpa_pic': len(targets),
+    }
+
+
+def _group_by_nama_tabel(rows):
+    """Kelompokkan baris yang dilewati per Nama Tabel I, urut nama tabel.
+
+    Satu tabel bisa melewati puluhan Sub Jenis Data dengan alasan yang sama,
+    jadi rinciannya dibaca per tabel, bukan per baris.
+    """
+    groups = {}
+    for row in rows:
+        key = _normalize_nama_tabel(row['nama_tabel_I'])
+        group = groups.setdefault(key, {
+            'nama_tabel_I': (row['nama_tabel_I'] or '').strip(),
+            'pic': row.get('pic', []),
+            'sub_jenis_data': [],
+        })
+        group['sub_jenis_data'].append({
+            'id_sub_jenis_data': row['id_sub_jenis_data'],
+            'nama_sub_jenis_data': row['nama_sub_jenis_data'],
+            'nama_ilap': row['nama_ilap'],
+        })
+    return [groups[key] for key in sorted(groups)]
+
+
+@login_required
+@require_GET
+def home_pmde_auto_assign_pic_preview(request):
+    """Ringkas PIC PMDE yang akan diisi otomatis, tanpa menulis apa pun.
+
+    Aturan yang dipakai persis sama dengan `home_pmde_auto_assign_pic` — lihat
+    `_build_pmde_auto_assign_plan`. Hanya untuk anggota grup admin_pmde, sama
+    seperti kartu "Jenis Data Tidak Punya PIC Aktif" yang memanggilnya.
+    """
+    if not request.user.groups.filter(name='admin_pmde').exists():
+        return JsonResponse({'error': 'Forbidden'}, status=403)
+
+    plan = _build_pmde_auto_assign_plan()
+    items = [
+        {
+            'id_sub_jenis_data': item['jenis_data'].id_sub_jenis_data,
+            'nama_sub_jenis_data': item['jenis_data'].nama_sub_jenis_data,
+            'nama_ilap': item['jenis_data'].id_ilap.nama_ilap,
+            'nama_tabel_I': item['jenis_data'].nama_tabel_I,
+            'pic': _nama_user(item['user']),
+        }
+        for item in plan['items']
+    ]
+
+    return JsonResponse({
+        'success': True,
+        'prefixes': list(_AUTO_ASSIGN_PREFIXES),
+        'total_tanpa_pic': plan['total_tanpa_pic'],
+        'total_assign': len(items),
+        'total_ambigu': len(plan['ambigu']),
+        'total_tanpa_rujukan': len(plan['tanpa_rujukan']),
+        'total_tanpa_tabel': len(plan['tanpa_tabel']),
+        'total_bentrok_tanggal': len(plan['bentrok_tanggal']),
+        'start_date': _AUTO_ASSIGN_START_DATE.strftime('%d-%m-%Y'),
+        'items': items[:_AUTO_ASSIGN_PREVIEW_LIMIT],
+        'items_sisa': max(len(items) - _AUTO_ASSIGN_PREVIEW_LIMIT, 0),
+        # Rincian yang dilewati dikirim utuh (tidak dipotong seperti `items`):
+        # Admin PMDE memakainya untuk tahu baris mana yang harus dibereskan.
+        'ambigu': _group_by_nama_tabel(plan['ambigu']),
+        'tanpa_rujukan': _group_by_nama_tabel(plan['tanpa_rujukan']),
+        'tanpa_tabel': plan['tanpa_tabel'],
+        'bentrok_tanggal': _group_by_nama_tabel(plan['bentrok_tanggal']),
+    })
+
+
+@login_required
+@require_POST
+def home_pmde_auto_assign_pic(request):
+    """Buat PIC PMDE untuk Sub Jenis Data yang Nama Tabel I-nya punya PIC tunggal.
+
+    Efek samping: membuat baris `PIC` (Tanggal Mulai `_AUTO_ASSIGN_START_DATE`)
+    dan meneruskannya ke tiket yang masih terbuka lewat
+    `_assign_pic_to_open_tikets` — persis seperti assign manual di
+    `PICCreateView`, supaya tiket berjalan ikut mendapat PIC dan jejaknya
+    tercatat di `TiketAction`. Semua di dalam satu transaksi.
+    """
+    if not request.user.groups.filter(name='admin_pmde').exists():
+        return JsonResponse({'error': 'Forbidden'}, status=403)
+
+    from diamond_web.views.pic import _assign_pic_to_open_tikets
+
+    plan = _build_pmde_auto_assign_plan()
+    if not plan['items']:
+        return JsonResponse({
+            'success': True,
+            'created': 0,
+            'message': 'Tidak ada Sub Jenis Data yang bisa diisi otomatis.',
+        })
+
+    now = timezone.now()
+    # Tanggal Mulai PIC tetap; kolom audit tetap mencatat kapan baris ini dibuat.
+    today = now.date()
+    username = (getattr(request.user, 'username', '') or '')[:9]
+    # PIC action dicatat atas akun yang sama dengan assign manual, supaya riwayat
+    # tiket terbaca seragam dari mana pun PIC itu datang.
+    admin_user = User.objects.filter(username='admin').first() or request.user
+    tipe_label = dict(PIC.TipePIC.choices)[PIC.TipePIC.PMDE]
+
+    with transaction.atomic():
+        for item in plan['items']:
+            pic = PIC.objects.create(
+                tipe=PIC.TipePIC.PMDE,
+                id_sub_jenis_data_ilap=item['jenis_data'],
+                id_user=item['user'],
+                start_date=_AUTO_ASSIGN_START_DATE,
+                create_date=today,
+                create_by=username,
+                update_date=today,
+                update_by=username,
+            )
+            _assign_pic_to_open_tikets(
+                pic.id_user, TiketPIC.Role.PMDE, pic.id_sub_jenis_data_ilap,
+                tipe_label, admin_user, now,
+            )
+
+    created = len(plan['items'])
+    return JsonResponse({
+        'success': True,
+        'created': created,
+        'message': f'{created} Sub Jenis Data berhasil diisi PIC PMDE-nya.',
+    })
 
 
 @login_required

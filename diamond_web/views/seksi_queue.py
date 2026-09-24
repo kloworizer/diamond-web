@@ -20,10 +20,10 @@ from datetime import date
 from django.contrib.auth.models import User
 from django.db import connection as db_connection
 from django.db.models import (
-    DateField, Exists, IntegerField, OuterRef, Q, Subquery, Value,
+    Case, DateField, Exists, IntegerField, OuterRef, Q, Subquery, Value, When,
 )
 from django.db.models.expressions import RawSQL
-from django.db.models.functions import Cast, Coalesce
+from django.db.models.functions import Cast, Coalesce, ExtractYear
 from django.utils import timezone
 from django.utils.html import escape
 
@@ -34,6 +34,9 @@ from ..models.jenis_tabel import JenisTabel
 from ..models.kategori_wilayah import KategoriWilayah
 from ..models.status_penelitian import StatusPenelitian
 from ..models.tiket_pic import TiketPIC
+from ..utils.date_range import (
+    filter_date_range, filter_years, parse_date_range, parse_years,
+)
 from ..utils.jenis_prioritas import is_prioritas_pada, prioritas_window_q
 from ..utils.pic_profil import pic_display_name, pic_profil_link
 from ..utils.wilayah import kanwil_value_paths, tiket_in_kanwil_q
@@ -82,6 +85,35 @@ def prioritas_exists():
     )
 
 
+# The columns the permintaan khusus override reads, in the order the functions
+# below take them.
+SPECIAL_FIELDS = ('special_request', 'tgl_special_request')
+
+
+def as_date(value):
+    """A date from either a date or a datetime, leaving None alone."""
+    if value is None:
+        return None
+    return value.date() if hasattr(value, 'date') else value
+
+
+def special_deadline(special_request, tgl_special_request):
+    """The jatuh tempo a permintaan khusus sets, or None when it sets none.
+
+    A permintaan khusus is a date agreed for one tiket, so it answers the
+    deadline question outright — the durasi its sub jenis data carries is the
+    ordinary turnaround, which the agreement replaces.
+
+    Both halves are required. The flag is what makes the date a promise, and the
+    form clears the date whenever the flag goes off (see SpecialRequestForm), so
+    a date left behind on a tiket whose permintaan khusus was switched off is
+    read as no deadline of its own rather than as a live one.
+    """
+    if not special_request or not tgl_special_request:
+        return None
+    return as_date(tgl_special_request)
+
+
 class Deadline:
     """How one seksi counts the deadline of a tiket in its queue.
 
@@ -93,6 +125,10 @@ class Deadline:
     Either seksi may see its count start again — a rematch hands a tiket back to
     PMDE, and identification proper begins after PIDE has received one — so the
     base date is a pair, the later field winning whenever it is set.
+
+    A tiket carrying a permintaan khusus is the exception to all of it: its due
+    date was agreed for that tiket, so it is the deadline for whichever seksi is
+    holding it, whatever the durasi table says. See :func:`special_deadline`.
 
     Args:
         seksi: Name of the auth group the DurasiJatuhTempo rows are keyed by.
@@ -150,8 +186,12 @@ class Deadline:
     def deadline_date_expr(self):
         """The deadline itself as a sortable date column.
 
-        Correlated subquery embedded in RawSQL (no params) to avoid
-        parameter-binding issues with nested expressions.
+        A permintaan khusus short-circuits the count, exactly as
+        :meth:`day` does in Python — the column has to sort by the date the
+        table actually shows.
+
+        The count itself is a correlated subquery embedded in RawSQL (no params)
+        to avoid parameter-binding issues with nested expressions.
         SQLite (dev): DATE(date, '+' || days || ' days')
         PostgreSQL (prod): (date::date + days * INTERVAL '1 day')::date
         """
@@ -179,44 +219,71 @@ class Deadline:
                 + durasi_sql.format(base_date=f'{base}::date')
                 + ", 0) * INTERVAL '1 day')::date"
             )
-        return RawSQL(sql, [], output_field=DateField())
+        return Case(
+            When(
+                Q(special_request=True, tgl_special_request__isnull=False),
+                then=Cast('tgl_special_request', DateField()),
+            ),
+            default=RawSQL(sql, [], output_field=DateField()),
+            output_field=DateField(),
+        )
 
     # -- In Python ------------------------------------------------------------
 
-    def day(self, start_value, restart_value, durasi):
+    def day(self, start_value, restart_value, durasi,
+            special_request=False, tgl_special_request=None):
         """The deadline date, or None when there is no deadline to count.
 
-        Counting starts from the restart date when the tiket has one and from
-        the start date otherwise. A durasi of 0 means no active DurasiJatuhTempo
-        covers that date, so there is nothing to count from — the '-' the table
-        shows in its Deadline and Jatuh Tempo columns, not a deadline of "today".
+        A permintaan khusus answers first: its due date was agreed for this
+        tiket, so it stands whether or not a durasi covers the data and whether
+        or not the tiket has a base date yet.
+
+        Otherwise counting starts from the restart date when the tiket has one
+        and from the start date otherwise. A durasi of 0 means no active
+        DurasiJatuhTempo covers that date, so there is nothing to count from —
+        the '-' the table shows in its Deadline and Jatuh Tempo columns, not a
+        deadline of "today".
         """
+        khusus = special_deadline(special_request, tgl_special_request)
+        if khusus is not None:
+            return khusus
         base_date = restart_value or start_value
         if not base_date or not durasi:
             return None
-        deadline = base_date + timezone.timedelta(days=durasi)
-        return deadline.date() if hasattr(deadline, 'date') else deadline
+        return as_date(base_date + timezone.timedelta(days=durasi))
+
+    @property
+    def row_fields(self):
+        """The columns :meth:`day` takes, in the order it takes them.
+
+        Named once because every caller that reads a whole queue through
+        `values_list` has to lay its tuples out the same way `day` unpacks them.
+        """
+        return (
+            self.start_field, self.restart_field, 'active_durasi', *SPECIAL_FIELDS,
+        )
 
     def day_of(self, tiket):
         """The deadline date of an annotated tiket row."""
-        return self.day(
-            getattr(tiket, self.start_field),
-            getattr(tiket, self.restart_field),
-            tiket.active_durasi,
-        )
+        return self.day(*(getattr(tiket, field) for field in self.row_fields))
 
     def cells(self, tiket):
         """The Deadline and Jatuh Tempo cells of one table row.
 
         `sisa_hari` comes along raw as well, since the frontend colours the row
-        by it rather than by re-parsing the text.
+        by it rather than by re-parsing the text, and `deadline_khusus` says
+        whether the date shown is a permintaan khusus rather than the count from
+        the durasi table — the two are read in the same column, so the one that
+        was agreed per tiket is marked as such.
         """
+        khusus = special_deadline(*(getattr(tiket, field) for field in SPECIAL_FIELDS))
         deadline_day = self.day_of(tiket)
         if deadline_day is None:
             return {
                 'deadline': {'display': '-', 'sort': ''},
                 'jatuh_tempo': {'display': '-', 'sort': ''},
                 'sisa_hari': None,
+                'deadline_khusus': False,
             }
         sisa_hari = (deadline_day - date.today()).days
         return {
@@ -226,24 +293,24 @@ class Deadline:
             },
             'jatuh_tempo': {'display': f'{sisa_hari} hari', 'sort': str(sisa_hari)},
             'sisa_hari': sisa_hari,
+            'deadline_khusus': khusus is not None,
         }
 
     def jatuh_tempo_ids(self, qs, limit):
         """Ids of the tikets in `qs` whose jatuh tempo is under `limit` days.
 
-        Jatuh tempo is not a column: it is the deadline — the tiket's base date
-        plus the durasi that was active then — counted from today, so the
-        comparison is made here over the same computation the table renders and
-        the chart plots, rather than reassembled in SQL a third time.
+        Jatuh tempo is not a column: it is the deadline — the permintaan khusus
+        date, or else the tiket's base date plus the durasi that was active
+        then — counted from today, so the comparison is made here over the same
+        computation the table renders and the chart plots, rather than
+        reassembled in SQL a third time.
         """
-        rows = self.annotate_durasi(qs).values_list(
-            'id', self.start_field, self.restart_field, 'active_durasi',
-        )
+        rows = self.annotate_durasi(qs).values_list('id', *self.row_fields)
 
         today = date.today()
         ids = []
-        for tiket_id, start_value, restart_value, durasi in rows:
-            deadline_day = self.day(start_value, restart_value, durasi)
+        for tiket_id, *deadline_args in rows:
+            deadline_day = self.day(*deadline_args)
             if deadline_day is None:
                 continue
             if (deadline_day - today).days < limit:
@@ -320,6 +387,28 @@ def _filter_periode(qs, values):
     return qs.filter(combined) if combined else qs
 
 
+def _filter_tahun_diterima(qs, values):
+    """Applier for the Tahun Diterima dropdown, the year of tgl_terima_dip.
+
+    Non-numeric input matches nothing, the way `_int_in` treats the year
+    dropdowns beside it.
+    """
+    years = parse_years(values)
+    return filter_years(qs, 'tgl_terima_dip', years) if years else qs.none()
+
+
+def _filter_terima_dip(qs, values):
+    """Applier for the Tanggal Terima DIP range.
+
+    The only filter here that is not picked from a list: its value is the pair
+    of dates the range picker sends, `"<start>..<end>"`, which carries no comma
+    and so survives `split` as a single value.
+    """
+    for value in values:
+        qs = filter_date_range(qs, 'tgl_terima_dip', parse_date_range(value))
+    return qs
+
+
 def _filter_prioritas(qs, values):
     """Applier for the Prioritas Ya/Tidak dropdown.
 
@@ -359,7 +448,9 @@ def build_filter_appliers(deadline):
 
     The key is both the request parameter and the `filter_options` key the
     template reads back, so adding a filter means adding one entry here, one
-    entry in FILTER_OPTIONS below, and one <select> in the template.
+    entry in FILTER_OPTIONS below, and one <select> in the template — unless it
+    is one of the FREE_FORM_FILTERS, which are picked from something other than
+    a list of options and so have no FILTER_OPTIONS entry.
 
     Only the last one depends on the seksi, jatuh tempo being counted from that
     seksi's own deadline.
@@ -370,6 +461,9 @@ def build_filter_appliers(deadline):
         'periode': _filter_periode,
         'periode_pengiriman': _in(f'{PENGIRIMAN}__periode_penyampaian'),
         'periode_penerimaan': _in(f'{PENGIRIMAN}__periode_penerimaan'),
+        # When the data arrived, asked two ways — see `_tahun_diterima_options`.
+        'tahun_diterima': _filter_tahun_diterima,
+        'tgl_terima_dip': _filter_terima_dip,
         'pic_p3de': _pic_in(TiketPIC.Role.P3DE),
         'pic_pide': _pic_in(TiketPIC.Role.PIDE),
         'pic_pmde': _pic_in(TiketPIC.Role.PMDE),
@@ -390,6 +484,12 @@ def build_filter_appliers(deadline):
         # Last, because it is the only applier that has to read rows to decide.
         'jatuh_tempo': _build_filter_jatuh_tempo(deadline),
     }
+
+
+# Filters the panel renders as something other than a dropdown, so they have no
+# option list to build: the Tanggal Terima DIP range is picked from a calendar,
+# and every date is available whether or not a tiket was received on it.
+FREE_FORM_FILTERS = frozenset({'tgl_terima_dip'})
 
 
 # Filters that reach a tiket through a to-many join, so a tiket can match more
@@ -500,6 +600,24 @@ def _periode_options(qs):
     return options
 
 
+def _tahun_diterima_options(qs):
+    """The years the tikets in `qs` were received at DIP.
+
+    The dropdown beside the Tanggal Terima DIP range, and the coarser half of
+    the same question: a year is how this work is usually grouped, the range is
+    for the questions a year is too coarse for. Both read `tgl_terima_dip`, so
+    picking in both narrows to their overlap.
+    """
+    years = (
+        qs.exclude(tgl_terima_dip__isnull=True)
+        .annotate(_tahun_diterima=ExtractYear('tgl_terima_dip'))
+        .values_list('_tahun_diterima', flat=True)
+        .distinct()
+        .order_by('_tahun_diterima')
+    )
+    return [{'id': str(year), 'name': str(year)} for year in years if year is not None]
+
+
 def _kanwil_options(qs):
     """Kanwil options covering both the direct and the via-KPP ILAP mappings."""
     options = []
@@ -569,6 +687,7 @@ FILTER_OPTIONS = {
         qs, (f'{PENGIRIMAN}__periode_penyampaian',)),
     'periode_penerimaan': lambda qs: _distinct_options(
         qs, (f'{PENGIRIMAN}__periode_penerimaan',)),
+    'tahun_diterima': _tahun_diterima_options,
     'pic_p3de': lambda qs: _pic_options(qs, TiketPIC.Role.P3DE),
     'pic_pide': lambda qs: _pic_options(qs, TiketPIC.Role.PIDE),
     'pic_pmde': lambda qs: _pic_options(qs, TiketPIC.Role.PMDE),
@@ -724,24 +843,35 @@ class Split:
         label: What to call the dimension where it is shown.
         path: The field path holding the id of the entry a tiket belongs to.
         entries: `(id, name)` pairs, in the order the lines should read.
+        rincian_path: The field path every entry is broken down a level
+            further by, or None for a split read at one level only. Unlike the
+            entries themselves these are not listed up front — only the names
+            a tiket actually carries get a line — since the values there are
+            open-ended rather than a reference table.
     """
 
-    def __init__(self, key, label, path, entries):
+    def __init__(self, key, label, path, entries, rincian_path=None):
         self.key = key
         self.label = label
         self.path = path
         self.entries = entries
+        self.rincian_path = rincian_path
 
 
-def jenis_tabel_split():
+def jenis_tabel_split(rincian=False):
     """The split by jenis tabel — what decides how a tiket's data is handled.
 
     Read fresh for each page's summary, so every section of it reads its lines
     in the same order and they can be compared straight across.
+
+    Args:
+        rincian: Whether every jenis tabel line is broken down further by the
+            nama tabel of the tiket's data.
     """
     return Split(
         'jenis_tabel', 'Jenis Tabel', f'{SUB}__id_jenis_tabel__id',
         list(JenisTabel.objects.order_by('id').values_list('id', 'deskripsi')),
+        rincian_path=f'{SUB}__nama_tabel_I' if rincian else None,
     )
 
 
@@ -832,23 +962,22 @@ class Weighting:
         """The columns a scored row carries beyond the ones already read."""
         fields = [SUB, 'tgl_terima_dip']
         if self.deadline is not None:
-            fields += [
-                self.deadline.start_field, self.deadline.restart_field, 'active_durasi',
-            ]
+            fields += list(self.deadline.row_fields)
         return fields
 
     def annotate(self, qs):
         """Add whatever the score reads that is not a plain column."""
         return self.deadline.annotate_durasi(qs) if self.deadline is not None else qs
 
-    def _jatuh_tempo_weight(self, start_value, restart_value, durasi):
+    def _jatuh_tempo_weight(self, *deadline_args):
         """The factor for how close this tiket's deadline is.
 
-        A tiket with no deadline to count — no durasi covers its base date — is
-        left at 1: nothing is known about its urgency, and guessing at it would
-        move a PIC up the table for a gap in the reference data.
+        A tiket with no deadline to count — no durasi covers its base date, and
+        no permintaan khusus names a date — is left at 1: nothing is known about
+        its urgency, and guessing at it would move a PIC up the table for a gap
+        in the reference data.
         """
-        deadline_day = self.deadline.day(start_value, restart_value, durasi)
+        deadline_day = self.deadline.day(*deadline_args)
         if deadline_day is None:
             return 1.0
         sisa_hari = (deadline_day - date.today()).days
@@ -871,7 +1000,9 @@ class Weighting:
         if _was_prioritas(self.windows, extras[0], extras[1]):
             weight *= self.prioritas_weight
         if self.deadline is not None:
-            weight *= self._jatuh_tempo_weight(*extras[2:5])
+            # The deadline's own columns are last in :attr:`fields`, so whatever
+            # follows tgl_terima_dip is exactly what `day` takes.
+            weight *= self._jatuh_tempo_weight(*extras[2:])
         return baris * weight
 
 
@@ -882,13 +1013,19 @@ def _empty_section(splits):
     there is a fact worth reading, and a line that vanished under a filter would
     shuffle the ones around it.
     """
+    def entry(split, name):
+        line = {'name': name, 'tikets': 0, 'baris': 0, 'beban': 0.0}
+        if split.rincian_path:
+            line['rincian'] = {}
+        return line
+
     return {
         'tikets': 0,
         'baris': 0,
         'beban': 0.0,
         'splits': {
             split.key: {
-                entry_id: {'name': name, 'tikets': 0, 'baris': 0, 'beban': 0.0}
+                entry_id: entry(split, name)
                 for entry_id, name in split.entries
             }
             for split in splits
@@ -896,23 +1033,37 @@ def _empty_section(splits):
     }
 
 
-def _count_tiket(section, split_keys, entry_ids, baris, beban):
+def _add(line, baris, beban):
+    line['tikets'] += 1
+    line['baris'] += baris
+    line['beban'] += beban
+
+
+def _count_tiket(section, splits, entry_ids, rincian_names, baris, beban):
     """Add one tiket, its rows and its weighted load to `section`.
 
     A tiket whose value on a split is not one of that split's entries — an unset
     one, or a reference row read after the section was built — still counts
     towards the totals, since it is a tiket in the queue, but has no line to
     land in there.
+
+    `rincian_names` holds one name per split that has a :attr:`Split.rincian_path`,
+    in split order; a tiket lands in the line for its name under its entry as
+    well, which is created the first time the name is seen.
     """
-    section['tikets'] += 1
-    section['baris'] += baris
-    section['beban'] += beban
-    for key, entry_id in zip(split_keys, entry_ids):
-        entry = section['splits'][key].get(entry_id)
-        if entry is not None:
-            entry['tikets'] += 1
-            entry['baris'] += baris
-            entry['beban'] += beban
+    _add(section, baris, beban)
+    names = iter(rincian_names)
+    for split, entry_id in zip(splits, entry_ids):
+        name = next(names) if split.rincian_path else None
+        entry = section['splits'][split.key].get(entry_id)
+        if entry is None:
+            continue
+        _add(entry, baris, beban)
+        if 'rincian' in entry:
+            name = name or '-'
+            if name not in entry['rincian']:
+                entry['rincian'][name] = {'name': name, 'tikets': 0, 'baris': 0, 'beban': 0.0}
+            _add(entry['rincian'][name], baris, beban)
 
 
 def _finished(section):
@@ -921,14 +1072,21 @@ def _finished(section):
     The load is rounded on the way out: it is an index built from ratios, and
     the digits past the point would read as a precision it does not have.
     """
+    def finished_entry(entry):
+        entry = dict(entry, beban=round(entry['beban']))
+        if 'rincian' in entry:
+            entry['rincian'] = [
+                dict(line, beban=round(line['beban']))
+                for _name, line in sorted(entry['rincian'].items())
+            ]
+        return entry
+
     return {
         'tikets': section['tikets'],
         'baris': section['baris'],
         'beban': round(section['beban']),
         'splits': {
-            key: [
-                dict(entry, beban=round(entry['beban'])) for entry in entries.values()
-            ]
+            key: [finished_entry(entry) for entry in entries.values()]
             for key, entries in section['splits'].items()
         },
     }
@@ -963,6 +1121,7 @@ def _row_columns(splits, baris_fields, weighting, *leading):
     """
     columns = list(leading)
     columns += [split.path for split in splits]
+    columns += [split.rincian_path for split in splits if split.rincian_path]
     columns += list(baris_fields)
     if weighting is not None:
         columns += weighting.fields
@@ -977,19 +1136,31 @@ def _accumulate(qs, splits, baris_fields, baris_of, weighting=None):
     tiket matched twice into one row instead of counting it twice.
     """
     section = _empty_section(splits)
-    keys = [split.key for split in splits]
-    depth = len(splits)
-    end = 1 + depth + len(baris_fields)
+    depth, start, end = _row_offsets(splits, baris_fields, 1)
 
     if weighting is not None:
         qs = weighting.annotate(qs)
     rows = qs.values_list(*_row_columns(splits, baris_fields, weighting, 'id'))
     for row in rows:
-        entry_ids = row[1:1 + depth]
-        baris = baris_of(*row[1 + depth:end])
+        entry_ids = row[1:depth]
+        baris = baris_of(*row[start:end])
         beban = weighting.score(baris, entry_ids, row[end:]) if weighting else 0.0
-        _count_tiket(section, keys, entry_ids, baris, beban)
+        _count_tiket(section, splits, entry_ids, row[depth:start], baris, beban)
     return section
+
+
+def _row_offsets(splits, baris_fields, leading):
+    """Where the groups of a :func:`_row_columns` tuple end, after `leading`.
+
+    Returns:
+        tuple: `(entries_end, rincian_end, baris_end)` — the split entry ids run
+        from `leading` to the first, the rincian names from there to the
+        second, the baris fields to the third, and the weighting's own columns
+        from there to the end.
+    """
+    entries_end = leading + len(splits)
+    rincian_end = entries_end + sum(1 for split in splits if split.rincian_path)
+    return entries_end, rincian_end, rincian_end + len(baris_fields)
 
 
 def queue_breakdown_per_pic(qs, splits, baris_fields, baris_of, role, weighting=None):
@@ -1009,9 +1180,7 @@ def queue_breakdown_per_pic(qs, splits, baris_fields, baris_of, role, weighting=
     """
     per_pic = {}
     total = _empty_section(splits)
-    keys = [split.key for split in splits]
-    depth = len(splits)
-    end = 2 + depth + len(baris_fields)
+    depth, start, end = _row_offsets(splits, baris_fields, 2)
 
     if weighting is not None:
         qs = weighting.annotate(qs)
@@ -1020,13 +1189,14 @@ def queue_breakdown_per_pic(qs, splits, baris_fields, baris_of, role, weighting=
     )
     for row in rows:
         pic_id = row[1]
-        entry_ids = row[2:2 + depth]
-        baris = baris_of(*row[2 + depth:end])
+        entry_ids = row[2:depth]
+        rincian_names = row[depth:start]
+        baris = baris_of(*row[start:end])
         beban = weighting.score(baris, entry_ids, row[end:]) if weighting else 0.0
-        _count_tiket(total, keys, entry_ids, baris, beban)
+        _count_tiket(total, splits, entry_ids, rincian_names, baris, beban)
         if pic_id not in per_pic:
             per_pic[pic_id] = _empty_section(splits)
-        _count_tiket(per_pic[pic_id], keys, entry_ids, baris, beban)
+        _count_tiket(per_pic[pic_id], splits, entry_ids, rincian_names, baris, beban)
 
     return {pic_id: _finished(section) for pic_id, section in per_pic.items()}, _finished(total)
 
@@ -1177,6 +1347,7 @@ def chart_data(scoped_qs, selected, appliers, deadline, role, no_pic_label,
     """
     styles = pic_styles(scoped_qs, role, no_pic_label)
 
+    deadline_fields = deadline.row_fields
     rows = deadline.annotate_durasi(
         apply_filters(scoped_qs, selected, appliers)
     ).annotate(
@@ -1184,15 +1355,16 @@ def chart_data(scoped_qs, selected, appliers, deadline, role, no_pic_label,
         # `id` keeps DISTINCT (added by the to-many filters) from collapsing two
         # different tikets that happen to agree on every other column here.
     ).values_list(
-        'id', 'pic_id', deadline.start_field, deadline.restart_field,
-        'active_durasi', *progress_fields,
+        'id', 'pic_id', *deadline_fields, *progress_fields,
     )
 
     totals = defaultdict(int)
     days = set()
     today = date.today()
-    for _tiket_id, pic_id, start_value, restart_value, durasi, *progress in rows:
-        deadline_day = deadline.day(start_value, restart_value, durasi)
+    split_at = len(deadline_fields)
+    for _tiket_id, pic_id, *rest in rows:
+        progress = rest[split_at:]
+        deadline_day = deadline.day(*rest[:split_at])
         if deadline_day is None:
             continue
         sisa = (deadline_day - today).days

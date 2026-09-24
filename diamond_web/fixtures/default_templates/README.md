@@ -8,7 +8,7 @@ These templates are used as the default templates for document generation in the
 
 ## Contents
 
-The directory contains 11 template files for the following document types:
+The directory contains 12 template files for the following document types:
 
 1. **tanda_terima_nasional_internasional.docx** - Receipt document for national/international ILAP
 2. **tanda_terima_regional.docx** - Receipt document for regional ILAP
@@ -21,6 +21,7 @@ The directory contains 11 template files for the following document types:
 9. **surat_pkdi_nasional_internasional_sebagian.docx** - PKDI letter (partial data) - national/international
 10. **surat_pkdi_regional_lengkap.docx** - PKDI letter (complete data) - regional
 11. **surat_pkdi_regional_sebagian.docx** - PKDI letter (partial data) - regional
+12. **nd_pengantar_pdi.docx** - Covering letter to PDI for adhoc data (PMDE); for now a copy of the ND Pengantar PIDE template
 
 ## Usage
 

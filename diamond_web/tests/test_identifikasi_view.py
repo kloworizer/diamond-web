@@ -6,7 +6,7 @@ What is tested is what the Identifikasi page decides for itself: whose queue it
 shows, which dates its deadline counts from, and that its three figures are the
 identification split rather than the QC one.
 """
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from itertools import count
 
 import pytest
@@ -236,6 +236,26 @@ class TestIdentifikasiData:
         row = self._rows(client)['data'][0]
         expected = kirim.date() + timedelta(days=10)
         assert row['deadline']['display'] == expected.strftime('%d/%m/%Y')
+
+    def test_permintaan_khusus_due_date_is_the_deadline(self, client):
+        """A date agreed for one tiket beats the durasi its data carries.
+
+        The override lives in the shared Deadline, so what this page has to say
+        for itself is that PIDE's queue reads it too.
+        """
+        bundle = _pide_bundle(durasi=10)
+        khusus = date.today() + timedelta(days=6)
+        tiket = bundle['tiket']
+        tiket.special_request = True
+        tiket.tgl_special_request = datetime.combine(khusus, time(23, 59, 59))
+        tiket.save(update_fields=['special_request', 'tgl_special_request'])
+        client.force_login(bundle['pide_user'])
+
+        row = self._rows(client)['data'][0]
+        assert row['deadline']['display'] == khusus.strftime('%d/%m/%Y')
+        assert row['jatuh_tempo']['display'] == '6 hari'
+        assert row['sisa_hari'] == 6
+        assert row['deadline_khusus'] is True
 
     def test_durasi_is_the_one_active_at_the_rekam_date(self, client):
         """The durasi row is picked by tgl_rekam_pide, not by the older arrival."""
