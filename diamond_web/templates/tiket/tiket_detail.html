@@ -132,7 +132,7 @@
                             </div>
                             <!-- Priority & Ketersediaan chips di bawah nomor tiket -->
                             <div class="d-flex flex-wrap gap-1 mt-1">
-                                {% if tiket.id_jenis_prioritas_data %}
+                                {% if is_prioritas %}
                                 <span class="badge d-inline-flex align-items-center justify-content-center"
                                     style="font-size: 10px; padding: 4px 8px; width: fit-content; font-weight: 600; background-color: #fee2e2 !important; color: #ef4444 !important; border: 1px solid #fecaca !important;">
                                     Data Prioritas
@@ -343,7 +343,7 @@
                                     <div class="meta-item">
                                         <span class="meta-label">Data Prioritas</span>
                                         <span class="meta-value">
-                                            {% if tiket.id_jenis_prioritas_data %}
+                                            {% if is_prioritas %}
                                                 <span class="premium-badge premium-badge-danger"><i class="feather-alert-circle me-1"></i>PRIORITAS</span>
                                             {% else %}
                                                 <span class="text-muted fw-medium" style="font-size: 0.8rem;"><i class="feather-minus me-1"></i>Tidak Prioritas</span>

@@ -189,6 +189,8 @@ urlpatterns = [
     # Jenis Prioritas Data URLs
     path('jenis-prioritas-data/', views.JenisPrioritasDataListView.as_view(), name='jenis_prioritas_data_list'),
     path('jenis-prioritas-data/data/', views.jenis_prioritas_data_data, name='jenis_prioritas_data_data'),
+    path('jenis-prioritas-data/tiket-backfill/preview/', views.jenis_prioritas_data_tiket_backfill_preview, name='jenis_prioritas_data_tiket_backfill_preview'),
+    path('jenis-prioritas-data/tiket-backfill/', views.jenis_prioritas_data_tiket_backfill, name='jenis_prioritas_data_tiket_backfill'),
     path('jenis-prioritas-data/create/', views.JenisPrioritasDataCreateView.as_view(), name='jenis_prioritas_data_create'),
     path('jenis-prioritas-data/<int:pk>/update/', views.JenisPrioritasDataUpdateView.as_view(), name='jenis_prioritas_data_update'),
     path('jenis-prioritas-data/<int:pk>/delete/', views.JenisPrioritasDataDeleteView.as_view(), name='jenis_prioritas_data_delete'),

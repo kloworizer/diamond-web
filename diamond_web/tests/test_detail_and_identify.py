@@ -89,6 +89,41 @@ class TestTiketDetailView:
         resp = client.get(reverse('tiket_detail', args=[tiket.pk]))
         assert resp.status_code == 200
 
+    def test_prioritas_follows_rule_not_stale_fk(self, client, admin_user, db):
+        """Record prioritas yang ditambahkan sesudah tiket direkam tetap tampil
+        Prioritas, sama seperti filter Prioritas di daftar tiket."""
+        from datetime import date, datetime
+        from diamond_web.models import JenisPrioritasData
+
+        tiket = TiketFactory(
+            id_jenis_prioritas_data=None,
+            tgl_terima_dip=datetime(2026, 8, 7, 9, 0),
+        )
+        JenisPrioritasData.objects.create(
+            id_sub_jenis_data_ilap=tiket.id_periode_data.id_sub_jenis_data_ilap,
+            start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+            no_nd='ND-2026', tahun='2026',
+        )
+        client.force_login(admin_user)
+        resp = client.get(reverse('tiket_detail', args=[tiket.pk]))
+        assert resp.context['is_prioritas'] is True
+        assert resp.context['ilap_info']['jenis_prioritas'] == 'Ya'
+        assert b'Tidak Prioritas' not in resp.content
+
+    def test_stale_fk_outside_window_is_not_prioritas(self, client, admin_user, db):
+        """FK yang masih terisi tetapi masa berlakunya tidak mencakup tanggal
+        terima DIP tidak lagi ditampilkan sebagai prioritas."""
+        from datetime import datetime
+
+        tiket = TiketFactory(tgl_terima_dip=datetime(2020, 1, 1))
+        jpd = tiket.id_jenis_prioritas_data
+        jpd.start_date, jpd.end_date = datetime(2026, 1, 1).date(), None
+        jpd.save()
+        client.force_login(admin_user)
+        resp = client.get(reverse('tiket_detail', args=[tiket.pk]))
+        assert resp.context['is_prioritas'] is False
+        assert resp.context['ilap_info']['jenis_prioritas'] == 'Tidak'
+
 
 # ============================================================
 # IdentifikasiTiketView

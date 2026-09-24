@@ -7,8 +7,11 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_GET
 
+from django.db import transaction
+
 from ..models.jenis_prioritas_data import JenisPrioritasData
 from ..forms.jenis_prioritas_data import JenisPrioritasDataForm
+from ..utils import tiket_prioritas
 from .mixins import AjaxFormMixin, AdminAnyRequiredMixin, SafeDeleteMixin
 from datetime import date as _date
 
@@ -17,6 +20,43 @@ from datetime import date as _date
 # identifikasi dan pengendalian mutu (lihat `seksi_queue.prioritas_exists`).
 # Karena itu keempat view CRUD di bawah memakai AdminAnyRequiredMixin — admin
 # global maupun admin_p3de/admin_pide/admin_pmde — sesuai RBAC_MATRIX.md.
+#
+# Setiap tambah/ubah/hapus langsung menyesuaikan Tiket.id_jenis_prioritas_data
+# untuk Sub Jenis Data yang disentuh, dalam transaksi yang sama: tiket yang
+# tanggal terima DIP-nya masuk masa berlaku jadi prioritas, yang keluar (atau
+# record-nya dihapus) jadi tidak prioritas. Lihat utils/tiket_prioritas.py.
+
+
+class SelaraskanTiketMixin:
+    """Setelah record disimpan, selaraskan FK prioritas tiket Sub Jenis Data-nya.
+
+    Mencakup Sub Jenis Data lama juga bila record dipindah ke Sub Jenis Data
+    lain, supaya tiket yang ditinggalkan tidak tetap menunjuk record ini.
+    """
+    _sub_lama = frozenset()
+    _hasil_tiket = None
+
+    def form_valid(self, form):
+        pk = getattr(self.object, 'pk', None)  # None saat tambah
+        if pk:
+            # Dibaca dari database: self.object sudah memuat isian baru form.
+            lama = JenisPrioritasData.objects.filter(pk=pk).first()
+            if lama is not None:
+                self._sub_lama = tiket_prioritas.sub_terkait(lama)
+        with transaction.atomic():
+            return super().form_valid(form)
+
+    def after_save(self, form):
+        self._hasil_tiket = tiket_prioritas.selaraskan(
+            self.request.user,
+            sub_ids={self.object.id_sub_jenis_data_ilap_id, *self._sub_lama},
+        )
+
+    def get_success_message(self, form):
+        message = super().get_success_message(form)
+        if self._hasil_tiket is None:
+            return message
+        return f'{message} {tiket_prioritas.ringkasan(self._hasil_tiket)}'
 
 
 class JenisPrioritasDataListView(LoginRequiredMixin, AdminAnyRequiredMixin, TemplateView):
@@ -43,7 +83,7 @@ class JenisPrioritasDataListView(LoginRequiredMixin, AdminAnyRequiredMixin, Temp
                 pass
         return super().get(request, *args, **kwargs)
 
-class JenisPrioritasDataCreateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, CreateView):
+class JenisPrioritasDataCreateView(LoginRequiredMixin, AdminAnyRequiredMixin, SelaraskanTiketMixin, AjaxFormMixin, CreateView):
     """Create view for `JenisPrioritasData` entries.
 
     Presents a form (modal-capable) to create a new priority rule for a
@@ -85,7 +125,7 @@ class JenisPrioritasDataCreateView(LoginRequiredMixin, AdminAnyRequiredMixin, Aj
                 return self.form_invalid(form)
         return super().form_valid(form)
 
-class JenisPrioritasDataUpdateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, UpdateView):
+class JenisPrioritasDataUpdateView(LoginRequiredMixin, AdminAnyRequiredMixin, SelaraskanTiketMixin, AjaxFormMixin, UpdateView):
     """Update view for existing `JenisPrioritasData` entries.
 
     Validates updated date ranges against other entries for the same
@@ -136,6 +176,7 @@ class JenisPrioritasDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminAny
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form_action'] = reverse('jenis_prioritas_data_delete', args=[self.object.pk])
+        context['jumlah_tiket'] = self.object.tiket_set.count()
         return context
 
     def get(self, request, *args, **kwargs):
@@ -146,20 +187,34 @@ class JenisPrioritasDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminAny
             return JsonResponse({'html': html})
         return self.render_to_response(self.get_context_data())
 
-    def delete(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        name = str(self.object)
-        self.object.delete()
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'message': f'Jenis Prioritas Data "{name}" berhasil dihapus.'
-            })
-        messages.success(request, f'Jenis Prioritas Data "{name}" berhasil dihapus.')
-        return JsonResponse({'success': True, 'redirect': self.success_url})
-
     def post(self, request, *args, **kwargs):
         return self.delete(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        """Kosongkan dulu FK tiket yang menunjuk record ini, lalu hapus.
+
+        Tiket menunjuk record dengan on_delete=PROTECT, jadi tanpa langkah ini
+        record yang sudah dipakai tiket tidak bisa dihapus. Tiketnya dinilai
+        ulang terhadap tabel tanpa record ini — praktis jadi tidak prioritas,
+        karena masa berlaku untuk satu Sub Jenis Data tidak boleh bertumpuk.
+        Penghapusannya sendiri tetap lewat SafeDeleteMixin; bila gagal, FK
+        tiket ikut dikembalikan.
+        """
+        obj = self.get_object()
+        with transaction.atomic():
+            self._hasil_tiket = tiket_prioritas.selaraskan(
+                request.user,
+                sub_ids=tiket_prioritas.sub_terkait(obj),
+                exclude_pk=obj.pk,
+            )
+            response = super().delete(request, *args, **kwargs)
+            if response.status_code >= 400:
+                transaction.set_rollback(True)
+        return response
+
+    def get_delete_success_message(self, object_name):
+        message = super().get_delete_success_message(object_name)
+        return f'{message} {tiket_prioritas.ringkasan(self._hasil_tiket)}'
 
 @login_required
 @user_passes_test(

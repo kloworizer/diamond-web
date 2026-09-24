@@ -37,7 +37,13 @@
     <div class="card stretch stretch-full datatable-card">
         <div class="card-header">
             <h5 class="card-title"><i class="feather-star me-2"></i>Daftar Jenis Prioritas Data</h5>
-            <button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-primary" id="btn-sync-prioritas"
+                    title="Sesuaikan status prioritas seluruh Tiket dengan masa berlaku Data Prioritas di tabel ini">
+                    <i class="feather-refresh-cw me-1"></i>Sinkronisasi Prioritas
+                </button>
+                <button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>
+            </div>
         </div>
         <div class="card-body custom-card-action p-0">
             <div class="table-responsive">
@@ -76,6 +82,36 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal: ringkasan Sinkronisasi Prioritas -->
+    <div class="modal fade" id="syncSummaryModal" tabindex="-1" aria-labelledby="syncSummaryModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header d-flex align-items-center py-3 px-4" style="border-bottom: 1px solid #f1f5f9 !important;">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="d-flex align-items-center justify-content-center"
+                            style="width: 38px; height: 38px; border-radius: 50%; background-color: #e0f2fe; color: #0284c7;">
+                            <i class="feather-refresh-cw" style="font-size: 18px;"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0" id="syncSummaryModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Ringkasan Sinkronisasi Prioritas</h5>
+                            <span class="text-muted text-uppercase fw-semibold" style="font-size: 10px; letter-spacing: 0.5px;" id="sync-step-label">Sesuaikan Status Prioritas pada Tiket</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body px-4 pt-3 pb-2" id="sync-summary-body">
+                    <!-- Filled by JS before the modal is shown -->
+                </div>
+                <div class="modal-footer border-top-0 pt-0 px-4 pb-4" style="border-top: none !important; background: transparent !important;">
+                    <button type="button" class="btn btn-figma-outline" data-bs-dismiss="modal" id="btn-sync-cancel">Batal</button>
+                    <button type="button" class="btn btn-primary" id="btn-sync-confirm">
+                        <i class="feather-check me-1"></i>PROSES
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
     </div>
 
 {% endblock %}
@@ -83,7 +119,12 @@
 <script>
     (function () {
         const ajaxUrl = "{% url 'jenis_prioritas_data_data' %}";
+        const SUMMARY_PREVIEW_LIMIT = 50;
         let table;
+        let syncSummaryModal;
+        // Sinkronisasi Prioritas: preview which Tiket would change, then PROSES
+        // re-points every Tiket at the prioritas record that covers its tanggal
+        // terima DIP (or clears it when none does).
 
             $(document).ready(function () {
                 table = $('#jenis-prioritas-data-table').DataTable({
@@ -192,7 +233,148 @@
                 modalElement.addEventListener('hidden.bs.modal', function () {
                     document.getElementById('modalContent').innerHTML = '';
                 });
+
+                syncSummaryModal = new bootstrap.Modal(document.getElementById('syncSummaryModal'));
+
+                // Handle sync button: show which tikets would change before writing anything
+                $('#btn-sync-prioritas').on('click', function () {
+                    const btn = $(this);
+                    const originalHtml = btn.html();
+                    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Memeriksa...');
+
+                    $.ajax({
+                        url: '{% url "jenis_prioritas_data_tiket_backfill_preview" %}',
+                        type: 'GET',
+                        success: function (response) {
+                            if (!response.success) {
+                                showToast(escapeHtml(response.message || 'Gagal memuat ringkasan Tiket.'), 'danger');
+                                return;
+                            }
+                            renderTiketBackfillSummary(response);
+                            syncSummaryModal.show();
+                        },
+                        error: function (xhr) {
+                            const res = xhr.responseJSON || {};
+                            showToast(escapeHtml(res.message || 'Terjadi kesalahan. Silakan coba lagi.'), 'danger');
+                        },
+                        complete: function () {
+                            btn.prop('disabled', false).html(originalHtml);
+                        }
+                    });
+                });
+
+                $('#btn-sync-confirm').on('click', runTiketBackfill);
             });
+
+        function escapeHtml(value) {
+            return $('<div>').text(value == null ? '' : value).html();
+        }
+
+        function statTile(label, value) {
+            return '<div class="col-6 col-md-3">'
+                + '<div class="p-3 rounded h-100" style="background: #f8fafc; border: 1px solid #e2e8f0;">'
+                + '<span class="text-muted d-block mb-1" style="font-size: 11px;">' + label + '</span>'
+                + '<span class="fw-bold text-dark" style="font-size: 18px;">' + value + '</span>'
+                + '</div></div>';
+        }
+
+        function renderTiketBackfillSummary(data) {
+            const body = $('#sync-summary-body');
+            const confirmBtn = $('#btn-sync-confirm');
+            const perRecord = data.per_record || [];
+
+            if (!data.total_tiket) {
+                confirmBtn.hide();
+                $('#btn-sync-cancel').text('Tutup');
+                body.html(`
+                    <div class="alert alert-info mb-0" style="font-size: 12.5px;">
+                        Semua Tiket sudah sesuai Data Prioritas: ${data.sudah_benar} Tiket prioritas dan
+                        ${data.bukan_prioritas} Tiket bukan prioritas. Tidak ada yang perlu disesuaikan.
+                    </div>
+                `);
+                return;
+            }
+
+            $('#btn-sync-cancel').text('Batal');
+            confirmBtn.show().html('<i class="feather-check me-1"></i>PROSES');
+
+            const shown = perRecord.slice(0, SUMMARY_PREVIEW_LIMIT);
+            const rows = shown.map(item => `
+                <tr>
+                    <td class="fw-semibold">${escapeHtml(item.record)}</td>
+                    <td class="text-center">${item.diisi}</td>
+                    <td class="text-center">${item.dipindah}</td>
+                </tr>
+            `).join('');
+            const sisa = perRecord.length - shown.length + (data.per_record_sisa || 0);
+            const sisaRow = sisa > 0
+                ? `<tr><td colspan="3" class="text-center text-muted" style="font-size: 11.5px;">... dan ${sisa} record lainnya</td></tr>`
+                : '';
+            const recordTable = rows
+                ? `<div class="table-responsive">
+                       <table class="table table-sm table-hover mb-0" style="font-size: 12.5px;">
+                           <thead>
+                               <tr>
+                                   <th>Data Prioritas</th>
+                                   <th class="text-center">Diisi</th>
+                                   <th class="text-center">Dipindah</th>
+                               </tr>
+                           </thead>
+                           <tbody>${rows}${sisaRow}</tbody>
+                       </table>
+                   </div>`
+                : '';
+            const kosongNote = data.dikosongkan
+                ? `<div class="alert alert-warning py-2 px-3 mt-3 mb-0" style="font-size: 12px;">
+                       ${data.dikosongkan} Tiket akan <strong>tidak lagi prioritas</strong> karena tanggal terima DIP-nya
+                       di luar masa berlaku Data Prioritas mana pun.
+                   </div>`
+                : '';
+
+            body.html(`
+                <div class="alert alert-info py-2 px-3 mb-3" style="font-size: 12px;">
+                    Status prioritas Tiket berikut <strong>akan disesuaikan</strong> dengan Data Prioritas yang masa
+                    berlakunya mencakup tanggal terima DIP Tiket. Setiap perubahan dicatat di riwayat Tiket sebagai
+                    "Isian Tiket Diubah".
+                </div>
+                <div class="row g-2 mb-3">
+                    ${statTile('Total Tiket', data.total_tiket)}
+                    ${statTile('Diisi', data.diisi)}
+                    ${statTile('Dipindah', data.dipindah)}
+                    ${statTile('Tidak Lagi Prioritas', data.dikosongkan)}
+                </div>
+                ${recordTable}
+                ${kosongNote}
+            `);
+        }
+
+        // PROSES: write the adjusted prioritas onto the tikets
+        function runTiketBackfill() {
+            const btn = $('#btn-sync-confirm');
+            const originalHtml = btn.html();
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Memproses...');
+
+            $.ajax({
+                url: '{% url "jenis_prioritas_data_tiket_backfill" %}',
+                type: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                success: function (response) {
+                    if (response.success) {
+                        syncSummaryModal.hide();
+                        showToast(escapeHtml(response.message), response.updated ? 'success' : 'info');
+                    } else {
+                        showToast(escapeHtml(response.message || 'Gagal menyesuaikan status prioritas Tiket.'), 'danger');
+                    }
+                },
+                error: function (xhr) {
+                    const res = xhr.responseJSON || {};
+                    showToast(escapeHtml(res.message || 'Terjadi kesalahan. Silakan coba lagi.'), 'danger');
+                },
+                complete: function () {
+                    btn.prop('disabled', false).html(originalHtml);
+                }
+            });
+        }
 
                     function loadModal(url, title) {
             var dialog = $('#crudModal .modal-dialog');
