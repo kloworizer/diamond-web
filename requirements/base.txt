@@ -6,7 +6,7 @@ redis>=5.0,<6
 crispy-bootstrap5==2026.3
 oracledb>=2.0.0
 diff-match-patch==20241021
-Django==5.2.14
+Django==5.2.17
 Markdown>=3.10,<4
 django-crispy-forms==2.6
 django-dbbackup==5.3.0
@@ -17,7 +17,7 @@ exceptiongroup==1.3.1
 openpyxl==3.1.5
 python-dotenv==1.2.2
 python-docx==1.2.0
-sqlparse==0.5.5
+sqlparse==0.6.0
 tablib==3.9.0
 typing_extensions==4.15.0
 tzdata==2026.2
