@@ -4,7 +4,8 @@ Page 1 (P3DE):
 - Generate PKDI / PKDI Sebagian / Klarifikasi for multiple tickets.
 
 Page 2 (P3DE):
-- Generate ND Pengantar PIDE for multiple tickets with status Dikirim ke PIDE.
+- Generate ND Pengantar PIDE for multiple tickets sent to PIDE on a date,
+  leaving out those since returned or cancelled.
 
 Page 3 (PMDE):
 - Generate ND Pengantar PDI for adhoc data finished in a date range.
@@ -25,7 +26,11 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from ..constants.tiket_action_types import TiketActionType
-from ..constants.tiket_status import STATUS_DIKIRIM_KE_PIDE, STATUS_SELESAI
+from ..constants.tiket_status import (
+    STATUS_DIBATALKAN,
+    STATUS_DIKEMBALIKAN,
+    STATUS_SELESAI,
+)
 from ..models.detil_tanda_terima import DetilTandaTerima
 from ..models.docx_template import DocxTemplate
 from ..models.ilap import ILAP
@@ -428,6 +433,32 @@ def bulk_pkdi_klarifikasi(request):
     })
 
 
+# A tiket sent back from PIDE — cancelled, or returned to P3DE by the sync —
+# keeps its old tgl_kirim_pide, but it is no longer at PIDE and must not get
+# a pengantar for that send.
+STATUSES_DITARIK_DARI_PIDE = (STATUS_DIKEMBALIKAN, STATUS_DIBATALKAN)
+
+
+def _pengantar_pide_queryset(ilap_id, tanggal_kirim_pide):
+    """Tikets sent to PIDE on `tanggal_kirim_pide` that are still on their way on."""
+    qs = Tiket.objects.filter(
+        tgl_kirim_pide__date=tanggal_kirim_pide,
+        tanda_terima=True,
+    ).exclude(
+        status_tiket__in=STATUSES_DITARIK_DARI_PIDE,
+    )
+    if ilap_id and ilap_id != 'semua':
+        qs = qs.filter(id_periode_data__id_sub_jenis_data_ilap__id_ilap_id=ilap_id)
+    return qs.select_related(
+        'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
+        'id_periode_data__id_periode_pengiriman',
+        'id_periode_data__id_sub_jenis_data_ilap__id_status_data',
+        'id_status_penelitian',
+    ).prefetch_related(
+        'id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata_set__id_klasifikasi_tabel',
+    )
+
+
 @login_required
 @user_passes_test(_is_p3de_user)
 @require_http_methods(['GET', 'POST', 'HEAD'])
@@ -446,41 +477,16 @@ def bulk_nd_pengantar_pide(request):
     if tanggal_kirim_pide:
         tanggal_obj = _parse_date(tanggal_kirim_pide)
         if tanggal_obj:
+            qs = _pengantar_pide_queryset(ilap_id, tanggal_obj)
             # If ilap_id is empty or 'semua', show all tickets for the date
             if not ilap_id or ilap_id == 'semua':
-                tickets = list(
-                    Tiket.objects.filter(
-                        tgl_kirim_pide__date=tanggal_obj,
-                        tanda_terima=True,
-                    ).select_related(
-                        'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
-                        'id_periode_data__id_periode_pengiriman',
-                        'id_periode_data__id_sub_jenis_data_ilap__id_status_data',
-                        'id_status_penelitian',
-                    ).prefetch_related(
-                        'id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata_set__id_klasifikasi_tabel',
-                    )
-                    .order_by(
-                        'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
-                        'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
-                        'id')
-                )
+                qs = qs.order_by(
+                    'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
+                    'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
+                    'id')
             else:
-                tickets = list(
-                    Tiket.objects.filter(
-                        id_periode_data__id_sub_jenis_data_ilap__id_ilap_id=ilap_id,
-                        tgl_kirim_pide__date=tanggal_obj,
-                        tanda_terima=True,
-                    ).select_related(
-                        'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
-                        'id_periode_data__id_periode_pengiriman',
-                        'id_periode_data__id_sub_jenis_data_ilap__id_status_data',
-                        'id_status_penelitian',
-                    ).prefetch_related(
-                        'id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata_set__id_klasifikasi_tabel',
-                    )
-                    .order_by('id')
-                )
+                qs = qs.order_by('id')
+            tickets = list(qs)
 
     if request.method == 'POST':
         ilap_id = request.POST.get('ilap_id', '')
@@ -492,35 +498,7 @@ def bulk_nd_pengantar_pide(request):
             messages.error(request, 'Parameter filter tidak valid.')
             return redirect('bulk_nd_pengantar_pide')
 
-        # Handle 'semua' or empty ilap_id
-        if not ilap_id or ilap_id == 'semua':
-            base_qs = Tiket.objects.filter(
-                tgl_kirim_pide__date=tanggal_obj,
-                tanda_terima=True,
-            ).select_related(
-                'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
-                'id_periode_data__id_periode_pengiriman',
-                'id_periode_data__id_sub_jenis_data_ilap__id_status_data',
-                'id_status_penelitian',
-            ).prefetch_related(
-                'id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata_set__id_klasifikasi_tabel',
-            ).order_by(
-                'id'
-            )
-        else:
-            base_qs = Tiket.objects.filter(
-                id_periode_data__id_sub_jenis_data_ilap__id_ilap_id=ilap_id,
-                tgl_kirim_pide__date=tanggal_obj,
-                tanda_terima=True,
-            ).select_related(
-                'id_periode_data__id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah',
-                'id_periode_data__id_periode_pengiriman',
-                'id_periode_data__id_sub_jenis_data_ilap__id_status_data',
-                'id_status_penelitian',
-            ).prefetch_related(
-                'id_periode_data__id_sub_jenis_data_ilap__klasifikasijenisdata_set__id_klasifikasi_tabel',
-            ).order_by('id')
-        
+        base_qs = _pengantar_pide_queryset(ilap_id, tanggal_obj)
         selected_tickets = list(base_qs.filter(id__in=selected_ids).order_by('id'))
 
         if not selected_tickets:

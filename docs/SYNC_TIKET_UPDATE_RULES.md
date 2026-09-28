@@ -1,7 +1,7 @@
 # Sinkronisasi Oracle — Aturan Transisi Status Tiket
 
 **File**: `diamond_web/views/sync_tiket_update.py`
-**Terakhir diperbarui**: 26 Agustus 2026
+**Terakhir diperbarui**: 28 September 2026
 
 ---
 
@@ -51,13 +51,16 @@ flowchart TD
     START[Status: 5 - Identifikasi] --> C1{tgl_transfer<br/>!= null?}
     C1 -->|Ya| C2{belum_qc<br/>!= null?}
     C2 -->|Ya| C3{belum_qc<br/>== 0?}
-    C3 -->|Ya| RESULT[ATURAN 3<br/>Status Tiket: 5 → 8<br/>SELESAI]
+    C3 -->|Ya| C4{Baris hanya CDE?<br/>i=0, u=0, res=0, cde>0}
+    C4 -->|Tidak| RESULT[ATURAN 3<br/>Status Tiket: 5 → 8<br/>SELESAI]
+    C4 -->|Ya| KE_4[Lihat Aturan 4]
 
     style RESULT fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
     style START fill:#e3f2fd,stroke:#1565c0
     style C1 fill:#fff9c4,stroke:#f9a825
     style C2 fill:#fff9c4,stroke:#f9a825
     style C3 fill:#fff9c4,stroke:#f9a825
+    style C4 fill:#fff9c4,stroke:#f9a825
 ```
 
 ### Diagram 2b — Aturan 5A / 5B: Identifikasi (5) → Selesai (8) — Berbasis Baris
@@ -83,7 +86,7 @@ flowchart TD
     style C3 fill:#fff9c4,stroke:#f9a825
 ```
 
-### Diagram 2c — Aturan 4: Identifikasi (5) → Dikembalikan (3)
+### Diagram 2c — Aturan 4: Identifikasi (5) → Dibatalkan (7), dikembalikan PIDE
 
 ```mermaid
 flowchart TD
@@ -92,7 +95,7 @@ flowchart TD
     C2 -->|Ya| C3{baris_u<br/>== 0?}
     C3 -->|Ya| C4{baris_res<br/>== 0?}
     C4 -->|Ya| C5{baris_cde<br/>> 0?}
-    C5 -->|Ya| RESULT[ATURAN 4<br/>Status Tiket: 5 → 3<br/>DIKEMBALIKAN]
+    C5 -->|Ya| RESULT[ATURAN 4<br/>Status Tiket: 5 → 7<br/>DIBATALKAN<br/>aksi DIKEMBALIKAN + DIBATALKAN]
 
     style RESULT fill:#fce4ec,stroke:#c62828,stroke-width:3px
     style START fill:#e3f2fd,stroke:#1565c0
@@ -186,7 +189,7 @@ flowchart TD
    - [Aturan 1: Identifikasi (5) → Pengendalian Mutu (6)](#aturan-1-identifikasi-5--pengendalian-mutu-6)
    - [Aturan 2: Pengendalian Mutu (6) → Selesai (8)](#aturan-2-pengendalian-mutu-6--selesai-8)
    - [Aturan 3: Identifikasi (5) → Selesai (8) — QC Lengkap](#aturan-3-identifikasi-5--selesai-8--qc-lengkap)
-   - [Aturan 4: Identifikasi (5) → Dikembalikan (3)](#aturan-4-identifikasi-5--dikembalikan-3)
+   - [Aturan 4: Identifikasi (5) → Dibatalkan (7), dikembalikan PIDE](#aturan-4-identifikasi-5--dibatalkan-7-dikembalikan-pide)
    - [Aturan 5: Identifikasi (5) → Selesai (8) — Berbasis Baris](#aturan-5-identifikasi-5--selesai-8--berbasis-baris)
    - [Aturan 6: Dikirim ke PIDE (4) → Identifikasi (5)](#aturan-6-dikirim-ke-pide-4--identifikasi-5)
    - [Aturan 7: Dikirim ke PIDE (4) → Pengendalian Mutu (6)](#aturan-7-dikirim-ke-pide-4--pengendalian-mutu-6)
@@ -366,8 +369,11 @@ Jika tidak ada PIC PMDE aktif yang ditemukan, status tetap diperbarui tetapi per
 | `tiket.status_tiket == STATUS_IDENTIFIKASI` (5) | Status saat ini adalah Identifikasi |
 | `tgl_transfer is not None` | Oracle memiliki tanggal transfer |
 | `belum_qc is not None and belum_qc == 0` | QC selesai seluruhnya |
+| **bukan** `i=0, u=0, res=0, cde>0` | Barisnya tidak hanya CDE — eksklusif dari Aturan 4 |
 
 Aturan ini menangani kasus di mana QC telah selesai di Oracle sebelum sinkronisasi berjalan — tiket dapat melewati status 6 dan langsung ke 8.
+
+> **Kenapa tiket yang barisnya hanya CDE dikecualikan**: tiket seperti itu **selalu** punya `belum_qc == 0` karena tidak ada baris yang perlu di-QC, bukan karena QC-nya selesai. Sebelum pengecualian ini, Aturan 3 dan Aturan 4 menyala bersamaan pada tiket itu: jejaknya mendapat aksi Ditransfer ke PMDE, Pengendalian Mutu dan Selesai, lalu statusnya ditimpa Aturan 4 (contoh: `PV034050126071001`). Di data per 25/08/2026, ke-383 tiket yang barisnya hanya CDE punya `belum_qc = 0`, dan 369 di antaranya Dibatalkan.
 
 #### Perubahan Status
 
@@ -404,7 +410,7 @@ Setiap peran diselesaikan secara **independen**:
 
 ---
 
-### Aturan 4: Identifikasi (5) → Dikembalikan (3)
+### Aturan 4: Identifikasi (5) → Dibatalkan (7), dikembalikan PIDE
 
 **Nama variabel**: `needs_dikembalikan` / `needs_dikembalikan_transition`
 
@@ -419,11 +425,13 @@ Setiap peran diselesaikan secara **independen**:
 | `baris_res == 0` | Tidak ada baris residual |
 | `baris_cde > 0` | Tetapi ada baris CDE (hanya entri revisi data) |
 
-Aturan ini mendeteksi tiket yang hanya memiliki entri CDE (koreksi/revisi data) tanpa data identifikasi/*update*/residual yang sebenarnya. Ini diperlakukan sebagai pengembalian ke P3DE untuk revisi.
+Aturan ini mendeteksi tiket yang hanya memiliki entri CDE (koreksi/revisi data) tanpa data identifikasi/*update*/residual yang sebenarnya. Ini diperlakukan sama dengan tombol **Dikembalikan** manual oleh PIDE: tiket dibatalkan.
+
+Aturan ini tidak memeriksa `belum_qc` — tiket yang barisnya hanya CDE selalu `belum_qc == 0`. Aturan 3 yang mengalah (lihat di atas).
 
 #### Perubahan Status
 
-`tiket.status_tiket = STATUS_DIKEMBALIKAN` (3)
+`tiket.status_tiket = STATUS_DIBATALKAN` (7) — sama dengan tombol Dikembalikan manual. Sebelumnya aturan ini menulis `STATUS_DIKEMBALIKAN` (3), status buntu yang tidak bisa dikirim lagi ke PIDE; lihat [Perbaikan Retroaktif](#perbaikan-retroaktif-aturan-4).
 
 #### Pembaruan Field Tambahan
 
@@ -460,6 +468,21 @@ Setiap peran diselesaikan secara **independen**:
 - Tidak ada PIC PIDE → aksi `DIKEMBALIKAN` dilewati dengan peringatan.
 - Tidak ada PIC P3DE → aksi `DIBATALKAN` dilewati dengan peringatan.
 - Tidak ada PIC P3DE → tidak ada notifikasi yang dikirim.
+
+#### Perbaikan Retroaktif (Aturan 4)
+
+Perintah `fix_tiket_dikembalikan_sync` memperbaiki tiket yang terlanjur diproses aturan lama:
+
+```bash
+python manage.py fix_tiket_dikembalikan_sync --dry-run     # lihat dulu
+python manage.py fix_tiket_dikembalikan_sync               # terapkan
+python manage.py fix_tiket_dikembalikan_sync --tiket PV034050126071001
+```
+
+- **Status**: setiap tiket berstatus Dikembalikan (3) → Dibatalkan (7). Hanya sinkronisasi yang pernah menulis status 3; tiket berstatus 3 tanpa aksi *auto-sync* di jejaknya tetap diubah, tetapi ditandai di laporan untuk diperiksa manual.
+- **Jejak aksi**: aksi yang ditulis Aturan 3 pada eksekusi yang sama dihapus — yaitu aksi yang berada tepat di bawah pasangan DIKEMBALIKAN/DIBATALKAN *auto-sync* terakhir (urutan id), dengan catatan persis milik Aturan 3, dalam salah satu dari tiga bentuk yang bisa ditinggalkannya: `SELESAI + PENGENDALIAN_MUTU + DITRANSFER_KE_PMDE`, hanya pasangan PMDE, atau hanya `DITRANSFER_KE_PMDE` (tergantung PIC yang aktif). Aksi transfer dan pengendalian mutu juga harus ber-*timestamp* sama dengan aksi *auto-sync* (keduanya `tgl_transfer`). Putaran asli sebelumnya tidak tersentuh.
+- Aksi **DIKEMBALIKAN** dan **DIBATALKAN** tetap disimpan.
+- **Idempoten**: eksekusi kedua tidak menemukan status 3 maupun aksi Aturan 3 yang tersisa.
 
 ---
 
@@ -746,46 +769,37 @@ Aksi `DITRANSFER_KE_PMDE` **tidak dibuat** bila jejaknya sudah punya satu di tan
 
 ## Diagram Alur Keputusan di Status 5
 
-Karena beberapa aturan menargetkan status 5, berikut adalah urutan prioritasnya (semua blok `if` independen, tetapi kondisi dirancang agar saling eksklusif):
+Karena beberapa aturan menargetkan status 5, berikut adalah urutan prioritasnya (semua blok `if` independen, tetapi kondisinya saling eksklusif — Aturan 3 secara eksplisit mengecualikan komposisi Aturan 4):
 
 ```
-                     ┌─────────────────────────────────┐
-                     │   Status Tiket = 5 (Identifikasi)│
-                     │   tgl_transfer tidak null        │
-                     └────────────┬────────────────────┘
-                                  │
-                    ┌─────────────┴─────────────┐
-                    │                           │
-              belum_qc == 0              belum_qc != 0 (atau null)
-                    │                           │
-                    ▼                           ▼
-           ┌──────────────────┐     ┌──────────────────────────┐
-           │   ATURAN 3       │     │  Periksa komposisi baris │
-           │   5 → 8 (QC)     │     └────────────┬─────────────┘
-           └──────────────────┘          │                    │
-                                   i=0,u=0,           i=0,u>0 ATAU
-                                  res=0,cde>0       i=0,u=0,res>0,
-                                       │              cde==0
-                                       ▼                    ▼
-                              ┌──────────────┐   ┌──────────────────┐
-                              │   ATURAN 4   │   │   ATURAN 5       │
-                              │   5 → 3      │   │   5 → 8 (baris)  │
-                              └──────────────┘   └──────────────────┘
-                                       │
-                                  (tidak cocok)
-                                       │
-                                       ▼
-                              ┌──────────────────┐
-                              │   ATURAN 1       │
-                              │   5 → 6 (jika i>0)│
-                              └──────────────────┘
+                     ┌──────────────────────────────────┐
+                     │  Status Tiket = 5 (Identifikasi) │
+                     │  tgl_transfer tidak null         │
+                     └────────────────┬─────────────────┘
+                                      │
+                    ┌─────────────────┴──────────────────┐
+                    │                                    │
+          baris hanya CDE                         selain itu
+      (i=0, u=0, res=0, cde>0)                           │
+                    │                    ┌───────────────┴───────────────┐
+                    ▼                    │                               │
+           ┌──────────────────┐    belum_qc == 0            belum_qc != 0 (atau null)
+           │   ATURAN 4       │          │                               │
+           │   5 → 7          │          ▼                    i=0,u>0 ATAU        i>0
+           │   (Dibatalkan)   │ ┌──────────────────┐        i=0,u=0,res>0,cde=0     │
+           └──────────────────┘ │   ATURAN 3       │                 │              ▼
+                                │   5 → 8 (QC)     │                 ▼      ┌──────────────┐
+                                └──────────────────┘      ┌──────────────────┐ │  ATURAN 1  │
+                                                          │   ATURAN 5       │ │  5 → 6     │
+                                                          │   5 → 8 (baris)  │ └──────────────┘
+                                                          └──────────────────┘
 ```
 
 | Prioritas | Kondisi | Aturan | Hasil |
 |-----------|---------|--------|-------|
-| 1 | `belum_qc == 0` | **Aturan 3** | 5 → 8 (QC lengkap) |
-| 2 | `i==0, u>0` **ATAU** `i==0, u==0, res>0, cde==0` | **Aturan 5** | 5 → 8 (berbasis baris) |
-| 3 | `i==0, u==0, res==0, cde>0` | **Aturan 4** | 5 → 3 (Dikembalikan) |
+| 1 | `i==0, u==0, res==0, cde>0` | **Aturan 4** | 5 → 7 (Dibatalkan, dikembalikan PIDE) |
+| 2 | `belum_qc == 0` | **Aturan 3** | 5 → 8 (QC lengkap) |
+| 3 | `i==0, u>0` **ATAU** `i==0, u==0, res>0, cde==0` | **Aturan 5** | 5 → 8 (berbasis baris) |
 | 4 | `i>0` | **Aturan 1** | 5 → 6 (PMDE) |
 | — | Tidak ada yang cocok | — | Tidak ada transisi |
 
@@ -803,8 +817,8 @@ Karena beberapa aturan menargetkan status 5, berikut adalah urutan prioritasnya 
 | 3 (5→8 QC) | `DITRANSFER_KE_PMDE` | PIDE | `tgl_transfer` |
 | 3 (5→8 QC) | `PENGENDALIAN_MUTU` | PMDE | `tgl_close_tiket` |
 | 3 (5→8 QC) | `SELESAI` | PMDE | `tgl_close_tiket` |
-| 4 (5→3) | `DIKEMBALIKAN` | PIDE | `tgl_transfer` |
-| 4 (5→3) | `DIBATALKAN` | P3DE | `tgl_transfer` |
+| 4 (5→7) | `DIKEMBALIKAN` | PIDE | `tgl_transfer` |
+| 4 (5→7) | `DIBATALKAN` | P3DE | `tgl_transfer` |
 | 5 (5→8 baris) | `DITRANSFER_KE_PMDE` | PIDE | `tgl_transfer` |
 | 5 (5→8 baris) | `PENGENDALIAN_MUTU` | PMDE | `tgl_close_tiket` |
 | 5 (5→8 baris) | `SELESAI` | PMDE | `tgl_close_tiket` |

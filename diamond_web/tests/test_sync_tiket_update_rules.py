@@ -20,6 +20,7 @@ import pytest
 
 from diamond_web.constants.tiket_action_types import TiketActionType
 from diamond_web.constants.tiket_status import (
+    STATUS_DIBATALKAN,
     STATUS_DIKIRIM_KE_PIDE,
     STATUS_IDENTIFIKASI,
     STATUS_PENGENDALIAN_MUTU,
@@ -435,3 +436,66 @@ class TestTransisiTransferUlangDariSelesai:
 
         tiket_selesai_baris_u.refresh_from_db()
         assert tiket_selesai_baris_u.status_tiket == STATUS_SELESAI
+
+
+TGL_CLOSE = datetime(2026, 3, 11, 7, 0)
+
+
+@pytest.fixture
+def tiket_identifikasi(db):
+    """Tiket at status 5 with an active PIDE, PMDE and P3DE PIC."""
+    tiket = TiketFactory(
+        status_tiket=STATUS_IDENTIFIKASI,
+        tgl_rekam_pide=TGL_LOAD,
+        tgl_transfer=None,
+    )
+    for role in (TiketPIC.Role.PIDE, TiketPIC.Role.PMDE, TiketPIC.Role.P3DE):
+        TiketPICFactory(id_tiket=tiket, role=role, active=True)
+    return tiket
+
+
+def _cde_only_row(nomor_tiket):
+    """PIDE found only CDE rows: nothing to QC, so belum_qc is 0."""
+    return _row(
+        nomor_tiket, tgl_transfer=TGL_TRANSFER, tgl_close_tiket=TGL_CLOSE,
+        baris_i=0, baris_u=0, baris_res=0, baris_cde=10, belum_qc=0,
+    )
+
+
+@pytest.mark.django_db
+class TestAturan4HanyaCde:
+    """Identifikasi + rows CDE only → Dibatalkan, and Aturan 3 stays out of it."""
+
+    def test_menjadi_dibatalkan_bukan_selesai(self, tiket_identifikasi):
+        result = _update_tiket_data(_service([_cde_only_row(tiket_identifikasi.nomor_tiket)]))
+
+        tiket_identifikasi.refresh_from_db()
+        assert tiket_identifikasi.status_tiket == STATUS_DIBATALKAN
+        assert tiket_identifikasi.tgl_dikembalikan == TGL_TRANSFER
+        assert tiket_identifikasi.tgl_rekam_pide is None
+        assert result['status_to_dikembalikan'] == 1
+        assert result['status_to_selesai'] == 0
+
+        actions = TiketAction.objects.filter(id_tiket=tiket_identifikasi).order_by('id')
+        assert [a.action for a in actions] == [
+            TiketActionType.DIKEMBALIKAN,
+            TiketActionType.DIBATALKAN,
+        ]
+
+    def test_belum_qc_nol_tanpa_cde_tetap_selesai(self, tiket_identifikasi):
+        """Aturan 3 still closes a tiket whose QC is really done."""
+        _update_tiket_data(_service([_row(
+            tiket_identifikasi.nomor_tiket, tgl_transfer=TGL_TRANSFER, tgl_close_tiket=TGL_CLOSE,
+            baris_i=0, baris_u=0, baris_res=4, baris_cde=10, belum_qc=0,
+        )]))
+
+        tiket_identifikasi.refresh_from_db()
+        assert tiket_identifikasi.status_tiket == STATUS_SELESAI
+
+    def test_dry_run_hanya_menghitung_dikembalikan(self, tiket_identifikasi):
+        result = _check_tiket_update_data(_service([_cde_only_row(tiket_identifikasi.nomor_tiket)]))
+
+        assert result['would_dikembalikan'] == 1
+        assert result['would_selesai'] == 0
+        tiket_identifikasi.refresh_from_db()
+        assert tiket_identifikasi.status_tiket == STATUS_IDENTIFIKASI

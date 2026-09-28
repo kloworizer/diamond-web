@@ -13,10 +13,10 @@ This module provides the core logic to:
    - IDENTIFIKASI (5) + tgl_transfer not null + baris_i > 0
      → PENGENDALIAN_MUTU (6)
    - PENGENDALIAN_MUTU (6) + belum_qc == 0 → SELESAI (8)
-   - IDENTIFIKASI (5) + tgl_transfer not null + belum_qc == 0
-     → SELESAI (8) (direct, QC complete)
+   - IDENTIFIKASI (5) + tgl_transfer not null + belum_qc == 0, unless the
+     rows are CDE only → SELESAI (8) (direct, QC complete)
    - IDENTIFIKASI (5) + tgl_transfer not null + i=0 & u=0 & res=0 & cde>0
-     → DIKEMBALIKAN (3) (with notification to P3DE)
+     → DIBATALKAN (7) (dikembalikan by PIDE, with notification to P3DE)
    - IDENTIFIKASI (5) + tgl_transfer not null + belum_qc != 0
      + (i=0 & u>0) OR (i=0 & u=0 & res>0 & cde=0)
      → SELESAI (8) (direct, baris-based)
@@ -55,7 +55,7 @@ from ..constants.tiket_status import (
     STATUS_IDENTIFIKASI,
     STATUS_PENGENDALIAN_MUTU,
     STATUS_SELESAI,
-    STATUS_DIKEMBALIKAN,
+    STATUS_DIBATALKAN,
 )
 from ..models.notification import Notification
 from ..utils.oracle_sync import OracleDataSyncService, OracleSyncConfigError
@@ -139,6 +139,20 @@ _TIKET_UPDATE_ORACLE_SQL = """
             no_tiket
     ) b
 """
+
+
+def _hanya_cde(baris_i, baris_u, baris_res, baris_cde):
+    """True when PIDE found nothing but CDE rows in the tarikan (Aturan 4).
+
+    Such a tiket always has belum_qc == 0 because it has nothing to QC, not
+    because QC is finished — so Aturan 3 must not read it as complete.
+    """
+    return (
+        baris_i is not None and baris_i == 0
+        and baris_u is not None and baris_u == 0
+        and baris_res is not None and baris_res == 0
+        and baris_cde is not None and baris_cde > 0
+    )
 
 
 def _is_admin_user(user):
@@ -424,20 +438,19 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                     and belum_qc is not None
                     and belum_qc == 0
                 )
+                hanya_cde = _hanya_cde(baris_i, baris_u, baris_res, baris_cde)
                 needs_selesai_from_5 = (
                     tiket.status_tiket == STATUS_IDENTIFIKASI
                     and tgl_transfer is not None
                     and belum_qc is not None
                     and belum_qc == 0
+                    and not hanya_cde
                 )
 
                 needs_dikembalikan = (
                     tiket.status_tiket == STATUS_IDENTIFIKASI
                     and tgl_transfer is not None
-                    and baris_i is not None and baris_i == 0
-                    and baris_u is not None and baris_u == 0
-                    and baris_res is not None and baris_res == 0
-                    and baris_cde is not None and baris_cde > 0
+                    and hanya_cde
                 )
 
                 needs_selesai_from_5_baris = (
@@ -545,7 +558,7 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                     if needs_selesai_from_5:
                         detail_parts.append(f"Status: IDENTIFIKASI → SELESAI (I:{baris_i}, U:{baris_u}, Res:{baris_res}, CDE:{baris_cde}, Sudah QC:{sudah_qc}, Lolos QC:{lolos_qc}, Tidak Lolos QC:{tidak_lolos_qc})")
                     if needs_dikembalikan:
-                        detail_parts.append(f"Status: IDENTIFIKASI → DIKEMBALIKAN (I:{baris_i}, U:{baris_u}, Res:{baris_res}, CDE:{baris_cde})")
+                        detail_parts.append(f"Status: IDENTIFIKASI → DIBATALKAN (dikembalikan PIDE, I:{baris_i}, U:{baris_u}, Res:{baris_res}, CDE:{baris_cde})")
                     if needs_selesai_from_5_baris:
                         detail_parts.append(f"Status: IDENTIFIKASI → SELESAI (langsung, I:{baris_i}, U:{baris_u}, Res:{baris_res}, CDE:{baris_cde})")
                     if needs_rematch:
@@ -594,7 +607,7 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                         _log_update_result_row(
                             check_id, nomor_tiket,
                             'Akan → Dikembalikan',
-                            f'Dari IDENTIFIKASI ke DIKEMBALIKAN (I:{baris_i}, U:{baris_u}, Res:{baris_res}, CDE:{baris_cde})'
+                            f'Dari IDENTIFIKASI ke DIBATALKAN (dikembalikan PIDE, I:{baris_i}, U:{baris_u}, Res:{baris_res}, CDE:{baris_cde})'
                         )
                     if needs_selesai_from_5_baris:
                         _log_update_result_row(
@@ -952,19 +965,18 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                     and belum_qc is not None
                     and belum_qc == 0
                 )
+                hanya_cde = _hanya_cde(baris_i, baris_u, baris_res, baris_cde)
                 needs_selesai_from_5_transition = (
                     tiket.status_tiket == STATUS_IDENTIFIKASI
                     and tgl_transfer is not None
                     and belum_qc is not None
                     and belum_qc == 0
+                    and not hanya_cde
                 )
                 needs_dikembalikan_transition = (
                     tiket.status_tiket == STATUS_IDENTIFIKASI
                     and tgl_transfer is not None
-                    and baris_i is not None and baris_i == 0
-                    and baris_u is not None and baris_u == 0
-                    and baris_res is not None and baris_res == 0
-                    and baris_cde is not None and baris_cde > 0
+                    and hanya_cde
                 )
                 needs_selesai_from_5_baris_transition = (
                     tiket.status_tiket == STATUS_IDENTIFIKASI
@@ -1031,8 +1043,9 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                     tiket.status_tiket = STATUS_SELESAI
                     changed = True
                 if needs_dikembalikan_transition:
+                    # Same as PIDE's manual Dikembalikan: the tiket is cancelled.
                     update_fields.append('status_tiket')
-                    tiket.status_tiket = STATUS_DIKEMBALIKAN
+                    tiket.status_tiket = STATUS_DIBATALKAN
                     update_fields.append('tgl_dikembalikan')
                     tiket.tgl_dikembalikan = tgl_transfer or timezone.now()
                     update_fields.append('tgl_rekam_pide')
@@ -1243,7 +1256,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                             action=TiketActionType.DIBATALKAN,
                             catatan='Tiket dibatalkan (dikembalikan oleh PIDE: auto-sync)'
                         )
-                        logger.info(f'Tiket {nomor_tiket}: {STATUS_IDENTIFIKASI} → {STATUS_DIKEMBALIKAN} (pide={pide_user.username if pide_user else None}, p3de={p3de_user.username})')
+                        logger.info(f'Tiket {nomor_tiket}: {STATUS_IDENTIFIKASI} → {STATUS_DIBATALKAN} (dikembalikan, pide={pide_user.username if pide_user else None}, p3de={p3de_user.username})')
                     else:
                         logger.warning(f'Tiket {nomor_tiket}: no active P3DE PIC — DIBATALKAN action skipped')
 
@@ -1258,7 +1271,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                     _log_update_result_row(
                         sync_id, nomor_tiket,
                         'Status → Dikembalikan',
-                        f'Dari IDENTIFIKASI ke DIKEMBALIKAN (I:{baris_i}, U:{baris_u}, Res:{baris_res}, CDE:{baris_cde})'
+                        f'Dari IDENTIFIKASI ke DIBATALKAN (dikembalikan PIDE, I:{baris_i}, U:{baris_u}, Res:{baris_res}, CDE:{baris_cde})'
                     )
 
                 if needs_selesai_from_5_baris_transition:

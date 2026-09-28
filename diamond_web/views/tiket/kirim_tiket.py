@@ -23,7 +23,7 @@ from ...models.notification import Notification
 from ...forms.kirim_tiket import KirimTiketForm
 from ...forms.kirim_ke_pide import KirimKePideForm
 from ..mixins import UserP3DERequiredMixin, get_active_p3de_ilap_ids
-from ...constants.tiket_status import STATUS_DITELITI, STATUS_DIKEMBALIKAN, STATUS_DIKIRIM_KE_PIDE
+from ...constants.tiket_status import STATUS_DITELITI, STATUS_DIKIRIM_KE_PIDE
 from ...constants.tiket_action_types import TiketActionType
 from ..bulk_document_generation import _generate_docx_for_tickets
 
@@ -31,7 +31,7 @@ from ..bulk_document_generation import _generate_docx_for_tickets
 class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
     """P3DE workflow step to generate ND Pengantar PIDE template.
 
-    Shows tikets with status Diteliti/Dikembalikan where the current user is
+    Shows tikets with status Diteliti, backup and tanda terima recorded, where the current user is
     an active P3DE PIC. The user selects tikets via checkboxes and clicks
     'Generate Template' to:
 
@@ -71,7 +71,8 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
 
         Batch mode (no tiket_pk):
         - context['tikets']: Tikets where:
-            * status_tiket in (DITELITI, DIKEMBALIKAN)
+            * status_tiket = DITELITI
+            * backup=True (backup data recorded)
             * tanda_terima=True (receipt data recorded)
             * User is active P3DE PIC for each tiket
           Display columns: nomor tiket, nama ilap, sub jenis data, status tiket
@@ -108,7 +109,7 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
         else:
             # Build the base tiket queryset first (without ILAP filter)
             tikets = Tiket.objects.filter(
-                status_tiket__in=[STATUS_DITELITI, STATUS_DIKEMBALIKAN],
+                status_tiket=STATUS_DITELITI,
                 backup=True,
                 tanda_terima=True,
                 tiketpic__active=True,
@@ -283,7 +284,7 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
             select_all_pages = self.request.POST.get('select_all_pages') == 'true'
             if select_all_pages:
                 all_ids_qs = Tiket.objects.filter(
-                    status_tiket__in=[STATUS_DITELITI, STATUS_DIKEMBALIKAN],
+                    status_tiket=STATUS_DITELITI,
                     backup=True,
                     tanda_terima=True,
                     tiketpic__active=True,
@@ -307,7 +308,7 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
                 # Filter explicit ticket IDs by the same criteria as the listing
                 all_ids_qs = Tiket.objects.filter(
                     id__in=tiket_ids,
-                    status_tiket__in=[STATUS_DITELITI, STATUS_DIKEMBALIKAN],
+                    status_tiket=STATUS_DITELITI,
                     backup=True,
                     tanda_terima=True,
                 ).exclude(
@@ -540,7 +541,7 @@ class KirimPideTempUpdateView(LoginRequiredMixin, UserP3DERequiredMixin, View):
             .values_list('id_tiket_id', flat=True)
         )
         return Tiket.objects.filter(
-            status_tiket__in=[STATUS_DITELITI, STATUS_DIKEMBALIKAN],
+            status_tiket=STATUS_DITELITI,
             backup=True,
             tanda_terima=True,
             tiketpic__active=True,
@@ -860,7 +861,7 @@ class KirimKePIDEView(LoginRequiredMixin, UserP3DERequiredMixin, View):
         invalid_tickets = []
         for t in tikets:
             issues = []
-            if t.status_tiket not in (STATUS_DITELITI, STATUS_DIKEMBALIKAN):
+            if t.status_tiket != STATUS_DITELITI:
                 issues.append(f'status "{t.get_status_tiket_display()}"')
             if not t.backup:
                 issues.append('belum backup')
