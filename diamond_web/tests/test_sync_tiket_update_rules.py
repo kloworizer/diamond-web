@@ -482,6 +482,28 @@ class TestAturan4HanyaCde:
             TiketActionType.DIBATALKAN,
         ]
 
+    def test_waktu_pengembalian_setelah_identifikasi_hari_yang_sama(self, tiket_identifikasi):
+        """tgl_transfer is date-only: the return must not read as before the identifikasi."""
+        transfer_tanpa_jam = datetime(2026, 3, 10)
+        identifikasi = TiketAction.objects.create(
+            id_tiket=tiket_identifikasi, id_user=TiketPIC.objects.filter(
+                id_tiket=tiket_identifikasi, role=TiketPIC.Role.PIDE,
+            ).first().id_user,
+            timestamp=datetime(2026, 3, 10, 16, 42),
+            action=TiketActionType.IDENTIFIKASI, catatan='Mulai proses identifikasi',
+        )
+        row = list(_cde_only_row(tiket_identifikasi.nomor_tiket))
+        row[COLUMNS.index('tgl_transfer')] = transfer_tanpa_jam
+
+        _update_tiket_data(_service([tuple(row)]))
+
+        tiket_identifikasi.refresh_from_db()
+        setelah = datetime(2026, 3, 10, 16, 43)
+        assert tiket_identifikasi.tgl_dikembalikan == setelah
+        assert tiket_identifikasi.tgl_transfer == transfer_tanpa_jam
+        actions = TiketAction.objects.filter(id_tiket=tiket_identifikasi).exclude(pk=identifikasi.pk)
+        assert [a.timestamp for a in actions] == [setelah, setelah]
+
     def test_belum_qc_nol_tanpa_cde_tetap_selesai(self, tiket_identifikasi):
         """Aturan 3 still closes a tiket whose QC is really done."""
         _update_tiket_data(_service([_row(

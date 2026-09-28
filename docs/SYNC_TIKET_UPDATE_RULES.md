@@ -437,7 +437,7 @@ Aturan ini tidak memeriksa `belum_qc` — tiket yang barisnya hanya CDE selalu `
 
 | Field | Nilai |
 |-------|-------|
-| `tgl_dikembalikan` | `tgl_transfer or timezone.now()` |
+| `tgl_dikembalikan` | `tgl_transfer or timezone.now()`, digeser ke tepat setelah aksi terakhir tiket bila jatuh di hari yang sama (lihat catatan waktu di bawah) |
 | `tgl_rekam_pide` | `None` (dihapus) |
 
 #### TiketAction yang Dibuat (2 aksi)
@@ -446,15 +446,17 @@ Aturan ini tidak memeriksa `belum_qc` — tiket yang barisnya hanya CDE selalu `
 | Field | Nilai |
 |-------|-------|
 | **Pengguna** | PIC **PIDE** aktif pertama untuk tiket ini |
-| **Waktu** | `tgl_transfer or timezone.now()` |
+| **Waktu** | sama dengan `tgl_dikembalikan` |
 | **Catatan** | `'Tiket dikembalikan oleh PIDE (auto-sync)'` |
 
 **Aksi 2: DIBATALKAN** (diatribusikan ke P3DE)
 | Field | Nilai |
 |-------|-------|
 | **Pengguna** | PIC **P3DE** aktif pertama untuk tiket ini |
-| **Waktu** | `tgl_transfer or timezone.now()` |
+| **Waktu** | sama dengan `tgl_dikembalikan` |
 | **Catatan** | `'Tiket dibatalkan (dikembalikan oleh PIDE: auto-sync)'` |
+
+> **Catatan waktu**: `tgl_transfer` dari Oracle hanya berisi tanggal (jam 00:00). Pada hari yang sama PIDE merekam data, aksi pengembalian bisa tampil **sebelum** aksi Identifikasi yang sebenarnya mendahuluinya (contoh: `PV034050126071001` — Identifikasi 14/09 16:42, pengembalian 14/09 00:00). Waktu aksi pengembalian dan `tgl_dikembalikan` karena itu digeser dengan `lift_time_above()` ke 1 menit setelah aksi terakhir tiket, **hanya bila di hari yang sama**; tanggalnya tidak berubah. Aksi Identifikasi dan `tgl_transfer` tetap disimpan — keduanya mencatat yang memang terjadi di PIDE, sama seperti tiket yang dikembalikan manual.
 
 #### Notifikasi
 
@@ -481,8 +483,9 @@ python manage.py fix_tiket_dikembalikan_sync --tiket PV034050126071001
 
 - **Status**: setiap tiket berstatus Dikembalikan (3) → Dibatalkan (7). Hanya sinkronisasi yang pernah menulis status 3; tiket berstatus 3 tanpa aksi *auto-sync* di jejaknya tetap diubah, tetapi ditandai di laporan untuk diperiksa manual.
 - **Jejak aksi**: aksi yang ditulis Aturan 3 pada eksekusi yang sama dihapus — yaitu aksi yang berada tepat di bawah pasangan DIKEMBALIKAN/DIBATALKAN *auto-sync* terakhir (urutan id), dengan catatan persis milik Aturan 3, dalam salah satu dari tiga bentuk yang bisa ditinggalkannya: `SELESAI + PENGENDALIAN_MUTU + DITRANSFER_KE_PMDE`, hanya pasangan PMDE, atau hanya `DITRANSFER_KE_PMDE` (tergantung PIC yang aktif). Aksi transfer dan pengendalian mutu juga harus ber-*timestamp* sama dengan aksi *auto-sync* (keduanya `tgl_transfer`). Putaran asli sebelumnya tidak tersentuh.
-- Aksi **DIKEMBALIKAN** dan **DIBATALKAN** tetap disimpan.
-- **Idempoten**: eksekusi kedua tidak menemukan status 3 maupun aksi Aturan 3 yang tersisa.
+- **Waktu pengembalian**: pasangan DIKEMBALIKAN/DIBATALKAN *auto-sync* (dan `tgl_dikembalikan` bila sama) digeser ke 1 menit setelah aksi sebelumnya di hari yang sama, sama seperti yang kini dilakukan sinkronisasi.
+- Aksi **DIKEMBALIKAN** dan **DIBATALKAN** tetap disimpan, begitu pula aksi **Identifikasi** dan `tgl_transfer`.
+- **Idempoten**: eksekusi kedua tidak menemukan status 3, aksi Aturan 3, maupun pasangan yang perlu digeser.
 
 ---
 

@@ -28,9 +28,18 @@ This command, per tiket:
   ``tgl_transfer``). Anything else below the pair — an earlier genuine
   round included — is left alone.
 
-The DIKEMBALIKAN and DIBATALKAN actions are kept.
+- re-stamps the auto-sync DIKEMBALIKAN/DIBATALKAN pair. It was stamped with
+  Oracle's date-only tgl_transfer (00:00), so on the day PIDE recorded the
+  data it read as preceding the IDENTIFIKASI action it followed. It is lifted
+  just past the tiket's latest earlier action on that same day — as the sync
+  now does — and ``tgl_dikembalikan`` with it when the sync had stamped it
+  the same. A pair on a later day than everything before it stays put.
 
-Idempotent: a second run finds no status 3 and no Aturan 3 run left.
+The DIKEMBALIKAN and DIBATALKAN actions are kept, and so are the IDENTIFIKASI
+action and ``tgl_transfer`` (both record what really happened at PIDE).
+
+Idempotent: a second run finds no status 3, no Aturan 3 run and no pair
+left to lift.
 
 Usage::
 
@@ -47,6 +56,7 @@ from ...constants.tiket_action_types import TiketActionType
 from ...constants.tiket_status import STATUS_DIBATALKAN, STATUS_DIKEMBALIKAN
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
+from ...utils import lift_time_above
 
 # Catatan written by Aturan 4 (sync_tiket_update.py).
 CATATAN_DIKEMBALIKAN = 'Tiket dikembalikan oleh PIDE (auto-sync)'
@@ -88,21 +98,33 @@ def _is_auto_sync(action):
     )
 
 
+def _latest_pair(trail):
+    """Split `trail` (ordered by id) around its latest auto-sync pair.
+
+    Returns ``(pair, before)``, both newest first: the auto-sync
+    DIKEMBALIKAN/DIBATALKAN actions written in the latest returning run, and
+    every action written before them. ``([], [])`` when there is none.
+    """
+    newest_first = list(reversed(trail))
+    start = next((i for i, a in enumerate(newest_first) if _is_auto_sync(a)), None)
+    if start is None:
+        return [], []
+    end = start
+    while end < len(newest_first) and _is_auto_sync(newest_first[end]):
+        end += 1
+    return newest_first[start:end], newest_first[end:]
+
+
 def aturan_3_actions(trail):
     """The actions Aturan 3 wrote in the run that returned this tiket.
 
     `trail` is the tiket's actions ordered by id. Empty when the tiket has no
     auto-sync action, or when Aturan 3 did not fire alongside it.
     """
-    anchors = [a for a in trail if _is_auto_sync(a)]
-    if not anchors:
+    pair, before = _latest_pair(trail)
+    if not pair:
         return []
-    anchor = anchors[-1]
-
-    # Newest first, from just below the anchor, past the rest of its own pair.
-    before = [a for a in reversed(trail) if a.id < anchor.id]
-    while before and _is_auto_sync(before[0]):
-        before.pop(0)
+    anchor = pair[0]
     for shape in ATURAN_3_SHAPES:
         candidates = before[:len(shape)]
         if len(candidates) == len(shape) and all(
@@ -114,10 +136,30 @@ def aturan_3_actions(trail):
     return []
 
 
+def lifted_pair_timestamp(trail, stray):
+    """Where the latest auto-sync pair belongs once `stray` is gone, or None.
+
+    The pair was stamped with Oracle's date-only tgl_transfer (00:00), so on
+    the day PIDE recorded the data it sits before the IDENTIFIKASI action it
+    followed. The sync now lifts it past the trail's latest action on the
+    same day (``dikembalikan_timestamp``); this does the same for a pair
+    already written. None when the pair is already in place.
+    """
+    pair, before = _latest_pair(trail)
+    if not pair:
+        return None
+    kept = [a.timestamp for a in before if a not in stray]
+    lifted = lift_time_above(pair[0].timestamp, max(kept) if kept else None)
+    if all(a.timestamp == lifted for a in pair):
+        return None
+    return lifted
+
+
 class Command(BaseCommand):
     help = (
         'Fix tikets returned by the sync (Aturan 4): status Dikembalikan → '
-        'Dibatalkan, and remove the Selesai actions Aturan 3 wrote alongside'
+        'Dibatalkan, remove the Selesai actions Aturan 3 wrote alongside, and '
+        're-stamp the return after the tiket\'s earlier actions of that day'
     )
 
     def add_arguments(self, parser):
@@ -145,8 +187,10 @@ class Command(BaseCommand):
             trail = list(TiketAction.objects.filter(id_tiket=tiket).order_by('id'))
             fix_status = tiket.status_tiket == STATUS_DIKEMBALIKAN
             stray = aturan_3_actions(trail)
-            if fix_status or stray:
-                plans.append((tiket, fix_status, stray, any(_is_auto_sync(a) for a in trail)))
+            lift_to = lifted_pair_timestamp(trail, stray)
+            if fix_status or stray or lift_to:
+                pair, _ = _latest_pair(trail)
+                plans.append((tiket, fix_status, stray, pair, lift_to))
 
         if not plans:
             self.stdout.write(self.style.SUCCESS(
@@ -159,8 +203,9 @@ class Command(BaseCommand):
 
         status_fixed = 0
         actions_deleted = 0
+        pairs_lifted = 0
         without_anchor = []
-        for tiket, fix_status, stray, has_anchor in plans:
+        for tiket, fix_status, stray, pair, lift_to in plans:
             parts = []
             if fix_status:
                 parts.append('status Dikembalikan → Dibatalkan')
@@ -169,24 +214,42 @@ class Command(BaseCommand):
                     f'{ACTION_LABELS[a.action]} {a.timestamp:%d/%m/%Y %H:%M}'
                     for a in reversed(stray)
                 ))
-            if not has_anchor:
+            # The sync stamped tgl_dikembalikan with the pair's timestamp.
+            lift_tgl_dikembalikan = bool(lift_to) and tiket.tgl_dikembalikan == pair[0].timestamp
+            if lift_to:
+                parts.append(
+                    f'waktu Dikembalikan/Dibatalkan {pair[0].timestamp:%d/%m/%Y %H:%M} '
+                    f'→ {lift_to:%d/%m/%Y %H:%M}'
+                    + (' (juga Tanggal Dikembalikan)' if lift_tgl_dikembalikan else '')
+                )
+            if not pair:
                 without_anchor.append(tiket.nomor_tiket)
                 parts.append('[tanpa aksi auto-sync — periksa manual]')
             self.stdout.write(f'  {tiket.nomor_tiket}: ' + '; '.join(parts))
 
             if not dry_run:
                 with transaction.atomic():
+                    update_fields = []
                     if fix_status:
                         tiket.status_tiket = STATUS_DIBATALKAN
-                        tiket.save(update_fields=['status_tiket'])
+                        update_fields.append('status_tiket')
+                    if lift_tgl_dikembalikan:
+                        tiket.tgl_dikembalikan = lift_to
+                        update_fields.append('tgl_dikembalikan')
+                    if update_fields:
+                        tiket.save(update_fields=update_fields)
                     TiketAction.objects.filter(id__in=[a.id for a in stray]).delete()
+                    if lift_to:
+                        TiketAction.objects.filter(id__in=[a.id for a in pair]).update(timestamp=lift_to)
             status_fixed += fix_status
             actions_deleted += len(stray)
+            pairs_lifted += bool(lift_to)
 
         akan = 'akan ' if dry_run else ''
         self.stdout.write(self.style.SUCCESS(
             f'\n{len(plans)} tiket: {status_fixed} status {akan}diubah ke Dibatalkan, '
-            f'{actions_deleted} aksi Aturan 3 {akan}dihapus.'
+            f'{actions_deleted} aksi Aturan 3 {akan}dihapus, '
+            f'{pairs_lifted} pasangan Dikembalikan/Dibatalkan {akan}digeser waktunya.'
         ))
         if without_anchor:
             self.stdout.write(self.style.WARNING(

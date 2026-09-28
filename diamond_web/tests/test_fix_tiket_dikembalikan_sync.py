@@ -35,9 +35,9 @@ AWAL = [
 ]
 
 
-def _tiket(trail, status=STATUS_DIKEMBALIKAN):
+def _tiket(trail, status=STATUS_DIKEMBALIKAN, tgl_dikembalikan=TRANSFER):
     """A tiket whose actions are written in `trail` order, as the sync wrote them."""
-    tiket = TiketFactory(status_tiket=status)
+    tiket = TiketFactory(status_tiket=status, tgl_dikembalikan=tgl_dikembalikan)
     user = UserFactory()
     for action, timestamp, catatan in trail:
         TiketAction.objects.create(
@@ -134,6 +134,41 @@ class TestFix:
 
         assert 'Tidak ada tiket' in _run()
         assert len(_trail(tiket)) == 4
+
+    def test_pasangan_digeser_setelah_identifikasi(self):
+        """The return is stamped 00:00 but followed the 16:42 identifikasi."""
+        tiket = _tiket(AWAL + ATURAN_3 + AUTO_SYNC_PAIR)
+
+        _run()
+
+        tiket.refresh_from_db()
+        after = datetime(2026, 9, 14, 16, 43)
+        pair = TiketAction.objects.filter(id_tiket=tiket, action__in=[A.DIKEMBALIKAN, A.DIBATALKAN])
+        assert [a.timestamp for a in pair] == [after, after]
+        assert tiket.tgl_dikembalikan == after
+        identifikasi = TiketAction.objects.get(id_tiket=tiket, action=A.IDENTIFIKASI)
+        assert identifikasi.timestamp == IDENTIFIKASI
+
+    def test_tiket_yang_sudah_diperbaiki_hanya_digeser(self):
+        """PV034050126071001 after the first fix: Dibatalkan, Aturan 3 gone, pair at 00:00."""
+        tiket = _tiket(AWAL + AUTO_SYNC_PAIR, status=STATUS_DIBATALKAN)
+
+        out = _run()
+
+        assert '0 status akan' not in out
+        assert '1 pasangan Dikembalikan/Dibatalkan digeser' in out
+        tiket.refresh_from_db()
+        assert tiket.status_tiket == STATUS_DIBATALKAN
+        assert tiket.tgl_dikembalikan == datetime(2026, 9, 14, 16, 43)
+
+    def test_pasangan_di_hari_berikutnya_tidak_digeser(self):
+        """Identifikasi a day earlier: the return already follows it."""
+        awal = [(A.IDENTIFIKASI, datetime(2026, 9, 13, 16, 42), 'Mulai proses identifikasi')]
+        tiket = _tiket(awal + AUTO_SYNC_PAIR, status=STATUS_DIBATALKAN)
+
+        assert 'Tidak ada tiket' in _run()
+        tiket.refresh_from_db()
+        assert tiket.tgl_dikembalikan == TRANSFER
 
     def test_filter_tiket(self):
         target = _tiket(AWAL + ATURAN_3 + AUTO_SYNC_PAIR)

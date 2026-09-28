@@ -43,6 +43,7 @@ from django.views.decorators.cache import never_cache
 from django.utils import timezone
 from django.core.cache import cache
 from django.db import connection as db_connection
+from django.db.models import Max
 from django.conf import settings
 from django.urls import reverse
 
@@ -58,6 +59,7 @@ from ..constants.tiket_status import (
     STATUS_DIBATALKAN,
 )
 from ..models.notification import Notification
+from ..utils import lift_time_above
 from ..utils.oracle_sync import OracleDataSyncService, OracleSyncConfigError
 from ..tasks import check_tiket_update_data_task, sync_tiket_update_data_task
 
@@ -153,6 +155,18 @@ def _hanya_cde(baris_i, baris_u, baris_res, baris_cde):
         and baris_res is not None and baris_res == 0
         and baris_cde is not None and baris_cde > 0
     )
+
+
+def dikembalikan_timestamp(tiket, tgl_transfer):
+    """When Aturan 4 stamps the return: ``tgl_transfer``, kept after the trail.
+
+    Oracle's tgl_transfer is date-only (00:00), so on the day PIDE recorded
+    the data it lands before the IDENTIFIKASI action and the return reads as
+    preceding it. The day is right; only the time is borrowed, so it is lifted
+    just past the tiket's latest action, as same-day form dates are.
+    """
+    latest = TiketAction.objects.filter(id_tiket=tiket).aggregate(m=Max('timestamp'))['m']
+    return lift_time_above(tgl_transfer, latest)
 
 
 def _is_admin_user(user):
@@ -1046,8 +1060,9 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                     # Same as PIDE's manual Dikembalikan: the tiket is cancelled.
                     update_fields.append('status_tiket')
                     tiket.status_tiket = STATUS_DIBATALKAN
+                    tgl_dikembalikan = dikembalikan_timestamp(tiket, tgl_transfer or timezone.now())
                     update_fields.append('tgl_dikembalikan')
-                    tiket.tgl_dikembalikan = tgl_transfer or timezone.now()
+                    tiket.tgl_dikembalikan = tgl_dikembalikan
                     update_fields.append('tgl_rekam_pide')
                     tiket.tgl_rekam_pide = None
                     changed = True
@@ -1242,7 +1257,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                     if pide_user:
                         TiketAction.objects.create(
                             id_tiket=tiket, id_user=pide_user,
-                            timestamp=tgl_transfer or timezone.now(),
+                            timestamp=tgl_dikembalikan,
                             action=TiketActionType.DIKEMBALIKAN,
                             catatan='Tiket dikembalikan oleh PIDE (auto-sync)'
                         )
@@ -1252,7 +1267,7 @@ def _update_tiket_data(service, sync_id=None, stop_checker=None):
                     if p3de_user:
                         TiketAction.objects.create(
                             id_tiket=tiket, id_user=p3de_user,
-                            timestamp=tgl_transfer or timezone.now(),
+                            timestamp=tgl_dikembalikan,
                             action=TiketActionType.DIBATALKAN,
                             catatan='Tiket dibatalkan (dikembalikan oleh PIDE: auto-sync)'
                         )
