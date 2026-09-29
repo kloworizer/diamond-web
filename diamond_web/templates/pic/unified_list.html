@@ -406,6 +406,7 @@
                             <a href="javascript:void(0);" id="btn-reset-p3de" class="btn btn-light text-secondary border-0 fw-bold align-items-center gap-1 btn-reset" style="display: none; font-size: 13px; font-weight: 500; background-color: #f1f5f9;">
                                 <i class="feather-x" style="width: 14px; height: 14px;"></i> Reset Pencarian
                             </a>
+                            {% if is_admin_p3de %}<a class="btn btn-outline-primary" href="{% url 'pic_bulk_pemda' %}?tipe=P3DE" title="Ubah PIC jenis data Pemda/Provinsi (PD/PV) sekaligus"><i class="feather-layers me-1"></i>Bulk PD/PV</a>{% endif %}
                             {% if is_admin_p3de %}<button type="button" class="btn btn-success" data-action="create" data-url="{% url 'pic_p3de_create' %}"><i class="feather-plus me-1"></i>Tambah</button>{% endif %}
                         </div>
                     </div>
@@ -453,6 +454,7 @@
                             <a href="javascript:void(0);" id="btn-reset-pide" class="btn btn-light text-secondary border-0 fw-bold align-items-center gap-1 btn-reset" style="display: none; font-size: 13px; font-weight: 500; background-color: #f1f5f9;">
                                 <i class="feather-x" style="width: 14px; height: 14px;"></i> Reset Pencarian
                             </a>
+                            {% if is_admin_pide %}<a class="btn btn-outline-primary" href="{% url 'pic_bulk_pemda' %}?tipe=PIDE" title="Ubah PIC jenis data Pemda/Provinsi (PD/PV) sekaligus"><i class="feather-layers me-1"></i>Bulk PD/PV</a>{% endif %}
                             {% if is_admin_pide %}<button type="button" class="btn btn-success" data-action="create" data-url="{% url 'pic_pide_create' %}"><i class="feather-plus me-1"></i>Tambah</button>{% endif %}
                         </div>
                     </div>
@@ -500,6 +502,7 @@
                             <a href="javascript:void(0);" id="btn-reset-pmde" class="btn btn-light text-secondary border-0 fw-bold align-items-center gap-1 btn-reset" style="display: none; font-size: 13px; font-weight: 500; background-color: #f1f5f9;">
                                 <i class="feather-x" style="width: 14px; height: 14px;"></i> Reset Pencarian
                             </a>
+                            {% if is_admin_pmde %}<a class="btn btn-outline-primary" href="{% url 'pic_bulk_pemda' %}?tipe=PMDE" title="Ubah PIC jenis data Pemda/Provinsi (PD/PV) sekaligus"><i class="feather-layers me-1"></i>Bulk PD/PV</a>{% endif %}
                             {% if is_admin_pmde %}<button type="button" class="btn btn-success" data-action="create" data-url="{% url 'pic_pmde_create' %}"><i class="feather-plus me-1"></i>Tambah</button>{% endif %}
                         </div>
                     </div>

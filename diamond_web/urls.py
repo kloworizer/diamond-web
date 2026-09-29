@@ -168,6 +168,10 @@ urlpatterns = [
     path('jenis-data/sub/existing/', views.get_existing_sub_jenis_data, name='get_existing_sub_jenis_data'),
     path('jenis-data/sub/next/', views.get_next_sub_jenis_id, name='get_next_sub_jenis_id'),
     path('jenis-data-ilap/create/', views.JenisDataILAPCreateView.as_view(), name='jenis_data_ilap_create'),
+    path('jenis-data-ilap/generate-pemda/', views.JenisDataPemdaGenerateView.as_view(), name='jenis_data_pemda_generate'),
+    path('jenis-data-ilap/generate-pemda/template/', views.jenis_data_pemda_template, name='jenis_data_pemda_template'),
+    path('jenis-data-ilap/generate-pemda/preview/', views.jenis_data_pemda_preview, name='jenis_data_pemda_preview'),
+    path('jenis-data-ilap/generate-pemda/execute/', views.jenis_data_pemda_execute, name='jenis_data_pemda_execute'),
     path('jenis-data-ilap/<int:pk>/update/', views.JenisDataILAPUpdateView.as_view(), name='jenis_data_ilap_update'),
     path('jenis-data-ilap/<int:pk>/delete/', views.JenisDataILAPDeleteView.as_view(), name='jenis_data_ilap_delete'),
     path('jenis-data-ilap/<int:pk>/info/', views.jenis_data_ilap_info_ajax, name='jenis_data_ilap_info_ajax'),
@@ -197,6 +201,10 @@ urlpatterns = [
     # Unified PIC URLs
     path('pic/', views.UnifiedPICListView.as_view(), name='pic_unified_list'),
     path('pic/matrix-data/', views.pic_matrix_data, name='pic_matrix_data'),
+    path('pic/bulk-pemda/', views.PICBulkPemdaView.as_view(), name='pic_bulk_pemda'),
+    path('pic/bulk-pemda/holders/', views.pic_bulk_pemda_holders, name='pic_bulk_pemda_holders'),
+    path('pic/bulk-pemda/preview/', views.pic_bulk_pemda_preview, name='pic_bulk_pemda_preview'),
+    path('pic/bulk-pemda/execute/', views.pic_bulk_pemda_execute, name='pic_bulk_pemda_execute'),
     
     # PIC P3DE URLs
     path('pic-p3de/', views.PICP3DEListView.as_view(), name='pic_p3de_list'), # Kept for redirect/legacy

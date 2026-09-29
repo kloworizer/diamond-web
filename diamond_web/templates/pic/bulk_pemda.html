@@ -1,0 +1,479 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+    <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+            <h5 class="m-b-10">
+                <i class="feather-layers me-2"></i>Bulk PIC Pemda/Provinsi
+            </h5>
+        </div>
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'pic_unified_list' %}">Daftar PIC</a></li>
+            <li class="breadcrumb-item active">Bulk PIC Pemda/Provinsi</li>
+        </ul>
+    </div>
+</div>
+
+<style>
+    .bulk-card { border-radius: 12px; }
+    .bulk-mode .nav-link { font-weight: 600; color: #64748b; border-radius: 8px; }
+    .bulk-mode .nav-link.active { background-color: #00BDFB; color: #fff; }
+    .bulk-mode .nav-link.mode-hapus.active { background-color: #ef4444; }
+    #bulk-preview-table { table-layout: fixed; width: 100%; }
+    #bulk-preview-table th, #bulk-preview-table td {
+        white-space: normal; word-break: break-word; vertical-align: top; font-size: 12.5px;
+    }
+    #bulk-preview-table tr.row-skip td { color: #94a3b8; }
+    .holder-chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: #f1f5f9; border-radius: 6px; padding: 3px 8px;
+        font-size: 12px; margin: 0 6px 6px 0;
+    }
+    .holder-chip .badge { font-size: 10.5px; }
+    .bulk-table-wrap { max-height: 60vh; overflow: auto; }
+    .bulk-table-wrap thead th { position: sticky; top: 0; background: #fff; z-index: 1; }
+</style>
+
+<div class="main-content">
+    <div class="row">
+        <!-- FORM -->
+        <div class="col-xl-4 mb-4">
+            <div class="card shadow-sm border-0 bulk-card">
+                <div class="card-body p-4">
+                    <p class="text-muted small mb-4">
+                        Kode Sub Jenis Data Pemda/Provinsi berbentuk
+                        <code>PD</code>/<code>PV</code> + 3 digit pemda + 4 digit jenis data,
+                        misalnya <code>PD0014101</code>. Pilih 4 digit terakhir (mis. <code>4101</code>)
+                        untuk mengubah PIC di semua pemda/provinsi sekaligus.
+                    </p>
+
+                    <form id="bulk-form" autocomplete="off">
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                <label class="form-label fw-semibold" for="bulk-tipe">Tipe PIC</label>
+                                <select class="form-select" id="bulk-tipe" name="tipe">
+                                    {% for value, label in tipes %}
+                                    <option value="{{ value }}" {% if value == default_tipe %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label fw-semibold" for="bulk-scope">Cakupan</label>
+                                <select class="form-select" id="bulk-scope" name="scope">
+                                    <option value="ALL">Pemda &amp; Provinsi (PD + PV)</option>
+                                    <option value="PD">Pemda saja (PD)</option>
+                                    <option value="PV">Provinsi saja (PV)</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold" for="bulk-kode">Kode Jenis Data (4 digit)</label>
+                                <select class="form-select" id="bulk-kode" name="kode"></select>
+                            </div>
+                        </div>
+
+                        <div id="bulk-holders" class="mt-3 p-3 rounded" style="background:#f8fafc; display:none;">
+                            <div class="small fw-semibold text-dark mb-2">
+                                PIC <span data-holder-tipe></span> saat ini
+                                <span class="text-muted fw-normal" data-holder-summary></span>
+                            </div>
+                            <div data-holder-list></div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <label class="form-label fw-semibold d-block">Aksi</label>
+                        <ul class="nav nav-pills bulk-mode gap-2 mb-3" role="tablist">
+                            <li class="nav-item"><button type="button" class="nav-link active" data-mode="tambah"><i class="feather-plus me-1"></i>Tambah</button></li>
+                            <li class="nav-item"><button type="button" class="nav-link" data-mode="ganti"><i class="feather-repeat me-1"></i>Ganti PIC</button></li>
+                            <li class="nav-item"><button type="button" class="nav-link" data-mode="akhiri"><i class="feather-calendar me-1"></i>Akhiri</button></li>
+                            <li class="nav-item"><button type="button" class="nav-link mode-hapus" data-mode="hapus"><i class="feather-trash-2 me-1"></i>Hapus</button></li>
+                        </ul>
+                        <input type="hidden" name="mode" id="bulk-mode" value="tambah">
+
+                        <p class="text-muted small" data-mode-help="tambah">
+                            Menambahkan PIC baru ke setiap jenis data. PIC yang sudah ada tetap aktif.
+                        </p>
+                        <p class="text-muted small" data-mode-help="ganti" hidden>
+                            Serah terima: PIC lama diganti PIC baru, dan tiket yang masih terbuka ikut dipindahkan.
+                            Kosongkan PIC lama untuk mengganti semua PIC aktif.
+                        </p>
+                        <p class="text-muted small" data-mode-help="akhiri" hidden>
+                            Mengisi Tanggal Berakhir pada PIC aktif. PIC tersebut dinonaktifkan di tiketnya.
+                        </p>
+                        <p class="text-muted small" data-mode-help="hapus" hidden>
+                            Menghapus baris PIC beserta penugasannya di tiket. Gunakan "Akhiri" bila riwayat PIC perlu disimpan.
+                        </p>
+
+                        <div class="row g-3">
+                            <div class="col-12" data-field="user_lama" hidden>
+                                <label class="form-label fw-semibold" for="bulk-user-lama">PIC Lama</label>
+                                <select class="form-select" id="bulk-user-lama" name="user_lama"></select>
+                            </div>
+                            <div class="col-12" data-field="user_baru">
+                                <label class="form-label fw-semibold" for="bulk-user-baru">PIC Baru</label>
+                                <select class="form-select" id="bulk-user-baru" name="user_baru"></select>
+                            </div>
+                            <div class="col-sm-6" data-field="start_date">
+                                <label class="form-label fw-semibold" for="bulk-start-date">Tanggal Mulai</label>
+                                <input type="date" class="form-control" id="bulk-start-date" name="start_date">
+                            </div>
+                            <div class="col-sm-6" data-field="end_date" hidden>
+                                <label class="form-label fw-semibold" for="bulk-end-date">Tanggal Berakhir</label>
+                                <input type="date" class="form-control" id="bulk-end-date" name="end_date">
+                            </div>
+                            <div class="col-12" data-field="hanya_aktif" hidden>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="bulk-hanya-aktif" name="hanya_aktif" value="1" checked>
+                                    <label class="form-check-label" for="bulk-hanya-aktif">Hanya PIC aktif (tanpa Tanggal Berakhir)</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary" id="btn-preview">
+                                <i class="feather-eye me-1"></i>Pratinjau
+                            </button>
+                            <a href="{% url 'pic_unified_list' %}" class="btn btn-light">Kembali</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- PREVIEW -->
+        <div class="col-xl-8 mb-4">
+            <div class="card shadow-sm border-0 bulk-card">
+                <div class="card-body p-4">
+                    <div id="bulk-preview-empty" class="text-center text-muted py-5">
+                        <i class="feather-list fs-3 d-block mb-2"></i>
+                        Isi form lalu klik <strong>Pratinjau</strong> untuk melihat baris yang akan diubah.
+                        <div class="small mt-1">Belum ada data yang diubah sampai Anda menekan tombol Proses.</div>
+                    </div>
+
+                    <div id="bulk-preview" hidden>
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                            <div>
+                                <h6 class="fw-bold mb-1">Pratinjau</h6>
+                                <div class="small">
+                                    <span class="badge bg-soft-success text-success" data-sum-ok></span>
+                                    <span class="badge bg-soft-secondary text-secondary" data-sum-skip></span>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-success" id="btn-execute">
+                                <i class="feather-check me-1"></i><span data-execute-label>Proses 0 baris</span>
+                            </button>
+                        </div>
+                        <div class="bulk-table-wrap">
+                            <table class="table table-sm table-hover mb-0" id="bulk-preview-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:32px;"><input type="checkbox" class="form-check-input" id="bulk-check-all" checked aria-label="Pilih semua"></th>
+                                        <th style="width:34%;">Sub Jenis Data / ILAP</th>
+                                        <th style="width:28%;">PIC Aktif</th>
+                                        <th>Rencana</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm modal -->
+<div class="modal fade" id="bulkConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Konfirmasi Bulk PIC</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <div class="modal-body" data-confirm-body></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-success" id="btn-confirm-execute">Ya, proses</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ bulk_options|json_script:"bulk-options" }}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const OPTIONS = JSON.parse(document.getElementById('bulk-options').textContent);
+    const URLS = {
+        holders: "{% url 'pic_bulk_pemda_holders' %}",
+        preview: "{% url 'pic_bulk_pemda_preview' %}",
+        execute: "{% url 'pic_bulk_pemda_execute' %}",
+    };
+    const MODE_FIELDS = {
+        tambah: ['user_baru', 'start_date'],
+        ganti: ['user_lama', 'user_baru'],
+        akhiri: ['user_lama', 'end_date'],
+        hapus: ['user_lama', 'hanya_aktif'],
+    };
+    const MODE_LABELS = { tambah: 'menambah', ganti: 'mengganti', akhiri: 'mengakhiri', hapus: 'menghapus' };
+
+    const $form = $('#bulk-form');
+    const $tipe = $('#bulk-tipe');
+    const $scope = $('#bulk-scope');
+    const $kode = $('#bulk-kode');
+    const $userLama = $('#bulk-user-lama');
+    const $userBaru = $('#bulk-user-baru');
+    const $tbody = $('#bulk-preview-table tbody');
+    let lastPreview = null;
+
+    function esc(value) {
+        return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    function currentMode() { return $('#bulk-mode').val(); }
+
+    function kodeCount(opt) {
+        const scope = $scope.val();
+        if (scope === 'PD') return opt.PD;
+        if (scope === 'PV') return opt.PV;
+        return opt.PD + opt.PV;
+    }
+
+    function buildKodeOptions() {
+        const selected = $kode.val();
+        const data = OPTIONS.kode
+            .filter(function (opt) { return kodeCount(opt) > 0; })
+            .map(function (opt) {
+                return {
+                    id: opt.kode,
+                    text: opt.kode + ' - ' + (opt.nama || '(tanpa nama)') +
+                          '  [PD ' + opt.PD + ' | PV ' + opt.PV + ']',
+                };
+            });
+        if ($kode.hasClass('select2-hidden-accessible')) $kode.select2('destroy');
+        $kode.empty().append(new Option('', '', false, false));
+        $kode.select2({ data: data, theme: 'bootstrap-5', width: '100%', placeholder: 'Cari kode atau nama jenis data, mis. 4101', allowClear: true });
+        if (selected && data.some(function (d) { return d.id === selected; })) {
+            $kode.val(selected).trigger('change.select2');
+        } else {
+            $kode.val(null).trigger('change.select2');
+        }
+    }
+
+    function buildUserBaru() {
+        const users = OPTIONS.users[$tipe.val()] || [];
+        if ($userBaru.hasClass('select2-hidden-accessible')) $userBaru.select2('destroy');
+        $userBaru.empty().append(new Option('', '', false, false));
+        $userBaru.select2({ data: users, theme: 'bootstrap-5', width: '100%', placeholder: 'Pilih PIC baru' });
+        $userBaru.val(null).trigger('change.select2');
+    }
+
+    function buildUserLama(holders) {
+        // Keep the choice across a reload (e.g. after Proses) so the form keeps
+        // matching the preview that is re-run with it.
+        const previous = $userLama.val();
+        if ($userLama.hasClass('select2-hidden-accessible')) $userLama.select2('destroy');
+        $userLama.empty().append(new Option('', '', false, false));
+        const data = (holders || []).map(function (h) {
+            return { id: h.id, text: h.text + ' - ' + h.aktif + ' aktif / ' + h.total + ' total' };
+        });
+        $userLama.select2({ data: data, theme: 'bootstrap-5', width: '100%', placeholder: 'Semua PIC', allowClear: true });
+        const keep = previous && data.some(function (d) { return String(d.id) === String(previous); });
+        $userLama.val(keep ? previous : null).trigger('change.select2');
+    }
+
+    function loadHolders() {
+        const $box = $('#bulk-holders');
+        const kode = $kode.val();
+        if (!kode) { $box.hide(); buildUserLama([]); return; }
+        $.get(URLS.holders, { tipe: $tipe.val(), kode: kode, scope: $scope.val() })
+            .done(function (res) {
+                $box.find('[data-holder-tipe]').text($tipe.find('option:selected').text().replace('PIC ', ''));
+                $box.find('[data-holder-summary]').text(
+                    '(' + res.total_jenis_data + ' jenis data, ' + res.tanpa_pic_aktif + ' tanpa PIC aktif)'
+                );
+                const aktif = res.holders.filter(function (h) { return h.aktif > 0; });
+                $box.find('[data-holder-list]').html(aktif.length
+                    ? aktif.map(function (h) {
+                        return '<span class="holder-chip">' + esc(h.text) +
+                               ' <span class="badge bg-primary">' + h.aktif + '</span></span>';
+                    }).join('')
+                    : '<span class="text-muted small fst-italic">Belum ada PIC aktif.</span>');
+                $box.show();
+                buildUserLama(res.holders);
+            })
+            .fail(function (xhr) {
+                $box.hide();
+                showToast((xhr.responseJSON && xhr.responseJSON.message) || 'Gagal memuat PIC saat ini.', 'danger');
+            });
+    }
+
+    function setMode(mode) {
+        $('#bulk-mode').val(mode);
+        $('.bulk-mode .nav-link').removeClass('active')
+            .filter('[data-mode="' + mode + '"]').addClass('active');
+        $('[data-mode-help]').each(function () { this.hidden = this.dataset.modeHelp !== mode; });
+        $('[data-field]').each(function () { this.hidden = MODE_FIELDS[mode].indexOf(this.dataset.field) === -1; });
+        $('#btn-execute').toggleClass('btn-success', mode !== 'hapus').toggleClass('btn-danger', mode === 'hapus');
+        $('#btn-confirm-execute').toggleClass('btn-success', mode !== 'hapus').toggleClass('btn-danger', mode === 'hapus');
+        resetPreview();
+    }
+
+    function resetPreview() {
+        lastPreview = null;
+        $('#bulk-preview').prop('hidden', true);
+        $('#bulk-preview-empty').prop('hidden', false);
+        $tbody.empty();
+    }
+
+    function formData() {
+        const data = $form.serializeArray().filter(function (item) {
+            const $field = $form.find('[name="' + item.name + '"]').closest('[data-field]');
+            return !$field.length || !$field.prop('hidden');
+        });
+        if (currentMode() === 'hapus' && !$('#bulk-hanya-aktif').is(':checked')) {
+            data.push({ name: 'hanya_aktif', value: '0' });
+        }
+        return data;
+    }
+
+    function selectedKeys() {
+        return $tbody.find('input[data-key]:checked').map(function () { return this.dataset.key; }).get();
+    }
+
+    function updateSelectedCount() {
+        const n = selectedKeys().length;
+        $('[data-execute-label]').text('Proses ' + n + ' baris');
+        $('#btn-execute').prop('disabled', n === 0);
+        const $boxes = $tbody.find('input[data-key]');
+        $('#bulk-check-all').prop('checked', $boxes.length > 0 && n === $boxes.length);
+    }
+
+    function renderPreview(res) {
+        lastPreview = res;
+        $('[data-sum-ok]').text(res.total_ok + ' akan diproses');
+        $('[data-sum-skip]').text(res.total_skip + ' dilewati').toggle(res.total_skip > 0);
+        if (!res.rows.length) {
+            $tbody.html('<tr><td colspan="4" class="text-center text-muted py-4">Tidak ada baris yang cocok.</td></tr>');
+        } else {
+            $tbody.html(res.rows.map(function (row) {
+                const box = row.ok
+                    ? '<input type="checkbox" class="form-check-input" data-key="' + esc(row.key) + '" checked>'
+                    : '<input type="checkbox" class="form-check-input" disabled>';
+                const target = row.pic_target ? '<div class="small text-muted">PIC: ' + esc(row.pic_target) + '</div>' : '';
+                return '<tr class="' + (row.ok ? '' : 'row-skip') + '">' +
+                    '<td>' + box + '</td>' +
+                    '<td><div class="fw-semibold">' + esc(row.id_sub_jenis_data) + '</div>' +
+                        '<div>' + esc(row.nama_ilap) + '</div>' +
+                        '<div class="small text-muted">' + esc(row.nama_sub_jenis_data) + '</div></td>' +
+                    '<td>' + (row.pic_aktif.length ? row.pic_aktif.map(esc).join('<br>') : '<span class="fst-italic text-muted">-</span>') + '</td>' +
+                    '<td>' + (row.ok ? '' : '<i class="feather-slash me-1"></i>') + esc(row.keterangan) + target + '</td>' +
+                '</tr>';
+            }).join(''));
+        }
+        $('#bulk-preview-empty').prop('hidden', true);
+        $('#bulk-preview').prop('hidden', false);
+        updateSelectedCount();
+    }
+
+    function runPreview() {
+        const $btn = $('#btn-preview').prop('disabled', true);
+        return $.post(URLS.preview, $.param(formData()))
+            .done(renderPreview)
+            .fail(function (xhr) {
+                resetPreview();
+                showToast((xhr.responseJSON && xhr.responseJSON.message) || 'Pratinjau gagal.', 'danger');
+            })
+            .always(function () { $btn.prop('disabled', false); });
+    }
+
+    // select2 4.0 on jQuery 3.6 no longer focuses its search box when it
+    // opens, so typed characters go nowhere until the box is clicked.
+    $form.on('select2:open', 'select', function () {
+        setTimeout(function () {
+            const field = document.querySelector('.select2-container--open .select2-search__field');
+            if (field) field.focus();
+        }, 0);
+    });
+
+    // --- Events -----------------------------------------------------------
+    $('.bulk-mode .nav-link').on('click', function () { setMode(this.dataset.mode); });
+
+    $tipe.on('change', function () { buildUserBaru(); loadHolders(); resetPreview(); });
+    $scope.on('change', function () { buildKodeOptions(); loadHolders(); resetPreview(); });
+    $kode.on('change', function () { loadHolders(); resetPreview(); });
+    $form.on('change', 'select[name="user_lama"], select[name="user_baru"], input', function () {
+        if (this.id !== 'bulk-check-all') resetPreview();
+    });
+
+    $form.on('submit', function (e) {
+        e.preventDefault();
+        if (!$kode.val()) { showToast('Pilih kode jenis data terlebih dahulu.', 'warning'); return; }
+        runPreview();
+    });
+
+    $('#bulk-check-all').on('change', function () {
+        $tbody.find('input[data-key]').prop('checked', this.checked);
+        updateSelectedCount();
+    });
+    $tbody.on('change', 'input[data-key]', updateSelectedCount);
+
+    $('#btn-execute').on('click', function () {
+        const n = selectedKeys().length;
+        if (!n || !lastPreview) return;
+        const mode = currentMode();
+        let body = 'Anda akan <strong>' + MODE_LABELS[mode] + '</strong> PIC ' +
+            esc($tipe.find('option:selected').text().replace('PIC ', '')) +
+            ' pada <strong>' + n + '</strong> baris untuk kode <strong>' + esc($kode.val()) + '</strong>. ' +
+            'Tiket yang terkait ikut disesuaikan.';
+        if (mode === 'hapus') {
+            body += '<div class="alert alert-danger small mt-3 mb-0">Baris PIC yang dihapus tidak dapat dikembalikan.</div>';
+        }
+        $('[data-confirm-body]').html(body);
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('bulkConfirmModal')).show();
+    });
+
+    $('#btn-confirm-execute').on('click', function () {
+        const $btn = $(this).prop('disabled', true);
+        const data = formData();
+        selectedKeys().forEach(function (key) { data.push({ name: 'selected', value: key }); });
+        $.post(URLS.execute, $.param(data))
+            .done(function (res) {
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('bulkConfirmModal')).hide();
+                showToast(res.message, 'success');
+                loadHolders();
+                runPreview();
+            })
+            .fail(function (xhr) {
+                showToast((xhr.responseJSON && xhr.responseJSON.message) || 'Proses gagal.', 'danger');
+            })
+            .always(function () { $btn.prop('disabled', false); });
+    });
+
+    // --- Init ---------------------------------------------------------------
+    (function () {
+        const d = new Date();
+        const pad = function (n) { return String(n).padStart(2, '0'); };
+        $('#bulk-start-date').val(d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()));
+    })();
+    buildKodeOptions();
+    buildUserBaru();
+    buildUserLama([]);
+    setMode('tambah');
+
+    // Arriving from "Atur PIC kode ini" on the jenis data generator.
+    const initialKode = new URLSearchParams(window.location.search).get('kode');
+    if (initialKode && OPTIONS.kode.some(function (opt) { return opt.kode === initialKode; })) {
+        $kode.val(initialKode).trigger('change');
+    }
+})();
+</script>
+{% endblock %}
