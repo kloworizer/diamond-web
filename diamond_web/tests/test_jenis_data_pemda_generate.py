@@ -142,6 +142,7 @@ class TestPreview:
         assert [r['id_sub_jenis_data'] for r in body['rows']] == ['PD0024101', 'PD0034101', 'PV0014101']
         assert body['rows'][0]['id_jenis_data'] == 'PD00241'
         assert body['total_sudah_ada'] == 1
+        assert body['sudah_ada'] == ['PD001 - Kabupaten Serang (PD0014101)']
         excluded = {d.split(' - ')[0]: d for d in body['dikecualikan']}
         assert set(excluded) == {'PDX01', 'PD004', 'PD005', 'PV002', 'PD006'}
         assert 'tidak berpola' in excluded['PDX01']

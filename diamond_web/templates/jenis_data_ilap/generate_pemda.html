@@ -32,6 +32,8 @@
     }
     .variant-chip:hover { background: #e0f2fe; border-color: #bae6fd; }
     .kode-rule code { font-size: 12px; }
+    /* A common kode is already at hundreds of ILAPs: scroll, don't push the table away. */
+    .gen-skip-list { max-height: 9.5rem; overflow-y: auto; }
 </style>
 
 <div class="main-content">
@@ -150,6 +152,10 @@
                         <div class="alert alert-secondary small py-2" data-p-dikecualikan hidden>
                             <div data-p-dikecualikan-title class="fw-semibold"></div>
                             <ul class="mb-0 ps-3" data-p-dikecualikan-list></ul>
+                        </div>
+                        <div class="alert alert-light border small py-2" data-p-sudah-ada hidden>
+                            <div data-p-sudah-ada-title class="fw-semibold"></div>
+                            <ul class="mb-0 ps-3 gen-skip-list" data-p-sudah-ada-list></ul>
                         </div>
                         <div class="mb-2">
                             <input type="search" class="form-control form-control-sm" id="gen-filter" placeholder="Cari ILAP atau kode di pratinjau...">
@@ -429,6 +435,9 @@
         $('[data-p-dikecualikan]').prop('hidden', !res.dikecualikan.length);
         $('[data-p-dikecualikan-title]').text(res.dikecualikan.length + ' ILAP tidak diikutkan:');
         $('[data-p-dikecualikan-list]').html(res.dikecualikan.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join(''));
+        $('[data-p-sudah-ada]').prop('hidden', !res.sudah_ada.length);
+        $('[data-p-sudah-ada-title]').text(res.sudah_ada.length + ' ILAP sudah memiliki kode ini (dilewati):');
+        $('[data-p-sudah-ada-list]').html(res.sudah_ada.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('')).scrollTop(0);
         $('#gen-filter').val('');
         if (!res.rows.length) {
             $tbody.html('<tr><td colspan="4" class="text-center text-muted py-4">Semua ILAP dalam cakupan sudah memiliki kode ini. Tidak ada yang perlu dibuat.</td></tr>');

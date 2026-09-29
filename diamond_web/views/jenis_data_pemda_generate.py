@@ -182,7 +182,7 @@ def _build_plan(params, selected=None):
     dilewati_terpilih = 0
     for key, ilap, id_jenis, id_sub in targets:
         if id_sub in existing_sub:
-            sudah_ada.append(id_sub)
+            sudah_ada.append(f'{ilap.id_ilap} - {ilap.nama_ilap} ({id_sub})')
             if selected is not None and key in selected:
                 dilewati_terpilih += 1
             continue
@@ -214,6 +214,7 @@ def _build_plan(params, selected=None):
         'total_baru': sum(1 for r in rows if r['status'] == STATUS_BARU),
         'total_peringatan': sum(1 for r in rows if r['status'] == STATUS_PERINGATAN),
         'total_sudah_ada': len(sudah_ada),
+        'sudah_ada': sudah_ada,
         'dikecualikan': dikecualikan,
         # Ticked ILAPs that already carry the kode - on execute, ones that got
         # it between preview and confirm.

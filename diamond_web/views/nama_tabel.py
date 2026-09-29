@@ -246,6 +246,10 @@ def _nama_tabel_jenis_data(nama_tabel):
     return rows
 
 
+# How many kodes a sub jenis data chip spells out before summarising the rest.
+_KODE_LABEL_LIMIT = 3
+
+
 def _distinct_by_nama(rows):
     """Collapse `rows` to one entry per distinct nama sub jenis data.
 
@@ -258,23 +262,65 @@ def _distinct_by_nama(rows):
     Args:
         rows (iterable): JenisDataILAP rows sharing a nama tabel.
 
+    Each entry also carries the 4-digit jenis data kode — the last four
+    characters of ``id_sub_jenis_data``, e.g. ``4101`` of ``PD0014101`` — that
+    its rows share. The kode is what stays the same across ILAPs, so it tells
+    the reader which jenis data the name stands for even where the name itself
+    varies from pemda to pemda. A name recorded under several kodes lists them
+    all in `kodes`; `kode_label` shortens that to the first
+    ``_KODE_LABEL_LIMIT`` for the chip.
+
     Returns:
-        list: Dicts of ``{'nama', 'jenis_data', 'count'}``, busiest name first —
-        by how many rows it stands for, mirroring the ordering
-        :func:`~diamond_web.views.profil_pic.summarise_jenis_data` uses — and
-        then by name.
+        list: Dicts of ``{'nama', 'jenis_data', 'count', 'kodes', 'kode_label'}``,
+        busiest name first — by how many rows it stands for, mirroring the
+        ordering :func:`~diamond_web.views.profil_pic.summarise_jenis_data`
+        uses — and then by name.
     """
     entries = {}
     for row in rows:
         nama = row.nama_sub_jenis_data or '---'
         entry = entries.get(nama)
         if entry is None:
-            entries[nama] = {'nama': nama, 'jenis_data': row, 'count': 1}
-        else:
-            entry['count'] += 1
+            entry = entries[nama] = {'nama': nama, 'jenis_data': row, 'count': 0, 'kodes': set()}
+        entry['count'] += 1
+        kode = (row.id_sub_jenis_data or '')[-4:]
+        if len(kode) == 4:
+            entry['kodes'].add(kode)
+
+    for entry in entries.values():
+        kodes = sorted(entry['kodes'])
+        entry['kodes'] = kodes
+        label = ', '.join(kodes[:_KODE_LABEL_LIMIT])
+        if len(kodes) > _KODE_LABEL_LIMIT:
+            label += f' +{len(kodes) - _KODE_LABEL_LIMIT}'
+        entry['kode_label'] = label
     return sorted(
         entries.values(), key=lambda entry: (-entry['count'], entry['nama'].lower())
     )
+
+
+def _nama_tabel_kodes(rows):
+    """The 4-digit jenis data kodes feeding the table, busiest first.
+
+    Ordered by how many sub jenis data carry each kode, then by kode — so for a
+    Pemda table the kode every pemda reports (e.g. ``5701`` of TDUP) leads,
+    ahead of the one-off ones.
+
+    Returns:
+        dict: ``{'kodes', 'label'}`` — every kode, and the first
+        ``_KODE_LABEL_LIMIT`` of them joined for the summary card, with
+        ``+n`` for the rest.
+    """
+    counts = {}
+    for row in rows:
+        kode = (row.id_sub_jenis_data or '')[-4:]
+        if len(kode) == 4:
+            counts[kode] = counts.get(kode, 0) + 1
+    kodes = sorted(counts, key=lambda kode: (-counts[kode], kode))
+    label = ', '.join(kodes[:_KODE_LABEL_LIMIT])
+    if len(kodes) > _KODE_LABEL_LIMIT:
+        label += f' +{len(kodes) - _KODE_LABEL_LIMIT}'
+    return {'kodes': kodes, 'label': label}
 
 
 def _nama_tabel_ilap_list(rows):
@@ -376,6 +422,7 @@ class NamaTabelDetailView(LoginRequiredMixin, TemplateView):
         rows = _nama_tabel_jenis_data(nama_tabel)
 
         context['nama_tabel'] = rows[0].nama_tabel_I  # as recorded, not as typed
+        context['kode_summary'] = _nama_tabel_kodes(rows)
         context['jenis_data_list'] = _distinct_by_nama(rows)
         context['jenis_data_total'] = len(context['jenis_data_list'])
         context['ilap_list'] = _nama_tabel_ilap_list(rows)
