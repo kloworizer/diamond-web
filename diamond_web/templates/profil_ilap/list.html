@@ -38,6 +38,15 @@
         justify-content: space-between;
     }
 
+    .seksi-title-link {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .seksi-title-link:hover {
+        color: #0c92ff;
+    }
+
     .seksi-user-list {
         max-height: 300px;
         overflow-y: auto;
@@ -195,8 +204,10 @@
         <div class="col-lg-4">
             <div class="card stretch seksi-card">
                 <div class="card-header">
+                    {% can_view_ringkasan_seksi seksi.kode as dapat_ringkasan %}
                     <h5 class="card-title mb-0">
-                        <i class="feather-users me-2 text-primary"></i>{{ seksi.label }}
+                        <i class="feather-users me-2 text-primary"></i>{% if dapat_ringkasan %}<a href="{% url 'profil_seksi_detail' seksi.kode|lower %}"
+                           class="seksi-title-link" title="Lihat ringkasan {{ seksi.label }}">{{ seksi.label }}<i class="feather-chevron-right ms-1"></i></a>{% else %}{{ seksi.label }}{% endif %}
                     </h5>
                     <span class="badge bg-soft-primary text-primary">{{ seksi.users|length }}</span>
                 </div>

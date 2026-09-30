@@ -207,6 +207,46 @@ def can_view_pic_profil(viewer, target):
     return visible_profil_pic_users(viewer).filter(pk=target.pk).exists()
 
 
+def get_pde_seksi(kode):
+    """Return the :data:`PDE_SEKSI` entry whose kode is `kode`, or ``None``.
+
+    Args:
+        kode (str): ``P3DE``, ``PIDE`` or ``PMDE``, in any case — it arrives
+            from a URL.
+
+    Returns:
+        dict|None: The seksi entry, or ``None`` for an unknown kode.
+    """
+    kode = (kode or '').upper()
+    return next((seksi for seksi in PDE_SEKSI if seksi['kode'] == kode), None)
+
+
+def can_view_ringkasan_seksi(viewer, seksi):
+    """Return True when `viewer` may open the Ringkasan Seksi page of `seksi`.
+
+    The page puts the workload of every person in the seksi side by side, which
+    is the Profil PIC page of each of them at once, so it follows the same line
+    of supervision: superusers and the global `admin` group reach every seksi,
+    the kasi and the admin of a seksi reach their own, and nobody else reaches
+    any.
+
+    Args:
+        viewer (User): The person doing the looking, possibly anonymous.
+        seksi (dict): An entry of :data:`PDE_SEKSI`.
+
+    Returns:
+        bool: Whether the page may be opened.
+    """
+    if seksi is None or not viewer or not getattr(viewer, 'is_authenticated', False):
+        return False
+    if viewer.is_superuser:
+        return True
+    group_names = set(viewer.groups.values_list('name', flat=True))
+    return bool(
+        group_names & {'admin', seksi['kasi_group'], seksi['admin_group']}
+    )
+
+
 def seksi_label(group_name):
     """Return the readable unit label of `group_name`.
 

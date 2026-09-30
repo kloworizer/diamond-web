@@ -35,6 +35,9 @@ urlpatterns = [
     # shadows it.
     path('profil-pic/<str:username>/tikets/', views.profil_pic_tiket_data, name='profil_pic_tiket_data'),
     path('profil-pic/<str:username>/', views.ProfilPICDetailView.as_view(), name='profil_pic_detail'),
+    # Ringkasan Seksi: one row of Profil PIC figures per person of a PDE seksi,
+    # reached from the seksi names of the Profil PDE directory.
+    path('profil-seksi/<str:kode>/', views.ProfilSeksiDetailView.as_view(), name='profil_seksi_detail'),
     path('sync-data-referensi/', views.oracle_sync_page, name='oracle_sync_page'),
     path('sync-data-referensi/test/', views.oracle_sync_test_connection, name='oracle_sync_test'),
     path('sync-data-referensi/check/', views.oracle_sync_check, name='oracle_sync_check'),

@@ -3,6 +3,8 @@ from django.utils.html import format_html
 
 from diamond_web.utils import format_periode
 from diamond_web.utils.pic_profil import (
+    can_view_ringkasan_seksi as _can_view_ringkasan_seksi,
+    get_pde_seksi,
     pic_display_name,
     pic_profil_url as _pic_profil_url,
     request_pic_profil_visibility,
@@ -59,6 +61,18 @@ def can_view_pic_profil(context, user):
     directory entry whose whole card is the link, for instance.
     """
     return _visibility(context)(user)
+
+
+@register.simple_tag(takes_context=True)
+def can_view_ringkasan_seksi(context, kode):
+    """Return whether the viewer may open the Ringkasan Seksi page of `kode`.
+
+    So a seksi name is a link only for the readers the page would not refuse.
+    """
+    request = context.get('request')
+    if request is None:
+        return False
+    return _can_view_ringkasan_seksi(request.user, get_pde_seksi(kode))
 
 
 @register.filter(name='pic_profil_url')
