@@ -184,7 +184,7 @@ Nomor Tiket, Nomor ND Nadine, Tahun, Periode (bulanan/triwulanan/semester/tahuna
 Halaman ini adalah pusat kendali satu tiket: seluruh informasi, riwayat, dan tombol aksi alur kerja berkumpul di sini. Untuk penjelasan lengkap tiap aksi (kapan tersedia, apa yang berubah di baliknya, dan validasinya), lihat **[Diagram Alur Status Tiket](status_tiket_flow.md)** — bagian ini merangkum apa yang tampil di halamannya.
 
 **Syarat membuka halaman:**
-- Superuser, anggota grup `admin`, **Admin P3DE** (`admin`/`admin_p3de`/superuser), dan seluruh kasi selalu boleh membuka tiket apa pun. Bagi kasi ini bersifat lihat-saja — tombol aksi tetap mengikuti aturan PIC aktif di bawah, kasi tidak otomatis bisa menjalankan aksinya.
+- Superuser, anggota grup `admin`, **Admin P3DE** (`admin`/`admin_p3de`/superuser), **Admin PIDE** (`admin_pide`), **Admin PMDE** (`admin_pmde`), dan seluruh kasi selalu boleh membuka tiket apa pun. Bagi Admin PIDE, Admin PMDE, dan kasi ini bersifat lihat-saja — tombol aksi tetap mengikuti aturan PIC aktif di bawah, mereka tidak otomatis bisa menjalankan aksinya, dan mengubah isian tiket tetap khusus Admin P3DE. Satu-satunya pengecualian: Admin PMDE dapat menjalankan **Sinkronisasi dari Oracle** (lihat di bawah).
 - Pengguna lain wajib pernah/sedang tercatat sebagai PIC (`TiketPIC`) pada tiket tsb — aktif ataupun tidak aktif — kalau tidak, akses ditolak.
 
 **Informasi yang ditampilkan:**
@@ -211,6 +211,9 @@ Halaman ini adalah pusat kendali satu tiket: seluruh informasi, riwayat, dan tom
 | Transfer ke PMDE | **Identifikasi** | PIC PIDE aktif |
 | Selesaikan Tiket (Quality Control) | **Pengendalian Mutu** | PIC PMDE aktif |
 | Special Request (aktifkan/nonaktifkan) | Status 1–6 (bukan Dibatalkan/Selesai) | PIC aktif dari divisi yang sedang memegang tiket sesuai statusnya (P3DE utk status 1–3, PIDE utk 4–5, PMDE utk 6) |
+| Sinkronisasi dari Oracle | Status apa pun | **Admin PMDE** (`admin_pmde`, `admin`, superuser) — tidak perlu menjadi PIC tiket |
+
+**Sinkronisasi dari Oracle** (nama url `sinkronisasi_tiket`) menjalankan [Sinkronisasi Update Tiket](SYNC_TIKET_UPDATE_RULES.md) untuk tiket ini saja: kolom QC/transfer yang sama diambil dari rekap tarikan Oracle (`PVPTD.ZA_REKAP_TARIKAN`) dan aturan transisi status yang sama (Aturan 1–9) diterapkan. Modal lebih dulu menampilkan **pratinjau** — transisi status beserta aturannya, kolom yang berubah (nilai saat ini → nilai baru), dan aksi yang akan dicatat di Riwayat Aksi beserta PIC yang akan tercatat sebagai pelakunya (atau keterangan *dilewati* bila peran tsb tidak punya PIC aktif). Tidak ada yang disimpan sampai tombol **Sinkronisasi** ditekan. Bila data Oracle atau tiket berubah di antara pratinjau dan penyimpanan, penyimpanan ditolak dan pratinjau terbaru ditampilkan. Tiket yang belum ada di Oracle atau yang datanya sudah sinkron hanya menampilkan keterangan, tanpa tombol simpan. Tiket yang **dibatalkan** (Aturan 4) atau **ditutup** (Aturan 2/3/5) oleh sinkronisasi karena rekap tarikan Oracle belum terbentuk lengkap dikoreksi di sini setelah rekapnya lengkap. Aksi sinkronisasi tsb dihapus, status dikembalikan ke status sebelumnya, lalu aturan dijalankan ulang, misalnya menjadi Pengendalian Mutu bila masih ada baris yang belum di-QC. Lihat [Koreksi Pembatalan dan Koreksi Penutupan](SYNC_TIKET_UPDATE_RULES.md#koreksi-pembatalan-dan-koreksi-penutupan-sinkronisasi-satu-tiket).
 
 ### Profil ILAP
 

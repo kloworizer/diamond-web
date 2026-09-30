@@ -463,6 +463,19 @@ def is_admin_p3de(user):
     return _in_group(user, 'admin', 'admin_p3de')
 
 
+def is_admin_pmde(user):
+    """Return True for users who administer PMDE tikets.
+
+    Covers superusers, the global `admin` group and the `admin_pmde` group —
+    the same set every other Admin PMDE menu admits.
+    """
+    if not user or not getattr(user, 'is_authenticated', False):
+        return False
+    if user.is_superuser:
+        return True
+    return _in_group(user, 'admin', 'admin_pmde')
+
+
 def is_kasi_p3de(user):
     """Return True when `user` belongs to the `kasi_p3de` supervisor group."""
     return _in_group(user, 'kasi_p3de')
@@ -485,6 +498,21 @@ def is_kasi(user):
     limited to the tikets where they are the active PIC.
     """
     return _in_group(user, *KASI_GROUPS)
+
+
+def can_view_any_tiket(user):
+    """Return True when `user` may open the detail page of any tiket.
+
+    Covers P3DE administrators (superuser, `admin`, `admin_p3de`), the PIDE and
+    PMDE administrators and every kasi group. Viewing is all this grants: the
+    workflow actions stay gated behind an active TiketPIC assignment, and
+    editing the isian stays with `is_admin_p3de`.
+    """
+    return (
+        is_admin_p3de(user)
+        or is_kasi(user)
+        or _in_group(user, 'admin_pide', 'admin_pmde')
+    )
 
 
 def has_active_tiket_pic(user):

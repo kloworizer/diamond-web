@@ -1,0 +1,286 @@
+"""Sinkronisasi Tiket View - Admin PMDE pulls one tiket's QC data from Oracle.
+
+Runs the rules of the tiket update sync (`sync_tiket_update`) for a single
+tiket, straight from its detail page: the same Oracle query, the same field
+comparison, the same status transitions and the same audit trail. See
+docs/SYNC_TIKET_UPDATE_RULES.md.
+"""
+
+import hashlib
+import json
+import logging
+import uuid
+
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.db import transaction
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.template.loader import render_to_string
+from django.urls import reverse
+from django.utils import formats
+from django.views import View
+
+from ...constants.tiket_action_types import ROLE_BADGES, TiketActionType, get_action_label
+from ...constants.tiket_status import STATUS_BADGE_CLASSES, STATUS_LABELS
+from ...models.tiket import Tiket
+from ...models.tiket_pic import TiketPIC
+from ...utils import format_number_with_separator
+from ...utils.oracle_sync import OracleDataSyncService, OracleSyncConfigError
+from ..mixins import is_admin_pmde
+from ..sync_tiket_update import (
+    KOREKSI_JUDUL,
+    TiketUpdateRowError,
+    _active_pics_by_role,
+    _apply_tiket_update_plan,
+    _fetch_tiket_update_row,
+    _plan_tiket_update,
+)
+
+logger = logging.getLogger(__name__)
+
+# Who writes the actions a correction removes (Aturan 2-5).
+ACTION_ROLES = {
+    TiketActionType.DIKEMBALIKAN: TiketPIC.Role.PIDE,
+    TiketActionType.DIBATALKAN: TiketPIC.Role.P3DE,
+    TiketActionType.DITRANSFER_KE_PMDE: TiketPIC.Role.PIDE,
+    TiketActionType.PENGENDALIAN_MUTU: TiketPIC.Role.PMDE,
+    TiketActionType.SELESAI: TiketPIC.Role.PMDE,
+}
+
+# Why each correction applies, shown with it in the preview.
+KOREKSI_KETERANGAN = {
+    'dibatalkan': (
+        'Tiket dibatalkan oleh sinkronisasi (Aturan 4) karena rekap tarikan hanya berisi baris CDE, '
+        'tetapi rekap Oracle kini berisi baris identifikasi.'
+    ),
+    'selesai': (
+        'Tiket ditutup oleh sinkronisasi karena rekap tarikan menunjukkan Belum QC = 0, tetapi rekap '
+        'Oracle untuk tarikan yang sama kini masih memiliki baris yang belum di-QC.'
+    ),
+}
+
+# Why each rule fires, in the words of docs/SYNC_TIKET_UPDATE_RULES.md.
+ATURAN_KETERANGAN = {
+    1: 'Data sudah ditransfer ke PMDE dan ada baris identifikasi yang belum di-QC.',
+    2: 'Seluruh baris identifikasi sudah di-QC (Belum QC = 0, Sudah QC = Baris I).',
+    3: 'Data sudah ditransfer dan seluruh baris identifikasi sudah di-QC (Belum QC = 0, Sudah QC = Baris I).',
+    4: 'Tarikan hanya berisi baris CDE: tiket dikembalikan PIDE dan dibatalkan.',
+    5: 'Data sudah ditransfer tanpa baris identifikasi (hanya update atau residual).',
+    6: 'PIDE sudah merekam data di Oracle (tgl_load).',
+    7: 'PIDE sudah merekam dan mentransfer data ke PMDE di Oracle.',
+    8: 'Oracle melakukan rematch dan ada baris baru yang belum di-QC.',
+    9: 'PIDE merevisi tarikan dengan tanggal transfer baru yang berisi baris identifikasi.',
+}
+
+
+def _format_value(value):
+    """Render a synced value for the preview table."""
+    if value is None:
+        return '-'
+    if hasattr(value, 'hour'):
+        return formats.date_format(value, 'd/m/Y H:i')
+    return format_number_with_separator(value)
+
+
+def _plan_fingerprint(plan):
+    """Digest of what a plan writes, so a sync applies exactly what was previewed.
+
+    Covers the Oracle row and every value the plan would write. Action
+    timestamps are left out: the ones that fall back to "now" differ between
+    the preview and the sync, and the rest are already in the row.
+    """
+    koreksi = plan['koreksi']
+    payload = {
+        'values': plan['values'],
+        'status_from': plan['status_from'],
+        'koreksi': koreksi and ([a.id for a in koreksi['actions']], koreksi['fields']),
+        'field_changes': plan['field_changes'],
+        'transitions': [(t['key'], t['status_to'], t['fields']) for t in plan['transitions']],
+    }
+    encoded = json.dumps(payload, default=str, sort_keys=True).encode('utf-8')
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _fetch_row(tiket):
+    """Fetch the tiket's Oracle row: (row or None, error message or None)."""
+    try:
+        service = OracleDataSyncService(connection_only=True)
+        return _fetch_tiket_update_row(service, tiket.nomor_tiket), None
+    except (OracleSyncConfigError, TiketUpdateRowError) as exc:
+        return None, str(exc).strip()
+    except Exception:
+        logger.exception('Sinkronisasi tiket %s: gagal mengambil data Oracle', tiket.nomor_tiket)
+        return None, 'Gagal mengambil data dari Oracle. Periksa koneksi Oracle.'
+
+
+def _active_pics(tiket):
+    return _active_pics_by_role(
+        TiketPIC.objects.filter(id_tiket=tiket, active=True).select_related('id_user')
+    )
+
+
+def _preview_context(tiket, plan):
+    """Turn a plan into the rows the preview modal shows."""
+    tiket_pics = _active_pics(tiket)
+
+    # Transitions can write fields the general update also writes
+    # (tgl_transfer on Aturan 7); the latter's value is the one that lands.
+    changes = {field: (old, new) for field, old, new in plan['field_changes']}
+    for t in plan['transitions']:
+        for field, new in t['fields'].items():
+            changes.setdefault(field, (getattr(tiket, field), new))
+    # The correction's fields, unless a transition then writes them anyway.
+    koreksi = plan['koreksi']
+    for field, new in (koreksi['fields'] if koreksi else {}).items():
+        if field != 'status_tiket' and getattr(tiket, field) != new:
+            changes.setdefault(field, (getattr(tiket, field), new))
+    field_rows = [
+        {
+            'label': Tiket._meta.get_field(field).verbose_name,
+            'old': _format_value(old),
+            'new': _format_value(new),
+        }
+        for field, (old, new) in changes.items()
+    ]
+
+    transitions = []
+    for t in plan['transitions']:
+        actions = []
+        for role, action, timestamp, catatan in t['actions']:
+            pics = tiket_pics.get(role, [])
+            user = pics[0].id_user if pics else None
+            full_name = (user.get_full_name() or '').strip() if user else ''
+            actions.append({
+                'label': get_action_label(action),
+                'role': ROLE_BADGES[role]['label'],
+                'role_class': ROLE_BADGES[role]['class'],
+                'user': (f'{user.username} - {full_name}' if full_name else user.username) if user else None,
+                'timestamp': _format_value(timestamp),
+                'catatan': catatan,
+            })
+        transitions.append({
+            'aturan': t['aturan'],
+            'keterangan': ATURAN_KETERANGAN[t['aturan']],
+            'status_to': t['status_to'],
+            'status_to_label': STATUS_LABELS.get(t['status_to'], '-'),
+            'status_to_class': STATUS_BADGE_CLASSES.get(t['status_to'], 'bg-secondary'),
+            'actions': actions,
+            'notify_count': len(tiket_pics.get(TiketPIC.Role.P3DE, [])) if t['notify_p3de'] else 0,
+        })
+
+    koreksi_actions = []
+    for a in (koreksi['actions'] if koreksi else []):
+        role = ACTION_ROLES.get(a.action)
+        full_name = (a.id_user.get_full_name() or '').strip()
+        koreksi_actions.append({
+            'label': get_action_label(a.action),
+            'role': ROLE_BADGES[role]['label'] if role else None,
+            'role_class': ROLE_BADGES[role]['class'] if role else '',
+            'user': f'{a.id_user.username} - {full_name}' if full_name else a.id_user.username,
+            'timestamp': _format_value(a.timestamp),
+            'catatan': a.catatan,
+        })
+
+    # With a correction, the transitions start from where it leaves the tiket.
+    rules_from = koreksi['fields']['status_tiket'] if koreksi else plan['status_from']
+    return {
+        'field_rows': field_rows,
+        'transitions': transitions,
+        'koreksi_actions': koreksi_actions,
+        'koreksi_judul': KOREKSI_JUDUL[koreksi['jenis']] if koreksi else None,
+        'koreksi_keterangan': KOREKSI_KETERANGAN[koreksi['jenis']] if koreksi else None,
+        'koreksi_notify_count': (
+            len(tiket_pics.get(TiketPIC.Role.P3DE, [])) if koreksi and koreksi['notify_p3de'] else 0
+        ),
+        'koreksi_to_label': STATUS_LABELS.get(rules_from, '-'),
+        'koreksi_to_class': STATUS_BADGE_CLASSES.get(rules_from, 'bg-secondary'),
+        'fingerprint': _plan_fingerprint(plan),
+    }
+
+
+class SinkronisasiTiketView(LoginRequiredMixin, UserPassesTestMixin, View):
+    """Preview and apply the Oracle tiket update sync for one tiket.
+
+    GET  - fetch the tiket's row from Oracle and return the preview modal:
+           the columns that would change, the status transition and the
+           TiketAction records the sync would write.
+    POST - fetch the row again and apply it, provided it still yields the
+           plan the preview showed (`fingerprint`); otherwise nothing is
+           written and the fresh preview is returned.
+
+    Access Control:
+    - Requires login
+    - Admin PMDE only (`is_admin_pmde`: superuser, `admin`, `admin_pmde`)
+
+    Side Effects on POST: exactly those of the bulk sync for this tiket - the
+    Tiket fields and status, TiketAction records attributed to the tiket's
+    active PICs, P3DE notifications (Aturan 4) and a result CSV in sync_logs/.
+    Unlike the bulk sync it first corrects a tiket the sync cancelled
+    (Aturan 4) or closed (Aturan 2, 3, 5) on a half-built rekap
+    (`_plan_koreksi`): the sync's actions are deleted and the rules run again
+    from the status before them.
+    """
+
+    template_name = 'tiket/sinkronisasi_tiket_modal_form.html'
+
+    def test_func(self):
+        return is_admin_pmde(self.request.user)
+
+    def _render(self, tiket, row, error, plan):
+        context = {
+            'tiket': tiket,
+            'error': error,
+            'not_found': error is None and row is None,
+            'plan': plan,
+            'status_from_label': STATUS_LABELS.get(tiket.status_tiket, '-'),
+            'status_from_class': STATUS_BADGE_CLASSES.get(tiket.status_tiket, 'bg-secondary'),
+            'form_action': reverse('sinkronisasi_tiket', args=[tiket.pk]),
+        }
+        if plan is not None and plan['changed']:
+            context.update(_preview_context(tiket, plan))
+        return render_to_string(self.template_name, context, request=self.request)
+
+    def get(self, request, pk):
+        tiket = get_object_or_404(Tiket, pk=pk)
+        row, error = _fetch_row(tiket)
+        plan = _plan_tiket_update(tiket, row, koreksi=True) if row is not None else None
+        return JsonResponse({'html': self._render(tiket, row, error, plan)})
+
+    def post(self, request, pk):
+        tiket = get_object_or_404(Tiket, pk=pk)
+        row, error = _fetch_row(tiket)
+        if row is None:
+            return JsonResponse({
+                'success': False,
+                'message': error or 'Tiket tidak ditemukan di Oracle.',
+                'html': self._render(tiket, row, error, None),
+            })
+
+        with transaction.atomic():
+            tiket = Tiket.objects.select_for_update().get(pk=pk)
+            plan = _plan_tiket_update(tiket, row, koreksi=True)
+            if not plan['changed']:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Data tiket sudah sinkron dengan Oracle.',
+                    'html': self._render(tiket, row, None, plan),
+                })
+            if request.POST.get('fingerprint') != _plan_fingerprint(plan):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Data berubah sejak pratinjau dibuka. Periksa pratinjau terbaru lalu sinkronkan lagi.',
+                    'html': self._render(tiket, row, None, plan),
+                })
+
+            sync_id = str(uuid.uuid4())
+            _apply_tiket_update_plan(tiket, plan, _active_pics(tiket), sync_id)
+
+        logger.info(
+            'Sinkronisasi tiket %s oleh %s (sync_id=%s): %d kolom, transisi %s',
+            tiket.nomor_tiket, request.user.username, sync_id, len(plan['field_changes']),
+            [t['aturan'] for t in plan['transitions']] or '-',
+        )
+        return JsonResponse({
+            'success': True,
+            'message': f'Tiket {tiket.nomor_tiket} berhasil disinkronkan dari Oracle.',
+        })

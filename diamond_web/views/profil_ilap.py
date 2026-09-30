@@ -25,9 +25,8 @@ from ..utils.pic_profil import (
 )
 from .profil_pic import build_seksi_directory
 from .mixins import (
+    can_view_any_tiket,
     can_view_ilap_kontak,
-    is_admin_p3de,
-    is_kasi,
 )
 
 __all__ = [
@@ -851,11 +850,11 @@ def _user_suggestions(term, searcher):
 def _can_open_tiket(user, tiket):
     """Return True when `user` may open `tiket`'s detail page.
 
-    Mirrors the rule enforced by `TiketDetailView.get_object`: admins (global
-    and P3DE) and kasi may open any tiket, everyone else needs a TiketPIC
-    assignment on it.
+    Mirrors the rule enforced by `TiketDetailView.get_object`: admins (global,
+    P3DE, PIDE and PMDE) and kasi may open any tiket, everyone else needs a
+    TiketPIC assignment on it.
     """
-    if is_admin_p3de(user) or is_kasi(user):
+    if can_view_any_tiket(user):
         return True
     return TiketPIC.objects.filter(id_tiket=tiket, id_user=user).exists()
 

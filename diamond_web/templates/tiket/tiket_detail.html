@@ -708,7 +708,8 @@
                         <div class="alert alert-info mb-0">
                             <i class="feather-info me-2"></i>Anda bukan PIC aktif untuk tiket ini.
                             {% if user_is_admin_p3de %}Sebagai Admin P3DE Anda hanya dapat mengubah isian
-                            tiket.{% else %}Anda hanya dapat melihat, tidak dapat melakukan perubahan.{% endif %}
+                            tiket.{% elif user_can_sync_tiket %}Sebagai Admin PMDE Anda hanya dapat menyinkronkan
+                            tiket dari Oracle.{% else %}Anda hanya dapat melihat, tidak dapat melakukan perubahan.{% endif %}
                         </div>
                         {% if user_can_edit_tiket %}
                         <div class="d-grid gap-2 mt-2">
@@ -831,6 +832,16 @@
                             </button>
                             {% endif %}
                         </div>
+                    {% endif %}
+
+                    {# Admin PMDE: sits outside the PIC blocks, the sync is not tied to a PIC assignment. #}
+                    {% if user_can_sync_tiket %}
+                    <div class="d-grid gap-2 mt-2">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
+                            data-bs-target="#sinkronisasiTiketModal" id="sinkronisasi-tiket-btn">
+                            <i class="feather-refresh-cw me-1"></i>Sinkronisasi dari Oracle
+                        </button>
+                    </div>
                     {% endif %}
 
                     <!-- Document Download Section (folded back into Aksi, inline) -->
@@ -1686,6 +1697,31 @@
             </div>
         </div>
     </div>
+
+    <!-- Sinkronisasi Tiket dari Oracle Modal (Admin PMDE) -->
+    {% if user_can_sync_tiket %}
+    <div class="modal fade" id="sinkronisasiTiketModal" tabindex="-1" aria-labelledby="sinkronisasiTiketModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+                <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #e6f4ff; color: #006fcc; flex-shrink: 0;">
+                            <i class="feather-refresh-cw" style="font-size: 16px;"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0" id="sinkronisasiTiketModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Sinkronisasi dari Oracle</h5>
+                            <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Tiket {{ tiket.nomor_tiket }}</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div id="sinkronisasi-tiket-form-container">
+                    <!-- Preview will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <style>
         /* Stuck identity card — visual styles only, NO CSS transition or animation here.
@@ -2860,6 +2896,36 @@
                             console.error('Error loading form:', error);
                             showToast('Gagal memuat form.', 'danger');
                             formContainer.innerHTML = '<div class="alert alert-danger">Gagal memuat form</div>';
+                        });
+                });
+            }
+
+            // Sinkronisasi Tiket dari Oracle Handler (Admin PMDE). Every opening
+            // fetches a fresh preview; the POST re-checks it against Oracle and,
+            // if the data moved on meanwhile, answers with the new preview.
+            const sinkronisasiTiketModal = document.getElementById('sinkronisasiTiketModal');
+            if (sinkronisasiTiketModal) {
+                setupModalAria(sinkronisasiTiketModal);
+                sinkronisasiTiketModal.addEventListener('show.bs.modal', function () {
+                    const formContainer = document.getElementById('sinkronisasi-tiket-form-container');
+                    formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><div class="text-muted small mt-2">Mengambil data dari Oracle...</div></div>';
+
+                    fetch('{% url "sinkronisasi_tiket" tiket.pk %}', {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            formContainer.innerHTML = data.html
+                                || '<div class="alert alert-danger m-3">Gagal memuat pratinjau</div>';
+                            bindModalSubmit('sinkronisasi-tiket-form-container', sinkronisasiTiketModal, {
+                                successMessage: 'Tiket berhasil disinkronkan dari Oracle.',
+                                errorMessage: 'Gagal menyinkronkan tiket.'
+                            });
+                        })
+                        .catch(error => {
+                            console.error('Error loading preview:', error);
+                            showToast('Gagal memuat pratinjau sinkronisasi.', 'danger');
+                            formContainer.innerHTML = '<div class="alert alert-danger m-3">Gagal memuat pratinjau</div>';
                         });
                 });
             }

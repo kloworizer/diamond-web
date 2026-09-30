@@ -161,6 +161,7 @@ Aksi berikut bukan menu navbar melainkan tombol pada halaman detail tiket. Selai
 | **Dashboard Power BI** | `/dashboard/` | ✅ | ✅ | ✅ | ✅ |
 | **Sync Data Referensi** | `/sync-data-referensi/` | ❌ | ❌ | ❌ | ✅ |
 | **Sync Tiket** | `/sync-tiket/` | ❌ | ❌ | ❌ | ✅ |
+| **Sinkronisasi Satu Tiket dari Oracle** (tombol di Detail Tiket) | `/tiket/<id>/sinkronisasi/` | ❌ | ❌ | ❌ | ✅ (superuser, `admin`, `admin_pmde`) |
 
 ### Admin
 

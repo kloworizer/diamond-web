@@ -30,7 +30,7 @@ from ...constants.tiket_action_types import (
 )
 from ...utils import format_number_with_separator, format_periode
 from ...utils.jenis_prioritas import resolve_jenis_prioritas
-from ..mixins import is_admin_p3de, is_kasi
+from ..mixins import can_view_any_tiket, is_admin_p3de, is_admin_pmde
 
 
 class TiketDetailView(LoginRequiredMixin, DetailView):
@@ -62,20 +62,19 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         - Admin group member: Always allowed
         - Admin P3DE group member: Always allowed — they may correct the isian
           of any tiket, so they must be able to open it
-        - Kasi (supervisor) group member: Always allowed, read-only — the
-          action buttons stay gated behind `user_is_active_pic_*`
+        - Admin PIDE / Admin PMDE and Kasi (supervisor) group members: Always
+          allowed, read-only — the action buttons stay gated behind
+          `user_is_active_pic_*`
         - Other users: Must have a TiketPIC record (active or inactive) for this tiket
 
         Raises:
-        - PermissionDenied: If user is not superuser/admin/admin_p3de/kasi and
-          has no TiketPIC
+        - PermissionDenied: If user is not superuser/admin/admin_p3de/
+          admin_pide/admin_pmde/kasi and has no TiketPIC
         - Http404: If tiket PK not found (via parent get_object)
         """
         obj = super().get_object(queryset)
-        # Allow access if user is superuser, admin, admin P3DE or kasi
-        if is_admin_p3de(self.request.user):
-            return obj
-        if is_kasi(self.request.user):
+        # Allow access if user is superuser, any admin or kasi
+        if can_view_any_tiket(self.request.user):
             return obj
         # Allow access if user is any kind of PIC for this tiket (active or inactive)
         if not TiketPIC.objects.filter(id_tiket=obj, id_user=self.request.user).exists():
@@ -340,6 +339,10 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
             and not self.object.tanda_terima
             and user_is_active_pic_p3de
         )
+
+        # PMDE administrators may pull this tiket's QC data from Oracle with the
+        # rules of the tiket update sync, whether or not they hold the tiket.
+        context['user_can_sync_tiket'] = is_admin_pmde(self.request.user)
 
         # Add status constants for template use
         context['STATUS_DIREKAM'] = STATUS_DIREKAM

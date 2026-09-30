@@ -521,3 +521,54 @@ class TestAturan4HanyaCde:
         assert result['would_selesai'] == 0
         tiket_identifikasi.refresh_from_db()
         assert tiket_identifikasi.status_tiket == STATUS_IDENTIFIKASI
+
+
+@pytest.fixture
+def tiket_pengendalian_mutu(db):
+    """Tiket at status 6 with 609 I rows still to QC, and an active PMDE PIC."""
+    tiket = TiketFactory(
+        status_tiket=STATUS_PENGENDALIAN_MUTU, tgl_rekam_pide=TGL_LOAD, tgl_transfer=TGL_TRANSFER,
+        baris_i=609, baris_u=1112, belum_qc=609, sudah_qc=0,
+    )
+    TiketPICFactory(id_tiket=tiket, role=TiketPIC.Role.PMDE, active=True)
+    return tiket
+
+
+@pytest.mark.django_db
+class TestQcLengkapRekapSetengahJadi:
+    """Aturan 2 and 3 close only on a rekap where every I row is QC'd.
+
+    A half-built PVPTD.ZA_REKAP_TARIKAN can read Belum QC 0 while QC is still
+    open; a complete one always has sudah_qc + belum_qc == baris_i.
+    """
+
+    @pytest.mark.parametrize('rekap', [
+        dict(baris_i=609, baris_u=1112, sudah_qc=0, belum_qc=0),     # QC counts missing
+        dict(baris_i=609, baris_u=1112, sudah_qc=200, belum_qc=0),   # part of them
+        dict(baris_cde=15, belum_qc=0),                               # CDE rows alone
+    ])
+    def test_aturan_2_tidak_menutup(self, tiket_pengendalian_mutu, rekap):
+        row = _row(tiket_pengendalian_mutu.nomor_tiket, tgl_transfer=TGL_TRANSFER, **rekap)
+        assert _check_tiket_update_data(_service([row]))['would_selesai'] == 0
+
+        result = _update_tiket_data(_service([row]))
+
+        tiket_pengendalian_mutu.refresh_from_db()
+        assert tiket_pengendalian_mutu.status_tiket == STATUS_PENGENDALIAN_MUTU
+        assert result['status_to_selesai'] == 0
+        assert not TiketAction.objects.filter(id_tiket=tiket_pengendalian_mutu).exists()
+
+    def test_aturan_2_menutup_bila_qc_lengkap(self, tiket_pengendalian_mutu):
+        row = _row(tiket_pengendalian_mutu.nomor_tiket, tgl_transfer=TGL_TRANSFER,
+                   baris_i=609, baris_u=1112, sudah_qc=609, belum_qc=0)
+        assert _check_tiket_update_data(_service([row]))['would_selesai'] == 1
+        _update_tiket_data(_service([row]))
+        tiket_pengendalian_mutu.refresh_from_db()
+        assert tiket_pengendalian_mutu.status_tiket == STATUS_SELESAI
+
+    def test_aturan_3_tidak_menutup(self, tiket_identifikasi):
+        row = _row(tiket_identifikasi.nomor_tiket, tgl_transfer=TGL_TRANSFER,
+                   baris_i=609, baris_u=1112, sudah_qc=0, belum_qc=0)
+        _update_tiket_data(_service([row]))
+        tiket_identifikasi.refresh_from_db()
+        assert tiket_identifikasi.status_tiket == STATUS_IDENTIFIKASI

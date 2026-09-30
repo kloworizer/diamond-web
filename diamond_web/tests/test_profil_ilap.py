@@ -1256,16 +1256,19 @@ class TestNavbarSearchNomorTiket:
             reverse('navbar_search'), {'q': tiket.nomor_tiket}
         ).json() == {'match': None, 'suggestions': []}
 
-    def test_other_admin_role_gets_no_match(self, client):
-        """admin_pide/admin_pmde are not P3DE administrators."""
+    @pytest.mark.parametrize('group_name', ['admin_pide', 'admin_pmde'])
+    def test_other_admin_role_resolves_tiket_read_only(self, client, group_name):
+        """admin_pide/admin_pmde may open any tiket, but are not P3DE administrators."""
         user = UserFactory()
-        group, _ = Group.objects.get_or_create(name='admin_pide')
+        group, _ = Group.objects.get_or_create(name=group_name)
         user.groups.add(group)
         tiket = self._tiket_of_another_pic()
         client.force_login(user)
-        assert client.get(
-            reverse('navbar_search'), {'q': tiket.nomor_tiket}
-        ).json() == {'match': None, 'suggestions': []}
+        payload = client.get(reverse('navbar_search'), {'q': tiket.nomor_tiket}).json()
+        assert payload['url'] == reverse('tiket_detail', args=[tiket.pk])
+        resp = client.get(payload['url'])
+        assert resp.status_code == 200
+        assert resp.context['user_can_edit_tiket'] is False
 
     def test_partial_nomor_tiket_is_not_matched(self, client, p3de_admin_user):
         """Only exact matches resolve; partial terms fall through as before.
