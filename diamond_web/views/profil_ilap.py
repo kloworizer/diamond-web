@@ -2,7 +2,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView, DetailView
 from django.http import Http404, JsonResponse
-from django.db.models import Case, Count, IntegerField, Q, Value, When
+from django.db.models import Case, Count, IntegerField, Min, Q, Value, When
+from django.db.models.functions import Right
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils.dateformat import format as date_format
@@ -23,6 +24,7 @@ from ..utils.pic_profil import (
     seksi_label,
     visible_profil_pic_users,
 )
+from .nama_tabel import _distinct_by_nama
 from .profil_pic import build_seksi_directory
 from .mixins import (
     can_view_any_tiket,
@@ -32,10 +34,12 @@ from .mixins import (
 __all__ = [
     'build_ilap_summary',
     'summary_counts_payload',
+    'filter_profil_ilap',
     'ProfilILAPListView',
     'ProfilILAPDetailView',
     'JenisDataILAPProfilView',
     'profil_ilap_jenis_data_data',
+    'profil_ilap_tabel_data',
     'jenis_data_ilap_tiket_data',
     'navbar_search',
 ]
@@ -325,6 +329,63 @@ def summary_counts_payload(summary):
     }
 
 
+def filter_profil_ilap(params):
+    """Apply the Daftar ILAP filters in `params` to the ILAP catalogue.
+
+    Shared by the Daftar ILAP endpoint and :func:`profil_ilap_tabel_data`, so
+    the Daftar Tabel below it always covers exactly the ILAPs the reader is
+    looking at. Two filters narrow the rows: the search boxes, and the cell the
+    reader clicked in Ringkasan ILAP (``summary_kategori``, a kategori code, and
+    ``summary_wilayah``, a kategori wilayah id). The summary parameters match
+    exactly where the search boxes match substrings, which is what a click on a
+    named cell means and, for the wilayah, what keeps ``Nasional`` from also
+    selecting ``Internasional``.
+
+    Args:
+        params (QueryDict): The request's GET parameters, in the DataTables
+            shape — ``search[value]`` and ``columns[i][search][value]`` for
+            columns 0-3 — plus the two summary parameters.
+
+    Returns:
+        tuple: ``(searched, selected)`` — the ILAPs matching the search boxes,
+        and those further narrowed to the clicked summary cell. Ringkasan ILAP
+        counts the first so that drilling into a cell does not collapse the
+        breakdown the reader's next click is aimed at; the lists show the
+        second.
+    """
+    searched = ILAP.objects.all()
+
+    search_value = params.get('search[value]', '').strip()
+    if search_value:
+        searched = searched.filter(
+            Q(id_ilap__icontains=search_value)
+            | Q(nama_ilap__icontains=search_value)
+            | Q(id_kategori__nama_kategori__icontains=search_value)
+            | Q(id_kategori_wilayah__deskripsi__icontains=search_value)
+        )
+
+    column_lookups = {
+        0: 'id_ilap__icontains',
+        1: 'id_kategori__nama_kategori__icontains',
+        2: 'nama_ilap__icontains',
+        3: 'id_kategori_wilayah__deskripsi__icontains',
+    }
+    for i, lookup in column_lookups.items():
+        col_search = params.get(f'columns[{i}][search][value]', '').strip()
+        if col_search:
+            searched = searched.filter(**{lookup: col_search})
+
+    selected = searched
+    kategori_kode = params.get('summary_kategori', '').strip()
+    if kategori_kode:
+        selected = selected.filter(id_kategori__id_kategori=kategori_kode)
+    wilayah_id = params.get('summary_wilayah', '').strip()
+    if wilayah_id.isdigit():
+        selected = selected.filter(id_kategori_wilayah_id=int(wilayah_id))
+
+    return searched, selected
+
+
 class ProfilILAPListView(LoginRequiredMixin, TemplateView):
     """Profil PDE: the staff of the three seksi, above the ILAP catalogue.
 
@@ -423,7 +484,6 @@ class ProfilILAPListView(LoginRequiredMixin, TemplateView):
         draw = int(self.request.GET.get('draw', 1))
         start = int(self.request.GET.get('start', 0))
         length = int(self.request.GET.get('length', 10))
-        search_value = self.request.GET.get('search[value]', '').strip()
 
         # Column order mapping
         order_columns = {
@@ -433,47 +493,20 @@ class ProfilILAPListView(LoginRequiredMixin, TemplateView):
             3: 'id_kategori_wilayah__deskripsi',
         }
 
-        # Base queryset
-        base_qs = ILAP.objects.all().select_related(
+        # Total records (without filtering)
+        records_total = ILAP.objects.count()
+
+        searched_qs, base_qs = filter_profil_ilap(self.request.GET)
+        base_qs = base_qs.select_related(
             'id_kategori',
             'id_kategori_wilayah',
         ).prefetch_related(
             'ilap_kpp_relations__id_kpp',
         )
 
-        # Total records (without filtering)
-        records_total = base_qs.count()
-
-        # Apply global search
-        if search_value:
-            global_filter = Q(id_ilap__icontains=search_value) | \
-                            Q(nama_ilap__icontains=search_value) | \
-                            Q(id_kategori__nama_kategori__icontains=search_value) | \
-                            Q(id_kategori_wilayah__deskripsi__icontains=search_value)
-            base_qs = base_qs.filter(global_filter)
-
-        # Apply individual column searches (sent via custom parameters)
-        for i in range(4):  # columns 0-3
-            col_search = self.request.GET.get(f'columns[{i}][search][value]', '').strip()
-            if col_search:
-                col_map = {
-                    0: Q(id_ilap__icontains=col_search),
-                    1: Q(id_kategori__nama_kategori__icontains=col_search),
-                    2: Q(nama_ilap__icontains=col_search),
-                    3: Q(id_kategori_wilayah__deskripsi__icontains=col_search),
-                }
-                base_qs = base_qs.filter(col_map.get(i, Q()))
-
         # Counted before the summary selection narrows the rows further, so the
         # breakdown keeps showing every cell the reader can still click.
-        summary = summary_counts_payload(build_ilap_summary(base_qs))
-
-        kategori_kode = self.request.GET.get('summary_kategori', '').strip()
-        if kategori_kode:
-            base_qs = base_qs.filter(id_kategori__id_kategori=kategori_kode)
-        wilayah_id = self.request.GET.get('summary_wilayah', '').strip()
-        if wilayah_id.isdigit():
-            base_qs = base_qs.filter(id_kategori_wilayah_id=int(wilayah_id))
+        summary = summary_counts_payload(build_ilap_summary(searched_qs))
 
         # Records after filtering
         records_filtered = base_qs.count()
@@ -511,6 +544,186 @@ class ProfilILAPListView(LoginRequiredMixin, TemplateView):
             'data': data,
             'summary': summary,
         })
+
+
+# Columns of the Daftar Tabel the client may sort on. The sub jenis data column
+# summarises several rows, so it is declared unsortable in the template.
+TABEL_ORDER_COLUMNS = {
+    0: 'nama_tabel_I',
+    1: 'tabel_u',
+    3: 'jumlah_sub_jenis_data',
+    4: 'jumlah_ilap',
+    5: 'jumlah_tiket',
+}
+# How many sub jenis data a Daftar Tabel row spells out before summarising the
+# rest as ``+n``. A Pemda table is fed by hundreds of them, so the cell shows the
+# busiest few and leaves the full list to the nama tabel page the row opens.
+TABEL_JENIS_DATA_LIMIT = 3
+
+
+def _tabel_jenis_data_cell(entries):
+    """Render the compact sub jenis data cell of a Daftar Tabel row.
+
+    Args:
+        entries (list): :func:`~diamond_web.views.nama_tabel._distinct_by_nama`
+            entries of the table, busiest first.
+
+    Returns:
+        str: HTML — one chip per name, led by its 4-digit jenis data kode, up to
+        :data:`TABEL_JENIS_DATA_LIMIT`, then a ``+n`` chip whose title lists the
+        names left out.
+    """
+    chips = []
+    for entry in entries[:TABEL_JENIS_DATA_LIMIT]:
+        kode = (
+            f'<span class="tabel-chip-kode">{escape(entry["kode_label"])}</span>'
+            if entry['kode_label'] else ''
+        )
+        jumlah = (
+            f'<span class="tabel-chip-count">&times;{entry["count"]}</span>'
+            if entry['count'] > 1 else ''
+        )
+        title = ', '.join(entry['kodes'])
+        chips.append(
+            f'<span class="tabel-chip" title="{escape(title)}">'
+            f'{kode}{escape(entry["nama"])}{jumlah}</span>'
+        )
+    rest = entries[TABEL_JENIS_DATA_LIMIT:]
+    if rest:
+        title = '\n'.join(
+            f'{entry["kode_label"]} {entry["nama"]}'.strip() for entry in rest
+        )
+        chips.append(
+            f'<span class="tabel-chip tabel-chip-more" title="{escape(title)}">'
+            f'+{len(rest)} lainnya</span>'
+        )
+    return f'<div class="tabel-chip-list">{"".join(chips)}</div>'
+
+
+@login_required
+def profil_ilap_tabel_data(request):
+    """Server-side DataTables endpoint for the Daftar Tabel of the Profil ILAP page.
+
+    One row per bank data table (nama tabel I) fed by the ILAPs the Daftar ILAP
+    is showing: the request carries the same search boxes and Ringkasan ILAP
+    selection, resolved by :func:`filter_profil_ilap`, so clicking a figure in
+    the summary narrows both lists at once.
+
+    A name clicked in Daftar ILAP narrows the list further, to the tables that
+    one ILAP feeds (``ilap``, its code). It only applies within the filters
+    above, so an ILAP the reader has since filtered away matches nothing.
+
+    Every figure in a row is counted within that selection: the ILAPs and the
+    tikets are those of the selected ILAPs feeding the table, not the table's
+    lifetime total — the nama tabel page the row links to holds that one. The
+    jumlah sub jenis data counts the distinct 4-digit jenis data kodes — the
+    last four characters of ``id_sub_jenis_data``, the part that stays the
+    same across ILAPs — which is what the chips of the row are led by. Sub
+    jenis data with no nama tabel recorded feed no table and are left out.
+
+    Args:
+        request (HttpRequest): The current request, carrying the Daftar ILAP
+            filters and the clicked ``ilap`` plus the DataTables ``draw``, ``start``, ``length``,
+            ``tabel_search`` and ``order`` parameters. The table's own search
+            is sent as ``tabel_search`` because ``search[value]`` is already the
+            Daftar ILAP's global search.
+
+    Returns:
+        JsonResponse: ``draw``, ``recordsTotal`` (tables fed by the selected
+        ILAPs), ``recordsFiltered`` (after ``tabel_search``) and ``data``, one
+        dict per table.
+    """
+    draw = int(request.GET.get('draw', 1))
+    start = int(request.GET.get('start', 0))
+    length = int(request.GET.get('length', 10))
+    search_value = request.GET.get('tabel_search', '').strip()
+
+    _, ilaps = filter_profil_ilap(request.GET)
+    id_ilap = request.GET.get('ilap', '').strip()
+    if id_ilap:
+        ilaps = ilaps.filter(id_ilap=id_ilap)
+    jenis_data = JenisDataILAP.objects.filter(id_ilap__in=ilaps).exclude(nama_tabel_I='')
+
+    def tables(qs):
+        return qs.order_by().values('nama_tabel_I').distinct()
+
+    records_total = tables(jenis_data).count()
+
+    if search_value:
+        # A match on any sub jenis data of a table keeps the whole table, so the
+        # row still reports every sub jenis data feeding it, not just the match.
+        matching = jenis_data.filter(
+            Q(nama_tabel_I__icontains=search_value)
+            | Q(nama_tabel_U__icontains=search_value)
+            | Q(id_sub_jenis_data__icontains=search_value)
+            | Q(nama_sub_jenis_data__icontains=search_value)
+        ).values('nama_tabel_I')
+        jenis_data = jenis_data.filter(nama_tabel_I__in=matching)
+
+    records_filtered = tables(jenis_data).count()
+
+    grouped = tables(jenis_data).annotate(
+        tabel_u=Min('nama_tabel_U'),
+        jumlah_sub_jenis_data=Count(Right('id_sub_jenis_data', 4), distinct=True),
+        jumlah_ilap=Count('id_ilap', distinct=True),
+        jumlah_tiket=Count('periodejenisdata__tiket', distinct=True),
+    )
+
+    order_column_idx = request.GET.get('order[0][column]')
+    order_col = (
+        TABEL_ORDER_COLUMNS.get(int(order_column_idx))
+        if order_column_idx and order_column_idx.isdigit() else None
+    )
+    if order_col:
+        if request.GET.get('order[0][dir]', 'asc') == 'desc':
+            order_col = f'-{order_col}'
+        grouped = grouped.order_by(order_col, 'nama_tabel_I')
+    else:
+        grouped = grouped.order_by('nama_tabel_I')
+
+    page = list(grouped[start:start + length])
+
+    # The sub jenis data and nama tabel U of the page's tables, in one query.
+    per_table = {}
+    nama_tabel_U = {}
+    for row in (
+        jenis_data
+        .filter(nama_tabel_I__in=[table['nama_tabel_I'] for table in page])
+        .order_by('id_sub_jenis_data')
+    ):
+        per_table.setdefault(row.nama_tabel_I, []).append(row)
+        if row.nama_tabel_U:
+            nama_tabel_U.setdefault(row.nama_tabel_I, {})[row.nama_tabel_U] = None
+
+    data = []
+    for table in page:
+        nama = table['nama_tabel_I']
+        url = reverse('nama_tabel_detail', args=[nama])
+        data.append({
+            'DT_RowAttr': {'data-href': url},
+            'nama_tabel_I': (
+                f'<a href="{url}" class="tabel-nama fw-semibold text-primary '
+                f'text-decoration-none">{escape(nama)}</a>'
+            ),
+            'nama_tabel_U': (
+                f'<span class="tabel-nama">'
+                f'{"<br>".join(escape(u) for u in nama_tabel_U.get(nama, {}))}</span>'
+                if nama_tabel_U.get(nama) else '---'
+            ),
+            'sub_jenis_data': _tabel_jenis_data_cell(
+                _distinct_by_nama(per_table.get(nama, []))
+            ),
+            'jumlah_sub_jenis_data': table['jumlah_sub_jenis_data'],
+            'jumlah_ilap': table['jumlah_ilap'],
+            'jumlah_tiket': table['jumlah_tiket'],
+        })
+
+    return JsonResponse({
+        'draw': draw,
+        'recordsTotal': records_total,
+        'recordsFiltered': records_filtered,
+        'data': data,
+    })
 
 
 class ProfilILAPDetailView(LoginRequiredMixin, DetailView):

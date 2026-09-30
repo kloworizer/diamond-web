@@ -180,6 +180,113 @@
         font-weight: 700;
         box-shadow: inset 0 0 0 1px #7dd3fc;
     }
+
+    /* Daftar Tabel. A table name is a machine identifier, set in monospace as
+       on the nama tabel page; the sub jenis data feeding it are compact chips,
+       since a Pemda table is fed by hundreds of them. */
+    .tabel-table tbody tr[data-href] {
+        cursor: pointer;
+    }
+
+    /* Scoped by id: the theme's cell rules outrank a class, and its cells
+       never wrap, which pushed the last columns off the card. */
+    #profil-ilap-tabel-table > tbody > tr > td {
+        vertical-align: middle;
+        font-size: 13px;
+        white-space: normal;
+    }
+
+    #profil-ilap-tabel-table > tbody > tr > td.text-end {
+        white-space: nowrap;
+    }
+
+    .tabel-table .tabel-nama {
+        font-family: var(--bs-font-monospace, monospace);
+        font-size: 12px;
+        word-break: break-all;
+    }
+
+    .tabel-chip-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        max-width: 520px;
+    }
+
+    .tabel-chip {
+        display: inline-block;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 2px 8px;
+        font-size: 11.5px;
+        color: #475569;
+        background-color: #fff;
+        max-width: 100%;
+    }
+
+    .tabel-chip .tabel-chip-kode {
+        color: #94a3b8;
+        font-size: 10.5px;
+        font-weight: 600;
+        margin-right: 4px;
+    }
+
+    .tabel-chip .tabel-chip-count {
+        color: #94a3b8;
+        font-size: 10.5px;
+        margin-left: 4px;
+    }
+
+    .tabel-chip-more {
+        color: #0c92ff;
+        border-style: dashed;
+    }
+
+    /* An ILAP name in the catalogue picks that ILAP for the table list below.
+       It is a filter, not a way off the page — the Detail button is that — so
+       it reads as a dotted link and the chosen row stays marked, like a
+       clicked figure in the summary. */
+    .ilap-pilih {
+        color: inherit;
+        text-decoration: none;
+        border-bottom: 1px dashed #94a3b8;
+        cursor: pointer;
+    }
+
+    .ilap-pilih:hover {
+        color: #0c92ff;
+        border-bottom-color: #0c92ff;
+    }
+
+    #profil-ilap-table > tbody > tr.ilap-terpilih > td {
+        background-color: #e0f2fe;
+    }
+
+    #profil-ilap-table > tbody > tr.ilap-terpilih .ilap-pilih {
+        color: #0369a1;
+        font-weight: 700;
+        border-bottom-style: solid;
+    }
+
+    .tabel-ilap-filter {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background-color: #e0f2fe;
+        color: #0369a1;
+        border: 1px solid #7dd3fc;
+        border-radius: 6px;
+        padding: 3px 4px 3px 10px;
+        font-size: 12px;
+    }
+
+    .tabel-ilap-filter button {
+        border: 0;
+        background: none;
+        color: inherit;
+        padding: 0 4px;
+        line-height: 1;
+    }
 </style>
 
 <div class="page-header">
@@ -327,7 +434,7 @@
         </div>
     </div>
 
-    <div class="card stretch stretch-full datatable-card">
+    <div class="card stretch stretch-full datatable-card mb-3">
         <div class="card-header">
             <h5 class="card-title"><i class="feather-file-text me-2 text-primary"></i>Daftar ILAP</h5>
             <a href="javascript:void(0);" id="btn-reset-pencarian" class="btn border-0 text-primary text-decoration-none p-0 fw-bold align-items-center gap-1" style="display: none; font-size: 13px;">
@@ -358,6 +465,47 @@
             </div>
         </div>
     </div>
+
+    {% comment %}
+    The bank data tables fed by the ILAPs listed in Daftar ILAP above, one row per
+    nama tabel I. It sends the same filters as Daftar ILAP, so a figure clicked
+    in Ringkasan ILAP or a term typed in the search boxes narrows both, and a
+    name clicked in Daftar ILAP narrows it to that one ILAP. Each row opens its
+    nama tabel page.
+    {% endcomment %}
+    <div class="card stretch stretch-full datatable-card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="feather-database me-2 text-primary"></i>Daftar Tabel
+            </h5>
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <span id="tabel-ilap-filter" class="tabel-ilap-filter d-none">
+                    <span>ILAP: <strong></strong></span>
+                    <button type="button" title="Tampilkan tabel semua ILAP di Daftar ILAP">&times;</button>
+                </span>
+                <span class="text-muted" style="font-size: 12px;">
+                    Mengikuti saringan Daftar ILAP &middot; klik nama ILAP untuk memilihnya &middot; klik baris untuk membuka Nama Tabel
+                </span>
+            </div>
+        </div>
+        <div class="card-body custom-card-action p-0">
+            <div class="table-responsive">
+                <table id="profil-ilap-tabel-table" class="table table-hover mb-0 tabel-table" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>Nama Tabel I</th>
+                            <th>Nama Tabel U</th>
+                            <th>Sub Jenis Data</th>
+                            <th class="text-end" title="Jumlah kode 4 digit sub jenis data yang berbeda">Jumlah Sub Jenis Data</th>
+                            <th class="text-end">Jumlah ILAP</th>
+                            <th class="text-end">Jumlah Tiket</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -365,6 +513,7 @@
 <script>
     (function () {
         let table;
+        let tabelTable;
 
         // The cell of Ringkasan ILAP the reader clicked, as the exact kategori
         // code and kategori wilayah id the server filters on. Either half may
@@ -378,6 +527,15 @@
                 kategori: $cell.attr('data-kategori') || '',
                 wilayah: $cell.attr('data-wilayah') || ''
             };
+        }
+
+        // The ILAP whose name was clicked in Daftar ILAP, which narrows Daftar
+        // Tabel alone. It is dropped whenever the filters above change: those
+        // start a new selection, and may filter the chosen ILAP away.
+        let ilapSelection = { id: '', nama: '' };
+
+        function escapeHtml(value) {
+            return $('<div>').text(value == null ? '' : String(value)).html();
         }
 
         function isSelected(selection) {
@@ -427,7 +585,79 @@
             highlightSelection();
         }
 
+        /* The Daftar ILAP filters, as the parameters both endpoints read:
+           the search boxes and the Ringkasan ILAP selection. */
+        function ilapFilterParams() {
+            const params = {
+                summary_kategori: summarySelection.kategori,
+                summary_wilayah: summarySelection.wilayah
+            };
+            $('#column-search-row input').each(function () {
+                params['columns[' + $(this).data('column') + '][search][value]'] = $(this).val();
+            });
+            return params;
+        }
+
         $(document).ready(function () {
+            // Daftar Tabel covers the ILAPs Daftar ILAP lists, so it sends the
+            // same filters and is redrawn whenever they change. Its own search
+            // box goes out as tabel_search: search[value] is the Daftar ILAP's.
+            tabelTable = $('#profil-ilap-tabel-table').DataTable({
+                serverSide: true,
+                processing: true,
+                searching: true,
+                pageLength: 10,
+                layout: {
+                    topStart: 'pageLength',
+                    topEnd: 'search',
+                    bottomStart: 'info',
+                    bottomEnd: 'paging'
+                },
+                ajax: {
+                    url: "{% url 'profil_ilap_tabel_data' %}",
+                    type: 'GET',
+                    data: function (d) {
+                        const order = d.order && d.order.length ? d.order[0] : null;
+                        const params = $.extend({
+                            draw: d.draw,
+                            start: d.start,
+                            length: d.length,
+                            tabel_search: d.search ? d.search.value : '',
+                            ilap: ilapSelection.id
+                        }, ilapFilterParams());
+                        if (order) {
+                            params['order[0][column]'] = order.column;
+                            params['order[0][dir]'] = order.dir;
+                        }
+                        return params;
+                    }
+                },
+                columns: [
+                    { data: 'nama_tabel_I' },
+                    { data: 'nama_tabel_U' },
+                    { data: 'sub_jenis_data', orderable: false },
+                    { data: 'jumlah_sub_jenis_data', className: 'text-end' },
+                    { data: 'jumlah_ilap', className: 'text-end' },
+                    { data: 'jumlah_tiket', className: 'text-end' }
+                ],
+                order: [[0, 'asc']],
+                language: {
+                    search: 'Cari:',
+                    searchPlaceholder: 'Nama tabel, sub jenis data...',
+                    emptyTable: 'Tidak ada tabel untuk ILAP yang dipilih.',
+                    zeroRecords: 'Tidak ada tabel yang cocok'
+                }
+            });
+
+            // The whole row opens the nama tabel page; the link on the name is
+            // left to the browser, so ctrl-click still opens a new tab.
+            $('#profil-ilap-tabel-table tbody').on('click', 'tr[data-href]', function (e) {
+                if ($(e.target).closest('a').length) {
+                    return;
+                }
+                window.location.href = $(this).attr('data-href');
+            });
+
             table = $('#profil-ilap-table').DataTable({
                 serverSide: true,
                 processing: true,
@@ -464,18 +694,47 @@
                 columns: [
                     { data: 'id_ilap' },
                     { data: 'kategori' },
-                    { data: 'nama' },
+                    {
+                        data: 'nama',
+                        render: function (data, type, row) {
+                            if (type !== 'display') {
+                                return data;
+                            }
+                            return '<a href="#" class="ilap-pilih" data-ilap="' + escapeHtml(row.id_ilap)
+                                + '" title="Tampilkan tabel ILAP ini di Daftar Tabel">' + escapeHtml(data) + '</a>';
+                        }
+                    },
                     { data: 'wilayah' },
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [
                     { targets: 4, className: "col-actions text-center", width: "90px", render: function (data, type, row, meta) { return '<div class="d-flex justify-content-center gap-1">' + data + '</div>'; } }
                 ],
-                order: [[0, 'asc']]
+                order: [[0, 'asc']],
+                rowCallback: function (row, data) {
+                    $(row).toggleClass('ilap-terpilih', data.id_ilap === ilapSelection.id);
+                }
             });
 
+            /* Mark the chosen row and name it above Daftar Tabel, so the list
+               there is traceable back to the click that narrowed it. */
+            function showIlapSelection() {
+                $('#profil-ilap-table tbody tr').each(function () {
+                    const data = table.row(this).data();
+                    $(this).toggleClass('ilap-terpilih', !!data && data.id_ilap === ilapSelection.id);
+                });
+                const $filter = $('#tabel-ilap-filter');
+                $filter.find('strong').text(ilapSelection.id + ' - ' + ilapSelection.nama);
+                $filter.toggleClass('d-none', ilapSelection.id === '');
+            }
+
+            function clearIlapSelection() {
+                ilapSelection = { id: '', nama: '' };
+                showIlapSelection();
+            }
+
             function toggleResetButton() {
-                let hasValue = isSelected(summarySelection);
+                let hasValue = isSelected(summarySelection) || ilapSelection.id !== '';
                 $('#column-search-row input').each(function () {
                     if ($(this).val().trim() !== '') {
                         hasValue = true;
@@ -491,6 +750,8 @@
             // Add individual column search with server-side support
             $('#column-search-row input').on('keyup change', function () {
                 table.column($(this).data('column')).search($(this).val()).draw();
+                clearIlapSelection();
+                tabelTable.draw();
                 toggleResetButton();
             });
 
@@ -505,9 +766,40 @@
                 const sama = clicked.kategori === summarySelection.kategori
                     && clicked.wilayah === summarySelection.wilayah;
                 summarySelection = sama ? { kategori: '', wilayah: '' } : clicked;
+                clearIlapSelection();
                 highlightSelection();
                 toggleResetButton();
                 table.draw();
+                tabelTable.draw();
+            });
+
+            // Pick an ILAP for Daftar Tabel by its name; clicking the chosen
+            // name again goes back to every ILAP of Daftar ILAP.
+            $('#profil-ilap-table tbody').on('click', '.ilap-pilih', function (e) {
+                e.preventDefault();
+                const data = table.row($(this).closest('tr')).data();
+                ilapSelection = data.id_ilap === ilapSelection.id
+                    ? { id: '', nama: '' }
+                    : { id: data.id_ilap, nama: data.nama };
+                showIlapSelection();
+                toggleResetButton();
+                tabelTable.draw();
+
+                // Daftar Tabel sits below a full page of ILAPs, so bring it
+                // into view when the change would otherwise happen off screen.
+                // The page header stays pinned, so the scroll stops below it.
+                const top = $('#profil-ilap-tabel-table').closest('.card')[0].getBoundingClientRect().top;
+                if (ilapSelection.id && top > window.innerHeight - 120) {
+                    const header = document.querySelector('.page-header');
+                    const headerBottom = header ? header.getBoundingClientRect().bottom : 0;
+                    window.scrollBy({ top: top - headerBottom - 16, behavior: 'smooth' });
+                }
+            });
+
+            $('#tabel-ilap-filter button').on('click', function () {
+                clearIlapSelection();
+                toggleResetButton();
+                tabelTable.draw();
             });
 
             // Reset search when button clicked
@@ -518,8 +810,10 @@
                     table.column(colIdx).search('');
                 });
                 summarySelection = { kategori: '', wilayah: '' };
+                clearIlapSelection();
                 highlightSelection();
                 table.draw();
+                tabelTable.draw();
                 toggleResetButton();
             });
         });
