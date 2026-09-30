@@ -18,6 +18,7 @@ from django.contrib.auth.models import User
 
 from ...constants.tiket_action_types import TiketActionType
 from ...constants.tiket_status import STATUS_DIBATALKAN
+from ...utils.tiket_dibatalkan import kosongkan_kolom_tarikan
 from ..mixins import UserPIDERequiredMixin
 
 
@@ -42,6 +43,7 @@ class DikembalikanTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
     Side Effects on Form Submission:
     - Tiket.status set to STATUS_DIBATALKAN (canceled, instead of DIKEMBALIKAN)
     - Tiket.tgl_dikembalikan set to current datetime
+    - Tarikan counts (baris I/U/Res, QC) cleared: `kosongkan_kolom_tarikan`
     - Two TiketAction records created:
         1. DIKEMBALIKAN (by the PIDE user who performed the return)
         2. DIBATALKAN (attributed to the active P3DE PIC)
@@ -90,6 +92,7 @@ class DikembalikanTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
         Within transaction:
         1. Set tiket.status to STATUS_DIBATALKAN (instead of DIKEMBALIKAN)
         2. Set tiket.tgl_dikembalikan to current datetime
+           and clear its tarikan counts (baris I/U/Res, QC)
         3. Create TiketAction record with DIKEMBALIKAN action (by PIDE user)
         4. Create TiketAction record with DIBATALKAN action (attributed to active P3DE PIC)
         5. Query all active P3DE PICs assigned to tiket
@@ -111,6 +114,8 @@ class DikembalikanTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
                 self.object.status_tiket = STATUS_DIBATALKAN  # Changed from DIKEMBALIKAN to DIBATALKAN
                 self.object.tgl_dikembalikan = now
                 self.object.tgl_rekam_pide = None  # Clear recording date when returning to P3DE
+                # The tarikan is void once returned, so its counts go too.
+                kosongkan_kolom_tarikan(self.object)
                 self.object.save()
 
                 catatan = form.cleaned_data.get('catatan', 'Tiket dikembalikan oleh PIDE')

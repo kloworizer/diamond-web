@@ -279,6 +279,18 @@ Sebelum logika transisi status, field berikut dibandingkan dan diperbarui jika b
 
 Suatu tiket dianggap "berubah" hanya jika setidaknya satu field berbeda **atau** ada transisi status yang berlaku. Jika tidak ada yang berubah, akan dicatat sebagai "Tidak Berubah" dan dilewati.
 
+#### Tiket Dibatalkan (7): hasil tarikan tidak disalin
+
+Tarikan tiket yang dibatalkan sudah tidak berlaku (PIDE menghapusnya dari Oracle), sehingga kolom hasil tarikannya dikosongkan dan **tidak pernah disalin kembali** (`KOLOM_TARIKAN_DIBATALKAN` di `diamond_web/utils/tiket_dibatalkan.py`):
+
+- `baris_i`, `baris_u`, `baris_res`
+- `sudah_qc`, `belum_qc`, `lolos_qc`, `tidak_lolos_qc`
+- `qc_p` hingga `qc_d`
+
+`baris_cde` **tetap** disalin dan tidak dikosongkan — itulah baris yang dikembalikan PIDE, dan kartu P3DE di Home (*Pengembalian Sebagian dari PIDE*, *Diklarifikasi*) membacanya pada tiket yang dibatalkan. `tgl_transfer` dan `tgl_rematch` juga tetap, karena mencatat apa yang terjadi di PIDE.
+
+Kolom tsb dikosongkan di **semua** jalur pembatalan: Batalkan Tiket (P3DE), Kembalikan ke P3DE (PIDE), dan Aturan 4. Sinkronisasi massal hanya **tidak menyalin**; ia tidak mengosongkan sisa nilai yang sudah ada, karena hampir seluruh 9.722 tiket Dibatalkan hasil migrasi membawa nilai (umumnya 0) di kolom tsb. Sisa nilai pada tiket yang dibatalkan sebelum aturan ini ada dikosongkan per tiket lewat **Sinkronisasi dari Oracle** di Detail Tiket — juga ketika tiket tsb sudah tidak ada di rekap Oracle (`_plan_tanpa_rekap`).
+
 > **Catatan**: `tgl_rekam_pide` **tidak** termasuk dalam pembaruan field umum. Field ini hanya ditulis oleh Aturan 6 & 7 (saat masih kosong di tiket lokal) dan dikosongkan oleh Aturan 4, sehingga tanggal yang diinput manual oleh PIDE tidak pernah ditimpa.
 
 ### Penanganan *Timestamp*
@@ -457,6 +469,7 @@ Aturan ini tidak memeriksa `belum_qc` — tiket yang barisnya hanya CDE selalu `
 |-------|-------|
 | `tgl_dikembalikan` | `tgl_transfer or timezone.now()`, digeser ke tepat setelah aksi terakhir tiket bila jatuh di hari yang sama (lihat catatan waktu di bawah) |
 | `tgl_rekam_pide` | `None` (dihapus) |
+| `baris_i`, `baris_u`, `baris_res`, `sudah_qc`, `belum_qc`, `lolos_qc`, `tidak_lolos_qc`, `qc_p`–`qc_d` | `None` — tidak disalin dari rekap; lihat [Tiket Dibatalkan](#tiket-dibatalkan-7-hasil-tarikan-tidak-disalin). `baris_cde` tetap disalin. |
 
 #### TiketAction yang Dibuat (2 aksi)
 

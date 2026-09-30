@@ -13,6 +13,7 @@ from ...forms.batalkan_tiket import BatalkanTiketForm
 from ...constants.tiket_action_types import TiketActionType
 from ..mixins import UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin
 from ...constants.tiket_status import STATUS_DIBATALKAN
+from ...utils.tiket_dibatalkan import kosongkan_kolom_tarikan
 
 
 class BatalkanTiketView(LoginRequiredMixin, ActiveTiketP3DERequiredForEditMixin, UserP3DERequiredMixin, UpdateView):
@@ -104,6 +105,7 @@ class BatalkanTiketView(LoginRequiredMixin, ActiveTiketP3DERequiredForEditMixin,
         Side Effects:
         - Tiket.status set to STATUS_DIBATALKAN
         - Tiket.tgl_dibatalkan set to current datetime
+        - Tarikan counts (baris I/U/Res, QC) cleared: `kosongkan_kolom_tarikan`
         - TiketAction created with DIBATALKAN action and user-provided catatan
 
         Returns:
@@ -114,6 +116,7 @@ class BatalkanTiketView(LoginRequiredMixin, ActiveTiketP3DERequiredForEditMixin,
         self.object = form.save(commit=False)
         self.object.status_tiket = STATUS_DIBATALKAN  # Change status_tiket to STATUS_DIBATALKAN (Dibatalkan)
         self.object.tgl_dibatalkan = now
+        kosongkan_kolom_tarikan(self.object)
         self.object.save()
 
         catatan = form.cleaned_data.get('catatan', 'Tiket dibatalkan')

@@ -26,6 +26,7 @@ from ...models.tiket import Tiket
 from ...models.tiket_pic import TiketPIC
 from ...utils import format_number_with_separator
 from ...utils.oracle_sync import OracleDataSyncService, OracleSyncConfigError
+from ...utils.tiket_dibatalkan import KOLOM_TARIKAN_DIBATALKAN
 from ..mixins import is_admin_pmde
 from ..sync_tiket_update import (
     KOREKSI_JUDUL,
@@ -33,6 +34,7 @@ from ..sync_tiket_update import (
     _active_pics_by_role,
     _apply_tiket_update_plan,
     _fetch_tiket_update_row,
+    _plan_tanpa_rekap,
     _plan_tiket_update,
 )
 
@@ -128,12 +130,21 @@ def _preview_context(tiket, plan):
     changes = {field: (old, new) for field, old, new in plan['field_changes']}
     for t in plan['transitions']:
         for field, new in t['fields'].items():
-            changes.setdefault(field, (getattr(tiket, field), new))
+            if getattr(tiket, field) != new:
+                changes.setdefault(field, (getattr(tiket, field), new))
     # The correction's fields, unless a transition then writes them anyway.
     koreksi = plan['koreksi']
     for field, new in (koreksi['fields'] if koreksi else {}).items():
         if field != 'status_tiket' and getattr(tiket, field) != new:
             changes.setdefault(field, (getattr(tiket, field), new))
+    # A cancelled tiket's tarikan counts being cleared rather than synced. The
+    # zeros among them (the migration carried 0 onto most tikets) are only
+    # counted: the detail page never shows them, and listing a dozen "0 → -"
+    # rows would bury the ones that matter.
+    dikosongkan = {
+        field: old for field, (old, new) in changes.items()
+        if field in KOLOM_TARIKAN_DIBATALKAN and new is None
+    }
     field_rows = [
         {
             'label': Tiket._meta.get_field(field).verbose_name,
@@ -141,6 +152,7 @@ def _preview_context(tiket, plan):
             'new': _format_value(new),
         }
         for field, (old, new) in changes.items()
+        if dikosongkan.get(field, None) != 0
     ]
 
     transitions = []
@@ -185,6 +197,8 @@ def _preview_context(tiket, plan):
     rules_from = koreksi['fields']['status_tiket'] if koreksi else plan['status_from']
     return {
         'field_rows': field_rows,
+        'kosongkan': bool(dikosongkan),
+        'kosongkan_nol': sum(1 for old in dikosongkan.values() if old == 0),
         'transitions': transitions,
         'koreksi_actions': koreksi_actions,
         'koreksi_judul': KOREKSI_JUDUL[koreksi['jenis']] if koreksi else None,
@@ -215,6 +229,8 @@ class SinkronisasiTiketView(LoginRequiredMixin, UserPassesTestMixin, View):
     Side Effects on POST: exactly those of the bulk sync for this tiket - the
     Tiket fields and status, TiketAction records attributed to the tiket's
     active PICs, P3DE notifications (Aturan 4) and a result CSV in sync_logs/.
+    On a cancelled tiket it also clears the tarikan counts a cancel left
+    behind (KOLOM_TARIKAN_DIBATALKAN), even when Oracle has no row for it.
     Unlike the bulk sync it first corrects a tiket the sync cancelled
     (Aturan 4) or closed (Aturan 2, 3, 5) on a half-built rekap
     (`_plan_koreksi`): the sync's actions are deleted and the rules run again
@@ -240,29 +256,39 @@ class SinkronisasiTiketView(LoginRequiredMixin, UserPassesTestMixin, View):
             context.update(_preview_context(tiket, plan))
         return render_to_string(self.template_name, context, request=self.request)
 
+    @staticmethod
+    def _plan(tiket, row):
+        # No rekap row: only a cancelled tiket's leftover counts to clear.
+        if row is None:
+            return _plan_tanpa_rekap(tiket)
+        return _plan_tiket_update(tiket, row, koreksi=True)
+
     def get(self, request, pk):
         tiket = get_object_or_404(Tiket, pk=pk)
         row, error = _fetch_row(tiket)
-        plan = _plan_tiket_update(tiket, row, koreksi=True) if row is not None else None
+        plan = self._plan(tiket, row) if error is None else None
         return JsonResponse({'html': self._render(tiket, row, error, plan)})
 
     def post(self, request, pk):
         tiket = get_object_or_404(Tiket, pk=pk)
         row, error = _fetch_row(tiket)
-        if row is None:
+        if error is not None:
             return JsonResponse({
                 'success': False,
-                'message': error or 'Tiket tidak ditemukan di Oracle.',
+                'message': error,
                 'html': self._render(tiket, row, error, None),
             })
 
         with transaction.atomic():
             tiket = Tiket.objects.select_for_update().get(pk=pk)
-            plan = _plan_tiket_update(tiket, row, koreksi=True)
+            plan = self._plan(tiket, row)
             if not plan['changed']:
                 return JsonResponse({
                     'success': False,
-                    'message': 'Data tiket sudah sinkron dengan Oracle.',
+                    'message': (
+                        'Tiket tidak ditemukan di Oracle.' if row is None
+                        else 'Data tiket sudah sinkron dengan Oracle.'
+                    ),
                     'html': self._render(tiket, row, None, plan),
                 })
             if request.POST.get('fingerprint') != _plan_fingerprint(plan):

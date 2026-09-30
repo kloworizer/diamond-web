@@ -65,6 +65,7 @@ from ..constants.tiket_status import (
 from ..models.notification import Notification
 from ..utils import lift_time_above
 from ..utils.oracle_sync import OracleDataSyncService, OracleSyncConfigError
+from ..utils.tiket_dibatalkan import KOLOM_TARIKAN_DIBATALKAN, kolom_tarikan_terisi
 from ..tasks import check_tiket_update_data_task, sync_tiket_update_data_task
 
 logger = logging.getLogger(__name__)
@@ -530,20 +531,6 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                 belum_qc = row_dict.get('belum_qc')
                 lolos_qc = row_dict.get('lolos_qc')
                 tidak_lolos_qc = row_dict.get('tidak_lolos_qc')
-                qc_p = row_dict.get('qc_p')
-                qc_x = row_dict.get('qc_x')
-                qc_w = row_dict.get('qc_w')
-                qc_f = row_dict.get('qc_f')
-                qc_a = row_dict.get('qc_a')
-                qc_c = row_dict.get('qc_c')
-                qc_n = row_dict.get('qc_n')
-                qc_y = row_dict.get('qc_y')
-                qc_z = row_dict.get('qc_z')
-                qc_u = row_dict.get('qc_u')
-                qc_e = row_dict.get('qc_e')
-                qc_v = row_dict.get('qc_v')
-                qc_r = row_dict.get('qc_r')
-                qc_d = row_dict.get('qc_d')
 
                 changed = False
 
@@ -551,50 +538,12 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                     changed = True
                 if tgl_rematch != tiket.tgl_rematch:
                     changed = True
-                if baris_i is not None and tiket.baris_i != baris_i:
-                    changed = True
-                if baris_u is not None and tiket.baris_u != baris_u:
-                    changed = True
-                if baris_res is not None and tiket.baris_res != baris_res:
-                    changed = True
-                if baris_cde is not None and tiket.baris_cde != baris_cde:
-                    changed = True
-                if sudah_qc is not None and tiket.sudah_qc != sudah_qc:
-                    changed = True
-                if belum_qc is not None and tiket.belum_qc != belum_qc:
-                    changed = True
-                if lolos_qc is not None and tiket.lolos_qc != lolos_qc:
-                    changed = True
-                if tidak_lolos_qc is not None and tiket.tidak_lolos_qc != tidak_lolos_qc:
-                    changed = True
-                if qc_p is not None and tiket.qc_p != qc_p:
-                    changed = True
-                if qc_x is not None and tiket.qc_x != qc_x:
-                    changed = True
-                if qc_w is not None and tiket.qc_w != qc_w:
-                    changed = True
-                if qc_f is not None and tiket.qc_f != qc_f:
-                    changed = True
-                if qc_a is not None and tiket.qc_a != qc_a:
-                    changed = True
-                if qc_c is not None and tiket.qc_c != qc_c:
-                    changed = True
-                if qc_n is not None and tiket.qc_n != qc_n:
-                    changed = True
-                if qc_y is not None and tiket.qc_y != qc_y:
-                    changed = True
-                if qc_z is not None and tiket.qc_z != qc_z:
-                    changed = True
-                if qc_u is not None and tiket.qc_u != qc_u:
-                    changed = True
-                if qc_e is not None and tiket.qc_e != qc_e:
-                    changed = True
-                if qc_v is not None and tiket.qc_v != qc_v:
-                    changed = True
-                if qc_r is not None and tiket.qc_r != qc_r:
-                    changed = True
-                if qc_d is not None and tiket.qc_d != qc_d:
-                    changed = True
+                # A cancelled tiket's tarikan counts are not copied back.
+                tidak_disalin = KOLOM_TARIKAN_DIBATALKAN if tiket.status_tiket == STATUS_DIBATALKAN else ()
+                for field in _SYNC_COUNT_FIELDS:
+                    new = row_dict.get(field)
+                    if field not in tidak_disalin and new is not None and getattr(tiket, field) != new:
+                        changed = True
 
                 # Status transitions — only count if tiket status matches
                 pending_rekam_pide = (
@@ -932,6 +881,15 @@ def _plan_tiket_update(tiket, row_dict, koreksi=False):
         if new is not None and old != new:
             field_changes.append((field, old, new))
 
+    # A cancelled tiket's tarikan is void, so its counts are never copied back
+    # (KOLOM_TARIKAN_DIBATALKAN). The detail page also clears the ones a
+    # cancel left behind; the bulk sync leaves them, as it leaves the counts
+    # the migration carried onto cancelled tikets.
+    if tiket.status_tiket == STATUS_DIBATALKAN:
+        field_changes = [c for c in field_changes if c[0] not in KOLOM_TARIKAN_DIBATALKAN]
+        if koreksi:
+            field_changes += [(f, getattr(tiket, f), None) for f in kolom_tarikan_terisi(tiket)]
+
     # Tiket masih di PIDE tanpa tgl_rekam_pide lokal: Oracle sudah
     # merekam tgl_load, jadi identifikasi (dan transfer) di-backfill.
     pending_rekam_pide = (
@@ -1067,11 +1025,16 @@ def _plan_tiket_update(tiket, row_dict, koreksi=False):
             log_detail=f'Dari IDENTIFIKASI langsung ke SELESAI ({baris}, Sudah QC:{sudah_qc})',
         ))
     if needs_dikembalikan:
-        # Same as PIDE's manual Dikembalikan: the tiket is cancelled.
+        # Same as PIDE's manual Dikembalikan: the tiket is cancelled, and the
+        # tarikan counts go with it rather than being copied in.
         tgl_dikembalikan = dikembalikan_timestamp(tiket, tgl_transfer or now)
+        field_changes = [c for c in field_changes if c[0] not in KOLOM_TARIKAN_DIBATALKAN]
         transitions.append(transition(
             'dikembalikan', 4, 'status_to_dikembalikan', STATUS_DIBATALKAN,
-            fields={'tgl_dikembalikan': tgl_dikembalikan, 'tgl_rekam_pide': None},
+            fields={
+                'tgl_dikembalikan': tgl_dikembalikan, 'tgl_rekam_pide': None,
+                **dict.fromkeys(KOLOM_TARIKAN_DIBATALKAN),
+            },
             actions=[
                 (PIDE, TiketActionType.DIKEMBALIKAN, tgl_dikembalikan, CATATAN_DIKEMBALIKAN_AUTO_SYNC),
                 (P3DE, TiketActionType.DIBATALKAN, tgl_dikembalikan, CATATAN_DIBATALKAN_AUTO_SYNC),
@@ -1115,6 +1078,26 @@ def _plan_tiket_update(tiket, row_dict, koreksi=False):
         'field_changes': field_changes,
         'transitions': transitions,
         'changed': bool(koreksi_plan or field_changes or transitions),
+    }
+
+
+def _plan_tanpa_rekap(tiket):
+    """Plan for a tiket the Oracle rekap holds no row for (the detail page only).
+
+    With no row there is nothing to sync, except on a cancelled tiket: PIDE
+    deletes a void tarikan from Oracle, and the counts it left on the tiket
+    are cleared, as cancelling it now does (KOLOM_TARIKAN_DIBATALKAN).
+    """
+    field_changes = []
+    if tiket.status_tiket == STATUS_DIBATALKAN:
+        field_changes = [(f, getattr(tiket, f), None) for f in kolom_tarikan_terisi(tiket)]
+    return {
+        'values': {},
+        'status_from': tiket.status_tiket,
+        'koreksi': None,
+        'field_changes': field_changes,
+        'transitions': [],
+        'changed': bool(field_changes),
     }
 
 

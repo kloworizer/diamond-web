@@ -6,21 +6,30 @@
         <div class="alert alert-danger mb-0" data-sync-state="error">
             <i class="feather-alert-triangle me-2"></i>{{ error }}
         </div>
-        {% elif not_found %}
+        {% elif not plan.changed %}
+        {% if not_found %}
         <div class="alert alert-warning mb-0" data-sync-state="not-found">
             <i class="feather-search me-2"></i>Tiket <strong>{{ tiket.nomor_tiket }}</strong> belum ada di rekap tarikan
             Oracle (PVPTD.ZA_REKAP_TARIKAN). Tidak ada data yang dapat disinkronkan.
         </div>
-        {% elif not plan.changed %}
+        {% else %}
         <div class="alert alert-success mb-0" data-sync-state="unchanged">
             <i class="feather-check-circle me-2"></i>Data tiket <strong>{{ tiket.nomor_tiket }}</strong> sudah sinkron
             dengan Oracle. Tidak ada yang akan diubah.
+        </div>
+        {% endif %}
+        {% else %}
+        {% if not_found %}
+        <div class="alert alert-warning" data-sync-state="kosongkan">
+            <i class="feather-search me-2"></i>Tiket <strong>{{ tiket.nomor_tiket }}</strong> belum ada di rekap tarikan
+            Oracle (PVPTD.ZA_REKAP_TARIKAN). Belum ada yang disimpan sampai Anda menekan <strong>Sinkronisasi</strong>.
         </div>
         {% else %}
         <div class="alert alert-info" data-sync-state="preview">
             <i class="feather-info me-2"></i>Pratinjau perubahan dari Oracle, dengan aturan yang sama dengan
             sinkronisasi update tiket. Belum ada yang disimpan sampai Anda menekan <strong>Sinkronisasi</strong>.
         </div>
+        {% endif %}
 
         <h6 class="fw-bold mb-2" style="font-size: 13px;">Status Tiket</h6>
         {% if plan.koreksi %}
@@ -57,6 +66,13 @@
         {% endif %}
 
         <h6 class="fw-bold mb-2" style="font-size: 13px;">Kolom yang Diperbarui</h6>
+        {% if kosongkan %}
+        <p class="small text-muted mb-2" id="sinkronisasi-kosongkan-note">
+            <i class="feather-slash me-1"></i>Tiket yang dibatalkan tidak menyimpan hasil tarikan, jadi kolom baris
+            dan QC dikosongkan{% if kosongkan_nol %}, termasuk {{ kosongkan_nol }} kolom yang bernilai 0 (tidak
+            ditampilkan di bawah){% endif %}. Baris CDE tidak ikut dikosongkan.
+        </p>
+        {% endif %}
         {% if field_rows %}
         <div class="table-responsive mb-3">
             <table class="table table-sm table-bordered align-middle mb-0" id="sinkronisasi-field-table">
@@ -78,7 +94,7 @@
                 </tbody>
             </table>
         </div>
-        {% else %}
+        {% elif not kosongkan %}
         <p class="text-muted small mb-3">Tidak ada kolom yang berubah.</p>
         {% endif %}
 
