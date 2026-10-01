@@ -1,10 +1,10 @@
-"""A cancelled tiket keeps no tarikan counts (baris I/U/Res, QC).
+"""A cancelled tiket keeps no tarikan counts (baris I/U, QC).
 
 PIDE deletes a void tarikan from Oracle, so the counts the tiket update sync
 copied from it must go with it: every way of cancelling clears them, the sync
 never copies them back onto a cancelled tiket, and the detail page's
-Sinkronisasi clears the ones an earlier cancel left behind. baris_cde stays —
-the P3DE home cards read it on cancelled tikets.
+Sinkronisasi clears the ones an earlier cancel left behind. baris_res and
+baris_cde stay, synced from Oracle: they are what PIDE handed back.
 """
 import re
 from datetime import datetime
@@ -19,6 +19,7 @@ from diamond_web.constants.tiket_status import (
     STATUS_DIREKAM,
     STATUS_IDENTIFIKASI,
 )
+from diamond_web.models.notification import Notification
 from diamond_web.models.tiket_action import TiketAction
 from diamond_web.models.tiket_pic import TiketPIC
 from diamond_web.utils.tiket_dibatalkan import KOLOM_TARIKAN_DIBATALKAN
@@ -30,7 +31,7 @@ from .test_sync_tiket_update_rules import TGL_TRANSFER, _row, _service
 SERVICE = 'diamond_web.views.tiket.sinkronisasi_tiket.OracleDataSyncService'
 
 # What the sync had copied before the tarikan was voided (LM031010126082801).
-TERISI = dict(baris_i=19, baris_u=2033, baris_res=0, baris_cde=4,
+TERISI = dict(baris_i=19, baris_u=2033, baris_res=7, baris_cde=4,
               sudah_qc=0, belum_qc=19, lolos_qc=0, tidak_lolos_qc=0, qc_c=0)
 
 
@@ -39,11 +40,11 @@ def _sync_logs_in_tmp(tmp_path, monkeypatch):
     monkeypatch.setattr('diamond_web.views.sync_tiket_update.SYNC_LOGS_DIR', str(tmp_path))
 
 
-def _assert_dikosongkan(tiket, baris_cde=4):
+def _assert_dikosongkan(tiket, baris_cde=4, baris_res=7):
     tiket.refresh_from_db()
     for field in KOLOM_TARIKAN_DIBATALKAN:
         assert getattr(tiket, field) is None, field
-    assert tiket.baris_cde == baris_cde
+    assert (tiket.baris_res, tiket.baris_cde) == (baris_res, baris_cde)
 
 
 def _rekap(nomor_tiket, **overrides):
@@ -87,7 +88,7 @@ class TestPembatalanManual:
 class TestSinkronisasiMassal:
 
     def test_rekap_hanya_cde_tidak_membatalkan(self, db):
-        """Aturan 4 no longer cancels: the counts are synced, the status left to the PIC."""
+        """CDE ≠ Baris Lengkap, so Aturan 4 does not cancel: the counts are synced, the status left to the PIC."""
         tiket = TiketFactory(status_tiket=STATUS_IDENTIFIKASI, **TERISI)
         _update_tiket_data(_service([_row(
             tiket.nomor_tiket, tgl_transfer=TGL_TRANSFER,
@@ -98,26 +99,38 @@ class TestSinkronisasiMassal:
         assert tiket.status_tiket == STATUS_IDENTIFIKASI
         assert (tiket.baris_i, tiket.baris_u, tiket.baris_cde, tiket.belum_qc) == (0, 0, 10, 0)
 
+    def test_aturan_4_mengosongkan(self, db):
+        """Res + CDE == Baris Lengkap: cancelled, keeping Res and CDE as Oracle has them."""
+        tiket = TiketFactory(status_tiket=STATUS_IDENTIFIKASI, **dict(TERISI, baris_lengkap=14))
+        _update_tiket_data(_service([_row(
+            tiket.nomor_tiket, tgl_transfer=TGL_TRANSFER,
+            baris_i=0, baris_u=0, baris_res=4, baris_cde=10, belum_qc=0,
+        )]))
+
+        tiket.refresh_from_db()
+        assert tiket.status_tiket == STATUS_DIBATALKAN
+        _assert_dikosongkan(tiket, baris_cde=10, baris_res=4)
+
     def test_tidak_disalin_ulang_ke_tiket_dibatalkan(self, db):
         tiket = TiketFactory(status_tiket=STATUS_DIBATALKAN, tgl_transfer=TGL_TRANSFER)
-        result = _update_tiket_data(_service([_rekap(tiket.nomor_tiket)]))
+        result = _update_tiket_data(_service([_rekap(tiket.nomor_tiket, baris_res=3)]))
 
         tiket.refresh_from_db()
         assert tiket.baris_i is None and tiket.belum_qc is None
-        assert tiket.baris_cde == 4
-        assert result['updated_rows'] == 1  # baris_cde only
+        assert (tiket.baris_res, tiket.baris_cde) == (3, 4)
+        assert result['updated_rows'] == 1  # baris_res and baris_cde only
 
     def test_sisa_lama_tidak_disentuh_sinkronisasi_massal(self, db):
         """The nightly run leaves old counts alone; only the detail page clears them."""
         tiket = TiketFactory(status_tiket=STATUS_DIBATALKAN, tgl_transfer=TGL_TRANSFER, **TERISI)
-        result = _update_tiket_data(_service([_rekap(tiket.nomor_tiket, baris_i=25)]))
+        result = _update_tiket_data(_service([_rekap(tiket.nomor_tiket, baris_i=25, baris_res=7)]))
 
         tiket.refresh_from_db()
         assert tiket.baris_i == 19
         assert result['unchanged'] == 1
 
     def test_dry_run_tidak_menghitung_kolom_tarikan(self, db):
-        tiket = TiketFactory(status_tiket=STATUS_DIBATALKAN, tgl_transfer=TGL_TRANSFER, baris_cde=4)
+        tiket = TiketFactory(status_tiket=STATUS_DIBATALKAN, tgl_transfer=TGL_TRANSFER, baris_res=0, baris_cde=4)
         result = _check_tiket_update_data(_service([_rekap(tiket.nomor_tiket)]))
         assert result['would_unchanged'] == 1
         assert result['would_update'] == 0
@@ -142,7 +155,8 @@ class TestPerbaikanDiHalamanDetail:
         return html, data
 
     def test_tidak_ada_di_oracle_tetap_dikosongkan(self, client, pmde_admin_user):
-        tiket = TiketFactory(status_tiket=STATUS_DIBATALKAN, **TERISI)
+        tiket = TiketFactory(status_tiket=STATUS_DIBATALKAN, **dict(TERISI, baris_res=6))
+        TiketPICFactory(id_tiket=tiket, role=TiketPIC.Role.P3DE, active=True)
         client.force_login(pmde_admin_user)
         html, data = self._sync(client, tiket, [])
 
@@ -155,8 +169,11 @@ class TestPerbaikanDiHalamanDetail:
 
         tiket.refresh_from_db()
         assert tiket.status_tiket == STATUS_DIBATALKAN
-        _assert_dikosongkan(tiket)
+        _assert_dikosongkan(tiket, baris_res=6)  # Res is kept, as CDE is
         assert not TiketAction.objects.filter(id_tiket=tiket).exists()
+        # Clearing the other counts is not an update from Oracle: P3DE is not told.
+        assert 'sinkronisasi-notif-res-cde' not in html
+        assert not Notification.objects.filter(title='Update Baris Res/CDE').exists()
 
     def test_masih_ada_di_oracle_dikosongkan(self, client, pmde_admin_user):
         """Oracle still holds a CDE-only rekap, which does not undo the cancel."""
@@ -169,7 +186,7 @@ class TestPerbaikanDiHalamanDetail:
 
         assert 'data-sync-state="preview"' in html
         assert data['success'] is True
-        _assert_dikosongkan(tiket)
+        _assert_dikosongkan(tiket, baris_res=0)  # Res follows Oracle
 
     def test_nilai_nol_hanya_dihitung_di_pratinjau(self, client, pmde_admin_user):
         """Migrated tikets carry 0 in every count: cleared too, but not listed row by row."""
@@ -182,7 +199,7 @@ class TestPerbaikanDiHalamanDetail:
         assert 'sinkronisasi-field-table' not in html
         assert 'Tidak ada kolom yang berubah' not in html
         assert data['success'] is True
-        _assert_dikosongkan(tiket, baris_cde=None)
+        _assert_dikosongkan(tiket, baris_cde=None, baris_res=None)
 
     def test_sudah_kosong_tidak_ada_yang_dilakukan(self, client, pmde_admin_user):
         tiket = TiketFactory(status_tiket=STATUS_DIBATALKAN, baris_cde=4)
@@ -215,6 +232,7 @@ class TestPerbaikanDiHalamanDetail:
 
         assert 'Aturan 4' not in html
         assert 'id="sinkronisasi-status-manual"' in html
+        assert 'sinkronisasi-notif-res-cde' not in html  # no active P3DE PIC
         assert 'dikirim ke 1 PIC PIDE/PMDE aktif' in html
         rows = re.findall(r'<tr>\s*<td>([^<]+)</td>', html.split('sinkronisasi-field-table')[1].split('</table>')[0])
         assert 'Baris I' in rows and 'Baris CDE' in rows

@@ -200,6 +200,7 @@ class ILAPPeriodeDataAPIView(View):
                     'pic_pide': pic_pide,
                     'pic_pmde': pic_pmde,
                     'end_date': pd.end_date.isoformat() if pd.end_date else None,
+                    'status_keterangan': pd.status_keterangan(today),
                     'nama_tabel_I': jenis_data.nama_tabel_I,
                 })
             

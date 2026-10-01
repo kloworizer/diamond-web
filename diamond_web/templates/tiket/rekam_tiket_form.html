@@ -1111,9 +1111,10 @@
                             periodeDataCache[item.id] = item;
                             const option = document.createElement('option');
                             option.value = item.id;
+                            // Same label as TiketForm._format_periode_data_label.
                             let label = `${item.id_sub_jenis_data} - ${item.nama_sub_jenis_data} - ${item.nama_tabel_I} - ${item.periode_penerimaan}`;
-                            if (item.end_date) {
-                                label += ` (${item.end_date})`;
+                            if (item.status_keterangan) {
+                                label += ` — ${item.status_keterangan}`;
                             }
                             option.textContent = label;
                             periodeDataSelect.appendChild(option);

@@ -132,14 +132,15 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
         self.fields['periode'].label = 'Periode Data'
         self.fields['tahun'].label = 'Tahun Data'
 
-        # Generate year choices (current year to 20 years back)
+        # Generate year choices (current year to 20 years back). Starts blank,
+        # like Periode Data: a pre-selected current year was too easy to leave
+        # unchanged when the data belongs to an earlier year. The field stays
+        # required, so a blank submit is rejected.
         current_year = datetime.now().year
-        year_choices = [(year, str(year)) for year in range(current_year - 20, current_year + 1)]
+        year_choices = [('', '---------')] + [
+            (year, str(year)) for year in range(current_year - 20, current_year + 1)
+        ]
         self.fields['tahun'].widget.choices = year_choices
-
-        # Set default value for tahun to current year if creating new instance
-        if not self.instance.pk:
-            self.fields['tahun'].initial = current_year
 
         # Make nomor_surat_pengantar, tanggal_surat_pengantar, and nama_pengirim optional
         self.fields['nomor_surat_pengantar'].required = False
@@ -189,9 +190,8 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
             f"{obj.id_sub_jenis_data_ilap.nama_tabel_I} - "
             f"{obj.id_periode_pengiriman.periode_penerimaan}"
         )
-        if obj.end_date:
-            label += f" ({obj.end_date.isoformat()})"
-        return label
+        # Must match the label built by the JS in rekam_tiket_form.html.
+        return f"{label} — {obj.status_keterangan()}"
 
 
     def clean_tgl_terima_vertikal(self):

@@ -71,9 +71,9 @@
                 <span class="badge bg-info text-dark ms-1">Status diubah manual</span>
             </div>
             <div class="text-muted small">
-                Tarikan hanya berisi baris Res/CDE (Baris I dan U kosong), jadi sinkronisasi tidak mengubah
-                status tiket menjadi Pengendalian Mutu, Selesai, maupun Dikembalikan. Hanya nilai kolom yang
-                diperbarui; ubah status tiket secara manual.
+                Tarikan hanya berisi baris Res/CDE (Baris I dan U kosong), tetapi Res + CDE tidak sama dengan
+                Baris Lengkap, jadi sinkronisasi tidak mengubah status tiket menjadi Pengendalian Mutu, Selesai,
+                maupun Dikembalikan. Hanya nilai kolom yang diperbarui; kembalikan atau ubah status tiket secara manual.
             </div>
             {% if status_manual_notify_count %}
             <div class="small text-muted mt-1"><i class="feather-bell me-1"></i>Notifikasi "Status Tiket Perlu Diubah Manual" dikirim ke {{ status_manual_notify_count }} PIC PIDE/PMDE aktif.</div>
@@ -86,7 +86,7 @@
         <p class="small text-muted mb-2" id="sinkronisasi-kosongkan-note">
             <i class="feather-slash me-1"></i>Tiket yang dibatalkan tidak menyimpan hasil tarikan, jadi kolom baris
             dan QC dikosongkan{% if kosongkan_nol %}, termasuk {{ kosongkan_nol }} kolom yang bernilai 0 (tidak
-            ditampilkan di bawah){% endif %}. Baris CDE tidak ikut dikosongkan.
+            ditampilkan di bawah){% endif %}. Baris Res dan CDE tidak ikut dikosongkan.
         </p>
         {% endif %}
         {% if field_rows %}
@@ -112,6 +112,9 @@
         </div>
         {% elif not kosongkan %}
         <p class="text-muted small mb-3">Tidak ada kolom yang berubah.</p>
+        {% endif %}
+        {% if res_cde_notify_count %}
+        <p class="small text-muted mb-3" id="sinkronisasi-notif-res-cde"><i class="feather-bell me-1"></i>Notifikasi "Update Baris Res/CDE" dikirim ke {{ res_cde_notify_count }} PIC P3DE aktif.</p>
         {% endif %}
 
         {% if koreksi_actions %}

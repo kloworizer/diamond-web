@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.db import models
 from .jenis_data_ilap import JenisDataILAP
 from .periode_pengiriman import PeriodePengiriman
@@ -34,6 +36,22 @@ class PeriodeJenisData(AuditTrailModel):
             models.Index(fields=["id_sub_jenis_data_ilap", "id_periode_pengiriman"], name="pjd_sub_per_idx"),
             models.Index(fields=["id_sub_jenis_data_ilap", "start_date"], name="pjd_sub_start_idx"),
         ]
+
+    def status_keterangan(self, today=None):
+        """Keterangan aktif/tidak aktif periode ini per ``today``.
+
+        Periode yang sudah lewat end date tetap bisa dipilih di Rekam Tiket
+        (untuk data yang diterima DIP sebelum end date), jadi dropdown perlu
+        menyebut statusnya agar perekam tidak bingung.
+        """
+        today = today or date.today()
+        if self.start_date and self.start_date > today:
+            return f"Belum Aktif (mulai {self.start_date.strftime('%d-%m-%Y')})"
+        if self.end_date and self.end_date < today:
+            return f"Tidak Aktif (end date {self.end_date.strftime('%d-%m-%Y')})"
+        if self.end_date:
+            return f"Aktif (s.d. {self.end_date.strftime('%d-%m-%Y')})"
+        return "Aktif"
 
     def __str__(self):
         label = (

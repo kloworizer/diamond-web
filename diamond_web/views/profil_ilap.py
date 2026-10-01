@@ -17,7 +17,6 @@ from ..models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ..models.periode_jenis_data import PeriodeJenisData
 from ..models.pic import PIC
 from ..models.tiket import Tiket
-from ..models.tiket_pic import TiketPIC
 from ..utils import format_periode
 from ..utils.pic_profil import (
     pic_display_name,
@@ -27,7 +26,7 @@ from ..utils.pic_profil import (
 from .nama_tabel import _distinct_by_nama
 from .profil_pic import build_seksi_directory
 from .mixins import (
-    can_view_any_tiket,
+    can_open_tiket,
     can_view_ilap_kontak,
 )
 
@@ -1060,18 +1059,6 @@ def _user_suggestions(term, searcher):
     ]
 
 
-def _can_open_tiket(user, tiket):
-    """Return True when `user` may open `tiket`'s detail page.
-
-    Mirrors the rule enforced by `TiketDetailView.get_object`: admins (global,
-    P3DE, PIDE and PMDE) and kasi may open any tiket, everyone else needs a
-    TiketPIC assignment on it.
-    """
-    if can_view_any_tiket(user):
-        return True
-    return TiketPIC.objects.filter(id_tiket=tiket, id_user=user).exists()
-
-
 @login_required
 def navbar_search(request):
     """Resolve a header search term and suggest the ILAPs it partially matches.
@@ -1178,7 +1165,7 @@ def navbar_search(request):
 
     # nomor_tiket is unique, so an exact match identifies a single tiket.
     tiket = Tiket.objects.filter(nomor_tiket__iexact=term).first()
-    if tiket is not None and _can_open_tiket(request.user, tiket):
+    if tiket is not None and can_open_tiket(request.user, tiket):
         payload.update({
             'match': 'tiket',
             'url': reverse('tiket_detail', args=[tiket.pk]),

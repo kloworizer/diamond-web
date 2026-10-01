@@ -5,11 +5,12 @@
 # PIDE deletes it from Oracle — so they are cleared, whichever way the tiket
 # is cancelled, and the sync does not copy them back.
 #
-# baris_cde stays: it is what PIDE handed back, and the P3DE home cards
-# (Pengembalian Sebagian dari PIDE, Diklarifikasi) read it on cancelled
-# tikets. The dates stay too; they record what happened at PIDE.
+# baris_res and baris_cde stay, synced from Oracle like any tiket's: they are
+# what PIDE handed back (Aturan 4 cancels a tarikan of them alone), and the
+# P3DE home cards (Pengembalian Sebagian dari PIDE, Diklarifikasi) read CDE
+# on cancelled tikets. The dates stay too; they record what happened at PIDE.
 KOLOM_TARIKAN_DIBATALKAN = (
-    'baris_i', 'baris_u', 'baris_res',
+    'baris_i', 'baris_u',
     'sudah_qc', 'belum_qc', 'lolos_qc', 'tidak_lolos_qc',
     'qc_p', 'qc_x', 'qc_w', 'qc_f', 'qc_a', 'qc_c', 'qc_n',
     'qc_y', 'qc_z', 'qc_u', 'qc_e', 'qc_v', 'qc_r', 'qc_d',

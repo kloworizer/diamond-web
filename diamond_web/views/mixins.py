@@ -515,6 +515,34 @@ def can_view_any_tiket(user):
     )
 
 
+def can_open_tiket(user, tiket):
+    """Return True when `user` may open `tiket`'s detail page.
+
+    Granted to:
+    - everyone covered by `can_view_any_tiket` (admins and kasi);
+    - anyone with a `TiketPIC` row on the tiket, active or not, so a PIC
+      handed over keeps reading the tikets they worked;
+    - the current PIC of the tiket's sub jenis data (a `PIC` row with no
+      `end_date`, any tipe), who may never have been put on the tiket because
+      a handover only reaches tikets that are still open.
+
+    Viewing is all this grants: the workflow actions stay gated behind an
+    active `TiketPIC` on the tiket itself.
+    """
+    if not user or not getattr(user, 'is_authenticated', False):
+        return False
+    if can_view_any_tiket(user):
+        return True
+    if TiketPIC.objects.filter(id_tiket=tiket, id_user=user).exists():
+        return True
+    from ..models.pic import PIC
+    return PIC.objects.filter(
+        id_user=user,
+        id_sub_jenis_data_ilap_id=tiket.id_periode_data.id_sub_jenis_data_ilap_id,
+        end_date__isnull=True,
+    ).exists()
+
+
 def has_active_tiket_pic(user):
     """Return True if `user` has any active `TiketPIC` assignments.
 

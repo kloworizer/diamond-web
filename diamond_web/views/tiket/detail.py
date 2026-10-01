@@ -30,7 +30,7 @@ from ...constants.tiket_action_types import (
 )
 from ...utils import format_number_with_separator, format_periode
 from ...utils.jenis_prioritas import resolve_jenis_prioritas
-from ..mixins import can_view_any_tiket, is_admin_p3de, is_admin_pmde
+from ..mixins import can_open_tiket, is_admin_p3de, is_admin_pmde
 
 
 class TiketDetailView(LoginRequiredMixin, DetailView):
@@ -65,19 +65,19 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         - Admin PIDE / Admin PMDE and Kasi (supervisor) group members: Always
           allowed, read-only — the action buttons stay gated behind
           `user_is_active_pic_*`
-        - Other users: Must have a TiketPIC record (active or inactive) for this tiket
+        - Other users: Must have a TiketPIC record (active or inactive) for this
+          tiket, or be a current PIC (no end date) of its sub jenis data — the
+          latter covers a new PIC opening tikets finished before the handover.
+          Either way the action buttons stay gated behind an active TiketPIC.
 
         Raises:
         - PermissionDenied: If user is not superuser/admin/admin_p3de/
-          admin_pide/admin_pmde/kasi and has no TiketPIC
+          admin_pide/admin_pmde/kasi, has no TiketPIC and is not a current PIC
+          of the sub jenis data
         - Http404: If tiket PK not found (via parent get_object)
         """
         obj = super().get_object(queryset)
-        # Allow access if user is superuser, any admin or kasi
-        if can_view_any_tiket(self.request.user):
-            return obj
-        # Allow access if user is any kind of PIC for this tiket (active or inactive)
-        if not TiketPIC.objects.filter(id_tiket=obj, id_user=self.request.user).exists():
+        if not can_open_tiket(self.request.user, obj):
             raise PermissionDenied()
         return obj
 

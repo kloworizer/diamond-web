@@ -21,6 +21,7 @@ from django.urls import reverse
 
 from diamond_web.constants.tiket_action_types import TiketActionType
 from diamond_web.constants.tiket_status import (
+    STATUS_DIBATALKAN,
     STATUS_DIKIRIM_KE_PIDE,
     STATUS_IDENTIFIKASI,
     STATUS_PENGENDALIAN_MUTU,
@@ -469,10 +470,12 @@ def _pic_users(tiket, *roles):
 
 @pytest.mark.django_db
 class TestStatusManualResCde:
-    """Rows Res/CDE only (I and U 0 or null): the sync only copies the counts.
+    """Rows Res/CDE only (I and U 0 or null), Res + CDE ≠ Baris Lengkap.
 
-    It neither closes the tiket (Aturan 2, 3, 5B) nor returns it (Aturan 4);
-    the PIC changes the status by hand, and the PIDE and PMDE PICs are told.
+    The sync only copies the counts. It neither closes the tiket (Aturan 2,
+    3, 5B) nor returns it (Aturan 4 needs Res + CDE == Baris Lengkap, which
+    the factory's empty Baris Lengkap never is); the PIC changes the status by
+    hand, and the PIDE and PMDE PICs are told.
     """
 
     @pytest.mark.parametrize('baris', [
@@ -568,6 +571,162 @@ class TestStatusManualResCde:
 
         tiket_identifikasi.refresh_from_db()
         assert tiket_identifikasi.status_tiket == STATUS_SELESAI
+
+
+def _set(tiket, **fields):
+    for field, value in fields.items():
+        setattr(tiket, field, value)
+    tiket.save(update_fields=list(fields))
+
+
+@pytest.mark.django_db
+class TestAturan4ResCdeLengkap:
+    """Res/CDE rows only with Res + CDE == Baris Lengkap: PIDE returns it all.
+
+    From Dikirim ke PIDE or Identifikasi the tiket is dikembalikan and
+    dibatalkan, as PIDE's Kembalikan does; otherwise the status is manual.
+    """
+
+    @pytest.mark.parametrize('baris', [
+        dict(baris_res=40, baris_cde=0),
+        dict(baris_res=0, baris_cde=40),
+        dict(baris_res=15, baris_cde=25),
+    ])
+    def test_identifikasi_menjadi_dibatalkan(self, tiket_identifikasi, baris):
+        _set(tiket_identifikasi, baris_lengkap=40)
+        row = _row(tiket_identifikasi.nomor_tiket, tgl_transfer=TGL_TRANSFER, belum_qc=0, **baris)
+        assert _check_tiket_update_data(_service([row]))['would_dikembalikan'] == 1
+
+        result = _update_tiket_data(_service([row]))
+
+        tiket_identifikasi.refresh_from_db()
+        assert tiket_identifikasi.status_tiket == STATUS_DIBATALKAN
+        assert tiket_identifikasi.tgl_dikembalikan == TGL_TRANSFER
+        assert tiket_identifikasi.tgl_rekam_pide is None
+        # A cancel keeps Res and CDE as Oracle has them, as PIDE's Kembalikan does.
+        assert tiket_identifikasi.baris_res == baris['baris_res']
+        assert tiket_identifikasi.baris_cde == baris['baris_cde']
+        assert tiket_identifikasi.belum_qc is None
+        assert result['status_to_dikembalikan'] == 1
+        assert [a.action for a in TiketAction.objects.filter(id_tiket=tiket_identifikasi).order_by('id')] == [
+            TiketActionType.DIKEMBALIKAN, TiketActionType.DIBATALKAN,
+        ]
+        p3de = Notification.objects.get(title='Tiket Dikembalikan', recipient__in=_pic_users(
+            tiket_identifikasi, TiketPIC.Role.P3DE))
+        assert '= Baris Lengkap 40' in p3de.message
+        assert {n.recipient for n in Notification.objects.filter(title='Tiket Dikembalikan')} == _pic_users(
+            tiket_identifikasi, TiketPIC.Role.PIDE, TiketPIC.Role.PMDE, TiketPIC.Role.P3DE)
+
+    def test_tanpa_tgl_transfer_tetap_dikembalikan(self, tiket_identifikasi):
+        _set(tiket_identifikasi, baris_lengkap=9)
+        _update_tiket_data(_service([_row(tiket_identifikasi.nomor_tiket, baris_cde=9, belum_qc=0)]))
+
+        tiket_identifikasi.refresh_from_db()
+        assert tiket_identifikasi.status_tiket == STATUS_DIBATALKAN
+
+    def test_dari_dikirim_ke_pide_langsung_dibatalkan(self, tiket_di_pide):
+        """No Identifikasi in between: the same trail as Kembalikan from status 4."""
+        _set(tiket_di_pide, baris_lengkap=12)
+        row = _row(tiket_di_pide.nomor_tiket, tgl_transfer=TGL_TRANSFER, baris_res=12, belum_qc=0)
+        check = _check_tiket_update_data(_service([row]))
+        assert (check['would_dikembalikan'], check['would_identifikasi']) == (1, 0)
+
+        _update_tiket_data(_service([row]))
+
+        tiket_di_pide.refresh_from_db()
+        assert tiket_di_pide.status_tiket == STATUS_DIBATALKAN
+        assert tiket_di_pide.tgl_rekam_pide is None
+        assert [a.action for a in TiketAction.objects.filter(id_tiket=tiket_di_pide)] == [
+            TiketActionType.DIKEMBALIKAN,
+        ]  # no active P3DE PIC: DIBATALKAN is skipped
+
+    @pytest.mark.parametrize('baris_lengkap', [None, 0, 39, 41])
+    def test_tidak_sama_dengan_lengkap_status_manual(self, tiket_identifikasi, baris_lengkap):
+        _set(tiket_identifikasi, baris_lengkap=baris_lengkap)
+        _update_tiket_data(_service([_row(
+            tiket_identifikasi.nomor_tiket, tgl_transfer=TGL_TRANSFER, baris_res=15, baris_cde=25, belum_qc=0,
+        )]))
+
+        tiket_identifikasi.refresh_from_db()
+        assert tiket_identifikasi.status_tiket == STATUS_IDENTIFIKASI
+        assert (tiket_identifikasi.baris_res, tiket_identifikasi.baris_cde) == (15, 25)
+        assert not TiketAction.objects.filter(id_tiket=tiket_identifikasi).exists()
+        notif = Notification.objects.get(
+            title='Status Tiket Perlu Diubah Manual',
+            recipient__in=_pic_users(tiket_identifikasi, TiketPIC.Role.PIDE),
+        )
+        assert 'tidak sama dengan Baris Lengkap' in notif.message
+
+    def test_status_manual_lalu_ada_baris_i_ke_pengendalian_mutu(self, tiket_identifikasi):
+        """Left at Identifikasi, the tiket moves on once PIDE adds I rows."""
+        _set(tiket_identifikasi, baris_lengkap=100)
+        _update_tiket_data(_service([_row(
+            tiket_identifikasi.nomor_tiket, tgl_transfer=TGL_TRANSFER, baris_res=30, belum_qc=0,
+        )]))
+        tiket_identifikasi.refresh_from_db()
+        assert tiket_identifikasi.status_tiket == STATUS_IDENTIFIKASI
+
+        _update_tiket_data(_service([_row(
+            tiket_identifikasi.nomor_tiket, tgl_transfer=TGL_TRANSFER, baris_i=70, baris_res=30, belum_qc=70,
+        )]))
+        tiket_identifikasi.refresh_from_db()
+        assert tiket_identifikasi.status_tiket == STATUS_PENGENDALIAN_MUTU
+
+    def test_pengendalian_mutu_tidak_dikembalikan(self, tiket_pengendalian_mutu):
+        _set(tiket_pengendalian_mutu, baris_lengkap=20)
+        _update_tiket_data(_service([_row(
+            tiket_pengendalian_mutu.nomor_tiket, tgl_transfer=TGL_TRANSFER,
+            baris_i=0, baris_u=0, baris_res=20, sudah_qc=0, belum_qc=0,
+        )]))
+
+        tiket_pengendalian_mutu.refresh_from_db()
+        assert tiket_pengendalian_mutu.status_tiket == STATUS_PENGENDALIAN_MUTU
+
+
+@pytest.mark.django_db
+class TestNotifikasiResCdeKeP3de:
+    """New Res or CDE counts from Oracle notify the tiket's active P3DE PICs."""
+
+    def test_perubahan_res_cde(self, tiket_identifikasi):
+        tiket_identifikasi.baris_res = 2
+        tiket_identifikasi.save(update_fields=['baris_res'])
+        row = _row(tiket_identifikasi.nomor_tiket, baris_i=1500, baris_res=4, baris_cde=1200)
+        _update_tiket_data(_service([row]))
+
+        notif = Notification.objects.filter(title='Update Baris Res/CDE')
+        assert {n.recipient for n in notif} == _pic_users(tiket_identifikasi, TiketPIC.Role.P3DE)
+        message = notif.get().message
+        assert 'Baris Res 2 → 4' in message and 'Baris CDE - → 1.200' in message
+        assert reverse('tiket_detail', kwargs={'pk': tiket_identifikasi.pk}) in message
+
+        # Same counts again: nobody is told twice.
+        _update_tiket_data(_service([row]))
+        assert notif.count() == 1
+
+    def test_hanya_res_berubah(self, tiket_identifikasi):
+        tiket_identifikasi.baris_cde = 5
+        tiket_identifikasi.save(update_fields=['baris_cde'])
+        _update_tiket_data(_service([_row(tiket_identifikasi.nomor_tiket, baris_res=3, baris_cde=5)]))
+
+        message = Notification.objects.get(title='Update Baris Res/CDE').message
+        assert 'Baris Res - → 3' in message and 'Baris CDE' not in message
+
+    def test_kosong_menjadi_nol_tanpa_notifikasi(self, tiket_identifikasi):
+        _update_tiket_data(_service([_row(tiket_identifikasi.nomor_tiket, baris_i=10)]))
+        assert not Notification.objects.filter(title='Update Baris Res/CDE').exists()
+
+    def test_baris_lain_berubah_tanpa_notifikasi(self, tiket_identifikasi):
+        tiket_identifikasi.baris_res = 4
+        tiket_identifikasi.baris_cde = 9
+        tiket_identifikasi.save(update_fields=['baris_res', 'baris_cde'])
+        _update_tiket_data(_service([_row(
+            tiket_identifikasi.nomor_tiket, baris_i=10, baris_u=3, baris_res=4, baris_cde=9,
+        )]))
+        assert not Notification.objects.filter(title='Update Baris Res/CDE').exists()
+
+    def test_dry_run_tanpa_notifikasi(self, tiket_identifikasi):
+        _check_tiket_update_data(_service([_row(tiket_identifikasi.nomor_tiket, baris_cde=7)]))
+        assert not Notification.objects.exists()
 
 
 @pytest.mark.django_db

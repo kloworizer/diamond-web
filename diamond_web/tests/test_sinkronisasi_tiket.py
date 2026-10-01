@@ -272,9 +272,8 @@ TGL_IDENTIFIKASI = datetime(2026, 3, 2, 8, 0)
 def tiket_dibatalkan_sync(tiket_identifikasi):
     """Tiket Aturan 4 cancelled while Oracle's rekap held only its CDE rows.
 
-    The sync no longer cancels such a tiket (the status of a Res/CDE-only
-    tarikan is left to the PIC), so this is the state it left on tikets it
-    cancelled before: written here as Aturan 4 wrote it.
+    The old Aturan 4 cancelled on CDE rows alone, whatever the Baris Lengkap;
+    this is the state it left, written here as it wrote it.
     """
     pide = TiketPIC.objects.get(id_tiket=tiket_identifikasi, role=TiketPIC.Role.PIDE).id_user
     p3de = TiketPICFactory(id_tiket=tiket_identifikasi, role=TiketPIC.Role.P3DE, active=True).id_user
@@ -288,7 +287,7 @@ def tiket_dibatalkan_sync(tiket_identifikasi):
         )
     Tiket.objects.filter(pk=tiket_identifikasi.pk).update(
         status_tiket=STATUS_DIBATALKAN, tgl_dikembalikan=TGL_TRANSFER, tgl_rekam_pide=None,
-        tgl_transfer=TGL_TRANSFER, baris_cde=15,
+        tgl_transfer=TGL_TRANSFER, baris_res=0, baris_cde=15,
         **dict.fromkeys(KOLOM_TARIKAN_DIBATALKAN),
     )
     tiket_identifikasi.refresh_from_db()
@@ -368,6 +367,15 @@ class TestKoreksiPembatalan:
         tiket_dibatalkan_sync.refresh_from_db()
         assert tiket_dibatalkan_sync.status_tiket == STATUS_DIBATALKAN
         assert len(_trail(tiket_dibatalkan_sync)) == 3
+
+    @pytest.mark.parametrize('baris', [dict(baris_res=5, baris_cde=15), dict(baris_res=20)])
+    def test_rekap_res_cde_saja_tidak_dikoreksi(self, client, pmde_admin_user, tiket_dibatalkan_sync, baris):
+        """Res and CDE rows are what Aturan 4 returns: only I or U undo the cancel."""
+        Tiket.objects.filter(pk=tiket_dibatalkan_sync.pk).update(baris_lengkap=20)
+        client.force_login(pmde_admin_user)
+        with _oracle(_row(tiket_dibatalkan_sync.nomor_tiket, tgl_transfer=TGL_TRANSFER, belum_qc=0, **baris)):
+            html = client.get(_url(tiket_dibatalkan_sync)).json()['html']
+        assert 'id="sinkronisasi-koreksi"' not in html
 
     def test_rekap_masih_hanya_cde(self, client, pmde_admin_user, tiket_dibatalkan_sync):
         client.force_login(pmde_admin_user)
