@@ -26,6 +26,12 @@ This module provides the core logic to:
      → PENGENDALIAN_MUTU (6) (rematch reopens QC, timestamped tgl_rematch)
    - SELESAI (8) + tgl_rematch null + tgl_transfer changed + baris_i > 0
      + belum_qc != 0 → PENGENDALIAN_MUTU (6) (PIDE revised the tarikan)
+   A tarikan of Res/CDE rows only (i and u 0 or null) never moves a tiket to
+   Pengendalian Mutu, Selesai or Dibatalkan: Aturan 2-5 and 8 leave its
+   status for the PIC to change by hand, Aturan 7 stops at Identifikasi, and
+   only the counts are synced (see _status_manual).
+4. Notify the tiket's active PIDE and PMDE PICs of every status change, as
+   the detail page's actions do, and of a status left for them to change.
 
 See docs/SYNC_TIKET_UPDATE_RULES.md for full documentation.
 """
@@ -44,6 +50,7 @@ from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.cache import never_cache
 from django.utils import timezone
+from django.utils.html import format_html
 from django.core.cache import cache
 from django.db import connection as db_connection
 from django.db.models import Max
@@ -196,6 +203,53 @@ KOREKSI_JUDUL = {
     'selesai': 'Koreksi Penutupan',
 }
 
+# The notification each transition sends the tiket's active PIDE and PMDE
+# PICs, as the detail page's actions do: (title, text after "Tiket <nomor>").
+NOTIFIKASI_TRANSISI = {
+    'identifikasi': (
+        'Tiket Diidentifikasi',
+        'telah direkam PIDE dan kini berstatus Identifikasi (sinkronisasi Oracle).',
+    ),
+    'pmde_from_4': (
+        'Tiket ditransfer ke PMDE',
+        'telah direkam dan ditransfer ke Pengendalian Mutu oleh PIDE (sinkronisasi Oracle).',
+    ),
+    'pmde': (
+        'Tiket ditransfer ke PMDE',
+        'telah ditransfer ke Pengendalian Mutu oleh PIDE (sinkronisasi Oracle).',
+    ),
+    'selesai': (
+        'Tiket Selesai',
+        'telah selesai pengendalian mutu dan kini berstatus Selesai (sinkronisasi Oracle).',
+    ),
+    'selesai_from_5': (
+        'Tiket Selesai',
+        'telah ditransfer ke PMDE dan selesai diproses (sinkronisasi Oracle).',
+    ),
+    'selesai_from_5_baris': (
+        'Tiket Selesai',
+        'telah ditransfer ke PMDE dan selesai diproses (sinkronisasi Oracle).',
+    ),
+    'dikembalikan': (
+        'Tiket Dikembalikan',
+        'telah dikembalikan oleh PIDE dan dibatalkan (sinkronisasi Oracle).',
+    ),
+    'rematch': (
+        'Tiket Di-rematch',
+        'di-rematch oleh PIDE dan kembali ke Pengendalian Mutu (sinkronisasi Oracle).',
+    ),
+    'transfer_ulang': (
+        'Tiket Ditransfer Ulang ke PMDE',
+        'ditransfer ulang ke Pengendalian Mutu setelah PIDE merevisi tarikan (sinkronisasi Oracle).',
+    ),
+}
+
+# Roles told of every status change the sync makes.
+NOTIFIKASI_ROLES = (TiketPIC.Role.PIDE, TiketPIC.Role.PMDE)
+
+# Fields whose change means a new tarikan (or rematch) reached the tiket.
+_KOLOM_TARIKAN_BARU = {'tgl_transfer', 'tgl_rematch', 'baris_i', 'baris_u', 'baris_res', 'baris_cde'}
+
 def _hanya_cde(baris_i, baris_u, baris_res, baris_cde):
     """True when PIDE found nothing but CDE rows in the tarikan (Aturan 4).
 
@@ -224,6 +278,35 @@ def _qc_lengkap(baris_i, baris_u, baris_res, baris_cde, sudah_qc, belum_qc):
         belum_qc is not None and belum_qc == 0
         and sudah_qc == baris_i
         and not _hanya_cde(baris_i, baris_u, baris_res, baris_cde)
+    )
+
+
+def _status_tertahan(status_tiket, tgl_transfer, status_manual):
+    """True when `_status_manual` holds back a tiket the sync would move on.
+
+    That is a transferred tarikan on a tiket in Identifikasi or Pengendalian
+    Mutu once the run's transitions are done: before, Aturan 2-5 closed or
+    returned it (and Aturan 7 moved it on to Pengendalian Mutu). A blocked
+    rematch (Aturan 8) is held back too; the plan checks that one itself.
+    """
+    return (
+        status_manual
+        and tgl_transfer is not None
+        and status_tiket in (STATUS_IDENTIFIKASI, STATUS_PENGENDALIAN_MUTU)
+    )
+
+
+def _status_manual(baris_i, baris_u, baris_res, baris_cde):
+    """True when the tarikan holds Res and/or CDE rows but no I or U rows.
+
+    The sync then leaves the status to the PIC: it neither moves the tiket
+    to Pengendalian Mutu (Aturan 7 stops at Identifikasi, Aturan 8 does not
+    reopen), closes it (Aturan 2, 3, 5B) nor returns it (Aturan 4), and only
+    copies the row counts. A NULL count reads as 0.
+    """
+    return (
+        not baris_i and not baris_u
+        and ((baris_res or 0) > 0 or (baris_cde or 0) > 0)
     )
 
 
@@ -545,14 +628,17 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                     if field not in tidak_disalin and new is not None and getattr(tiket, field) != new:
                         changed = True
 
+                # Res/CDE saja: status diubah manual oleh PIC, bukan sinkronisasi.
+                status_manual = _status_manual(baris_i, baris_u, baris_res, baris_cde)
+
                 # Status transitions — only count if tiket status matches
                 pending_rekam_pide = (
                     tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE
                     and tiket.tgl_rekam_pide is None
                     and tgl_rekam_pide is not None
                 )
-                needs_identifikasi = pending_rekam_pide and tgl_transfer is None
-                needs_pmde_from_4 = pending_rekam_pide and tgl_transfer is not None
+                needs_identifikasi = pending_rekam_pide and (tgl_transfer is None or status_manual)
+                needs_pmde_from_4 = pending_rekam_pide and tgl_transfer is not None and not status_manual
                 needs_pmde = (
                     tiket.status_tiket == STATUS_IDENTIFIKASI
                     and tgl_transfer is not None
@@ -565,22 +651,26 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                 needs_selesai = (
                     tiket.status_tiket == STATUS_PENGENDALIAN_MUTU
                     and qc_lengkap
+                    and not status_manual
                 )
                 needs_selesai_from_5 = (
                     tiket.status_tiket == STATUS_IDENTIFIKASI
                     and tgl_transfer is not None
                     and qc_lengkap
+                    and not status_manual
                 )
 
                 needs_dikembalikan = (
                     tiket.status_tiket == STATUS_IDENTIFIKASI
                     and tgl_transfer is not None
                     and hanya_cde
+                    and not status_manual
                 )
 
                 needs_selesai_from_5_baris = (
                     tiket.status_tiket == STATUS_IDENTIFIKASI
                     and tgl_transfer is not None
+                    and not status_manual
                     and (belum_qc is None or belum_qc != 0)
                     and (
                         (baris_i is not None and baris_i == 0
@@ -595,12 +685,13 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
 
                 # Rematch di Oracle memunculkan baris QC baru pada tiket yang
                 # sudah ditutup, jadi tiket dibuka kembali ke pengendalian mutu.
-                needs_rematch = (
+                rematch = (
                     tiket.status_tiket == STATUS_SELESAI
                     and tgl_rematch is not None
                     and belum_qc is not None
                     and belum_qc > 0
                 )
+                needs_rematch = rematch and not status_manual
 
                 # PIC PIDE merevisi tarikan: transfer ulang dengan tanggal baru,
                 # dan kali ini baris identifikasi ikut terisi. Tiket yang sudah
@@ -690,6 +781,13 @@ def _check_tiket_update_data(service, check_id=None, stop_checker=None):
                         detail_parts.append(f"Status: SELESAI → PENGENDALIAN_MUTU (rematch, Tgl Rematch:{tgl_rematch}, Belum QC:{belum_qc})")
                     if needs_transfer_ulang:
                         detail_parts.append(f"Status: SELESAI → PENGENDALIAN_MUTU (transfer ulang, Tgl Transfer:{tiket.tgl_transfer} → {tgl_transfer}, I:{baris_i}, U:{baris_u})")
+                    status_akhir = (
+                        STATUS_PENGENDALIAN_MUTU if needs_pmde_from_4
+                        else STATUS_IDENTIFIKASI if needs_identifikasi
+                        else tiket.status_tiket
+                    )
+                    if _status_tertahan(status_akhir, tgl_transfer, status_manual) or (rematch and status_manual):
+                        detail_parts.append(f"Status tetap, diubah manual (hanya Res/CDE, I:{baris_i}, U:{baris_u}, Res:{baris_res}, CDE:{baris_cde})")
                     if not detail_parts:
                         detail_parts.append('Data kolom akan diperbarui')
 
@@ -842,8 +940,13 @@ def _plan_tiket_update(tiket, row_dict, koreksi=False):
             transitions: transition dicts in the order the sync applies them;
                 each has key, aturan, counter, status_to, fields (extra
                 fields it writes), actions [(role, action, timestamp,
-                catatan)], notify_p3de (message or None), log_kategori and
+                catatan)], notify_p3de (message or None), notify ((title,
+                text) for the PIDE and PMDE PICs), log_kategori and
                 log_detail
+            status_manual: whether the tarikan is Res/CDE only, so the
+                status is left for the PIC to change (`_status_tertahan`)
+            notify_status_manual: (title, text) telling the PIDE and PMDE
+                PICs so, or None once they have been told
             changed: whether the sync would write anything
     """
     values = dict(row_dict)
@@ -890,15 +993,21 @@ def _plan_tiket_update(tiket, row_dict, koreksi=False):
         if koreksi:
             field_changes += [(f, getattr(tiket, f), None) for f in kolom_tarikan_terisi(tiket)]
 
+    # Tarikan berisi Res/CDE saja (I dan U kosong): sinkronisasi tidak
+    # membawa tiket ke Pengendalian Mutu, Selesai, maupun Dikembalikan. PIC
+    # mengubah statusnya manual; yang disinkronkan hanya nilai kolomnya.
+    status_manual = _status_manual(baris_i, baris_u, baris_res, baris_cde)
+
     # Tiket masih di PIDE tanpa tgl_rekam_pide lokal: Oracle sudah
-    # merekam tgl_load, jadi identifikasi (dan transfer) di-backfill.
+    # merekam tgl_load, jadi identifikasi (dan transfer) di-backfill. Tarikan
+    # Res/CDE saja berhenti di Identifikasi walaupun sudah ditransfer.
     pending_rekam_pide = (
         tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE
         and tiket.tgl_rekam_pide is None
         and tgl_rekam_pide is not None
     )
-    needs_identifikasi = pending_rekam_pide and tgl_transfer is None
-    needs_pmde_from_4 = pending_rekam_pide and tgl_transfer is not None
+    needs_identifikasi = pending_rekam_pide and (tgl_transfer is None or status_manual)
+    needs_pmde_from_4 = pending_rekam_pide and tgl_transfer is not None and not status_manual
     needs_pmde = (
         tiket.status_tiket == STATUS_IDENTIFIKASI
         and tgl_transfer is not None
@@ -911,20 +1020,24 @@ def _plan_tiket_update(tiket, row_dict, koreksi=False):
     needs_selesai = (
         tiket.status_tiket == STATUS_PENGENDALIAN_MUTU
         and qc_lengkap
+        and not status_manual
     )
     needs_selesai_from_5 = (
         tiket.status_tiket == STATUS_IDENTIFIKASI
         and tgl_transfer is not None
         and qc_lengkap
+        and not status_manual
     )
     needs_dikembalikan = (
         tiket.status_tiket == STATUS_IDENTIFIKASI
         and tgl_transfer is not None
         and hanya_cde
+        and not status_manual
     )
     needs_selesai_from_5_baris = (
         tiket.status_tiket == STATUS_IDENTIFIKASI
         and tgl_transfer is not None
+        and not status_manual
         and (belum_qc is None or belum_qc != 0)
         and (
             (baris_i is not None and baris_i == 0
@@ -938,12 +1051,13 @@ def _plan_tiket_update(tiket, row_dict, koreksi=False):
     )
     # Rematch di Oracle memunculkan baris QC baru pada tiket yang
     # sudah ditutup, jadi tiket dibuka kembali ke pengendalian mutu.
-    needs_rematch = (
+    rematch = (
         tiket.status_tiket == STATUS_SELESAI
         and tgl_rematch is not None
         and belum_qc is not None
         and belum_qc > 0
     )
+    needs_rematch = rematch and not status_manual
     # PIC PIDE merevisi tarikan: transfer ulang dengan tanggal baru,
     # dan kali ini baris identifikasi ikut terisi. Tiket yang sudah
     # ditutup lewat Aturan 5 (baris_u saja) kini punya baris_i > 0,
@@ -970,6 +1084,7 @@ def _plan_tiket_update(tiket, row_dict, koreksi=False):
             'key': key, 'aturan': aturan, 'counter': counter,
             'status_to': status_to, 'fields': fields or {},
             'actions': actions, 'notify_p3de': notify_p3de,
+            'notify': NOTIFIKASI_TRANSISI[key],
             'log_kategori': log_kategori, 'log_detail': log_detail,
         }
 
@@ -1071,12 +1186,30 @@ def _plan_tiket_update(tiket, row_dict, koreksi=False):
             log_detail=f'Dari SELESAI ke PENGENDALIAN_MUTU (Tgl Transfer:{tiket.tgl_transfer} → {tgl_transfer}, I:{baris_i}, U:{baris_u}, Belum QC:{belum_qc})',
         ))
 
+    # The PIDE and PMDE PICs are told the status is now theirs to change, once:
+    # when the tarikan's rows or transfer date first reach the tiket.
+    status_akhir = transitions[-1]['status_to'] if transitions else tiket.status_tiket
+    tertahan = _status_tertahan(status_akhir, tgl_transfer, status_manual) or (
+        rematch and status_manual
+    )
+    notify_status_manual = None
+    if tertahan and any(
+        c[0] in _KOLOM_TARIKAN_BARU for c in field_changes
+    ):
+        notify_status_manual = (
+            'Status Tiket Perlu Diubah Manual',
+            f'hanya berisi baris Res/CDE dari PIDE ({baris}). Sinkronisasi Oracle tidak '
+            f'mengubah status tiket; silakan ubah statusnya secara manual.',
+        )
+
     return {
         'values': values,
         'status_from': status_from,
         'koreksi': koreksi_plan,
         'field_changes': field_changes,
         'transitions': transitions,
+        'status_manual': tertahan,
+        'notify_status_manual': notify_status_manual,
         'changed': bool(koreksi_plan or field_changes or transitions),
     }
 
@@ -1097,6 +1230,8 @@ def _plan_tanpa_rekap(tiket):
         'koreksi': None,
         'field_changes': field_changes,
         'transitions': [],
+        'status_manual': False,
+        'notify_status_manual': None,
         'changed': bool(field_changes),
     }
 
@@ -1192,9 +1327,41 @@ def _apply_tiket_update_plan(tiket, plan, tiket_pics, sync_id):
                     title='Tiket Dikembalikan',
                     message=t['notify_p3de'],
                 )
+        _notify_pide_pmde(tiket, tiket_pics, *t['notify'])
 
         logger.info(f"Tiket {nomor_tiket}: {plan['status_from']} → {t['status_to']} (auto-sync, Aturan {t['aturan']})")
         _log_update_result_row(sync_id, nomor_tiket, t['log_kategori'], t['log_detail'])
+
+    if plan.get('status_manual'):
+        v = plan['values']
+        _log_update_result_row(
+            sync_id, nomor_tiket, 'Status Tetap (Res/CDE saja)',
+            f"Status {STATUS_LABELS.get(tiket.status_tiket, '-')} tidak diubah, diubah manual oleh PIC "
+            f"(I:{v.get('baris_i')}, U:{v.get('baris_u')}, Res:{v.get('baris_res')}, CDE:{v.get('baris_cde')})",
+        )
+    if plan.get('notify_status_manual'):
+        _notify_pide_pmde(tiket, tiket_pics, *plan['notify_status_manual'])
+
+
+def notifikasi_penerima(tiket_pics):
+    """The active PIDE and PMDE PICs' users, each once, a sync notifies."""
+    users = {}
+    for role in NOTIFIKASI_ROLES:
+        for pic in tiket_pics.get(role, []):
+            users.setdefault(pic.id_user_id, pic.id_user)
+    return list(users.values())
+
+
+def _notify_pide_pmde(tiket, tiket_pics, title, text):
+    """Notify the tiket's active PIDE and PMDE PICs, linking to the tiket."""
+    message = format_html(
+        'Tiket <a href="{}">{}</a> {}',
+        reverse('tiket_detail', kwargs={'pk': tiket.pk}),
+        tiket.nomor_tiket or str(tiket.pk),
+        text,
+    )
+    for user in notifikasi_penerima(tiket_pics):
+        Notification.objects.create(recipient=user, title=title, message=message)
 
 
 def _active_pics_by_role(pics):

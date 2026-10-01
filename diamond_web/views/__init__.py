@@ -60,6 +60,7 @@ from .bulk_document_generation import *
 from .sync_data_referensi import *
 from .sync_tiket import *
 from .sync_tiket_update import *
+from .update_pic_tiket import *
 from .sync_log_status import *
 from .profil import *
 from .profil_ilap import *

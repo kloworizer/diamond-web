@@ -19,10 +19,14 @@ from diamond_web.constants.tiket_status import (
     STATUS_SELESAI,
 )
 from diamond_web.models.notification import Notification
+from diamond_web.models.tiket import Tiket
 from diamond_web.models.tiket_action import TiketAction
 from diamond_web.models.tiket_pic import TiketPIC
 from diamond_web.utils.oracle_sync import OracleSyncConfigError
+from diamond_web.utils.tiket_dibatalkan import KOLOM_TARIKAN_DIBATALKAN
 from diamond_web.views.sync_tiket_update import (
+    CATATAN_DIBATALKAN_AUTO_SYNC,
+    CATATAN_DIKEMBALIKAN_AUTO_SYNC,
     TiketUpdateRowError,
     _fetch_tiket_update_row,
     _update_tiket_data,
@@ -266,17 +270,28 @@ TGL_IDENTIFIKASI = datetime(2026, 3, 2, 8, 0)
 
 @pytest.fixture
 def tiket_dibatalkan_sync(tiket_identifikasi):
-    """Tiket Aturan 4 cancelled while Oracle's rekap held only its CDE rows."""
-    TiketPICFactory(id_tiket=tiket_identifikasi, role=TiketPIC.Role.P3DE, active=True)
-    TiketAction.objects.create(
-        id_tiket=tiket_identifikasi,
-        id_user=TiketPIC.objects.get(id_tiket=tiket_identifikasi, role=TiketPIC.Role.PIDE).id_user,
-        timestamp=TGL_IDENTIFIKASI, action=TiketActionType.IDENTIFIKASI,
-        catatan='Mulai proses identifikasi (data migrasi)',
+    """Tiket Aturan 4 cancelled while Oracle's rekap held only its CDE rows.
+
+    The sync no longer cancels such a tiket (the status of a Res/CDE-only
+    tarikan is left to the PIC), so this is the state it left on tikets it
+    cancelled before: written here as Aturan 4 wrote it.
+    """
+    pide = TiketPIC.objects.get(id_tiket=tiket_identifikasi, role=TiketPIC.Role.PIDE).id_user
+    p3de = TiketPICFactory(id_tiket=tiket_identifikasi, role=TiketPIC.Role.P3DE, active=True).id_user
+    for user, timestamp, action, catatan in (
+        (pide, TGL_IDENTIFIKASI, TiketActionType.IDENTIFIKASI, 'Mulai proses identifikasi (data migrasi)'),
+        (pide, TGL_TRANSFER, TiketActionType.DIKEMBALIKAN, CATATAN_DIKEMBALIKAN_AUTO_SYNC),
+        (p3de, TGL_TRANSFER, TiketActionType.DIBATALKAN, CATATAN_DIBATALKAN_AUTO_SYNC),
+    ):
+        TiketAction.objects.create(
+            id_tiket=tiket_identifikasi, id_user=user, timestamp=timestamp, action=action, catatan=catatan,
+        )
+    Tiket.objects.filter(pk=tiket_identifikasi.pk).update(
+        status_tiket=STATUS_DIBATALKAN, tgl_dikembalikan=TGL_TRANSFER, tgl_rekam_pide=None,
+        tgl_transfer=TGL_TRANSFER, baris_cde=15,
+        **dict.fromkeys(KOLOM_TARIKAN_DIBATALKAN),
     )
-    _update_tiket_data(_service([_rekap_hanya_cde(tiket_identifikasi.nomor_tiket)]))
     tiket_identifikasi.refresh_from_db()
-    assert tiket_identifikasi.status_tiket == STATUS_DIBATALKAN
     return tiket_identifikasi
 
 

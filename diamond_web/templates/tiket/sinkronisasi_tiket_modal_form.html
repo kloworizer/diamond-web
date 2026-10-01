@@ -58,11 +58,27 @@
                 <div class="text-muted small">{{ t.keterangan }}</div>
             </div>
             {% endfor %}
-        {% elif not plan.koreksi %}
+        {% elif not plan.koreksi and not plan.status_manual %}
         <p class="text-muted small mb-3">
             Tetap <span class="badge {{ status_from_class }}">{{ status_from_label }}</span> —
             tidak ada aturan transisi status yang berlaku.
         </p>
+        {% endif %}
+        {% if plan.status_manual %}
+        <div class="p-3 bg-light rounded border border-info mb-3" id="sinkronisasi-status-manual">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                <span class="badge {% if transitions %}{{ transitions.0.status_to_class }}{% else %}{{ koreksi_to_class }}{% endif %}">{% if transitions %}{{ transitions.0.status_to_label }}{% else %}{{ koreksi_to_label }}{% endif %}</span>
+                <span class="badge bg-info text-dark ms-1">Status diubah manual</span>
+            </div>
+            <div class="text-muted small">
+                Tarikan hanya berisi baris Res/CDE (Baris I dan U kosong), jadi sinkronisasi tidak mengubah
+                status tiket menjadi Pengendalian Mutu, Selesai, maupun Dikembalikan. Hanya nilai kolom yang
+                diperbarui; ubah status tiket secara manual.
+            </div>
+            {% if status_manual_notify_count %}
+            <div class="small text-muted mt-1"><i class="feather-bell me-1"></i>Notifikasi "Status Tiket Perlu Diubah Manual" dikirim ke {{ status_manual_notify_count }} PIC PIDE/PMDE aktif.</div>
+            {% endif %}
+        </div>
         {% endif %}
 
         <h6 class="fw-bold mb-2" style="font-size: 13px;">Kolom yang Diperbarui</h6>
@@ -158,6 +174,9 @@
         </div>
         {% if t.notify_count %}
         <p class="small text-muted mb-2"><i class="feather-bell me-1"></i>Notifikasi "Tiket Dikembalikan" dikirim ke {{ t.notify_count }} PIC P3DE aktif.</p>
+        {% endif %}
+        {% if t.notify_pic_count %}
+        <p class="small text-muted mb-2"><i class="feather-bell me-1"></i>Notifikasi "{{ t.notify_title }}" dikirim ke {{ t.notify_pic_count }} PIC PIDE/PMDE aktif.</p>
         {% endif %}
         {% endfor %}
         {% endif %}

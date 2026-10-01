@@ -17,15 +17,16 @@ from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
+from django.urls import reverse
 
 from diamond_web.constants.tiket_action_types import TiketActionType
 from diamond_web.constants.tiket_status import (
-    STATUS_DIBATALKAN,
     STATUS_DIKIRIM_KE_PIDE,
     STATUS_IDENTIFIKASI,
     STATUS_PENGENDALIAN_MUTU,
     STATUS_SELESAI,
 )
+from diamond_web.models.notification import Notification
 from diamond_web.models.tiket_action import TiketAction
 from diamond_web.models.tiket_pic import TiketPIC
 from diamond_web.views.sync_tiket_update import (
@@ -462,65 +463,154 @@ def _cde_only_row(nomor_tiket):
     )
 
 
+def _pic_users(tiket, *roles):
+    return {p.id_user for p in TiketPIC.objects.filter(id_tiket=tiket, role__in=roles)}
+
+
 @pytest.mark.django_db
-class TestAturan4HanyaCde:
-    """Identifikasi + rows CDE only → Dibatalkan, and Aturan 3 stays out of it."""
+class TestStatusManualResCde:
+    """Rows Res/CDE only (I and U 0 or null): the sync only copies the counts.
 
-    def test_menjadi_dibatalkan_bukan_selesai(self, tiket_identifikasi):
-        result = _update_tiket_data(_service([_cde_only_row(tiket_identifikasi.nomor_tiket)]))
+    It neither closes the tiket (Aturan 2, 3, 5B) nor returns it (Aturan 4);
+    the PIC changes the status by hand, and the PIDE and PMDE PICs are told.
+    """
+
+    @pytest.mark.parametrize('baris', [
+        dict(baris_i=0, baris_u=0, baris_res=0, baris_cde=10, belum_qc=0),   # was Aturan 4
+        dict(baris_i=0, baris_u=0, baris_res=4, baris_cde=0, belum_qc=3),    # was Aturan 5B
+        dict(baris_i=0, baris_u=0, baris_res=4, baris_cde=10, belum_qc=0),   # was Aturan 3
+        dict(baris_i=None, baris_u=None, baris_res=4, baris_cde=10, belum_qc=0),
+    ])
+    def test_identifikasi_tetap_kolom_diperbarui(self, tiket_identifikasi, baris):
+        row = _row(tiket_identifikasi.nomor_tiket, tgl_transfer=TGL_TRANSFER,
+                   tgl_close_tiket=TGL_CLOSE, **baris)
+        check = _check_tiket_update_data(_service([row]))
+        assert (check['would_selesai'], check['would_dikembalikan']) == (0, 0)
+
+        result = _update_tiket_data(_service([row]))
 
         tiket_identifikasi.refresh_from_db()
-        assert tiket_identifikasi.status_tiket == STATUS_DIBATALKAN
-        assert tiket_identifikasi.tgl_dikembalikan == TGL_TRANSFER
-        assert tiket_identifikasi.tgl_rekam_pide is None
-        assert result['status_to_dikembalikan'] == 1
-        assert result['status_to_selesai'] == 0
+        assert tiket_identifikasi.status_tiket == STATUS_IDENTIFIKASI
+        assert tiket_identifikasi.tgl_rekam_pide == TGL_LOAD
+        assert tiket_identifikasi.tgl_dikembalikan is None
+        assert tiket_identifikasi.baris_res == baris['baris_res']
+        assert tiket_identifikasi.baris_cde == baris['baris_cde']
+        assert tiket_identifikasi.tgl_transfer == TGL_TRANSFER
+        assert (result['status_to_selesai'], result['status_to_dikembalikan']) == (0, 0)
+        assert not TiketAction.objects.filter(id_tiket=tiket_identifikasi).exists()
 
-        actions = TiketAction.objects.filter(id_tiket=tiket_identifikasi).order_by('id')
-        assert [a.action for a in actions] == [
-            TiketActionType.DIKEMBALIKAN,
-            TiketActionType.DIBATALKAN,
+    def test_pengendalian_mutu_tidak_ditutup(self, tiket_pengendalian_mutu):
+        row = _row(tiket_pengendalian_mutu.nomor_tiket, tgl_transfer=TGL_TRANSFER,
+                   baris_i=0, baris_u=0, baris_res=7, baris_cde=0, sudah_qc=0, belum_qc=0)
+        _update_tiket_data(_service([row]))
+
+        tiket_pengendalian_mutu.refresh_from_db()
+        assert tiket_pengendalian_mutu.status_tiket == STATUS_PENGENDALIAN_MUTU
+        assert tiket_pengendalian_mutu.baris_res == 7
+        assert not TiketAction.objects.filter(id_tiket=tiket_pengendalian_mutu).exists()
+
+    def test_notifikasi_pide_pmde_sekali(self, tiket_identifikasi):
+        row = _cde_only_row(tiket_identifikasi.nomor_tiket)
+        _update_tiket_data(_service([row]))
+
+        notif = Notification.objects.filter(title='Status Tiket Perlu Diubah Manual')
+        assert {n.recipient for n in notif} == _pic_users(
+            tiket_identifikasi, TiketPIC.Role.PIDE, TiketPIC.Role.PMDE)
+        assert reverse('tiket_detail', kwargs={'pk': tiket_identifikasi.pk}) in notif.first().message
+
+        # Nothing new from Oracle: nobody is told again.
+        _update_tiket_data(_service([row]))
+        assert notif.count() == 2
+
+    @pytest.mark.parametrize('baris', [
+        dict(baris_i=0, baris_u=0, baris_res=4, baris_cde=0),
+        dict(baris_i=None, baris_u=None, baris_res=0, baris_cde=9),
+    ])
+    def test_dari_pide_berhenti_di_identifikasi(self, tiket_di_pide, baris):
+        """Aturan 7 would take it to Pengendalian Mutu; it stops at Identifikasi."""
+        row = _row(tiket_di_pide.nomor_tiket, tgl_transfer=TGL_TRANSFER, belum_qc=0, **baris)
+        check = _check_tiket_update_data(_service([row]))
+        assert (check['would_pmde'], check['would_identifikasi']) == (0, 1)
+
+        result = _update_tiket_data(_service([row]))
+
+        tiket_di_pide.refresh_from_db()
+        assert tiket_di_pide.status_tiket == STATUS_IDENTIFIKASI
+        assert tiket_di_pide.tgl_rekam_pide == TGL_LOAD
+        assert tiket_di_pide.tgl_transfer == TGL_TRANSFER
+        assert (result['status_to_pmde'], result['status_to_identifikasi']) == (0, 1)
+        assert [a.action for a in TiketAction.objects.filter(id_tiket=tiket_di_pide)] == [
+            TiketActionType.IDENTIFIKASI,
         ]
+        assert Notification.objects.filter(title='Status Tiket Perlu Diubah Manual').exists()
 
-    def test_waktu_pengembalian_setelah_identifikasi_hari_yang_sama(self, tiket_identifikasi):
-        """tgl_transfer is date-only: the return must not read as before the identifikasi."""
-        transfer_tanpa_jam = datetime(2026, 3, 10)
-        identifikasi = TiketAction.objects.create(
-            id_tiket=tiket_identifikasi, id_user=TiketPIC.objects.filter(
-                id_tiket=tiket_identifikasi, role=TiketPIC.Role.PIDE,
-            ).first().id_user,
-            timestamp=datetime(2026, 3, 10, 16, 42),
-            action=TiketActionType.IDENTIFIKASI, catatan='Mulai proses identifikasi',
-        )
-        row = list(_cde_only_row(tiket_identifikasi.nomor_tiket))
-        row[COLUMNS.index('tgl_transfer')] = transfer_tanpa_jam
+    def test_rematch_tidak_membuka_pengendalian_mutu(self, tiket_selesai):
+        row = _row(tiket_selesai.nomor_tiket, tgl_transfer=TGL_TRANSFER, tgl_rematch=TGL_REMATCH,
+                   baris_i=0, baris_u=0, baris_res=4, baris_cde=2, belum_qc=3)
+        assert _check_tiket_update_data(_service([row]))['would_rematch'] == 0
 
-        _update_tiket_data(_service([tuple(row)]))
+        result = _update_tiket_data(_service([row]))
 
-        tiket_identifikasi.refresh_from_db()
-        setelah = datetime(2026, 3, 10, 16, 43)
-        assert tiket_identifikasi.tgl_dikembalikan == setelah
-        assert tiket_identifikasi.tgl_transfer == transfer_tanpa_jam
-        actions = TiketAction.objects.filter(id_tiket=tiket_identifikasi).exclude(pk=identifikasi.pk)
-        assert [a.timestamp for a in actions] == [setelah, setelah]
+        tiket_selesai.refresh_from_db()
+        assert tiket_selesai.status_tiket == STATUS_SELESAI
+        assert tiket_selesai.tgl_rematch == TGL_REMATCH
+        assert tiket_selesai.baris_res == 4
+        assert result['status_to_rematch'] == 0
+        assert not TiketAction.objects.filter(id_tiket=tiket_selesai).exists()
+        assert Notification.objects.filter(title='Status Tiket Perlu Diubah Manual').count() == 1
 
-    def test_belum_qc_nol_tanpa_cde_tetap_selesai(self, tiket_identifikasi):
-        """Aturan 3 still closes a tiket whose QC is really done."""
+    def test_u_terisi_tetap_aturan_5a(self, tiket_identifikasi):
+        """U rows mean the tarikan is not Res/CDE only: Aturan 5A still closes."""
         _update_tiket_data(_service([_row(
             tiket_identifikasi.nomor_tiket, tgl_transfer=TGL_TRANSFER, tgl_close_tiket=TGL_CLOSE,
-            baris_i=0, baris_u=0, baris_res=4, baris_cde=10, belum_qc=0,
+            baris_i=0, baris_u=12, baris_res=4, baris_cde=10, belum_qc=3,
         )]))
 
         tiket_identifikasi.refresh_from_db()
         assert tiket_identifikasi.status_tiket == STATUS_SELESAI
 
-    def test_dry_run_hanya_menghitung_dikembalikan(self, tiket_identifikasi):
-        result = _check_tiket_update_data(_service([_cde_only_row(tiket_identifikasi.nomor_tiket)]))
 
-        assert result['would_dikembalikan'] == 1
-        assert result['would_selesai'] == 0
-        tiket_identifikasi.refresh_from_db()
-        assert tiket_identifikasi.status_tiket == STATUS_IDENTIFIKASI
+@pytest.mark.django_db
+class TestNotifikasiTransisi:
+    """Every status change by the sync notifies the active PIDE and PMDE PICs."""
+
+    def test_transfer_ke_pmde(self, tiket_identifikasi):
+        _update_tiket_data(_service([_row(
+            tiket_identifikasi.nomor_tiket, tgl_transfer=TGL_TRANSFER, baris_i=10, belum_qc=10,
+        )]))
+
+        notif = Notification.objects.filter(title='Tiket ditransfer ke PMDE')
+        assert {n.recipient for n in notif} == _pic_users(
+            tiket_identifikasi, TiketPIC.Role.PIDE, TiketPIC.Role.PMDE)
+        assert tiket_identifikasi.nomor_tiket in notif.first().message
+        p3de = _pic_users(tiket_identifikasi, TiketPIC.Role.P3DE)
+        assert not Notification.objects.filter(recipient__in=p3de).exists()
+
+    def test_selesai(self, tiket_pengendalian_mutu):
+        _update_tiket_data(_service([_row(
+            tiket_pengendalian_mutu.nomor_tiket, tgl_transfer=TGL_TRANSFER,
+            baris_i=609, baris_u=1112, sudah_qc=609, belum_qc=0,
+        )]))
+
+        pmde = _pic_users(tiket_pengendalian_mutu, TiketPIC.Role.PMDE)
+        assert set(Notification.objects.filter(title='Tiket Selesai').values_list('recipient', flat=True)) == {
+            u.pk for u in pmde
+        }
+
+    def test_tanpa_transisi_tanpa_notifikasi(self, tiket_identifikasi):
+        _update_tiket_data(_service([_row(
+            tiket_identifikasi.nomor_tiket, tgl_transfer=None, baris_i=10, belum_qc=10,
+        )]))
+        assert not Notification.objects.exists()
+
+    def test_pic_ganda_satu_notifikasi(self, tiket_identifikasi):
+        """A user who is both PIDE and PMDE PIC is told once."""
+        pide = TiketPIC.objects.get(id_tiket=tiket_identifikasi, role=TiketPIC.Role.PIDE).id_user
+        TiketPIC.objects.filter(id_tiket=tiket_identifikasi, role=TiketPIC.Role.PMDE).update(id_user=pide)
+        _update_tiket_data(_service([_row(
+            tiket_identifikasi.nomor_tiket, tgl_transfer=TGL_TRANSFER, baris_i=10, belum_qc=10,
+        )]))
+        assert Notification.objects.filter(recipient=pide).count() == 1
 
 
 @pytest.fixture

@@ -86,7 +86,8 @@ class TestPembatalanManual:
 @pytest.mark.django_db
 class TestSinkronisasiMassal:
 
-    def test_aturan_4_mengosongkan(self, db):
+    def test_rekap_hanya_cde_tidak_membatalkan(self, db):
+        """Aturan 4 no longer cancels: the counts are synced, the status left to the PIC."""
         tiket = TiketFactory(status_tiket=STATUS_IDENTIFIKASI, **TERISI)
         _update_tiket_data(_service([_row(
             tiket.nomor_tiket, tgl_transfer=TGL_TRANSFER,
@@ -94,9 +95,8 @@ class TestSinkronisasiMassal:
         )]))
 
         tiket.refresh_from_db()
-        assert tiket.status_tiket == STATUS_DIBATALKAN
-        # CDE is still copied: it is what PIDE handed back.
-        _assert_dikosongkan(tiket, baris_cde=10)
+        assert tiket.status_tiket == STATUS_IDENTIFIKASI
+        assert (tiket.baris_i, tiket.baris_u, tiket.baris_cde, tiket.belum_qc) == (0, 0, 10, 0)
 
     def test_tidak_disalin_ulang_ke_tiket_dibatalkan(self, db):
         tiket = TiketFactory(status_tiket=STATUS_DIBATALKAN, tgl_transfer=TGL_TRANSFER)
@@ -203,7 +203,7 @@ class TestPerbaikanDiHalamanDetail:
         tiket.refresh_from_db()
         assert tiket.baris_i == 19
 
-    def test_pratinjau_aturan_4_tidak_menampilkan_kolom_yang_sudah_kosong(self, client, pmde_admin_user):
+    def test_pratinjau_rekap_hanya_cde_status_manual(self, client, pmde_admin_user):
         tiket = TiketFactory(status_tiket=STATUS_IDENTIFIKASI, baris_i=7)
         TiketPICFactory(id_tiket=tiket, role=TiketPIC.Role.PIDE, active=True)
         client.force_login(pmde_admin_user)
@@ -213,7 +213,8 @@ class TestPerbaikanDiHalamanDetail:
         )])):
             html = client.get(_url(tiket)).json()['html']
 
-        assert 'Aturan 4' in html
+        assert 'Aturan 4' not in html
+        assert 'id="sinkronisasi-status-manual"' in html
+        assert 'dikirim ke 1 PIC PIDE/PMDE aktif' in html
         rows = re.findall(r'<tr>\s*<td>([^<]+)</td>', html.split('sinkronisasi-field-table')[1].split('</table>')[0])
         assert 'Baris I' in rows and 'Baris CDE' in rows
-        assert 'QC P' not in rows and 'Sudah QC' not in rows

@@ -36,6 +36,7 @@ from ..sync_tiket_update import (
     _fetch_tiket_update_row,
     _plan_tanpa_rekap,
     _plan_tiket_update,
+    notifikasi_penerima,
 )
 
 logger = logging.getLogger(__name__)
@@ -67,7 +68,7 @@ ATURAN_KETERANGAN = {
     2: 'Seluruh baris identifikasi sudah di-QC (Belum QC = 0, Sudah QC = Baris I).',
     3: 'Data sudah ditransfer dan seluruh baris identifikasi sudah di-QC (Belum QC = 0, Sudah QC = Baris I).',
     4: 'Tarikan hanya berisi baris CDE: tiket dikembalikan PIDE dan dibatalkan.',
-    5: 'Data sudah ditransfer tanpa baris identifikasi (hanya update atau residual).',
+    5: 'Data sudah ditransfer tanpa baris identifikasi (hanya baris update).',
     6: 'PIDE sudah merekam data di Oracle (tgl_load).',
     7: 'PIDE sudah merekam dan mentransfer data ke PMDE di Oracle.',
     8: 'Oracle melakukan rematch dan ada baris baru yang belum di-QC.',
@@ -155,6 +156,7 @@ def _preview_context(tiket, plan):
         if dikosongkan.get(field, None) != 0
     ]
 
+    penerima = notifikasi_penerima(tiket_pics)
     transitions = []
     for t in plan['transitions']:
         actions = []
@@ -178,6 +180,8 @@ def _preview_context(tiket, plan):
             'status_to_class': STATUS_BADGE_CLASSES.get(t['status_to'], 'bg-secondary'),
             'actions': actions,
             'notify_count': len(tiket_pics.get(TiketPIC.Role.P3DE, [])) if t['notify_p3de'] else 0,
+            'notify_title': t['notify'][0],
+            'notify_pic_count': len(penerima),
         })
 
     koreksi_actions = []
@@ -206,6 +210,7 @@ def _preview_context(tiket, plan):
         'koreksi_notify_count': (
             len(tiket_pics.get(TiketPIC.Role.P3DE, [])) if koreksi and koreksi['notify_p3de'] else 0
         ),
+        'status_manual_notify_count': len(penerima) if plan['notify_status_manual'] else 0,
         'koreksi_to_label': STATUS_LABELS.get(rules_from, '-'),
         'koreksi_to_class': STATUS_BADGE_CLASSES.get(rules_from, 'bg-secondary'),
         'fingerprint': _plan_fingerprint(plan),
@@ -228,7 +233,8 @@ class SinkronisasiTiketView(LoginRequiredMixin, UserPassesTestMixin, View):
 
     Side Effects on POST: exactly those of the bulk sync for this tiket - the
     Tiket fields and status, TiketAction records attributed to the tiket's
-    active PICs, P3DE notifications (Aturan 4) and a result CSV in sync_logs/.
+    active PICs, notifications to the active PIDE and PMDE PICs (and P3DE on
+    Aturan 4) and a result CSV in sync_logs/.
     On a cancelled tiket it also clears the tarikan counts a cancel left
     behind (KOLOM_TARIKAN_DIBATALKAN), even when Oracle has no row for it.
     Unlike the bulk sync it first corrects a tiket the sync cancelled

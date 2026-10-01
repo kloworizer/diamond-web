@@ -71,6 +71,10 @@ urlpatterns = [
     path('sync-tiket-update/download-errors/<str:sync_id>/', views.sync_tiket_update_download_errors, name='sync_tiket_update_download_errors'),
     path('sync-tiket-update/download-result/<str:operation_id>/', views.sync_tiket_update_download_result, name='sync_tiket_update_download_result'),
 
+    # Update PIC Tiket: isi PIC P3DE/PIDE/PMDE tiket yang kosong dari tabel PIC
+    path('update-pic-tiket/', views.update_pic_tiket_page, name='update_pic_tiket_page'),
+    path('update-pic-tiket/proses/', views.update_pic_tiket_proses, name='update_pic_tiket_proses'),
+
     # Sync Log Status
     path('sync-log-status/', views.sync_log_status, name='sync_log_status'),
     path('sync-log-status/download/<str:filename>/', views.sync_log_download, name='sync_log_download'),
