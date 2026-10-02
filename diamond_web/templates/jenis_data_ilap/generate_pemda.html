@@ -1,0 +1,579 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+    <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+            <h5 class="m-b-10">
+                <i class="feather-copy me-2"></i>Generate Jenis Data PD/PV
+            </h5>
+        </div>
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'jenis_data_ilap_list' %}">Jenis Data ILAP</a></li>
+            <li class="breadcrumb-item active">Generate PD/PV</li>
+        </ul>
+    </div>
+</div>
+
+<style>
+    .gen-card { border-radius: 12px; }
+    .gen-table-wrap { max-height: 60vh; overflow: auto; }
+    .gen-table-wrap thead th { position: sticky; top: 0; background: #fff; z-index: 1; }
+    .gen-table { table-layout: fixed; width: 100%; }
+    .gen-table th, .gen-table td {
+        white-space: normal; word-break: break-word; vertical-align: top; font-size: 12.5px;
+    }
+    .gen-table tr.row-warning td { background: #fffbeb; }
+    .variant-chip {
+        display: inline-block; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px;
+        padding: 2px 8px; font-size: 11.5px; margin: 4px 4px 0 0; cursor: pointer; color: #334155;
+    }
+    .variant-chip:hover { background: #e0f2fe; border-color: #bae6fd; }
+    .kode-rule code { font-size: 12px; }
+    /* A common kode is already at hundreds of ILAPs: scroll, don't push the table away. */
+    .gen-skip-list { max-height: 9.5rem; overflow-y: auto; }
+</style>
+
+<div class="main-content">
+    <div class="row">
+        <!-- FORM -->
+        <div class="col-xl-4 mb-4">
+            <div class="card shadow-sm border-0 gen-card">
+                <div class="card-body p-4">
+                    <div class="kode-rule text-muted small mb-4">
+                        Kode dibentuk dari kode ILAP + 4 digit kode jenis data:
+                        <code>PD001</code> + <code>41</code> = <code>PD00141</code> (ID Jenis Data),
+                        lalu + <code>01</code> = <code>PD0014101</code> (ID Sub Jenis Data).
+                        Hanya ILAP yang <strong>belum</strong> memiliki kode tersebut yang akan dibuat.
+                        Tersedia {{ total_ilap_pd }} ILAP Pemda (PD) dan {{ total_ilap_pv }} ILAP Provinsi (PV).
+                        {% if total_ilap_dikecualikan %}{{ total_ilap_dikecualikan }} ILAP PD/PV lain tidak diikutkan: yang namanya
+                        tidak mengandung Kabupaten/Kota/Provinsi, dan wilayah DKI Jakarta.{% endif %}
+                    </div>
+
+                    <form id="gen-form" autocomplete="off">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fw-semibold" for="gen-kode">Kode Jenis Data (4 digit)</label>
+                                <select class="form-select" id="gen-kode" name="kode"></select>
+                                <div class="form-text">Pilih kode yang sudah ada, atau ketik kode baru, mis. 9501.</div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold" for="gen-scope">Cakupan</label>
+                                <select class="form-select" id="gen-scope" name="scope">
+                                    <option value="ALL">Pemda &amp; Provinsi (PD + PV)</option>
+                                    <option value="PD">Pemda saja (PD)</option>
+                                    <option value="PV">Provinsi saja (PV)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="gen-kode-info" class="mt-3 p-3 rounded small" style="background:#f8fafc;" hidden></div>
+
+                        <hr class="my-4">
+
+                        <div class="small fw-semibold text-dark mb-2">Deskripsi (sama untuk semua yang dibuat)</div>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fw-semibold" for="gen-nama-jenis">Nama Jenis Data</label>
+                                <input type="text" class="form-control" id="gen-nama-jenis" name="nama_jenis_data" maxlength="255">
+                                <div data-variants="nama_jenis_data"></div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold" for="gen-nama-sub">Nama Sub Jenis Data</label>
+                                <input type="text" class="form-control" id="gen-nama-sub" name="nama_sub_jenis_data" maxlength="255">
+                                <div data-variants="nama_sub_jenis_data"></div>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label fw-semibold" for="gen-tabel-i">Nama Tabel I</label>
+                                <input type="text" class="form-control" id="gen-tabel-i" name="nama_tabel_I" maxlength="255">
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label fw-semibold" for="gen-tabel-u">Nama Tabel U</label>
+                                <input type="text" class="form-control" id="gen-tabel-u" name="nama_tabel_U" maxlength="255">
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label fw-semibold" for="gen-jenis-tabel">Jenis Tabel</label>
+                                <select class="form-select" id="gen-jenis-tabel" name="id_jenis_tabel">
+                                    <option value="">- Pilih -</option>
+                                    {% for jt in jenis_tabel_list %}<option value="{{ jt.pk }}">{{ jt.deskripsi }}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label fw-semibold" for="gen-status-data">Status Data</label>
+                                <select class="form-select" id="gen-status-data" name="id_status_data">
+                                    <option value="">- Kosong -</option>
+                                    {% for sd in status_data_list %}<option value="{{ sd.pk }}">{{ sd.deskripsi }}</option>{% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary" id="btn-preview">
+                                <i class="feather-eye me-1"></i><span>Pratinjau</span>
+                            </button>
+                            <a href="{% url 'jenis_data_ilap_list' %}" class="btn btn-light">Kembali</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- PREVIEW / RESULT -->
+        <div class="col-xl-8 mb-4">
+            <div class="card shadow-sm border-0 gen-card">
+                <div class="card-body p-4">
+                    <div id="gen-empty" class="text-center text-muted py-5">
+                        <i class="feather-list fs-3 d-block mb-2"></i>
+                        Pilih kode, lengkapi deskripsi, lalu klik <strong>Pratinjau</strong>.
+                        <div class="small mt-1">Belum ada data yang dibuat sampai Anda menekan tombol Buat.</div>
+                    </div>
+
+                    <!-- Preview -->
+                    <div id="gen-preview" hidden>
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+                            <div>
+                                <h6 class="fw-bold mb-1">Pratinjau - kode <span data-p-kode></span></h6>
+                                <div class="small d-flex flex-wrap gap-1">
+                                    <span class="badge bg-soft-success text-success" data-p-baru></span>
+                                    <span class="badge bg-soft-warning text-warning" data-p-peringatan></span>
+                                    <span class="badge bg-soft-secondary text-secondary" data-p-ada></span>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-success" id="btn-execute">
+                                <i class="feather-plus me-1"></i><span data-execute-label>Buat 0 jenis data</span>
+                            </button>
+                        </div>
+                        <div class="alert alert-warning small py-2" data-p-warning-note hidden>
+                            Baris berwarna kuning belum dicentang: ID Jenis Data-nya sudah dipakai ILAP tersebut dengan nama lain.
+                            Periksa dulu sebelum ikut dibuat.
+                        </div>
+                        <div class="alert alert-secondary small py-2" data-p-dikecualikan hidden>
+                            <div data-p-dikecualikan-title class="fw-semibold"></div>
+                            <ul class="mb-0 ps-3" data-p-dikecualikan-list></ul>
+                        </div>
+                        <div class="alert alert-light border small py-2" data-p-sudah-ada hidden>
+                            <div data-p-sudah-ada-title class="fw-semibold"></div>
+                            <ul class="mb-0 ps-3 gen-skip-list" data-p-sudah-ada-list></ul>
+                        </div>
+                        <div class="mb-2">
+                            <input type="search" class="form-control form-control-sm" id="gen-filter" placeholder="Cari ILAP atau kode di pratinjau...">
+                        </div>
+                        <div class="gen-table-wrap">
+                            <table class="table table-sm table-hover mb-0 gen-table" id="gen-preview-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:32px;"><input type="checkbox" class="form-check-input" id="gen-check-all" aria-label="Pilih semua yang tampil"></th>
+                                        <th style="width:34%;">ILAP</th>
+                                        <th style="width:26%;">Akan dibuat</th>
+                                        <th>Keterangan</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Result -->
+                    <div id="gen-result" hidden>
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+                            <div>
+                                <h6 class="fw-bold mb-1 text-success"><i class="feather-check-circle me-1"></i>Hasil Generate</h6>
+                                <div class="small" data-r-message></div>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a class="btn btn-outline-primary btn-sm" data-r-pic href="#"><i class="feather-users me-1"></i><span>Atur PIC kode ini</span></a>
+                                <button type="button" class="btn btn-light btn-sm" id="btn-again"><i class="feather-rotate-ccw me-1"></i><span>Generate lagi</span></button>
+                            </div>
+                        </div>
+                        <div class="gen-table-wrap">
+                            <table class="table table-sm table-hover mb-0 gen-table" id="gen-result-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:48px;">No</th>
+                                        <th style="width:30%;">ID Sub Jenis Data</th>
+                                        <th style="width:22%;">ID Jenis Data</th>
+                                        <th>ILAP</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm modal -->
+<div class="modal fade" id="genConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Konfirmasi Generate</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <div class="modal-body" data-confirm-body></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-success" id="btn-confirm-execute">Ya, buat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ generate_options|json_script:"generate-options" }}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const OPTIONS = JSON.parse(document.getElementById('generate-options').textContent);
+    const URLS = {
+        template: "{% url 'jenis_data_pemda_template' %}",
+        preview: "{% url 'jenis_data_pemda_preview' %}",
+        execute: "{% url 'jenis_data_pemda_execute' %}",
+        bulkPic: "{% url 'pic_bulk_pemda' %}",
+    };
+    const $form = $('#gen-form');
+    const $kode = $('#gen-kode');
+    const $scope = $('#gen-scope');
+    const $tbody = $('#gen-preview-table tbody');
+    let lastPreview = null;
+
+    function esc(value) {
+        return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    function showPanel(which) {
+        $('#gen-empty').prop('hidden', which !== 'empty');
+        $('#gen-preview').prop('hidden', which !== 'preview');
+        $('#gen-result').prop('hidden', which !== 'result');
+    }
+
+    // The form is taller than the screen, so the button that asked for a
+    // preview/result sits below where it appears: bring the panel into view.
+    // The page header stays pinned on scroll, so stop below it.
+    function revealPanel(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const card = el.closest('.card');
+        const header = document.querySelector('.page-header');
+        const offset = (header ? header.getBoundingClientRect().bottom : 0) + 16;
+        const top = card.getBoundingClientRect().top;
+        if (top < offset) {
+            window.scrollTo({ top: window.scrollY + top - offset, behavior: 'smooth' });
+        }
+    }
+
+    function resetPreview() {
+        lastPreview = null;
+        $tbody.empty();
+        if (!$('#gen-result').prop('hidden')) return; // keep a result on screen until asked
+        showPanel('empty');
+    }
+
+    // How many ILAPs in the chosen scope still lack the kode.
+    function belum(opt) {
+        const scope = $scope.val();
+        if (scope === 'PD') return opt.belum_PD;
+        if (scope === 'PV') return opt.belum_PV;
+        return opt.belum_PD + opt.belum_PV;
+    }
+
+    // Only kodes with something left to generate in the scope are offered; a
+    // kode every ILAP already carries would preview as "0 akan dibuat".
+    function buildKodeOptions() {
+        const scope = $scope.val();
+        const previous = $kode.val();
+        const known = {};
+        OPTIONS.kode.forEach(function (opt) { known[opt.kode] = opt; });
+        const excludedOnly = {};
+        OPTIONS.kode_dikecualikan.forEach(function (kode) { excludedOnly[kode] = true; });
+        const data = OPTIONS.kode
+            .filter(function (opt) { return belum(opt) > 0; })
+            .map(function (opt) {
+                const sisa = scope === 'ALL'
+                    ? 'PD ' + opt.belum_PD + ' | PV ' + opt.belum_PV
+                    : scope + ' ' + belum(opt);
+                return {
+                    id: opt.kode,
+                    text: opt.kode + ' - ' + (opt.nama || '(tanpa nama)') + '  [belum ada: ' + sisa + ']',
+                };
+            });
+        if ($kode.hasClass('select2-hidden-accessible')) $kode.select2('destroy');
+        $kode.empty().append(new Option('', '', false, false));
+        $kode.select2({
+            data: data, theme: 'bootstrap-5', width: '100%', allowClear: true,
+            placeholder: 'Cari atau ketik kode, mis. 4101',
+            tags: true,
+            createTag: function (params) {
+                const term = $.trim(params.term);
+                if (!/^\d{4}$/.test(term) || term.slice(0, 2) === '00' || term.slice(2) === '00') return null;
+                if (data.some(function (d) { return d.id === term; })) return null;
+                // A kode that exists but is complete in this scope is not new,
+                // nor is one that belongs only to excluded ILAPs.
+                if (known[term] || excludedOnly[term]) return null;
+                return { id: term, text: term + ' (kode baru)', newTag: true };
+            },
+            // Say why a typed kode is missing rather than offering it as a
+            // disabled tag - pressing Enter on one leaves select2 unable to
+            // filter the next search.
+            language: {
+                noResults: function () {
+                    const term = $.trim($('.select2-container--open .select2-search__field').val() || '');
+                    if (excludedOnly[term]) {
+                        return 'Kode ' + term + ' hanya dipakai ILAP yang dikecualikan (bukan Kabupaten/Kota/Provinsi, ' +
+                               'atau DKI Jakarta) - tidak bisa digenerate.';
+                    }
+                    if (known[term]) {
+                        return 'Kode ' + term + ' sudah ada di semua ILAP dalam cakupan - tidak ada yang bisa digenerate.';
+                    }
+                    return 'Tidak ada kode yang cocok. Ketik 4 digit untuk kode baru.';
+                },
+            },
+        });
+        // A kode still selectable in the new scope stays selected. One that is
+        // complete there is cleared, and that clearing is a real change.
+        const keep = previous && (data.some(function (d) { return d.id === previous; }) || !known[previous]);
+        if (keep) {
+            if (!$kode.find('option[value="' + previous + '"]').length) {
+                $kode.append(new Option(previous + ' (kode baru)', previous, true, true));
+            }
+            $kode.val(previous).trigger('change.select2');
+        } else {
+            $kode.val(null).trigger('change.select2');
+        }
+        return !!previous && !keep;
+    }
+
+    // Keep the dropdown's counts true after a generate, so a kode that is now
+    // complete stops being offered without reloading the page.
+    function recordCreated(res) {
+        let opt = OPTIONS.kode.find(function (o) { return o.kode === res.kode; });
+        if (!opt) {
+            opt = { kode: res.kode, nama: $('#gen-nama-sub').val().toUpperCase(), PD: 0, PV: 0,
+                    belum_PD: OPTIONS.total.PD, belum_PV: OPTIONS.total.PV };
+            OPTIONS.kode.push(opt);
+            OPTIONS.kode.sort(function (a, b) { return a.kode < b.kode ? -1 : 1; });
+        }
+        res.created.forEach(function (c) {
+            const prefix = c.id_sub_jenis_data.slice(0, 2);
+            opt[prefix] += 1;
+            opt['belum_' + prefix] = Math.max(opt['belum_' + prefix] - 1, 0);
+        });
+        buildKodeOptions();
+    }
+
+    function renderVariants(field, variants, current) {
+        const $box = $('[data-variants="' + field + '"]');
+        const others = (variants || []).filter(function (v) { return v.value !== current; });
+        if (!others.length) { $box.empty(); return; }
+        $box.html('<div class="form-text mb-0">Variasi yang sudah dipakai (klik untuk memakai):</div>' +
+            others.map(function (v) {
+                return '<span class="variant-chip" data-field="' + field + '" data-value="' + esc(v.value) + '">' +
+                    esc(v.value) + ' <span class="text-muted">(' + v.count + ')</span></span>';
+            }).join(''));
+    }
+
+    function loadTemplate() {
+        const kode = $kode.val();
+        const $info = $('#gen-kode-info');
+        if (!kode) { $info.prop('hidden', true); return; }
+        $.get(URLS.template, { kode: kode, scope: $scope.val() })
+            .done(function (res) {
+                const d = res.defaults;
+                $('#gen-nama-jenis').val(d.nama_jenis_data);
+                $('#gen-nama-sub').val(d.nama_sub_jenis_data);
+                $('#gen-tabel-i').val(d.nama_tabel_I);
+                $('#gen-tabel-u').val(d.nama_tabel_U);
+                $('#gen-jenis-tabel').val(d.id_jenis_tabel === '' ? '' : String(d.id_jenis_tabel));
+                $('#gen-status-data').val(d.id_status_data === '' ? '' : String(d.id_status_data));
+                renderVariants('nama_jenis_data', res.variants.nama_jenis_data, d.nama_jenis_data);
+                renderVariants('nama_sub_jenis_data', res.variants.nama_sub_jenis_data, d.nama_sub_jenis_data);
+                $info.html(res.kode_baru
+                    ? '<i class="feather-star me-1 text-primary"></i><strong>Kode baru</strong> - belum ada di PD/PV mana pun. ' +
+                      'Isi deskripsinya di bawah. Akan dibuat untuk ' + res.belum_ada_in_scope + ' ILAP.'
+                    : 'Sudah ada di <strong>' + res.sudah_ada_pd + '</strong> Pemda dan <strong>' + res.sudah_ada_pv +
+                      '</strong> Provinsi. Belum ada di <strong>' + res.belum_ada_in_scope + '</strong> dari ' +
+                      res.ilap_in_scope + ' ILAP dalam cakupan. Deskripsi di bawah diisi dari nilai yang paling sering dipakai.'
+                ).append(res.dikecualikan_in_scope
+                    ? '<div class="mt-1 text-muted">' + res.dikecualikan_in_scope +
+                      ' ILAP tidak diikutkan (bukan Kabupaten/Kota/Provinsi, atau DKI Jakarta).</div>'
+                    : ''
+                ).prop('hidden', false);
+            })
+            .fail(function (xhr) {
+                $info.prop('hidden', true);
+                showToast((xhr.responseJSON && xhr.responseJSON.message) || 'Gagal memuat data kode.', 'danger');
+            });
+    }
+
+    function selectedKeys() {
+        return $tbody.find('input[data-key]:checked').map(function () { return this.dataset.key; }).get();
+    }
+
+    function updateSelected() {
+        const n = selectedKeys().length;
+        $('[data-execute-label]').text('Buat ' + n + ' jenis data');
+        $('#btn-execute').prop('disabled', n === 0);
+        const $visible = $tbody.find('tr:visible input[data-key]');
+        $('#gen-check-all').prop('checked', $visible.length > 0 && $visible.filter(':checked').length === $visible.length);
+    }
+
+    function renderPreview(res) {
+        lastPreview = res;
+        $('[data-p-kode]').text($kode.val());
+        $('[data-p-baru]').text(res.total_baru + ' akan dibuat');
+        $('[data-p-peringatan]').text(res.total_peringatan + ' perlu dicek').toggle(res.total_peringatan > 0);
+        $('[data-p-ada]').text(res.total_sudah_ada + ' sudah ada (dilewati)');
+        $('[data-p-warning-note]').prop('hidden', res.total_peringatan === 0);
+        $('[data-p-dikecualikan]').prop('hidden', !res.dikecualikan.length);
+        $('[data-p-dikecualikan-title]').text(res.dikecualikan.length + ' ILAP tidak diikutkan:');
+        $('[data-p-dikecualikan-list]').html(res.dikecualikan.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join(''));
+        $('[data-p-sudah-ada]').prop('hidden', !res.sudah_ada.length);
+        $('[data-p-sudah-ada-title]').text(res.sudah_ada.length + ' ILAP sudah memiliki kode ini (dilewati):');
+        $('[data-p-sudah-ada-list]').html(res.sudah_ada.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('')).scrollTop(0);
+        $('#gen-filter').val('');
+        if (!res.rows.length) {
+            $tbody.html('<tr><td colspan="4" class="text-center text-muted py-4">Semua ILAP dalam cakupan sudah memiliki kode ini. Tidak ada yang perlu dibuat.</td></tr>');
+        } else {
+            $tbody.html(res.rows.map(function (row) {
+                const warn = row.status === 'peringatan';
+                return '<tr class="' + (warn ? 'row-warning' : '') + '" data-search="' +
+                        esc((row.id_ilap + ' ' + row.nama_ilap + ' ' + row.id_sub_jenis_data).toLowerCase()) + '">' +
+                    '<td><input type="checkbox" class="form-check-input" data-key="' + esc(row.key) + '"' + (warn ? '' : ' checked') + '></td>' +
+                    '<td><div class="fw-semibold">' + esc(row.id_ilap) + '</div><div>' + esc(row.nama_ilap) + '</div></td>' +
+                    '<td><div class="fw-semibold">' + esc(row.id_sub_jenis_data) + '</div>' +
+                        '<div class="small text-muted">Jenis: ' + esc(row.id_jenis_data) + '</div></td>' +
+                    '<td>' + (warn ? '<i class="feather-alert-triangle text-warning me-1"></i>' + esc(row.keterangan)
+                                   : '<span class="text-success">Baru</span>') + '</td>' +
+                '</tr>';
+            }).join(''));
+        }
+        showPanel('preview');
+        updateSelected();
+        revealPanel('gen-preview');
+    }
+
+    function runPreview() {
+        const $btn = $('#btn-preview').prop('disabled', true);
+        $.post(URLS.preview, $form.serialize())
+            .done(renderPreview)
+            .fail(function (xhr) {
+                showToast((xhr.responseJSON && xhr.responseJSON.message) || 'Pratinjau gagal.', 'danger');
+            })
+            .always(function () { $btn.prop('disabled', false); });
+    }
+
+    function renderResult(res) {
+        $('[data-r-message]').text(res.message);
+        $('[data-r-pic]').attr('href', URLS.bulkPic + '?tipe=P3DE&kode=' + encodeURIComponent(res.kode));
+        const $rt = $('#gen-result-table tbody');
+        $rt.html(res.created.length ? res.created.map(function (c, i) {
+            return '<tr><td>' + (i + 1) + '</td>' +
+                '<td><a href="' + esc(c.profil_url) + '" target="_blank" rel="noopener">' + esc(c.id_sub_jenis_data) + '</a></td>' +
+                '<td>' + esc(c.id_jenis_data) + '</td>' +
+                '<td>' + esc(c.id_ilap) + ' - ' + esc(c.nama_ilap) + '</td></tr>';
+        }).join('') : '<tr><td colspan="4" class="text-center text-muted py-4">Tidak ada yang dibuat.</td></tr>');
+        showPanel('result');
+        revealPanel('gen-result');
+    }
+
+    // select2 4.0 on jQuery 3.6 no longer focuses its search box when it
+    // opens, so typed characters go nowhere until the box is clicked.
+    $kode.on('select2:open', function () {
+        setTimeout(function () {
+            const field = document.querySelector('.select2-container--open .select2-search__field');
+            if (field) field.focus();
+        }, 0);
+    });
+
+    // --- Events -----------------------------------------------------------
+    $kode.on('change', function () { $('#gen-result').prop('hidden', true); resetPreview(); loadTemplate(); });
+    $scope.on('change', function () {
+        $('#gen-result').prop('hidden', true);
+        resetPreview();
+        if (buildKodeOptions()) {
+            showToast('Kode yang dipilih sudah ada di semua ILAP dalam cakupan ini. Pilih kode lain.', 'warning');
+        }
+        loadTemplate();
+    });
+    $form.on('input change', 'input[type=text], select:not(#gen-kode):not(#gen-scope)', function () { resetPreview(); });
+
+    $(document).on('click', '.variant-chip', function () {
+        const field = this.dataset.field;
+        $form.find('[name="' + field + '"]').val(this.dataset.value).trigger('change');
+    });
+
+    $form.on('submit', function (e) {
+        e.preventDefault();
+        if (!$kode.val()) { showToast('Pilih atau ketik kode jenis data terlebih dahulu.', 'warning'); return; }
+        $('#gen-result').prop('hidden', true);
+        runPreview();
+    });
+
+    $('#gen-filter').on('input', function () {
+        const term = this.value.trim().toLowerCase();
+        $tbody.find('tr[data-search]').each(function () {
+            this.hidden = term !== '' && this.dataset.search.indexOf(term) === -1;
+        });
+        updateSelected();
+    });
+
+    $('#gen-check-all').on('change', function () {
+        $tbody.find('tr:visible input[data-key]').prop('checked', this.checked);
+        updateSelected();
+    });
+    $tbody.on('change', 'input[data-key]', updateSelected);
+
+    $('#btn-execute').on('click', function () {
+        const n = selectedKeys().length;
+        if (!n || !lastPreview) return;
+        const warned = $tbody.find('tr.row-warning input[data-key]:checked').length;
+        let body = 'Anda akan membuat <strong>' + n + '</strong> jenis data baru dengan kode <strong>' +
+            esc($kode.val()) + '</strong>:<ul class="small mt-2 mb-0">' +
+            '<li>Nama Jenis Data: <strong>' + esc($('#gen-nama-jenis').val()) + '</strong></li>' +
+            '<li>Nama Sub Jenis Data: <strong>' + esc($('#gen-nama-sub').val()) + '</strong></li>' +
+            '<li>Jenis Tabel: <strong>' + esc($('#gen-jenis-tabel option:selected').text()) + '</strong></li></ul>';
+        if (warned) {
+            body += '<div class="alert alert-warning small mt-3 mb-0">' + warned +
+                ' di antaranya memakai ID Jenis Data yang sudah ada dengan nama lain.</div>';
+        }
+        $('[data-confirm-body]').html(body);
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('genConfirmModal')).show();
+    });
+
+    $('#btn-confirm-execute').on('click', function () {
+        const $btn = $(this).prop('disabled', true);
+        const data = $form.serializeArray();
+        selectedKeys().forEach(function (key) { data.push({ name: 'selected', value: key }); });
+        $.post(URLS.execute, $.param(data))
+            .done(function (res) {
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('genConfirmModal')).hide();
+                showToast(res.message, 'success');
+                lastPreview = null;
+                $tbody.empty();
+                recordCreated(res);
+                renderResult(res);
+            })
+            .fail(function (xhr) {
+                showToast((xhr.responseJSON && xhr.responseJSON.message) || 'Generate gagal.', 'danger');
+            })
+            .always(function () { $btn.prop('disabled', false); });
+    });
+
+    $('#btn-again').on('click', function () {
+        $('#gen-result').prop('hidden', true);
+        showPanel('empty');
+        loadTemplate();
+    });
+
+    buildKodeOptions();
+})();
+</script>
+{% endblock %}

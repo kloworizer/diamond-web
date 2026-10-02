@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+{% load auth_extras %}
+
+{% block title %}Ringkasan {{ seksi.label }} - Diamond Web{% endblock %}
+
+{% block content %}
+<style>
+    /* Drawn after the Beban Kerja table of Quality Control, so the two workload
+       tables of the app read alike: small type, tight cells, one hue per group
+       of columns carried from its band down to its figures, a hairline between
+       the groups, and every figure in tabular digits so a column can be read
+       down the page. */
+    .main-content {
+        --rs-blue: #00BDFB;
+        --rs-blue-soft: rgba(0, 189, 251, 0.10);
+        --rs-blue-ink: #0b7fa8;
+        --rs-teal: #3dc7be;
+        --rs-teal-soft: rgba(61, 199, 190, 0.12);
+        --rs-teal-ink: #1d8b84;
+        --rs-purple: #6f42c1;
+        --rs-purple-soft: rgba(111, 66, 193, 0.12);
+        --rs-purple-ink: #5a34a0;
+        --rs-red: #ea4d4d;
+        --rs-red-soft: rgba(234, 77, 77, 0.12);
+        --rs-red-ink: #c02c2c;
+        --rs-slate: #64748b;
+        --rs-slate-soft: rgba(100, 116, 139, 0.10);
+        --rs-slate-ink: #475569;
+    }
+
+    .rs-g-ilap { --rs-hue: var(--rs-blue); --rs-hue-soft: var(--rs-blue-soft); --rs-hue-ink: var(--rs-blue-ink); }
+    .rs-g-jenis { --rs-hue: var(--rs-teal); --rs-hue-soft: var(--rs-teal-soft); --rs-hue-ink: var(--rs-teal-ink); }
+    .rs-g-tabel { --rs-hue: var(--rs-purple); --rs-hue-soft: var(--rs-purple-soft); --rs-hue-ink: var(--rs-purple-ink); }
+    .rs-g-tiket { --rs-hue: var(--rs-slate); --rs-hue-soft: var(--rs-slate-soft); --rs-hue-ink: var(--rs-slate-ink); }
+    /* Prioritas sits inside its group but in red, the colour the app marks
+       urgency in — the same way Quality Control sets its prioritas queue. */
+    .rs-table .rs-prioritas { --rs-hue: var(--rs-red); --rs-hue-soft: var(--rs-red-soft); --rs-hue-ink: var(--rs-red-ink); }
+
+    .rs-table {
+        font-size: 12px;
+        margin-bottom: 0;
+    }
+
+    /* Scoped by id: the theme pads every cell of a .table-responsive table
+       15px, and 30px at either end of a row, with selectors a class alone does
+       not outrank. */
+    #rs-table > :not(caption) > * > * {
+        padding: 5px 6px;
+    }
+
+    #rs-table > :not(caption) > * > *:first-child {
+        padding-left: 12px;
+    }
+
+    #rs-table > :not(caption) > * > *:last-child {
+        padding-right: 12px;
+    }
+
+    .rs-table thead th {
+        font-weight: 600;
+        color: #64748b;
+        background-color: #f8fafc;
+        border-bottom: 1px solid #ebeff4;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    /* The band naming each group, washed in its hue. */
+    .rs-table thead th.rs-band {
+        text-align: center;
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--rs-hue-ink);
+        background-color: var(--rs-hue-soft);
+    }
+
+    .rs-table thead th.rs-band .rs-dot {
+        background-color: var(--rs-hue);
+    }
+
+    /* The columns under a band: set to the right like their figures, and over
+       as many lines as the label needs so a narrow column stays narrow. */
+    /* Sentence case and free to wrap, so a column is as wide as its figures
+       rather than as its label — the theme's uppercase, letter-spaced header
+       held every column of this table open to twice what its numbers need. */
+    #rs-table thead th.rs-sub {
+        text-align: right;
+        font-size: 10px;
+        text-transform: none;
+        letter-spacing: 0;
+        line-height: 1.25;
+        white-space: normal;
+        vertical-align: bottom;
+        color: var(--rs-hue-ink);
+    }
+
+    #rs-table thead th.rs-band {
+        white-space: normal;
+        line-height: 1.25;
+    }
+
+    .rs-table .rs-group-start {
+        border-left: 1px solid #ebeff4;
+    }
+
+    .rs-dot {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        margin-right: 5px;
+        vertical-align: middle;
+    }
+
+    .rs-table .rs-name {
+        text-align: left;
+        white-space: nowrap;
+        max-width: 170px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .rs-table tbody td {
+        color: #1e293b;
+        border-bottom: 1px solid #f5f7fa;
+        vertical-align: middle;
+    }
+
+    .rs-table tbody td.rs-name {
+        font-weight: 500;
+    }
+
+    .rs-table .rs-num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .rs-table tbody tr:hover td {
+        background-color: #f8fafc;
+    }
+
+    /* A figure in its group's hue; a zero muted, since colour is what says
+       there is something here. */
+    .rs-value {
+        color: var(--rs-hue-ink);
+        font-weight: 500;
+    }
+
+    .rs-zero {
+        color: #cbd5e1;
+    }
+
+    /* The seksi as a whole, set apart from the people above it. */
+    .rs-table tfoot td {
+        font-weight: 600;
+        font-size: 12.5px;
+        background-color: #f8fafc;
+        border-top: 1px solid #c9d3e0;
+        padding-top: 7px !important;
+        padding-bottom: 7px !important;
+    }
+
+    .rs-table tfoot td.rs-num {
+        background-color: var(--rs-hue-soft);
+    }
+
+    .rs-table tfoot td.rs-name {
+        color: #0f172a;
+        cursor: help;
+    }
+
+    .rs-empty {
+        text-align: center !important;
+        color: #94a3b8;
+        padding: 24px 10px !important;
+    }
+
+    /* Sorting, as on the Beban Kerja table: a faint caret on every sortable
+       header, solid on the one the rows are ordered by. */
+    .rs-table th[data-sort] {
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .rs-table th[data-sort]:hover {
+        color: #0c92ff;
+    }
+
+    .rs-table th[data-sort]::after {
+        content: '\2195';
+        margin-left: 4px;
+        font-size: 9px;
+        color: #cbd5e1;
+    }
+
+    .rs-table th.rs-sort-asc::after {
+        content: '\25B2';
+        color: #0c92ff;
+    }
+
+    .rs-table th.rs-sort-desc::after {
+        content: '\25BC';
+        color: #0c92ff;
+    }
+
+</style>
+
+<div class="page-header">
+    <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+            <h5 class="m-b-10"><i class="feather-users me-2"></i>Ringkasan {{ seksi.label }}</h5>
+        </div>
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'profil_ilap_list' %}">Profil ILAP</a></li>
+            <li class="breadcrumb-item active">{{ seksi.label }}</li>
+        </ul>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="card stretch stretch-full">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="feather-users me-2"></i>Pegawai {{ seksi.label }}
+                <span class="badge bg-soft-primary text-primary ms-2">{{ rows|length }}</span>
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table rs-table mb-0" id="rs-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" class="rs-name" data-sort="0" data-sort-text>Nama PIC</th>
+                            <th colspan="{{ wilayah_labels|length|add:1 }}" class="rs-band rs-g-ilap rs-group-start"><span class="rs-dot"></span>ILAP</th>
+                            <th rowspan="2" class="rs-band rs-g-jenis rs-group-start rs-band-single" data-sort="5"><span class="rs-dot"></span>Sub Jenis<br>Data</th>
+                            <th colspan="2" class="rs-band rs-g-tabel rs-group-start"><span class="rs-dot"></span>Nama Tabel</th>
+                            <th colspan="{{ status_columns|length|add:1 }}" class="rs-band rs-g-tiket rs-group-start"><span class="rs-dot"></span>Tiket</th>
+                        </tr>
+                        {% comment %}
+                        `data-sort` is the index of the cell the column sorts on,
+                        counting the name as 0.
+                        {% endcomment %}
+                        <tr>
+                            <th class="rs-sub rs-g-ilap rs-group-start" data-sort="1">Jml</th>
+                            {% for label in wilayah_labels %}
+                            <th class="rs-sub rs-g-ilap" data-sort="{{ forloop.counter|add:1 }}">{{ label }}</th>
+                            {% endfor %}
+                            <th class="rs-sub rs-g-tabel rs-group-start" data-sort="6">Jml</th>
+                            <th class="rs-sub rs-g-tabel rs-prioritas" data-sort="7" title="Nama tabel tujuan Data Prioritas tahun {{ tahun }}">Prioritas<br>{{ tahun }}</th>
+                            <th class="rs-sub rs-g-tiket rs-group-start" data-sort="8">Jml</th>
+                            {% for status in status_columns %}
+                            <th class="rs-sub rs-g-tiket" data-sort="{{ forloop.counter|add:8 }}" title="{{ status.label }}">
+                                <span class="rs-dot {{ status.dot_class }}"></span>{% for line in status.lines %}{% if not forloop.first %}<br>{% endif %}{{ line }}{% endfor %}
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                        <tr>
+                            <td class="rs-name" data-value="{{ row.nama|lower }}" title="{{ row.nama }} (@{{ row.user.username }})">{% pic_name_link row.user label=row.nama %}</td>
+                            {% include "profil_seksi/_cell.html" with value=row.ilap group="ilap" start=True %}
+                            {% for jumlah in row.ilap_wilayah %}
+                            {% include "profil_seksi/_cell.html" with value=jumlah group="ilap" %}
+                            {% endfor %}
+                            {% include "profil_seksi/_cell.html" with value=row.jenis_data group="jenis" start=True %}
+                            {% include "profil_seksi/_cell.html" with value=row.nama_tabel group="tabel" start=True %}
+                            {% include "profil_seksi/_cell.html" with value=row.nama_tabel_prioritas group="tabel" extra="rs-prioritas" %}
+                            {% include "profil_seksi/_cell.html" with value=row.tiket group="tiket" start=True %}
+                            {% for jumlah in row.tiket_status %}
+                            {% include "profil_seksi/_cell.html" with value=jumlah group="tiket" %}
+                            {% endfor %}
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td class="rs-empty" colspan="{{ status_columns|length|add:9 }}">Belum ada pegawai aktif di {{ seksi.label }}.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    {% if rows %}
+                    {% comment %}
+                    Each thing counted once for the seksi, however many of its
+                    people hold it — so the foot is not the sum of the rows.
+                    {% endcomment %}
+                    <tfoot>
+                        <tr>
+                            <td class="rs-name" title="Setiap ILAP, sub jenis data, nama tabel dan tiket dihitung sekali untuk seluruh seksi, sehingga bukan penjumlahan baris di atas">Total Seksi</td>
+                            {% include "profil_seksi/_cell.html" with value=total.ilap group="ilap" start=True %}
+                            {% for jumlah in total.ilap_wilayah %}
+                            {% include "profil_seksi/_cell.html" with value=jumlah group="ilap" %}
+                            {% endfor %}
+                            {% include "profil_seksi/_cell.html" with value=total.jenis_data group="jenis" start=True %}
+                            {% include "profil_seksi/_cell.html" with value=total.nama_tabel group="tabel" start=True %}
+                            {% include "profil_seksi/_cell.html" with value=total.nama_tabel_prioritas group="tabel" extra="rs-prioritas" %}
+                            {% include "profil_seksi/_cell.html" with value=total.tiket group="tiket" start=True %}
+                            {% for jumlah in total.tiket_status %}
+                            {% include "profil_seksi/_cell.html" with value=jumlah group="tiket" %}
+                            {% endfor %}
+                        </tr>
+                    </tfoot>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        // The rows arrive sorted by name, which is the order the table opens
+        // in. A header click re-sorts them where they are: a figure column
+        // opens largest first, the name A to Z, and a second click reverses.
+        const table = document.getElementById('rs-table');
+        if (!table) return;
+        const body = table.tBodies[0];
+        let current = { col: 0, desc: false };
+
+        function valueOf(row, col, asText) {
+            const raw = row.cells[col].getAttribute('data-value') || '';
+            return asText ? raw : Number(raw);
+        }
+
+        function mark() {
+            table.querySelectorAll('th[data-sort]').forEach(function (th) {
+                const on = Number(th.getAttribute('data-sort')) === current.col;
+                th.classList.toggle('rs-sort-asc', on && !current.desc);
+                th.classList.toggle('rs-sort-desc', on && current.desc);
+            });
+        }
+
+        table.querySelectorAll('th[data-sort]').forEach(function (th) {
+            th.addEventListener('click', function () {
+                const col = Number(th.getAttribute('data-sort'));
+                const asText = th.hasAttribute('data-sort-text');
+                current = col === current.col
+                    ? { col: col, desc: !current.desc }
+                    : { col: col, desc: !asText };
+                const rows = Array.from(body.rows).filter(function (row) {
+                    return row.cells.length > 1;
+                });
+                rows.sort(function (a, b) {
+                    const x = valueOf(a, col, asText);
+                    const y = valueOf(b, col, asText);
+                    let order = asText ? x.localeCompare(y) : x - y;
+                    // Ties fall back to the name, so equal figures stay in A-Z.
+                    if (order === 0 && col !== 0) {
+                        return valueOf(a, 0, true).localeCompare(valueOf(b, 0, true));
+                    }
+                    return current.desc ? -order : order;
+                });
+                rows.forEach(function (row) { body.appendChild(row); });
+                mark();
+            });
+        });
+        mark();
+    })();
+</script>
+{% endblock %}

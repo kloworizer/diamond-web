@@ -16,6 +16,7 @@ from diamond_web.models import (
 from diamond_web.tests.conftest import (
     ILAPFactory,
     JenisDataILAPFactory,
+    JenisPrioritasDataFactory,
     KategoriILAPFactory,
     KategoriWilayahFactory,
     KPPFactory,
@@ -351,6 +352,187 @@ class TestProfilILAPSummarySync:
         assert set(narrowed['cells']) == set(full['cells'])
         assert set(narrowed['column_totals']) == set(full['column_totals'])
         assert narrowed['grand_total'] == 1
+
+
+@pytest.mark.django_db
+class TestProfilILAPTabelData:
+    """Daftar Tabel: the bank data tables fed by the ILAPs Daftar ILAP lists."""
+
+    def _payload(self, client, **params):
+        client.force_login(UserFactory())
+        resp = client.get(reverse('profil_ilap_tabel_data'), params)
+        assert resp.status_code == 200
+        return resp.json()
+
+    def _rows(self, client, **params):
+        return {
+            row['DT_RowAttr']['data-href']: row
+            for row in self._payload(client, **params)['data']
+        }
+
+    def _feed(self, ilap, nama_tabel, id_sub_jenis_data, nama='Data Uji', tikets=0,
+              nama_tabel_U=None):
+        jenis_data = JenisDataILAPFactory(
+            id_ilap=ilap,
+            id_sub_jenis_data=id_sub_jenis_data,
+            nama_sub_jenis_data=nama,
+            nama_tabel_I=nama_tabel,
+            nama_tabel_U=nama_tabel_U or f'{nama_tabel}_U',
+        )
+        if tikets:
+            periode = PeriodeJenisDataFactory(id_sub_jenis_data_ilap=jenis_data)
+            # The prioritas of a tiket would otherwise bring its own sub jenis
+            # data, and with it a table this catalogue does not hold.
+            prioritas = JenisPrioritasDataFactory(id_sub_jenis_data_ilap=jenis_data)
+            for _ in range(tikets):
+                TiketFactory(id_periode_data=periode, id_jenis_prioritas_data=prioritas)
+        return jenis_data
+
+    def _catalogue(self, client):
+        """Two tables: one fed by three ILAPs across both kategori, one by one.
+
+        Returns the kategori wilayah ``Wilayah Nasional``.
+        """
+        _, _, nasional, _ = _crosstab(client)
+        aa_1, aa_2, aa_regional, bb = (
+            ILAP.objects.get(nama_ilap=nama) for nama in
+            ('AA Nasional 1', 'AA Nasional 2', 'AA Regional', 'BB Regional')
+        )
+        self._feed(aa_1, 'TBL_SHARED', 'AA0014101', 'Data Hotel', tikets=2)
+        self._feed(aa_2, 'TBL_SHARED', 'AA0024101', 'Data Hotel', tikets=1)
+        self._feed(bb, 'TBL_SHARED', 'BB0015701', 'Data TDUP', tikets=3)
+        self._feed(aa_regional, 'TBL_SOLO', 'AA0030101', 'Data Solo')
+        return nasional
+
+    def test_login_required(self, client):
+        resp = client.get(reverse('profil_ilap_tabel_data'))
+        assert resp.status_code == 302
+
+    def test_one_row_per_nama_tabel_with_its_counts(self, client):
+        self._catalogue(client)
+        payload = self._payload(client)
+        assert payload['recordsTotal'] == 2
+        rows = self._rows(client)
+        shared = rows[reverse('nama_tabel_detail', args=['TBL_SHARED'])]
+        assert shared['jumlah_ilap'] == 3
+        assert shared['jumlah_tiket'] == 6
+        assert 'TBL_SHARED_U' in shared['nama_tabel_U']
+        solo = rows[reverse('nama_tabel_detail', args=['TBL_SOLO'])]
+        assert (solo['jumlah_ilap'], solo['jumlah_tiket']) == (1, 0)
+
+    def test_row_links_to_the_nama_tabel_page(self, client):
+        self._catalogue(client)
+        url = reverse('nama_tabel_detail', args=['TBL_SOLO'])
+        row = self._rows(client)[url]
+        assert f'href="{url}"' in row['nama_tabel_I']
+
+    def test_sub_jenis_data_are_collapsed_by_name_with_their_kode(self, client):
+        self._catalogue(client)
+        cell = self._rows(client)[
+            reverse('nama_tabel_detail', args=['TBL_SHARED'])
+        ]['sub_jenis_data']
+        # Data Hotel stands for two sub jenis data sharing kode 4101.
+        assert '<span class="tabel-chip-kode">4101</span>Data Hotel' in cell
+        assert '&times;2' in cell
+        assert '<span class="tabel-chip-kode">5701</span>Data TDUP' in cell
+
+    def test_long_sub_jenis_data_lists_are_summarised(self, client):
+        ilap = ILAPFactory()
+        for i in range(5):
+            self._feed(ilap, 'TBL_BANYAK', f'XX00{i}{i}{i}{i}{i}', f'Data {i}')
+        cell = self._payload(client)['data'][0]['sub_jenis_data']
+        assert cell.count('class="tabel-chip"') == 3
+        assert '+2 lainnya' in cell
+
+    def test_a_summary_selection_narrows_the_tables_and_their_counts(self, client):
+        self._catalogue(client)
+        rows = self._rows(client, summary_kategori='BB')
+        assert list(rows) == [reverse('nama_tabel_detail', args=['TBL_SHARED'])]
+        shared = next(iter(rows.values()))
+        assert (shared['jumlah_ilap'], shared['jumlah_tiket']) == (1, 3)
+        assert 'Data Hotel' not in shared['sub_jenis_data']
+
+    def test_the_wilayah_selection_is_followed_too(self, client):
+        nasional = self._catalogue(client)
+        rows = self._rows(client, summary_wilayah=str(nasional.id))
+        shared = rows[reverse('nama_tabel_detail', args=['TBL_SHARED'])]
+        assert (shared['jumlah_ilap'], shared['jumlah_tiket']) == (2, 3)
+        assert reverse('nama_tabel_detail', args=['TBL_SOLO']) not in rows
+
+    def test_the_daftar_ilap_search_boxes_are_followed(self, client):
+        self._catalogue(client)
+        rows = self._rows(client, **{'columns[2][search][value]': 'AA Regional'})
+        assert list(rows) == [reverse('nama_tabel_detail', args=['TBL_SOLO'])]
+
+    def test_own_search_keeps_every_sub_jenis_data_of_a_matching_table(self, client):
+        self._catalogue(client)
+        payload = self._payload(client, tabel_search='tdup')
+        assert (payload['recordsTotal'], payload['recordsFiltered']) == (2, 1)
+        row = payload['data'][0]
+        assert row['jumlah_ilap'] == 3
+        assert 'Data Hotel' in row['sub_jenis_data']
+
+    def test_blank_nama_tabel_is_left_out(self, client):
+        self._feed(ILAPFactory(), '', 'XX0019999', nama_tabel_U='')
+        assert self._payload(client)['recordsTotal'] == 0
+
+    def test_ordering_by_jumlah_tiket(self, client):
+        self._catalogue(client)
+        data = self._payload(
+            client, **{'order[0][column]': '5', 'order[0][dir]': 'desc'}
+        )['data']
+        assert [row['jumlah_tiket'] for row in data] == [6, 0]
+
+    def test_jumlah_sub_jenis_data_counts_distinct_kodes(self, client):
+        """Two sub jenis data share kode 4101, the third is 5701: two kodes."""
+        self._catalogue(client)
+        rows = self._rows(client)
+        shared = rows[reverse('nama_tabel_detail', args=['TBL_SHARED'])]
+        assert shared['jumlah_sub_jenis_data'] == 2
+        solo = rows[reverse('nama_tabel_detail', args=['TBL_SOLO'])]
+        assert solo['jumlah_sub_jenis_data'] == 1
+
+    def test_ordering_by_jumlah_sub_jenis_data(self, client):
+        self._catalogue(client)
+        data = self._payload(
+            client, **{'order[0][column]': '3', 'order[0][dir]': 'asc'}
+        )['data']
+        assert [row['jumlah_sub_jenis_data'] for row in data] == [1, 2]
+
+    def test_a_clicked_ilap_narrows_to_the_tables_it_feeds(self, client):
+        self._catalogue(client)
+        bb = ILAP.objects.get(nama_ilap='BB Regional')
+        payload = self._payload(client, ilap=bb.id_ilap)
+        assert payload['recordsTotal'] == 1
+        row = payload['data'][0]
+        assert row['DT_RowAttr']['data-href'] == reverse(
+            'nama_tabel_detail', args=['TBL_SHARED']
+        )
+        assert (row['jumlah_sub_jenis_data'], row['jumlah_ilap'], row['jumlah_tiket']) == (1, 1, 3)
+        assert 'Data Hotel' not in row['sub_jenis_data']
+
+    def test_a_clicked_ilap_outside_the_filters_matches_nothing(self, client):
+        self._catalogue(client)
+        bb = ILAP.objects.get(nama_ilap='BB Regional')
+        payload = self._payload(client, ilap=bb.id_ilap, summary_kategori='AA')
+        assert payload['recordsTotal'] == 0
+
+    def test_a_clicked_ilap_leaves_daftar_ilap_alone(self, client):
+        """The pick narrows Daftar Tabel only, not the list it was made in."""
+        self._catalogue(client)
+        bb = ILAP.objects.get(nama_ilap='BB Regional')
+        client.force_login(UserFactory())
+        payload = client.get(
+            reverse('profil_ilap_list'), {'format': 'json', 'ilap': bb.id_ilap}
+        ).json()
+        assert payload['recordsFiltered'] == 4
+
+    def test_page_renders_the_daftar_tabel_below_the_daftar_ilap(self, client):
+        client.force_login(UserFactory())
+        html = client.get(reverse('profil_ilap_list')).content.decode()
+        assert html.index('id="ilap-summary-table"') < html.index('id="profil-ilap-table"')
+        assert html.index('id="profil-ilap-table"') < html.index('id="profil-ilap-tabel-table"')
+        assert reverse('profil_ilap_tabel_data') in html
 
 
 def _bundle(periode_penerimaan, extra_tikets=0, start_date=None, end_date=None,
@@ -1256,16 +1438,19 @@ class TestNavbarSearchNomorTiket:
             reverse('navbar_search'), {'q': tiket.nomor_tiket}
         ).json() == {'match': None, 'suggestions': []}
 
-    def test_other_admin_role_gets_no_match(self, client):
-        """admin_pide/admin_pmde are not P3DE administrators."""
+    @pytest.mark.parametrize('group_name', ['admin_pide', 'admin_pmde'])
+    def test_other_admin_role_resolves_tiket_read_only(self, client, group_name):
+        """admin_pide/admin_pmde may open any tiket, but are not P3DE administrators."""
         user = UserFactory()
-        group, _ = Group.objects.get_or_create(name='admin_pide')
+        group, _ = Group.objects.get_or_create(name=group_name)
         user.groups.add(group)
         tiket = self._tiket_of_another_pic()
         client.force_login(user)
-        assert client.get(
-            reverse('navbar_search'), {'q': tiket.nomor_tiket}
-        ).json() == {'match': None, 'suggestions': []}
+        payload = client.get(reverse('navbar_search'), {'q': tiket.nomor_tiket}).json()
+        assert payload['url'] == reverse('tiket_detail', args=[tiket.pk])
+        resp = client.get(payload['url'])
+        assert resp.status_code == 200
+        assert resp.context['user_can_edit_tiket'] is False
 
     def test_partial_nomor_tiket_is_not_matched(self, client, p3de_admin_user):
         """Only exact matches resolve; partial terms fall through as before.

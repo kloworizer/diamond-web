@@ -35,6 +35,9 @@ urlpatterns = [
     # shadows it.
     path('profil-pic/<str:username>/tikets/', views.profil_pic_tiket_data, name='profil_pic_tiket_data'),
     path('profil-pic/<str:username>/', views.ProfilPICDetailView.as_view(), name='profil_pic_detail'),
+    # Ringkasan Seksi: one row of Profil PIC figures per person of a PDE seksi,
+    # reached from the seksi names of the Profil PDE directory.
+    path('profil-seksi/<str:kode>/', views.ProfilSeksiDetailView.as_view(), name='profil_seksi_detail'),
     path('sync-data-referensi/', views.oracle_sync_page, name='oracle_sync_page'),
     path('sync-data-referensi/test/', views.oracle_sync_test_connection, name='oracle_sync_test'),
     path('sync-data-referensi/check/', views.oracle_sync_check, name='oracle_sync_check'),
@@ -68,6 +71,10 @@ urlpatterns = [
     path('sync-tiket-update/download-errors/<str:sync_id>/', views.sync_tiket_update_download_errors, name='sync_tiket_update_download_errors'),
     path('sync-tiket-update/download-result/<str:operation_id>/', views.sync_tiket_update_download_result, name='sync_tiket_update_download_result'),
 
+    # Update PIC Tiket: isi PIC P3DE/PIDE/PMDE tiket yang kosong dari tabel PIC
+    path('update-pic-tiket/', views.update_pic_tiket_page, name='update_pic_tiket_page'),
+    path('update-pic-tiket/proses/', views.update_pic_tiket_proses, name='update_pic_tiket_proses'),
+
     # Sync Log Status
     path('sync-log-status/', views.sync_log_status, name='sync_log_status'),
     path('sync-log-status/download/<str:filename>/', views.sync_log_download, name='sync_log_download'),
@@ -92,6 +99,8 @@ urlpatterns = [
     path('ilap/<str:pk>/delete/', views.ILAPDeleteView.as_view(), name='ilap_delete'),
     # Profil ILAP URLs
     path('profil-ilap/', views.ProfilILAPListView.as_view(), name='profil_ilap_list'),
+    # Declared ahead of the <str:id_ilap> pattern below, which would take it.
+    path('profil-ilap/daftar-tabel/', views.profil_ilap_tabel_data, name='profil_ilap_tabel_data'),
     path('profil-ilap/<str:id_ilap>/jenis-data/', views.profil_ilap_jenis_data_data, name='profil_ilap_jenis_data_data'),
     path('profil-ilap/<str:id_ilap>/', views.ProfilILAPDetailView.as_view(), name='profil_ilap_detail'),
     # Jenis Tabel URLs
@@ -168,6 +177,10 @@ urlpatterns = [
     path('jenis-data/sub/existing/', views.get_existing_sub_jenis_data, name='get_existing_sub_jenis_data'),
     path('jenis-data/sub/next/', views.get_next_sub_jenis_id, name='get_next_sub_jenis_id'),
     path('jenis-data-ilap/create/', views.JenisDataILAPCreateView.as_view(), name='jenis_data_ilap_create'),
+    path('jenis-data-ilap/generate-pemda/', views.JenisDataPemdaGenerateView.as_view(), name='jenis_data_pemda_generate'),
+    path('jenis-data-ilap/generate-pemda/template/', views.jenis_data_pemda_template, name='jenis_data_pemda_template'),
+    path('jenis-data-ilap/generate-pemda/preview/', views.jenis_data_pemda_preview, name='jenis_data_pemda_preview'),
+    path('jenis-data-ilap/generate-pemda/execute/', views.jenis_data_pemda_execute, name='jenis_data_pemda_execute'),
     path('jenis-data-ilap/<int:pk>/update/', views.JenisDataILAPUpdateView.as_view(), name='jenis_data_ilap_update'),
     path('jenis-data-ilap/<int:pk>/delete/', views.JenisDataILAPDeleteView.as_view(), name='jenis_data_ilap_delete'),
     path('jenis-data-ilap/<int:pk>/info/', views.jenis_data_ilap_info_ajax, name='jenis_data_ilap_info_ajax'),
@@ -197,6 +210,10 @@ urlpatterns = [
     # Unified PIC URLs
     path('pic/', views.UnifiedPICListView.as_view(), name='pic_unified_list'),
     path('pic/matrix-data/', views.pic_matrix_data, name='pic_matrix_data'),
+    path('pic/bulk-pemda/', views.PICBulkPemdaView.as_view(), name='pic_bulk_pemda'),
+    path('pic/bulk-pemda/holders/', views.pic_bulk_pemda_holders, name='pic_bulk_pemda_holders'),
+    path('pic/bulk-pemda/preview/', views.pic_bulk_pemda_preview, name='pic_bulk_pemda_preview'),
+    path('pic/bulk-pemda/execute/', views.pic_bulk_pemda_execute, name='pic_bulk_pemda_execute'),
     
     # PIC P3DE URLs
     path('pic-p3de/', views.PICP3DEListView.as_view(), name='pic_p3de_list'), # Kept for redirect/legacy
@@ -418,5 +435,10 @@ urlpatterns = [
     path('tiket/<int:pk>/selesaikan/', views.SelesaikanTiketView.as_view(), name='selesaikan_tiket'),
     path('tiket/<int:pk>/special-request/', views.SpecialRequestView.as_view(), name='special_request_tiket'),
     path('tiket/<int:pk>/edit/', views.EditTiketView.as_view(), name='edit_tiket'),
+    path('tiket/<int:pk>/sinkronisasi/', views.SinkronisasiTiketView.as_view(), name='sinkronisasi_tiket'),
+    # Kelola PIC Tiket: admin seksi mengatur PIC satu tiket tanpa menyentuh tabel PIC
+    path('tiket/<int:pk>/pic/tambah/', views.TambahPICTiketView.as_view(), name='tiket_pic_tambah'),
+    path('tiket/<int:pk>/pic/<int:pic_pk>/ubah/', views.UbahPICTiketView.as_view(), name='tiket_pic_ubah'),
+    path('tiket/<int:pk>/pic/<int:pic_pk>/hapus/', views.HapusPICTiketView.as_view(), name='tiket_pic_hapus'),
 
 ]

@@ -46,6 +46,7 @@ from ..utils.pic_profil import (
 __all__ = [
     'ProfilPICDetailView',
     'build_seksi_directory',
+    'build_seksi_staff',
     'profil_pic_tiket_data',
 ]
 
@@ -102,19 +103,35 @@ def build_seksi_directory():
         the workflow moves through them; each user is ``{'user', 'nama'}``,
         sorted by the name the entry shows.
     """
-    columns = []
-    for seksi in PDE_SEKSI:
-        users = User.objects.filter(
-            groups__name=seksi['user_group'], is_active=True, is_superuser=False
-        ).distinct()
-        entries = [{'user': user, 'nama': pic_display_name(user)} for user in users]
-        entries.sort(key=lambda entry: entry['nama'].lower())
-        columns.append({
+    return [
+        {
             'kode': seksi['kode'],
             'label': seksi['label'],
-            'users': entries,
-        })
-    return columns
+            'users': build_seksi_staff(seksi),
+        }
+        for seksi in PDE_SEKSI
+    ]
+
+
+def build_seksi_staff(seksi):
+    """Return the active staff of `seksi`, sorted by the name each entry shows.
+
+    One column of :func:`build_seksi_directory`, and the rows of the Ringkasan
+    Seksi page, so the two agree on who works in a seksi.
+
+    Args:
+        seksi (dict): An entry of
+            :data:`~diamond_web.utils.pic_profil.PDE_SEKSI`.
+
+    Returns:
+        list: ``{'user', 'nama'}`` dicts, by name ascending.
+    """
+    users = User.objects.filter(
+        groups__name=seksi['user_group'], is_active=True, is_superuser=False
+    ).distinct()
+    entries = [{'user': user, 'nama': pic_display_name(user)} for user in users]
+    entries.sort(key=lambda entry: entry['nama'].lower())
+    return entries
 
 
 def get_viewable_pic_user(request, username):

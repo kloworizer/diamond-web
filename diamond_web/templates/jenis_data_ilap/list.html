@@ -37,7 +37,10 @@
     <div class="card stretch stretch-full datatable-card">
         <div class="card-header">
             <h5 class="card-title"><i class="feather-grid me-2"></i>Daftar Jenis Data ILAP</h5>
-            <button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>
+            <div class="d-flex gap-2">
+                <a class="btn btn-outline-primary" href="{% url 'jenis_data_pemda_generate' %}" title="Buat satu kode jenis data untuk semua Pemda/Provinsi (PD/PV) sekaligus"><i class="feather-copy me-1"></i>Generate PD/PV</a>
+                <button type="button" class="btn btn-success" data-action="create"><i class="feather-plus me-1"></i>Tambah</button>
+            </div>
         </div>
         <div class="card-body custom-card-action p-0">
             <div class="table-responsive">

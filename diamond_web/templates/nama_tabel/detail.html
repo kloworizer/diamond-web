@@ -39,6 +39,14 @@
         margin-bottom: 0;
     }
 
+    /* The kodes themselves, under their count. */
+    .nama-tabel-stat-note {
+        display: block;
+        font-size: 12px;
+        color: #64748b;
+        margin-top: 2px;
+    }
+
     /* The feeder lists can run to dozens of entries, so they scroll inside the
        card rather than pushing the tiket table off the screen. */
     .nama-tabel-chip-list {
@@ -171,6 +179,11 @@
                     <span class="nama-tabel-stat-label">Jumlah Tiket</span>
                     <p class="nama-tabel-stat-value">{{ tiket_total }}</p>
                 </div>
+                <div class="nama-tabel-stat"{% if kode_summary.kodes %} title="{{ kode_summary.kodes|join:', ' }}"{% endif %}>
+                    <span class="nama-tabel-stat-label">Kode Jenis Data</span>
+                    <p class="nama-tabel-stat-value">{{ kode_summary.kodes|length }}</p>
+                    {% if kode_summary.label %}<span class="nama-tabel-stat-note">{{ kode_summary.label }}</span>{% endif %}
+                </div>
                 <div class="nama-tabel-stat">
                     <span class="nama-tabel-stat-label">Nama Sub Jenis Data</span>
                     <p class="nama-tabel-stat-value">{{ jenis_data_total }}</p>
@@ -209,12 +222,14 @@
                     One chip per distinct name, busiest first. A name recorded
                     against several sub jenis data carries the count, so the
                     collapsed list is not mistaken for the full set; the link
-                    opens the first of them.
+                    opens the first of them. The leading code is the 4-digit
+                    jenis data kode, the part that is the same at every ILAP.
                     {% endcomment %}
                     <div class="nama-tabel-chip-list">
                         {% for entry in jenis_data_list %}
                         <a class="nama-tabel-chip" href="{% url 'jenis_data_ilap_profil' entry.jenis_data.id_sub_jenis_data %}"
-                           title="{{ entry.jenis_data.id_sub_jenis_data }} &ndash; {{ entry.nama }}">
+                           title="{{ entry.jenis_data.id_sub_jenis_data }} &ndash; {{ entry.nama }}{% if entry.kodes %} (kode jenis data: {{ entry.kodes|join:', ' }}){% endif %}">
+                            {% if entry.kode_label %}<span class="chip-code">{{ entry.kode_label }}</span>{% endif %}
                             {{ entry.nama }}
                             {% if entry.count > 1 %}<span class="chip-code">&times;{{ entry.count }}</span>{% endif %}
                         </a>

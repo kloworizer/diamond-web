@@ -1,0 +1,50 @@
+<form method="post" action="{{ form_action }}">
+    {% csrf_token %}
+    {% if role %}<input type="hidden" name="role" value="{{ role }}">{% endif %}
+    <div class="modal-body">
+        <div class="alert alert-info d-flex gap-2 align-items-start small">
+            <i class="feather-info flex-shrink-0 mt-1"></i>
+            <div>
+                Perubahan ini hanya berlaku untuk tiket <strong>{{ tiket.nomor_tiket }}</strong>.
+                Tabel PIC dan tiket lain tidak diubah.
+            </div>
+        </div>
+
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger py-2 small">{% for err in form.non_field_errors %}{{ err }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</div>
+        {% endif %}
+
+        <div class="mb-3">
+            <label class="form-label">Role</label>
+            <div><span class="badge pic-role-badge-{{ role_code }}">{{ role_label }}</span></div>
+        </div>
+
+        {% if pic %}
+        <div class="mb-3">
+            <label class="form-label">PIC Saat Ini</label>
+            <div class="small fw-semibold">{{ pic.id_user.get_full_name|default:pic.id_user.username }} ({{ pic.id_user.username }})
+                {% if pic.active %}<span class="badge bg-success ms-1">Aktif</span>{% else %}<span class="badge bg-danger ms-1">Tidak Aktif</span>{% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="mb-3">
+            <label class="form-label" for="{{ form.id_user.id_for_label }}">{% if pic %}User{% else %}User yang ditambahkan{% endif %} <span class="text-danger">*</span></label>
+            {{ form.id_user }}
+            {% if form.id_user.errors %}<div class="text-danger small mt-1">{{ form.id_user.errors|join:" " }}</div>{% endif %}
+            {% if pic %}<div class="form-text">Memilih user lain menjadikan user tersebut PIC aktif dan menonaktifkan PIC saat ini.</div>{% endif %}
+        </div>
+
+        {% if form.active %}
+        <div class="form-check mb-1">
+            {{ form.active }}
+            <label class="form-check-label" for="{{ form.active.id_for_label }}">Aktif</label>
+        </div>
+        {% if form.active.errors %}<div class="text-danger small">{{ form.active.errors|join:" " }}</div>{% endif %}
+        {% endif %}
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-light text-secondary" style="font-weight: 500; text-transform: none; background-color: #f1f5f9; border-color: #e2e8f0;" data-bs-dismiss="modal">Kembali</button>
+        <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+    </div>
+</form>

@@ -30,7 +30,7 @@ from ...constants.tiket_action_types import (
 )
 from ...utils import format_number_with_separator, format_periode
 from ...utils.jenis_prioritas import resolve_jenis_prioritas
-from ..mixins import is_admin_p3de, is_kasi
+from ..mixins import can_open_tiket, is_admin_p3de, is_admin_pmde, tiket_pic_roles_managed_by
 
 
 class TiketDetailView(LoginRequiredMixin, DetailView):
@@ -62,23 +62,22 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         - Admin group member: Always allowed
         - Admin P3DE group member: Always allowed — they may correct the isian
           of any tiket, so they must be able to open it
-        - Kasi (supervisor) group member: Always allowed, read-only — the
-          action buttons stay gated behind `user_is_active_pic_*`
-        - Other users: Must have a TiketPIC record (active or inactive) for this tiket
+        - Admin PIDE / Admin PMDE and Kasi (supervisor) group members: Always
+          allowed, read-only — the action buttons stay gated behind
+          `user_is_active_pic_*`
+        - Other users: Must have a TiketPIC record (active or inactive) for this
+          tiket, or be a current PIC (no end date) of its sub jenis data — the
+          latter covers a new PIC opening tikets finished before the handover.
+          Either way the action buttons stay gated behind an active TiketPIC.
 
         Raises:
-        - PermissionDenied: If user is not superuser/admin/admin_p3de/kasi and
-          has no TiketPIC
+        - PermissionDenied: If user is not superuser/admin/admin_p3de/
+          admin_pide/admin_pmde/kasi, has no TiketPIC and is not a current PIC
+          of the sub jenis data
         - Http404: If tiket PK not found (via parent get_object)
         """
         obj = super().get_object(queryset)
-        # Allow access if user is superuser, admin, admin P3DE or kasi
-        if is_admin_p3de(self.request.user):
-            return obj
-        if is_kasi(self.request.user):
-            return obj
-        # Allow access if user is any kind of PIC for this tiket (active or inactive)
-        if not TiketPIC.objects.filter(id_tiket=obj, id_user=self.request.user).exists():
+        if not can_open_tiket(self.request.user, obj):
             raise PermissionDenied()
         return obj
 
@@ -181,6 +180,13 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
                 if full_name else action.id_user.username
             )
         
+        # Roles whose PICs the reader may add/change/remove on this tiket
+        # alone (Kelola PIC Tiket) - the same seksi rule as the PIC menu.
+        managed_roles = tiket_pic_roles_managed_by(self.request.user)
+        context['pic_roles_managed'] = [
+            {'value': int(role), 'label': f'PIC {role.label}'} for role in managed_roles
+        ]
+
         # Get PICs and enrich with badge info
         tiket_pics = TiketPIC.objects.filter(
             id_tiket=self.object
@@ -200,6 +206,7 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
             # PIC record. A handover deactivates the row it replaces, so this is
             # what the audit trail of the tiket itself says.
             pic.is_pic_active = pic.active
+            pic.can_manage = pic.role in managed_roles
         
         # Backup data list
         backups = self.object.backups.select_related('id_user').all().order_by('-id')
@@ -340,6 +347,10 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
             and not self.object.tanda_terima
             and user_is_active_pic_p3de
         )
+
+        # PMDE administrators may pull this tiket's QC data from Oracle with the
+        # rules of the tiket update sync, whether or not they hold the tiket.
+        context['user_can_sync_tiket'] = is_admin_pmde(self.request.user)
 
         # Add status constants for template use
         context['STATUS_DIREKAM'] = STATUS_DIREKAM

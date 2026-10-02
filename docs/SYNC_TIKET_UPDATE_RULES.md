@@ -1,7 +1,7 @@
 # Sinkronisasi Oracle — Aturan Transisi Status Tiket
 
 **File**: `diamond_web/views/sync_tiket_update.py`
-**Terakhir diperbarui**: 26 Agustus 2026
+**Terakhir diperbarui**: 1 Oktober 2026
 
 ---
 
@@ -51,13 +51,18 @@ flowchart TD
     START[Status: 5 - Identifikasi] --> C1{tgl_transfer<br/>!= null?}
     C1 -->|Ya| C2{belum_qc<br/>!= null?}
     C2 -->|Ya| C3{belum_qc<br/>== 0?}
-    C3 -->|Ya| RESULT[ATURAN 3<br/>Status Tiket: 5 → 8<br/>SELESAI]
+    C3 -->|Ya| C5{sudah_qc<br/>== baris_i?}
+    C5 -->|Ya| C4{Baris hanya CDE?<br/>i=0, u=0, res=0, cde>0}
+    C4 -->|Tidak| RESULT[ATURAN 3<br/>Status Tiket: 5 → 8<br/>SELESAI]
+    C4 -->|Ya| KE_4[Lihat Aturan 4]
 
     style RESULT fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
     style START fill:#e3f2fd,stroke:#1565c0
     style C1 fill:#fff9c4,stroke:#f9a825
     style C2 fill:#fff9c4,stroke:#f9a825
     style C3 fill:#fff9c4,stroke:#f9a825
+    style C4 fill:#fff9c4,stroke:#f9a825
+    style C5 fill:#fff9c4,stroke:#f9a825
 ```
 
 ### Diagram 2b — Aturan 5A / 5B: Identifikasi (5) → Selesai (8) — Berbasis Baris
@@ -83,7 +88,7 @@ flowchart TD
     style C3 fill:#fff9c4,stroke:#f9a825
 ```
 
-### Diagram 2c — Aturan 4: Identifikasi (5) → Dikembalikan (3)
+### Diagram 2c — Aturan 4: Identifikasi (5) → Dibatalkan (7), dikembalikan PIDE
 
 ```mermaid
 flowchart TD
@@ -92,7 +97,7 @@ flowchart TD
     C2 -->|Ya| C3{baris_u<br/>== 0?}
     C3 -->|Ya| C4{baris_res<br/>== 0?}
     C4 -->|Ya| C5{baris_cde<br/>> 0?}
-    C5 -->|Ya| RESULT[ATURAN 4<br/>Status Tiket: 5 → 3<br/>DIKEMBALIKAN]
+    C5 -->|Ya| RESULT[ATURAN 4<br/>Status Tiket: 5 → 7<br/>DIBATALKAN<br/>aksi DIKEMBALIKAN + DIBATALKAN]
 
     style RESULT fill:#fce4ec,stroke:#c62828,stroke-width:3px
     style START fill:#e3f2fd,stroke:#1565c0
@@ -127,12 +132,18 @@ flowchart TD
 flowchart TD
     START[Status: 6 - Pengendalian Mutu] --> C1{belum_qc<br/>!= null?}
     C1 -->|Ya| C2{belum_qc<br/>== 0?}
-    C2 -->|Ya| RESULT[ATURAN 2<br/>Status Tiket: 6 → 8<br/>SELESAI]
+    C2 -->|Ya| C3{sudah_qc<br/>== baris_i?}
+    C3 -->|Ya| C4{Baris hanya CDE?<br/>i=0, u=0, res=0, cde>0}
+    C4 -->|Tidak| RESULT[ATURAN 2<br/>Status Tiket: 6 → 8<br/>SELESAI]
+    C3 -->|Tidak| TETAP[Tetap 6<br/>rekap belum lengkap]
+    C4 -->|Ya| TETAP
 
     style RESULT fill:#e3f2fd,stroke:#1565c0,stroke-width:3px
     style START fill:#e3f2fd,stroke:#1565c0
     style C1 fill:#fff9c4,stroke:#f9a825
     style C2 fill:#fff9c4,stroke:#f9a825
+    style C3 fill:#fff9c4,stroke:#f9a825
+    style C4 fill:#fff9c4,stroke:#f9a825
 ```
 
 ### Diagram 4 — Aturan 8: Selesai (8) → Pengendalian Mutu (6) — Rematch
@@ -186,7 +197,7 @@ flowchart TD
    - [Aturan 1: Identifikasi (5) → Pengendalian Mutu (6)](#aturan-1-identifikasi-5--pengendalian-mutu-6)
    - [Aturan 2: Pengendalian Mutu (6) → Selesai (8)](#aturan-2-pengendalian-mutu-6--selesai-8)
    - [Aturan 3: Identifikasi (5) → Selesai (8) — QC Lengkap](#aturan-3-identifikasi-5--selesai-8--qc-lengkap)
-   - [Aturan 4: Identifikasi (5) → Dikembalikan (3)](#aturan-4-identifikasi-5--dikembalikan-3)
+   - [Aturan 4: Identifikasi (5) → Dibatalkan (7), dikembalikan PIDE](#aturan-4-identifikasi-5--dibatalkan-7-dikembalikan-pide)
    - [Aturan 5: Identifikasi (5) → Selesai (8) — Berbasis Baris](#aturan-5-identifikasi-5--selesai-8--berbasis-baris)
    - [Aturan 6: Dikirim ke PIDE (4) → Identifikasi (5)](#aturan-6-dikirim-ke-pide-4--identifikasi-5)
    - [Aturan 7: Dikirim ke PIDE (4) → Pengendalian Mutu (6)](#aturan-7-dikirim-ke-pide-4--pengendalian-mutu-6)
@@ -205,11 +216,20 @@ flowchart TD
 
 Modul `sync_tiket_update` menyinkronkan kolom QC dan transfer dari Oracle (`PVPTD.ZA_REKAP_TARIKAN`) ke record `Tiket` Django lokal. Modul ini melakukan **pembaruan tingkat field** pada tiket yang cocok dan menerapkan **transisi status otomatis** dengan jejak audit lengkap (`TiketAction`) dan notifikasi.
 
-Dua titik masuk tersedia:
+Titik masuk yang tersedia:
 - **`_check_tiket_update_data()`** — Mode *dry-run*: menghitung apa yang akan berubah tanpa memodifikasi database.
 - **`_update_tiket_data()`** — Mode sinkronisasi langsung: menerapkan semua pembaruan dan transisi.
+- **Sinkronisasi satu tiket** (`SinkronisasiTiketView`, tombol **Sinkronisasi dari Oracle** di Detail Tiket, khusus Admin PMDE) — menjalankan aturan yang sama untuk satu tiket, dengan pratinjau sebelum disimpan.
 
-Keduanya dipanggil melalui tugas Celery (`check_tiket_update_data_task` / `sync_tiket_update_data_task`) dan dapat dihentikan di tengah eksekusi melalui sinyal berhenti berbasis *cache*.
+Dua yang pertama dipanggil melalui tugas Celery (`check_tiket_update_data_task` / `sync_tiket_update_data_task`) dan dapat dihentikan di tengah eksekusi melalui sinyal berhenti berbasis *cache*.
+
+Aturan per tiket berada di dua fungsi yang dipakai bersama oleh `_update_tiket_data()` dan sinkronisasi satu tiket, sehingga keduanya tidak mungkin berbeda:
+- **`_plan_tiket_update(tiket, row)`** — membandingkan kolom dan mengevaluasi seluruh aturan transisi terhadap tiket *sebelum* diubah, tanpa menulis apa pun. Hasilnya (kolom yang berubah, transisi, aksi yang akan dicatat) juga menjadi isi pratinjau.
+- **`_apply_tiket_update_plan(tiket, plan, pics, sync_id)`** — menulis rencana tsb: field & status tiket, `TiketAction`, notifikasi, dan CSV hasil.
+
+Sinkronisasi satu tiket memakai query Oracle yang sama, disaring pada `no_tiket` tiket tsb (ditambah bentuk `E` 16 karakter untuk nomor `EI`, karena query mengubah bentuk itu menjadi `EI`). Saat disimpan, data Oracle diambil ulang dan rencananya dibandingkan dengan pratinjau melalui *fingerprint*; bila berbeda, tidak ada yang ditulis dan pratinjau terbaru ditampilkan. Hasilnya dicatat di CSV `tiket_update_result_{sync_id}.csv` seperti sinkronisasi massal.
+
+> **Catatan**: `_check_tiket_update_data()` (dry-run massal) masih memiliki salinan kondisi aturannya sendiri. Perubahan aturan harus diterapkan di sana **dan** di `_plan_tiket_update()`.
 
 ---
 
@@ -258,6 +278,69 @@ Sebelum logika transisi status, field berikut dibandingkan dan diperbarui jika b
 - `qc_y`, `qc_z`, `qc_u`, `qc_e`, `qc_v`, `qc_r`, `qc_d`
 
 Suatu tiket dianggap "berubah" hanya jika setidaknya satu field berbeda **atau** ada transisi status yang berlaku. Jika tidak ada yang berubah, akan dicatat sebagai "Tidak Berubah" dan dilewati.
+
+#### Tiket Dibatalkan (7): hasil tarikan tidak disalin
+
+Tarikan tiket yang dibatalkan sudah tidak berlaku (PIDE menghapusnya dari Oracle), sehingga kolom hasil tarikannya dikosongkan dan **tidak pernah disalin kembali** (`KOLOM_TARIKAN_DIBATALKAN` di `diamond_web/utils/tiket_dibatalkan.py`):
+
+- `baris_i`, `baris_u`
+- `sudah_qc`, `belum_qc`, `lolos_qc`, `tidak_lolos_qc`
+- `qc_p` hingga `qc_d`
+
+`baris_res` dan `baris_cde` **tetap** disalin dari Oracle dan tidak dikosongkan, sehingga selalu sama dengan data Oracle — itulah baris yang dikembalikan PIDE (Aturan 4 membatalkan tarikan yang hanya berisi keduanya), dan kartu P3DE di Home (*Pengembalian Sebagian dari PIDE*, *Diklarifikasi*) membaca CDE pada tiket yang dibatalkan. (Sebelum 1/10/2026 `baris_res` ikut dikosongkan; sinkronisasi massal berikutnya mengisinya kembali dari Oracle.) `tgl_transfer` dan `tgl_rematch` juga tetap, karena mencatat apa yang terjadi di PIDE.
+
+Kolom tsb dikosongkan di **semua** jalur pembatalan: Batalkan Tiket (P3DE), Kembalikan ke P3DE (PIDE), dan Aturan 4. Sinkronisasi massal hanya **tidak menyalin**; ia tidak mengosongkan sisa nilai yang sudah ada, karena hampir seluruh 9.722 tiket Dibatalkan hasil migrasi membawa nilai (umumnya 0) di kolom tsb. Sisa nilai pada tiket yang dibatalkan sebelum aturan ini ada dikosongkan per tiket lewat **Sinkronisasi dari Oracle** di Detail Tiket — juga ketika tiket tsb sudah tidak ada di rekap Oracle (`_plan_tanpa_rekap`).
+
+### Tarikan Res/CDE Saja: Dikembalikan atau Status Diubah Manual
+
+Tarikan **hanya** berisi baris Res dan/atau CDE bila `baris_i` dan `baris_u` bernilai 0 atau null serta `baris_res > 0` atau `baris_cde > 0` (`_status_manual()`). Sinkronisasi **tidak pernah** membawa tiket seperti ini ke Pengendalian Mutu atau Selesai. Selanjutnya ditentukan oleh `Res + CDE` dibandingkan **Baris Lengkap** tiket (`tiket.baris_lengkap`, hasil penelitian P3DE; `_res_cde_lengkap()`):
+
+| Kondisi | Hasil |
+|---------|-------|
+| `Res + CDE == Baris Lengkap` (Baris Lengkap > 0), status Dikirim ke PIDE (4) atau Identifikasi (5) | **Aturan 4**: otomatis dikembalikan PIDE → **Dibatalkan** (7), tanpa klik Kembalikan |
+| `Res + CDE != Baris Lengkap`, atau Baris Lengkap kosong/0 | Status **tidak diubah** (tetap, atau Dikirim ke PIDE → Identifikasi lewat Aturan 6). PIDE mengembalikan manual lewat tombol **Kembalikan ke P3DE** (cukup isi catatan, tanpa ND Nadine). Bila sinkronisasi berikutnya membawa baris I/U, aturan biasa berlaku lagi (Aturan 1/3/5A → Pengendalian Mutu/Selesai) |
+
+Perbandingannya **persis sama dengan**: data lokal per 1/10/2026 memuat tiket Dibatalkan dengan CDE lebih besar dari Baris Lengkap (52 tiket); tiket seperti itu juga diubah manual.
+
+Akibatnya pada aturan lain:
+- **Aturan 7** tidak membawa tiket ke Pengendalian Mutu. Tiket Dikirim ke PIDE yang datanya sudah direkam dan ditransfer di Oracle berhenti di **Identifikasi** lewat Aturan 6 (aksi Identifikasi, `tgl_rekam_pide` diisi), dan `tgl_transfer` tetap disalin — kecuali Aturan 4 berlaku, yang langsung membatalkannya tanpa aksi Identifikasi (sama dengan Kembalikan manual dari status 4).
+- **Aturan 8** (*rematch*) tidak membuka kembali tiket Selesai ke Pengendalian Mutu.
+- Aturan 1 dan 9 memang hanya berlaku bila `baris_i > 0`, jadi tidak pernah berlaku untuk komposisi ini.
+- **Aturan 2, 3, dan 5B** tidak menutup tiket dengan komposisi ini. Aturan 5B (hanya Res) tidak berlaku lagi: Res = Baris Lengkap menjadi Aturan 4, selain itu manual.
+- Aturan 5A (`i=0, u>0`) tetap berlaku karena ada baris U.
+- Tiket Pengendalian Mutu (6) dengan Res + CDE = Baris Lengkap **tidak** dikembalikan otomatis (Kembalikan manual juga hanya tersedia di status 4 dan 5); statusnya diubah manual.
+
+Tiket Selesai yang telanjur ditutup dengan komposisi ini diperbaiki dengan [`fix_tiket_selesai_res_cde`](#perbaikan-retroaktif-tiket-selesai-rescde-saja).
+
+Bila tiket tertahan (Res + CDE ≠ Baris Lengkap) di Identifikasi (5) atau Pengendalian Mutu (6) dan tarikannya sudah ditransfer (`_status_tertahan()`), atau *rematch*-nya tidak diterapkan (Selesai), sinkronisasi:
+- mencatat baris `Status Tetap (Res/CDE saja)` di CSV hasil (dry-run: di detail `Akan Diupdate`);
+- mengirim notifikasi **Status Tiket Perlu Diubah Manual** ke PIC PIDE dan PMDE aktif, **sekali**: hanya pada eksekusi yang menyalin `tgl_transfer`, `tgl_rematch`, atau kolom baris baru ke tiket;
+- di pratinjau Sinkronisasi dari Oracle, menampilkan kotak *Status diubah manual*.
+
+### Notifikasi PIC PIDE dan PMDE
+
+Setiap transisi status oleh sinkronisasi (Aturan 1–9, massal maupun satu tiket) mengirim notifikasi ke **semua PIC PIDE dan PMDE aktif** tiket tsb, masing-masing satu kali walaupun pengguna yang sama memegang kedua peran. Pesannya berisi tautan ke Detail Tiket, seperti notifikasi aksi manual (`NOTIFIKASI_TRANSISI`):
+
+| Transisi | Judul |
+|----------|-------|
+| Aturan 6 (4 → 5) | Tiket Diidentifikasi |
+| Aturan 1, 7 (→ 6) | Tiket ditransfer ke PMDE |
+| Aturan 2, 3, 5 (→ 8) | Tiket Selesai |
+| Aturan 4 (4/5 → 7) | Tiket Dikembalikan (P3DE tetap menerima notifikasinya sendiri) |
+| Aturan 8 (8 → 6) | Tiket Di-rematch |
+| Aturan 9 (8 → 6) | Tiket Ditransfer Ulang ke PMDE |
+
+Tiket tanpa PIC PIDE/PMDE aktif tidak mengirim notifikasi ini.
+
+### Notifikasi PIC P3DE: Update Baris Res/CDE
+
+Setiap kali sinkronisasi menyalin nilai `baris_res` atau `baris_cde` baru dari Oracle, semua **PIC P3DE aktif** tiket tsb menerima notifikasi **Update Baris Res/CDE**, apa pun statusnya dan terlepas dari ada atau tidaknya perubahan status. Pesannya menyebut nilai lama dan barunya (mis. `Baris Res 2 → 4, Baris CDE - → 1.200`) dan berisi tautan ke Detail Tiket.
+
+Notifikasi ini **tidak** dikirim bila:
+- nilainya tidak berubah (sinkronisasi berikutnya dengan data yang sama tidak mengirim ulang);
+- nilainya berubah dari kosong menjadi 0, karena itu bukan data baru;
+- kolomnya dikosongkan pada tiket Dibatalkan oleh Sinkronisasi dari Oracle di Detail Tiket, karena itu bukan data dari Oracle;
+- mode cek (*dry-run*).
 
 > **Catatan**: `tgl_rekam_pide` **tidak** termasuk dalam pembaruan field umum. Field ini hanya ditulis oleh Aturan 6 & 7 (saat masih kosong di tiket lokal) dan dikosongkan oleh Aturan 4, sehingga tanggal yang diinput manual oleh PIDE tidak pernah ditimpa.
 
@@ -327,7 +410,10 @@ Jika tidak ada PIC PIDE aktif yang ditemukan, status tetap diperbarui tetapi per
 | Kondisi | Deskripsi |
 |---------|-----------|
 | `tiket.status_tiket == STATUS_PENGENDALIAN_MUTU` (6) | Status saat ini adalah Pengendalian Mutu |
-| `belum_qc is not None and belum_qc == 0` | Semua QC selesai |
+| `_qc_lengkap(...)` | QC selesai: `belum_qc == 0`, **`sudah_qc == baris_i`**, dan barisnya **bukan** `i=0, u=0, res=0, cde>0` |
+| `not _status_manual(...)` | Tarikan bukan Res/CDE saja (lihat [Tarikan Res/CDE Saja](#tarikan-rescde-saja-dikembalikan-atau-status-diubah-manual)) |
+
+> **Kenapa tidak cukup `belum_qc == 0`**: bila tabel rekap tarikan (`PVPTD.ZA_REKAP_TARIKAN`) baru terbentuk sebagian, baris I atau hitungan QC tiket bisa belum masuk, sehingga `belum_qc` terbaca 0 padahal QC belum selesai. Aturan 2 lalu menutup tiket yang masih punya baris untuk di-QC. Contohnya, tiket dengan I 609 dan U 1.112 ditutup pada 28/09/2026, padahal Belum QC-nya 609. Rekap yang lengkap selalu memenuhi `sudah_qc + belum_qc == baris_i`, karena hanya baris I yang di-QC. Di data lokal per 30/09/2026, seluruh 1.133 tiket yang pernah ditutup sinkronisasi memenuhinya. Rekap yang hanya berisi baris CDE tidak punya apa pun untuk di-QC, jadi juga tidak dianggap selesai (lihat Aturan 4). Tiket yang tertahan oleh syarat ini tetap di Pengendalian Mutu sampai rekapnya lengkap.
 
 #### Perubahan Status
 
@@ -365,9 +451,12 @@ Jika tidak ada PIC PMDE aktif yang ditemukan, status tetap diperbarui tetapi per
 |---------|-----------|
 | `tiket.status_tiket == STATUS_IDENTIFIKASI` (5) | Status saat ini adalah Identifikasi |
 | `tgl_transfer is not None` | Oracle memiliki tanggal transfer |
-| `belum_qc is not None and belum_qc == 0` | QC selesai seluruhnya |
+| `_qc_lengkap(...)` | QC selesai seluruhnya: `belum_qc == 0` dan `sudah_qc == baris_i` (lihat Aturan 2), dan barisnya **bukan** `i=0, u=0, res=0, cde>0` — eksklusif dari Aturan 4 |
+| `not _status_manual(...)` | Tarikan bukan Res/CDE saja |
 
 Aturan ini menangani kasus di mana QC telah selesai di Oracle sebelum sinkronisasi berjalan — tiket dapat melewati status 6 dan langsung ke 8.
+
+> **Kenapa tiket yang barisnya hanya CDE dikecualikan**: tiket seperti itu **selalu** punya `belum_qc == 0` karena tidak ada baris yang perlu di-QC, bukan karena QC-nya selesai. Sebelum pengecualian ini, Aturan 3 dan Aturan 4 menyala bersamaan pada tiket itu: jejaknya mendapat aksi Ditransfer ke PMDE, Pengendalian Mutu dan Selesai, lalu statusnya ditimpa Aturan 4 (contoh: `PV034050126071001`). Di data per 25/08/2026, ke-383 tiket yang barisnya hanya CDE punya `belum_qc = 0`, dan 369 di antaranya Dibatalkan.
 
 #### Perubahan Status
 
@@ -404,33 +493,38 @@ Setiap peran diselesaikan secara **independen**:
 
 ---
 
-### Aturan 4: Identifikasi (5) → Dikembalikan (3)
+### Aturan 4: Dikirim ke PIDE (4) / Identifikasi (5) → Dibatalkan (7), dikembalikan PIDE
 
-**Nama variabel**: `needs_dikembalikan` / `needs_dikembalikan_transition`
+> **Diubah 1 Oktober 2026.** Sebelumnya aturan ini berlaku untuk Identifikasi + `tgl_transfer` + baris CDE saja (`i=0, u=0, res=0, cde>0`), berapa pun Baris Lengkap-nya. Kini berlaku untuk baris **Res dan/atau CDE** saja yang jumlahnya **sama dengan Baris Lengkap**, tanpa syarat `tgl_transfer` (lihat [Tarikan Res/CDE Saja](#tarikan-rescde-saja-dikembalikan-atau-status-diubah-manual)). Catatan aksinya tidak berubah, sehingga Koreksi Pembatalan dan `fix_tiket_dikembalikan_sync` tetap mengenali pembatalan lama maupun baru.
+
+**Nama variabel**: `needs_dikembalikan`
 
 #### Kondisi (semua harus benar)
 
 | Kondisi | Deskripsi |
 |---------|-----------|
-| `tiket.status_tiket == STATUS_IDENTIFIKASI` (5) | Status saat ini adalah Identifikasi |
-| `tgl_transfer is not None` | Oracle memiliki tanggal transfer |
-| `baris_i == 0` | Tidak ada baris identifikasi |
-| `baris_u == 0` | Tidak ada baris *update* |
-| `baris_res == 0` | Tidak ada baris residual |
-| `baris_cde > 0` | Tetapi ada baris CDE (hanya entri revisi data) |
+| `tiket.status_tiket` 4 atau 5 | Dikirim ke PIDE atau Identifikasi — status tempat PIDE bisa menekan Kembalikan |
+| `baris_i` dan `baris_u` 0 atau null | Tidak ada baris identifikasi maupun *update* |
+| `baris_res > 0` atau `baris_cde > 0` | Ada baris Res/CDE |
+| `baris_res + baris_cde == tiket.baris_lengkap` (> 0) | Seluruh baris lengkap dikembalikan PIDE |
 
-Aturan ini mendeteksi tiket yang hanya memiliki entri CDE (koreksi/revisi data) tanpa data identifikasi/*update*/residual yang sebenarnya. Ini diperlakukan sebagai pengembalian ke P3DE untuk revisi.
+Tidak ada syarat `tgl_transfer` maupun `belum_qc`: kesamaan dengan Baris Lengkap sudah menunjukkan rekap lengkap. Dari status 4, Aturan 6 tidak ikut berlaku, jadi jejaknya Dikirim ke PIDE → Dikembalikan → Dibatalkan, sama dengan Kembalikan manual dari status 4.
+
+#### Notifikasi tambahan
+
+Selain notifikasi *Tiket Dikembalikan* ke PIC P3DE (pesannya kini menyebut `Res … + CDE … = Baris Lengkap …`), PIC PIDE dan PMDE menerima notifikasi *Tiket Dikembalikan* (lihat [Notifikasi PIC PIDE dan PMDE](#notifikasi-pic-pide-dan-pmde)).
 
 #### Perubahan Status
 
-`tiket.status_tiket = STATUS_DIKEMBALIKAN` (3)
+`tiket.status_tiket = STATUS_DIBATALKAN` (7) — sama dengan tombol Dikembalikan manual. Sebelumnya aturan ini menulis `STATUS_DIKEMBALIKAN` (3), status buntu yang tidak bisa dikirim lagi ke PIDE; lihat [Perbaikan Retroaktif](#perbaikan-retroaktif-aturan-4).
 
 #### Pembaruan Field Tambahan
 
 | Field | Nilai |
 |-------|-------|
-| `tgl_dikembalikan` | `tgl_transfer or timezone.now()` |
+| `tgl_dikembalikan` | `tgl_transfer or timezone.now()`, digeser ke tepat setelah aksi terakhir tiket bila jatuh di hari yang sama (lihat catatan waktu di bawah) |
 | `tgl_rekam_pide` | `None` (dihapus) |
+| `baris_i`, `baris_u`, `sudah_qc`, `belum_qc`, `lolos_qc`, `tidak_lolos_qc`, `qc_p`–`qc_d` | `None` — tidak disalin dari rekap; lihat [Tiket Dibatalkan](#tiket-dibatalkan-7-hasil-tarikan-tidak-disalin). `baris_res` dan `baris_cde` tetap disalin. |
 
 #### TiketAction yang Dibuat (2 aksi)
 
@@ -438,15 +532,17 @@ Aturan ini mendeteksi tiket yang hanya memiliki entri CDE (koreksi/revisi data) 
 | Field | Nilai |
 |-------|-------|
 | **Pengguna** | PIC **PIDE** aktif pertama untuk tiket ini |
-| **Waktu** | `tgl_transfer or timezone.now()` |
+| **Waktu** | sama dengan `tgl_dikembalikan` |
 | **Catatan** | `'Tiket dikembalikan oleh PIDE (auto-sync)'` |
 
 **Aksi 2: DIBATALKAN** (diatribusikan ke P3DE)
 | Field | Nilai |
 |-------|-------|
 | **Pengguna** | PIC **P3DE** aktif pertama untuk tiket ini |
-| **Waktu** | `tgl_transfer or timezone.now()` |
+| **Waktu** | sama dengan `tgl_dikembalikan` |
 | **Catatan** | `'Tiket dibatalkan (dikembalikan oleh PIDE: auto-sync)'` |
+
+> **Catatan waktu**: `tgl_transfer` dari Oracle hanya berisi tanggal (jam 00:00). Pada hari yang sama PIDE merekam data, aksi pengembalian bisa tampil **sebelum** aksi Identifikasi yang sebenarnya mendahuluinya (contoh: `PV034050126071001` — Identifikasi 14/09 16:42, pengembalian 14/09 00:00). Waktu aksi pengembalian dan `tgl_dikembalikan` karena itu digeser dengan `lift_time_above()` ke 1 menit setelah aksi terakhir tiket, **hanya bila di hari yang sama**; tanggalnya tidak berubah. Aksi Identifikasi dan `tgl_transfer` tetap disimpan — keduanya mencatat yang memang terjadi di PIDE, sama seperti tiket yang dikembalikan manual.
 
 #### Notifikasi
 
@@ -460,6 +556,82 @@ Setiap peran diselesaikan secara **independen**:
 - Tidak ada PIC PIDE → aksi `DIKEMBALIKAN` dilewati dengan peringatan.
 - Tidak ada PIC P3DE → aksi `DIBATALKAN` dilewati dengan peringatan.
 - Tidak ada PIC P3DE → tidak ada notifikasi yang dikirim.
+
+#### Perbaikan Retroaktif (Aturan 4)
+
+Perintah `fix_tiket_dikembalikan_sync` memperbaiki tiket yang terlanjur diproses aturan lama:
+
+```bash
+python manage.py fix_tiket_dikembalikan_sync --dry-run     # lihat dulu
+python manage.py fix_tiket_dikembalikan_sync               # terapkan
+python manage.py fix_tiket_dikembalikan_sync --tiket PV034050126071001
+```
+
+- **Status**: setiap tiket berstatus Dikembalikan (3) → Dibatalkan (7). Hanya sinkronisasi yang pernah menulis status 3; tiket berstatus 3 tanpa aksi *auto-sync* di jejaknya tetap diubah, tetapi ditandai di laporan untuk diperiksa manual.
+- **Jejak aksi**: aksi yang ditulis Aturan 3 pada eksekusi yang sama dihapus — yaitu aksi yang berada tepat di bawah pasangan DIKEMBALIKAN/DIBATALKAN *auto-sync* terakhir (urutan id), dengan catatan persis milik Aturan 3, dalam salah satu dari tiga bentuk yang bisa ditinggalkannya: `SELESAI + PENGENDALIAN_MUTU + DITRANSFER_KE_PMDE`, hanya pasangan PMDE, atau hanya `DITRANSFER_KE_PMDE` (tergantung PIC yang aktif). Aksi transfer dan pengendalian mutu juga harus ber-*timestamp* sama dengan aksi *auto-sync* (keduanya `tgl_transfer`). Putaran asli sebelumnya tidak tersentuh.
+- **Waktu pengembalian**: pasangan DIKEMBALIKAN/DIBATALKAN *auto-sync* (dan `tgl_dikembalikan` bila sama) digeser ke 1 menit setelah aksi sebelumnya di hari yang sama, sama seperti yang kini dilakukan sinkronisasi.
+- Aksi **DIKEMBALIKAN** dan **DIBATALKAN** tetap disimpan, begitu pula aksi **Identifikasi** dan `tgl_transfer`.
+- **Idempoten**: eksekusi kedua tidak menemukan status 3, aksi Aturan 3, maupun pasangan yang perlu digeser.
+
+#### Perbaikan Retroaktif: Tiket Selesai Res/CDE Saja
+
+Sebelum 1 Oktober 2026, tiket yang tarikannya hanya berisi baris Res/CDE bisa berstatus **Selesai**: ditutup Aturan 3 / 5B, atau dari migrasi old_db. Perintah `fix_tiket_selesai_res_cde` menerapkan Aturan 4 pada tiket tsb:
+
+```bash
+python manage.py fix_tiket_selesai_res_cde --dry-run     # lihat dulu
+python manage.py fix_tiket_selesai_res_cde               # terapkan
+python manage.py fix_tiket_selesai_res_cde --tiket PD050070123092002
+```
+
+- **Kriteria**: status Selesai (8), `baris_i` dan `baris_u` 0/null, `baris_res > 0` atau `baris_cde > 0`, dan `Res + CDE == Baris Lengkap`. Tiket Selesai Res/CDE saja yang jumlahnya **tidak** sama dengan Baris Lengkap tidak diubah, hanya dilaporkan untuk diperiksa manual.
+- **Status & field**: Selesai → Dibatalkan (7); `tgl_dikembalikan` diisi; `tgl_rekam_pide` dikosongkan; kolom tarikan dikosongkan seperti pembatalan lain (`baris_res` dan `baris_cde` tetap). `tgl_transfer` tetap.
+- **Jejak aksi**: rangkaian aksi penutupan dihapus, yaitu aksi alur kerja terbaru selama berupa Ditransfer ke PMDE / Pengendalian Mutu / Selesai, dan hanya bila ada aksi Selesai di dalamnya. Aksi sebelumnya (Identifikasi dst.) dan aksi non-alur kerja (perubahan PIC, ubah isian) tetap. Lalu ditulis aksi **DIKEMBALIKAN** (PIC PIDE aktif) dan **DIBATALKAN** (PIC P3DE aktif) dengan catatan Aturan 4, ber-*timestamp* `tgl_transfer` (atau waktu aksi Selesai yang dihapus), digeser ke setelah aksi terakhir yang tersisa bila di hari yang sama. Tanpa PIC aktif, aksinya dilewati dan tiketnya ditandai di laporan.
+- **Tanpa notifikasi.**
+- **Idempoten**: tiket yang sudah diperbaiki tidak lagi Selesai.
+- Data lokal per 1/10/2026: 14 tiket (13 CDE saja, 1 Res saja), semuanya hasil migrasi dan Res + CDE = Baris Lengkap; 42 aksi penutupan dihapus.
+
+#### Koreksi Pembatalan dan Koreksi Penutupan (Sinkronisasi satu tiket)
+
+Bila tabel rekap tarikan di Oracle baru terbentuk sebagian, tarikan terbaca hanya berisi baris CDE (baris I, U, dan Res masih 0) sehingga Aturan 4 membatalkan tiket. Setelah rekap lengkap, tiket seharusnya berlanjut dari Identifikasi, tetapi tidak ada aturan yang keluar dari status Dibatalkan (7).
+
+Hal yang sama bisa menutup tiket: `belum_qc` terbaca 0, sehingga Aturan 2 (atau Aturan 3/5 dari Identifikasi) mengubahnya menjadi Selesai padahal masih ada baris yang belum di-QC. Syarat `_qc_lengkap` kini mencegah Aturan 2 dan 3 melakukannya, tetapi tiket yang sudah terlanjur ditutup tetap tertahan: Aturan 8 hanya berlaku bila ada rematch, dan Aturan 9 hanya bila tanggal transfernya berubah.
+
+Tombol **Sinkronisasi dari Oracle** di Detail Tiket (tidak di sinkronisasi massal) mengoreksi keduanya lebih dulu (`_plan_koreksi`, dipanggil lewat `_plan_tiket_update(tiket, row, koreksi=True)`). Yang dilihat hanya aksi alur kerja tiket (Direkam s.d. Rematch). Ubah isian, perubahan PIC, dan sejenisnya yang dicatat setelahnya tidak menghalangi koreksi.
+
+**Koreksi Pembatalan**, bila **semua** benar:
+
+| Kondisi | Keterangan |
+|---------|------------|
+| `tiket.status_tiket == 7` | Tiket Dibatalkan |
+| Aksi alur kerja terakhir tiket (urutan id) adalah aksi *auto-sync* Aturan 4 | `DIKEMBALIKAN` "Tiket dikembalikan oleh PIDE (auto-sync)" dan/atau `DIBATALKAN` "Tiket dibatalkan (dikembalikan oleh PIDE: auto-sync)". Pembatalan manual, atau langkah alur kerja lain yang dicatat setelahnya, tidak dikoreksi |
+| Oracle `baris_i` atau `baris_u` > 0 | Rekap kini berisi baris I/U. Baris Res/CDE saja (berapa pun jumlahnya) tidak mengoreksi: itulah yang dikembalikan Aturan 4, dan tanpa syarat ini pembatalan yang sah akan dikoreksi lalu dibatalkan lagi setiap kali Sinkronisasi dari Oracle dijalankan |
+
+Koreksinya:
+- **Menghapus** aksi DIKEMBALIKAN/DIBATALKAN *auto-sync* tsb.
+- Mengembalikan field yang diubah Aturan 4: status → Identifikasi (5); `tgl_rekam_pide` → `tgl_load` dari Oracle, atau *timestamp* aksi Identifikasi terakhir bila Oracle kosong; `tgl_dikembalikan` → *timestamp* aksi Dikembalikan sebelumnya, atau kosong bila tidak ada.
+- Aturan 1–9 lalu dievaluasi terhadap tiket **setelah koreksi**, sehingga tiket berlanjut seperti bila tidak pernah dibatalkan. Misalnya, bila ada baris I yang belum di-QC, Aturan 1 membawa tiket ke Pengendalian Mutu (6) dengan aksi Ditransfer ke PMDE. Bila QC sudah lengkap, Aturan 3 membawanya ke Selesai (8).
+- Mengirim notifikasi **Pembatalan Tiket Dikoreksi** ke PIC P3DE aktif, yang sebelumnya menerima notifikasi *Tiket Dikembalikan*.
+- Mencatat baris `Koreksi Pembatalan` di CSV hasil.
+
+**Koreksi Penutupan**, bila **semua** benar:
+
+| Kondisi | Keterangan |
+|---------|------------|
+| `tiket.status_tiket == 8` | Tiket Selesai |
+| Oracle `belum_qc > 0` | Masih ada baris yang belum di-QC |
+| Oracle `tgl_rematch` kosong | Bila ada rematch, Aturan 8 yang membuka tiket |
+| Oracle `tgl_transfer` == `tiket.tgl_transfer` | Tarikan yang sama dengan yang ditutup. Tarikan baru (revisi) ditangani Aturan 9 |
+| Aksi alur kerja terakhir tiket adalah aksi penutupan sinkronisasi | `PENGENDALIAN_MUTU` "Tiket selesai pengendalian mutu", lalu `SELESAI` "Tiket selesai diproses)" (Aturan 2) atau "Tiket selesai diproses" (Aturan 3/5). Tiket data migrasi ("… (data migrasi, tanggal perkiraan)") atau yang ditutup tanpa PIC PMDE aktif (tanpa aksi) tidak dikoreksi |
+
+> Tanda kurung penutup pada catatan SELESAI Aturan 2 adalah salah ketik lama. Tanda itu **sengaja dipertahankan**, karena itulah yang membedakan penutupan Aturan 2 dari Aturan 3/5 di jejak yang sudah tertulis.
+
+Koreksinya:
+- Aturan 2: **menghapus** aksi Pengendalian Mutu dan Selesai tsb, lalu status → Pengendalian Mutu (6). Aksi Ditransfer ke PMDE sebelumnya (dari Aturan 1) tetap.
+- Aturan 3/5: **menghapus** aksi Pengendalian Mutu dan Selesai, serta aksi Ditransfer ke PMDE yang ditulis pada eksekusi yang sama (*timestamp*-nya sama dengan aksi Pengendalian Mutu), lalu status → Identifikasi (5). Aturan 1 kemudian membawanya ke Pengendalian Mutu dengan aksi Ditransfer ke PMDE yang baru.
+- Aturan lalu dievaluasi terhadap tiket setelah koreksi. Karena `belum_qc > 0`, tiket tidak ditutup lagi.
+- Mencatat baris `Koreksi Penutupan` di CSV hasil. Koreksi itu sendiri tidak mengirim notifikasi; transisi yang menyusul (mis. Aturan 1) mengirim notifikasinya ke PIC PIDE dan PMDE seperti biasa.
+
+Pratinjau menampilkan langkah koreksi (mis. Dibatalkan → Identifikasi, atau Selesai → Pengendalian Mutu), aksi yang akan dihapus, lalu transisi aturan yang menyusul. Koreksi ikut masuk ke *fingerprint*.
 
 ---
 
@@ -482,7 +654,7 @@ Setiap peran diselesaikan secara **independen**:
 | `baris_i == 0` | Tidak ada baris identifikasi |
 | `baris_u > 0` | Tetapi ada baris *update* |
 
-**Kondisi B** (hanya residual — tanpa i/u, tanpa cde):
+**Kondisi B** (hanya residual — tanpa i/u, tanpa cde) — **tidak berlaku lagi sejak 1 Oktober 2026**: tarikan Res saja, jadi statusnya diubah manual (lihat [Tarikan Res/CDE Saja](#tarikan-rescde-saja-dikembalikan-atau-status-diubah-manual)):
 | Field | Nilai |
 |-------|-------|
 | `baris_i == 0` | Tidak ada baris identifikasi |
@@ -525,7 +697,7 @@ Aturan ini mem-*backfill* tiket yang datanya sudah direkam PIDE di Oracle (`tgl_
 | `tiket.status_tiket == STATUS_DIKIRIM_KE_PIDE` (4) | Status saat ini adalah Dikirim ke PIDE |
 | `tiket.tgl_rekam_pide is None` | Belum ada tanggal rekam PIDE di tiket lokal |
 | `tgl_rekam_pide is not None` | Oracle memiliki `tgl_load` |
-| `tgl_transfer is None` | Belum ditransfer ke PMDE |
+| `tgl_transfer is None` **atau** `_status_manual(...)` | Belum ditransfer ke PMDE, atau tarikannya Res/CDE saja (Aturan 7 tidak berlaku) |
 
 #### Perubahan Status & Field
 
@@ -570,6 +742,7 @@ Sama seperti Aturan 6, tetapi Oracle sudah mencatat transfer ke PMDE — tiket m
 | `tiket.tgl_rekam_pide is None` | Belum ada tanggal rekam PIDE di tiket lokal |
 | `tgl_rekam_pide is not None` | Oracle memiliki `tgl_load` |
 | `tgl_transfer is not None` | Oracle memiliki tanggal transfer |
+| `not _status_manual(...)` | Tarikan bukan Res/CDE saja. Bila Res/CDE saja, Aturan 6 yang berlaku: tiket berhenti di Identifikasi (lihat [Tarikan Res/CDE Saja](#tarikan-rescde-saja-dikembalikan-atau-status-diubah-manual)) |
 
 #### Perubahan Status & Field
 
@@ -614,6 +787,7 @@ Jika `tgl_load` di Oracle NULL, **tidak ada transisi** — tiket tetap di status
 | `tiket.status_tiket == STATUS_SELESAI` (8) | Status saat ini adalah Selesai |
 | `tgl_rematch is not None` | Oracle memiliki tanggal *rematch* (`MAX(tgl_rematch)`) |
 | `belum_qc is not None and belum_qc > 0` | Masih ada baris yang belum di-QC |
+| `not _status_manual(...)` | Tarikan bukan Res/CDE saja; bila Res/CDE saja, tiket tetap Selesai dan PIC menerima notifikasi status manual |
 
 #### Perubahan Status
 
@@ -746,48 +920,42 @@ Aksi `DITRANSFER_KE_PMDE` **tidak dibuat** bila jejaknya sudah punya satu di tan
 
 ## Diagram Alur Keputusan di Status 5
 
-Karena beberapa aturan menargetkan status 5, berikut adalah urutan prioritasnya (semua blok `if` independen, tetapi kondisi dirancang agar saling eksklusif):
+Karena beberapa aturan menargetkan status 5, berikut adalah urutan prioritasnya (semua blok `if` independen, tetapi kondisinya saling eksklusif — Aturan 3 secara eksplisit mengecualikan komposisi Aturan 4):
 
 ```
-                     ┌─────────────────────────────────┐
-                     │   Status Tiket = 5 (Identifikasi)│
-                     │   tgl_transfer tidak null        │
-                     └────────────┬────────────────────┘
-                                  │
-                    ┌─────────────┴─────────────┐
-                    │                           │
-              belum_qc == 0              belum_qc != 0 (atau null)
-                    │                           │
-                    ▼                           ▼
-           ┌──────────────────┐     ┌──────────────────────────┐
-           │   ATURAN 3       │     │  Periksa komposisi baris │
-           │   5 → 8 (QC)     │     └────────────┬─────────────┘
-           └──────────────────┘          │                    │
-                                   i=0,u=0,           i=0,u>0 ATAU
-                                  res=0,cde>0       i=0,u=0,res>0,
-                                       │              cde==0
-                                       ▼                    ▼
-                              ┌──────────────┐   ┌──────────────────┐
-                              │   ATURAN 4   │   │   ATURAN 5       │
-                              │   5 → 3      │   │   5 → 8 (baris)  │
-                              └──────────────┘   └──────────────────┘
-                                       │
-                                  (tidak cocok)
-                                       │
-                                       ▼
-                              ┌──────────────────┐
-                              │   ATURAN 1       │
-                              │   5 → 6 (jika i>0)│
-                              └──────────────────┘
+                     ┌──────────────────────────────────┐
+                     │  Status Tiket = 5 (Identifikasi) │
+                     │  tgl_transfer tidak null         │
+                     └────────────────┬─────────────────┘
+                                      │
+                    ┌─────────────────┴──────────────────┐
+                    │                                    │
+          baris hanya CDE                         selain itu
+      (i=0, u=0, res=0, cde>0)                           │
+                    │                    ┌───────────────┴───────────────┐
+                    ▼                    │                               │
+           ┌──────────────────┐    belum_qc == 0            belum_qc != 0 (atau null)
+           │   ATURAN 4       │          │                               │
+           │   5 → 7          │          ▼                    i=0,u>0 ATAU        i>0
+           │   (Dibatalkan)   │ ┌──────────────────┐        i=0,u=0,res>0,cde=0     │
+           └──────────────────┘ │   ATURAN 3       │                 │              ▼
+                                │   5 → 8 (QC)     │                 ▼      ┌──────────────┐
+                                └──────────────────┘      ┌──────────────────┐ │  ATURAN 1  │
+                                                          │   ATURAN 5       │ │  5 → 6     │
+                                                          │   5 → 8 (baris)  │ └──────────────┘
+                                                          └──────────────────┘
 ```
 
 | Prioritas | Kondisi | Aturan | Hasil |
 |-----------|---------|--------|-------|
-| 1 | `belum_qc == 0` | **Aturan 3** | 5 → 8 (QC lengkap) |
-| 2 | `i==0, u>0` **ATAU** `i==0, u==0, res>0, cde==0` | **Aturan 5** | 5 → 8 (berbasis baris) |
-| 3 | `i==0, u==0, res==0, cde>0` | **Aturan 4** | 5 → 3 (Dikembalikan) |
+| 1a | `i` dan `u` 0/null, `res>0` atau `cde>0`, `res+cde == baris_lengkap` | **Aturan 4** | 5 → 7 (Dibatalkan, dikembalikan PIDE) |
+| 1b | `i` dan `u` 0/null, `res>0` atau `cde>0`, `res+cde != baris_lengkap` | — (status manual) | Tetap 5, hanya kolom diperbarui; notifikasi ke PIDE & PMDE |
+| 2 | `belum_qc == 0` | **Aturan 3** | 5 → 8 (QC lengkap) |
+| 3 | `i==0, u>0` | **Aturan 5A** | 5 → 8 (berbasis baris) |
 | 4 | `i>0` | **Aturan 1** | 5 → 6 (PMDE) |
 | — | Tidak ada yang cocok | — | Tidak ada transisi |
+
+> Diagram di atas menggambarkan aturan sebelum 1 Oktober 2026. Aturan 4 kini prioritas 1a, dan Aturan 5B masuk ke 1a atau 1b.
 
 ---
 
@@ -803,8 +971,8 @@ Karena beberapa aturan menargetkan status 5, berikut adalah urutan prioritasnya 
 | 3 (5→8 QC) | `DITRANSFER_KE_PMDE` | PIDE | `tgl_transfer` |
 | 3 (5→8 QC) | `PENGENDALIAN_MUTU` | PMDE | `tgl_close_tiket` |
 | 3 (5→8 QC) | `SELESAI` | PMDE | `tgl_close_tiket` |
-| 4 (5→3) | `DIKEMBALIKAN` | PIDE | `tgl_transfer` |
-| 4 (5→3) | `DIBATALKAN` | P3DE | `tgl_transfer` |
+| 4 (5→7) | `DIKEMBALIKAN` | PIDE | `tgl_transfer` |
+| 4 (5→7) | `DIBATALKAN` | P3DE | `tgl_transfer` |
 | 5 (5→8 baris) | `DITRANSFER_KE_PMDE` | PIDE | `tgl_transfer` |
 | 5 (5→8 baris) | `PENGENDALIAN_MUTU` | PMDE | `tgl_close_tiket` |
 | 5 (5→8 baris) | `SELESAI` | PMDE | `tgl_close_tiket` |
@@ -822,9 +990,9 @@ Karena beberapa aturan menargetkan status 5, berikut adalah urutan prioritasnya 
 |-------|-------------|--------|
 | **PIDE** | Aturan 1, 3, 4, 5, 6, 7, 8, 9 | Membuat aksi `IDENTIFIKASI`, `DITRANSFER_KE_PMDE`, `DIKEMBALIKAN`, atau `REMATCH` |
 | **PMDE** | Aturan 2, 3, 5 | Membuat aksi `PENGENDALIAN_MUTU` dan `SELESAI` |
-| **P3DE** | Aturan 4 | Membuat aksi `DIBATALKAN` dan menerima notifikasi |
+| **P3DE** | Aturan 4; update Baris Res/CDE | Membuat aksi `DIBATALKAN` dan menerima notifikasi; menerima notifikasi *Update Baris Res/CDE* |
 
-PIC diambil sebagai record `TiketPIC` dengan `active=True` untuk setiap tiket. Hanya PIC aktif **pertama** per peran yang digunakan untuk pembuatan `TiketAction`.
+PIC diambil sebagai record `TiketPIC` dengan `active=True` untuk setiap tiket. Hanya PIC aktif **pertama** per peran yang digunakan untuk pembuatan `TiketAction`. Notifikasi transisi dan status manual dikirim ke **semua** PIC PIDE dan PMDE aktif (lihat [Notifikasi PIC PIDE dan PMDE](#notifikasi-pic-pide-dan-pmde)).
 
 ---
 
@@ -903,7 +1071,7 @@ Semua log CSV disimpan di direktori `sync_logs/` di root proyek.
 |-------|-----------|
 | `Timestamp` | Kapan baris dicatat |
 | `Nomor Tiket` | Identifikator tiket |
-| `Kategori` | Salah satu dari: `Baris Diupdate`, `Belum Disinkronisasi`, `Status → Identifikasi`, `Status → Pengendalian Mutu`, `Status → Pengendalian Mutu (rematch)`, `Status → Pengendalian Mutu (transfer ulang)`, `Status → Selesai`, `Status → Dikembalikan`, `Tidak Berubah`, `Error` |
+| `Kategori` | Salah satu dari: `Baris Diupdate`, `Belum Disinkronisasi`, `Status → Identifikasi`, `Status → Pengendalian Mutu`, `Status → Pengendalian Mutu (rematch)`, `Status → Pengendalian Mutu (transfer ulang)`, `Status → Selesai`, `Status → Dikembalikan`, `Status Tetap (Res/CDE saja)`, `Tidak Berubah`, `Error` |
 | `Detail` | Konteks tambahan |
 
 Setiap tiket dapat muncul **beberapa kali** jika termasuk dalam beberapa kategori (misalnya, "Baris Diupdate" + "Status → Pengendalian Mutu").

@@ -123,6 +123,25 @@ class TestKirimTiketFormValidBranches:
         assert resp.status_code == 200
         assert 'text/html' in resp.get('Content-Type', '')
 
+    def test_dikembalikan_tiket_not_listed_nor_accepted(self, client):
+        """Only Diteliti tikets go to PIDE: one returned by the sync (Dikembalikan)
+        is neither listed nor accepted, even with backup and tanda terima."""
+        user = _p3de_user()
+        tiket = TiketFactory(status_tiket=3, backup=True, tanda_terima=True)
+        TiketPICFactory(id_tiket=tiket, id_user=user, role=TiketPIC.Role.P3DE, active=True)
+        client.force_login(user)
+
+        listed = client.get(reverse('kirim_tiket')).context['tikets']
+        assert tiket not in listed
+
+        resp = client.post(
+            reverse('kirim_tiket'),
+            {'tiket_ids': str(tiket.pk)},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        assert json.loads(resp.content)['success'] is False
+        assert not KirimPideTemp.objects.filter(id_tiket=tiket).exists()
+
     def test_form_valid_exception_ajax(self, client):
         """An unexpected exception in form_valid returns a JSON error for AJAX."""
         user = _p3de_user()

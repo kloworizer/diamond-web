@@ -90,6 +90,55 @@ class TestNamaTabelDetailView:
         # The count is what keeps the collapsed list from reading as the whole set.
         assert {e['nama']: e['count'] for e in entries} == {'Rekapitulasi': 4, 'Penjualan': 1}
 
+    def test_sub_jenis_data_chip_shows_4_digit_kode(self, client):
+        """The kode is what a name shares across pemda: PD0014101 and PD0024101 are both 4101."""
+        for code in ('PD0014101', 'PD0024101'):
+            JenisDataILAPFactory(nama_tabel_I='KPDE_X', nama_sub_jenis_data='Surat TDP',
+                                 id_sub_jenis_data=code)
+        # One name spread over more kodes than the chip spells out.
+        for code in ('BC0013401', 'BC0013402', 'BC0013403', 'BC0013404'):
+            JenisDataILAPFactory(nama_tabel_I='KPDE_X', nama_sub_jenis_data='Unstructured',
+                                 id_sub_jenis_data=code)
+        _logged_in(client)
+
+        resp = client.get(reverse('nama_tabel_detail', args=['KPDE_X']))
+        entries = {e['nama']: e for e in resp.context['jenis_data_list']}
+        assert entries['Surat TDP']['kodes'] == ['4101']
+        assert entries['Surat TDP']['kode_label'] == '4101'
+        assert entries['Unstructured']['kodes'] == ['3401', '3402', '3403', '3404']
+        assert entries['Unstructured']['kode_label'] == '3401, 3402, 3403 +1'
+
+        html = resp.content.decode()
+        assert '<span class="chip-code">4101</span>' in html
+        assert '<span class="chip-code">3401, 3402, 3403 +1</span>' in html
+        assert '(kode jenis data: 3401, 3402, 3403, 3404)' in html
+
+    def test_summary_counts_kode_jenis_data_busiest_first(self, client):
+        """Like KPDE_ADHOC_PEMDA_TDUP: one kode at most pemda, two one-offs."""
+        for code in ('PD0015701', 'PD0025701', 'PD0035701'):
+            JenisDataILAPFactory(nama_tabel_I='KPDE_X', id_sub_jenis_data=code)
+        JenisDataILAPFactory(nama_tabel_I='KPDE_X', id_sub_jenis_data='PD0015901')
+        JenisDataILAPFactory(nama_tabel_I='KPDE_X', id_sub_jenis_data='PD0015801')
+        _logged_in(client)
+
+        resp = client.get(reverse('nama_tabel_detail', args=['KPDE_X']))
+        summary = resp.context['kode_summary']
+        assert summary['kodes'] == ['5701', '5801', '5901']  # busiest, then by kode
+        assert summary['label'] == '5701, 5801, 5901'
+        html = resp.content.decode()
+        # Sits between Jumlah Tiket and Nama Sub Jenis Data.
+        assert html.index('Jumlah Tiket') < html.index('Kode Jenis Data') < html.index('Nama Sub Jenis Data</span>')
+        assert '<span class="nama-tabel-stat-note">5701, 5801, 5901</span>' in html
+
+    def test_summary_kode_label_shortens_long_lists(self, client):
+        for code in ('BC0010101', 'BC0010201', 'BC0010301', 'BC0010401'):
+            JenisDataILAPFactory(nama_tabel_I='KPDE_X', id_sub_jenis_data=code)
+        _logged_in(client)
+
+        summary = client.get(reverse('nama_tabel_detail', args=['KPDE_X'])).context['kode_summary']
+        assert len(summary['kodes']) == 4
+        assert summary['label'] == '0101, 0201, 0301 +1'
+
     def test_sub_jenis_data_list_ties_break_by_name(self, client):
         JenisDataILAPFactory(nama_tabel_I='KPDE_X', nama_sub_jenis_data='Zebra')
         JenisDataILAPFactory(nama_tabel_I='KPDE_X', nama_sub_jenis_data='Ambon')

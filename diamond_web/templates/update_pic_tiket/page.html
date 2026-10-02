@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+            <h5 class="m-b-10">
+                <i class="feather-user-check me-2"></i>Update PIC Tiket
+            </h5>
+        </div>
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="javascript:void(0);">Admin</a></li>
+            <li class="breadcrumb-item active">Update PIC Tiket</li>
+        </ul>
+    </div>
+</div>
+
+<style>
+    .upt-tile { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; height: 100%; }
+    .upt-tile .upt-label { display: block; color: #64748b; font-size: 11.5px; margin-bottom: 2px; }
+    .upt-tile .upt-value { font-weight: 700; font-size: 20px; color: #0f172a; }
+    .upt-tile.upt-warn { background: #fffbeb; border-color: #fde68a; }
+    #upt-role-table, #upt-preview-table, #upt-tanpa-table { table-layout: fixed; width: 100%; }
+    #upt-role-table > :not(caption) > * > *,
+    #upt-preview-table > :not(caption) > * > *,
+    #upt-tanpa-table > :not(caption) > * > * {
+        white-space: normal; word-break: break-word; vertical-align: top; font-size: 12.5px;
+        padding: 8px 12px;
+    }
+    .upt-chip {
+        display: inline-block; background: #e0f2fe; color: #075985; border-radius: 6px;
+        padding: 2px 8px; font-size: 12px; margin: 0 4px 4px 0;
+    }
+    .upt-chip.upt-reaktif { background: #ede9fe; color: #5b21b6; }
+</style>
+
+<div class="main-content">
+    <div class="card stretch stretch-full">
+        <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <h5 class="card-title mb-0">Ringkasan</h5>
+            <button type="button" class="btn btn-success" id="btn-upt-proses"
+                data-bs-toggle="modal" data-bs-target="#uptConfirmModal"
+                {% if not total_celah %}disabled{% endif %}>
+                <i class="feather-upload me-1"></i>PROSES
+            </button>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-3" style="font-size: 13px;">
+                Mengisi PIC <strong>P3DE</strong>, <strong>PIDE</strong>, dan <strong>PMDE</strong> pada tiket yang
+                <strong>tidak punya PIC aktif</strong> untuk role tersebut, dengan seluruh PIC aktif di tabel PIC untuk
+                Sub Jenis Data tiket. Role yang sudah punya PIC aktif tidak diubah. Setiap PIC yang diisi dicatat di
+                riwayat tiket. Halaman ini hanya preview &mdash; belum ada yang ditulis sampai tombol PROSES ditekan.
+            </p>
+
+            <div class="row g-2 mb-3">
+                <div class="col-6 col-md-3">
+                    <div class="upt-tile"><span class="upt-label">Tiket akan diisi</span><span class="upt-value" id="upt-total-tiket">{{ total_tiket }}</span></div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="upt-tile"><span class="upt-label">Role tiket diisi</span><span class="upt-value" id="upt-total-celah">{{ total_celah }}</span></div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="upt-tile"><span class="upt-label">PIC ditambahkan</span><span class="upt-value" id="upt-total-pic">{{ total_pic }}</span></div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="upt-tile{% if total_tanpa_sumber %} upt-warn{% endif %}"><span class="upt-label">Tidak dapat diisi</span><span class="upt-value" id="upt-total-tanpa">{{ total_tanpa_sumber }}</span></div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered mb-0" id="upt-role-table">
+                    <thead>
+                        <tr>
+                            <th>Role</th>
+                            <th class="text-end">Tanpa PIC Aktif</th>
+                            <th class="text-end">Akan Diisi</th>
+                            <th class="text-end">Tidak Ada PIC di Tabel PIC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in per_role %}
+                        <tr>
+                            <td class="fw-semibold">PIC {{ r.label }}</td>
+                            <td class="text-end">{{ r.tanpa_pic }}</td>
+                            <td class="text-end">{{ r.diisi }}</td>
+                            <td class="text-end">{{ r.tanpa_sumber }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card stretch stretch-full datatable-card">
+        <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <h5 class="card-title mb-0">Preview PIC yang Akan Diisi</h5>
+            <select class="form-select form-select-sm" id="upt-role-filter" style="width: auto;" aria-label="Filter role">
+                <option value="">Semua role</option>
+                {% for r in per_role %}<option value="{{ r.label }}">PIC {{ r.label }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="card-body p-0">
+            {% if rows %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="upt-preview-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 17%;">Nomor Tiket</th>
+                            <th style="width: 14%;">Status</th>
+                            <th style="width: 33%;">Sub Jenis Data</th>
+                            <th style="width: 10%;">Role</th>
+                            <th style="width: 26%;">PIC yang Diisi</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info m-3 mb-3" id="upt-empty">
+                Tidak ada tiket yang bisa diisi PIC-nya.
+                {% if total_tanpa_sumber %}Tiket tanpa PIC aktif yang tersisa belum punya PIC aktif di tabel PIC (lihat tabel di bawah).{% else %}Semua tiket sudah punya PIC aktif untuk setiap role.{% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if tanpa_sumber %}
+    <div class="card stretch stretch-full datatable-card">
+        <div class="card-header">
+            <div>
+                <h5 class="card-title mb-1">Tidak Dapat Diisi</h5>
+                <p class="text-muted mb-0" style="font-size: 12.5px;">
+                    Tiket pada Sub Jenis Data berikut tidak punya PIC aktif, dan tabel PIC juga tidak punya PIC aktif
+                    untuk role tersebut. Tambahkan PIC-nya di menu <a href="{% url 'pic_unified_list' %}">PIC</a>,
+                    lalu buka halaman ini lagi.
+                </p>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="upt-tanpa-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60%;">Sub Jenis Data</th>
+                            <th style="width: 20%;">Role</th>
+                            <th style="width: 20%;" class="text-end">Jumlah Tiket</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in tanpa_sumber %}
+                        <tr>
+                            <td>{{ r.id_sub_jenis_data }}{% if r.nama_sub_jenis_data %} - {{ r.nama_sub_jenis_data }}{% endif %}</td>
+                            <td>PIC {{ r.role_label }}</td>
+                            <td class="text-end">{{ r.jumlah_tiket }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="modal fade" id="uptConfirmModal" tabindex="-1" aria-labelledby="uptConfirmLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{% url 'update_pic_tiket_proses' %}" id="upt-form">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="uptConfirmLabel">Proses Update PIC Tiket</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" style="font-size: 13px;">
+                    {{ total_pic }} PIC akan diisi pada {{ total_tiket }} tiket ({{ total_celah }} role tiket).
+                    Role yang sudah punya PIC aktif tidak diubah. Lanjutkan?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success" id="btn-upt-confirm">PROSES</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{ rows|json_script:"upt-rows" }}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        const detailUrl = "{% url 'tiket_detail' 0 %}";
+
+        function escapeHtml(value) {
+            return $('<div>').text(value == null ? '' : value).html();
+        }
+
+        $(document).ready(function () {
+            const rows = JSON.parse(document.getElementById('upt-rows').textContent);
+
+            if ($('#upt-preview-table').length) {
+                const table = $('#upt-preview-table').DataTable({
+                    data: rows,
+                    deferRender: true,
+                    pageLength: 25,
+                    order: [[0, 'asc']],
+                    autoWidth: false,
+                    columns: [
+                        {
+                            data: 'nomor_tiket',
+                            render: function (data, type, row) {
+                                if (type !== 'display') return data;
+                                const url = detailUrl.replace('/0/', '/' + row.id_tiket + '/');
+                                return '<a href="' + url + '" target="_blank" rel="noopener">' + escapeHtml(data) + '</a>';
+                            }
+                        },
+                        { data: 'status', render: $.fn.dataTable.render.text() },
+                        { data: 'sub_jenis_data', render: $.fn.dataTable.render.text() },
+                        { data: 'role', render: function (data, type) { return type === 'display' ? 'PIC ' + escapeHtml(data) : data; } },
+                        {
+                            data: 'pic',
+                            orderable: false,
+                            render: function (data, type) {
+                                if (type !== 'display') return data.map(p => p.username).join(' ');
+                                return data.map(function (p) {
+                                    return p.aktifkan
+                                        ? '<span class="upt-chip upt-reaktif" title="Baris PIC lama diaktifkan kembali">' + escapeHtml(p.username) + ' (diaktifkan kembali)</span>'
+                                        : '<span class="upt-chip">' + escapeHtml(p.username) + '</span>';
+                                }).join('');
+                            }
+                        }
+                    ]
+                });
+
+                $('#upt-role-filter').on('change', function () {
+                    const v = $(this).val();
+                    table.column(3).search(v ? '^' + $.fn.dataTable.util.escapeRegex(v) + '$' : '', true, false).draw();
+                });
+            } else {
+                $('#upt-role-filter').prop('disabled', true);
+            }
+
+            if ($('#upt-tanpa-table').length) {
+                $('#upt-tanpa-table').DataTable({
+                    pageLength: 10,
+                    order: [[2, 'desc']],
+                    autoWidth: false
+                });
+            }
+
+            $('#upt-form').on('submit', function () {
+                $('#btn-upt-confirm').prop('disabled', true).text('Memproses...');
+            });
+        });
+    })();
+</script>
+{% endblock %}

@@ -150,6 +150,7 @@ Sistem akan:
   1. **Dikembalikan** — atas nama PIC PIDE yang mengembalikan
   2. **Dibatalkan** — atas nama PIC P3DE aktif (sebagai penerima pengembalian)
 - Mencatat `tgl_dikembalikan` pada tiket
+- Mengosongkan hasil tarikan pada tiket — Baris I/U/Res dan seluruh kolom QC (Baris CDE tetap); lihat [Tiket Dibatalkan](SYNC_TIKET_UPDATE_RULES.md#tiket-dibatalkan-7-hasil-tarikan-tidak-disalin)
 - Mengirim notifikasi ke PIC P3DE aktif
 
 PIC P3DE kemudian dapat memproses ulang tiket yang dibatalkan/dikembalikan tersebut melalui halaman **Generate ND Pengantar PIDE** (jika tiket memenuhi syarat).
@@ -187,7 +188,7 @@ Setelah itu, status tiket berubah menjadi **Selesai (8)**, yang merupakan tahap 
 
 ### Pembatalan oleh P3DE
 
-PIC P3DE dapat membatalkan tiket melalui menu **Batalkan Tiket** (modal di halaman detail tiket). Tiket yang dibatalkan akan berstatus **Dibatalkan (7)**.
+PIC P3DE dapat membatalkan tiket melalui menu **Batalkan Tiket** (modal di halaman detail tiket). Tiket yang dibatalkan akan berstatus **Dibatalkan (7)**, dan hasil tarikannya (Baris I/U/Res dan kolom QC, bila ada) dikosongkan seperti pada pengembalian oleh PIDE.
 
 **Ketentuan:**
 - Hanya dapat dilakukan jika status tiket **sebelum dikirim ke PIDE**, yaitu status **Direkam (1)** atau **Diteliti (2)**

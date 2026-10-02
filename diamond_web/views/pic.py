@@ -433,66 +433,17 @@ class PICUpdateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Up
         - If `end_date` is cleared, reactivate or create `TiketPIC` records
             for related tickets and log reactivation or creation actions.
         """
-        from ..models.tiket_pic import TiketPIC
         from django.utils import timezone
         from django.contrib.auth.models import User
 
-        # Get the original object before save
+        # `self.object` already carries the submitted values at this point, so the
+        # previous holder has to come from the row re-read here.
         original_pic = PIC.objects.get(pk=self.object.pk)
 
-        # Map PIC tipe to TiketPIC role
-        tipe_to_role = {
-            PIC.TipePIC.P3DE: TiketPIC.Role.P3DE,
-            PIC.TipePIC.PIDE: TiketPIC.Role.PIDE,
-            PIC.TipePIC.PMDE: TiketPIC.Role.PMDE,
-        }
-        role = tipe_to_role.get(self.object.tipe)
-        current_time = timezone.now()
-        tipe_label = dict(PIC.TipePIC.choices).get(self.object.tipe, self.object.tipe)
-
-        # Get admin user for PIC action logging
-        admin_user = User.objects.get(username='admin')
-
-        # `self.object` already carries the submitted values at this point, so the
-        # previous holder has to come from the row re-read above.
-        new_user = self.object.id_user
-        new_end_date = form.cleaned_data.get('end_date')
-        sub_jenis_data = self.object.id_sub_jenis_data_ilap
-        user_changed = original_pic.id_user_id != new_user.pk
-
-        if role and user_changed:
-            # Hand-over: the tiket loses the old PIC and gains the new one in the
-            # same edit, so it is never left without anybody assigned.
-            _unassign_pic_from_open_tikets(
-                original_pic.id_user, role, sub_jenis_data,
-                tipe_label, admin_user, current_time,
-                catatan=f'{tipe_label} {original_pic.id_user.username} diganti '
-                        f'oleh {new_user.username}'
-            )
-            # An edit that also sets an end_date is not a hand-over - the PIC is
-            # closed, so nobody replaces them.
-            if new_end_date is None:
-                _assign_pic_to_open_tikets(
-                    new_user, role, sub_jenis_data,
-                    tipe_label, admin_user, current_time
-                )
-
-        # Check if end_date is being set (was None, now has value) - DEACTIVATION
-        elif role and original_pic.end_date is None and new_end_date is not None:
-            # Find TiketPIC records for this user and role, but ONLY for tikets with this sub_jenis_data
-            _unassign_pic_from_open_tikets(
-                original_pic.id_user, role, sub_jenis_data,
-                tipe_label, admin_user, current_time,
-                open_only=False
-            )
-
-        # Check if end_date is being cleared (was set, now is None) - REACTIVATION
-        elif role and original_pic.end_date is not None and new_end_date is None:
-            # No fallback logging - only log to tikets where changes were made
-            _assign_pic_to_open_tikets(
-                new_user, role, sub_jenis_data,
-                tipe_label, admin_user, current_time
-            )
+        _propagate_pic_update(
+            original_pic, self.object.id_user, form.cleaned_data.get('end_date'),
+            User.objects.get(username='admin'), timezone.now()
+        )
 
         return super().form_valid(form)
 
@@ -500,13 +451,118 @@ class PICUpdateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Up
         self.object = self.get_object()
         form = self.get_form()
         return self.render_form_response(form)
-    
+
     def get_queryset(self):
         """Filter by tipe to ensure users only access their PIC type"""
         qs = super().get_queryset()
         if self.tipe:
             qs = qs.filter(tipe=self.tipe)
         return qs
+
+
+def _tiket_role_for(tipe):
+    """Map a `PIC.TipePIC` to the matching `TiketPIC.Role`, or None."""
+    from ..models.tiket_pic import TiketPIC
+
+    return {
+        PIC.TipePIC.P3DE: TiketPIC.Role.P3DE,
+        PIC.TipePIC.PIDE: TiketPIC.Role.PIDE,
+        PIC.TipePIC.PMDE: TiketPIC.Role.PMDE,
+    }.get(tipe)
+
+
+def _propagate_pic_update(original_pic, new_user, new_end_date, admin_user, current_time):
+    """Carry an edit of `original_pic` over to its tikets' `TiketPIC` rows.
+
+    `original_pic` must hold the values from *before* the edit; `new_user` and
+    `new_end_date` are what it is being changed to. Shared by `PICUpdateView`
+    and the bulk PIC Pemda/Provinsi page so both edit tikets the same way:
+
+    - A user swap is a hand-over: the old user is deactivated on the still-open
+        tikets and the new user is assigned to them. A hand-over that also
+        carries an `end_date` only removes the old user - nobody takes over.
+    - An `end_date` newly set deactivates the user on every tiket of the sub
+        jenis data (`PICActionType.TIDAK_AKTIF`).
+    - An `end_date` cleared reactivates/creates the user's `TiketPIC` on the
+        still-open tikets.
+    """
+    role = _tiket_role_for(original_pic.tipe)
+    if not role:
+        return
+    tipe_label = dict(PIC.TipePIC.choices).get(original_pic.tipe, original_pic.tipe)
+    sub_jenis_data = original_pic.id_sub_jenis_data_ilap
+    user_changed = original_pic.id_user_id != new_user.pk
+
+    if user_changed:
+        # Hand-over: the tiket loses the old PIC and gains the new one in the
+        # same edit, so it is never left without anybody assigned.
+        _unassign_pic_from_open_tikets(
+            original_pic.id_user, role, sub_jenis_data,
+            tipe_label, admin_user, current_time,
+            catatan=f'{tipe_label} {original_pic.id_user.username} diganti '
+                    f'oleh {new_user.username}'
+        )
+        # An edit that also sets an end_date is not a hand-over - the PIC is
+        # closed, so nobody replaces them.
+        if new_end_date is None:
+            _assign_pic_to_open_tikets(
+                new_user, role, sub_jenis_data,
+                tipe_label, admin_user, current_time
+            )
+
+    # Check if end_date is being set (was None, now has value) - DEACTIVATION
+    elif original_pic.end_date is None and new_end_date is not None:
+        # Find TiketPIC records for this user and role, but ONLY for tikets with this sub_jenis_data
+        _unassign_pic_from_open_tikets(
+            original_pic.id_user, role, sub_jenis_data,
+            tipe_label, admin_user, current_time,
+            open_only=False
+        )
+
+    # Check if end_date is being cleared (was set, now is None) - REACTIVATION
+    elif original_pic.end_date is not None and new_end_date is None:
+        # No fallback logging - only log to tikets where changes were made
+        _assign_pic_to_open_tikets(
+            new_user, role, sub_jenis_data,
+            tipe_label, admin_user, current_time
+        )
+
+
+def _delete_pic_with_tikets(pic, admin_user, current_time):
+    """Delete `pic` together with its user's `TiketPIC` rows on that sub jenis data.
+
+    Each removed `TiketPIC` gets a `PICActionType.TIDAK_AKTIF` log. Shared by
+    `PICDeleteView` and the bulk PIC Pemda/Provinsi page.
+    """
+    from ..models.tiket_pic import TiketPIC
+    from ..models.tiket_action import TiketAction
+
+    role = _tiket_role_for(pic.tipe)
+    tipe_label = dict(PIC.TipePIC.choices).get(pic.tipe, pic.tipe)
+
+    # Find TiketPIC records for this user and role, but ONLY for tikets with this sub_jenis_data
+    if role:
+        delete_tiket_pcs = TiketPIC.objects.filter(
+            id_user=pic.id_user,
+            role=role,
+            id_tiket__id_periode_data__id_sub_jenis_data_ilap=pic.id_sub_jenis_data_ilap
+        )
+
+        # Delete TiketPIC records and log the action
+        for tiket_pic in delete_tiket_pcs:
+            tiket = tiket_pic.id_tiket
+            tiket_pic.delete()
+
+            # Add log to TiketAction
+            TiketAction.objects.create(
+                id_tiket=tiket,
+                id_user=admin_user,
+                timestamp=current_time,
+                action=PICActionType.TIDAK_AKTIF,
+                catatan=f'{tipe_label} {pic.id_user.username} dihapus'
+            )
+
+    pic.delete()
 
 
 class PICDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminAnyRequiredMixin, DeleteView):
@@ -569,53 +625,16 @@ class PICDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminAnyRequiredMixin, 
 
     def delete(self, request, *args, **kwargs):
         """Delete PIC and mark all associated TiketPIC records as inactive"""
-        from ..models.tiket_pic import TiketPIC
-        from ..models.tiket_action import TiketAction
         from django.utils import timezone
         from django.contrib.auth.models import User
-        
+
         self.object = self.get_object()
         name = str(self.object)
-        pic = self.object
-        
+
         # Get admin user for PIC action logging
         admin_user = User.objects.get(username='admin')
-        
-        # Map PIC tipe to TiketPIC role
-        tipe_to_role = {
-            PIC.TipePIC.P3DE: TiketPIC.Role.P3DE,
-            PIC.TipePIC.PIDE: TiketPIC.Role.PIDE,
-            PIC.TipePIC.PMDE: TiketPIC.Role.PMDE,
-        }
-        role = tipe_to_role.get(pic.tipe)
-        current_time = timezone.now()
-        tipe_label = dict(PIC.TipePIC.choices).get(pic.tipe, pic.tipe)
-        
-        # Find TiketPIC records for this user and role, but ONLY for tikets with this sub_jenis_data
-        if role:
-            delete_tiket_pcs = TiketPIC.objects.filter(
-                id_user=pic.id_user,
-                role=role,
-                id_tiket__id_periode_data__id_sub_jenis_data_ilap=pic.id_sub_jenis_data_ilap
-            )
-            
-            # Delete TiketPIC records and log the action
-            for tiket_pic in delete_tiket_pcs:
-                tiket = tiket_pic.id_tiket
-                tiket_pic.delete()
-                
-                # Add log to TiketAction
-                TiketAction.objects.create(
-                    id_tiket=tiket,
-                    id_user=admin_user,
-                    timestamp=current_time,
-                    action=PICActionType.TIDAK_AKTIF,
-                    catatan=f'{tipe_label} {pic.id_user.username} dihapus'
-                )
-        
-        # Now delete the PIC object
-        pic.delete()
-        
+        _delete_pic_with_tikets(self.object, admin_user, timezone.now())
+
         # For AJAX clients, set a server-side message and return a redirect URL
         # so the base template can render the toast uniformly.
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':

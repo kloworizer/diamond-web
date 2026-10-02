@@ -60,6 +60,18 @@ class TestTiketDetailView:
         resp = client.get(reverse('tiket_detail', args=[tiket.pk]))
         assert resp.status_code == 200
 
+    @pytest.mark.parametrize('admin_fixture', ['pide_admin_user', 'pmde_admin_user'])
+    def test_admin_pide_pmde_can_open_any_tiket_read_only(self, client, request, admin_fixture):
+        """Admin PIDE/PMDE open any tiket without a TiketPIC, but only to view it."""
+        user = request.getfixturevalue(admin_fixture)
+        tiket = TiketFactory(status_tiket=1)
+        client.force_login(user)
+        resp = client.get(reverse('tiket_detail', args=[tiket.pk]))
+        assert resp.status_code == 200
+        assert resp.context['user_is_active_pic'] is False
+        assert resp.context['user_can_edit_tiket'] is False
+        assert resp.context['user_can_edit_special_request'] is False
+
     def test_context_has_tiket(self, client, admin_user, tiket):
         """Context contains tiket object."""
         client.force_login(admin_user)

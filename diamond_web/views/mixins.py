@@ -463,6 +463,38 @@ def is_admin_p3de(user):
     return _in_group(user, 'admin', 'admin_p3de')
 
 
+def is_admin_pmde(user):
+    """Return True for users who administer PMDE tikets.
+
+    Covers superusers, the global `admin` group and the `admin_pmde` group —
+    the same set every other Admin PMDE menu admits.
+    """
+    if not user or not getattr(user, 'is_authenticated', False):
+        return False
+    if user.is_superuser:
+        return True
+    return _in_group(user, 'admin', 'admin_pmde')
+
+
+def tiket_pic_roles_managed_by(user):
+    """Return the `TiketPIC.Role` values `user` may manage on a tiket page.
+
+    Mirrors the PIC menu: each seksi admin manages its own role (`admin_p3de`
+    -> P3DE, `admin_pide` -> PIDE, `admin_pmde` -> PMDE); superusers and the
+    global `admin` group manage all three. Returned in role order.
+    """
+    if not user or not getattr(user, 'is_authenticated', False):
+        return []
+    if user.is_superuser or _in_group(user, 'admin'):
+        return list(TiketPIC.Role)
+    seksi_admin = (
+        (TiketPIC.Role.P3DE, 'admin_p3de'),
+        (TiketPIC.Role.PIDE, 'admin_pide'),
+        (TiketPIC.Role.PMDE, 'admin_pmde'),
+    )
+    return [role for role, group in seksi_admin if _in_group(user, group)]
+
+
 def is_kasi_p3de(user):
     """Return True when `user` belongs to the `kasi_p3de` supervisor group."""
     return _in_group(user, 'kasi_p3de')
@@ -485,6 +517,49 @@ def is_kasi(user):
     limited to the tikets where they are the active PIC.
     """
     return _in_group(user, *KASI_GROUPS)
+
+
+def can_view_any_tiket(user):
+    """Return True when `user` may open the detail page of any tiket.
+
+    Covers P3DE administrators (superuser, `admin`, `admin_p3de`), the PIDE and
+    PMDE administrators and every kasi group. Viewing is all this grants: the
+    workflow actions stay gated behind an active TiketPIC assignment, and
+    editing the isian stays with `is_admin_p3de`.
+    """
+    return (
+        is_admin_p3de(user)
+        or is_kasi(user)
+        or _in_group(user, 'admin_pide', 'admin_pmde')
+    )
+
+
+def can_open_tiket(user, tiket):
+    """Return True when `user` may open `tiket`'s detail page.
+
+    Granted to:
+    - everyone covered by `can_view_any_tiket` (admins and kasi);
+    - anyone with a `TiketPIC` row on the tiket, active or not, so a PIC
+      handed over keeps reading the tikets they worked;
+    - the current PIC of the tiket's sub jenis data (a `PIC` row with no
+      `end_date`, any tipe), who may never have been put on the tiket because
+      a handover only reaches tikets that are still open.
+
+    Viewing is all this grants: the workflow actions stay gated behind an
+    active `TiketPIC` on the tiket itself.
+    """
+    if not user or not getattr(user, 'is_authenticated', False):
+        return False
+    if can_view_any_tiket(user):
+        return True
+    if TiketPIC.objects.filter(id_tiket=tiket, id_user=user).exists():
+        return True
+    from ..models.pic import PIC
+    return PIC.objects.filter(
+        id_user=user,
+        id_sub_jenis_data_ilap_id=tiket.id_periode_data.id_sub_jenis_data_ilap_id,
+        end_date__isnull=True,
+    ).exists()
 
 
 def has_active_tiket_pic(user):
