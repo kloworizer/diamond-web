@@ -30,7 +30,7 @@ from ...constants.tiket_action_types import (
 )
 from ...utils import format_number_with_separator, format_periode
 from ...utils.jenis_prioritas import resolve_jenis_prioritas
-from ..mixins import can_open_tiket, is_admin_p3de, is_admin_pmde
+from ..mixins import can_open_tiket, is_admin_p3de, is_admin_pmde, tiket_pic_roles_managed_by
 
 
 class TiketDetailView(LoginRequiredMixin, DetailView):
@@ -180,6 +180,13 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
                 if full_name else action.id_user.username
             )
         
+        # Roles whose PICs the reader may add/change/remove on this tiket
+        # alone (Kelola PIC Tiket) - the same seksi rule as the PIC menu.
+        managed_roles = tiket_pic_roles_managed_by(self.request.user)
+        context['pic_roles_managed'] = [
+            {'value': int(role), 'label': f'PIC {role.label}'} for role in managed_roles
+        ]
+
         # Get PICs and enrich with badge info
         tiket_pics = TiketPIC.objects.filter(
             id_tiket=self.object
@@ -199,6 +206,7 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
             # PIC record. A handover deactivates the row it replaces, so this is
             # what the audit trail of the tiket itself says.
             pic.is_pic_active = pic.active
+            pic.can_manage = pic.role in managed_roles
         
         # Backup data list
         backups = self.object.backups.select_related('id_user').all().order_by('-id')

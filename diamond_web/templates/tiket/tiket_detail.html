@@ -650,11 +650,39 @@
         <!-- Sidebar: PIC + Aksi (with document downloads folded back in), beside Informasi Utama in the top 2-column area -->
         <div class="col-lg-4">
             <!-- PIC (Penanggung Jawab) Card -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-warning text-dark">
+            <div class="card shadow-sm mb-4" id="pic-tiket-card">
+                <div class="card-header bg-warning text-dark d-flex align-items-center justify-content-between gap-2">
                     <h5 class="mb-0"><i class="feather-users me-2"></i>PIC (Penanggung Jawab)</h5>
+                    {% if pic_roles_managed %}
+                    <button type="button" class="btn btn-sm btn-light flex-shrink-0" id="edit-pic-tiket-toggle" aria-pressed="false" aria-controls="pic-tiket-card"
+                        title="Tambah, ubah, atau hapus PIC untuk tiket ini saja">
+                        <i class="feather-edit-2 me-1"></i><span class="edit-pic-label">Edit PIC</span>
+                    </button>
+                    {% endif %}
                 </div>
                 <div class="card-body">
+                    {% if pic_roles_managed %}
+                    <div class="pic-edit-only mb-2">
+                        {% if pic_roles_managed|length == 1 %}
+                        <button type="button" class="btn btn-sm btn-outline-primary w-100" id="tambah-pic-tiket-btn" data-bs-toggle="modal" data-bs-target="#kelolaPicTiketModal"
+                            data-url="{% url 'tiket_pic_tambah' tiket.pk %}?role={{ pic_roles_managed.0.value }}" data-title="Tambah {{ pic_roles_managed.0.label }}">
+                            <i class="feather-plus me-1"></i>Tambah {{ pic_roles_managed.0.label }}
+                        </button>
+                        {% else %}
+                        <div class="dropdown">
+                            <button type="button" class="btn btn-sm btn-outline-primary w-100 dropdown-toggle" id="tambah-pic-tiket-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="feather-plus me-1"></i>Tambah PIC
+                            </button>
+                            <ul class="dropdown-menu w-100">
+                                {% for r in pic_roles_managed %}
+                                <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#kelolaPicTiketModal"
+                                    data-url="{% url 'tiket_pic_tambah' tiket.pk %}?role={{ r.value }}" data-title="Tambah {{ r.label }}">{{ r.label }}</a></li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                     {% if tiket_pics %}
                     <div class="list-group list-group-flush">
                         {% comment %}Group by role: show role header once, then list users under it{% endcomment %}
@@ -676,7 +704,7 @@
                                     &nbsp;
                                     {% endif %}
                                 </div>
-                                <div class="small">
+                                <div class="small d-flex align-items-center gap-1">
                                     {% if pic.is_pic_active %}
                                     <span class="badge bg-success">Aktif</span>
                                     {% else %}
@@ -684,7 +712,21 @@
                                     {% endif %}
                                 </div>
                             </div>
-                            <div class="fw-semibold mt-1"> <i class="feather-user me-1"></i>{% pic_name_link pic.id_user pic.user_display %}</div>
+                            <div class="d-flex justify-content-between align-items-center gap-2 mt-1">
+                                <div class="fw-semibold"> <i class="feather-user me-1"></i>{% pic_name_link pic.id_user pic.user_display %}</div>
+                                {% if pic.can_manage %}
+                                <div class="d-flex gap-1 flex-shrink-0 pic-tiket-actions pic-edit-only">
+                                    <button type="button" class="btn btn-sm btn-outline-primary px-2 py-1" data-bs-toggle="modal" data-bs-target="#kelolaPicTiketModal"
+                                        data-url="{% url 'tiket_pic_ubah' tiket.pk pic.pk %}" data-title="Ubah PIC {{ pic.badge_label }}" title="Ubah PIC" aria-label="Ubah PIC {{ pic.id_user.username }}">
+                                        <i class="feather-edit-2"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger px-2 py-1" data-bs-toggle="modal" data-bs-target="#kelolaPicTiketModal"
+                                        data-url="{% url 'tiket_pic_hapus' tiket.pk pic.pk %}" data-title="Hapus PIC {{ pic.badge_label }}" title="Hapus PIC" aria-label="Hapus PIC {{ pic.id_user.username }}">
+                                        <i class="feather-trash-2"></i>
+                                    </button>
+                                </div>
+                                {% endif %}
+                            </div>
                         </div>
                         {% endfor %}
                     </div>
@@ -1723,6 +1765,31 @@
     </div>
     {% endif %}
 
+    <!-- Kelola PIC Tiket Modal (Admin seksi): tambah / ubah / hapus PIC tiket ini saja -->
+    {% if pic_roles_managed %}
+    <div class="modal fade" id="kelolaPicTiketModal" tabindex="-1" aria-labelledby="kelolaPicTiketModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+                <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #fef3c7; color: #b45309; flex-shrink: 0;">
+                            <i class="feather-users" style="font-size: 16px;"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0" id="kelolaPicTiketModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Kelola PIC</h5>
+                            <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Tiket {{ tiket.nomor_tiket }}</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div id="kelola-pic-tiket-form-container">
+                    <!-- Form will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <style>
         /* Stuck identity card — visual styles only, NO CSS transition or animation here.
        All transitions are exclusively controlled by JS to prevent conflicts.
@@ -2488,7 +2555,19 @@
             transform: translateY(-1px) !important;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08) !important;
         }
-        
+
+        /* Kelola PIC controls appear only after "Edit PIC" is switched on. */
+        #pic-tiket-card:not(.pic-editing) .pic-edit-only {
+            display: none !important;
+        }
+
+        /* Icon-only Ubah/Hapus buttons on each PIC row stay compact. */
+        .card-body .pic-tiket-actions .btn {
+            padding: 0.2rem 0.45rem !important;
+            font-size: 12px !important;
+            border-radius: 6px !important;
+        }
+
         /* Modal Styling Improvements */
 
         .modal-content {
@@ -2926,6 +3005,73 @@
                             console.error('Error loading preview:', error);
                             showToast('Gagal memuat pratinjau sinkronisasi.', 'danger');
                             formContainer.innerHTML = '<div class="alert alert-danger m-3">Gagal memuat pratinjau</div>';
+                        });
+                });
+            }
+
+            // "Edit PIC" toggle: shows the Tambah button and the per-row
+            // Ubah/Hapus buttons. The state survives the reload after a save,
+            // per tiket and per browser tab.
+            const editPicToggle = document.getElementById('edit-pic-tiket-toggle');
+            if (editPicToggle) {
+                const picCard = document.getElementById('pic-tiket-card');
+                const editPicKey = 'picTiketEdit-{{ tiket.pk }}';
+                const setPicEditing = (on) => {
+                    picCard.classList.toggle('pic-editing', on);
+                    editPicToggle.setAttribute('aria-pressed', on ? 'true' : 'false');
+                    editPicToggle.querySelector('.edit-pic-label').textContent = on ? 'Selesai' : 'Edit PIC';
+                    try {
+                        if (on) {
+                            sessionStorage.setItem(editPicKey, '1');
+                        } else {
+                            sessionStorage.removeItem(editPicKey);
+                        }
+                    } catch (e) { /* storage unavailable: the toggle still works */ }
+                };
+                let startEditing = false;
+                try { startEditing = sessionStorage.getItem(editPicKey) === '1'; } catch (e) { /* ignore */ }
+                setPicEditing(startEditing);
+                editPicToggle.addEventListener('click', () => {
+                    setPicEditing(!picCard.classList.contains('pic-editing'));
+                });
+            }
+
+            // Kelola PIC Tiket Handler (Admin seksi). One modal serves Tambah,
+            // Ubah and Hapus: the button that opened it carries the form URL
+            // and the title in data-url / data-title.
+            const kelolaPicTiketModal = document.getElementById('kelolaPicTiketModal');
+            if (kelolaPicTiketModal) {
+                setupModalAria(kelolaPicTiketModal);
+                kelolaPicTiketModal.addEventListener('show.bs.modal', function (event) {
+                    const trigger = event.relatedTarget;
+                    const formContainer = document.getElementById('kelola-pic-tiket-form-container');
+                    if (!trigger || !trigger.dataset.url) {
+                        return;
+                    }
+                    document.getElementById('kelolaPicTiketModalLabel').textContent =
+                        trigger.dataset.title || 'Kelola PIC';
+                    formContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-warning" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                    fetch(trigger.dataset.url, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('HTTP ' + response.status);
+                            }
+                            return response.text();
+                        })
+                        .then(html => {
+                            formContainer.innerHTML = html;
+                            bindModalSubmit('kelola-pic-tiket-form-container', kelolaPicTiketModal, {
+                                successMessage: 'PIC tiket berhasil diperbarui.',
+                                errorMessage: 'Gagal memperbarui PIC tiket.'
+                            });
+                        })
+                        .catch(error => {
+                            console.error('Error loading form:', error);
+                            showToast('Gagal memuat form.', 'danger');
+                            formContainer.innerHTML = '<div class="alert alert-danger m-3">Gagal memuat form</div>';
                         });
                 });
             }

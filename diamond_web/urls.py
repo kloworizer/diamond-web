@@ -436,5 +436,9 @@ urlpatterns = [
     path('tiket/<int:pk>/special-request/', views.SpecialRequestView.as_view(), name='special_request_tiket'),
     path('tiket/<int:pk>/edit/', views.EditTiketView.as_view(), name='edit_tiket'),
     path('tiket/<int:pk>/sinkronisasi/', views.SinkronisasiTiketView.as_view(), name='sinkronisasi_tiket'),
+    # Kelola PIC Tiket: admin seksi mengatur PIC satu tiket tanpa menyentuh tabel PIC
+    path('tiket/<int:pk>/pic/tambah/', views.TambahPICTiketView.as_view(), name='tiket_pic_tambah'),
+    path('tiket/<int:pk>/pic/<int:pic_pk>/ubah/', views.UbahPICTiketView.as_view(), name='tiket_pic_ubah'),
+    path('tiket/<int:pk>/pic/<int:pic_pk>/hapus/', views.HapusPICTiketView.as_view(), name='tiket_pic_hapus'),
 
 ]

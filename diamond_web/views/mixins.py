@@ -476,6 +476,25 @@ def is_admin_pmde(user):
     return _in_group(user, 'admin', 'admin_pmde')
 
 
+def tiket_pic_roles_managed_by(user):
+    """Return the `TiketPIC.Role` values `user` may manage on a tiket page.
+
+    Mirrors the PIC menu: each seksi admin manages its own role (`admin_p3de`
+    -> P3DE, `admin_pide` -> PIDE, `admin_pmde` -> PMDE); superusers and the
+    global `admin` group manage all three. Returned in role order.
+    """
+    if not user or not getattr(user, 'is_authenticated', False):
+        return []
+    if user.is_superuser or _in_group(user, 'admin'):
+        return list(TiketPIC.Role)
+    seksi_admin = (
+        (TiketPIC.Role.P3DE, 'admin_p3de'),
+        (TiketPIC.Role.PIDE, 'admin_pide'),
+        (TiketPIC.Role.PMDE, 'admin_pmde'),
+    )
+    return [role for role, group in seksi_admin if _in_group(user, group)]
+
+
 def is_kasi_p3de(user):
     """Return True when `user` belongs to the `kasi_p3de` supervisor group."""
     return _in_group(user, 'kasi_p3de')
