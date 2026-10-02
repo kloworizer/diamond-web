@@ -21,10 +21,10 @@ def _user_label(user):
 class KelolaPICTiketForm(forms.Form):
     """Add (``instance=None``) or change one `TiketPIC` row of a single tiket.
 
-    The choices are the users of the role's seksi group, minus whoever is
-    already an active PIC of that role on the tiket. When changing a row, its
-    current user stays selectable even if they have since left the group, so
-    the form can be saved with only the status changed.
+    The choices are the users of the role's seksi group, minus superusers and
+    whoever is already an active PIC of that role on the tiket. When changing a
+    row, its current user stays selectable even if they would otherwise be left
+    out, so the form can be saved with only the status changed.
     """
     id_user = forms.ModelChoiceField(
         queryset=User.objects.none(),
@@ -48,7 +48,12 @@ class KelolaPICTiketForm(forms.Form):
         sudah_aktif = TiketPIC.objects.filter(
             id_tiket=tiket, role=role, active=True,
         ).values('id_user')
-        candidates = Q(groups__name=ROLE_USER_GROUP[role]) & ~Q(pk__in=sudah_aktif)
+        candidates = (
+            Q(groups__name=ROLE_USER_GROUP[role])
+            & ~Q(pk__in=sudah_aktif)
+            # Superusers sit in every user group; they are not PIC candidates.
+            & Q(is_superuser=False)
+        )
         if instance is not None:
             candidates |= Q(pk=instance.id_user_id)
             self.initial.setdefault('id_user', instance.id_user_id)

@@ -134,9 +134,32 @@ class TestTambah:
         assert f'value="{p3de_pic.id_user_id}"' not in html
         assert f'value="{pide.pk}"' not in html
 
-    @pytest.mark.parametrize('kind', ['already_active', 'other_group'])
+    def test_superusers_are_not_offered(self, client, tiket, p3de_admin_user):
+        superuser = _member('user_p3de', is_superuser=True, is_staff=True)
+        biasa = _member('user_p3de')
+        client.force_login(p3de_admin_user)
+        html = client.get(_tambah_url(tiket, P3DE), **AJAX).content.decode()
+        assert f'value="{biasa.pk}"' in html
+        assert f'value="{superuser.pk}"' not in html
+
+    def test_existing_superuser_pic_can_still_be_switched_off(self, client, tiket, p3de_admin_user):
+        pic = TiketPICFactory(
+            id_tiket=tiket, role=P3DE, active=True,
+            id_user=_member('user_p3de', is_superuser=True, is_staff=True),
+        )
+        client.force_login(p3de_admin_user)
+        resp = client.post(_ubah_url(pic), {'id_user': pic.id_user_id}, **AJAX)
+        assert resp.json()['success']
+        pic.refresh_from_db()
+        assert not pic.active
+
+    @pytest.mark.parametrize('kind', ['already_active', 'other_group', 'superuser'])
     def test_rejects_invalid_user(self, client, tiket, p3de_pic, p3de_admin_user, kind):
-        user = p3de_pic.id_user if kind == 'already_active' else _member('user_pide')
+        user = {
+            'already_active': lambda: p3de_pic.id_user,
+            'other_group': lambda: _member('user_pide'),
+            'superuser': lambda: _member('user_p3de', is_superuser=True),
+        }[kind]()
         client.force_login(p3de_admin_user)
 
         resp = client.post(_tambah_url(tiket, P3DE), {'role': 1, 'id_user': user.pk}, **AJAX)
