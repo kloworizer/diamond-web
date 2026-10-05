@@ -13,13 +13,15 @@ from django.template.loader import render_to_string
 from diamond_web.tests.conftest import UserFactory
 
 
-# The four entries that survive, and the section captions that must not.
+# The four entries that survive, and the section captions that must not. The
+# P3DE captions name the viewer's seksi ("P3DE", "P3DER" or "P3DE / P3DER"),
+# so they are matched on their opening.
 TOP_LEVEL_ENTRIES = ['Home', 'Dashboard', 'Daftar Tiket', 'Profil ILAP']
 SECTION_CAPTIONS = [
-    '<label>P3DE</label>',
+    '<label>P3DE',
     '<label>PIDE</label>',
     '<label>PMDE</label>',
-    '<label>Admin P3DE</label>',
+    '<label>Admin P3DE',
     '<label>Admin PIDE</label>',
     '<label>Admin PMDE</label>',
     '<label>Sinkronisasi Data</label>',
@@ -49,9 +51,9 @@ class TestKasubditPDENavbar:
             assert caption not in html
 
     @pytest.mark.parametrize('companion', [
-        'user_p3de', 'user_pide', 'user_pmde',
-        'kasi_p3de', 'kasi_pide', 'kasi_pmde',
-        'admin_p3de', 'admin_pide', 'admin_pmde',
+        'user_p3de', 'user_p3der', 'user_pide', 'user_pmde',
+        'kasi_p3de', 'kasi_p3der', 'kasi_pide', 'kasi_pmde',
+        'admin_p3de', 'admin_p3der', 'admin_pide', 'admin_pmde',
         'admin',
     ])
     def test_kasubdit_suppresses_every_companion_group_section(self, companion):

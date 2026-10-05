@@ -20,7 +20,7 @@ from ..utils import format_periode
 def _is_p3de_user(user):
     """Check if user is P3DE user or admin."""
     return user.is_superuser or user.is_staff or user.groups.filter(
-        name__in=['user_p3de', 'admin', 'admin_p3de']
+        name__in=['user_p3de', 'admin', 'admin_p3de', 'user_p3der', 'admin_p3der']
     ).exists()
 
 

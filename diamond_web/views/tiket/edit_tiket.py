@@ -24,7 +24,7 @@ from ...models.pic import PIC
 from ...forms.edit_tiket import EditTiketForm
 from ...constants.tiket_action_types import TiketActionType
 from ...constants.tiket_status import STATUS_DIREKAM
-from ..mixins import is_admin_p3de
+from ..mixins import is_admin_p3de, p3de_seksi_of
 
 
 class EditTiketView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
@@ -37,8 +37,9 @@ class EditTiketView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     Access Control:
     - Requires @login_required
     - test_func() allows either:
-        * a P3DE administrator (superuser, `admin` or `admin_p3de`), at any
-          status and regardless of the tanda terima, or
+        * a P3DE administrator (superuser, `admin`, or the `admin_p3de` /
+          `admin_p3der` of the tiket's seksi), at any status and regardless of
+          the tanda terima, or
         * the active P3DE PIC that owns the tiket, but only while
           tiket.status_tiket == STATUS_DIREKAM and tiket.tanda_terima is False
 
@@ -65,11 +66,11 @@ class EditTiketView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 
     def test_func(self):
         user = self.request.user
-        # P3DE administrators may correct a tiket whenever needed, so the
-        # Direkam / tanda terima lock does not apply to them.
-        if is_admin_p3de(user):
-            return True
         tiket = self.get_object()
+        # P3DE administrators may correct a tiket of their seksi whenever
+        # needed, so the Direkam / tanda terima lock does not apply to them.
+        if is_admin_p3de(user, tiket):
+            return True
         if not self._is_editable(tiket):
             return False
         sub_jenis_data_ilap = tiket.id_periode_data.id_sub_jenis_data_ilap
@@ -97,7 +98,7 @@ class EditTiketView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     def get_form_kwargs(self):
         """Expose the later workflow isian to P3DE admins only."""
         kwargs = super().get_form_kwargs()
-        kwargs['is_admin'] = is_admin_p3de(self.request.user)
+        kwargs['is_admin'] = is_admin_p3de(self.request.user, self.object)
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -116,7 +117,8 @@ class EditTiketView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         context['is_regional'] = 'regional' in (kategori_wilayah or '').lower()
         # Drives the admin-only section of the modal (hasil penelitian and
         # pengiriman ke PIDE); the form drops those fields for a PIC.
-        context['is_admin_p3de'] = is_admin_p3de(self.request.user)
+        context['is_admin_p3de'] = is_admin_p3de(self.request.user, tiket)
+        context['p3de_seksi'] = p3de_seksi_of(tiket)
         return context
 
     def _build_catatan(self, form, original):

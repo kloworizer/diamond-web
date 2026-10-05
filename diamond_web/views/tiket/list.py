@@ -2,6 +2,7 @@
 
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.db.models import Q
 from django.db.models.functions import ExtractYear
 from django.views.decorators.http import require_GET
 from django.views.generic import TemplateView
@@ -27,7 +28,7 @@ from ...utils.date_range import (
     filter_date_range, filter_years, parse_date_range, parse_years,
 )
 from ...utils.wilayah import kanwil_value_paths, tiket_in_kanwil_q
-from ..mixins import can_access_tiket_list, is_kasi
+from ..mixins import can_access_tiket_list, supervised_tiket_q
 from ..seksi_queue import prioritas_exists
 from ...constants.tiket_status import STATUS_LABELS
 from .documents import _is_p3de_user, _format_periode_tiket
@@ -165,14 +166,15 @@ def tiket_data(request):
         'id_periode_data__id_sub_jenis_data_ilap__id_ilap',
         'id_periode_data__id_periode_pengiriman'
     ).all()
-    # Admins, superusers and kasi (supervisors) see every tiket; everyone else
-    # only sees the tikets they are a PIC for.
-    if (not request.user.groups.filter(name='admin').exists()
-            and not request.user.is_superuser
-            and not is_kasi(request.user)):
+    # Admins, superusers and kasi PIDE/PMDE see every tiket; a kasi P3DE or
+    # P3DER sees the tikets of their seksi; everyone else only sees the tikets
+    # they are a PIC for.
+    supervised = supervised_tiket_q(request.user)
+    if supervised is not None:
         base_qs = base_qs.filter(
-            tiketpic__id_user=request.user
-        ).distinct()
+            supervised
+            | Q(id__in=TiketPIC.objects.filter(id_user=request.user).values('id_tiket'))
+        )
 
     # Tanggal Terima DIP is a date range rather than a dropdown, so it is read
     # once here and applied both to the rows and to every dropdown's own

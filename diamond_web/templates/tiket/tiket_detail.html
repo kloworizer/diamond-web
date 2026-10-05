@@ -54,7 +54,7 @@
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-                            <li class="breadcrumb-item"><a href="javascript:void(0);">P3DE</a></li>
+                            <li class="breadcrumb-item"><a href="javascript:void(0);">{{ p3de_seksi|default:"P3DE" }}</a></li>
                             <li class="breadcrumb-item"><a href="{% url 'tiket_list' %}">Daftar Tiket</a></li>
                             <li class="breadcrumb-item active">{{ tiket.nomor_tiket }}</li>
                         </ol>
@@ -745,11 +745,11 @@
                     <h5 class="mb-0"><i class="feather-settings me-2"></i>Aksi</h5>
                 </div>
                 <div class="card-body">
-                    {# Edit button sits outside the PIC blocks: an Admin P3DE may edit without being a PIC. #}
+                    {# Edit button sits outside the PIC blocks: an Admin P3DE / P3DER may edit without being a PIC. #}
                     {% if not user_is_active_pic %}
                         <div class="alert alert-info mb-0">
                             <i class="feather-info me-2"></i>Anda bukan PIC aktif untuk tiket ini.
-                            {% if user_is_admin_p3de %}Sebagai Admin P3DE Anda hanya dapat mengubah isian
+                            {% if user_is_admin_p3de %}Sebagai Admin {{ p3de_seksi|default:"P3DE" }} Anda hanya dapat mengubah isian
                             tiket.{% elif user_can_sync_tiket %}Sebagai Admin PMDE Anda hanya dapat menyinkronkan
                             tiket dari Oracle.{% else %}Anda hanya dapat melihat, tidak dapat melakukan perubahan.{% endif %}
                         </div>

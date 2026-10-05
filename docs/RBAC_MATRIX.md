@@ -1,7 +1,7 @@
 # Matriks RBAC & Hak Akses Menu
 
 > **Terakhir Diperbarui:** Agustus 20, 2026 (versi 1.2.1)  
-> **Proyek:** Diamond — Sistem P3DE/PIDE/PMDE
+> **Proyek:** Diamond — Sistem P3DE/P3DER/PIDE/PMDE
 
 ---
 
@@ -23,7 +23,8 @@ Sistem Diamond memiliki **grup pengguna operasional**, **grup pengawas (kasi)**,
 
 | Grup | Deskripsi | Singkatan |
 |------|-----------|-----------|
-| `user_p3de` | Penghimpunan Data Eksternal — Tim pengumpul data | P3DE |
+| `user_p3de` | Penghimpunan Data Eksternal — Tim pengumpul data ILAP **Nasional & Internasional** | P3DE |
+| `user_p3der` | Penghimpunan Data Eksternal — Tim pengumpul data ILAP **Regional** | P3DER |
 | `user_pide` | Pengolahan Informasi Data Eksternal — Tim pengolah data | PIDE |
 | `user_pmde` | Pengendalian Mutu Data Eksternal — Tim quality control | PMDE |
 
@@ -33,7 +34,8 @@ Kasi **bukan** administrator: mereka tidak memperoleh menu admin maupun sinkroni
 
 | Grup | Deskripsi |
 |------|-----------|
-| `kasi_p3de` | Kepala Seksi P3DE — pengawas tim penghimpunan data |
+| `kasi_p3de` | Kepala Seksi P3DE — pengawas tim penghimpunan data ILAP Nasional & Internasional |
+| `kasi_p3der` | Kepala Seksi P3DER — pengawas tim penghimpunan data ILAP Regional |
 | `kasi_pide` | Kepala Seksi PIDE — pengawas tim pengolahan data |
 | `kasi_pmde` | Kepala Seksi PMDE — pengawas tim pengendalian mutu |
 
@@ -52,13 +54,25 @@ Kasi **bukan** administrator: mereka tidak memperoleh menu admin maupun sinkroni
 | Grup | Deskripsi |
 |------|-----------|
 | `admin` | Administrator global — seluruh menu admin ditambah sinkronisasi Oracle |
-| `admin_p3de` | Administrator divisi P3DE — referensi & ILAP P3DE, PIC P3DE, template, sequence |
+| `admin_p3de` | Administrator divisi P3DE — referensi & ILAP P3DE, PIC P3DE ILAP Nasional/Internasional, template, sequence |
+| `admin_p3der` | Administrator divisi P3DER — referensi & ILAP P3DE (bersama `admin_p3de`), PIC P3DE ILAP Regional, Bulk PIC Pemda/Provinsi, template, sequence |
 | `admin_pide` | Administrator divisi PIDE — Durasi Jatuh Tempo PIDE, Nama Tabel, PIC PIDE |
 | `admin_pmde` | Administrator divisi PMDE — Durasi Jatuh Tempo PMDE, PIC PMDE |
 
 > Rincian menu per role admin tersedia pada [Panduan Menu Admin](ADMIN_MENU_GUIDE.md).
 
 ---
+
+### Pembagian Seksi P3DE dan P3DER
+
+Seksi P3DE dipecah menjadi dua seksi yang menjalankan **tahap alur kerja yang sama** (rekam, tanda terima, penelitian, kirim ke PIDE). Karena itu PIC dan TiketPIC keduanya tetap bertipe `P3DE`; yang membedakan adalah **kategori wilayah ILAP**:
+
+| Kategori wilayah ILAP | Seksi | Grup |
+|-----------------------|-------|------|
+| Nasional, Internasional | P3DE | `admin_p3de`, `user_p3de`, `kasi_p3de` |
+| Regional | P3DER | `admin_p3der`, `user_p3der`, `kasi_p3der` |
+
+Pada tabel di bawah, kolom **P3DE** berlaku untuk kedua seksi. Data referensi bersama (Kategori ILAP, Kanwil, KPP, ILAP, Jenis Data, Template Dokumen, Sequence Tanda Terima, dll.) dapat dikelola oleh kedua admin; baris yang terikat ke ILAP dibatasi per seksi (lihat [Cakupan Data](#cakupan-data-row-level-scope)). Helper terkait: `p3de_seksi_of()`, `p3de_seksi_of_user()`, `p3de_wilayah_q()`, `p3de_admin_wilayah_q()`, dan `supervised_tiket_q()` di `diamond_web/views/mixins.py`.
 
 ## Matriks Akses Menu Berdasarkan Role
 
@@ -87,7 +101,7 @@ Aksi berikut bukan menu navbar melainkan tombol pada halaman detail tiket. Selai
 
 | Aksi | URL | Syarat |
 |------|-----|--------|
-| **Edit Tiket** | `/tiket/<pk>/edit/` | PIC P3DE aktif, hanya selama status *Direkam* dan belum ada tanda terima. Admin P3DE (`admin`, `admin_p3de`, superuser) dikecualikan dan dapat mengedit pada status mana pun |
+| **Edit Tiket** | `/tiket/<pk>/edit/` | PIC P3DE aktif, hanya selama status *Direkam* dan belum ada tanda terima. Admin (`admin`, superuser) dan admin seksi tiket tersebut (`admin_p3de` untuk ILAP Nasional/Internasional, `admin_p3der` untuk ILAP Regional) dikecualikan dan dapat mengedit pada status mana pun |
 | **Special Request** | `/tiket/<pk>/special-request/` | PIC aktif pemilik tiket sesuai statusnya: P3DE (status 1–3), PIDE (4–5), PMDE (6). Status 7–8 tidak dapat diubah |
 
 ### Tanda Terima
@@ -179,8 +193,11 @@ Hak akses menu menentukan halaman mana yang boleh dibuka; **cakupan data** menen
 | Kelompok | Cakupan tiket yang terlihat |
 |----------|-----------------------------|
 | Superuser & grup `admin` | Seluruh tiket |
-| Grup kasi (`kasi_p3de`, `kasi_pide`, `kasi_pmde`) | Seluruh tiket |
-| `user_p3de` / `user_pide` / `user_pmde` | Hanya tiket dengan penugasan `TiketPIC` aktif atas nama pengguna tersebut |
+| `kasi_pide`, `kasi_pmde` | Seluruh tiket |
+| `kasi_p3de` / `kasi_p3der` | Tiket ILAP seksinya (Nasional & Internasional / Regional), ditambah tiket tempat ia menjadi PIC |
+| `user_p3de` / `user_p3der` / `user_pide` / `user_pmde` | Hanya tiket dengan penugasan `TiketPIC` aktif atas nama pengguna tersebut |
+
+Admin seksi P3DE juga dibatasi pada ILAP seksinya: `admin_p3de` membuka, mengubah isian, dan mengelola PIC tiket ILAP Nasional/Internasional; `admin_p3der` untuk ILAP Regional. Batas yang sama berlaku pada menu PIC P3DE, Monitoring Penyampaian Data, dan kartu admin di Home.
 
 Aturan ini berlaku konsisten pada Daftar Tiket, dashboard Tugas Saya, Monitoring Penyampaian Data, Quality Control, dan endpoint ringkasan tiket pada Backup Data. Endpoint JSON menerapkan cakupan yang sama seperti halamannya, sehingga id tiket tidak dapat ditelusuri secara berurutan untuk membaca data di luar cakupan pengguna.
 
@@ -190,8 +207,9 @@ Katalog ILAP tidak dibatasi per pengguna: setiap pengguna yang login dapat menca
 
 | Kelompok | Melihat blok Informasi PIC & Kontak |
 |----------|--------------------------------------|
-| Superuser, `admin`, `admin_p3de` | Seluruh ILAP |
-| `kasi_p3de` | Seluruh ILAP |
+| Superuser, `admin` | Seluruh ILAP |
+| `admin_p3de`, `kasi_p3de` | ILAP Nasional & Internasional |
+| `admin_p3der`, `kasi_p3der` | ILAP Regional |
 | `kasi_pide`, `kasi_pmde`, `user_p3de`/`user_pide`/`user_pmde`, lainnya | Hanya ILAP dengan penugasan `PIC` aktif (tipe P3DE, PIDE, atau PMDE) pada minimal satu jenis data milik ILAP tersebut |
 
 Helper terkait berada di `diamond_web/views/mixins.py`: `is_kasi()`, `is_kasi_p3de()`, `is_kasi_pide()`, `is_kasi_pmde()`, `is_admin_p3de()`, `can_access_tiket_list()`, `is_active_ilap_pic()`, dan `can_view_ilap_kontak()`.
@@ -200,8 +218,8 @@ Helper terkait berada di `diamond_web/views/mixins.py`: `is_kasi()`, `is_kasi_p3
 
 ## Ringkasan Hak Akses per Role
 
-### User P3DE
-- ✅ Akses penuh ke tiket workflow (rekam, teliti, kirim)
+### User P3DE / P3DER
+- ✅ Akses penuh ke tiket workflow (rekam, teliti, kirim) — untuk ILAP tempat ia menjadi PIC P3DE (P3DE: Nasional & Internasional, P3DER: Regional)
 - ✅ Manajemen backup data dan tanda terima
 - ✅ Semua data master (read & write)
 - ✅ Laporan P3DE (Register Penerimaan, Monitoring Penyampaian Data, Rekap Himpun Olah Data, Detail Himpun Olah Data)
@@ -229,8 +247,8 @@ Helper terkait berada di `diamond_web/views/mixins.py`: `is_kasi()`, `is_kasi_p3
 - ❌ Tidak bisa mengakses halaman identifikasi maupun laporan PIDE
 - ❌ Tidak bisa mengakses sync Oracle
 
-### Kasi (kasi_p3de / kasi_pide / kasi_pmde)
-- ✅ Melihat seluruh tiket unitnya tanpa harus menjadi PIC aktif — berlaku di Daftar Tiket untuk ketiganya, ditambah halaman antrean unit masing-masing: **Identifikasi** untuk `kasi_pide`, **Quality Control** untuk `kasi_pmde`
+### Kasi (kasi_p3de / kasi_p3der / kasi_pide / kasi_pmde)
+- ✅ Melihat seluruh tiket unitnya tanpa harus menjadi PIC aktif (kasi P3DE / P3DER: tiket ILAP seksinya saja) — berlaku di Daftar Tiket untuk ketiganya, ditambah halaman antrean unit masing-masing: **Identifikasi** untuk `kasi_pide`, **Quality Control** untuk `kasi_pmde`
 - ❌ `kasi_p3de` **tidak** mendapat akses ke menu Monitoring Penyampaian Data — P3DE tidak memiliki padanan halaman antrean unit seperti Identifikasi/Quality Control
 - ❌ Ketiga grup kasi juga tidak mendapat akses ke menu Laporan divisinya (Register Penerimaan Data, SLA Perekaman, SLA Identifikasi, Transfer, Metrik Data Eksternal, Pengendalian Mutu, Kelengkapan Data, Hasil Pengolahan Data Prioritas, Rekap/Detail Himpun Olah Data) — laporan-laporan tersebut hanya mengizinkan grup `user_*`/`admin*`, bukan `kasi_*`
 - ❌ Tidak memperoleh menu admin (referensi, PIC, template, sequence)
@@ -249,7 +267,7 @@ Helper terkait berada di `diamond_web/views/mixins.py`: `is_kasi()`, `is_kasi_p3
 - ✅ Manajemen user melalui Django Admin
 - ✅ Template dokumen dan bulk generate
 - ✅ Semua laporan
-- ✅ Admin P3DE (`admin`, `admin_p3de`, superuser) dapat mengedit isian tiket pada status mana pun
+- ✅ Admin P3DE (`admin`, superuser, serta `admin_p3de` / `admin_p3der` untuk tiket seksinya) dapat mengedit isian tiket pada status mana pun
 
 ---
 

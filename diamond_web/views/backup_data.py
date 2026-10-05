@@ -22,7 +22,10 @@ from ..models.media_backup import MediaBackup
 from ..forms.backup_data import BackupDataForm
 from ..constants.tiket_action_types import BackupActionType
 from ..constants.tiket_status import STATUS_DIKIRIM_KE_PIDE, STATUS_DIREKAM
-from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, SafeDeleteMixin, is_kasi
+from .mixins import (
+    AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, SafeDeleteMixin,
+    P3DE_USER_GROUPS, supervised_tiket_q,
+)
 
 
 def create_tiket_action(tiket, user, catatan, action_type):
@@ -746,7 +749,7 @@ class BackupDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, UserP3DERequired
         return self.delete(request, *args, **kwargs)
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', *P3DE_USER_GROUPS]).exists())
 @require_GET
 def backup_data_data(request):
     """Server-side DataTables endpoint for BackupData.
@@ -861,7 +864,7 @@ def backup_data_data(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', *P3DE_USER_GROUPS]).exists())
 @require_GET
 def backup_data_filter_options(request):
     """Return dynamic filter options based on selected filters."""
@@ -1083,7 +1086,7 @@ def _get_export_rows(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', *P3DE_USER_GROUPS]).exists())
 @require_GET
 def backup_data_export_excel(request):
     """Export filtered backup data to XLSX."""
@@ -1130,7 +1133,7 @@ def backup_data_export_excel(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', *P3DE_USER_GROUPS]).exists())
 @require_GET
 def backup_data_export_pdf(request):
     """Export filtered backup data to PDF."""
@@ -1172,10 +1175,12 @@ def _may_view_tiket_info(user, tiket):
     """True when `user` is entitled to see `tiket`'s summary information.
 
     Mirrors the scoping in `tiket_data` (views/tiket/list.py): admins,
-    superusers and kasi are unrestricted; everyone else needs an active
-    TiketPIC assignment on that specific tiket.
+    superusers and kasi PIDE/PMDE are unrestricted, a kasi P3DE or P3DER sees
+    the tikets of their seksi; everyone else needs an active TiketPIC
+    assignment on that specific tiket.
     """
-    if user.is_superuser or user.groups.filter(name='admin').exists() or is_kasi(user):
+    supervised = supervised_tiket_q(user)
+    if supervised is None or Tiket.objects.filter(supervised, pk=tiket.pk).exists():
         return True
     return TiketPIC.objects.filter(
         id_tiket=tiket, id_user=user, active=True
@@ -1183,7 +1188,7 @@ def _may_view_tiket_info(user, tiket):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', *P3DE_USER_GROUPS]).exists())
 @require_GET
 def backup_data_tiket_info(request, tiket_pk):
     """Retrieve details for a specific ticket to display on the backup form.
@@ -1191,7 +1196,7 @@ def backup_data_tiket_info(request, tiket_pk):
     Scoped the same way as the tiket list: admins, superusers and kasi see any
     tiket, everyone else only the ones they are actively assigned to. The group
     check in the decorator is not sufficient on its own -- without this, any
-    `user_p3de` could walk sequential ids and read the ILAP, jenis data, periode
+    `user_p3de` / `user_p3der` could walk sequential ids and read the ILAP, jenis data, periode
     and row count of every tiket in the system, including the ones the tiket
     list deliberately hides from them.
 

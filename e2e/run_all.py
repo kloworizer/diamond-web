@@ -4,7 +4,8 @@ report to e2e/report/RESULTS.md.
 
 Prereqs (see e2e/README.md):
   1. Django dev server running on http://127.0.0.1:8000
-  2. .venv/Scripts/python.exe e2e/setup_test_data.py   (creates pw_tester + PICs)
+  2. .venv/Scripts/python.exe e2e/setup_test_data.py   (creates pw_tester + PICs,
+     and the P3DE / P3DER role accounts)
 
 Usage:
   .venv/Scripts/python.exe e2e/run_all.py            # headless
@@ -23,6 +24,7 @@ import test_form_interactions_pages
 import test_master_data_crud
 import test_tiket_extra_actions
 import test_pic_end_date_dropdown
+import test_p3der_seksi
 
 
 def main():
@@ -37,6 +39,7 @@ def main():
             ("FORM INTERACTIONS (PAGES)", test_form_interactions_pages.run),
             ("TIKET EXTRA ACTIONS", test_tiket_extra_actions.run),
             ("PIC END DATE DROPDOWN", test_pic_end_date_dropdown.run),
+            ("SEKSI P3DE / P3DER", test_p3der_seksi.run),
             ("MASTER DATA CRUD", test_master_data_crud.run),
         ):
             print(f"\n===== {label} =====")

@@ -47,14 +47,16 @@ MODE_AKHIRI = 'akhiri'
 MODE_HAPUS = 'hapus'
 MODES = (MODE_TAMBAH, MODE_GANTI, MODE_AKHIRI, MODE_HAPUS)
 
+# Every Pemda (PD) and Provinsi (PV) ILAP is Regional, so its PIC P3DE belongs
+# to Seksi P3DER rather than Seksi P3DE.
 _ADMIN_GROUP = {
-    PIC.TipePIC.P3DE: 'admin_p3de',
+    PIC.TipePIC.P3DE: 'admin_p3der',
     PIC.TipePIC.PIDE: 'admin_pide',
     PIC.TipePIC.PMDE: 'admin_pmde',
 }
 # The pool a new PIC may be picked from - the same one `PICForm` offers.
 _USER_GROUP = {
-    PIC.TipePIC.P3DE: 'user_p3de',
+    PIC.TipePIC.P3DE: 'user_p3der',
     PIC.TipePIC.PIDE: 'user_pide',
     PIC.TipePIC.PMDE: 'user_pmde',
 }
@@ -344,6 +346,7 @@ class PICBulkPemdaView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         tipes = _allowed_tipes(self.request.user)
         requested = (self.request.GET.get('tipe') or '').upper()
         labels = dict(PIC.TipePIC.choices)
+        labels[PIC.TipePIC.P3DE] = 'PIC P3DER'
 
         users = {}
         for tipe in tipes:

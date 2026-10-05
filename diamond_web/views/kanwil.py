@@ -226,7 +226,7 @@ class KanwilDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequiredMix
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'admin_p3der']).exists())
 @require_GET
 def kanwil_data(request):
     """Return paginated, searchable, and ordered Kanwil data for DataTables.

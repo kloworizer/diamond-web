@@ -27,7 +27,7 @@ def is_pmde_user(user):
     navbar has always linked it from the P3DE menu block.
     """
     return user.is_superuser or user.is_staff or user.groups.filter(
-        name__in=['user_pmde', 'admin', 'admin_pmde', 'user_p3de', 'admin_p3de']
+        name__in=['user_pmde', 'admin', 'admin_pmde', 'user_p3de', 'admin_p3de', 'user_p3der', 'admin_p3der']
     ).exists()
 
 

@@ -16,7 +16,9 @@ from ..models.tiket_pic import TiketPIC
 from ..models.pic import PIC
 from ..utils import format_periode
 from ..utils.wilayah import ilap_in_kanwil_q, kanwil_value_paths
-from .mixins import UserP3DERequiredMixin, get_active_p3de_jenis_data_ilap_ids
+from .mixins import (
+    SUB_JENIS_ILAP_PATH, UserP3DERequiredMixin, get_active_p3de_jenis_data_ilap_ids, p3de_admin_wilayah_q,
+)
 
 
 # Query-path fragments leading from PeriodeJenisData — the row this page
@@ -481,7 +483,7 @@ def build_pic_p3de_options(queryset, today):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de', 'user_p3der']).exists())
 @require_GET
 def monitoring_penyampaian_data_data(request):
     """DataTables server-side endpoint for Monitoring Penyampaian Data.
@@ -490,9 +492,10 @@ def monitoring_penyampaian_data_data(request):
     current date, checking if a tiket exists for each period and calculating
     whether the submission is late.
 
-    **Permissions:** wrapped by decorators to allow only users in ``admin`` or
-    ``user_p3de`` groups. Non-admin users are further restricted to monitoring
-    records for sub jenis data where they are an active P3DE PIC.
+    **Permissions:** wrapped by decorators to allow only users in ``admin``,
+    ``user_p3de`` or ``user_p3der`` groups. Non-admin users are further
+    restricted to monitoring records for sub jenis data where they are an
+    active P3DE PIC; an admin P3DE / P3DER to the ILAP of their seksi.
 
     **Query parameters for filter options:**
         ``get_filter_options=1`` — returns available filter values instead of data.
@@ -545,7 +548,7 @@ def monitoring_penyampaian_data_data(request):
     records = []
 
     is_admin = request.user.is_superuser or request.user.groups.filter(
-        name__in=['admin', 'admin_p3de', 'admin_pide', 'admin_pmde']
+        name__in=['admin', 'admin_p3de', 'admin_p3der', 'admin_pide', 'admin_pmde']
     ).exists()
 
     # Read every filter up front so they can be pushed down to the queryset
@@ -577,6 +580,10 @@ def monitoring_penyampaian_data_data(request):
     )
     if allowed_jenis_data_ids is not None:
         periode_data_qs = periode_data_qs.filter(id_sub_jenis_data_ilap_id__in=allowed_jenis_data_ids)
+    else:
+        periode_data_qs = periode_data_qs.filter(
+            p3de_admin_wilayah_q(request.user, SUB_JENIS_ILAP_PATH)
+        )
 
     # Push every filter that maps to a column down to the DB, which drastically
     # reduces the rows expanded into monitoring periods in Python.

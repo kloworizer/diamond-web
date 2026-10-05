@@ -125,7 +125,7 @@ class PeriodePengirimanDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DE
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'admin_p3der']).exists())
 @require_GET
 def periode_pengiriman_data(request):
     """Server-side DataTables endpoint for `PeriodePengiriman`.

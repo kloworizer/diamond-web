@@ -166,7 +166,7 @@ class BentukDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequire
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'admin_p3der']).exists())
 @require_GET
 def bentuk_data_data(request):
     """Return JSON data for server-side DataTables processing.

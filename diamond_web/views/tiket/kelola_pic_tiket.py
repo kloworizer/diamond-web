@@ -4,9 +4,10 @@ The change applies to that tiket's own `TiketPIC` rows alone: the PIC table is
 never written and no other tiket is touched. The rows are ordinary TiketPIC
 rows, so later changes in the PIC menu treat them like any other.
 
-Access mirrors the PIC menu (`tiket_pic_roles_managed_by`): `admin_p3de`,
-`admin_pide` and `admin_pmde` manage the PICs of their own role; superusers and
-the `admin` group manage all three. Every change is written to the tiket's
+Access mirrors the PIC menu (`tiket_pic_roles_managed_by`): `admin_p3de` /
+`admin_p3der` (each on the tikets of their own seksi), `admin_pide` and
+`admin_pmde` manage the PICs of their own role; superusers and the `admin`
+group manage all three. Every change is written to the tiket's
 TiketAction trail under the admin who made it.
 """
 
@@ -116,7 +117,7 @@ class _KelolaPICTiketBase(LoginRequiredMixin, View):
             return self.handle_no_permission()
         self.tiket = get_object_or_404(Tiket, pk=kwargs['pk'])
         role = self.resolve_role()
-        if role is None or role not in tiket_pic_roles_managed_by(request.user):
+        if role is None or role not in tiket_pic_roles_managed_by(request.user, self.tiket):
             if self.is_ajax():
                 return JsonResponse({'success': False, 'message': 'Forbidden'}, status=403)
             raise PermissionDenied()

@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.http import JsonResponse, HttpResponseForbidden
 from django.template.loader import render_to_string
 from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
+from django.db.models import Q
 from django.utils import timezone
 from ..models.tiket_pic import TiketPIC
 
@@ -52,7 +53,7 @@ class AdminRequiredMixin(UserPassesTestMixin):
 
 
 class AdminAnyRequiredMixin(UserPassesTestMixin):
-    """Require membership in any admin group (admin, admin_p3de, admin_pide, admin_pmde).
+    """Require membership in any admin group (admin, admin_p3de, admin_p3der, admin_pide, admin_pmde).
 
     Use this mixin on base class-based views that should be accessible to any
     administrator. This provides a safety layer for base views that might be
@@ -67,29 +68,29 @@ class AdminAnyRequiredMixin(UserPassesTestMixin):
 
         Returns:
             bool: True if the user is a member of the ``admin``,
-            ``admin_p3de``, ``admin_pide``, or ``admin_pmde`` group.
+            ``admin_p3de``, ``admin_p3der``, ``admin_pide``, or ``admin_pmde`` group.
         """
         return self.request.user.groups.filter(
-            name__in=['admin', 'admin_p3de', 'admin_pide', 'admin_pmde']
+            name__in=['admin', *P3DE_ADMIN_GROUPS, 'admin_pide', 'admin_pmde']
         ).exists()
 
 
 class AdminP3DERequiredMixin(UserPassesTestMixin):
-    """Require membership in `admin` or `admin_p3de` groups.
+    """Require membership in `admin`, `admin_p3de` or `admin_p3der`.
 
     Intended for views that should be accessible by central admins and the
-    P3DE administrative group. Returns True when the current user is a
-    member of either group.
+    administrators of either P3DE seksi (P3DE and P3DER), such as the shared
+    reference data. Views that touch per-ILAP rows narrow further by seksi.
     """
     raise_exception = True
 
     def test_func(self):
-        """Check whether the current user belongs to the ``admin`` or ``admin_p3de`` group.
+        """Check whether the current user belongs to ``admin``, ``admin_p3de`` or ``admin_p3der``.
 
         Returns:
-            bool: True if the user is a member of either group.
+            bool: True if the user is a member of one of those groups.
         """
-        return self.request.user.groups.filter(name__in=['admin', 'admin_p3de']).exists()
+        return self.request.user.groups.filter(name__in=['admin', *P3DE_ADMIN_GROUPS]).exists()
 
 
 class AdminPIDERequiredMixin(UserPassesTestMixin):
@@ -127,7 +128,7 @@ class AdminPMDERequiredMixin(UserPassesTestMixin):
 
 
 class UserP3DERequiredMixin(UserPassesTestMixin):
-    """Require membership in `admin` or `user_p3de` groups.
+    """Require membership in `admin` or one of the P3DE / P3DER groups.
 
     This mixin is used when both administrative and regular P3DE users
     should be allowed access. If the request is AJAX and the user lacks
@@ -140,12 +141,13 @@ class UserP3DERequiredMixin(UserPassesTestMixin):
     def test_func(self):
         """Check whether the current user belongs to an allowed group.
 
-        Allowed groups are ``admin``, ``admin_p3de``, ``user_p3de``, and ``kasi_p3de``.
+        Allowed groups are ``admin`` and the admin, user and kasi groups of
+        both P3DE seksi (``*_p3de`` and ``*_p3der``).
 
         Returns:
             bool: True if the user is a member of one of the allowed groups.
         """
-        return self.request.user.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de', 'kasi_p3de']).exists()
+        return self.request.user.groups.filter(name__in=['admin', *P3DE_GROUPS]).exists()
 
     def handle_no_permission(self):
         """Handle unauthorized access for P3DE users.
@@ -345,12 +347,14 @@ class ActiveTiketP3DERequiredForEditMixin(UserPassesTestMixin):
     """Require active P3DE PIC assignment for edit operations.
 
     Similar to `ActiveTiketPICRequiredForEditMixin` but restricts to PICs
-    whose `role` is specifically `P3DE`.
+    whose `role` is specifically `P3DE`. The admins and kasi of a P3DE seksi
+    are exempt, for the tikets of their own seksi only.
     """
     def test_func(self):
         """Check whether the current user is an active P3DE PIC for edit operations.
 
-        Superusers and ``admin`` group members are always permitted. For
+        Superusers and ``admin`` group members are always permitted, and the
+        admins and kasi of a P3DE seksi on the tikets of that seksi. For
         other authenticated users, the method resolves the tiket and
         verifies an active ``TiketPIC`` assignment with role ``P3DE``.
 
@@ -358,9 +362,10 @@ class ActiveTiketP3DERequiredForEditMixin(UserPassesTestMixin):
             bool: True if the user is an active P3DE PIC for the tiket.
         """
         user = self.request.user
-        # Allow superuser, admin, admin_p3de, or kasi_p3de
-        if user.is_authenticated and (user.is_superuser or user.groups.filter(name__in=['admin', 'admin_p3de', 'kasi_p3de']).exists()):
+        if user.is_authenticated and (user.is_superuser or user.groups.filter(name='admin').exists()):
             return True
+        # The admins and kasi of a seksi are exempt on that seksi's tikets.
+        supervised = p3de_seksi_of_user(user, 'admin', 'kasi')
 
         # Get tiket from kwargs or object
         tiket_pk = self.kwargs.get('tiket_pk') or getattr(self, 'tiket_pk', None)
@@ -383,6 +388,8 @@ class ActiveTiketP3DERequiredForEditMixin(UserPassesTestMixin):
         from ..models.tiket_pic import TiketPIC
         try:
             tiket = Tiket.objects.get(pk=tiket_pk)
+            if supervised and p3de_seksi_of(tiket) in supervised:
+                return True
             return TiketPIC.objects.filter(
                 id_tiket=tiket,
                 id_user=user,
@@ -412,7 +419,34 @@ class ActiveTiketP3DERequiredForEditMixin(UserPassesTestMixin):
         return HttpResponseForbidden("Anda bukan PIC P3DE aktif untuk tiket ini.")
 
 
-KASI_GROUPS = ['kasi_p3de', 'kasi_pide', 'kasi_pmde']
+# Seksi P3DE was split in two. Both seksi run the same stage of the workflow —
+# rekam, tanda terima, penelitian, kirim ke PIDE — so a PIC or TiketPIC of
+# either still carries the `P3DE` tipe/role. What tells them apart is the ILAP:
+# a Regional ILAP belongs to Seksi P3DER, a Nasional or Internasional one to
+# Seksi P3DE. Each seksi has its own admin, user and kasi group.
+SEKSI_P3DE = 'P3DE'
+SEKSI_P3DER = 'P3DER'
+P3DE_SEKSI_GROUPS = {
+    SEKSI_P3DE: {'admin': 'admin_p3de', 'user': 'user_p3de', 'kasi': 'kasi_p3de'},
+    SEKSI_P3DER: {'admin': 'admin_p3der', 'user': 'user_p3der', 'kasi': 'kasi_p3der'},
+}
+ALL_P3DE_SEKSI = frozenset(P3DE_SEKSI_GROUPS)
+P3DE_ADMIN_GROUPS = ('admin_p3de', 'admin_p3der')
+P3DE_USER_GROUPS = ('user_p3de', 'user_p3der')
+P3DE_KASI_GROUPS = ('kasi_p3de', 'kasi_p3der')
+P3DE_GROUPS = P3DE_ADMIN_GROUPS + P3DE_USER_GROUPS + P3DE_KASI_GROUPS
+
+KASI_GROUPS = ['kasi_p3de', 'kasi_p3der', 'kasi_pide', 'kasi_pmde']
+
+# The kategori wilayah whose ILAP go to Seksi P3DER. Matched as a substring,
+# case-insensitively, the way `ILAPForm` recognises a Regional ILAP.
+WILAYAH_REGIONAL = 'regional'
+
+# Lookup prefixes from a model to its ILAP, for `p3de_wilayah_q`.
+TIKET_ILAP_PATH = 'id_periode_data__id_sub_jenis_data_ilap__id_ilap__'
+JENIS_DATA_ILAP_PATH = 'id_ilap__'
+# For every model with an `id_sub_jenis_data_ilap` FK: PIC, PeriodeJenisData.
+SUB_JENIS_ILAP_PATH = 'id_sub_jenis_data_ilap__id_ilap__'
 
 
 def user_group_names(user):
@@ -449,18 +483,133 @@ def _in_group(user, *names):
     return not user_group_names(user).isdisjoint(names)
 
 
-def is_admin_p3de(user):
-    """Return True for users who administer P3DE tikets.
+def is_regional_wilayah(kategori_wilayah):
+    """Return True when `kategori_wilayah` (a model or its deskripsi) is Regional."""
+    return WILAYAH_REGIONAL in str(kategori_wilayah or '').lower()
 
-    Covers superusers, the global `admin` group and the `admin_p3de` group.
-    P3DE administrators are not bound to the PIC assignments of a tiket: they
-    may open any tiket and correct its isian at any point in the workflow.
+
+def _ilap_of(obj):
+    """Return the ILAP behind a Tiket, PIC, JenisDataILAP or ILAP, or None."""
+    if obj is None:
+        return None
+    if hasattr(obj, 'id_kategori_wilayah_id'):
+        return obj
+    if hasattr(obj, 'id_periode_data_id'):
+        return obj.id_periode_data.id_sub_jenis_data_ilap.id_ilap
+    if hasattr(obj, 'id_sub_jenis_data_ilap_id'):
+        return obj.id_sub_jenis_data_ilap.id_ilap
+    if hasattr(obj, 'id_ilap_id'):
+        return obj.id_ilap
+    return None
+
+
+def p3de_seksi_of(obj):
+    """Return the seksi (`SEKSI_P3DE` or `SEKSI_P3DER`) that handles `obj`.
+
+    `obj` is a Tiket, PIC, JenisDataILAP or ILAP: Regional ILAP belong to
+    P3DER, every other kategori wilayah to P3DE. None when `obj` resolves to no
+    ILAP.
+    """
+    ilap = _ilap_of(obj)
+    if ilap is None:
+        return None
+    return SEKSI_P3DER if is_regional_wilayah(ilap.id_kategori_wilayah) else SEKSI_P3DE
+
+
+def p3de_seksi_of_user(user, *ranks):
+    """Return the P3DE seksi `user` belongs to, as a frozenset.
+
+    Args:
+        user (User): The user to test.
+        *ranks (str): Any of ``'admin'``, ``'user'``, ``'kasi'`` — only groups
+            of those ranks count. Every rank counts when none is given.
+
+    Returns:
+        frozenset: Subset of ``{SEKSI_P3DE, SEKSI_P3DER}``. Superusers and the
+        global ``admin`` group oversee both seksi.
     """
     if not user or not getattr(user, 'is_authenticated', False):
-        return False
-    if user.is_superuser:
-        return True
-    return _in_group(user, 'admin', 'admin_p3de')
+        return frozenset()
+    if user.is_superuser or _in_group(user, 'admin'):
+        return ALL_P3DE_SEKSI
+    ranks = ranks or ('admin', 'user', 'kasi')
+    names = user_group_names(user)
+    return frozenset(
+        seksi for seksi, groups in P3DE_SEKSI_GROUPS.items()
+        if any(groups[rank] in names for rank in ranks)
+    )
+
+
+def p3de_wilayah_q(seksi, ilap_path=''):
+    """Return a Q matching the rows whose ILAP belongs to one of `seksi`.
+
+    Args:
+        seksi (iterable): P3DE seksi, e.g. from :func:`p3de_seksi_of_user`.
+        ilap_path (str): Lookup prefix from the queried model to its ILAP, e.g.
+            :data:`TIKET_ILAP_PATH`; empty when querying ILAP itself.
+
+    Returns:
+        Q: Matches everything for both seksi and nothing for none.
+    """
+    seksi = frozenset(seksi)
+    regional = Q(**{f'{ilap_path}id_kategori_wilayah__deskripsi__icontains': WILAYAH_REGIONAL})
+    if seksi >= ALL_P3DE_SEKSI:
+        return Q()
+    if SEKSI_P3DER in seksi:
+        return regional
+    if SEKSI_P3DE in seksi:
+        return ~regional
+    return Q(pk__in=[])
+
+
+def p3de_admin_wilayah_q(user, ilap_path=''):
+    """Return a Q narrowing an administrator's per-ILAP rows to their P3DE seksi.
+
+    An `admin_p3de` sees the Nasional/Internasional ILAP, an `admin_p3der` the
+    Regional ones. Superusers, the global `admin` group and anyone holding no
+    P3DE admin group are not narrowed (``Q()``).
+    """
+    if not user or not getattr(user, 'is_authenticated', False):
+        return Q()
+    if user.is_superuser or _in_group(user, 'admin'):
+        return Q()
+    seksi = p3de_seksi_of_user(user, 'admin')
+    return p3de_wilayah_q(seksi, ilap_path) if seksi else Q()
+
+
+def p3de_user_groups_for(seksi):
+    """Return the ``user_*`` group names of `seksi`, in seksi order."""
+    return [P3DE_SEKSI_GROUPS[s]['user'] for s in P3DE_SEKSI_GROUPS if s in seksi]
+
+
+def p3de_seksi_label(seksi):
+    """Return a display label for a set of P3DE seksi, e.g. ``"P3DE / P3DER"``."""
+    return ' / '.join(s for s in P3DE_SEKSI_GROUPS if s in seksi) or SEKSI_P3DE
+
+
+def _p3de_rank_covers(user, rank, target):
+    """True when `user` holds a P3DE `rank` group, for `target`'s seksi if given."""
+    seksi = p3de_seksi_of_user(user, rank)
+    if target is None or not seksi:
+        return bool(seksi)
+    return p3de_seksi_of(target) in seksi
+
+
+def is_admin_p3de(user, target=None):
+    """Return True for users who administer P3DE tikets.
+
+    Covers superusers, the global `admin` group and the seksi admin groups
+    (`admin_p3de`, `admin_p3der`). P3DE administrators are not bound to the PIC
+    assignments of a tiket: they may open any tiket of their seksi and correct
+    its isian at any point in the workflow.
+
+    Args:
+        user (User): The user to test.
+        target (optional): A Tiket, PIC, JenisDataILAP or ILAP. When given, a
+            seksi admin only counts for targets of their own seksi — admin P3DE
+            for Nasional/Internasional ILAP, admin P3DER for Regional ones.
+    """
+    return _p3de_rank_covers(user, 'admin', target)
 
 
 def is_admin_pmde(user):
@@ -476,28 +625,36 @@ def is_admin_pmde(user):
     return _in_group(user, 'admin', 'admin_pmde')
 
 
-def tiket_pic_roles_managed_by(user):
+def tiket_pic_roles_managed_by(user, tiket=None):
     """Return the `TiketPIC.Role` values `user` may manage on a tiket page.
 
     Mirrors the PIC menu: each seksi admin manages its own role (`admin_p3de`
-    -> P3DE, `admin_pide` -> PIDE, `admin_pmde` -> PMDE); superusers and the
-    global `admin` group manage all three. Returned in role order.
+    / `admin_p3der` -> P3DE, `admin_pide` -> PIDE, `admin_pmde` -> PMDE);
+    superusers and the global `admin` group manage all three. Returned in role
+    order. When `tiket` is given, a P3DE seksi admin only manages the P3DE role
+    on the tikets of their own seksi (see :func:`is_admin_p3de`).
     """
     if not user or not getattr(user, 'is_authenticated', False):
         return []
     if user.is_superuser or _in_group(user, 'admin'):
         return list(TiketPIC.Role)
-    seksi_admin = (
-        (TiketPIC.Role.P3DE, 'admin_p3de'),
-        (TiketPIC.Role.PIDE, 'admin_pide'),
-        (TiketPIC.Role.PMDE, 'admin_pmde'),
-    )
-    return [role for role, group in seksi_admin if _in_group(user, group)]
+    roles = []
+    if is_admin_p3de(user, tiket):
+        roles.append(TiketPIC.Role.P3DE)
+    if _in_group(user, 'admin_pide'):
+        roles.append(TiketPIC.Role.PIDE)
+    if _in_group(user, 'admin_pmde'):
+        roles.append(TiketPIC.Role.PMDE)
+    return roles
 
 
-def is_kasi_p3de(user):
-    """Return True when `user` belongs to the `kasi_p3de` supervisor group."""
-    return _in_group(user, 'kasi_p3de')
+def is_kasi_p3de(user, target=None):
+    """Return True when `user` belongs to a P3DE kasi group (`kasi_p3de`, `kasi_p3der`).
+
+    When `target` (a Tiket, PIC, JenisDataILAP or ILAP) is given, the kasi only
+    counts for targets of their own seksi — see :func:`p3de_seksi_of`.
+    """
+    return _p3de_rank_covers(user, 'kasi', target)
 
 
 def is_kasi_pide(user):
@@ -522,16 +679,36 @@ def is_kasi(user):
 def can_view_any_tiket(user):
     """Return True when `user` may open the detail page of any tiket.
 
-    Covers P3DE administrators (superuser, `admin`, `admin_p3de`), the PIDE and
-    PMDE administrators and every kasi group. Viewing is all this grants: the
-    workflow actions stay gated behind an active TiketPIC assignment, and
-    editing the isian stays with `is_admin_p3de`.
+    Covers superusers, the global `admin` group, the PIDE and PMDE
+    administrators and the PIDE and PMDE kasi. The admins and kasi of a P3DE
+    seksi are not among them: they see the tikets of their own seksi only, see
+    :func:`can_open_tiket`. Viewing is all this grants: the workflow actions
+    stay gated behind an active TiketPIC assignment, and editing the isian
+    stays with `is_admin_p3de`.
     """
-    return (
-        is_admin_p3de(user)
-        or is_kasi(user)
-        or _in_group(user, 'admin_pide', 'admin_pmde')
+    if not user or not getattr(user, 'is_authenticated', False):
+        return False
+    return user.is_superuser or _in_group(
+        user, 'admin', 'admin_pide', 'admin_pmde', 'kasi_pide', 'kasi_pmde'
     )
+
+
+def supervised_tiket_q(user):
+    """Return the tikets `user` sees by supervision rather than as their PIC.
+
+    Returns:
+        None when `user` sees every tiket (superusers, the global `admin`
+        group, kasi PIDE and kasi PMDE); a Q over the tikets of their seksi for
+        a kasi P3DE / P3DER; ``Q(pk__in=[])`` for everyone else.
+    """
+    if not user or not getattr(user, 'is_authenticated', False):
+        return Q(pk__in=[])
+    if user.is_superuser or _in_group(user, 'admin', 'kasi_pide', 'kasi_pmde'):
+        return None
+    seksi = p3de_seksi_of_user(user, 'kasi')
+    if seksi >= ALL_P3DE_SEKSI:
+        return None
+    return p3de_wilayah_q(seksi, TIKET_ILAP_PATH)
 
 
 def can_open_tiket(user, tiket):
@@ -539,6 +716,7 @@ def can_open_tiket(user, tiket):
 
     Granted to:
     - everyone covered by `can_view_any_tiket` (admins and kasi);
+    - the admins and kasi of the P3DE seksi that handles the tiket's ILAP;
     - anyone with a `TiketPIC` row on the tiket, active or not, so a PIC
       handed over keeps reading the tikets they worked;
     - the current PIC of the tiket's sub jenis data (a `PIC` row with no
@@ -551,6 +729,8 @@ def can_open_tiket(user, tiket):
     if not user or not getattr(user, 'is_authenticated', False):
         return False
     if can_view_any_tiket(user):
+        return True
+    if is_admin_p3de(user, tiket) or is_kasi_p3de(user, tiket):
         return True
     if TiketPIC.objects.filter(id_tiket=tiket, id_user=user).exists():
         return True
@@ -665,13 +845,14 @@ def can_view_ilap_kontak(user, ilap):
 
     The profil ILAP pages themselves are open to every logged in user, but
     the institution's contact person is not: it belongs to the people who
-    correspond with the ILAP. Admins and kasi P3DE oversee that
-    correspondence for the whole catalogue, so they always see it. Everyone
-    else needs an active PIC assignment on at least one of the ILAP's jenis
-    data — including kasi PIDE and kasi PMDE, who supervise the processing of
-    the data rather than the correspondence with its source.
+    correspond with the ILAP. The admins and kasi of the P3DE seksi that
+    handles the ILAP (P3DE for Nasional/Internasional, P3DER for Regional)
+    oversee that correspondence, so they always see it. Everyone else needs an
+    active PIC assignment on at least one of the ILAP's jenis data — including
+    kasi PIDE and kasi PMDE, who supervise the processing of the data rather
+    than the correspondence with its source.
     """
-    if is_admin_p3de(user) or is_kasi_p3de(user):
+    if is_admin_p3de(user, ilap) or is_kasi_p3de(user, ilap):
         return True
     return is_active_ilap_pic(user, ilap)
 
@@ -680,19 +861,19 @@ def can_access_tiket_list(user):
     """Return True when `user` should be allowed to view tiket listings.
 
     Rules applied:
-    - Superusers and any admin group members (admin, admin_p3de, admin_pide, admin_pmde) are always allowed.
-    - Members of any kasi group (kasi_p3de, kasi_pide, kasi_pmde) are allowed.
-    - Members of `user_p3de`, `user_pide`, or `user_pmde` groups are
-      allowed.
+    - Superusers and any admin group members (admin, admin_p3de, admin_p3der, admin_pide, admin_pmde) are always allowed.
+    - Members of any kasi group (kasi_p3de, kasi_p3der, kasi_pide, kasi_pmde) are allowed.
+    - Members of `user_p3de`, `user_p3der`, `user_pide`, or `user_pmde`
+      groups are allowed.
     - Otherwise, the user must have at least one `TiketPIC` record.
     """
     if not user or not user.is_authenticated:
         return False
-    if user.is_superuser or user.groups.filter(name__in=['admin', 'admin_p3de', 'admin_pide', 'admin_pmde']).exists():
+    if user.is_superuser or user.groups.filter(name__in=['admin', *P3DE_ADMIN_GROUPS, 'admin_pide', 'admin_pmde']).exists():
         return True
     if is_kasi(user):
         return True
-    if user.groups.filter(name__in=['user_p3de', 'user_pide', 'user_pmde']).exists():
+    if user.groups.filter(name__in=[*P3DE_USER_GROUPS, 'user_pide', 'user_pmde']).exists():
         return True
     return TiketPIC.objects.filter(id_user=user).exists()
 

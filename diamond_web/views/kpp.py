@@ -231,14 +231,14 @@ class KPPDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequiredMixin,
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'admin_p3der']).exists())
 @require_GET
 def kpp_data(request):
     """Serve server-side processed data for the KPP DataTable.
 
     Handles pagination, column-specific search filtering, and sorting
     for the KPP list DataTable. Only accessible to authenticated users
-    belonging to the ``admin`` or ``admin_p3de`` groups.
+    belonging to the ``admin``, ``admin_p3de`` or ``admin_p3der`` groups.
 
     The endpoint expects the following GET parameters as sent by
     DataTables' server-side processing mode:

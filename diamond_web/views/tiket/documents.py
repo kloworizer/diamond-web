@@ -25,13 +25,13 @@ def _is_p3de_user(user):
         user: Django User object to check permissions for.
 
     Returns:
-        bool: True if user is superuser, admin, or in user_p3de group.
+        bool: True if user is superuser, admin, or in user_p3de / user_p3der.
     """
     if not user or not user.is_authenticated:
         return False
     if user.is_superuser or user.groups.filter(name='admin').exists():
         return True
-    return user.groups.filter(name='user_p3de').exists()
+    return user.groups.filter(name__in=['user_p3de', 'user_p3der']).exists()
 
 
 def _format_periode_tiket(tiket_obj):

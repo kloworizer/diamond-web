@@ -45,6 +45,7 @@ def _names_in(column):
 class TestSeksiDirectory:
     def test_each_seksi_lists_its_own_staff(self, client):
         _in_groups('user_p3de', first_name=TOKEN, last_name='P3de')
+        _in_groups('user_p3der', first_name=TOKEN, last_name='P3der')
         _in_groups('user_pide', first_name=TOKEN, last_name='Pide')
         _in_groups('user_pmde', first_name=TOKEN, last_name='Pmde')
         client.force_login(_in_groups('user_p3de'))
@@ -52,9 +53,9 @@ class TestSeksiDirectory:
         resp = client.get(reverse('profil_ilap_list'))
         columns = {c['kode']: c for c in resp.context['seksi_columns']}
 
-        assert list(columns) == ['P3DE', 'PIDE', 'PMDE']
-        # Each of the three lands in its own column and in no other.
-        for kode in ('P3DE', 'PIDE', 'PMDE'):
+        assert list(columns) == ['P3DE', 'P3DER', 'PIDE', 'PMDE']
+        # Each of the four lands in its own column and in no other.
+        for kode in ('P3DE', 'P3DER', 'PIDE', 'PMDE'):
             ours = [n for n in _names_in(columns[kode]) if n.startswith(TOKEN)]
             assert ours == [f'{TOKEN} {kode.capitalize()}']
 

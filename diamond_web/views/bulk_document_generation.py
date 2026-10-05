@@ -40,7 +40,9 @@ from ..models.tiket_action import TiketAction
 from ..models.tiket_pic import TiketPIC
 from ..utils import format_number_with_separator, format_periode
 from ..utils.docx_template import fill_template_with_data
-from .mixins import get_active_p3de_ilap_ids, is_kasi_pmde
+from .mixins import (
+    P3DE_USER_GROUPS, get_active_p3de_ilap_ids, is_admin_p3de, is_kasi_pmde, p3de_admin_wilayah_q,
+)
 from .seksi_queue import pic_scope
 
 
@@ -49,7 +51,7 @@ def _is_p3de_user(user):
         return False
     if user.is_superuser or user.groups.filter(name='admin').exists():
         return True
-    return user.groups.filter(name='user_p3de').exists()
+    return user.groups.filter(name__in=P3DE_USER_GROUPS).exists()
 
 
 def _is_pmde_user(user):
@@ -348,8 +350,8 @@ def _generate_docx_for_tickets(selected_tickets, doc_type, title_prefix):
 @require_http_methods(['GET', 'POST', 'HEAD'])
 def bulk_pkdi_klarifikasi(request):
     # Restrict ILAP list to user's active P3DE assignments unless admin
-    if request.user.is_superuser or request.user.groups.filter(name__in=['admin', 'admin_p3de']).exists():
-        ilap_options = ILAP.objects.order_by('nama_ilap')
+    if is_admin_p3de(request.user):
+        ilap_options = ILAP.objects.filter(p3de_admin_wilayah_q(request.user)).order_by('nama_ilap')
     else:
         ilap_ids = get_active_p3de_ilap_ids(request.user)
         ilap_options = ILAP.objects.filter(id__in=ilap_ids).order_by('nama_ilap')
@@ -464,8 +466,8 @@ def _pengantar_pide_queryset(ilap_id, tanggal_kirim_pide):
 @require_http_methods(['GET', 'POST', 'HEAD'])
 def bulk_nd_pengantar_pide(request):
     # Restrict ILAP list to user's active P3DE assignments unless admin
-    if request.user.is_superuser or request.user.groups.filter(name__in=['admin', 'admin_p3de']).exists():
-        ilap_options = ILAP.objects.order_by('nama_ilap')
+    if is_admin_p3de(request.user):
+        ilap_options = ILAP.objects.filter(p3de_admin_wilayah_q(request.user)).order_by('nama_ilap')
     else:
         ilap_ids = get_active_p3de_ilap_ids(request.user)
         ilap_options = ILAP.objects.filter(id__in=ilap_ids).order_by('nama_ilap')

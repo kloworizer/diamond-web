@@ -22,7 +22,36 @@ from .mixins import (
     UserPIDERequiredMixin,
     UserPMDERequiredMixin,
     SafeDeleteMixin,
+    P3DE_ADMIN_GROUPS,
+    P3DE_GROUPS,
+    SEKSI_P3DER,
+    SUB_JENIS_ILAP_PATH,
+    p3de_seksi_label,
+    p3de_seksi_of_user,
+    p3de_wilayah_q,
 )
+
+
+# The admin groups that manage each PIC tipe. PIC P3DE is managed by both P3DE
+# seksi, each for the ILAP of its own kategori wilayah.
+_ADMIN_GROUPS_BY_TIPE = {
+    PIC.TipePIC.P3DE: P3DE_ADMIN_GROUPS,
+    PIC.TipePIC.PIDE: ('admin_pide',),
+    PIC.TipePIC.PMDE: ('admin_pmde',),
+}
+
+
+def _p3de_admin_scope(user, tipe):
+    """Q narrowing PIC rows of `tipe` to what `user` administers.
+
+    Only PIC P3DE is split: an admin P3DE manages the Nasional/Internasional
+    ILAP, an admin P3DER the Regional ones.
+    """
+    from django.db.models import Q
+
+    if tipe != PIC.TipePIC.P3DE:
+        return Q()
+    return p3de_wilayah_q(p3de_seksi_of_user(user, 'admin'), SUB_JENIS_ILAP_PATH)
 
 
 class PICListView(LoginRequiredMixin, TemplateView):
@@ -74,13 +103,8 @@ class PICListView(LoginRequiredMixin, TemplateView):
         if user.is_superuser or user.groups.filter(name='admin').exists():
             return True
         # Check type-specific admin group
-        admin_group_map = {
-            PIC.TipePIC.P3DE: 'admin_p3de',
-            PIC.TipePIC.PIDE: 'admin_pide',
-            PIC.TipePIC.PMDE: 'admin_pmde',
-        }
-        admin_group = admin_group_map.get(self.tipe)
-        if admin_group and user.groups.filter(name=admin_group).exists():
+        admin_groups = _ADMIN_GROUPS_BY_TIPE.get(self.tipe)
+        if admin_groups and user.groups.filter(name__in=admin_groups).exists():
             return True
         return False
 
@@ -207,7 +231,7 @@ def _unassign_pic_from_open_tikets(user, role, sub_jenis_data_ilap, tipe_label,
 class PICCreateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, CreateView):
     """Create view for `PIC` assignments.
 
-    Requires membership in any admin group (admin, admin_p3de, admin_pide, admin_pmde).
+    Requires membership in any admin group (admin, admin_p3de, admin_p3der, admin_pide, admin_pmde).
     Subclasses can further restrict with specific role mixins (e.g., AdminP3DERequiredMixin).
 
     Presents a form to create a `PIC` record. On successful save this view
@@ -259,6 +283,8 @@ class PICCreateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Cr
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['tipe'] = self.tipe
+        if self.tipe == PIC.TipePIC.P3DE:
+            kwargs['p3de_seksi'] = p3de_seksi_of_user(self.request.user, 'admin')
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -357,7 +383,7 @@ class PICCreateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Cr
 class PICUpdateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, UpdateView):
     """Update view for `PIC` entries.
 
-    Requires membership in any admin group (admin, admin_p3de, admin_pide, admin_pmde).
+    Requires membership in any admin group (admin, admin_p3de, admin_p3der, admin_pide, admin_pmde).
     Subclasses can further restrict with specific role mixins (e.g., AdminP3DERequiredMixin).
 
     When the `id_user` field is changed the view treats the edit as a
@@ -405,6 +431,8 @@ class PICUpdateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Up
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['tipe'] = self.tipe
+        if self.tipe == PIC.TipePIC.P3DE:
+            kwargs['p3de_seksi'] = p3de_seksi_of_user(self.request.user, 'admin')
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -453,10 +481,11 @@ class PICUpdateView(LoginRequiredMixin, AdminAnyRequiredMixin, AjaxFormMixin, Up
         return self.render_form_response(form)
 
     def get_queryset(self):
-        """Filter by tipe to ensure users only access their PIC type"""
+        """Filter by tipe to ensure users only access their PIC type, and a
+        P3DE / P3DER admin to the PIC of their own seksi."""
         qs = super().get_queryset()
         if self.tipe:
-            qs = qs.filter(tipe=self.tipe)
+            qs = qs.filter(tipe=self.tipe).filter(_p3de_admin_scope(self.request.user, self.tipe))
         return qs
 
 
@@ -568,7 +597,7 @@ def _delete_pic_with_tikets(pic, admin_user, current_time):
 class PICDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminAnyRequiredMixin, DeleteView):
     """Delete view for `PIC` entries and associated side-effects.
 
-    Requires membership in any admin group (admin, admin_p3de, admin_pide, admin_pmde).
+    Requires membership in any admin group (admin, admin_p3de, admin_p3der, admin_pide, admin_pmde).
     Subclasses can further restrict with specific role mixins (e.g., AdminP3DERequiredMixin).
 
     Deleting a `PIC` will also find `TiketPIC` records for the same user,
@@ -647,10 +676,11 @@ class PICDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminAnyRequiredMixin, 
         return self.delete(request, *args, **kwargs)
     
     def get_queryset(self):
-        """Filter by tipe to ensure users only access their PIC type"""
+        """Filter by tipe to ensure users only access their PIC type, and a
+        P3DE / P3DER admin to the PIC of their own seksi."""
         qs = super().get_queryset()
         if self.tipe:
-            qs = qs.filter(tipe=self.tipe)
+            qs = qs.filter(tipe=self.tipe).filter(_p3de_admin_scope(self.request.user, self.tipe))
         return qs
 
 
@@ -708,13 +738,8 @@ def _is_data_admin(request, tipe):
         return False
     if user.is_superuser or user.groups.filter(name='admin').exists():
         return True
-    admin_group_map = {
-        PIC.TipePIC.P3DE: 'admin_p3de',
-        PIC.TipePIC.PIDE: 'admin_pide',
-        PIC.TipePIC.PMDE: 'admin_pmde',
-    }
-    admin_group = admin_group_map.get(tipe)
-    if admin_group and user.groups.filter(name=admin_group).exists():
+    admin_groups = _ADMIN_GROUPS_BY_TIPE.get(tipe)
+    if admin_groups and user.groups.filter(name__in=admin_groups).exists():
         return True
     return False
 
@@ -742,6 +767,10 @@ def _pic_data_common(request, tipe):
     is_admin = _is_data_admin(request, tipe)
 
     qs = PIC.objects.filter(tipe=tipe).select_related('id_sub_jenis_data_ilap__id_ilap', 'id_user').all()
+    if tipe == PIC.TipePIC.P3DE:
+        # Each P3DE seksi sees the PIC of its own ILAP: P3DE the Nasional and
+        # Internasional ones, P3DER the Regional ones.
+        qs = qs.filter(p3de_wilayah_q(p3de_seksi_of_user(request.user), SUB_JENIS_ILAP_PATH))
     
     # Apply Global Dashboard Filters
     qs = apply_global_pic_filters(qs, request, base_model='pic')
@@ -849,14 +878,15 @@ def _pic_data_common(request, tipe):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de', 'kasi_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', *P3DE_GROUPS]).exists())
 @require_GET
 def pic_p3de_data(request):
     """DataTables endpoint for P3DE `PIC` rows.
 
-    Permissions: user must be logged in and a member of `admin`,
-    `admin_p3de`, `user_p3de`, or `kasi_p3de`. Returns the same JSON shape as
-    `_pic_data_common`. Action buttons are only included for admin users.
+    Permissions: user must be logged in and a member of `admin` or of an
+    admin, user or kasi group of Seksi P3DE or Seksi P3DER. Rows are limited
+    to the viewer's seksi. Returns the same JSON shape as `_pic_data_common`.
+    Action buttons are only included for admin users.
     """
     return _pic_data_common(request, PIC.TipePIC.P3DE)
 
@@ -898,7 +928,7 @@ class UnifiedPICListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         # the Tambah/Edit/Hapus controls stay behind the admin_* groups.
         allowed_groups = [
             'admin',
-            'admin_p3de', 'user_p3de', 'kasi_p3de',
+            *P3DE_GROUPS,
             'admin_pide', 'user_pide', 'kasi_pide',
             'admin_pmde', 'user_pmde', 'kasi_pmde',
         ]
@@ -922,11 +952,17 @@ class UnifiedPICListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         user = self.request.user
         is_central_admin = user.is_superuser or user.groups.filter(name='admin').exists()
         
-        can_view_p3de = is_central_admin or user.groups.filter(name__in=['admin_p3de', 'user_p3de', 'kasi_p3de']).exists()
+        can_view_p3de = is_central_admin or user.groups.filter(name__in=P3DE_GROUPS).exists()
         can_view_pide = is_central_admin or user.groups.filter(name__in=['admin_pide', 'user_pide', 'kasi_pide']).exists()
         can_view_pmde = is_central_admin or user.groups.filter(name__in=['admin_pmde', 'user_pmde', 'kasi_pmde']).exists()
 
-        context['is_admin_p3de'] = user.is_superuser or user.groups.filter(name__in=['admin', 'admin_p3de']).exists()
+        context['is_admin_p3de'] = user.is_superuser or user.groups.filter(name__in=['admin', *P3DE_ADMIN_GROUPS]).exists()
+        # PIC P3DE is run by two seksi; the page names the one(s) the viewer
+        # belongs to, and the Pemda/Provinsi bulk page belongs to P3DER, whose
+        # ILAP they all are.
+        p3de_seksi = p3de_seksi_of_user(user)
+        context['p3de_label'] = p3de_seksi_label(p3de_seksi)
+        context['can_bulk_pemda_p3de'] = SEKSI_P3DER in p3de_seksi_of_user(user, 'admin')
         context['is_admin_pide'] = user.is_superuser or user.groups.filter(name__in=['admin', 'admin_pide']).exists()
         context['is_admin_pmde'] = user.is_superuser or user.groups.filter(name__in=['admin', 'admin_pmde']).exists()
         
@@ -957,7 +993,10 @@ class UnifiedPICListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         jenis_data_list = list(JenisDataILAP.objects.values('id', 'nama_sub_jenis_data', 'id_ilap_id'))
         
         def get_pic_users(tipe):
-            qs = PIC.objects.filter(tipe=tipe, end_date__isnull=True).annotate(
+            qs = PIC.objects.filter(tipe=tipe, end_date__isnull=True)
+            if tipe == PIC.TipePIC.P3DE:
+                qs = qs.filter(p3de_wilayah_q(p3de_seksi, SUB_JENIS_ILAP_PATH))
+            qs = qs.annotate(
                 full_name=Concat('id_user__first_name', Value(' '), 'id_user__last_name', output_field=CharField())
             ).values('id_user_id', 'id_user__username', 'full_name', 'id_sub_jenis_data_ilap_id', 'id_sub_jenis_data_ilap__id_ilap_id')
             
@@ -997,7 +1036,7 @@ class UnifiedPICListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         })
         # Determine default tab based on user's primary group
         default_tab = 'matrix'
-        if user.groups.filter(name__in=['admin_p3de', 'user_p3de', 'kasi_p3de']).exists():
+        if user.groups.filter(name__in=P3DE_GROUPS).exists():
             default_tab = 'p3de'
         elif user.groups.filter(name__in=['admin_pide', 'user_pide', 'kasi_pide']).exists():
             default_tab = 'pide'

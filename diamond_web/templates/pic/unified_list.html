@@ -13,8 +13,8 @@
         <ul class="breadcrumb">
             <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
             {% if default_tab == 'p3de' %}
-                <li class="breadcrumb-item"><a href="javascript:void(0);">P3DE</a></li>
-                <li class="breadcrumb-item active">PIC P3DE</li>
+                <li class="breadcrumb-item"><a href="javascript:void(0);">{{ p3de_label }}</a></li>
+                <li class="breadcrumb-item active">PIC {{ p3de_label }}</li>
             {% elif default_tab == 'pide' %}
                 <li class="breadcrumb-item"><a href="javascript:void(0);">PIDE</a></li>
                 <li class="breadcrumb-item active">PIC PIDE</li>
@@ -218,7 +218,7 @@
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
                             <h4 class="fw-bolder text-dark mb-1">{{ total_pic_p3de }}</h4>
-                            <p class="fs-12 fw-medium text-muted mb-0">PIC P3DE</p>
+                            <p class="fs-12 fw-medium text-muted mb-0">PIC {{ p3de_label }}</p>
                         </div>
                         <div class="avatar-text avatar-lg pic-icon-p3de rounded-circle" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
                             <span class="fw-bolder" style="font-size: 11px; letter-spacing: 0.5px;">P3DE</span>
@@ -290,7 +290,7 @@
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link {% if default_tab == 'p3de' %}active{% endif %}" id="tab-p3de" data-bs-toggle="tab" data-bs-target="#pane-p3de" type="button" role="tab" aria-controls="pane-p3de" aria-selected="{% if default_tab == 'p3de' %}true{% else %}false{% endif %}">
-                                <i class="feather-user me-2"></i>PIC P3DE
+                                <i class="feather-user me-2"></i>PIC {{ p3de_label }}
                             </button>
                         </li>
                         {% endif %}
@@ -375,7 +375,7 @@
                                     <th style="width: 180px;">ILAP</th>
                                     <th style="width: 140px;">ID Sub Jenis Data</th>
                                     <th style="width: 220px;">Nama Sub Jenis Data</th>
-                                    <th style="width: 180px;">PIC P3DE</th>
+                                    <th style="width: 180px;">PIC P3DE / P3DER</th>
                                     <th style="width: 180px;">PIC PIDE</th>
                                     <th style="width: 180px;">PIC PMDE</th>
                                 </tr>
@@ -399,14 +399,14 @@
                 <div class="tab-pane fade {% if default_tab == 'p3de' %}show active{% endif %}" id="pane-p3de" role="tabpanel" aria-labelledby="tab-p3de">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
-                            <h6 class="m-0 fw-bold text-dark"><i class="feather-user-check me-2"></i>Daftar PIC P3DE</h6>
-                            <p class="text-muted small mb-0 mt-1">Daftar pengguna yang ditugaskan sebagai PIC P3DE.</p>
+                            <h6 class="m-0 fw-bold text-dark"><i class="feather-user-check me-2"></i>Daftar PIC {{ p3de_label }}</h6>
+                            <p class="text-muted small mb-0 mt-1">Daftar pengguna yang ditugaskan sebagai PIC {{ p3de_label }}.</p>
                         </div>
                         <div class="d-flex align-items-center gap-3">
                             <a href="javascript:void(0);" id="btn-reset-p3de" class="btn btn-light text-secondary border-0 fw-bold align-items-center gap-1 btn-reset" style="display: none; font-size: 13px; font-weight: 500; background-color: #f1f5f9;">
                                 <i class="feather-x" style="width: 14px; height: 14px;"></i> Reset Pencarian
                             </a>
-                            {% if is_admin_p3de %}<a class="btn btn-outline-primary" href="{% url 'pic_bulk_pemda' %}?tipe=P3DE" title="Ubah PIC jenis data Pemda/Provinsi (PD/PV) sekaligus"><i class="feather-layers me-1"></i>Bulk PD/PV</a>{% endif %}
+                            {% if can_bulk_pemda_p3de %}<a class="btn btn-outline-primary" href="{% url 'pic_bulk_pemda' %}?tipe=P3DE" title="Ubah PIC jenis data Pemda/Provinsi (PD/PV) sekaligus"><i class="feather-layers me-1"></i>Bulk PD/PV</a>{% endif %}
                             {% if is_admin_p3de %}<button type="button" class="btn btn-success" data-action="create" data-url="{% url 'pic_p3de_create' %}"><i class="feather-plus me-1"></i>Tambah</button>{% endif %}
                         </div>
                     </div>
@@ -569,8 +569,8 @@
                     </div>
                     {% if can_view_p3de %}
                     <div class="mb-3 filter-group" id="group-pic-p3de">
-                        <label class="form-label fw-bold text-dark">Pilih PIC P3DE</label>
-                        <select class="form-control select2-global-filter" id="filter-pic-p3de" multiple="multiple" data-placeholder="Ketik untuk mencari PIC P3DE..."></select>
+                        <label class="form-label fw-bold text-dark">Pilih PIC {{ p3de_label }}</label>
+                        <select class="form-control select2-global-filter" id="filter-pic-p3de" multiple="multiple" data-placeholder="Ketik untuk mencari PIC {{ p3de_label }}..."></select>
                     </div>
                     {% endif %}
                     {% if can_view_pide %}
@@ -818,7 +818,7 @@
                 const titleMap = {
                     'ilap': '<div class="avatar avatar-xs bg-soft-primary text-primary" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;"><i class="feather-grid fs-16"></i></div><h5 class="modal-title fw-bold text-dark mb-0" id="globalFilterModalLabel" style="font-size: 15px;">Filter Berdasarkan ILAP</h5>',
                     'jenis_data': '<div class="avatar avatar-xs bg-soft-success text-success" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;"><i class="feather-database fs-16"></i></div><h5 class="modal-title fw-bold text-dark mb-0" id="globalFilterModalLabel" style="font-size: 15px;">Filter Berdasarkan Jenis Data</h5>',
-                    'pic_p3de': '<div class="avatar avatar-xs pic-icon-p3de" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;"><i class="feather-user fs-16"></i></div><h5 class="modal-title fw-bold text-dark mb-0" id="globalFilterModalLabel" style="font-size: 15px;">Filter PIC P3DE</h5>',
+                    'pic_p3de': '<div class="avatar avatar-xs pic-icon-p3de" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;"><i class="feather-user fs-16"></i></div><h5 class="modal-title fw-bold text-dark mb-0" id="globalFilterModalLabel" style="font-size: 15px;">Filter PIC {{ p3de_label }}</h5>',
                     'pic_pide': '<div class="avatar avatar-xs pic-icon-pide" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;"><i class="feather-user fs-16"></i></div><h5 class="modal-title fw-bold text-dark mb-0" id="globalFilterModalLabel" style="font-size: 15px;">Filter PIC PIDE</h5>',
                     'pic_pmde': '<div class="avatar avatar-xs pic-icon-pmde" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;"><i class="feather-user fs-16"></i></div><h5 class="modal-title fw-bold text-dark mb-0" id="globalFilterModalLabel" style="font-size: 15px;">Filter PIC PMDE</h5>'
                 };

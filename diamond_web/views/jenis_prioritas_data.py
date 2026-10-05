@@ -19,7 +19,7 @@ from datetime import date as _date
 # prioritasnya, sedangkan PIDE dan PMDE memakainya untuk mengurutkan antrean
 # identifikasi dan pengendalian mutu (lihat `seksi_queue.prioritas_exists`).
 # Karena itu keempat view CRUD di bawah memakai AdminAnyRequiredMixin — admin
-# global maupun admin_p3de/admin_pide/admin_pmde — sesuai RBAC_MATRIX.md.
+# global maupun admin_p3de/admin_p3der/admin_pide/admin_pmde — sesuai RBAC_MATRIX.md.
 #
 # Setiap tambah/ubah/hapus langsung menyesuaikan Tiket.id_jenis_prioritas_data
 # untuk Sub Jenis Data yang disentuh, dalam transaksi yang sama: tiket yang
@@ -219,7 +219,7 @@ class JenisPrioritasDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminAny
 @login_required
 @user_passes_test(
     lambda u: u.groups.filter(
-        name__in=['admin', 'admin_p3de', 'admin_pide', 'admin_pmde']
+        name__in=['admin', 'admin_p3de', 'admin_p3der', 'admin_pide', 'admin_pmde']
     ).exists()
 )
 @require_GET

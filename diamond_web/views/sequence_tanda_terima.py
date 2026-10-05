@@ -52,7 +52,7 @@ class SequenceTandaTerimaListView(LoginRequiredMixin, AdminP3DERequiredMixin, Te
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'admin_p3der']).exists())
 @require_GET
 def sequence_tanda_terima_data(request):
     """DataTables server-side endpoint for `SequenceTandaTerima`.
@@ -60,8 +60,8 @@ def sequence_tanda_terima_data(request):
     GET parameters (DataTables): `draw`, `start`, `length`,
     `columns_search[]`, `search[value]`, `order[0][column]`, `order[0][dir]`.
 
-    Permissions: wrapped by decorators to allow only users in `admin` or
-    `admin_p3de` groups.
+    Permissions: wrapped by decorators to allow only users in `admin`,
+    `admin_p3de` or `admin_p3der` groups.
 
     Returns: JSON with `draw`, `recordsTotal`, `recordsFiltered`, and
     `data` rows. Each row includes `tahun`, `nomor_terakhir`,

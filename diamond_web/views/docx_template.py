@@ -12,10 +12,10 @@ from django.shortcuts import render, get_object_or_404
 
 from ..models.docx_template import DocxTemplate
 from ..forms.docx_template import DocxTemplateForm
-from .mixins import AjaxFormMixin, SafeDeleteMixin
+from .mixins import AjaxFormMixin, SafeDeleteMixin, p3de_seksi_label, p3de_seksi_of_user
 
 
-# Template Dokumen is shared by the P3DE and PMDE admins, each managing only
+# Template Dokumen is shared by the P3DE / P3DER and PMDE admins, each managing only
 # the jenis dokumen its seksi owns (see DocxTemplate.jenis_dokumen_for_user).
 # A template of the other seksi is simply not there for them: it is left out
 # of the list and answers 404 when reached by URL.
@@ -32,9 +32,12 @@ def _templates_for(user):
 
 def _admin_breadcrumb(user):
     groups = set(user.groups.values_list('name', flat=True))
-    if user.is_superuser or 'admin' in groups or {'admin_p3de', 'admin_pmde'} <= groups:
+    p3de_admin = groups & {'admin_p3de', 'admin_p3der'}
+    if user.is_superuser or 'admin' in groups or (p3de_admin and 'admin_pmde' in groups):
         return 'Admin'
-    return 'Admin PMDE' if 'admin_pmde' in groups else 'Admin P3DE'
+    if 'admin_pmde' in groups:
+        return 'Admin PMDE'
+    return 'Admin ' + p3de_seksi_label(p3de_seksi_of_user(user, 'admin'))
 
 
 class DocxTemplateAccessMixin(UserPassesTestMixin):

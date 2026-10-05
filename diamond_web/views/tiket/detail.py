@@ -30,7 +30,7 @@ from ...constants.tiket_action_types import (
 )
 from ...utils import format_number_with_separator, format_periode
 from ...utils.jenis_prioritas import resolve_jenis_prioritas
-from ..mixins import can_open_tiket, is_admin_p3de, is_admin_pmde, tiket_pic_roles_managed_by
+from ..mixins import can_open_tiket, is_admin_p3de, is_admin_pmde, p3de_seksi_of, tiket_pic_roles_managed_by
 
 
 class TiketDetailView(LoginRequiredMixin, DetailView):
@@ -60,10 +60,13 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         Permission Logic:
         - Superuser: Always allowed
         - Admin group member: Always allowed
-        - Admin P3DE group member: Always allowed — they may correct the isian
-          of any tiket, so they must be able to open it
-        - Admin PIDE / Admin PMDE and Kasi (supervisor) group members: Always
-          allowed, read-only — the action buttons stay gated behind
+        - Admin P3DE / Admin P3DER group member: Allowed on the tikets of their
+          own seksi (Nasional/Internasional ILAP for P3DE, Regional for
+          P3DER) — they may correct the isian, so they must be able to open it
+        - Kasi P3DE / Kasi P3DER: Allowed on the tikets of their own seksi,
+          read-only
+        - Admin PIDE / Admin PMDE and Kasi PIDE / Kasi PMDE: Always allowed,
+          read-only — the action buttons stay gated behind
           `user_is_active_pic_*`
         - Other users: Must have a TiketPIC record (active or inactive) for this
           tiket, or be a current PIC (no end date) of its sub jenis data — the
@@ -71,9 +74,10 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
           Either way the action buttons stay gated behind an active TiketPIC.
 
         Raises:
-        - PermissionDenied: If user is not superuser/admin/admin_p3de/
-          admin_pide/admin_pmde/kasi, has no TiketPIC and is not a current PIC
-          of the sub jenis data
+        - PermissionDenied: If user is not superuser/admin/admin_pide/
+          admin_pmde/kasi PIDE or PMDE, not an admin or kasi of the tiket's
+          P3DE seksi, has no TiketPIC and is not a current PIC of the sub
+          jenis data
         - Http404: If tiket PK not found (via parent get_object)
         """
         obj = super().get_object(queryset)
@@ -182,7 +186,7 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         
         # Roles whose PICs the reader may add/change/remove on this tiket
         # alone (Kelola PIC Tiket) - the same seksi rule as the PIC menu.
-        managed_roles = tiket_pic_roles_managed_by(self.request.user)
+        managed_roles = tiket_pic_roles_managed_by(self.request.user, self.object)
         context['pic_roles_managed'] = [
             {'value': int(role), 'label': f'PIC {role.label}'} for role in managed_roles
         ]
@@ -340,8 +344,9 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         # P3DE administrators are not bound by that lock: they may correct a
         # tiket at any point in the workflow. Either way the change is recorded
         # as a DIUBAH action in the audit trail.
-        user_is_admin_p3de = is_admin_p3de(self.request.user)
+        user_is_admin_p3de = is_admin_p3de(self.request.user, self.object)
         context['user_is_admin_p3de'] = user_is_admin_p3de
+        context['p3de_seksi'] = p3de_seksi_of(self.object)
         context['user_can_edit_tiket'] = user_is_admin_p3de or (
             self.object.status_tiket == STATUS_DIREKAM
             and not self.object.tanda_terima

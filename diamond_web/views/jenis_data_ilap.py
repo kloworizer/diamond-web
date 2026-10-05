@@ -128,7 +128,7 @@ class JenisDataILAPDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DERequ
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'admin_p3der']).exists())
 @require_GET
 def jenis_data_ilap_data(request):
     """Server-side DataTables endpoint for `JenisDataILAP`.
@@ -219,7 +219,7 @@ def jenis_data_ilap_data(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'admin_p3der']).exists())
 @require_GET
 def get_next_jenis_data_id(request):
     """Return the next `id_jenis_data` string for a provided ILAP identifier.
@@ -276,7 +276,7 @@ def get_next_jenis_data_id(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'admin_p3der']).exists())
 @require_GET
 def get_existing_jenis_data(request):
     """Return existing `id_jenis_data` items for a given ILAP prefix or PK.
@@ -314,7 +314,7 @@ def get_existing_jenis_data(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'admin_p3der']).exists())
 @require_GET
 def get_existing_sub_jenis_data(request):
     """Return existing `id_sub_jenis_data` entries for a given `id_jenis_data`.
@@ -337,7 +337,7 @@ def get_existing_sub_jenis_data(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'admin_p3der']).exists())
 @require_GET
 def get_next_sub_jenis_id(request):
     """Return the next `id_sub_jenis_data` for a given `id_jenis_data` prefix.

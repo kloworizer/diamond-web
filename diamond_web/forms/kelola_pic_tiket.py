@@ -5,12 +5,25 @@ from django.db.models import Q
 from ..models.tiket_pic import TiketPIC
 
 # The user group each TiketPIC role draws its PICs from - the same groups the
-# PIC menu offers (`PICForm`).
+# PIC menu offers (`PICForm`). The P3DE role is resolved per tiket, see
+# `role_user_group`.
 ROLE_USER_GROUP = {
-    TiketPIC.Role.P3DE: 'user_p3de',
     TiketPIC.Role.PIDE: 'user_pide',
     TiketPIC.Role.PMDE: 'user_pmde',
 }
+
+
+def role_user_group(tiket, role):
+    """Return the user group `role`'s PICs are drawn from on `tiket`.
+
+    The P3DE role belongs to Seksi P3DE on a Nasional/Internasional ILAP and
+    to Seksi P3DER on a Regional one.
+    """
+    if role == TiketPIC.Role.P3DE:
+        from ..views.mixins import P3DE_SEKSI_GROUPS, p3de_seksi_of
+
+        return P3DE_SEKSI_GROUPS[p3de_seksi_of(tiket)]['user']
+    return ROLE_USER_GROUP[role]
 
 
 def _user_label(user):
@@ -49,7 +62,7 @@ class KelolaPICTiketForm(forms.Form):
             id_tiket=tiket, role=role, active=True,
         ).values('id_user')
         candidates = (
-            Q(groups__name=ROLE_USER_GROUP[role])
+            Q(groups__name=role_user_group(tiket, role))
             & ~Q(pk__in=sudah_aktif)
             # Superusers sit in every user group; they are not PIC candidates.
             & Q(is_superuser=False)

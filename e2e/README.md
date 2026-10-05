@@ -18,6 +18,7 @@ Full workflow, exhausting the documented paths (see `docs/status_tiket_flow.md`)
 | `test_form_interactions.py` | Every AJAX CRUD form (Tambah **and** Edit): does the form still *work* after the server rejects it? |
 | `test_form_interactions_pages.py` | Same question for the non-CRUD surfaces: tiket detail workflow modals, the 12 `#filter-form` report pages, and the full-page profil form — plus ProfilForm's password rules |
 | `test_master_data_crud.py` | CRUD for the master-data pages, and the rule-specific negatives each of their forms owns |
+| `test_p3der_seksi.py` | Seksi P3DE / P3DER split: menus and labels per role, Daftar Tiket and PIC P3DE row counts against the DB, cross-seksi tiket refused (403), PIC P3DE form scoped per seksi and the per-ILAP user rule |
 
 ### Validation rules
 
@@ -133,6 +134,13 @@ Output:
 
 - Creates a superuser `pw_tester` and three `PIC` rows on sub-jenis `AS0010101`
   (ILAP id 1). These live in the dev `db.sqlite3` (already git-ignored).
+- Also creates one non-superuser account per P3DE / P3DER role (`pw_user_p3der`,
+  `pw_kasi_p3der`, `pw_admin_p3der`, `pw_kasi_p3de`, `pw_admin_p3de`, same
+  password as `pw_tester`) and makes `pw_user_p3der` an active PIC P3DE on the
+  first Regional sub jenis data with an open periode.
+- `test_p3der_seksi.py` reads the expected row counts through the ORM, so run
+  it with the same `DJANGO_SETTINGS_MODULE` (i.e. the same database) as the
+  server under test.
 - Each run creates a handful of real tikets in the dev DB (statuses vary).
 - The detail-page **Transfer ke PMDE** and **Selesaikan Tiket** buttons render
   with a hardcoded `disabled` attribute; the tests force-enable them to keep

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load auth_extras %}
 {% load crispy_forms_tags %}
 
 {% block content %}
@@ -148,7 +149,7 @@
         </div>
         <ul class="breadcrumb">
             <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-            <li class="breadcrumb-item"><a href="javascript:void(0);">P3DE</a></li>
+            <li class="breadcrumb-item"><a href="javascript:void(0);">{{ user|p3de_label }}</a></li>
             <li class="breadcrumb-item active">Kelola Backup Data</li>
         </ul>
     </div>
@@ -317,10 +318,10 @@
                                         </div>
                                     </div>
                                     <div class="row mb-3 align-items-center">
-                                        <label class="col-sm-4 col-form-label">PIC P3DE</label>
+                                        <label class="col-sm-4 col-form-label">PIC {{ user|p3de_label }}</label>
                                         <div class="col-sm-8">
                                             <select id="filter-pic-p3de" class="form-select" disabled>
-                                                <option value="">Semua PIC P3DE</option>
+                                                <option value="">Semua PIC {{ user|p3de_label }}</option>
                                             </select>
                                         </div>
                                     </div>
@@ -357,7 +358,7 @@
                             <th>Nomor Tiket</th>
                             <th>Media Backup</th>
                             <th>Lokasi Penyimpanan</th>
-                            <th>PIC P3DE</th>
+                            <th>PIC {{ user|p3de_label }}</th>
                             <th>Jumlah Data</th>
                             <th class="col-actions">Aksi</th>
                         </tr>
@@ -370,7 +371,7 @@
                             <th><input type="text" class="form-control form-control-sm" placeholder="Nomor Tiket" data-column="5" /></th>
                             <th><input type="text" class="form-control form-control-sm" placeholder="Media Backup" data-column="6" /></th>
                             <th><input type="text" class="form-control form-control-sm" placeholder="Lokasi Penyimpanan" data-column="7" /></th>
-                            <th><input type="text" class="form-control form-control-sm" placeholder="PIC P3DE" data-column="8" /></th>
+                            <th><input type="text" class="form-control form-control-sm" placeholder="PIC {{ user|p3de_label }}" data-column="8" /></th>
                             <th><input type="text" class="form-control form-control-sm" placeholder="Jumlah Data" data-column="9" /></th>
                             <th class="col-actions"></th>
                         </tr>
@@ -431,7 +432,7 @@
                 '#filter-periode-data': 'Semua Periode Data',
                 '#filter-periode-pengiriman': 'Semua Periode Pengiriman',
                 '#filter-media-backup': 'Semua Media Backup',
-                '#filter-pic-p3de': 'Semua PIC P3DE'
+                '#filter-pic-p3de': 'Semua PIC {{ user|p3de_label }}'
             };
 
             const mapOptionsKey = {

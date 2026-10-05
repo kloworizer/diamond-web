@@ -163,7 +163,7 @@ class PeriodeJenisDataDeleteView(SafeDeleteMixin, LoginRequiredMixin, AdminP3DER
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'admin_p3der']).exists())
 @require_GET
 def periode_jenis_data_data(request):
     """Server-side DataTables endpoint for `PeriodeJenisData`.

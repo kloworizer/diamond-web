@@ -104,7 +104,7 @@ class StatusPenelitianDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, Saf
         return f"{reverse_lazy('status_penelitian_list')}?deleted=true&name={quote_plus(self.object.deskripsi)}"
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'admin_p3der']).exists())
 @require_GET
 def status_penelitian_data(request):
     """Server-side DataTable endpoint for StatusPenelitian list view.

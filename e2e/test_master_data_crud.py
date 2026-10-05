@@ -46,11 +46,11 @@ def _force_close_modal(page):
         pass
 
 
-def _open_create(page, table_id):
+def _open_create(page, table_id, button='[data-action="create"]'):
     _force_close_modal(page)
     H.clear_overlays(page)
     page.wait_for_selector(f"#{table_id}")
-    page.click('[data-action="create"]')
+    page.click(button)
     page.wait_for_selector("#crudModal form", timeout=8000)
     page.wait_for_timeout(300)
 
@@ -64,13 +64,13 @@ def _submit_and_wait(page, rep, sc, step):
     return not open_now
 
 
-def _search_column(page, table_id, col_index, value):
+def _search_column(page, table_id, col_index, value, search_row="#column-search-row"):
     """Fill a DataTables column-search box and force the 'change' event the
     page's jQuery `.on('keyup change', ...)` listener needs -- Playwright's
     .fill() only dispatches 'input', so without this the table never
     re-filters and callers can end up acting on the wrong row."""
     _force_close_modal(page)
-    selector = f'#column-search-row input[data-column="{col_index}"]'
+    selector = f'{search_row} input[data-column="{col_index}"]'
     page.fill(selector, value)
     page.dispatch_event(selector, "change")
     page.wait_for_timeout(800)
@@ -657,27 +657,37 @@ def rule_durasi_jatuh_tempo(page, rep):
 
 
 def rule_pic_duplicate_and_overlap(page, rep):
-    """PICForm.clean(): no duplicate (user, sub jenis, start) and no second
-    active PIC while an open-ended one exists."""
+    """PICForm.clean() + PICCreateView.form_invalid().
+
+    A submission colliding with a PIC that is still open — the same user, sub
+    jenis data and start date, or any start while the existing row has no end
+    date — is not an error: the view answers success and re-applies the
+    existing row to the open tikets ("sudah terdaftar dan telah diterapkan").
+    What must hold is that no second row is written. An end date before the
+    start date is a genuine rejection."""
     sc = "rule_pic"
-    table_id = "pic-p3de-table"
-    page.goto(f"{H.BASE_URL}/pic-p3de/")
+    # PIC P3DE lives on the unified PIC page (/pic/), tab P3DE; the old
+    # /pic-p3de/ table markup is gone.
+    table_id = "p3de-table"
+    search_row = "#p3de-search-row"
+    page.goto(f"{H.BASE_URL}/pic/?tab=p3de")
     # Prefer the e2e user's own PIC row (setup_test_data guarantees one): the
-    # create form filters id_user to the user_p3de group, so an arbitrary
-    # first row may name a user this form cannot even offer.
-    _search_column(page, table_id, 3, H.USER)
+    # create form only offers users of the seksi that handles the sub jenis
+    # data's ILAP (user_p3de for Nasional/Internasional, user_p3der for
+    # Regional), so an arbitrary first row may name a user it cannot offer.
+    _search_column(page, table_id, 4, H.USER, search_row)
     cells = _first_row_cells(page, table_id)
     if not cells:
-        _search_column(page, table_id, 3, "")
+        _search_column(page, table_id, 4, "", search_row)
         cells = _first_row_cells(page, table_id)
     if not cells:
         rep.info(sc, "no existing PIC row to collide with", "skipped")
         return
-    # Columns: ILAP | ID Sub Jenis Data | Nama | Username | Full Name | Start | End
-    sub_jenis, username, start_date, end_date = cells[1], cells[3], cells[5], cells[6]
+    # Columns: (expand) | ILAP | ID Sub | Nama Sub Jenis Data | Username | Nama PIC | Start | End
+    sub_jenis, username, start_date, end_date = cells[2], cells[4], cells[6], cells[7]
 
     def open_and_fill(start):
-        _open_create(page, table_id)
+        _open_create(page, table_id, '#pane-p3de [data-action="create"]')
         picked_sub = _select_option_containing(page, "#id_id_sub_jenis_data_ilap", sub_jenis)
         picked_user = _select_option_containing(page, "#id_id_user", f"({username})")
         if not picked_sub or not picked_user:
@@ -687,29 +697,60 @@ def rule_pic_duplicate_and_overlap(page, rep):
         H.fill_date(page, "#id_start_date", start)
         return True
 
+    def pic_rows():
+        """PIC P3DE rows of this user on this sub jenis data, from the list's own endpoint."""
+        return page.evaluate(
+            """async ([sub, user]) => {
+                const q = new URLSearchParams({draw: '1', start: '0', length: '100'});
+                for (const v of ['', sub, '', user]) q.append('columns_search[]', v);
+                const r = await fetch('/pic-p3de/data/?' + q, {headers: {'X-Requested-With': 'XMLHttpRequest'}});
+                return (await r.json()).recordsFiltered;
+            }""", [sub_jenis, username])
+
+    def expect_reapplied(step):
+        before = pic_rows()
+        with page.expect_response(lambda r: "/pic-p3de/create/" in r.url and r.request.method == "POST") as info:
+            page.click('#crudModal button[type="submit"]')
+        body = info.value.json()
+        after = pic_rows()
+        message = body.get("message", "")
+        if after != before:
+            rep.fail(sc, f"{step}: no second row", f"rows {before} -> {after}")
+            rep.bug("PIC accepts a second row for an existing open PIC", "MEDIUM",
+                    f"'{username}' on '{sub_jenis}': rows went {before} -> {after}.")
+        elif body.get("success") and "sudah terdaftar" in message:
+            rep.ok(sc, step, f"rows {before} -> {after}; {message[:120]}")
+        else:
+            rep.fail(sc, f"{step}: unexpected answer", f"rows {before} -> {after}; {body}")
+        _force_close_modal(page)
+        H.clear_overlays(page)
+
     # 1) Exact duplicate of the existing row.
     if not open_and_fill(start_date):
         rep.info(sc, "duplicate PIC", f"sub jenis '{sub_jenis}' or user '{username}' "
                                       "not selectable in this form; skipped")
         return
-    _submit_expect_rejected(
-        page, rep, sc, "duplicate PIC (same user/sub jenis/start) rejected", "sudah ada",
-        bug=("PIC accepts a duplicate user + sub jenis data + start date", "MEDIUM",
-             f"A second PIC row for user '{username}' on '{sub_jenis}' starting "
-             f"{start_date} was saved; PICForm.clean() is supposed to reject it."))
-    H.clear_overlays(page)
-
-    # 2) A second PIC while the existing one is still open-ended.
     if end_date:
-        rep.info(sc, "overlapping PIC", f"first row already ends {end_date}; skipped")
+        _submit_expect_rejected(
+            page, rep, sc, "duplicate of a closed PIC rejected", "sudah ada",
+            bug=("PIC accepts a duplicate user + sub jenis data + start date", "MEDIUM",
+                 f"A second PIC row for user '{username}' on '{sub_jenis}' starting "
+                 f"{start_date} was saved; PICForm.clean() is supposed to reject it."))
+        H.clear_overlays(page)
     else:
+        expect_reapplied("duplicate of an open PIC re-applied, not duplicated")
+
+        # 2) A second PIC while the existing one is still open-ended.
         if open_and_fill(H.date_ago(0)):
-            _submit_expect_rejected(
-                page, rep, sc, "second active PIC rejected", "Sudah ada PIC aktif",
-                bug=("PIC allows a second active PIC for the same user + sub jenis data",
-                     "MEDIUM",
-                     f"'{username}' already has an open-ended P3DE PIC row for "
-                     f"'{sub_jenis}', but a second active one was accepted."))
+            expect_reapplied("second active PIC re-applied, not duplicated")
+
+    # 3) End date before start date.
+    if open_and_fill(H.date_ago(0)):
+        H.fill_date(page, "#id_end_date", H.date_ago(24 * 30))
+        _submit_expect_rejected(
+            page, rep, sc, "end_date before start_date rejected", "tidak boleh sebelum",
+            bug=("PIC accepts an end_date before start_date", "LOW",
+                 "PICForm.clean() rejects end_date < start_date, but the row was saved."))
     H.clear_overlays(page)
     H.shot(page, sc)
 

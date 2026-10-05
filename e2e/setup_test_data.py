@@ -9,6 +9,11 @@ Why this is needed:
   P3DE/PIDE/PMDE action buttons as one user, that user must be an active PIC for
   all three roles on the chosen sub_jenis_data_ilap.
 
+It also creates one account per Seksi P3DE / P3DER role (pw_user_p3der,
+pw_kasi_p3der, pw_admin_p3der, pw_kasi_p3de, pw_admin_p3de) for
+test_p3der_seksi.py. pw_user_p3der is made an active PIC P3DE on one Regional
+sub jenis data, since a P3DER pelaksana only reaches the ILAP they are PIC of.
+
 Idempotent: safe to run repeatedly.
 
 Run:
@@ -33,9 +38,18 @@ USERNAME = "pw_tester"
 PASSWORD = "PwTest12345!"
 # Groups mirror the existing `admin` account so every RBAC mixin passes.
 GROUPS = [
-    "admin", "admin_p3de", "admin_pide", "admin_pmde",
-    "user_p3de", "user_pide", "user_pmde",
+    "admin", "admin_p3de", "admin_p3der", "admin_pide", "admin_pmde",
+    "user_p3de", "user_p3der", "user_pide", "user_pmde",
 ]
+
+# Single-role accounts for the Seksi P3DE / P3DER split (test_p3der_seksi.py).
+SEKSI_ACCOUNTS = {
+    "pw_user_p3der": "user_p3der",
+    "pw_kasi_p3der": "kasi_p3der",
+    "pw_admin_p3der": "admin_p3der",
+    "pw_kasi_p3de": "kasi_p3de",
+    "pw_admin_p3de": "admin_p3de",
+}
 
 U = get_user_model()
 
@@ -91,11 +105,53 @@ def main():
         obj.save()
         print(f"  PIC {tipe}: {'created' if made else 'exists'} (id={obj.id})")
 
+    setup_seksi_accounts()
+
     print("\nSETUP OK")
     print(f"LOGIN_USER={USERNAME}")
     print(f"LOGIN_PASS={PASSWORD}")
     print(f"ILAP_ID={sub.id_ilap_id}")
     print(f"SUB_JENIS={sub.id_sub_jenis_data}")
+
+
+def setup_seksi_accounts():
+    """One account per P3DE / P3DER role, plus a Regional PIC for pw_user_p3der."""
+    for username, group in SEKSI_ACCOUNTS.items():
+        user, _ = U.objects.get_or_create(
+            username=username,
+            defaults={"first_name": "Playwright", "last_name": group},
+        )
+        user.is_superuser = False
+        user.is_staff = False
+        user.set_password(PASSWORD)
+        user.save()
+        user.groups.set([Group.objects.get_or_create(name=group)[0]])
+        print(f"Seksi account: {username} ({group})")
+
+    pjd = (
+        PeriodeJenisData.objects
+        .select_related("id_sub_jenis_data_ilap__id_ilap")
+        .filter(
+            end_date__isnull=True,
+            id_sub_jenis_data_ilap__id_ilap__id_kategori_wilayah__deskripsi__icontains="regional",
+        )
+        .order_by("id_sub_jenis_data_ilap__id_sub_jenis_data")
+        .first()
+    )
+    if pjd is None:
+        print("WARNING: no active Regional PeriodeJenisData; pw_user_p3der gets no PIC.")
+        return
+    sub = pjd.id_sub_jenis_data_ilap
+    user = U.objects.get(username="pw_user_p3der")
+    obj, made = PIC.objects.get_or_create(
+        tipe=PIC.TipePIC.P3DE,
+        id_sub_jenis_data_ilap=sub,
+        id_user=user,
+        end_date__isnull=True,
+        defaults={"start_date": date(2020, 1, 1), "end_date": None},
+    )
+    print(f"  pw_user_p3der PIC P3DE on Regional {sub.id_sub_jenis_data} "
+          f"(ILAP {sub.id_ilap.nama_ilap}): {'created' if made else 'exists'}")
 
 
 if __name__ == "__main__":

@@ -18,7 +18,7 @@ class ILAPListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
 
     Renders the `ilap/list.html` template and surfaces deletion success
     messages when redirected from delete operations. The view is restricted to
-    users in the `admin` or `admin_p3de` groups via
+    users in the `admin`, `admin_p3de` or `admin_p3der` groups via
     `AdminP3DERequiredMixin`.
     """
     template_name = 'ilap/list.html'
@@ -42,7 +42,7 @@ class ILAPListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'admin_p3der']).exists())
 @require_GET
 def get_next_ilap_id(request):
     """Return the next `id_ilap` string for a given `kategori_id`.
@@ -80,7 +80,7 @@ def get_next_ilap_id(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'admin_p3der']).exists())
 @require_GET
 def ilap_data(request):
     """Server-side DataTables endpoint for `ILAP`.

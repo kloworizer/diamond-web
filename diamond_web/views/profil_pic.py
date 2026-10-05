@@ -86,7 +86,7 @@ def get_pic_user(username):
 def build_seksi_directory():
     """Return the active staff of each PDE seksi, one entry per seksi.
 
-    The three columns of the Profil PDE page, answering who works a seksi's
+    The columns of the Profil PDE page, one per seksi, answering who works a seksi's
     queue. Two kinds of account are subtracted from the staff group:
 
     * superusers. They are members of all three staff groups so that they can

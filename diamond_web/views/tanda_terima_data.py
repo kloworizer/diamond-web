@@ -64,7 +64,7 @@ class TandaTerimaDataListView(LoginRequiredMixin, UserP3DERequiredMixin, Templat
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de', 'user_p3der']).exists())
 @require_GET
 def tanda_terima_data_data(request):
     """DataTables server-side endpoint for `TandaTerimaData`.
@@ -204,7 +204,7 @@ def tanda_terima_data_data(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de', 'user_p3der']).exists())
 @require_GET
 def tanda_terima_next_number(request):
     """Return next sequential `nomor_tanda_terima` for a given year.
@@ -260,7 +260,7 @@ def _parse_scope_params(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de', 'user_p3der']).exists())
 @require_GET
 def tanda_terima_tikets_by_ilap(request):
     """Return the `Tiket` options selectable for a tanda terima scope.
@@ -343,7 +343,7 @@ def tanda_terima_tikets_by_ilap(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de', 'user_p3der']).exists())
 @require_GET
 def tanda_terima_nd_pengantar_options(request):
     """Return the ND Pengantar numbers available within a tanda terima scope.
@@ -907,7 +907,7 @@ class TandaTerimaDataViewOnly(LoginRequiredMixin, ActiveTiketP3DERequiredForEdit
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'admin_p3de', 'admin_p3der', 'user_p3de', 'user_p3der']).exists())
 def tidak_terbit_tanda_terima(request, pk):
     """Set tanda_terima=True on tiket without creating TandaTerimaData record.
 
@@ -917,7 +917,7 @@ def tidak_terbit_tanda_terima(request, pk):
 
     Access:
     - User must be logged in
-    - User must be in admin, admin_p3de, or user_p3de group
+    - User must be in admin, admin_p3de / admin_p3der, or user_p3de / user_p3der group
     - User must be an ACTIVE P3DE PIC for this tiket
 
     POST params: None required (action is instantaneous)

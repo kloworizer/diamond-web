@@ -1,5 +1,15 @@
 # Catatan Rilis & Perubahan
 
+## [Belum Dirilis]
+
+### Diubah
+- **Seksi P3DE Dipecah Menjadi P3DE dan P3DER** — Seksi P3DE kini menangani ILAP berkategori wilayah **Nasional** dan **Internasional**, sedangkan seksi baru **P3DER** menangani ILAP **Regional**. Keduanya menjalankan tahap alur kerja yang sama (rekam, tanda terima, penelitian, kirim ke PIDE), sehingga PIC dan TiketPIC tetap bertipe `P3DE` tanpa perubahan skema; seksi ditentukan oleh grup pengguna dan kategori wilayah ILAP.
+  - Grup baru `admin_p3der`, `user_p3der`, `kasi_p3der` (migrasi `0018_p3der_groups`), beserta akun placeholder `kasi_p3der` tanpa password yang dapat dipakai — atur password (dan ganti username ke NIP kasi) melalui Django Admin. Pemindahan pegawai dari `user_p3de` ke `user_p3der` dilakukan manual per orang.
+  - Menu alur kerja P3DE (Penerimaan Data, Backup Data, Kirim Tiket, Generate Template, Laporan) terbuka untuk kedua seksi; cakupan baris tetap mengikuti penugasan PIC masing-masing pengguna.
+  - Admin dan kasi kini terbatas pada ILAP seksinya: Daftar Tiket & dashboard kasi, detail/ubah isian tiket oleh admin, Kelola PIC Tiket, menu PIC P3DE (daftar, tambah, ubah, hapus), Monitoring Penyampaian Data, blok kontak Profil ILAP, dan kartu admin di Home. Data referensi bersama (Kategori, Kanwil, KPP, ILAP, Jenis Data, Template Dokumen, dll.) dikelola oleh kedua admin.
+  - Formulir PIC P3DE menolak pegawai seksi yang tidak sesuai dengan wilayah ILAP sub jenis datanya. **Bulk PIC Pemda/Provinsi** tipe P3DE kini milik Admin P3DER karena seluruh ILAP PD/PV berwilayah Regional.
+  - Teks menu, judul bagian, breadcrumb, dan label PIC menyebut seksi pengguna ("P3DE", "P3DER", atau "P3DE / P3DER" untuk admin global). Profil PDE dan Ringkasan Seksi menampilkan Seksi P3DER sebagai kolom tersendiri.
+
 ## [1.2.2] — 2026-09-24
 
 ### Ditambahkan

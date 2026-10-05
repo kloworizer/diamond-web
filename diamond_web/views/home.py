@@ -37,10 +37,23 @@ from diamond_web.constants.tiket_status import (
 )
 from diamond_web.constants.tiket_action_types import TiketActionType
 from diamond_web.views.mixins import (
+    ALL_P3DE_SEKSI,
+    JENIS_DATA_ILAP_PATH,
+    P3DE_ADMIN_GROUPS,
+    P3DE_KASI_GROUPS,
+    P3DE_USER_GROUPS,
+    TIKET_ILAP_PATH,
     is_kasi,
     is_kasi_p3de,
     is_kasi_pide,
     is_kasi_pmde,
+    p3de_admin_wilayah_q,
+    p3de_seksi_label,
+    p3de_seksi_of,
+    p3de_seksi_of_user,
+    p3de_user_groups_for,
+    p3de_wilayah_q,
+    supervised_tiket_q,
     user_group_names,
 )
 from diamond_web.views.quality_control import jatuh_tempo_ids
@@ -194,8 +207,10 @@ def home(request):
     """Render the application home page.
 
     Context provided to template:
-    - `is_p3de` (bool): whether the current authenticated user belongs to
-      `user_p3de` or `kasi_p3de` group. Used to show P3DE-specific UI.
+    - `is_p3de` (bool): whether the current authenticated user belongs to a
+      user or kasi group of Seksi P3DE or Seksi P3DER (`user_p3de`,
+      `kasi_p3de`, `user_p3der`, `kasi_p3der`). Used to show P3DE-specific UI;
+      `p3de_label` names the seksi ("P3DE", "P3DER" or both).
       `is_pide`/`is_pmde` work the same way for their units.
     - `tiket_summary` (dict): when `is_p3de` is True, contains counts of
       actionable tiket items for the logged-in P3DE (uses
@@ -216,17 +231,18 @@ def home(request):
     # expose user role membership for templates
     # Kasi supervise their unit, so they get the same home view as the unit's
     # users — but scoped to every tiket, not just their own.
-    is_p3de = not groups.isdisjoint(['user_p3de', 'kasi_p3de'])
+    is_p3de = not groups.isdisjoint([*P3DE_USER_GROUPS, *P3DE_KASI_GROUPS])
     is_pide = not groups.isdisjoint(['user_pide', 'kasi_pide'])
     is_pmde = not groups.isdisjoint(['user_pmde', 'kasi_pmde'])
     context['is_p3de'] = is_p3de
     context['is_pide'] = is_pide
     context['is_pmde'] = is_pmde
     context['is_kasi_p3de'] = is_kasi_p3de(request.user)
+    context['p3de_label'] = p3de_seksi_label(p3de_seksi_of_user(request.user, 'user', 'kasi'))
     context['is_kasi_pide'] = is_kasi_pide(request.user)
     context['is_kasi_pmde'] = is_kasi_pmde(request.user)
     # check admin group membership
-    is_admin_p3de = 'admin_p3de' in groups
+    is_admin_p3de = not groups.isdisjoint(P3DE_ADMIN_GROUPS)
     is_admin_pide = 'admin_pide' in groups
     is_admin_pmde = 'admin_pmde' in groups
     context['is_admin_p3de'] = is_admin_p3de
@@ -281,7 +297,7 @@ def home(request):
             k: v['tickets'] for k, v in context['p3de_category_metrics'].items()
         }
 
-        # Admin: Jenis Data ILAP without active P3DE PIC
+        # Admin: Jenis Data ILAP without active P3DE PIC, within the admin's seksi
         if is_admin_p3de:
             context['p3de_jenis_data_tanpa_pic_count'] = JenisDataILAP.objects.filter(
                 ~Exists(PIC.objects.filter(
@@ -289,10 +305,10 @@ def home(request):
                     tipe=PIC.TipePIC.P3DE,
                     end_date__isnull=True
                 ))
-            ).count()
+            ).filter(p3de_admin_wilayah_q(request.user, JENIS_DATA_ILAP_PATH)).count()
             context['p3de_tiket_periode_null_count'] = Tiket.objects.filter(
                 tahun=2099
-            ).count()
+            ).filter(p3de_admin_wilayah_q(request.user, TIKET_ILAP_PATH)).count()
     if is_pide:
         context['tiket_summary_pide'] = get_tiket_summary_for_user_pide(request.user)
         pide_tiket_ids = _get_pide_tiket_ids(request.user)
@@ -384,7 +400,7 @@ def home(request):
             Tiket.objects.all(), request.user,
         ).count()
     if settings.DEBUG:
-        groups = Group.objects.filter(name__in=['user_p3de', 'user_pide', 'user_pmde']).prefetch_related('user_set')
+        groups = Group.objects.filter(name__in=[*P3DE_USER_GROUPS, 'user_pide', 'user_pmde']).prefetch_related('user_set')
         debug_groups = {}
         for group in groups:
             users = group.user_set.all().order_by('username')
@@ -413,11 +429,17 @@ def _scoped(qs, tiket_ids):
 def _get_p3de_tiket_ids(user):
     """Get the set of tiket IDs in the user's P3DE scope.
 
-    Kasi P3DE supervise the whole unit, so they are unscoped and get None;
-    other users get only the tikets for which they are an active P3DE PIC.
+    A kasi P3DE / P3DER supervises their seksi: a kasi of both seksi is
+    unscoped and gets None, a kasi of one seksi gets that seksi's tikets. Other
+    users get only the tikets for which they are an active P3DE PIC.
     """
     if is_kasi_p3de(user):
-        return None
+        seksi = p3de_seksi_of_user(user, 'kasi')
+        if seksi >= ALL_P3DE_SEKSI:
+            return None
+        return Tiket.objects.filter(
+            p3de_wilayah_q(seksi, TIKET_ILAP_PATH)
+        ).values_list('id', flat=True)
     return TiketPIC.objects.filter(
         id_user=user, role=TiketPIC.Role.P3DE, active=True
     ).values_list('id_tiket', flat=True)
@@ -452,15 +474,20 @@ def _get_pmde_tiket_ids(user):
 def _get_special_request_tiket_ids(user):
     """Get the tiket IDs visible to the user for the Special Request category.
 
-    Any kasi supervises the whole unit and is therefore unscoped (None); other
-    users see only the tikets for which they hold an active PIC assignment
-    (regardless of role).
+    A kasi PIDE or PMDE supervises the whole unit and is therefore unscoped
+    (None); a kasi P3DE / P3DER sees the tikets of their seksi. Other users see
+    only the tikets for which they hold an active PIC assignment (regardless of
+    role).
     """
-    if is_kasi(user):
+    supervised = supervised_tiket_q(user)
+    if supervised is None:
         return None
-    return TiketPIC.objects.filter(
+    own = TiketPIC.objects.filter(
         id_user=user, active=True
     ).values_list('id_tiket', flat=True)
+    if not is_kasi(user):
+        return own
+    return Tiket.objects.filter(supervised | Q(id__in=own)).values_list('id', flat=True)
 
 
 def _special_request_qs(qs, user):
@@ -534,9 +561,9 @@ def _build_tiket_base_qs(category, user):
 
     # Admin category: periode_tiket_null_p3de - no user-specific PIC filter
     if category == 'periode_tiket_null_p3de':
-        if 'admin_p3de' not in user_group_names(user):
+        if user_group_names(user).isdisjoint(P3DE_ADMIN_GROUPS):
             return None
-        return tiket_qs.filter(tahun=2099)
+        return tiket_qs.filter(tahun=2099).filter(p3de_admin_wilayah_q(user, TIKET_ILAP_PATH))
 
     # Admin category: tickets in Pengendalian Mutu status without an active PMDE PIC
     if category == 'tiket_pengendalian_mutu_tanpa_pic':
@@ -640,10 +667,12 @@ def _build_tiket_base_qs(category, user):
 
 def _build_jenis_data_tanpa_pic_qs(category, user):
     """Build the base JenisDataILAP queryset for admin 'jenis_data_tanpa_pic' views."""
+    seksi_q = Q()
     if category == 'jenis_data_tanpa_pic_p3de':
-        if not user.groups.filter(name='admin_p3de').exists():
+        if not user.groups.filter(name__in=P3DE_ADMIN_GROUPS).exists():
             return None
         pic_type = PIC.TipePIC.P3DE
+        seksi_q = p3de_admin_wilayah_q(user, JENIS_DATA_ILAP_PATH)
     elif category == 'jenis_data_tanpa_pic_pide':
         if not user.groups.filter(name='admin_pide').exists():
             return None
@@ -661,7 +690,7 @@ def _build_jenis_data_tanpa_pic_qs(category, user):
             tipe=pic_type,
             end_date__isnull=True
         ))
-    ).select_related('id_ilap')
+    ).filter(seksi_q).select_related('id_ilap')
 
 
 def _build_jenis_data_nama_tabel_kosong_qs(user):
@@ -1237,13 +1266,24 @@ def home_pic_pide_users(request):
 @login_required
 @require_GET
 def home_pic_p3de_users(request):
-    """Return JSON list of user_p3de members for the quick-assign PIC P3DE modal.
+    """Return JSON list of P3DE staff for the quick-assign PIC P3DE modal.
 
-    Only accessible to admin_p3de group members.
+    Only accessible to admin_p3de / admin_p3der group members, who get the
+    staff of their own seksi (`user_p3de` / `user_p3der`). Given
+    ``?sub_jenis=<pk>``, only the staff of the seksi that handles that sub
+    jenis data's ILAP are listed.
     """
-    if not request.user.groups.filter(name='admin_p3de').exists():
+    if not request.user.groups.filter(name__in=P3DE_ADMIN_GROUPS).exists():
         return JsonResponse({'error': 'Forbidden'}, status=403)
-    users = User.objects.filter(groups__name='user_p3de').order_by('first_name', 'last_name')
+    seksi = p3de_seksi_of_user(request.user, 'admin')
+    sub_jenis = JenisDataILAP.objects.filter(
+        pk=request.GET.get('sub_jenis') or None
+    ).select_related('id_ilap__id_kategori_wilayah').first()
+    if sub_jenis is not None:
+        seksi = seksi & {p3de_seksi_of(sub_jenis)}
+    users = User.objects.filter(
+        groups__name__in=p3de_user_groups_for(seksi)
+    ).distinct().order_by('first_name', 'last_name')
     data = [
         {
             'id': u.id,

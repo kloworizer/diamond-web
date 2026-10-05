@@ -62,10 +62,10 @@ class BatalkanTiketView(LoginRequiredMixin, ActiveTiketP3DERequiredForEditMixin,
         """
         user = self.request.user
         
-        # Check 1: User must be in user_p3de group or be admin/superuser
+        # Check 1: User must be in a P3DE / P3DER group or be admin/superuser
         is_p3de_user = user.is_authenticated and (
-            user.is_superuser or 
-            user.groups.filter(name__in=['admin', 'admin_p3de', 'user_p3de']).exists()
+            user.is_superuser or
+            user.groups.filter(name__in=['admin', 'admin_p3de', 'admin_p3der', 'user_p3de', 'user_p3der']).exists()
         )
         if not is_p3de_user:
             return False

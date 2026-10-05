@@ -179,7 +179,7 @@
         </a>
         <ul class="breadcrumb mb-0">
             <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-            <li class="breadcrumb-item"><a href="javascript:void(0);">Admin P3DE</a></li>
+            <li class="breadcrumb-item"><a href="javascript:void(0);">Admin {{ user|p3de_label:"admin" }}</a></li>
             <li class="breadcrumb-item"><a href="{% url 'profil_ilap_list' %}">Profil PDE</a></li>
             <li class="breadcrumb-item"><a href="{% url 'profil_ilap_detail' jenis_data.id_ilap.id_ilap %}">{{ jenis_data.id_ilap.nama_ilap }}</a></li>
             <li class="breadcrumb-item active">{{ jenis_data.id_sub_jenis_data }}</li>

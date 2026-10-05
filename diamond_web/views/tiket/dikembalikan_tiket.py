@@ -141,7 +141,7 @@ class DikembalikanTiketView(LoginRequiredMixin, UserPIDERequiredMixin, UpdateVie
                 else:
                     # Fallback: find any user in P3DE group as system attributor
                     p3de_user = User.objects.filter(
-                        groups__name__in=['user_p3de', 'admin_p3de']
+                        groups__name__in=['user_p3de', 'admin_p3de', 'user_p3der', 'admin_p3der']
                     ).first() or self.request.user
 
                 TiketAction.objects.create(

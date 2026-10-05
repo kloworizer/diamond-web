@@ -26,7 +26,8 @@ class DocxTemplate(models.Model):
     ]
 
     # The seksi owning each jenis dokumen: only that seksi's admins (and the
-    # global admin) manage its templates. Anything not listed here is P3DE's.
+    # global admin) manage its templates. Anything not listed here is P3DE's,
+    # shared by both P3DE seksi (P3DE and P3DER).
     PMDE_DOCUMENT_TYPES = ('nd_pengantar_pdi',)
 
     @classmethod
@@ -39,7 +40,7 @@ class DocxTemplate(models.Model):
         if user.is_superuser or 'admin' in groups:
             return all_types
         allowed = set()
-        if 'admin_p3de' in groups:
+        if groups & {'admin_p3de', 'admin_p3der'}:
             allowed |= all_types - set(cls.PMDE_DOCUMENT_TYPES)
         if 'admin_pmde' in groups:
             allowed |= set(cls.PMDE_DOCUMENT_TYPES)

@@ -104,6 +104,22 @@ def has_group(user, group_name):
     from ..views.mixins import user_group_names
 
     return group_name in user_group_names(user)
+
+
+@register.filter(name='p3de_label')
+def p3de_label(user, ranks=''):
+    """Name the P3DE seksi `user` belongs to: "P3DE", "P3DER" or "P3DE / P3DER".
+
+    Args:
+        user: The viewer.
+        ranks (str): Comma-separated ranks to count (``admin``, ``user``,
+            ``kasi``); every rank when empty. ``{{ user|p3de_label:"admin" }}``
+            names the seksi the viewer administers.
+    """
+    from ..views.mixins import p3de_seksi_label, p3de_seksi_of_user
+
+    ranks = [rank.strip() for rank in (ranks or '').split(',') if rank.strip()]
+    return p3de_seksi_label(p3de_seksi_of_user(user, *ranks))
 @register.filter(name='get_item')
 def get_item(dictionary, key):
     """Get item from dictionary by key"""

@@ -82,13 +82,21 @@ class TiketForm(AutoRequiredFormMixin, forms.ModelForm):
         from ..models.jenis_data_ilap import JenisDataILAP
 
         # JenisData with active P3DE PIC assignments (restricted to current user if not admin)
-        from ..views.mixins import get_active_p3de_ilap_ids
+        from ..views.mixins import (
+            JENIS_DATA_ILAP_PATH, get_active_p3de_ilap_ids, p3de_seksi_of_user, p3de_wilayah_q,
+        )
         allowed_ilap_ids = set(get_active_p3de_ilap_ids(self.user)) if self.user and self.user.is_authenticated else set()
+        # Admins and kasi of a P3DE seksi see every ILAP of that seksi.
+        supervised_seksi = p3de_seksi_of_user(self.user, 'admin', 'kasi') if self.user else frozenset()
 
-        if self.user and (self.user.is_superuser or self.user.groups.filter(name__in=['admin', 'admin_p3de', 'kasi_p3de']).exists()):
-            jenis_data_with_pic = JenisDataILAP.objects.values_list(
-                'id_sub_jenis_data', flat=True
-            ).distinct()
+        if supervised_seksi:
+            jenis_data_qs = JenisDataILAP.objects.all()
+            seksi_q = p3de_wilayah_q(supervised_seksi, JENIS_DATA_ILAP_PATH)
+            # An empty Q means both seksi, i.e. every ILAP. It must not be
+            # OR-ed: `Q() | x` collapses to `x` alone.
+            if seksi_q:
+                jenis_data_qs = jenis_data_qs.filter(seksi_q | Q(id_ilap_id__in=allowed_ilap_ids))
+            jenis_data_with_pic = jenis_data_qs.values_list('id_sub_jenis_data', flat=True).distinct()
         elif allowed_ilap_ids:
             jenis_data_with_pic = JenisDataILAP.objects.filter(
                 id_ilap_id__in=allowed_ilap_ids

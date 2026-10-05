@@ -62,7 +62,7 @@ class GenerateError(Exception):
 
 def _is_admin_p3de(user):
     # Same gate as the Jenis Data ILAP list and its create view.
-    return user.is_authenticated and user.groups.filter(name__in=['admin', 'admin_p3de']).exists()
+    return user.is_authenticated and user.groups.filter(name__in=['admin', 'admin_p3de', 'admin_p3der']).exists()
 
 
 def _norm(text):

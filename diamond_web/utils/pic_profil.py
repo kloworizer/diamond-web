@@ -32,21 +32,26 @@ from django.utils.html import escape
 SEKSI_LABELS = {
     'admin': 'Administrator',
     'admin_p3de': 'Admin P3DE',
+    'admin_p3der': 'Admin P3DER',
     'admin_pide': 'Admin PIDE',
     'admin_pmde': 'Admin PMDE',
     'kasi_p3de': 'Kepala Seksi P3DE',
+    'kasi_p3der': 'Kepala Seksi P3DER',
     'kasi_pide': 'Kepala Seksi PIDE',
     'kasi_pmde': 'Kepala Seksi PMDE',
     'user_p3de': 'Seksi P3DE',
+    'user_p3der': 'Seksi P3DER',
     'user_pide': 'Seksi PIDE',
     'user_pmde': 'Seksi PMDE',
 }
 
 
-# The three seksi of PDE, in the order the workflow moves a tiket through them.
-# Each names the groups that stand in the three relations to it: the staff who
-# work in it, the kasi who supervises it, and the admin who administers it. The
-# staff directory reads the first, the search visibility rule reads all three.
+# The seksi of PDE, in the order the workflow moves a tiket through them. P3DE
+# and P3DER run the same first stage — P3DE for the Nasional and Internasional
+# ILAP, P3DER for the Regional ones. Each names the groups that stand in the
+# three relations to it: the staff who work in it, the kasi who supervises it,
+# and the admin who administers it. The staff directory reads the first, the
+# search visibility rule reads all three.
 PDE_SEKSI = (
     {
         'kode': 'P3DE',
@@ -54,6 +59,13 @@ PDE_SEKSI = (
         'user_group': 'user_p3de',
         'kasi_group': 'kasi_p3de',
         'admin_group': 'admin_p3de',
+    },
+    {
+        'kode': 'P3DER',
+        'label': 'Seksi P3DER',
+        'user_group': 'user_p3der',
+        'kasi_group': 'kasi_p3der',
+        'admin_group': 'admin_p3der',
     },
     {
         'kode': 'PIDE',
@@ -211,7 +223,7 @@ def get_pde_seksi(kode):
     """Return the :data:`PDE_SEKSI` entry whose kode is `kode`, or ``None``.
 
     Args:
-        kode (str): ``P3DE``, ``PIDE`` or ``PMDE``, in any case — it arrives
+        kode (str): ``P3DE``, ``P3DER``, ``PIDE`` or ``PMDE``, in any case — it arrives
             from a URL.
 
     Returns:

@@ -571,7 +571,7 @@
             <div class="content-sidebar-body p3de-tasks" style="margin-top:0;">
                 <div class="role-section-header">
                     <span class="role-dot role-dot-p3de"></span>
-                    <small>{% if is_kasi_p3de %}Kepala Seksi P3DE{% else %}Pelaksana P3DE{% endif %}</small>
+                    <small>{% if is_kasi_p3de %}Kepala Seksi {{ p3de_label }}{% else %}Pelaksana {{ p3de_label }}{% endif %}</small>
                 </div>
                 <ul class="nav flex-column nxl-content-sidebar-item">
                     <li class="nav-item">
@@ -650,7 +650,7 @@
                 {% if is_admin_p3de %}
                 <div class="role-section-header" style="border-top:1px solid #eee; padding-top:10px;">
                     <span class="role-dot role-dot-admin"></span>
-                    <small>Admin P3DE</small>
+                    <small>Admin {{ user|p3de_label:"admin" }}</small>
                 </div>
                 <ul class="nav flex-column nxl-content-sidebar-item">
                     <li class="nav-item">
@@ -2398,7 +2398,7 @@
                         <i class="feather-user-plus" style="font-size: 16px;"></i>
                     </div>
                     <div>
-                        <h5 class="modal-title fw-bold mb-0" id="quickAssignPicP3deModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Assign PIC P3DE</h5>
+                        <h5 class="modal-title fw-bold mb-0" id="quickAssignPicP3deModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Assign PIC {{ user|p3de_label:"admin" }}</h5>
                         <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Konfigurasi Jenis Data</span>
                     </div>
                 </div>
@@ -2427,7 +2427,7 @@
                 <div id="qa-p3de-error-box" class="alert alert-danger py-2 px-3 mb-3" style="display:none; font-size: 12.5px;"></div>
                 <!-- User select -->
                 <div class="mb-3">
-                    <label class="form-label fw-semibold" style="font-size: 12px;">PIC P3DE <span class="text-danger">*</span></label>
+                    <label class="form-label fw-semibold" style="font-size: 12px;">PIC {{ user|p3de_label:"admin" }} <span class="text-danger">*</span></label>
                     <select id="qa-p3de-user-select" class="form-select" style="height: 40px; border-radius: 8px; font-size: 13px;">
                         <option value="">-- Pilih User PIC P3DE --</option>
                     </select>
@@ -4473,7 +4473,7 @@
             select.innerHTML = '<option value="">Memuat...</option>';
             select.disabled = true;
 
-            fetch(qaP3deUsersUrl)
+            fetch(qaP3deUsersUrl + '?sub_jenis=' + encodeURIComponent(qaP3deCurrentSubjenisId || ''))
                 .then(r => r.json())
                 .then(data => {
                     select.innerHTML = '<option value="">-- Pilih User PIC P3DE --</option>';

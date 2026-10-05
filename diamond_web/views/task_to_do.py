@@ -6,9 +6,13 @@ from diamond_web.constants.tiket_status import (
     STATUS_PENGENDALIAN_MUTU,
 )
 from diamond_web.views.mixins import (
+    P3DE_USER_GROUPS,
+    TIKET_ILAP_PATH,
     is_kasi_p3de,
     is_kasi_pide,
     is_kasi_pmde,
+    p3de_seksi_of_user,
+    p3de_wilayah_q,
     user_group_names,
 )
 
@@ -17,9 +21,14 @@ def _scope(role, user, is_kasi):
     """Tikets `user` may act on in `role`, or None when they may act on none.
 
     A kasi supervises the whole unit and is left unscoped — filtering on every
-    id in the table costs a subquery that removes nothing.
+    id in the table costs a subquery that removes nothing. A kasi P3DE or
+    P3DER supervises the tikets of their own seksi only.
     """
     if is_kasi(user):
+        if role == TiketPIC.Role.P3DE:
+            return Tiket.objects.filter(
+                p3de_wilayah_q(p3de_seksi_of_user(user, 'kasi'), TIKET_ILAP_PATH)
+            )
         return Tiket.objects.all()
     return Tiket.objects.filter(
         id__in=TiketPIC.objects.filter(
@@ -35,13 +44,14 @@ def get_tiket_summary_for_user_p3de(user):
     determine the relevant set of ticket IDs, then executes simple
     ``Tiket.objects.filter(...).count()`` queries for each metric.
 
-    Members of ``kasi_p3de`` supervise the whole unit, so their summary covers
-    every tiket instead of only their own PIC assignments.
+    Members of ``kasi_p3de`` / ``kasi_p3der`` supervise their seksi, so their
+    summary covers every tiket of that seksi instead of only their own PIC
+    assignments.
 
     Args:
         user: A Django ``User`` instance (or falsy).  If the user is not
-            authenticated or is not a member of the ``user_p3de`` or
-            ``kasi_p3de`` group the function returns a zeroed summary.
+            authenticated or is not a member of a P3DE / P3DER user or kasi
+            group the function returns a zeroed summary.
 
     Returns:
         dict: A dictionary with the following integer counts:
@@ -64,7 +74,7 @@ def get_tiket_summary_for_user_p3de(user):
 
     if not user or not getattr(user, 'is_authenticated', False):
         return empty
-    if not is_kasi_p3de(user) and 'user_p3de' not in user_group_names(user):
+    if not is_kasi_p3de(user) and user_group_names(user).isdisjoint(P3DE_USER_GROUPS):
         return empty
     tikets = _scope(TiketPIC.Role.P3DE, user, is_kasi_p3de)
 

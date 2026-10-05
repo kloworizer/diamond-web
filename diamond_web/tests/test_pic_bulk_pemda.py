@@ -60,8 +60,8 @@ def pemda(db):
 
 
 @pytest.fixture
-def admin_p3de(client):
-    user = _user('admin_p3de')
+def admin_p3der(client):
+    user = _user('admin_p3der')
     client.force_login(user)
     return user
 
@@ -69,17 +69,29 @@ def admin_p3de(client):
 @pytest.mark.django_db
 class TestAccess:
     def test_non_admin_forbidden(self, client):
-        client.force_login(_user('user_p3de'))
+        client.force_login(_user('user_p3der'))
         assert client.get(reverse('pic_bulk_pemda')).status_code == 403
         resp = _post(client, 'pic_bulk_pemda_preview', tipe='P3DE', kode='4101', mode='hapus')
         assert resp.status_code == 403
 
-    def test_admin_limited_to_own_tipe(self, client, admin_p3de, pemda):
+    def test_admin_p3de_forbidden(self, client):
+        """Every Pemda/Provinsi ILAP is Regional, so its PIC P3DE is Seksi P3DER's."""
+        client.force_login(_user('admin_p3de'))
+        assert client.get(reverse('pic_bulk_pemda')).status_code == 403
+        resp = _post(client, 'pic_bulk_pemda_preview', tipe='P3DE', kode='4101', mode='hapus')
+        assert resp.status_code == 403
+
+    def test_user_p3de_not_offered_as_new_pic(self, client, admin_p3der, pemda):
+        resp = _post(client, 'pic_bulk_pemda_preview', tipe='P3DE', kode='4101',
+                     mode='tambah', user_baru=_user('user_p3de').pk, start_date='2025-06-01')
+        assert resp.status_code == 400
+
+    def test_admin_limited_to_own_tipe(self, client, admin_p3der, pemda):
         resp = _post(client, 'pic_bulk_pemda_preview', tipe='PIDE', kode='4101', mode='hapus')
         assert resp.status_code == 400
         assert 'tidak berwenang' in resp.json()['message']
 
-    def test_page_lists_kode_across_pd_and_pv(self, client, admin_p3de, pemda):
+    def test_page_lists_kode_across_pd_and_pv(self, client, admin_p3der, pemda):
         resp = client.get(reverse('pic_bulk_pemda'))
         assert resp.status_code == 200
         kode = {o['kode']: o for o in resp.context['bulk_options']['kode']}
@@ -90,8 +102,8 @@ class TestAccess:
 
 @pytest.mark.django_db
 class TestTambah:
-    def test_preview_writes_nothing(self, client, admin_p3de, pemda):
-        new = _user('user_p3de')
+    def test_preview_writes_nothing(self, client, admin_p3der, pemda):
+        new = _user('user_p3der')
         resp = _post(client, 'pic_bulk_pemda_preview', tipe='P3DE', kode='4101', scope='ALL',
                      mode='tambah', user_baru=new.pk, start_date='2025-06-01')
         body = resp.json()
@@ -99,9 +111,9 @@ class TestTambah:
         assert {r['id_sub_jenis_data'] for r in body['rows']} == {'PD0014101', 'PD0024101', 'PV0014101'}
         assert not PIC.objects.exists()
 
-    def test_creates_pic_and_assigns_open_tikets(self, client, admin_p3de, pemda):
-        new = _user('user_p3de')
-        existing = _user('user_p3de')
+    def test_creates_pic_and_assigns_open_tikets(self, client, admin_p3der, pemda):
+        new = _user('user_p3der')
+        existing = _user('user_p3der')
         _pic(pemda['pd2'], new)  # already active there -> skipped
         _pic(pemda['pd1'], existing)
         tiket = _open_tiket(pemda['pd1'])
@@ -118,22 +130,22 @@ class TestTambah:
         # The other holder is untouched, the tiket gains the new PIC.
         assert PIC.objects.get(id_user=existing).end_date is None
         assert TiketPIC.objects.filter(id_tiket=tiket, id_user=new, active=True).exists()
-        assert PIC.objects.get(id_user=new, id_sub_jenis_data_ilap=pemda['pv1']).create_by == admin_p3de.username[:9]
+        assert PIC.objects.get(id_user=new, id_sub_jenis_data_ilap=pemda['pv1']).create_by == admin_p3der.username[:9]
 
-    def test_scope_pd_only(self, client, admin_p3de, pemda):
-        new = _user('user_p3de')
+    def test_scope_pd_only(self, client, admin_p3der, pemda):
+        new = _user('user_p3der')
         body = _post(client, 'pic_bulk_pemda_preview', tipe='P3DE', kode='4101', scope='PD',
                      mode='tambah', user_baru=new.pk, start_date='2025-06-01').json()
         assert {r['id_sub_jenis_data'] for r in body['rows']} == {'PD0014101', 'PD0024101'}
 
-    def test_user_outside_tipe_group_rejected(self, client, admin_p3de, pemda):
+    def test_user_outside_tipe_group_rejected(self, client, admin_p3der, pemda):
         outsider = _user('user_pide')
         resp = _post(client, 'pic_bulk_pemda_preview', tipe='P3DE', kode='4101',
                      mode='tambah', user_baru=outsider.pk, start_date='2025-06-01')
         assert resp.status_code == 400
 
-    def test_only_selected_rows_applied(self, client, admin_p3de, pemda):
-        new = _user('user_p3de')
+    def test_only_selected_rows_applied(self, client, admin_p3der, pemda):
+        new = _user('user_p3der')
         _post(client, 'pic_bulk_pemda_execute', tipe='P3DE', kode='4101', mode='tambah',
               user_baru=new.pk, start_date='2025-06-01', selected=[f'jd-{pemda["pv1"].pk}'])
         assert list(PIC.objects.values_list('id_sub_jenis_data_ilap', flat=True)) == [pemda['pv1'].pk]
@@ -141,8 +153,8 @@ class TestTambah:
 
 @pytest.mark.django_db
 class TestGanti:
-    def test_hand_over_from_specific_user(self, client, admin_p3de, pemda):
-        old, other, new = _user('user_p3de'), _user('user_p3de'), _user('user_p3de')
+    def test_hand_over_from_specific_user(self, client, admin_p3der, pemda):
+        old, other, new = _user('user_p3der'), _user('user_p3der'), _user('user_p3der')
         p1 = _pic(pemda['pd1'], old)
         p2 = _pic(pemda['pv1'], old)
         p3 = _pic(pemda['pd2'], other)
@@ -164,8 +176,8 @@ class TestGanti:
         assert TiketPIC.objects.get(id_tiket=tiket, id_user=new).active
         assert TiketAction.objects.filter(id_tiket=tiket, catatan__contains='diganti').exists()
 
-    def test_new_user_already_active_closes_old(self, client, admin_p3de, pemda):
-        old, new = _user('user_p3de'), _user('user_p3de')
+    def test_new_user_already_active_closes_old(self, client, admin_p3der, pemda):
+        old, new = _user('user_p3der'), _user('user_p3der')
         p_old = _pic(pemda['pd1'], old)
         p_new = _pic(pemda['pd1'], new)
 
@@ -177,8 +189,8 @@ class TestGanti:
         assert p_new.end_date is None
         assert PIC.objects.filter(id_user=new, end_date__isnull=True).count() == 1
 
-    def test_two_old_pics_on_one_row_do_not_duplicate_new_user(self, client, admin_p3de, pemda):
-        a, b, new = _user('user_p3de'), _user('user_p3de'), _user('user_p3de')
+    def test_two_old_pics_on_one_row_do_not_duplicate_new_user(self, client, admin_p3der, pemda):
+        a, b, new = _user('user_p3der'), _user('user_p3der'), _user('user_p3der')
         pa = _pic(pemda['pd1'], a)
         pb = _pic(pemda['pd1'], b, start=date(2025, 2, 1))
 
@@ -191,8 +203,8 @@ class TestGanti:
 
 @pytest.mark.django_db
 class TestAkhiri:
-    def test_sets_end_date_and_deactivates_tikets(self, client, admin_p3de, pemda):
-        old = _user('user_p3de')
+    def test_sets_end_date_and_deactivates_tikets(self, client, admin_p3der, pemda):
+        old = _user('user_p3der')
         p1 = _pic(pemda['pd1'], old)
         p_late = _pic(pemda['pv1'], old, start=date(2026, 1, 1))
         tiket = _open_tiket(pemda['pd1'])
@@ -216,8 +228,8 @@ class TestAkhiri:
 
 @pytest.mark.django_db
 class TestHapus:
-    def test_deletes_active_only_by_default(self, client, admin_p3de, pemda):
-        old = _user('user_p3de')
+    def test_deletes_active_only_by_default(self, client, admin_p3der, pemda):
+        old = _user('user_p3der')
         active = _pic(pemda['pd1'], old)
         closed = _pic(pemda['pd2'], old, end=date(2025, 3, 1))
         untouched = _pic(pemda['other_kode'], old)
@@ -236,8 +248,8 @@ class TestHapus:
         assert PIC.objects.filter(pk=untouched.pk).exists()
         assert not TiketPIC.objects.filter(id_tiket=tiket, id_user=old).exists()
 
-    def test_include_closed(self, client, admin_p3de, pemda):
-        old = _user('user_p3de')
+    def test_include_closed(self, client, admin_p3der, pemda):
+        old = _user('user_p3der')
         closed = _pic(pemda['pd2'], old, end=date(2025, 3, 1))
         _post(client, 'pic_bulk_pemda_execute', tipe='P3DE', kode='4101', mode='hapus',
               hanya_aktif='0', selected=[f'pic-{closed.pk}'])
@@ -245,8 +257,8 @@ class TestHapus:
 
 
 @pytest.mark.django_db
-def test_holders_counts(client, admin_p3de, pemda):
-    a, b = _user('user_p3de'), _user('user_p3de')
+def test_holders_counts(client, admin_p3der, pemda):
+    a, b = _user('user_p3der'), _user('user_p3der')
     _pic(pemda['pd1'], a)
     _pic(pemda['pv1'], a)
     _pic(pemda['pd2'], b, end=date(2025, 3, 1))

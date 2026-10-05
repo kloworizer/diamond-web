@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load auth_extras %}
 {% load static %}
 {% load crispy_forms_tags %}
 
@@ -13,7 +14,7 @@
             </div>
             <ul class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-                <li class="breadcrumb-item"><a href="javascript:void(0);">Admin P3DE</a></li>
+                <li class="breadcrumb-item"><a href="javascript:void(0);">Admin {{ user|p3de_label:"admin" }}</a></li>
                 <li class="breadcrumb-item active">Kategori ILAP</li>
             </ul>
         </div>

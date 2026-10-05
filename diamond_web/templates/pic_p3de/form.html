@@ -1,3 +1,4 @@
+{% load auth_extras %}
 {% load crispy_forms_tags %}
 <style>
     .modal-body {
@@ -66,7 +67,7 @@
             </div>
             <div>
                 <h5 class="modal-title fw-bold mb-0" id="crudModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Ubah</h5>
-                <span class="text-muted text-uppercase fw-semibold" style="font-size: 10px; letter-spacing: 0.5px;">PIC P3DE</span>
+                <span class="text-muted text-uppercase fw-semibold" style="font-size: 10px; letter-spacing: 0.5px;">PIC {{ user|p3de_label:"admin" }}</span>
             </div>
             {% else %}
             <!-- Blue circle for add -->
@@ -76,7 +77,7 @@
             </div>
             <div>
                 <h5 class="modal-title fw-bold mb-0" id="crudModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Tambah</h5>
-                <span class="text-muted text-uppercase fw-semibold" style="font-size: 10px; letter-spacing: 0.5px;">PIC P3DE</span>
+                <span class="text-muted text-uppercase fw-semibold" style="font-size: 10px; letter-spacing: 0.5px;">PIC {{ user|p3de_label:"admin" }}</span>
             </div>
             {% endif %}
         </div>

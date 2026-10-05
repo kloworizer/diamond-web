@@ -22,7 +22,7 @@ from ...models.ilap import ILAP
 from ...models.notification import Notification
 from ...forms.kirim_tiket import KirimTiketForm
 from ...forms.kirim_ke_pide import KirimKePideForm
-from ..mixins import UserP3DERequiredMixin, get_active_p3de_ilap_ids
+from ..mixins import UserP3DERequiredMixin, get_active_p3de_ilap_ids, is_admin_p3de, p3de_admin_wilayah_q
 from ...constants.tiket_status import STATUS_DITELITI, STATUS_DIKIRIM_KE_PIDE
 from ...constants.tiket_action_types import TiketActionType
 from ..bulk_document_generation import _generate_docx_for_tickets
@@ -99,10 +99,10 @@ class KirimTiketView(LoginRequiredMixin, UserP3DERequiredMixin, FormView):
             )
             context['tikets'] = None
             # ILAP options based on user access for single-tiket mode
-            if self.request.user.is_superuser or self.request.user.groups.filter(
-                name__in=['admin', 'admin_p3de']
-            ).exists():
-                ilap_options = ILAP.objects.order_by('nama_ilap')
+            if is_admin_p3de(self.request.user):
+                ilap_options = ILAP.objects.filter(
+                    p3de_admin_wilayah_q(self.request.user)
+                ).order_by('nama_ilap')
             else:
                 ilap_ids = get_active_p3de_ilap_ids(self.request.user)
                 ilap_options = ILAP.objects.filter(id__in=ilap_ids).order_by('nama_ilap')

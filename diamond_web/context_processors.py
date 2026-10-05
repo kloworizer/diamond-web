@@ -147,7 +147,7 @@ def auto_page_title(request):
             words = url_name.replace('_', ' ').split()
             title_words = []
             for w in words:
-                if w.lower() in ('pide', 'pmde', 'p3de', 'ilap', 'kpp', 'pic', 'sla'):
+                if w.lower() in ('pide', 'pmde', 'p3de', 'p3der', 'ilap', 'kpp', 'pic', 'sla'):
                     title_words.append(w.upper())
                 else:
                     title_words.append(w.capitalize())

@@ -13,8 +13,19 @@ class PICForm(AutoRequiredFormMixin, forms.ModelForm):
             'end_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
         }
     
-    def __init__(self, *args, tipe=None, **kwargs):
+    def __init__(self, *args, tipe=None, p3de_seksi=None, **kwargs):
+        """
+        Args:
+            tipe: The PIC tipe the view manages, or None.
+            p3de_seksi: For tipe P3DE, the P3DE seksi the editing admin covers
+                (see `p3de_seksi_of_user`); both seksi when None. The sub jenis
+                data offered are those of the seksi's ILAP, and the users
+                those of the seksi's user group.
+        """
         super().__init__(*args, **kwargs)
+        from ..views.mixins import (
+            ALL_P3DE_SEKSI, JENIS_DATA_ILAP_PATH, p3de_user_groups_for, p3de_wilayah_q,
+        )
 
         # Set by clean() when the submission collides with a PIC that is still
         # active. The create view uses it to re-run the tiket propagation
@@ -38,15 +49,27 @@ class PICForm(AutoRequiredFormMixin, forms.ModelForm):
                 self.initial['tipe'] = tipe
                 self.fields['tipe'].widget = forms.HiddenInput()
 
-            # Map tipe to user group
+            # Map tipe to user group. P3DE is run by two seksi: Seksi P3DE for
+            # Nasional/Internasional ILAP, Seksi P3DER for Regional ones.
             group_mapping = {
-                PIC.TipePIC.P3DE: 'user_p3de',
-                PIC.TipePIC.PIDE: 'user_pide',
-                PIC.TipePIC.PMDE: 'user_pmde',
+                PIC.TipePIC.PIDE: ['user_pide'],
+                PIC.TipePIC.PMDE: ['user_pmde'],
             }
-            group_name = group_mapping.get(tipe)
-            if group_name:
-                self.fields['id_user'].queryset = User.objects.filter(groups__name=group_name).distinct()
+            if tipe == PIC.TipePIC.P3DE:
+                seksi = ALL_P3DE_SEKSI if p3de_seksi is None else p3de_seksi
+                group_mapping[tipe] = p3de_user_groups_for(seksi)
+                self.fields['id_sub_jenis_data_ilap'].queryset = (
+                    self.fields['id_sub_jenis_data_ilap'].queryset
+                    .filter(p3de_wilayah_q(seksi, JENIS_DATA_ILAP_PATH))
+                )
+            group_names = group_mapping.get(tipe)
+            if group_names:
+                users = User.objects.filter(groups__name__in=group_names)
+                # Keep the current holder selectable, so a PIC whose user has
+                # since moved seksi can still be closed or handed over.
+                if self.instance.pk:
+                    users = users | User.objects.filter(pk=self.instance.id_user_id)
+                self.fields['id_user'].queryset = users.distinct()
 
         # Customize user field to show first_name and last_name
         self.fields['id_user'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name} ({obj.username})" if obj.first_name or obj.last_name else obj.username
@@ -64,6 +87,23 @@ class PICForm(AutoRequiredFormMixin, forms.ModelForm):
                 f"Tanggal Berakhir ({end_date}) tidak boleh sebelum Tanggal Mulai ({start_date})."
             ))
             return cleaned_data
+
+        # A PIC P3DE belongs to the seksi of the ILAP: a Regional ILAP takes a
+        # Seksi P3DER user, any other a Seksi P3DE user. Only checked when the
+        # user is picked, so an existing PIC can still be closed.
+        if (tipe == PIC.TipePIC.P3DE and id_sub_jenis_data_ilap and id_user
+                and (self.instance.pk is None or 'id_user' in self.changed_data)):
+            from ..views.mixins import P3DE_SEKSI_GROUPS, p3de_seksi_of
+
+            seksi = p3de_seksi_of(id_sub_jenis_data_ilap)
+            group = P3DE_SEKSI_GROUPS[seksi]['user']
+            if not id_user.groups.filter(name=group).exists():
+                self.add_error('id_user', (
+                    f"Sub jenis data '{id_sub_jenis_data_ilap}' milik ILAP "
+                    f"{id_sub_jenis_data_ilap.id_ilap.id_kategori_wilayah} yang ditangani "
+                    f"Seksi {seksi}. Pilih pegawai Seksi {seksi} (grup {group})."
+                ))
+                return cleaned_data
 
         # A submission that carries an end_date is closing a PIC, not asking for
         # an open one, so it must never be answered with an existing open PIC.

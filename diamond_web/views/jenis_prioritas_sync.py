@@ -28,7 +28,7 @@ __all__ = [
     'jenis_prioritas_data_tiket_backfill',
 ]
 
-ADMIN_GROUPS = ['admin', 'admin_p3de', 'admin_pide', 'admin_pmde']
+ADMIN_GROUPS = ['admin', 'admin_p3de', 'admin_p3der', 'admin_pide', 'admin_pmde']
 PREVIEW_LIMIT = 200
 
 
