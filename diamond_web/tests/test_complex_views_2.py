@@ -1322,6 +1322,39 @@ class TestGetPeriodsForRangeAdditional:
         periods = self.fn(datetime.date(2023, 10, 1), datetime.date(2024, 6, 30), 'triwulanan')
         assert len(periods) >= 1
 
+    def test_semesteran_yields_two_semesters_per_year(self):
+        """'Semesteran' (the stored label) is six-monthly, not stepped daily."""
+        periods = self.fn(datetime.date(2024, 1, 1), datetime.date(2024, 12, 31), 'Semesteran')
+        assert [(p['periode_num'], p['start_date'], p['end_date']) for p in periods] == [
+            (1, datetime.date(2024, 1, 1), datetime.date(2024, 6, 30)),
+            (2, datetime.date(2024, 7, 1), datetime.date(2024, 12, 31)),
+        ]
+
+    def test_bulanan_mid_month_start_is_calendar_aligned(self):
+        """A mid-month start yields whole calendar months numbered like tiket."""
+        periods = self.fn(datetime.date(2013, 3, 15), datetime.date(2014, 1, 20), 'Bulanan')
+        assert (periods[0]['periode_num'], periods[0]['start_date'], periods[0]['end_date']) == (
+            3, datetime.date(2013, 3, 1), datetime.date(2013, 3, 31))
+        assert (periods[-1]['periode_num'], periods[-1]['start_date'], periods[-1]['end_date']) == (
+            1, datetime.date(2014, 1, 1), datetime.date(2014, 1, 31))
+        assert len(periods) == 11
+
+    def test_tahunan_mid_year_start_ends_on_december_31(self):
+        """A Tahunan period is the calendar year, whatever the start date."""
+        periods = self.fn(datetime.date(2013, 3, 15), datetime.date(2014, 2, 1), 'Tahunan')
+        assert [(p['periode_num'], p['start_date'], p['end_date']) for p in periods] == [
+            (1, datetime.date(2013, 1, 1), datetime.date(2013, 12, 31)),
+            (1, datetime.date(2014, 1, 1), datetime.date(2014, 12, 31)),
+        ]
+
+    def test_triwulanan_mid_quarter_start(self):
+        """A start inside Q3 yields Triwulan III as the first period."""
+        periods = self.fn(datetime.date(2013, 7, 3), datetime.date(2013, 12, 31), 'Triwulanan')
+        assert [(p['periode_num'], p['start_date']) for p in periods] == [
+            (3, datetime.date(2013, 7, 1)),
+            (4, datetime.date(2013, 10, 1)),
+        ]
+
 
 class TestMonitoringAdditionalCoverage:
     """Additional coverage for monitoring view missing branches."""
@@ -1616,3 +1649,101 @@ class TestPICBaseViewMethods:
         )
         assert resp.status_code == 200
         assert resp.json().get('success') is True
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Monitoring: cancelled tiket, Regional receive date, access and Hari sort
+# ─────────────────────────────────────────────────────────────────────────────
+
+@pytest.mark.django_db
+class TestMonitoringPenyampaianRules:
+    """Status, lateness and access rules of the Monitoring Penyampaian Data endpoint."""
+
+    url = 'monitoring_penyampaian_data_data'
+
+    def _periode(self, wilayah='Nasional', start=datetime.date(2024, 1, 1),
+                 end=datetime.date(2024, 1, 31), akhir=15):
+        from ..models.kategori_wilayah import KategoriWilayah
+        from ..models.periode_pengiriman import PeriodePengiriman
+        pp, _ = PeriodePengiriman.objects.get_or_create(
+            periode_penyampaian='Bulanan', defaults={'periode_penerimaan': 'Bulanan'})
+        kategori_wilayah, _ = KategoriWilayah.objects.get_or_create(deskripsi=f'{wilayah} Monitoring')
+        jdi = JenisDataILAPFactory(id_ilap=ILAPFactory(id_kategori_wilayah=kategori_wilayah))
+        return PeriodeJenisDataFactory(
+            id_sub_jenis_data_ilap=jdi, id_periode_pengiriman=pp,
+            start_date=start, end_date=end, akhir_penyampaian=akhir)
+
+    def _rows(self, client, user, periode, **params):
+        client.force_login(user)
+        query = {'draw': '1', 'start': '0', 'length': '100',
+                 'sub_jenis_data': periode.id_sub_jenis_data_ilap.id_sub_jenis_data}
+        query.update(params)
+        resp = client.get(reverse(self.url), query)
+        assert resp.status_code == 200
+        return resp.json()['data']
+
+    def test_cancelled_tiket_counts_as_belum_menyampaikan(self, client, admin_user):
+        periode = self._periode()
+        TiketFactory(id_periode_data=periode, periode=1, tahun=2024, penyampaian=1, status_tiket=7)
+        [row] = self._rows(client, admin_user, periode)
+        assert 'Belum Menyampaikan' in row['status_penyampaian']
+
+    def test_cancelled_tiket_does_not_hide_an_earlier_valid_one(self, client, admin_user):
+        periode = self._periode()
+        TiketFactory(id_periode_data=periode, periode=1, tahun=2024, penyampaian=1, status_tiket=8,
+                     tgl_terima_dip=datetime.datetime(2024, 2, 10))
+        TiketFactory(id_periode_data=periode, periode=1, tahun=2024, penyampaian=1, status_tiket=7,
+                     tgl_terima_dip=datetime.datetime(2024, 5, 1))
+        [row] = self._rows(client, admin_user, periode)
+        assert 'Sudah Menyampaikan' in row['status_penyampaian']
+        assert '>Tidak<' in row['status_terlambat']
+
+    def test_regional_without_vertikal_date_falls_back_to_dip(self, client, admin_user):
+        periode = self._periode(wilayah='Regional')
+        # Deadline is 31 Jan + 15 days = 15 Feb; received by DIP on 20 Feb.
+        TiketFactory(id_periode_data=periode, periode=1, tahun=2024, penyampaian=1, status_tiket=8,
+                     tgl_terima_vertikal=None, tgl_terima_dip=datetime.datetime(2024, 2, 20))
+        [row] = self._rows(client, admin_user, periode)
+        assert row['deadline'] == '15-02-2024'
+        assert '>Ya<' in row['status_terlambat']
+
+    def test_regional_prefers_vertikal_date(self, client, admin_user):
+        periode = self._periode(wilayah='Regional')
+        TiketFactory(id_periode_data=periode, periode=1, tahun=2024, penyampaian=1, status_tiket=8,
+                     tgl_terima_vertikal=datetime.datetime(2024, 2, 14),
+                     tgl_terima_dip=datetime.datetime(2024, 2, 20))
+        [row] = self._rows(client, admin_user, periode)
+        assert '>Tidak<' in row['status_terlambat']
+
+    @pytest.mark.parametrize('group', ['kasi_p3de', 'admin_p3de'])
+    def test_supervisors_see_page_and_every_jenis_data(self, client, group):
+        user = UserFactory()
+        user.groups.add(Group.objects.get_or_create(name=group)[0])
+        periode = self._periode()
+        client.force_login(user)
+        assert client.get(reverse('monitoring_penyampaian_data_list')).status_code == 200
+        assert len(self._rows(client, user, periode)) == 1
+        options = client.get(reverse(self.url), {'get_filter_options': '1'}).json()['filter_options']
+        assert periode.id_sub_jenis_data_ilap.id_sub_jenis_data in {o['id'] for o in options['sub_jenis_data']}
+
+    def test_user_p3de_sees_only_own_pic_jenis_data(self, client, authenticated_user):
+        own = self._periode()
+        other = self._periode()
+        PICFactory(tipe=PIC.TipePIC.P3DE, id_sub_jenis_data_ilap=own.id_sub_jenis_data_ilap,
+                   id_user=authenticated_user, start_date=datetime.date(2020, 1, 1), end_date=None)
+        assert len(self._rows(client, authenticated_user, own)) == 1
+        assert self._rows(client, authenticated_user, other) == []
+
+    def test_kasi_p3de_navbar_shows_monitoring(self, client, kasi_p3de_user):
+        client.force_login(kasi_p3de_user)
+        html = client.get(reverse('home')).content.decode()
+        assert reverse('monitoring_penyampaian_data_list') in html
+        assert 'Monitoring Penyampaian Data' in html
+
+    def test_hari_sorts_numerically(self, client, admin_user):
+        periode = self._periode(end=datetime.date(2024, 12, 31))
+        rows = self._rows(client, admin_user, periode,
+                          **{'order[0][column]': '7', 'order[0][dir]': 'asc'})
+        hari = [row['hari'] for row in rows]
+        assert len(hari) == 12
+        assert hari == sorted(hari)

@@ -107,12 +107,19 @@
                 {% endif %}
 
                 {% comment %}
-                Kasi P3DE operate none of the menus above, but see the seksi's
-                PIC the way its pelaksana do (read-only). Skipped when they
-                already hold a P3DE group, so the entry is not listed twice.
+                Kasi P3DE operate none of the menus above, but supervise the
+                seksi's Monitoring Penyampaian Data and see its PIC the way its
+                pelaksana do (read-only). Skipped when they already hold a P3DE
+                group, so the entries are not listed twice.
                 {% endcomment %}
                 {% if user|has_group:"kasi_p3de" and not user|has_group:"admin_p3de" and not user|has_group:"user_p3de" %}
                 <li class="nxl-item nxl-caption"><label>P3DE</label></li>
+                <li class="nxl-item">
+                    <a class="nxl-link" href="{% url 'monitoring_penyampaian_data_list' %}">
+                        <span class="nxl-micon"><i class="feather-monitor"></i></span>
+                        <span class="nxl-mtext">Monitoring Penyampaian Data</span>
+                    </a>
+                </li>
                 <li class="nxl-item">
                     <a class="nxl-link" href="{% url 'pic_unified_list' %}?tab=p3de">
                         <span class="nxl-micon"><i class="feather-user"></i></span>

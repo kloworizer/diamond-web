@@ -586,21 +586,18 @@ def quality_control_data(request):
         10: ('belum_qc',),
     }
 
-    # Read sort column and direction from DataTables params
+    # Read sort column and direction from DataTables params. The page opens
+    # with no column sorted, which is the queue's own order: permintaan
+    # khusus first, then by deadline.
     order_col_index = params.get('order[0][column]')
     order_dir = params.get('order[0][dir]', 'asc')
 
-    if order_col_index is not None:
-        try:
-            idx = int(order_col_index)
-            cols = order_map.get(idx, ('id',))
-            if order_dir == 'desc':
-                cols = tuple('-' + col for col in cols)
-            tikets = tikets.order_by(*cols)
-        except (ValueError, TypeError):
-            tikets = tikets.order_by('-id')
+    try:
+        cols = order_map.get(int(order_col_index), ('id',))
+    except (ValueError, TypeError):
+        tikets = DEADLINE.default_order(tikets)
     else:
-        tikets = tikets.order_by('-id')
+        tikets = tikets.order_by(*sq.column_order(cols, order_dir))
 
     page = list(tikets[start:start + length])
 

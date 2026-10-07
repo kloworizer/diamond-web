@@ -1072,27 +1072,41 @@ Blocks a page must fill:
         opacity: 0.45;
     }
 
-    /* Subtle row coloring for jatuh tempo indicators, in the app's own success,
-       warning and danger rather than Bootstrap's defaults — the same three the
-       Home page draws its urgency chips in, so "overdue" is one colour across
-       the application instead of two shades of red. */
-    table.dataTable tr.row-green td {
-        background-color: rgba(23, 198, 102, 0.10) !important;
+    /* Row coloring for jatuh tempo, in the app's own success, warning and
+       danger rather than Bootstrap's defaults — the same three the Home page
+       draws its urgency chips in, so "overdue" is one colour across the
+       application instead of two shades of red. Kept to a faint wash: the
+       Jatuh Tempo pill already says how urgent the row is, so the row only
+       has to make it findable down the table, not shout it. */
+    table.dataTable tr.row-green {
+        --sq-row-wash: rgba(23, 198, 102, 0.035);
+        --sq-row-wash-hover: rgba(23, 198, 102, 0.07);
     }
-    table.dataTable tr.row-yellow td {
-        background-color: rgba(255, 162, 29, 0.12) !important;
+    table.dataTable tr.row-yellow {
+        --sq-row-wash: rgba(255, 162, 29, 0.045);
+        --sq-row-wash-hover: rgba(255, 162, 29, 0.09);
     }
-    table.dataTable tr.row-red td {
-        background-color: rgba(234, 77, 77, 0.10) !important;
+    table.dataTable tr.row-red {
+        --sq-row-wash: rgba(234, 77, 77, 0.04);
+        --sq-row-wash-hover: rgba(234, 77, 77, 0.08);
     }
-    table.dataTable tr.row-green:hover td {
-        background-color: rgba(23, 198, 102, 0.18) !important;
+    /* Gold for a permintaan khusus, whatever its jatuh tempo: those rows open
+       the table, and the colour is what says why they are there. */
+    table.dataTable tr.row-khusus {
+        --sq-row-wash: rgba(201, 162, 39, 0.08);
+        --sq-row-wash-hover: rgba(201, 162, 39, 0.14);
     }
-    table.dataTable tr.row-yellow:hover td {
-        background-color: rgba(255, 162, 29, 0.20) !important;
+    table.dataTable tr.row-green td,
+    table.dataTable tr.row-yellow td,
+    table.dataTable tr.row-red td,
+    table.dataTable tr.row-khusus td {
+        background-color: var(--sq-row-wash) !important;
     }
-    table.dataTable tr.row-red:hover td {
-        background-color: rgba(234, 77, 77, 0.18) !important;
+    table.dataTable tr.row-green:hover td,
+    table.dataTable tr.row-yellow:hover td,
+    table.dataTable tr.row-red:hover td,
+    table.dataTable tr.row-khusus:hover td {
+        background-color: var(--sq-row-wash-hover) !important;
     }
 
     /* ---- Coloured cells in the queue table ----
@@ -2012,9 +2026,14 @@ that differ between one seksi and the next.
                             // when the tiket carries a permintaan khusus — the
                             // date agreed for that tiket alone, which overrides
                             // it. Read down the column they are indistinguishable
-                            // unless the second says so.
+                            // unless the second says so. Upstream of the seksi
+                            // that finishes the tiket the date shown is only this
+                            // seksi's share of the time, so the agreed date it is
+                            // a share of is named as well.
                             if (!row.deadline_khusus) return escapeHtml(display);
-                            return stackedCell(display, 'Permintaan Khusus');
+                            return stackedCell(display, row.khusus_akhir
+                                ? 'Perm. Khusus s.d. ' + row.khusus_akhir
+                                : 'Permintaan Khusus');
                         }
                     },
                     {
@@ -2045,7 +2064,10 @@ that differ between one seksi and the next.
                     { orderable: false, targets: [1, 11] }
                 ],
                 pageLength: 10,
-                order: [[6, 'asc']],
+                // No column sorted when the page opens: the server's own order
+                // is permintaan khusus first, then by deadline. Sorting a
+                // column replaces it.
+                order: [],
                 language: {
                     lengthMenu: 'Tampilkan _MENU_ entri',
                     info: 'Menampilkan _START_ hingga _END_ dari _TOTAL_ entri',
@@ -2061,6 +2083,10 @@ that differ between one seksi and the next.
                     },
                 },
                 createdRow: function (row, data) {
+                    if (data.deadline_khusus) {
+                        $(row).addClass('row-khusus');
+                        return;
+                    }
                     const days = data.sisa_hari;
                     if (days === null || days === undefined || days === '') return;
                     if (days < 7) {
