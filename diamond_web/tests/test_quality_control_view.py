@@ -376,6 +376,43 @@ class TestQualityControlData:
         nomor = [row['nomor_tiket'] for row in resp.json()['data']]
         assert nomor == [first['tiket'].nomor_tiket, second['tiket'].nomor_tiket]
 
+    def test_default_order_puts_permintaan_khusus_first(self, client):
+        """With no column sorted the queue opens on its permintaan khusus —
+        due at the agreed date itself, PMDE being the seksi that finishes the
+        tiket — then on the rest by deadline, the undated ones last."""
+        undated = _qc_bundle(with_durasi=False)
+        later = _jatuh_tempo_bundle(9, pmde_user=undated['pmde_user'])
+        sooner = _jatuh_tempo_bundle(3, pmde_user=undated['pmde_user'])
+        khusus = _jatuh_tempo_bundle(1, pmde_user=undated['pmde_user'])
+        agreed = date.today() + timedelta(days=30)
+        _set_permintaan_khusus(khusus['tiket'], agreed)
+        client.force_login(undated['pmde_user'])
+
+        rows = client.get(
+            reverse(self.url), {'draw': '1', 'start': '0', 'length': '10'},
+        ).json()['data']
+        assert [row['nomor_tiket'] for row in rows] == [
+            khusus['tiket'].nomor_tiket, sooner['tiket'].nomor_tiket,
+            later['tiket'].nomor_tiket, undated['tiket'].nomor_tiket,
+        ]
+        assert rows[0]['deadline']['display'] == agreed.strftime('%d/%m/%Y')
+        assert rows[0]['khusus_akhir'] is None
+
+    @pytest.mark.parametrize('order_dir', ['asc', 'desc'])
+    def test_sorting_deadline_puts_undated_rows_last(self, client, order_dir):
+        """A row with no deadline has nothing to rank it by, whichever way."""
+        undated = _qc_bundle(with_durasi=False)
+        _jatuh_tempo_bundle(9, pmde_user=undated['pmde_user'])
+        _jatuh_tempo_bundle(3, pmde_user=undated['pmde_user'])
+        client.force_login(undated['pmde_user'])
+
+        rows = client.get(reverse(self.url), {
+            'draw': '1', 'start': '0', 'length': '10',
+            'order[0][column]': '5', 'order[0][dir]': order_dir,
+        }).json()['data']
+        assert rows[-1]['nomor_tiket'] == undated['tiket'].nomor_tiket
+        assert rows[-1]['deadline']['display'] == '-'
+
     def test_deadline_sorting_follows_the_rematch_date(self, client):
         """The SQL used for sorting counts from the same date the display does."""
         # Transferred earlier but rematched later, so the two orders disagree.

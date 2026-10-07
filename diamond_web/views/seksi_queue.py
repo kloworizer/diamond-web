@@ -20,7 +20,7 @@ from datetime import date
 from django.contrib.auth.models import User
 from django.db import connection as db_connection
 from django.db.models import (
-    Case, DateField, Exists, IntegerField, OuterRef, Q, Subquery, Value, When,
+    Case, DateField, Exists, F, IntegerField, OuterRef, Q, Subquery, Value, When,
 )
 from django.db.models.expressions import RawSQL
 from django.db.models.functions import Cast, Coalesce, ExtractYear
@@ -114,6 +114,91 @@ def special_deadline(special_request, tgl_special_request):
     return as_date(tgl_special_request)
 
 
+# The same both-halves rule as a filter: the tikets whose permintaan khusus
+# names a date of its own.
+KHUSUS_Q = Q(special_request=True, tgl_special_request__isnull=False)
+
+
+def khusus_share(khusus, start_value, durasi_sendiri, durasi_hilir):
+    """The part of a permintaan khusus window a seksi upstream may use.
+
+    The agreed date is when the tiket has to be finished, not when this seksi
+    has to hand it on: the seksi after it still has its own work to do before
+    that date. So the window from the day the tiket arrived to the agreed date
+    is split between the two in the ratio of their ordinary durasi, and this
+    seksi's deadline is where its share ends.
+
+    A durasi missing on either side says nothing about the ratio, so the window
+    is split evenly instead. A tiket with no arrival date, or one that arrived
+    on or after the agreed date, has no window to split and keeps the agreed
+    date itself.
+    """
+    start = as_date(start_value)
+    if start is None or khusus <= start:
+        return khusus
+    if not durasi_sendiri or not durasi_hilir:
+        durasi_sendiri = durasi_hilir = 1
+    window = (khusus - start).days
+    return start + timezone.timedelta(
+        days=window * durasi_sendiri // (durasi_sendiri + durasi_hilir),
+    )
+
+
+def _durasi_query(seksi, base_date):
+    """The DurasiJatuhTempo of `seksi` active at `base_date`, as a subquery.
+
+    A tiket's deadline is its base date plus the durasi that applied on that
+    date, so the row is picked by that date rather than by today.
+    """
+    return DurasiJatuhTempo.objects.filter(
+        id_sub_jenis_data=OuterRef(SUB),
+        seksi__name=seksi,
+        start_date__lte=base_date,
+    ).filter(
+        Q(end_date__isnull=True) | Q(end_date__gte=base_date)
+    ).order_by('-start_date').values('durasi')[:1]
+
+
+def _durasi_sql(seksi, base_date):
+    """:func:`_durasi_query` again in raw SQL, for the deadline_date annotation.
+
+    Embedded in RawSQL (no params) to avoid parameter-binding issues with
+    nested expressions.
+    """
+    return f"""
+        (SELECT "durasi_jatuh_tempo"."durasi"
+         FROM "durasi_jatuh_tempo"
+         INNER JOIN "auth_group" ON ("durasi_jatuh_tempo"."seksi" = "auth_group"."id")
+         WHERE ("durasi_jatuh_tempo"."id_sub_jenis_data" = "periode_jenis_data"."id_sub_jenis_data_ilap"
+           AND "auth_group"."name" = '{seksi}'
+           AND "durasi_jatuh_tempo"."start_date" <= {base_date}
+           AND ("durasi_jatuh_tempo"."end_date" IS NULL
+                OR "durasi_jatuh_tempo"."end_date" >= {base_date}))
+         ORDER BY "durasi_jatuh_tempo"."start_date" DESC LIMIT 1)
+    """
+
+
+# Date arithmetic for the raw deadline SQL, which is written once per vendor.
+# SQLite (dev) has no date type and reads dates through DATE() and julianday();
+# PostgreSQL (prod) casts and adds intervals.
+def _date_sql(value):
+    if db_connection.vendor == 'sqlite':
+        return f'DATE({value})'
+    return f'({value})::date'
+
+
+def _add_days_sql(date_sql, days_sql):
+    if db_connection.vendor == 'sqlite':
+        return f"DATE({date_sql}, '+' || CAST({days_sql} AS TEXT) || ' days')"
+    return f"({date_sql} + ({days_sql}) * INTERVAL '1 day')::date"
+
+
+def _days_between_sql(later_sql, earlier_sql):
+    if db_connection.vendor == 'sqlite':
+        return f'CAST(julianday({later_sql}) - julianday({earlier_sql}) AS INTEGER)'
+    return f'({later_sql} - {earlier_sql})'
+
+
 class Deadline:
     """How one seksi counts the deadline of a tiket in its queue.
 
@@ -127,19 +212,26 @@ class Deadline:
     base date is a pair, the later field winning whenever it is set.
 
     A tiket carrying a permintaan khusus is the exception to all of it: its due
-    date was agreed for that tiket, so it is the deadline for whichever seksi is
-    holding it, whatever the durasi table says. See :func:`special_deadline`.
+    date was agreed for that tiket, whatever the durasi table says. It is the
+    date the tiket has to be finished by, so it is the deadline of the last
+    seksi to hold it; a seksi upstream of that one is due at its share of the
+    window instead (see :func:`khusus_share`), which leaves the next seksi
+    time to do its part before the agreed date.
 
     Args:
         seksi: Name of the auth group the DurasiJatuhTempo rows are keyed by.
         start_field: The date the tiket entered this seksi's queue.
         restart_field: The date the count starts again from, when it is set.
+        khusus_hilir: Name of the auth group of the seksi that works the tiket
+            after this one, whose durasi a permintaan khusus window is shared
+            with; None for the last seksi, which is due at the agreed date.
     """
 
-    def __init__(self, seksi, start_field, restart_field):
+    def __init__(self, seksi, start_field, restart_field, khusus_hilir=None):
         self.seksi = seksi
         self.start_field = start_field
         self.restart_field = restart_field
+        self.khusus_hilir = khusus_hilir
 
     # -- As query expressions -------------------------------------------------
 
@@ -160,27 +252,56 @@ class Deadline:
         return f'COALESCE("tiket"."{self.restart_field}", "tiket"."{self.start_field}")'
 
     def durasi_subquery(self):
-        """Subquery yielding the DurasiJatuhTempo active at the base date.
-
-        A tiket's deadline is its base date plus the durasi that applied on that
-        date, so the row is picked by that date rather than by today.
-        """
-        base_date = self.base_date_expr()
-        return DurasiJatuhTempo.objects.filter(
-            id_sub_jenis_data=OuterRef(SUB),
-            seksi__name=self.seksi,
-            start_date__lte=base_date,
-        ).filter(
-            Q(end_date__isnull=True) | Q(end_date__gte=base_date)
-        ).order_by('-start_date').values('durasi')[:1]
+        """Subquery yielding the DurasiJatuhTempo active at the base date."""
+        return _durasi_query(self.seksi, self.base_date_expr())
 
     def annotate_durasi(self, qs):
-        """Annotate `active_durasi`, 0 standing for "no durasi covers this"."""
-        return qs.annotate(
-            active_durasi=Coalesce(
+        """Annotate `active_durasi`, 0 standing for "no durasi covers this".
+
+        A seksi sharing its permintaan khusus window also gets the two durasi
+        the window is split by, both read on the day the tiket arrived — the
+        split is fixed when the tiket comes in rather than moved when work on it
+        starts. They are only looked up for the tikets that carry a permintaan
+        khusus, and are 0 everywhere else.
+        """
+        annotations = {
+            'active_durasi': Coalesce(
                 Subquery(self.durasi_subquery(), output_field=IntegerField()),
                 Value(0),
             ),
+        }
+        if self.khusus_hilir is not None:
+            arrival = Cast(OuterRef(self.start_field), DateField())
+            for name, seksi in (
+                ('khusus_durasi_sendiri', self.seksi),
+                ('khusus_durasi_hilir', self.khusus_hilir),
+            ):
+                annotations[name] = Case(
+                    When(KHUSUS_Q, then=Coalesce(
+                        Subquery(_durasi_query(seksi, arrival), output_field=IntegerField()),
+                        Value(0),
+                    )),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                )
+        return qs.annotate(**annotations)
+
+    def _khusus_sql(self):
+        """:func:`khusus_share` in raw SQL, for a seksi sharing the window."""
+        start = _date_sql(f'"tiket"."{self.start_field}"')
+        khusus = _date_sql('"tiket"."tgl_special_request"')
+        sendiri = _durasi_sql(self.seksi, start)
+        hilir = _durasi_sql(self.khusus_hilir, start)
+        both = f'(COALESCE({sendiri}, 0) > 0 AND COALESCE({hilir}, 0) > 0)'
+        weight_sendiri = f'(CASE WHEN {both} THEN {sendiri} ELSE 1 END)'
+        weight_hilir = f'(CASE WHEN {both} THEN {hilir} ELSE 1 END)'
+        share = (
+            f'({_days_between_sql(khusus, start)} * {weight_sendiri}'
+            f' / ({weight_sendiri} + {weight_hilir}))'
+        )
+        return (
+            f'CASE WHEN {start} IS NULL OR {khusus} <= {start} THEN {khusus}'
+            f' ELSE {_add_days_sql(start, share)} END'
         )
 
     def deadline_date_expr(self):
@@ -188,55 +309,50 @@ class Deadline:
 
         A permintaan khusus short-circuits the count, exactly as
         :meth:`day` does in Python — the column has to sort by the date the
-        table actually shows.
-
-        The count itself is a correlated subquery embedded in RawSQL (no params)
-        to avoid parameter-binding issues with nested expressions.
-        SQLite (dev): DATE(date, '+' || days || ' days')
-        PostgreSQL (prod): (date::date + days * INTERVAL '1 day')::date
+        table actually shows. For the same reason a missing durasi, or one of
+        0, is no deadline (NULL) rather than the base date itself: the table
+        shows '-' for those rows.
         """
-        base = self.base_sql
-        durasi_sql = f"""
-            (SELECT "durasi_jatuh_tempo"."durasi"
-             FROM "durasi_jatuh_tempo"
-             INNER JOIN "auth_group" ON ("durasi_jatuh_tempo"."seksi" = "auth_group"."id")
-             WHERE ("durasi_jatuh_tempo"."id_sub_jenis_data" = "periode_jenis_data"."id_sub_jenis_data_ilap"
-               AND "auth_group"."name" = '{self.seksi}'
-               AND "durasi_jatuh_tempo"."start_date" <= {{base_date}}
-               AND ("durasi_jatuh_tempo"."end_date" IS NULL
-                    OR "durasi_jatuh_tempo"."end_date" >= {{base_date}}))
-             ORDER BY "durasi_jatuh_tempo"."start_date" DESC LIMIT 1)
-        """
-        if db_connection.vendor == 'sqlite':
-            sql = (
-                f"DATE({base}, '+' || CAST(COALESCE("
-                + durasi_sql.format(base_date=f'DATE({base})')
-                + ", 0) AS TEXT) || ' days')"
-            )
+        base = _date_sql(self.base_sql)
+        durasi = f'NULLIF({_durasi_sql(self.seksi, base)}, 0)'
+        if self.khusus_hilir is None:
+            khusus = Cast('tgl_special_request', DateField())
         else:
-            sql = (
-                f"({base}::date + COALESCE("
-                + durasi_sql.format(base_date=f'{base}::date')
-                + ", 0) * INTERVAL '1 day')::date"
-            )
+            khusus = RawSQL(self._khusus_sql(), [], output_field=DateField())
         return Case(
-            When(
-                Q(special_request=True, tgl_special_request__isnull=False),
-                then=Cast('tgl_special_request', DateField()),
-            ),
-            default=RawSQL(sql, [], output_field=DateField()),
+            When(KHUSUS_Q, then=khusus),
+            default=RawSQL(_add_days_sql(base, durasi), [], output_field=DateField()),
             output_field=DateField(),
         )
+
+    def default_order(self, qs):
+        """`qs` in the order a queue opens in, before any column is sorted.
+
+        A permintaan khusus is a date promised for one tiket, so those come
+        first, then the rest by how soon they fall due; the tikets without a
+        deadline to count go last rather than first, which is where an
+        ascending sort would put them on SQLite. Expects the `deadline_date`
+        annotation from :meth:`deadline_date_expr`.
+        """
+        return qs.annotate(
+            is_khusus=Case(
+                When(KHUSUS_Q, then=Value(1)), default=Value(0),
+                output_field=IntegerField(),
+            ),
+        ).order_by('-is_khusus', F('deadline_date').asc(nulls_last=True), '-id')
 
     # -- In Python ------------------------------------------------------------
 
     def day(self, start_value, restart_value, durasi,
-            special_request=False, tgl_special_request=None):
+            special_request=False, tgl_special_request=None,
+            khusus_durasi_sendiri=0, khusus_durasi_hilir=0):
         """The deadline date, or None when there is no deadline to count.
 
         A permintaan khusus answers first: its due date was agreed for this
         tiket, so it stands whether or not a durasi covers the data and whether
-        or not the tiket has a base date yet.
+        or not the tiket has a base date yet — as the deadline itself for the
+        last seksi, as the end of the window this one's share is cut from for a
+        seksi upstream of it.
 
         Otherwise counting starts from the restart date when the tiket has one
         and from the start date otherwise. A durasi of 0 means no active
@@ -246,7 +362,11 @@ class Deadline:
         """
         khusus = special_deadline(special_request, tgl_special_request)
         if khusus is not None:
-            return khusus
+            if self.khusus_hilir is None:
+                return khusus
+            return khusus_share(
+                khusus, start_value, khusus_durasi_sendiri, khusus_durasi_hilir,
+            )
         base_date = restart_value or start_value
         if not base_date or not durasi:
             return None
@@ -259,9 +379,12 @@ class Deadline:
         Named once because every caller that reads a whole queue through
         `values_list` has to lay its tuples out the same way `day` unpacks them.
         """
-        return (
+        fields = (
             self.start_field, self.restart_field, 'active_durasi', *SPECIAL_FIELDS,
         )
+        if self.khusus_hilir is not None:
+            fields += ('khusus_durasi_sendiri', 'khusus_durasi_hilir')
+        return fields
 
     def day_of(self, tiket):
         """The deadline date of an annotated tiket row."""
@@ -274,7 +397,9 @@ class Deadline:
         by it rather than by re-parsing the text, and `deadline_khusus` says
         whether the date shown is a permintaan khusus rather than the count from
         the durasi table — the two are read in the same column, so the one that
-        was agreed per tiket is marked as such.
+        was agreed per tiket is marked as such. Where the date shown is only
+        this seksi's share of the window, `khusus_akhir` carries the agreed date
+        the window ends at, so the row says what the share is a share of.
         """
         khusus = special_deadline(*(getattr(tiket, field) for field in SPECIAL_FIELDS))
         deadline_day = self.day_of(tiket)
@@ -284,6 +409,7 @@ class Deadline:
                 'jatuh_tempo': {'display': '-', 'sort': ''},
                 'sisa_hari': None,
                 'deadline_khusus': False,
+                'khusus_akhir': None,
             }
         sisa_hari = (deadline_day - date.today()).days
         return {
@@ -294,6 +420,10 @@ class Deadline:
             'jatuh_tempo': {'display': f'{sisa_hari} hari', 'sort': str(sisa_hari)},
             'sisa_hari': sisa_hari,
             'deadline_khusus': khusus is not None,
+            'khusus_akhir': (
+                khusus.strftime('%d/%m/%Y')
+                if khusus is not None and khusus != deadline_day else None
+            ),
         }
 
     def jatuh_tempo_ids(self, qs, limit):
@@ -316,6 +446,18 @@ class Deadline:
             if (deadline_day - today).days < limit:
                 ids.append(tiket_id)
         return ids
+
+
+def column_order(cols, direction):
+    """The ORDER BY for a column the reader sorted, empty values last.
+
+    Either way round: a row with nothing in the column — a tiket with no
+    deadline to count, say — has nothing to rank it by, and SQLite and
+    PostgreSQL would otherwise disagree about which end it sorts to.
+    """
+    if direction == 'desc':
+        return [F(col).desc(nulls_last=True) for col in cols]
+    return [F(col).asc(nulls_last=True) for col in cols]
 
 
 # ---------------------------------------------------------------------------

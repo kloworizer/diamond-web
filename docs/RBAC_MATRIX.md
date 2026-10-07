@@ -197,7 +197,7 @@ Hak akses menu menentukan halaman mana yang boleh dibuka; **cakupan data** menen
 | `kasi_p3de` / `kasi_p3der` | Tiket ILAP seksinya (Nasional & Internasional / Regional), ditambah tiket tempat ia menjadi PIC |
 | `user_p3de` / `user_p3der` / `user_pide` / `user_pmde` | Hanya tiket dengan penugasan `TiketPIC` aktif atas nama pengguna tersebut |
 
-Admin seksi P3DE juga dibatasi pada ILAP seksinya: `admin_p3de` membuka, mengubah isian, dan mengelola PIC tiket ILAP Nasional/Internasional; `admin_p3der` untuk ILAP Regional. Batas yang sama berlaku pada menu PIC P3DE, Monitoring Penyampaian Data, dan kartu admin di Home.
+Admin seksi P3DE juga dibatasi pada ILAP seksinya: `admin_p3de` membuka, mengubah isian, dan mengelola PIC tiket ILAP Nasional/Internasional; `admin_p3der` untuk ILAP Regional. Batas yang sama berlaku pada menu PIC P3DE, Monitoring Penyampaian Data (juga untuk kasi seksi tersebut), dan kartu admin di Home.
 
 Aturan ini berlaku konsisten pada Daftar Tiket, dashboard Tugas Saya, Monitoring Penyampaian Data, Quality Control, dan endpoint ringkasan tiket pada Backup Data. Endpoint JSON menerapkan cakupan yang sama seperti halamannya, sehingga id tiket tidak dapat ditelusuri secara berurutan untuk membaca data di luar cakupan pengguna.
 
@@ -249,7 +249,7 @@ Helper terkait berada di `diamond_web/views/mixins.py`: `is_kasi()`, `is_kasi_p3
 
 ### Kasi (kasi_p3de / kasi_p3der / kasi_pide / kasi_pmde)
 - ✅ Melihat seluruh tiket unitnya tanpa harus menjadi PIC aktif (kasi P3DE / P3DER: tiket ILAP seksinya saja) — berlaku di Daftar Tiket untuk ketiganya, ditambah halaman antrean unit masing-masing: **Identifikasi** untuk `kasi_pide`, **Quality Control** untuk `kasi_pmde`
-- ❌ `kasi_p3de` **tidak** mendapat akses ke menu Monitoring Penyampaian Data — P3DE tidak memiliki padanan halaman antrean unit seperti Identifikasi/Quality Control
+- ✅ `kasi_p3de` / `kasi_p3der` mendapat menu **Monitoring Penyampaian Data** untuk seluruh sub jenis data seksinya (P3DE: ILAP Nasional & Internasional, P3DER: ILAP Regional), setara admin seksinya
 - ❌ Ketiga grup kasi juga tidak mendapat akses ke menu Laporan divisinya (Register Penerimaan Data, SLA Perekaman, SLA Identifikasi, Transfer, Metrik Data Eksternal, Pengendalian Mutu, Kelengkapan Data, Hasil Pengolahan Data Prioritas, Rekap/Detail Himpun Olah Data) — laporan-laporan tersebut hanya mengizinkan grup `user_*`/`admin*`, bukan `kasi_*`
 - ❌ Tidak memperoleh menu admin (referensi, PIC, template, sequence)
 - ❌ Tidak bisa mengakses sync Oracle

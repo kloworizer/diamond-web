@@ -6,6 +6,8 @@ penelitian, kirim ke PIDE), sehingga PIC dan TiketPIC keduanya tetap bertipe
 ditangani Seksi P3DER, ILAP Nasional dan Internasional ditangani Seksi P3DE.
 Masing-masing seksi punya grup admin, user, dan kasi sendiri.
 """
+from datetime import date
+
 import pytest
 from django.contrib.auth.models import Group, User
 from django.template.loader import render_to_string
@@ -14,6 +16,7 @@ from django.urls import reverse
 from diamond_web.forms.pic import PICForm
 from diamond_web.models.kategori_wilayah import KategoriWilayah
 from diamond_web.models.pic import PIC
+from diamond_web.models.periode_pengiriman import PeriodePengiriman
 from diamond_web.models.tiket_pic import TiketPIC
 from diamond_web.tests.conftest import (
     ILAPFactory,
@@ -261,6 +264,62 @@ class TestKelolaPICTiket:
         assert resp.status_code == 400
         resp = client.post(url, {'role': int(TiketPIC.Role.P3DE), 'id_user': p3der_user.pk}, **AJAX)
         assert resp.json()['success'] is True
+
+
+@pytest.mark.django_db
+class TestMonitoring:
+    """Kasi and admin monitor every sub jenis data of their own seksi only."""
+    url = 'monitoring_penyampaian_data_data'
+
+    def _periode(self, deskripsi):
+        # Monthly, so January 2024 is exactly one monitoring row.
+        bulanan, _ = PeriodePengiriman.objects.get_or_create(
+            periode_penyampaian='Bulanan', defaults={'periode_penerimaan': 'Bulanan'})
+        return PeriodeJenisDataFactory(
+            id_sub_jenis_data_ilap=_jenis_data(deskripsi), id_periode_pengiriman=bulanan,
+            start_date=date(2024, 1, 1), end_date=date(2024, 1, 31), akhir_penyampaian=15,
+        )
+
+    def _rows(self, client, periode):
+        resp = client.get(reverse(self.url), {
+            'draw': '1', 'start': '0', 'length': '100',
+            'sub_jenis_data': periode.id_sub_jenis_data_ilap.id_sub_jenis_data,
+        })
+        assert resp.status_code == 200
+        return resp.json()['data']
+
+    def _option_ids(self, client):
+        options = client.get(reverse(self.url), {'get_filter_options': '1'}).json()['filter_options']
+        return {o['id'] for o in options['sub_jenis_data']}
+
+    @pytest.mark.parametrize('group, own, other', [
+        ('kasi_p3der', 'Regional', 'Nasional'),
+        ('admin_p3der', 'Regional', 'Internasional'),
+        ('kasi_p3de', 'Nasional', 'Regional'),
+        ('admin_p3de', 'Internasional', 'Regional'),
+    ])
+    def test_supervisor_sees_own_seksi_only(self, client, group, own, other):
+        own, other = self._periode(own), self._periode(other)
+        client.force_login(_member(group))
+        assert client.get(reverse('monitoring_penyampaian_data_list')).status_code == 200
+        assert len(self._rows(client, own)) == 1
+        assert self._rows(client, other) == []
+        options = self._option_ids(client)
+        assert own.id_sub_jenis_data_ilap.id_sub_jenis_data in options
+        assert other.id_sub_jenis_data_ilap.id_sub_jenis_data not in options
+
+    def test_user_p3der_sees_own_pic_only(self, client):
+        user = _member('user_p3der')
+        own, other = self._periode('Regional'), self._periode('Regional')
+        PICFactory(id_sub_jenis_data_ilap=own.id_sub_jenis_data_ilap, id_user=user,
+                   start_date=date(2020, 1, 1), end_date=None)
+        client.force_login(user)
+        assert len(self._rows(client, own)) == 1
+        assert self._rows(client, other) == []
+
+    def test_kasi_p3der_navbar_shows_monitoring(self):
+        html = render_to_string('navbar.html', {'user': _member('kasi_p3der')})
+        assert reverse('monitoring_penyampaian_data_list') in html
 
 
 @pytest.mark.django_db

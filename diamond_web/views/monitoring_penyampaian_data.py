@@ -5,7 +5,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Q, Min, Max
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import calendar
 from urllib.parse import urlencode
 
@@ -14,10 +14,12 @@ from ..models.tiket import Tiket
 from ..models.detil_tanda_terima import DetilTandaTerima
 from ..models.tiket_pic import TiketPIC
 from ..models.pic import PIC
+from ..constants.tiket_status import STATUS_DIBATALKAN
 from ..utils import format_periode
 from ..utils.wilayah import ilap_in_kanwil_q, kanwil_value_paths
 from .mixins import (
-    SUB_JENIS_ILAP_PATH, UserP3DERequiredMixin, get_active_p3de_jenis_data_ilap_ids, p3de_admin_wilayah_q,
+    P3DE_ADMIN_GROUPS, P3DE_GROUPS, P3DE_KASI_GROUPS, SUB_JENIS_ILAP_PATH, UserP3DERequiredMixin,
+    get_active_p3de_jenis_data_ilap_ids, p3de_seksi_of_user, p3de_wilayah_q,
 )
 
 
@@ -58,6 +60,33 @@ TERLAMBAT_OPTIONS = [
     {'id': 'Tidak', 'name': 'Tidak'},
 ]
 
+# Groups allowed onto the page and its data endpoint — the same list
+# `UserP3DERequiredMixin` guards the page with, so the table never fails to
+# load for someone who can open the page.
+MONITORING_GROUPS = ['admin', *P3DE_GROUPS]
+
+# Groups that monitor every sub jenis data of their seksi; anyone else
+# (user_p3de / user_p3der) only sees the sub jenis data they are an active P3DE
+# PIC of. Kasi supervise the whole seksi, so they see it all like its admin.
+# Seksi P3DE covers the Nasional and Internasional ILAP, Seksi P3DER the
+# Regional ones — see `monitoring_seksi_q`.
+MONITORING_ALL_GROUPS = ['admin', *P3DE_ADMIN_GROUPS, *P3DE_KASI_GROUPS]
+
+
+def monitors_all_jenis_data(user):
+    """Whether *user* monitors every sub jenis data of their seksi rather than their own."""
+    return user.is_superuser or user.groups.filter(name__in=MONITORING_ALL_GROUPS).exists()
+
+
+def monitoring_seksi_q(user):
+    """Q narrowing PeriodeJenisData to the seksi a seksi-wide monitor oversees.
+
+    An admin / kasi P3DE oversees the Nasional and Internasional ILAP, an
+    admin / kasi P3DER the Regional ones; superusers and the global `admin`
+    group oversee both (``Q()``).
+    """
+    return p3de_wilayah_q(p3de_seksi_of_user(user, 'admin', 'kasi'), SUB_JENIS_ILAP_PATH)
+
 
 class MonitoringPenyampaianDataListView(LoginRequiredMixin, UserP3DERequiredMixin, TemplateView):
     """List view for monitoring data submissions (monitoring penyampaian data).
@@ -77,78 +106,83 @@ class MonitoringPenyampaianDataListView(LoginRequiredMixin, UserP3DERequiredMixi
         return context
 
 
+# Months covered by one period of each month-based periode penerimaan. Tiket
+# number these periods by calendar (Bulanan 1 = Januari, Semesteran 2 = Juli-
+# Desember), so they are generated on calendar boundaries rather than stepped
+# from the periode data's start date.
+MONTHS_PER_PERIODE = {
+    'bulanan': 1,
+    'triwulanan': 3,
+    'kuartal': 3,
+    'semester': 6,
+    'semesteran': 6,
+    'tahunan': 12,
+}
+
+
 def get_periods_for_range(start_date, end_date, periode_type):
     """Generate a list of period date ranges based on the given periode type.
 
-    Periods are generated sequentially from *start_date* to *end_date*. The
-    periode count resets to 1 at the beginning of each calendar year.
+    Month-based types (see :data:`MONTHS_PER_PERIODE`) yield the calendar
+    periods that overlap *start_date* .. *end_date*, numbered within their
+    year the way tiket record them — a range starting 15 March yields Maret
+    (periode 3, 1-31 March) as its first Bulanan period. Day-based types are
+    stepped from *start_date*, with the periode count resetting to 1 at the
+    beginning of each calendar year.
 
     Args:
         start_date (datetime.date): The start date for period generation.
         end_date (datetime.date): The end date for period generation.
         periode_type (str): The type of period duration. Supported values:
             ``'harian'``, ``'mingguan'``, ``'2 mingguan'``, ``'bulanan'``,
-            ``'triwulanan'``, ``'kuartal'``, ``'semester'``, ``'tahunan'``.
+            ``'triwulanan'``, ``'kuartal'``, ``'semester'``, ``'semesteran'``,
+            ``'tahunan'``. Unknown types are stepped daily.
 
     Returns:
         list[dict]: A list of dictionaries, each containing:
 
-            - **periode_num** (*int*): Sequential period number (resets yearly).
+            - **periode_num** (*int*): Period number within its year.
             - **start_date** (*datetime.date*): Start date of the period.
             - **end_date** (*datetime.date*): End date of the period.
     """
-    def _add_months_safe(dt, months):
-        """Add a given number of months to a date, handling month-end overflow safely.
-
-        Args:
-            dt (datetime.date): The base date.
-            months (int): Number of months to add (can be negative).
-
-        Returns:
-            datetime.date: The resulting date with the month adjusted, and the
-                day clamped to the last day of the target month if necessary.
-        """
-        month = dt.month - 1 + months
-        year = dt.year + month // 12
-        month = month % 12 + 1
-        day = min(dt.day, calendar.monthrange(year, month)[1])
-        return dt.replace(year=year, month=month, day=day)
+    periode_type = (periode_type or '').strip().lower()
+    months = MONTHS_PER_PERIODE.get(periode_type)
 
     periods = []
+    if months:
+        for year in range(start_date.year, end_date.year + 1):
+            for periode_num in range(1, 12 // months + 1):
+                first_month = (periode_num - 1) * months + 1
+                last_month = first_month + months - 1
+                period_start = date(year, first_month, 1)
+                period_end = date(year, last_month, calendar.monthrange(year, last_month)[1])
+                if period_end < start_date or period_start > end_date:
+                    continue
+                periods.append({
+                    'periode_num': periode_num,
+                    'start_date': period_start,
+                    'end_date': period_end,
+                })
+        return periods
+
     current = start_date
     periode_count = 1
     current_year = start_date.year
-    
+
     while current <= end_date:
         # Check if year has changed, reset periode_count
         if current.year != current_year:
             current_year = current.year
             periode_count = 1
-        
-        if periode_type.lower() == 'harian':
-            next_date = current + timedelta(days=1)
-        elif periode_type.lower() == 'mingguan':
+
+        if periode_type == 'mingguan':
             next_date = current + timedelta(weeks=1)
-        elif periode_type.lower() == '2 mingguan':
+        elif periode_type == '2 mingguan':
             next_date = current + timedelta(weeks=2)
-        elif periode_type.lower() == 'bulanan':
-            # Add 1 month safely (handles 29/30/31)
-            next_date = _add_months_safe(current, 1)
-        elif periode_type.lower() == 'triwulanan':
-            # Add 3 months safely
-            next_date = _add_months_safe(current, 3)
-        elif periode_type.lower() == 'kuartal':
-            # Add 3 months safely
-            next_date = _add_months_safe(current, 3)
-        elif periode_type.lower() == 'semester':
-            # Add 6 months safely
-            next_date = _add_months_safe(current, 6)
-        elif periode_type.lower() == 'tahunan':
-            # Add 12 months safely (handles leap day)
-            next_date = _add_months_safe(current, 12)
         else:
+            # harian, and the fallback for unknown types
             next_date = current + timedelta(days=1)
-        
+
         periods.append({
             'periode_num': periode_count,
             'start_date': current,
@@ -483,7 +517,7 @@ def build_pic_p3de_options(queryset, today):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de', 'user_p3der']).exists())
+@user_passes_test(lambda u: u.groups.filter(name__in=MONITORING_GROUPS).exists())
 @require_GET
 def monitoring_penyampaian_data_data(request):
     """DataTables server-side endpoint for Monitoring Penyampaian Data.
@@ -492,10 +526,13 @@ def monitoring_penyampaian_data_data(request):
     current date, checking if a tiket exists for each period and calculating
     whether the submission is late.
 
-    **Permissions:** wrapped by decorators to allow only users in ``admin``,
-    ``user_p3de`` or ``user_p3der`` groups. Non-admin users are further
-    restricted to monitoring records for sub jenis data where they are an
-    active P3DE PIC; an admin P3DE / P3DER to the ILAP of their seksi.
+    **Permissions:** wrapped by decorators to allow only users in
+    :data:`MONITORING_GROUPS`, the groups the page itself admits. Members of
+    :data:`MONITORING_ALL_GROUPS` (and superusers) see every sub jenis data of
+    their seksi — an admin / kasi P3DE the Nasional and Internasional ILAP, an
+    admin / kasi P3DER the Regional ones, the global ``admin`` all of them;
+    other users are restricted to sub jenis data where they are an active
+    P3DE PIC.
 
     **Query parameters for filter options:**
         ``get_filter_options=1`` — returns available filter values instead of data.
@@ -520,7 +557,7 @@ def monitoring_penyampaian_data_data(request):
     # only offers values still reachable under the other selections.
     if request.GET.get('get_filter_options'):
         options_today = datetime.now().date()
-        is_admin = request.user.is_superuser or request.user.groups.filter(name='admin').exists()
+        is_admin = monitors_all_jenis_data(request.user)
 
         # Options come from the same periode data the list draws from, so a
         # non-admin never sees a value outside their active P3DE assignments.
@@ -529,6 +566,8 @@ def monitoring_penyampaian_data_data(request):
             base_queryset = base_queryset.filter(
                 id_sub_jenis_data_ilap_id__in=get_active_p3de_jenis_data_ilap_ids(request.user)
             )
+        else:
+            base_queryset = base_queryset.filter(monitoring_seksi_q(request.user))
 
         return JsonResponse({
             'filter_options': build_filter_options(
@@ -547,9 +586,7 @@ def monitoring_penyampaian_data_data(request):
     today = datetime.now().date()
     records = []
 
-    is_admin = request.user.is_superuser or request.user.groups.filter(
-        name__in=['admin', 'admin_p3de', 'admin_p3der', 'admin_pide', 'admin_pmde']
-    ).exists()
+    is_admin = monitors_all_jenis_data(request.user)
 
     # Read every filter up front so they can be pushed down to the queryset
     filters = read_filters(request)
@@ -581,9 +618,7 @@ def monitoring_penyampaian_data_data(request):
     if allowed_jenis_data_ids is not None:
         periode_data_qs = periode_data_qs.filter(id_sub_jenis_data_ilap_id__in=allowed_jenis_data_ids)
     else:
-        periode_data_qs = periode_data_qs.filter(
-            p3de_admin_wilayah_q(request.user, SUB_JENIS_ILAP_PATH)
-        )
+        periode_data_qs = periode_data_qs.filter(monitoring_seksi_q(request.user))
 
     # Push every filter that maps to a column down to the DB, which drastically
     # reduces the rows expanded into monitoring periods in Python.
@@ -600,11 +635,15 @@ def monitoring_penyampaian_data_data(request):
 
     periode_data_ids = {pd.id for pd in periode_data_list}
 
-    # Build tiket lookup once ((periode_data_id, periode, tahun) -> tiket)
+    # Build tiket lookup once ((periode_data_id, periode, tahun) -> tiket).
+    # A cancelled tiket delivered nothing, so its period stays "Belum
+    # Menyampaikan" unless another tiket covers it.
     tiket_map: dict[tuple[int, int, int], Tiket] = {}
     for tiket in Tiket.objects.filter(
         id_periode_data_id__in=periode_data_ids,
         penyampaian=1,
+    ).exclude(
+        status_tiket=STATUS_DIBATALKAN,
     ).only(
         'id',
         'id_periode_data_id',
@@ -690,7 +729,12 @@ def monitoring_penyampaian_data_data(request):
                 status_penyampaian = "Sudah Menyampaikan"
                 status_penyampaian_class = "bg-success"
 
-                receive_dt = tiket.tgl_terima_vertikal if is_regional_ilap else tiket.tgl_terima_dip
+                # Regional data is received by the vertikal office first; fall
+                # back to the DIP date when no vertikal date was recorded.
+                receive_dt = (
+                    (tiket.tgl_terima_vertikal or tiket.tgl_terima_dip)
+                    if is_regional_ilap else tiket.tgl_terima_dip
+                )
                 receive_date = receive_dt.date() if receive_dt else None
                 is_late = bool(receive_date and receive_date > deadline_date)
                 status_terlambat = "Ya" if is_late else "Tidak"
@@ -784,7 +828,7 @@ def monitoring_penyampaian_data_data(request):
                 reverse = (order_dir == 'desc')
                 
                 # Handle numeric fields
-                if col in ['periode', 'tahun']:
+                if col in ['periode', 'tahun', 'days_diff']:
                     filtered_records = sorted(
                         filtered_records,
                         key=lambda x: x[col] if x[col] else 0,
