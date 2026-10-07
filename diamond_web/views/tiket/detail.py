@@ -3,10 +3,12 @@
 from django.views.generic import DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
+from django.db.models import F
 
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
 from ...models.tiket_pic import TiketPIC
+from ...models.tiket_kd_tahap import TiketKdTahap
 from ...models.kirim_pide_temp import KirimPideTemp
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ...models.detil_tanda_terima import DetilTandaTerima
@@ -31,6 +33,9 @@ from ...constants.tiket_action_types import (
 from ...utils import format_number_with_separator, format_periode
 from ...utils.jenis_prioritas import resolve_jenis_prioritas
 from ..mixins import can_open_tiket, is_admin_p3de, is_admin_pmde, tiket_pic_roles_managed_by
+
+# The qc_* columns counted as Lolos QC; the rest are Tidak Lolos QC.
+QC_KOLOM_LOLOS = ('qc_p', 'qc_x', 'qc_w')
 
 
 class TiketDetailView(LoginRequiredMixin, DetailView):
@@ -251,8 +256,9 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
             'baris_tidak_lengkap': format_number_with_separator(self.object.baris_tidak_lengkap) if self.object.baris_tidak_lengkap else None,
             'baris_i': format_number_with_separator(self.object.baris_i) if self.object.baris_i else None,
             'baris_u': format_number_with_separator(self.object.baris_u) if self.object.baris_u else None,
-            'baris_res': format_number_with_separator(self.object.baris_res) if self.object.baris_res else None,
-            'baris_cde': format_number_with_separator(self.object.baris_cde) if self.object.baris_cde else None,
+            # Res and CDE are 0 on most tikets; a recorded 0 is still shown.
+            'baris_res': format_number_with_separator(self.object.baris_res) if self.object.baris_res is not None else None,
+            'baris_cde': format_number_with_separator(self.object.baris_cde) if self.object.baris_cde is not None else None,
             'sudah_qc': format_number_with_separator(self.object.sudah_qc) if self.object.sudah_qc else None,
             'belum_qc': format_number_with_separator(self.object.belum_qc) if self.object.belum_qc else None,
             'lolos_qc': format_number_with_separator(self.object.lolos_qc) if self.object.lolos_qc else None,
@@ -268,7 +274,30 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
             'special_request': 'Ya' if self.object.special_request else 'Tidak',
             'tgl_special_request': self.object.tgl_special_request,
         }
-        
+
+        # The recorded QC result counts, in model order: qc_p, qc_x and qc_w break
+        # down Lolos QC; every other qc_* column breaks down Tidak Lolos QC.
+        qc_kolom = [
+            (field.name, field.verbose_name, format_number_with_separator(value))
+            for field in Tiket._meta.fields
+            if field.name.startswith('qc_')
+            and (value := getattr(self.object, field.name)) is not None
+        ]
+        context['qc_kolom_lolos'] = [(label, value) for name, label, value in qc_kolom if name in QC_KOLOM_LOLOS]
+        context['qc_kolom_tidak_lolos'] = [(label, value) for name, label, value in qc_kolom if name not in QC_KOLOM_LOLOS]
+
+        # Rows per KD_TAHAP in the tiket's tabel I, filled by sync_tiket_kd_tahap;
+        # the largest jumlah baris first.
+        kd_tahap_rows = list(
+            TiketKdTahap.objects.filter(id_tiket=self.object)
+            .order_by('-jumlah_baris', F('kd_tahap').asc(nulls_last=True))
+            .values_list('kd_tahap', 'jumlah_baris')
+        )
+        context['kd_tahap_list'] = [
+            (kd_tahap, format_number_with_separator(jumlah)) for kd_tahap, jumlah in kd_tahap_rows
+        ]
+        context['kd_tahap_total'] = format_number_with_separator(sum(j for _, j in kd_tahap_rows))
+
         # NOTE: workflow_step mapping removed — templates do not use it.
 
         # Check if this tiket already has a KirimPideTemp record (ND Pengantar sudah digenerate)

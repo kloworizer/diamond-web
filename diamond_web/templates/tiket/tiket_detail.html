@@ -1077,7 +1077,7 @@
                                     <i class="feather-check-square me-1 text-primary"></i>Rincian Validasi Baris
                                 </div>
                                 <div class="meta-list">
-                                    {% if tiket_details.baris_i is not null or tiket_details.baris_u is not null or tiket_details.baris_res is not null %}
+                                    {% if tiket_details.baris_i is not null or tiket_details.baris_u is not null or tiket_details.baris_res is not null or tiket_details.baris_cde is not null %}
                                     {% if tiket_details.baris_i is not null %}
                                     <div class="meta-item">
                                         <span class="meta-label">Baris I</span>
@@ -1094,6 +1094,12 @@
                                     <div class="meta-item">
                                         <span class="meta-label">Baris Res</span>
                                         <span class="meta-value">{{ tiket_details.baris_res }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if tiket_details.baris_cde is not null %}
+                                    <div class="meta-item">
+                                        <span class="meta-label">Baris CDE</span>
+                                        <span class="meta-value">{{ tiket_details.baris_cde }}</span>
                                     </div>
                                     {% endif %}
                                     {% else %}
@@ -1113,7 +1119,7 @@
                                     <i class="feather-shield me-1 text-success"></i>Status Quality Control (QC)
                                 </div>
                                 <div class="meta-list">
-                                    {% if tiket_details.sudah_qc is not null or tiket_details.belum_qc is not null or tiket_details.lolos_qc is not null or tiket_details.tidak_lolos_qc is not null or tiket.qc_c %}
+                                    {% if tiket_details.sudah_qc is not null or tiket_details.belum_qc is not null or tiket_details.lolos_qc is not null or tiket_details.tidak_lolos_qc is not null or qc_kolom_lolos or qc_kolom_tidak_lolos %}
                                     
                                     <!-- Group 1: Volume QC (Sudah & Belum QC) -->
                                     {% if tiket_details.sudah_qc is not null or tiket_details.belum_qc is not null %}
@@ -1133,35 +1139,47 @@
                                     </div>
                                     {% endif %}
 
-                                    <!-- Group 2: Hasil QC (Lolos & Tidak Lolos QC) -->
-                                    {% if tiket_details.lolos_qc is not null or tiket_details.tidak_lolos_qc is not null %}
-                                    <div style="border-bottom: 1px solid #cbd5e1; padding-bottom: 10px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px;">
-                                        {% if tiket_details.lolos_qc is not null %}
+                                    <!-- Group 2: Hasil QC (Lolos & Tidak Lolos QC), each with its qc_* breakdown -->
+                                    {% if tiket_details.lolos_qc is not null or tiket_details.tidak_lolos_qc is not null or qc_kolom_lolos or qc_kolom_tidak_lolos %}
+                                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                                        {% if tiket_details.lolos_qc is not null or qc_kolom_lolos %}
                                         <div class="meta-item" style="border: 1px solid #a7f3d0 !important; background-color: #f0fdf4 !important; border-radius: 8px; padding: 6px 10px !important;">
                                             <span class="meta-label text-success fw-bold">Lolos QC</span>
                                             <span class="meta-value text-success fw-bold">
                                                 {% if tiket_details.lolos_qc == "Ya" or tiket_details.lolos_qc == 1 %}
                                                 Ya
                                                 {% else %}
-                                                {{ tiket_details.lolos_qc }}
+                                                {{ tiket_details.lolos_qc|default:"0" }}
                                                 {% endif %}
                                             </span>
                                         </div>
-                                        {% endif %}
-                                        {% if tiket_details.tidak_lolos_qc is not null %}
-                                        <div class="meta-item" style="border: 1px solid #fecaca !important; background-color: #fef2f2 !important; border-radius: 8px; padding: 6px 10px !important;">
-                                            <span class="meta-label text-danger fw-bold">Tidak Lolos QC</span>
-                                            <span class="meta-value text-danger fw-bold">{{ tiket_details.tidak_lolos_qc }}</span>
+                                        {% if qc_kolom_lolos %}
+                                        <div class="qc-kolom-grid">
+                                            {% for label, value in qc_kolom_lolos %}
+                                            <div class="qc-kolom-cell qc-kolom-lolos">
+                                                <span class="meta-label">{{ label }}</span>
+                                                <span class="meta-value">{{ value }}</span>
+                                            </div>
+                                            {% endfor %}
                                         </div>
                                         {% endif %}
-                                    </div>
-                                    {% endif %}
-
-                                    <!-- Group 3: QC C -->
-                                    {% if tiket.qc_c %}
-                                    <div class="meta-item">
-                                        <span class="meta-label">QC C</span>
-                                        <span class="meta-value">{{ tiket.qc_c }}</span>
+                                        {% endif %}
+                                        {% if tiket_details.tidak_lolos_qc is not null or qc_kolom_tidak_lolos %}
+                                        <div class="meta-item mt-1" style="border: 1px solid #fecaca !important; background-color: #fef2f2 !important; border-radius: 8px; padding: 6px 10px !important;">
+                                            <span class="meta-label text-danger fw-bold">Tidak Lolos QC</span>
+                                            <span class="meta-value text-danger fw-bold">{{ tiket_details.tidak_lolos_qc|default:"0" }}</span>
+                                        </div>
+                                        {% if qc_kolom_tidak_lolos %}
+                                        <div class="qc-kolom-grid">
+                                            {% for label, value in qc_kolom_tidak_lolos %}
+                                            <div class="qc-kolom-cell qc-kolom-tidak-lolos">
+                                                <span class="meta-label">{{ label }}</span>
+                                                <span class="meta-value">{{ value }}</span>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                        {% endif %}
                                     </div>
                                     {% endif %}
                                     {% else %}
@@ -1174,6 +1192,49 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Jumlah baris per KD_TAHAP di tabel I Oracle (sync_tiket_kd_tahap) -->
+                    {% if kd_tahap_list %}
+                    <div class="row g-3 pt-3 mt-3 border-top">
+                        <div class="col-12">
+                            <div class="p-3 rounded"
+                                style="border: 1px solid #e2e8f0 !important; background-color: rgba(248, 250, 252, 0.45); border-radius: 12px !important;">
+                                <div class="fw-bold text-dark mb-2 pb-1 border-bottom d-flex justify-content-between align-items-center"
+                                    style="font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; border-color: rgba(226, 232, 240, 0.8) !important; color: #475569 !important;">
+                                    <span><i class="feather-layers me-1 text-info"></i>Jumlah Baris per KD Tahap</span>
+                                    <span class="badge bg-light text-secondary border" style="text-transform: none; letter-spacing: 0;">{{ kd_tahap_list|length }} KD Tahap</span>
+                                </div>
+                                <div id="kd-tahap-scroll" class="table-responsive">
+                                    <table id="kd-tahap-table" class="table table-sm table-hover mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th class="d-none d-sm-table-cell" style="width: 4rem;">No</th>
+                                                <th>KD Tahap</th>
+                                                <th class="text-end">Jumlah Baris</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for kd_tahap, jumlah in kd_tahap_list %}
+                                            <tr>
+                                                <td class="text-muted d-none d-sm-table-cell">{{ forloop.counter }}</td>
+                                                <td class="font-monospace">{{ kd_tahap|default:"-" }}</td>
+                                                <td class="text-end">{{ jumlah }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <th class="d-none d-sm-table-cell"></th>
+                                                <th>Total</th>
+                                                <th class="text-end">{{ kd_tahap_total }}</th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -2041,6 +2102,80 @@
             align-items: center;
             justify-content: flex-end;
             gap: 0.35rem;
+        }
+
+        /* The qc_* counts under Lolos / Tidak Lolos QC, as a compact grid instead of one row each. */
+        .qc-kolom-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+            gap: 0.5rem;
+        }
+
+        .qc-kolom-cell {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.35rem 0.6rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background-color: #fff;
+        }
+
+        .qc-kolom-lolos {
+            border-left: 3px solid #34d399;
+        }
+
+        .qc-kolom-tidak-lolos {
+            border-left: 3px solid #f87171;
+        }
+
+        /* A tiket can have hundreds of KD_TAHAP values: scroll inside the card,
+           keeping the header and the total in view. The scroll box is itself the
+           .table-responsive wrapper, or base.html wraps the table in an
+           overflow-hidden one that the sticky cells would stick to instead.
+           Scoped by id and !important: the page's `.table td` padding is
+           !important too, and the theme's beats a class selector. */
+        #kd-tahap-scroll {
+            max-height: 320px;
+            overflow: auto !important;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background-color: #fff;
+        }
+
+        #kd-tahap-table {
+            font-size: 0.85rem;
+        }
+
+        #kd-tahap-table td.font-monospace {
+            word-break: break-all;
+        }
+
+        #kd-tahap-table > :not(caption) > * > * {
+            padding: 0.35rem 0.75rem !important;
+        }
+
+        @media (max-width: 575.98px) {
+            #kd-tahap-table > :not(caption) > * > * {
+                padding: 0.35rem 0.5rem !important;
+            }
+        }
+
+        #kd-tahap-table thead th,
+        #kd-tahap-table tfoot th {
+            position: sticky;
+            background-color: #f8fafc;
+            z-index: 1;
+        }
+
+        #kd-tahap-table thead th {
+            top: 0;
+        }
+
+        #kd-tahap-table tfoot th {
+            bottom: 0;
+            box-shadow: inset 0 1px 0 #e2e8f0;
         }
 
         .premium-badge {

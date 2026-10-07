@@ -4,6 +4,10 @@ Runs the rules of the tiket update sync (`sync_tiket_update`) for a single
 tiket, straight from its detail page: the same Oracle query, the same field
 comparison, the same status transitions and the same audit trail. See
 docs/SYNC_TIKET_UPDATE_RULES.md.
+
+For a tiket that is (or that the sync leaves) at Pengendalian Mutu or Selesai,
+it also refreshes the rows per KD_TAHAP in the tiket's tabel I, as the
+`sync_tiket_kd_tahap` command does for a whole year.
 """
 
 import hashlib
@@ -27,6 +31,14 @@ from ...models.tiket_pic import TiketPIC
 from ...utils import format_number_with_separator
 from ...utils.oracle_sync import OracleDataSyncService, OracleSyncConfigError
 from ...utils.tiket_dibatalkan import KOLOM_TARIKAN_DIBATALKAN
+from ...utils.tiket_kd_tahap import (
+    STATUS_KD_TAHAP,
+    KdTahapError,
+    ambil_kd_tahap_tiket,
+    simpan_kd_tahap,
+    tersimpan,
+    urutkan,
+)
 from ..mixins import is_admin_pmde
 from ..sync_tiket_update import (
     KOREKSI_JUDUL,
@@ -114,6 +126,76 @@ def _fetch_row(tiket):
     except Exception:
         logger.exception('Sinkronisasi tiket %s: gagal mengambil data Oracle', tiket.nomor_tiket)
         return None, 'Gagal mengambil data dari Oracle. Periksa koneksi Oracle.'
+
+
+def _status_akhir(tiket, plan):
+    """The tiket's status once the plan is applied."""
+    if plan is None or not plan['changed']:
+        return tiket.status_tiket
+    if plan['transitions']:
+        return plan['transitions'][-1]['status_to']
+    if plan['koreksi']:
+        return plan['koreksi']['fields']['status_tiket']
+    return tiket.status_tiket
+
+
+def _kd_tahap_plan(tiket, plan):
+    """The tiket's rows per KD_TAHAP: stored now (`lama`) and in Oracle (`baru`).
+
+    None when the tiket does not end at a status KD Tahap is kept for. An
+    Oracle error is reported in `error` and leaves the rest of the sync be.
+    """
+    if _status_akhir(tiket, plan) not in STATUS_KD_TAHAP:
+        return None
+    lama = tersimpan(tiket)
+    try:
+        baru = ambil_kd_tahap_tiket(OracleDataSyncService(connection_only=True), tiket)
+    except (KdTahapError, OracleSyncConfigError) as exc:
+        return {'lama': lama, 'baru': None, 'changed': False, 'error': str(exc).strip()}
+    except Exception:
+        logger.exception('Sinkronisasi tiket %s: gagal mengambil KD Tahap', tiket.nomor_tiket)
+        return {'lama': lama, 'baru': None, 'changed': False,
+                'error': 'Gagal mengambil KD Tahap dari Oracle. Periksa koneksi Oracle.'}
+    return {'lama': lama, 'baru': baru, 'changed': baru != lama, 'error': None}
+
+
+def _kd_tahap_context(kd):
+    """The KD Tahap part of the preview: totals, and only the rows that change."""
+    if kd is None:
+        return None
+    rows = []
+    if kd['changed']:
+        for kd_tahap, _ in urutkan({**kd['lama'], **kd['baru']}):
+            lama, baru = kd['lama'].get(kd_tahap), kd['baru'].get(kd_tahap)
+            if lama != baru:
+                rows.append({
+                    'kd_tahap': kd_tahap if kd_tahap is not None else '-',
+                    'lama': _format_value(lama),
+                    'baru': _format_value(baru),
+                })
+    baru = kd['baru'] or {}
+    return {
+        'error': kd['error'],
+        'changed': kd['changed'],
+        'rows': rows,
+        'jumlah_kd': len(baru),
+        'total_lama': _format_value(sum(kd['lama'].values())),
+        'total_baru': _format_value(sum(baru.values())),
+    }
+
+
+def _fingerprint(plan, kd):
+    """Digest of everything a sync writes: the tiket update plan and the KD Tahap rows."""
+    payload = {
+        'plan': _plan_fingerprint(plan) if plan is not None and plan['changed'] else None,
+        'kd_tahap': urutkan(kd['baru']) if kd is not None and kd['changed'] else None,
+    }
+    encoded = json.dumps(payload, default=str, sort_keys=True).encode('utf-8')
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _sync_changed(plan, kd):
+    return bool((plan is not None and plan['changed']) or (kd is not None and kd['changed']))
 
 
 def _active_pics(tiket):
@@ -216,7 +298,6 @@ def _preview_context(tiket, plan):
         ),
         'koreksi_to_label': STATUS_LABELS.get(rules_from, '-'),
         'koreksi_to_class': STATUS_BADGE_CLASSES.get(rules_from, 'bg-secondary'),
-        'fingerprint': _plan_fingerprint(plan),
     }
 
 
@@ -240,6 +321,9 @@ class SinkronisasiTiketView(LoginRequiredMixin, UserPassesTestMixin, View):
     Aturan 4 and on new Res/CDE counts) and a result CSV in sync_logs/.
     On a cancelled tiket it also clears the tarikan counts a cancel left
     behind (KOLOM_TARIKAN_DIBATALKAN), even when Oracle has no row for it.
+    For a tiket that ends at Pengendalian Mutu or Selesai it also replaces the
+    tiket's TiketKdTahap rows with the counts per KD_TAHAP in its tabel I
+    (`_kd_tahap_plan`); a failure there is shown and the rest still syncs.
     Unlike the bulk sync it first corrects a tiket the sync cancelled
     (Aturan 4) or closed (Aturan 2, 3, 5) on a half-built rekap
     (`_plan_koreksi`): the sync's actions are deleted and the rules run again
@@ -251,12 +335,15 @@ class SinkronisasiTiketView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
         return is_admin_pmde(self.request.user)
 
-    def _render(self, tiket, row, error, plan):
+    def _render(self, tiket, row, error, plan, kd=None):
         context = {
             'tiket': tiket,
             'error': error,
             'not_found': error is None and row is None,
             'plan': plan,
+            'kd_tahap': _kd_tahap_context(kd),
+            'sync_changed': _sync_changed(plan, kd),
+            'fingerprint': _fingerprint(plan, kd),
             'status_from_label': STATUS_LABELS.get(tiket.status_tiket, '-'),
             'status_from_class': STATUS_BADGE_CLASSES.get(tiket.status_tiket, 'bg-secondary'),
             'form_action': reverse('sinkronisasi_tiket', args=[tiket.pk]),
@@ -276,7 +363,8 @@ class SinkronisasiTiketView(LoginRequiredMixin, UserPassesTestMixin, View):
         tiket = get_object_or_404(Tiket, pk=pk)
         row, error = _fetch_row(tiket)
         plan = self._plan(tiket, row) if error is None else None
-        return JsonResponse({'html': self._render(tiket, row, error, plan)})
+        kd = _kd_tahap_plan(tiket, plan) if error is None else None
+        return JsonResponse({'html': self._render(tiket, row, error, plan, kd)})
 
     def post(self, request, pk):
         tiket = get_object_or_404(Tiket, pk=pk)
@@ -287,33 +375,43 @@ class SinkronisasiTiketView(LoginRequiredMixin, UserPassesTestMixin, View):
                 'message': error,
                 'html': self._render(tiket, row, error, None),
             })
+        # Fetched before the lock: the tabel I query is a full scan that can
+        # take seconds. A status that moved meanwhile shows as a changed
+        # fingerprint below.
+        kd = _kd_tahap_plan(tiket, self._plan(tiket, row))
 
         with transaction.atomic():
             tiket = Tiket.objects.select_for_update().get(pk=pk)
             plan = self._plan(tiket, row)
-            if not plan['changed']:
+            if _status_akhir(tiket, plan) not in STATUS_KD_TAHAP:
+                kd = None
+            if not _sync_changed(plan, kd):
                 return JsonResponse({
                     'success': False,
                     'message': (
-                        'Tiket tidak ditemukan di Oracle.' if row is None
+                        'Tiket tidak ditemukan di Oracle.' if row is None and kd is None
                         else 'Data tiket sudah sinkron dengan Oracle.'
                     ),
-                    'html': self._render(tiket, row, None, plan),
+                    'html': self._render(tiket, row, None, plan, kd),
                 })
-            if request.POST.get('fingerprint') != _plan_fingerprint(plan):
+            if request.POST.get('fingerprint') != _fingerprint(plan, kd):
                 return JsonResponse({
                     'success': False,
                     'message': 'Data berubah sejak pratinjau dibuka. Periksa pratinjau terbaru lalu sinkronkan lagi.',
-                    'html': self._render(tiket, row, None, plan),
+                    'html': self._render(tiket, row, None, plan, kd),
                 })
 
             sync_id = str(uuid.uuid4())
-            _apply_tiket_update_plan(tiket, plan, _active_pics(tiket), sync_id)
+            if plan['changed']:
+                _apply_tiket_update_plan(tiket, plan, _active_pics(tiket), sync_id)
+            if kd is not None and kd['changed']:
+                simpan_kd_tahap(tiket, kd['baru'])
 
         logger.info(
-            'Sinkronisasi tiket %s oleh %s (sync_id=%s): %d kolom, transisi %s',
+            'Sinkronisasi tiket %s oleh %s (sync_id=%s): %d kolom, transisi %s, KD Tahap %s',
             tiket.nomor_tiket, request.user.username, sync_id, len(plan['field_changes']),
             [t['aturan'] for t in plan['transitions']] or '-',
+            len(kd['baru']) if kd is not None and kd['changed'] else '-',
         )
         return JsonResponse({
             'success': True,
