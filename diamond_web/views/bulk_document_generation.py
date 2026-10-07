@@ -132,6 +132,13 @@ def _build_table_doc(title, headers, rows_data):
     return doc
 
 
+# The QC result counts of a tiket, each ``{{row.<field>}}`` in a lampiran.
+KOLOM_QC = (
+    'qc_p', 'qc_x', 'qc_w', 'qc_f', 'qc_a', 'qc_c', 'qc_n',
+    'qc_y', 'qc_z', 'qc_u', 'qc_e', 'qc_v', 'qc_r', 'qc_d',
+)
+
+
 def _generate_docx_for_tickets(selected_tickets, doc_type, title_prefix):
     """Generate DOCX for selected tickets using template (preferred) or fallback table."""
     if not selected_tickets:
@@ -266,7 +273,17 @@ def _generate_docx_for_tickets(selected_tickets, doc_type, title_prefix):
             'tanggal_surat_pengantar': _format_date_indonesian(t.tanggal_surat_pengantar),
             'tanggal_terima_dip': _format_date_indonesian(t.tgl_terima_dip),
             'tanggal_kirim_pide': _format_date_indonesian(t.tgl_kirim_pide),
+            'ilap': ilap_obj.nama_ilap if ilap_obj else '-',
+            'baris_lengkap': format_number_with_separator(t.baris_lengkap),
+            'baris_i': format_number_with_separator(t.baris_i),
+            **{f: format_number_with_separator(getattr(t, f)) for f in KOLOM_QC},
         })
+
+    # A QC column no selected tiket has a count > 0 in is left out of the table.
+    kolom_qc_kosong = {
+        f for f in KOLOM_QC
+        if not any((getattr(t, f) or 0) > 0 for t in selected_tickets)
+    }
 
     now_ts = datetime.now().strftime('%Y%m%d_%H%M%S')
     tahun_data_list = sorted({str(t.tahun) for t in selected_tickets if t.tahun})
@@ -307,6 +324,7 @@ def _generate_docx_for_tickets(selected_tickets, doc_type, title_prefix):
                 template.file_template.open('rb'),
                 template_vars,
                 row_data=row_data,
+                hidden_row_fields=kolom_qc_kosong,
             )
             response = HttpResponse(
                 doc_buffer.getvalue(),
@@ -521,12 +539,9 @@ def bulk_nd_pengantar_pide(request):
 # every one of which is named KPDE_ADHOC_<...>.
 ADHOC_NAMA_TABEL_KEYWORD = 'adhoc'
 
-# The page and the generated lampiran list the tikets in the same order.
-ADHOC_ORDERING = (
-    'id_periode_data__id_sub_jenis_data_ilap__id_ilap__nama_ilap',
-    'tgl_selesai',
-    'id',
-)
+# The page and the generated lampiran list the tikets in the same order:
+# earliest finished first.
+ADHOC_ORDERING = ('tgl_selesai', 'id')
 
 
 def _adhoc_queryset(user, tanggal_mulai, tanggal_selesai, ilap_id=''):
