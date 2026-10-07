@@ -118,6 +118,13 @@ def _pide_bundle(with_durasi=True, with_prioritas=False, tgl_kirim_pide=None,
     }
 
 
+def _khusus(tiket, day):
+    """Give `tiket` a permintaan khusus due on `day`, stored as the form does."""
+    tiket.special_request = True
+    tiket.tgl_special_request = datetime.combine(day, time(23, 59, 59))
+    tiket.save(update_fields=['special_request', 'tgl_special_request'])
+
+
 def _jatuh_tempo_bundle(days, **kwargs):
     """A bundle whose jatuh tempo is `days` days from today, negative allowed.
 
@@ -237,25 +244,57 @@ class TestIdentifikasiData:
         expected = kirim.date() + timedelta(days=10)
         assert row['deadline']['display'] == expected.strftime('%d/%m/%Y')
 
-    def test_permintaan_khusus_due_date_is_the_deadline(self, client):
-        """A date agreed for one tiket beats the durasi its data carries.
-
-        The override lives in the shared Deadline, so what this page has to say
-        for itself is that PIDE's queue reads it too.
+    def test_permintaan_khusus_is_split_with_pmde_by_durasi(self, client):
+        """A permintaan khusus date is when QC has to be done by, so PIDE is
+        due at its share of the time up to it, in the ratio of the two seksi's
+        ordinary durasi — and the agreed date is named beside it.
         """
-        bundle = _pide_bundle(durasi=10)
-        khusus = date.today() + timedelta(days=6)
-        tiket = bundle['tiket']
-        tiket.special_request = True
-        tiket.tgl_special_request = datetime.combine(khusus, time(23, 59, 59))
-        tiket.save(update_fields=['special_request', 'tgl_special_request'])
+        kirim = datetime.now() - timedelta(days=5)
+        bundle = _pide_bundle(tgl_kirim_pide=kirim, durasi=30)
+        pmde_group, _ = Group.objects.get_or_create(name='user_pmde')
+        DurasiJatuhTempoFactory(
+            id_sub_jenis_data=bundle['jenis_data'], seksi=pmde_group,
+            durasi=10, start_date=date(2000, 1, 1), end_date=None,
+        )
+        # 40 days from arrival to the agreed date, split 30:10.
+        khusus = kirim.date() + timedelta(days=40)
+        _khusus(bundle['tiket'], khusus)
+        client.force_login(bundle['pide_user'])
+
+        row = self._rows(client)['data'][0]
+        expected = kirim.date() + timedelta(days=30)
+        assert row['deadline']['display'] == expected.strftime('%d/%m/%Y')
+        assert row['sisa_hari'] == (expected - date.today()).days
+        assert row['deadline_khusus'] is True
+        assert row['khusus_akhir'] == khusus.strftime('%d/%m/%Y')
+
+    def test_permintaan_khusus_split_ignores_the_rekam_date(self, client):
+        """The window runs from the day the tiket arrived, so opening it for
+        identification does not move PIDE's share later."""
+        kirim = datetime.now() - timedelta(days=10)
+        bundle = _pide_bundle(
+            tgl_kirim_pide=kirim, tgl_rekam_pide=datetime.now() - timedelta(days=1),
+        )
+        khusus = kirim.date() + timedelta(days=20)
+        _khusus(bundle['tiket'], khusus)
+        client.force_login(bundle['pide_user'])
+
+        # No PMDE durasi to weigh against, so the window is halved.
+        row = self._rows(client)['data'][0]
+        expected = kirim.date() + timedelta(days=10)
+        assert row['deadline']['display'] == expected.strftime('%d/%m/%Y')
+
+    def test_permintaan_khusus_already_past_arrival_is_the_deadline(self, client):
+        """No window to split: the agreed date stands as it is."""
+        kirim = datetime.now() - timedelta(days=5)
+        bundle = _pide_bundle(tgl_kirim_pide=kirim)
+        khusus = kirim.date() - timedelta(days=1)
+        _khusus(bundle['tiket'], khusus)
         client.force_login(bundle['pide_user'])
 
         row = self._rows(client)['data'][0]
         assert row['deadline']['display'] == khusus.strftime('%d/%m/%Y')
-        assert row['jatuh_tempo']['display'] == '6 hari'
-        assert row['sisa_hari'] == 6
-        assert row['deadline_khusus'] is True
+        assert row['khusus_akhir'] is None
 
     def test_durasi_is_the_one_active_at_the_rekam_date(self, client):
         """The durasi row is picked by tgl_rekam_pide, not by the older arrival."""
@@ -308,15 +347,50 @@ class TestIdentifikasiData:
             first['tiket'].nomor_tiket, second['tiket'].nomor_tiket,
         }
 
-    @pytest.mark.parametrize('status', [
-        STATUS_DIKIRIM_KE_PIDE, STATUS_PENGENDALIAN_MUTU, STATUS_DIREKAM,
-    ])
-    def test_only_tikets_being_identified_are_listed(self, client, status):
+    @pytest.mark.parametrize('status', [STATUS_PENGENDALIAN_MUTU, STATUS_DIREKAM])
+    def test_only_tikets_at_pide_are_listed(self, client, status):
         bundle = _pide_bundle(status_tiket=status)
         client.force_login(bundle['pide_user'])
         assert self._rows(client)['data'] == []
 
-    @pytest.mark.parametrize('order_col', ['0', '4', '6', '8', '9', '10'])
+    def test_a_tiket_sent_to_pide_is_listed_before_it_is_opened(self, client):
+        kirim = datetime.now() - timedelta(days=4)
+        bundle = _pide_bundle(
+            status_tiket=STATUS_DIKIRIM_KE_PIDE, tgl_kirim_pide=kirim,
+            tgl_rekam_pide=None, durasi=10, split=(0, 0, 0, 0),
+        )
+        client.force_login(bundle['pide_user'])
+        row = self._rows(client)['data'][0]
+        assert row['nomor_tiket'] == bundle['tiket'].nomor_tiket
+        assert row['jml_progress'] == 100
+        expected = kirim.date() + timedelta(days=10)
+        assert row['deadline']['display'] == expected.strftime('%d/%m/%Y')
+
+    def test_default_order_puts_permintaan_khusus_first(self, client):
+        """Before any column is sorted the queue opens on its permintaan khusus,
+        however far off their date, then on the rest by deadline."""
+        later = _jatuh_tempo_bundle(20)
+        sooner = _jatuh_tempo_bundle(2)
+        khusus = _jatuh_tempo_bundle(1)
+        _khusus(khusus['tiket'], date.today() + timedelta(days=60))
+        client.force_login(_kasi_pide_user())
+
+        order = [row['nomor_tiket'] for row in self._rows(client)['data']]
+        assert order == [
+            khusus['tiket'].nomor_tiket, sooner['tiket'].nomor_tiket,
+            later['tiket'].nomor_tiket,
+        ]
+
+        # Sorting a column is the reader's own order, khusus or not.
+        by_deadline = self._rows(
+            client, **{'order[0][column]': '5', 'order[0][dir]': 'asc'},
+        )['data']
+        assert [row['nomor_tiket'] for row in by_deadline] == [
+            sooner['tiket'].nomor_tiket, later['tiket'].nomor_tiket,
+            khusus['tiket'].nomor_tiket,
+        ]
+
+    @pytest.mark.parametrize('order_col', ['0', '4', '5', '6', '8', '9', '10'])
     def test_ordering(self, client, order_col):
         bundle = _pide_bundle()
         client.force_login(bundle['pide_user'])
@@ -417,7 +491,7 @@ class TestIdentifikasiSummary:
         assert payload['dikirim_ke_pide']['tikets'] == 0
         assert payload['p3de']['tikets'] == 0
 
-    def test_a_received_tiket_lands_in_the_upstream_pide_section_only(self, client):
+    def test_a_received_tiket_lands_in_the_not_started_section_only(self, client):
         bundle = _pide_bundle(
             status_tiket=STATUS_DIKIRIM_KE_PIDE, baris_lengkap=80, split=(0, 0, 0, 0),
         )
@@ -459,6 +533,19 @@ class TestIdentifikasiSummary:
         assert payload['identifikasi']['tikets'] == 1
         assert payload['p3de']['tikets'] == 1
         assert payload['p3de']['baris'] == upstream['tiket'].baris_lengkap
+
+    def test_jatuh_tempo_filter_narrows_the_not_started_section(self, client):
+        """A tiket sent to PIDE is in the table with a deadline of its own, so
+        the threshold narrows it the way it narrows the table."""
+        received = dict(
+            status_tiket=STATUS_DIKIRIM_KE_PIDE, tgl_rekam_pide=None, split=(0, 0, 0, 0),
+        )
+        near = _jatuh_tempo_bundle(2, **received)
+        _jatuh_tempo_bundle(40, **received)
+        client.force_login(_kasi_pide_user())
+        payload = self._summary(client, jatuh_tempo='10')
+        assert payload['dikirim_ke_pide']['tikets'] == 1
+        assert payload['dikirim_ke_pide']['baris'] == near['tiket'].baris_lengkap
 
 
 @pytest.mark.django_db

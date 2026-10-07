@@ -1,14 +1,16 @@
 """Identifikasi page - PIDE User identification queue.
 
-This module provides a page for PIDE users to view and monitor tickets that are
-in the identification process (status = Identifikasi). It is the Quality Control
-page read by the other seksi: the same filter panel, summary sections, chart and
-table, built by `seksi_queue`.
+This module provides a page for PIDE users to view and monitor the tickets that
+are at PIDE: sent there and not opened yet (status = Dikirim ke PIDE), and being
+identified (status = Identifikasi). It is the Quality Control page read by the
+other seksi: the same filter panel, summary sections, chart and table, built by
+`seksi_queue`.
 
 What is decided here is that the queue is PIDE's, that its deadline counts from
 the day the tiket reached PIDE — or from the day identification started, once
 that date is set — and that the work left on a row is the rows of its data that
-identification has not split yet.
+identification has not split yet. A permintaan khusus is due at PMDE, the seksi
+that finishes the tiket, so PIDE is due at its share of the time up to it.
 """
 
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -28,6 +30,7 @@ from ..constants.tiket_status import (
     STATUS_DIKIRIM_KE_PIDE,
     STATUS_IDENTIFIKASI,
     STATUSES_DI_P3DE,
+    STATUSES_DI_PIDE,
 )
 from ..utils.pic_profil import pic_profil_link, pic_profil_visibility
 from .mixins import is_kasi_pide
@@ -38,9 +41,11 @@ __all__ = ['IdentifikasiView', 'identifikasi_data']
 # A tiket enters PIDE's queue when P3DE sends it (tgl_kirim_pide) and its count
 # starts again when identification is opened on it (tgl_rekam_pide), so the
 # later date wins whenever it is set — the same shape PMDE's transfer and
-# rematch have.
+# rematch have. A permintaan khusus date is when quality control has to be done
+# by, so PIDE shares the time up to it with PMDE.
 DEADLINE = sq.Deadline(
     seksi='user_pide', start_field='tgl_kirim_pide', restart_field='tgl_rekam_pide',
+    khusus_hilir='user_pmde',
 )
 
 FILTER_APPLIERS = sq.build_filter_appliers(DEADLINE)
@@ -61,8 +66,9 @@ def _is_pide_user(user):
 class IdentifikasiView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     """Display the Identifikasi page for PIDE users.
 
-    Shows a DataTable of the tikets the current PIDE user is identifying
-    (status = Identifikasi), with the deadline PIDE has for each of them.
+    Shows a DataTable of the tikets at PIDE that the current user holds — sent
+    there (status = Dikirim ke PIDE) or being identified (status =
+    Identifikasi) — with the deadline PIDE has for each of them.
 
     Template: identifikasi/list.html
     """
@@ -79,19 +85,23 @@ def _pide_scope(tikets, user):
 
 
 def _scoped_queryset(user):
-    """Tikets being identified that `user` is allowed to see."""
-    return _pide_scope(Tiket.objects.filter(status_tiket=STATUS_IDENTIFIKASI), user)
+    """Tikets at PIDE that `user` is allowed to see.
+
+    Both statuses PIDE holds a tiket in: one sent there and not opened yet is
+    already PIDE's work, its deadline already counting from tgl_kirim_pide.
+    """
+    return _pide_scope(Tiket.objects.filter(status_tiket__in=STATUSES_DI_PIDE), user)
 
 
 def _upstream_queryset(user, statuses):
-    """Tikets in `statuses` that `user` is allowed to see, for the two upstream
-    sections of the summary.
+    """Tikets in `statuses` that `user` is allowed to see, for the upstream
+    section of the summary.
 
-    The same scope as the page's own queue, over the statuses upstream of
-    identification instead. A PIDE PIC is assigned when a tiket is recorded
-    rather than when it is sent on (see rekam_tiket), so a pelaksana already has
-    assignments among these: they are the work heading towards them, which is
-    what makes them worth a section on this page.
+    The same scope as the page's own queue, over the statuses upstream of PIDE
+    instead. A PIDE PIC is assigned when a tiket is recorded rather than when
+    it is sent on (see rekam_tiket), so a pelaksana already has assignments
+    among these: they are the work heading towards them, which is what makes
+    them worth a section on this page.
     """
     return _pide_scope(Tiket.objects.filter(status_tiket__in=statuses), user)
 
@@ -122,31 +132,33 @@ _BELUM_IDENTIFIKASI_FIELDS = (
 def _summary(user, selected):
     """The three sections above the chart, over the same filters the chart uses.
 
-    The first is the identification queue this page lists, counting the rows it
-    has left to split. The other two are the queues upstream of it: the tikets
-    PIDE has received but not opened yet, and the ones P3DE is still holding.
-    All three read the same shape — a tiket total, a row total and a
-    per-jenis-tabel breakdown — so they can be read against each other down the
-    row.
+    The first two are the queue this page lists, split by how far PIDE has got
+    with each tiket: the ones being identified, counting the rows left to
+    split, and the ones received but not opened yet. Both are in the table, so
+    both read every filter it does, jatuh tempo included. The third is the
+    queue upstream of PIDE, the tikets P3DE is still holding. All three read the
+    same shape — a tiket total, a row total and a per-jenis-tabel breakdown — so
+    they can be read against each other down the row.
     """
-    upstream_selected = sq.upstream_selected(selected)
     kinds = sq.jenis_tabel_kinds()
-
-    def upstream(statuses):
-        return sq.queue_breakdown(
-            sq.apply_filters(
-                _upstream_queryset(user, statuses), upstream_selected, FILTER_APPLIERS,
-            ),
-            kinds, sq.BARIS_DATA_FIELDS, sq.baris_data,
-        )
+    in_queue = sq.apply_filters(_scoped_queryset(user), selected, FILTER_APPLIERS)
 
     return {
         'identifikasi': sq.queue_breakdown(
-            sq.apply_filters(_scoped_queryset(user), selected, FILTER_APPLIERS),
+            in_queue.filter(status_tiket=STATUS_IDENTIFIKASI),
             kinds, _BELUM_IDENTIFIKASI_FIELDS, _belum_identifikasi,
         ),
-        'dikirim_ke_pide': upstream((STATUS_DIKIRIM_KE_PIDE,)),
-        'p3de': upstream(STATUSES_DI_P3DE),
+        'dikirim_ke_pide': sq.queue_breakdown(
+            in_queue.filter(status_tiket=STATUS_DIKIRIM_KE_PIDE),
+            kinds, sq.BARIS_DATA_FIELDS, sq.baris_data,
+        ),
+        'p3de': sq.queue_breakdown(
+            sq.apply_filters(
+                _upstream_queryset(user, STATUSES_DI_P3DE),
+                sq.upstream_selected(selected), FILTER_APPLIERS,
+            ),
+            kinds, sq.BARIS_DATA_FIELDS, sq.baris_data,
+        ),
     }
 
 
@@ -247,21 +259,18 @@ def identifikasi_data(request):
         10: ('baris_belum',),
     }
 
-    # Read sort column and direction from DataTables params
+    # Read sort column and direction from DataTables params. The page opens
+    # with no column sorted, which is the queue's own order: permintaan
+    # khusus first, then by deadline.
     order_col_index = params.get('order[0][column]')
     order_dir = params.get('order[0][dir]', 'asc')
 
-    if order_col_index is not None:
-        try:
-            idx = int(order_col_index)
-            cols = order_map.get(idx, ('id',))
-            if order_dir == 'desc':
-                cols = tuple('-' + col for col in cols)
-            tikets = tikets.order_by(*cols)
-        except (ValueError, TypeError):
-            tikets = tikets.order_by('-id')
+    try:
+        cols = order_map.get(int(order_col_index), ('id',))
+    except (ValueError, TypeError):
+        tikets = DEADLINE.default_order(tikets)
     else:
-        tikets = tikets.order_by('-id')
+        tikets = tikets.order_by(*sq.column_order(cols, order_dir))
 
     page = list(tikets[start:start + length])
 
