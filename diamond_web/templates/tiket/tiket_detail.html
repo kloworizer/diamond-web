@@ -1137,7 +1137,7 @@
                                         </div>
                                         {% endif %}
                                         {% if tiket_details.belum_qc is not null %}
-                                        <div class="meta-item" style="border-bottom: none !important; padding-bottom: 0 !important;">
+                                        <div class="meta-item{% if kd_tahap_filter_belum_qc %} kd-qc-filter kd-qc-filter-belum{% endif %}" style="border-bottom: none !important; padding-bottom: 0 !important;"{% if kd_tahap_filter_belum_qc %} data-kd-qc="" data-kd-qc-label="Belum QC" role="button" tabindex="0" aria-pressed="false" title="Filter tabel KD Tahap: baris yang belum di-QC"{% endif %}>
                                             <span class="meta-label">Belum QC</span>
                                             <span class="meta-value">{{ tiket_details.belum_qc }}</span>
                                         </div>
@@ -1161,10 +1161,10 @@
                                         </div>
                                         {% if qc_kolom_lolos %}
                                         <div class="qc-kolom-grid">
-                                            {% for label, value in qc_kolom_lolos %}
-                                            <div class="qc-kolom-cell qc-kolom-lolos">
-                                                <span class="meta-label">{{ label }}</span>
-                                                <span class="meta-value">{{ value }}</span>
+                                            {% for k in qc_kolom_lolos %}
+                                            <div class="qc-kolom-cell qc-kolom-lolos{% if k.filter %} kd-qc-filter{% endif %}"{% if k.filter %} data-kd-qc="{{ k.flag }}" data-kd-qc-label="{{ k.label }}" role="button" tabindex="0" aria-pressed="false" title="Filter tabel KD Tahap: {{ k.label }}"{% endif %}>
+                                                <span class="meta-label">{{ k.label }}</span>
+                                                <span class="meta-value">{{ k.value }}</span>
                                             </div>
                                             {% endfor %}
                                         </div>
@@ -1177,10 +1177,10 @@
                                         </div>
                                         {% if qc_kolom_tidak_lolos %}
                                         <div class="qc-kolom-grid">
-                                            {% for label, value in qc_kolom_tidak_lolos %}
-                                            <div class="qc-kolom-cell qc-kolom-tidak-lolos">
-                                                <span class="meta-label">{{ label }}</span>
-                                                <span class="meta-value">{{ value }}</span>
+                                            {% for k in qc_kolom_tidak_lolos %}
+                                            <div class="qc-kolom-cell qc-kolom-tidak-lolos{% if k.filter %} kd-qc-filter{% endif %}"{% if k.filter %} data-kd-qc="{{ k.flag }}" data-kd-qc-label="{{ k.label }}" role="button" tabindex="0" aria-pressed="false" title="Filter tabel KD Tahap: {{ k.label }}"{% endif %}>
+                                                <span class="meta-label">{{ k.label }}</span>
+                                                <span class="meta-value">{{ k.value }}</span>
                                             </div>
                                             {% endfor %}
                                         </div>
@@ -1210,16 +1210,9 @@
                                     <span><i class="feather-layers me-1 text-info"></i>Jumlah Baris per KD Tahap</span>
                                     <span class="badge bg-light text-secondary border" style="text-transform: none; letter-spacing: 0;" id="kd-tahap-jumlah-kd">{{ kd_tahap_jumlah_kd }} KD Tahap</span>
                                 </div>
-                                {# QC filter: none picked = every QC; several can be picked at once. #}
-                                <div id="kd-qc-filter" class="d-flex flex-wrap align-items-center gap-2 mb-2" role="group" aria-label="Filter QC">
-                                    <span class="small text-muted">QC:</span>
-                                    <button type="button" class="kd-qc-chip kd-qc-chip-semua is-active" data-qc-semua aria-pressed="true">Semua</button>
-                                    {% for f in kd_tahap_qc_filter %}
-                                    <button type="button" class="kd-qc-chip {% if f.lolos %}kd-qc-chip-lolos{% elif f.lolos is False %}kd-qc-chip-tidak-lolos{% else %}kd-qc-chip-belum{% endif %}"
-                                        data-qc="{{ f.key }}" aria-pressed="false"
-                                        title="{% if f.lolos %}Lolos QC{% elif f.lolos is False %}Tidak Lolos QC{% else %}Belum di-QC{% endif %}: {{ f.jumlah }} baris"><span class="kd-qc-chip-label">{{ f.label }}</span><span class="kd-qc-chip-count">{{ f.jumlah }}</span></button>
-                                    {% endfor %}
-                                </div>
+                                {% if kd_tahap_ada_filter %}
+                                <div class="small text-muted mb-2" id="kd-qc-filter-info" aria-live="polite">Semua QC. Klik kotak QC di Status Quality Control untuk memfilter.</div>
+                                {% endif %}
                                 <div id="kd-tahap-scroll" class="table-responsive">
                                     <table id="kd-tahap-table" class="table table-sm table-hover mb-0">
                                         <thead>
@@ -1252,13 +1245,14 @@
                     </div>
                     {{ kd_tahap_data|json_script:"kd-tahap-data" }}
                     <script>
-                        // QC filter of the KD Tahap table: sums jumlah baris per KD Tahap over
-                        // the picked QC flags (none picked = all), sorted as the server does:
-                        // largest jumlah first, then KD Tahap with the empty one last.
+                        // QC filter of the KD Tahap table, driven by the QC boxes of Status
+                        // Quality Control ([data-kd-qc]): sums jumlah baris per KD Tahap over the
+                        // picked boxes (none = all QC), sorted as the server does: largest jumlah
+                        // first, then KD Tahap with the empty one last.
                         (function () {
-                            const filter = document.getElementById('kd-qc-filter');
                             const dataEl = document.getElementById('kd-tahap-data');
-                            if (!filter || !dataEl) {
+                            const kotak = [...document.querySelectorAll('[data-kd-qc]')];
+                            if (!dataEl || !kotak.length) {
                                 return;
                             }
                             const data = JSON.parse(dataEl.textContent);
@@ -1266,6 +1260,7 @@
                             const total = document.getElementById('kd-tahap-total');
                             const jumlahKd = document.getElementById('kd-tahap-jumlah-kd');
                             const scroll = document.getElementById('kd-tahap-scroll');
+                            const info = document.getElementById('kd-qc-filter-info');
                             const angka = (n) => n.toLocaleString('id-ID');
                             const dipilih = new Set();
 
@@ -1304,28 +1299,38 @@
                                 }));
                                 total.textContent = angka(rows.reduce((sum, row) => sum + row[1], 0));
                                 jumlahKd.textContent = rows.length + ' KD Tahap';
-                                filter.querySelectorAll('.kd-qc-chip').forEach((chip) => {
-                                    const aktif = chip.hasAttribute('data-qc-semua')
-                                        ? dipilih.size === 0 : dipilih.has(chip.dataset.qc);
-                                    chip.classList.toggle('is-active', aktif);
-                                    chip.setAttribute('aria-pressed', aktif ? 'true' : 'false');
+                                const label = [];
+                                kotak.forEach((el) => {
+                                    const aktif = dipilih.has(el.dataset.kdQc);
+                                    el.classList.toggle('is-kd-filter', aktif);
+                                    el.setAttribute('aria-pressed', aktif ? 'true' : 'false');
+                                    if (aktif) {
+                                        label.push(el.dataset.kdQcLabel);
+                                    }
                                 });
+                                info.textContent = label.length
+                                    ? 'Filter QC: ' + label.join(' + ') + '. Klik kotak yang sama untuk melepas.'
+                                    : 'Semua QC. Klik kotak QC di Status Quality Control untuk memfilter.';
                                 scroll.scrollTop = 0;
                             };
 
-                            filter.addEventListener('click', function (e) {
-                                const chip = e.target.closest('.kd-qc-chip');
-                                if (!chip) {
-                                    return;
-                                }
-                                if (chip.hasAttribute('data-qc-semua')) {
-                                    dipilih.clear();
-                                } else if (dipilih.has(chip.dataset.qc)) {
-                                    dipilih.delete(chip.dataset.qc);
+                            const pilih = (el) => {
+                                const qc = el.dataset.kdQc;
+                                if (dipilih.has(qc)) {
+                                    dipilih.delete(qc);
                                 } else {
-                                    dipilih.add(chip.dataset.qc);
+                                    dipilih.add(qc);
                                 }
                                 render();
+                            };
+                            kotak.forEach((el) => {
+                                el.addEventListener('click', () => pilih(el));
+                                el.addEventListener('keydown', (e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        pilih(el);
+                                    }
+                                });
                             });
                         })();
                     </script>
@@ -2275,63 +2280,41 @@
             word-break: break-all;
         }
 
-        /* QC filter chips above the KD Tahap table; an active chip is filled. */
-        .kd-qc-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            padding: 0.2rem 0.6rem;
-            border-radius: 999px;
-            border: 1px solid #cbd5e1;
-            background-color: #fff;
-            color: #334155;
-            font-size: 0.78rem;
-            line-height: 1.4;
+        /* QC boxes of Status Quality Control that filter the KD Tahap table. */
+        .kd-qc-filter {
             cursor: pointer;
+            user-select: none;
+            transition: box-shadow 0.15s, background-color 0.15s;
         }
 
-        .kd-qc-chip-label {
-            font-weight: 700;
+        .kd-qc-filter:hover {
+            box-shadow: 0 0 0 2px #cbd5e1;
         }
 
-        .kd-qc-chip-count {
-            font-variant-numeric: tabular-nums;
-            opacity: 0.75;
-        }
-
-        .kd-qc-chip-lolos {
-            border-color: #a7f3d0;
-            color: #047857;
-        }
-
-        .kd-qc-chip-tidak-lolos {
-            border-color: #fecaca;
-            color: #b91c1c;
-        }
-
-        .kd-qc-chip-belum {
-            color: #475569;
-        }
-
-        .kd-qc-chip.is-active {
-            background-color: #334155;
-            border-color: #334155;
-            color: #fff;
-        }
-
-        .kd-qc-chip-lolos.is-active {
-            background-color: #047857;
-            border-color: #047857;
-        }
-
-        .kd-qc-chip-tidak-lolos.is-active {
-            background-color: #b91c1c;
-            border-color: #b91c1c;
-        }
-
-        .kd-qc-chip:focus-visible {
+        .kd-qc-filter:focus-visible {
             outline: 2px solid #3b82f6;
             outline-offset: 2px;
+        }
+
+        .qc-kolom-lolos.is-kd-filter {
+            background-color: #d1fae5;
+            box-shadow: 0 0 0 2px #10b981;
+        }
+
+        .qc-kolom-tidak-lolos.is-kd-filter {
+            background-color: #fee2e2;
+            box-shadow: 0 0 0 2px #ef4444;
+        }
+
+        .kd-qc-filter-belum {
+            border-radius: 6px;
+            padding: 2px 6px !important;
+            margin: 0 -6px;
+        }
+
+        .kd-qc-filter-belum.is-kd-filter {
+            background-color: #e2e8f0;
+            box-shadow: 0 0 0 2px #64748b;
         }
 
         /* QC flag of a KD Tahap row: Lolos (P, X, W) / Tidak Lolos / not yet QC'd. */

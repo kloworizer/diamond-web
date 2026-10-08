@@ -61,27 +61,9 @@ def kd_tahap_per_kd(rows):
     return sorted(per_kd.items(), key=lambda kv: (-kv[1], kv[0] is None, kv[0] or ''))
 
 
-def kd_tahap_qc_filter(rows):
-    """The QC filter chips: Lolos flags (P, X, W) first, then the others, Belum QC last."""
-    per_qc = defaultdict(int)
-    for _, qc, jumlah in rows:
-        per_qc[qc] += jumlah
-
-    def urutan(qc):
-        if qc is None:
-            return (2, '')
-        flag = qc.strip().upper()
-        return (0, QC_FLAG_LOLOS.index(flag)) if flag in QC_FLAG_LOLOS else (1, qc)
-
-    return [
-        {
-            'key': qc or '',
-            'label': qc or 'Belum QC',
-            'lolos': kd_tahap_qc_lolos(qc),
-            'jumlah': format_number_with_separator(jumlah),
-        }
-        for qc, jumlah in sorted(per_qc.items(), key=lambda kv: urutan(kv[0]))
-    ]
+def kd_tahap_qc_flag(qc):
+    """A KD Tahap row's QC flag as the QC boxes name it: 'P', 'X', ..., '' when not QC'd."""
+    return (qc or '').strip().upper()
 
 
 class TiketDetailView(LoginRequiredMixin, DetailView):
@@ -321,32 +303,42 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
             'tgl_special_request': self.object.tgl_special_request,
         }
 
-        # The recorded QC result counts, in model order: qc_p, qc_x and qc_w break
-        # down Lolos QC; every other qc_* column breaks down Tidak Lolos QC.
-        qc_kolom = [
-            (field.name, field.verbose_name, format_number_with_separator(value))
-            for field in Tiket._meta.fields
-            if field.name.startswith('qc_')
-            and (value := getattr(self.object, field.name)) is not None
-        ]
-        context['qc_kolom_lolos'] = [(label, value) for name, label, value in qc_kolom if name in QC_KOLOM_LOLOS]
-        context['qc_kolom_tidak_lolos'] = [(label, value) for name, label, value in qc_kolom if name not in QC_KOLOM_LOLOS]
-
         # Rows per KD_TAHAP and QC flag in the tiket's tabel I, filled by
         # sync_tiket_kd_tahap. The table shows jumlah baris per KD Tahap over
-        # the QC flags picked in its filter (all of them here; the page script
-        # recomputes it from `kd_tahap_data` when the filter changes).
+        # the QC boxes picked in Status Quality Control (all of them here; the
+        # page script recomputes it from `kd_tahap_data` on every pick).
         kd_tahap_rows = list(
             TiketKdTahap.objects.filter(id_tiket=self.object).values_list('kd_tahap', 'qc', 'jumlah_baris')
         )
+        kd_tahap_flags = {kd_tahap_qc_flag(qc) for _, qc, _ in kd_tahap_rows}
         context['kd_tahap_list'] = [
             {'kd_tahap': kd_tahap, 'jumlah': format_number_with_separator(jumlah)}
             for kd_tahap, jumlah in kd_tahap_per_kd(kd_tahap_rows)
         ]
-        context['kd_tahap_qc_filter'] = kd_tahap_qc_filter(kd_tahap_rows)
-        context['kd_tahap_data'] = [[kd_tahap, qc or '', jumlah] for kd_tahap, qc, jumlah in kd_tahap_rows]
+        context['kd_tahap_data'] = [[kd_tahap, kd_tahap_qc_flag(qc), jumlah] for kd_tahap, qc, jumlah in kd_tahap_rows]
         context['kd_tahap_jumlah_kd'] = len(context['kd_tahap_list'])
         context['kd_tahap_total'] = format_number_with_separator(sum(j for _, _, j in kd_tahap_rows))
+        # "Belum QC" filters the KD Tahap rows without a QC flag.
+        context['kd_tahap_filter_belum_qc'] = '' in kd_tahap_flags
+
+        # The recorded QC result counts, in model order: qc_p, qc_x and qc_w break
+        # down Lolos QC; every other qc_* column breaks down Tidak Lolos QC. A box
+        # whose flag (qc_p -> P) has KD Tahap rows filters the KD Tahap table.
+        qc_kolom = [
+            {
+                'name': field.name,
+                'label': field.verbose_name,
+                'value': format_number_with_separator(value),
+                'flag': field.name[3:].upper(),
+                'filter': field.name[3:].upper() in kd_tahap_flags,
+            }
+            for field in Tiket._meta.fields
+            if field.name.startswith('qc_')
+            and (value := getattr(self.object, field.name)) is not None
+        ]
+        context['qc_kolom_lolos'] = [k for k in qc_kolom if k['name'] in QC_KOLOM_LOLOS]
+        context['qc_kolom_tidak_lolos'] = [k for k in qc_kolom if k['name'] not in QC_KOLOM_LOLOS]
+        context['kd_tahap_ada_filter'] = context['kd_tahap_filter_belum_qc'] or any(k['filter'] for k in qc_kolom)
 
         # NOTE: workflow_step mapping removed — templates do not use it.
 

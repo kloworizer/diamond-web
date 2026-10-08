@@ -491,7 +491,7 @@ def test_wide_qc_values_are_cut_and_their_counts_added():
 
 
 @pytest.mark.django_db
-def test_tiket_detail_sums_kd_tahap_over_qc_and_offers_qc_filter(client):
+def test_tiket_detail_sums_kd_tahap_over_qc_and_filters_by_qc_boxes(client):
     import json
     import re
     from django.urls import reverse
@@ -499,9 +499,12 @@ def test_tiket_detail_sums_kd_tahap_over_qc_and_offers_qc_filter(client):
     from .conftest import TiketPICFactory, UserFactory
 
     tiket = _tiket('T0000000000000001')
+    tiket.sudah_qc, tiket.belum_qc = 96, 10
+    tiket.qc_p, tiket.qc_x, tiket.qc_f, tiket.qc_c = 31, 45, 20, 0
+    tiket.save()
     user = UserFactory()
     TiketPICFactory(id_tiket=tiket, id_user=user, role=TiketPIC.Role.PMDE, active=True)
-    for kd, qc, jumlah in (('A1', 'P', 30), ('A1', 'F', 20), ('A1', None, 10), ('B2', 'X', 45), ('B2', 'P', 1)):
+    for kd, qc, jumlah in (('A1', 'P', 30), ('A1', 'F', 20), ('A1', None, 10), ('B2', 'X', 45), ('B2', 'p ', 1)):
         TiketKdTahap.objects.create(id_tiket=tiket, kd_tahap=kd, qc=qc, jumlah_baris=jumlah)
     client.force_login(user)
 
@@ -509,30 +512,28 @@ def test_tiket_detail_sums_kd_tahap_over_qc_and_offers_qc_filter(client):
 
     assert 'Jumlah Baris per KD Tahap<' in html
     tabel = html[html.index('id="kd-tahap-table"'):html.index('</table>', html.index('id="kd-tahap-table"'))]
-    assert 'QC</th>' not in tabel  # QC is the filter, not a column
+    assert 'QC</th>' not in tabel  # QC filters the table, it is not a column
     # All QC: A1 = 30 + 20 + 10, B2 = 45 + 1.
     assert re.findall(r'font-monospace">([^<]+)</td>\s*<td class="text-end">([^<]+)<', tabel) == [('A1', '60'), ('B2', '46')]
     assert 'id="kd-tahap-total">106<' in tabel
     assert '>2 KD Tahap<' in html
-    # Chips: Lolos (P, X) first, then Tidak Lolos, Belum QC last; none picked.
-    chips = re.findall(r'data-qc="([^"]*)"', html)
-    assert chips == ['P', 'X', 'F', '']
-    assert 'data-qc-semua aria-pressed="true"' in html
-    assert '<span class="kd-qc-chip-label">P</span><span class="kd-qc-chip-count">31</span>' in html
-    assert '<span class="kd-qc-chip-label">Belum QC</span><span class="kd-qc-chip-count">10</span>' in html
+    # The QC boxes of Status Quality Control are the filter: only flags with KD
+    # Tahap rows (QC C has none), plus Belum QC for the rows without a flag.
+    assert re.findall(r'data-kd-qc="([^"]*)"', html) == ['', 'P', 'X', 'F']
+    assert 'kd-qc-chip' not in html
+    assert 'id="kd-qc-filter-info"' in html
+    assert re.search(r'qc-kolom-tidak-lolos"\s*>\s*<span class="meta-label">QC C</span>', html)
     data = json.loads(re.search(r'<script id="kd-tahap-data" type="application/json">(.*?)</script>', html).group(1))
     assert sorted(data) == sorted([['A1', 'P', 30], ['A1', 'F', 20], ['A1', '', 10], ['B2', 'X', 45], ['B2', 'P', 1]])
     assert '{#' not in html and '{%' not in html
 
 
-def test_kd_tahap_per_kd_and_qc_filter_order():
-    from diamond_web.views.tiket.detail import kd_tahap_per_kd, kd_tahap_qc_filter
+def test_kd_tahap_per_kd_and_qc_flag():
+    from diamond_web.views.tiket.detail import kd_tahap_per_kd, kd_tahap_qc_flag
 
     rows = [('B', 'N', 5), ('A', 'W', 5), (None, None, 7), ('A', 'P', 2), ('C', 'X', 1), ('B', None, 2)]
     assert kd_tahap_per_kd(rows) == [('A', 7), ('B', 7), (None, 7), ('C', 1)]
-    assert [(f['key'], f['lolos'], f['jumlah']) for f in kd_tahap_qc_filter(rows)] == [
-        ('P', True, '2'), ('X', True, '1'), ('W', True, '5'), ('N', False, '5'), ('', None, '9'),
-    ]
+    assert [kd_tahap_qc_flag(q) for q in ('P', ' x ', None, '')] == ['P', 'X', '', '']
 
 
 @pytest.mark.django_db
