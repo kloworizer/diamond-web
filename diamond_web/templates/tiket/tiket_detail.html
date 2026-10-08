@@ -883,6 +883,12 @@
                             data-bs-target="#sinkronisasiTiketModal" id="sinkronisasi-tiket-btn">
                             <i class="feather-refresh-cw me-1"></i>Sinkronisasi dari Oracle
                         </button>
+                        {% if user_can_sync_kd_tahap %}
+                        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
+                            data-bs-target="#sinkronisasiKdTahapModal" id="sinkronisasi-kd-tahap-btn">
+                            <i class="feather-layers me-1"></i>Sinkronisasi KD Tahap
+                        </button>
+                        {% endif %}
                     </div>
                     {% endif %}
 
@@ -1077,7 +1083,7 @@
                                     <i class="feather-check-square me-1 text-primary"></i>Rincian Validasi Baris
                                 </div>
                                 <div class="meta-list">
-                                    {% if tiket_details.baris_i is not null or tiket_details.baris_u is not null or tiket_details.baris_res is not null %}
+                                    {% if tiket_details.baris_i is not null or tiket_details.baris_u is not null or tiket_details.baris_res is not null or tiket_details.baris_cde is not null %}
                                     {% if tiket_details.baris_i is not null %}
                                     <div class="meta-item">
                                         <span class="meta-label">Baris I</span>
@@ -1094,6 +1100,12 @@
                                     <div class="meta-item">
                                         <span class="meta-label">Baris Res</span>
                                         <span class="meta-value">{{ tiket_details.baris_res }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if tiket_details.baris_cde is not null %}
+                                    <div class="meta-item">
+                                        <span class="meta-label">Baris CDE</span>
+                                        <span class="meta-value">{{ tiket_details.baris_cde }}</span>
                                     </div>
                                     {% endif %}
                                     {% else %}
@@ -1113,7 +1125,7 @@
                                     <i class="feather-shield me-1 text-success"></i>Status Quality Control (QC)
                                 </div>
                                 <div class="meta-list">
-                                    {% if tiket_details.sudah_qc is not null or tiket_details.belum_qc is not null or tiket_details.lolos_qc is not null or tiket_details.tidak_lolos_qc is not null or tiket.qc_c %}
+                                    {% if tiket_details.sudah_qc is not null or tiket_details.belum_qc is not null or tiket_details.lolos_qc is not null or tiket_details.tidak_lolos_qc is not null or qc_kolom_lolos or qc_kolom_tidak_lolos %}
                                     
                                     <!-- Group 1: Volume QC (Sudah & Belum QC) -->
                                     {% if tiket_details.sudah_qc is not null or tiket_details.belum_qc is not null %}
@@ -1125,7 +1137,7 @@
                                         </div>
                                         {% endif %}
                                         {% if tiket_details.belum_qc is not null %}
-                                        <div class="meta-item" style="border-bottom: none !important; padding-bottom: 0 !important;">
+                                        <div class="meta-item{% if kd_tahap_filter_belum_qc %} kd-qc-filter kd-qc-filter-belum{% endif %}" style="border-bottom: none !important; padding-bottom: 0 !important;"{% if kd_tahap_filter_belum_qc %} data-kd-qc="" data-kd-qc-label="Belum QC" role="button" tabindex="0" aria-pressed="false" title="Filter tabel KD Tahap: baris yang belum di-QC"{% endif %}>
                                             <span class="meta-label">Belum QC</span>
                                             <span class="meta-value">{{ tiket_details.belum_qc }}</span>
                                         </div>
@@ -1133,35 +1145,47 @@
                                     </div>
                                     {% endif %}
 
-                                    <!-- Group 2: Hasil QC (Lolos & Tidak Lolos QC) -->
-                                    {% if tiket_details.lolos_qc is not null or tiket_details.tidak_lolos_qc is not null %}
-                                    <div style="border-bottom: 1px solid #cbd5e1; padding-bottom: 10px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px;">
-                                        {% if tiket_details.lolos_qc is not null %}
+                                    <!-- Group 2: Hasil QC (Lolos & Tidak Lolos QC), each with its qc_* breakdown -->
+                                    {% if tiket_details.lolos_qc is not null or tiket_details.tidak_lolos_qc is not null or qc_kolom_lolos or qc_kolom_tidak_lolos %}
+                                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                                        {% if tiket_details.lolos_qc is not null or qc_kolom_lolos %}
                                         <div class="meta-item" style="border: 1px solid #a7f3d0 !important; background-color: #f0fdf4 !important; border-radius: 8px; padding: 6px 10px !important;">
                                             <span class="meta-label text-success fw-bold">Lolos QC</span>
                                             <span class="meta-value text-success fw-bold">
                                                 {% if tiket_details.lolos_qc == "Ya" or tiket_details.lolos_qc == 1 %}
                                                 Ya
                                                 {% else %}
-                                                {{ tiket_details.lolos_qc }}
+                                                {{ tiket_details.lolos_qc|default:"0" }}
                                                 {% endif %}
                                             </span>
                                         </div>
-                                        {% endif %}
-                                        {% if tiket_details.tidak_lolos_qc is not null %}
-                                        <div class="meta-item" style="border: 1px solid #fecaca !important; background-color: #fef2f2 !important; border-radius: 8px; padding: 6px 10px !important;">
-                                            <span class="meta-label text-danger fw-bold">Tidak Lolos QC</span>
-                                            <span class="meta-value text-danger fw-bold">{{ tiket_details.tidak_lolos_qc }}</span>
+                                        {% if qc_kolom_lolos %}
+                                        <div class="qc-kolom-grid">
+                                            {% for k in qc_kolom_lolos %}
+                                            <div class="qc-kolom-cell qc-kolom-lolos{% if k.filter %} kd-qc-filter{% endif %}"{% if k.filter %} data-kd-qc="{{ k.flag }}" data-kd-qc-label="{{ k.label }}" role="button" tabindex="0" aria-pressed="false" title="Filter tabel KD Tahap: {{ k.label }}"{% endif %}>
+                                                <span class="meta-label">{{ k.label }}</span>
+                                                <span class="meta-value">{{ k.value }}</span>
+                                            </div>
+                                            {% endfor %}
                                         </div>
                                         {% endif %}
-                                    </div>
-                                    {% endif %}
-
-                                    <!-- Group 3: QC C -->
-                                    {% if tiket.qc_c %}
-                                    <div class="meta-item">
-                                        <span class="meta-label">QC C</span>
-                                        <span class="meta-value">{{ tiket.qc_c }}</span>
+                                        {% endif %}
+                                        {% if tiket_details.tidak_lolos_qc is not null or qc_kolom_tidak_lolos %}
+                                        <div class="meta-item mt-1" style="border: 1px solid #fecaca !important; background-color: #fef2f2 !important; border-radius: 8px; padding: 6px 10px !important;">
+                                            <span class="meta-label text-danger fw-bold">Tidak Lolos QC</span>
+                                            <span class="meta-value text-danger fw-bold">{{ tiket_details.tidak_lolos_qc|default:"0" }}</span>
+                                        </div>
+                                        {% if qc_kolom_tidak_lolos %}
+                                        <div class="qc-kolom-grid">
+                                            {% for k in qc_kolom_tidak_lolos %}
+                                            <div class="qc-kolom-cell qc-kolom-tidak-lolos{% if k.filter %} kd-qc-filter{% endif %}"{% if k.filter %} data-kd-qc="{{ k.flag }}" data-kd-qc-label="{{ k.label }}" role="button" tabindex="0" aria-pressed="false" title="Filter tabel KD Tahap: {{ k.label }}"{% endif %}>
+                                                <span class="meta-label">{{ k.label }}</span>
+                                                <span class="meta-value">{{ k.value }}</span>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                        {% endif %}
                                     </div>
                                     {% endif %}
                                     {% else %}
@@ -1174,6 +1198,143 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Jumlah baris per KD_TAHAP di tabel I Oracle (sync_tiket_kd_tahap) -->
+                    {% if kd_tahap_list %}
+                    <div class="row g-3 pt-3 mt-3 border-top">
+                        <div class="col-12">
+                            <div class="p-3 rounded"
+                                style="border: 1px solid #e2e8f0 !important; background-color: rgba(248, 250, 252, 0.45); border-radius: 12px !important;">
+                                <div class="fw-bold text-dark mb-2 pb-1 border-bottom d-flex justify-content-between align-items-center"
+                                    style="font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; border-color: rgba(226, 232, 240, 0.8) !important; color: #475569 !important;">
+                                    <span><i class="feather-layers me-1 text-info"></i>Jumlah Baris per KD Tahap</span>
+                                    <span class="badge bg-light text-secondary border" style="text-transform: none; letter-spacing: 0;" id="kd-tahap-jumlah-kd">{{ kd_tahap_jumlah_kd }} KD Tahap</span>
+                                </div>
+                                {% if kd_tahap_ada_filter %}
+                                <div class="small text-muted mb-2" id="kd-qc-filter-info" aria-live="polite">Semua QC. Klik kotak QC di Status Quality Control untuk memfilter.</div>
+                                {% endif %}
+                                <div id="kd-tahap-scroll" class="table-responsive">
+                                    <table id="kd-tahap-table" class="table table-sm table-hover mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th class="d-none d-sm-table-cell" style="width: 4rem;">No</th>
+                                                <th>KD Tahap</th>
+                                                <th class="text-end">Jumlah Baris</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for row in kd_tahap_list %}
+                                            <tr>
+                                                <td class="text-muted d-none d-sm-table-cell">{{ forloop.counter }}</td>
+                                                <td class="font-monospace">{{ row.kd_tahap|default:"-" }}</td>
+                                                <td class="text-end">{{ row.jumlah }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <th class="d-none d-sm-table-cell"></th>
+                                                <th>Total</th>
+                                                <th class="text-end" id="kd-tahap-total">{{ kd_tahap_total }}</th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {{ kd_tahap_data|json_script:"kd-tahap-data" }}
+                    <script>
+                        // QC filter of the KD Tahap table, driven by the QC boxes of Status
+                        // Quality Control ([data-kd-qc]): sums jumlah baris per KD Tahap over the
+                        // picked boxes (none = all QC), sorted as the server does: largest jumlah
+                        // first, then KD Tahap with the empty one last.
+                        (function () {
+                            const dataEl = document.getElementById('kd-tahap-data');
+                            const kotak = [...document.querySelectorAll('[data-kd-qc]')];
+                            if (!dataEl || !kotak.length) {
+                                return;
+                            }
+                            const data = JSON.parse(dataEl.textContent);
+                            const tbody = document.querySelector('#kd-tahap-table tbody');
+                            const total = document.getElementById('kd-tahap-total');
+                            const jumlahKd = document.getElementById('kd-tahap-jumlah-kd');
+                            const scroll = document.getElementById('kd-tahap-scroll');
+                            const info = document.getElementById('kd-qc-filter-info');
+                            const angka = (n) => n.toLocaleString('id-ID');
+                            const dipilih = new Set();
+
+                            const banding = (a, b) => {
+                                if (b[1] !== a[1]) {
+                                    return b[1] - a[1];
+                                }
+                                if ((a[0] === null) !== (b[0] === null)) {
+                                    return a[0] === null ? 1 : -1;
+                                }
+                                const x = a[0] || '', y = b[0] || '';
+                                return x < y ? -1 : (x > y ? 1 : 0);
+                            };
+
+                            const render = () => {
+                                const perKd = new Map();
+                                for (const [kd, qc, jumlah] of data) {
+                                    if (dipilih.size && !dipilih.has(qc)) {
+                                        continue;
+                                    }
+                                    perKd.set(kd, (perKd.get(kd) || 0) + jumlah);
+                                }
+                                const rows = [...perKd.entries()].sort(banding);
+                                tbody.replaceChildren(...rows.map(([kd, jumlah], i) => {
+                                    const tr = document.createElement('tr');
+                                    const no = tr.insertCell();
+                                    no.className = 'text-muted d-none d-sm-table-cell';
+                                    no.textContent = i + 1;
+                                    const kdCell = tr.insertCell();
+                                    kdCell.className = 'font-monospace';
+                                    kdCell.textContent = kd === null ? '-' : kd;
+                                    const jumlahCell = tr.insertCell();
+                                    jumlahCell.className = 'text-end';
+                                    jumlahCell.textContent = angka(jumlah);
+                                    return tr;
+                                }));
+                                total.textContent = angka(rows.reduce((sum, row) => sum + row[1], 0));
+                                jumlahKd.textContent = rows.length + ' KD Tahap';
+                                const label = [];
+                                kotak.forEach((el) => {
+                                    const aktif = dipilih.has(el.dataset.kdQc);
+                                    el.classList.toggle('is-kd-filter', aktif);
+                                    el.setAttribute('aria-pressed', aktif ? 'true' : 'false');
+                                    if (aktif) {
+                                        label.push(el.dataset.kdQcLabel);
+                                    }
+                                });
+                                info.textContent = label.length
+                                    ? 'Filter QC: ' + label.join(' + ') + '. Klik kotak yang sama untuk melepas.'
+                                    : 'Semua QC. Klik kotak QC di Status Quality Control untuk memfilter.';
+                                scroll.scrollTop = 0;
+                            };
+
+                            const pilih = (el) => {
+                                const qc = el.dataset.kdQc;
+                                if (dipilih.has(qc)) {
+                                    dipilih.delete(qc);
+                                } else {
+                                    dipilih.add(qc);
+                                }
+                                render();
+                            };
+                            kotak.forEach((el) => {
+                                el.addEventListener('click', () => pilih(el));
+                                el.addEventListener('keydown', (e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        pilih(el);
+                                    }
+                                });
+                            });
+                        })();
+                    </script>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -1765,6 +1926,32 @@
     </div>
     {% endif %}
 
+    <!-- Sinkronisasi KD Tahap Modal (Admin PMDE): the tabel I query runs as a background job -->
+    {% if user_can_sync_kd_tahap %}
+    <div class="modal fade" id="sinkronisasiKdTahapModal" tabindex="-1" aria-labelledby="sinkronisasiKdTahapModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+                <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #e6f4ff; color: #006fcc; flex-shrink: 0;">
+                            <i class="feather-layers" style="font-size: 16px;"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0" id="sinkronisasiKdTahapModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Sinkronisasi KD Tahap</h5>
+                            <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Tiket {{ tiket.nomor_tiket }}</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div id="sinkronisasi-kd-tahap-csrf" hidden>{% csrf_token %}</div>
+                <div id="sinkronisasi-kd-tahap-container">
+                    <!-- State of the KD Tahap job will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Kelola PIC Tiket Modal (Admin seksi): tambah / ubah / hapus PIC tiket ini saja -->
     {% if pic_roles_managed %}
     <div class="modal fade" id="kelolaPicTiketModal" tabindex="-1" aria-labelledby="kelolaPicTiketModalLabel" aria-hidden="true">
@@ -2041,6 +2228,154 @@
             align-items: center;
             justify-content: flex-end;
             gap: 0.35rem;
+        }
+
+        /* The qc_* counts under Lolos / Tidak Lolos QC, as a compact grid instead of one row each. */
+        .qc-kolom-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+            gap: 0.5rem;
+        }
+
+        .qc-kolom-cell {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.35rem 0.6rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background-color: #fff;
+        }
+
+        .qc-kolom-lolos {
+            border-left: 3px solid #34d399;
+        }
+
+        .qc-kolom-tidak-lolos {
+            border-left: 3px solid #f87171;
+        }
+
+        /* A tiket can have hundreds of KD_TAHAP values: scroll inside the card,
+           keeping the header and the total in view. The scroll box is itself the
+           .table-responsive wrapper, or base.html wraps the table in an
+           overflow-hidden one that the sticky cells would stick to instead.
+           Scoped by id and !important: the page's `.table td` padding is
+           !important too, and the theme's beats a class selector. */
+        #kd-tahap-scroll {
+            max-height: 320px;
+            overflow: auto !important;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background-color: #fff;
+        }
+
+        #kd-tahap-table {
+            font-size: 0.85rem;
+        }
+
+        /* The theme keeps table cells on one line; long KD Tahap codes may wrap. */
+        #kd-tahap-table td.font-monospace {
+            white-space: normal;
+            word-break: break-all;
+        }
+
+        /* QC boxes of Status Quality Control that filter the KD Tahap table. */
+        .kd-qc-filter {
+            cursor: pointer;
+            user-select: none;
+            transition: box-shadow 0.15s, background-color 0.15s;
+        }
+
+        .kd-qc-filter:hover {
+            box-shadow: 0 0 0 2px #cbd5e1;
+        }
+
+        .kd-qc-filter:focus-visible {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
+        }
+
+        .qc-kolom-lolos.is-kd-filter {
+            background-color: #d1fae5;
+            box-shadow: 0 0 0 2px #10b981;
+        }
+
+        .qc-kolom-tidak-lolos.is-kd-filter {
+            background-color: #fee2e2;
+            box-shadow: 0 0 0 2px #ef4444;
+        }
+
+        .kd-qc-filter-belum {
+            border-radius: 6px;
+            padding: 2px 6px !important;
+            margin: 0 -6px;
+        }
+
+        .kd-qc-filter-belum.is-kd-filter {
+            background-color: #e2e8f0;
+            box-shadow: 0 0 0 2px #64748b;
+        }
+
+        /* QC flag of a KD Tahap row: Lolos (P, X, W) / Tidak Lolos / not yet QC'd. */
+        .kd-qc {
+            display: inline-block;
+            min-width: 1.75rem;
+            padding: 0.1rem 0.4rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-align: center;
+        }
+
+        .kd-qc-lolos {
+            background-color: #ecfdf5;
+            color: #047857;
+            border: 1px solid #a7f3d0;
+        }
+
+        .kd-qc-tidak-lolos {
+            background-color: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+        }
+
+        .kd-qc-belum {
+            color: #64748b;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        #kd-tahap-table > :not(caption) > * > * {
+            padding: 0.35rem 0.75rem !important;
+        }
+
+        @media (max-width: 575.98px) {
+            #kd-tahap-table > :not(caption) > * > * {
+                padding: 0.35rem 0.5rem !important;
+            }
+
+            #kd-tahap-table .kd-qc-belum {
+                white-space: normal;
+            }
+        }
+
+        #kd-tahap-table thead th,
+        #kd-tahap-table tfoot th {
+            position: sticky;
+            background-color: #f8fafc;
+            z-index: 1;
+        }
+
+        #kd-tahap-table thead th {
+            top: 0;
+        }
+
+        /* -1px and the shadow below close the sub-pixel seam under the sticky
+           footer, where wrapped KD Tahap codes otherwise peek through. */
+        #kd-tahap-table tfoot th {
+            bottom: -1px;
+            box-shadow: inset 0 1px 0 #e2e8f0, 0 1px 0 #f8fafc;
         }
 
         .premium-badge {
@@ -3006,6 +3341,123 @@
                             showToast('Gagal memuat pratinjau sinkronisasi.', 'danger');
                             formContainer.innerHTML = '<div class="alert alert-danger m-3">Gagal memuat pratinjau</div>';
                         });
+                });
+            }
+
+            // Sinkronisasi KD Tahap Handler (Admin PMDE). "Ambil dari Oracle"
+            // starts a background job and the modal polls it every few seconds
+            // while it is open; closing the modal only stops the polling, and
+            // reopening it picks the job up where it is.
+            const kdTahapModal = document.getElementById('sinkronisasiKdTahapModal');
+            if (kdTahapModal) {
+                setupModalAria(kdTahapModal);
+                const kdTahapBox = document.getElementById('sinkronisasi-kd-tahap-container');
+                const kdTahapUrl = '{% url "sinkronisasi_kd_tahap" tiket.pk %}';
+                const kdTahapJobUrl = '{% url "sinkronisasi_kd_tahap_job" tiket.pk "__job__" %}';
+                const kdTahapHeaders = { 'X-Requested-With': 'XMLHttpRequest' };
+                const kdTahapGagal = '<div class="alert alert-danger m-3">Gagal memuat data KD Tahap.</div>';
+                let kdTahapTimer = null;
+                // "Hentikan" asks once more before it stops a job; the polling
+                // re-renders the footer, so the armed state lives here.
+                let kdTahapHentikanSampai = 0;
+                const kdTahapArmHentikan = () => {
+                    const btn = kdTahapBox.querySelector('[data-kd-action="hentikan"]');
+                    if (btn && Date.now() < kdTahapHentikanSampai) {
+                        btn.dataset.armed = '1';
+                        btn.classList.replace('btn-outline-danger', 'btn-danger');
+                        btn.innerHTML = '<i class="feather-alert-triangle me-1"></i>Yakin hentikan?';
+                    }
+                };
+
+                const kdTahapStopPoll = () => {
+                    if (kdTahapTimer) {
+                        clearTimeout(kdTahapTimer);
+                        kdTahapTimer = null;
+                    }
+                };
+                const kdTahapRender = (data) => {
+                    kdTahapStopPoll();
+                    kdTahapBox.innerHTML = data.html || kdTahapGagal;
+                    kdTahapArmHentikan();
+                    if (data.aktif && data.job_id) {
+                        kdTahapTimer = setTimeout(() => kdTahapPoll(data.job_id), 3000);
+                    }
+                };
+                const kdTahapPoll = (jobId) => {
+                    fetch(kdTahapJobUrl.replace('__job__', jobId), { headers: kdTahapHeaders })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (kdTahapModal.classList.contains('show')) {
+                                kdTahapRender(data);
+                            }
+                        })
+                        .catch(error => {
+                            // A dropped poll is retried: the job itself is unaffected.
+                            console.error('Error polling KD Tahap job:', error);
+                            if (kdTahapModal.classList.contains('show')) {
+                                kdTahapTimer = setTimeout(() => kdTahapPoll(jobId), 6000);
+                            }
+                        });
+                };
+
+                kdTahapModal.addEventListener('show.bs.modal', function () {
+                    kdTahapBox.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+                    fetch(kdTahapUrl, { headers: kdTahapHeaders })
+                        .then(response => response.json())
+                        .then(kdTahapRender)
+                        .catch(error => {
+                            console.error('Error loading KD Tahap:', error);
+                            kdTahapBox.innerHTML = kdTahapGagal;
+                        });
+                });
+                kdTahapModal.addEventListener('hidden.bs.modal', function () {
+                    kdTahapStopPoll();
+                    kdTahapHentikanSampai = 0;
+                });
+
+                kdTahapBox.addEventListener('click', function (e) {
+                    const btn = e.target.closest('[data-kd-action]');
+                    if (!btn) {
+                        return;
+                    }
+                    const hentikan = btn.dataset.kdAction === 'hentikan';
+                    if (hentikan && !btn.dataset.armed) {
+                        kdTahapHentikanSampai = Date.now() + 5000;
+                        kdTahapArmHentikan();
+                        setTimeout(() => {
+                            const b = kdTahapBox.querySelector('[data-kd-action="hentikan"][data-armed]');
+                            if (b && Date.now() >= kdTahapHentikanSampai) {
+                                delete b.dataset.armed;
+                                b.classList.replace('btn-danger', 'btn-outline-danger');
+                                b.innerHTML = '<i class="feather-square me-1"></i>Hentikan';
+                            }
+                        }, 5100);
+                        return;
+                    }
+                    kdTahapHentikanSampai = 0;
+                    btn.disabled = true;
+                    const body = new FormData();
+                    body.append('csrfmiddlewaretoken',
+                        document.querySelector('#sinkronisasi-kd-tahap-csrf input[name="csrfmiddlewaretoken"]').value);
+                    fetch(btn.dataset.url, { method: 'POST', body: body, headers: kdTahapHeaders })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.message) {
+                                showToast(data.message, data.success === false ? 'danger' : 'success');
+                            }
+                            kdTahapRender(data);
+                        })
+                        .catch(error => {
+                            console.error('Error on KD Tahap action:', error);
+                            showToast(hentikan ? 'Gagal menghentikan proses KD Tahap.'
+                                : 'Gagal memulai pengambilan KD Tahap.', 'danger');
+                            btn.disabled = false;
+                        });
+                });
+
+                bindModalSubmit('sinkronisasi-kd-tahap-container', kdTahapModal, {
+                    successMessage: 'KD Tahap berhasil disimpan.',
+                    errorMessage: 'Gagal menyimpan KD Tahap.'
                 });
             }
 

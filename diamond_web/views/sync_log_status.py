@@ -176,6 +176,8 @@ def _get_type_display_name(sync_type):
         'cleanup_pre_production_error': 'Cleanup Pre Production (Error)',
         'sync_failed_rows': 'Tiket Sync (Failed Rows)',
         'sync_referensi_failed_rows': 'Referensi Sync (Failed Rows)',
+        'kd_tahap_sync': 'Sinkronisasi KD Tahap',
+        'kd_tahap_sync_dryrun': 'Sinkronisasi KD Tahap (Dry Run)',
     }
     # For unknown types, convert underscores to spaces and title-case
     if sync_type in display_map:
