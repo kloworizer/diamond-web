@@ -12,6 +12,10 @@ Two kinds of placeholders are supported:
       ``{{row.field}}`` is replaced with ``item_dict['field']``.
       If ``row_data`` is empty the template row is silently removed.
 
+      A template-row cell holding nothing but ``{{row.field}}`` for a field
+      named in ``hidden_row_fields`` has its whole column dropped — header
+      included — and its width shared out over the columns that remain.
+
 Example template table::
 
     | No | Nama ILAP          | Jenis Data          | Periode          | Baris    |
@@ -31,6 +35,7 @@ import re
 from copy import deepcopy
 from io import BytesIO
 from docx import Document
+from docx.oxml.ns import qn
 from docx.table import _Row as DocxRow
 
 logger = logging.getLogger(__name__)
@@ -155,6 +160,63 @@ def _expand_repeating_rows(table, row_data):
         parent.remove(template_tr)
 
 
+_SOLE_ROW_PLACEHOLDER_RE = re.compile(r'^\s*\{\{row\.\s*(\w+)\s*\}\}\s*$')
+
+
+def _hidden_columns(table, hidden_row_fields):
+    """Return the grid indices of *table* whose cell is just ``{{row.field}}`` of a hidden field."""
+    columns = set()
+    for tr in table._tbl.tr_lst:
+        col = tr.grid_before
+        for tc in tr.tc_lst:
+            text = ''.join(t.text or '' for t in tc.iter(qn('w:t')))
+            match = _SOLE_ROW_PLACEHOLDER_RE.match(text)
+            if match and match.group(1) in hidden_row_fields and tc.grid_span == 1:
+                columns.add(col)
+            col += tc.grid_span
+    return columns
+
+
+def _drop_columns(table, columns):
+    """Remove grid *columns* from every row of *table*, widening the rest to keep its width."""
+    tbl = table._tbl
+    grid_cols = tbl.tblGrid.gridCol_lst
+    widths = [int(gc.get(qn('w:w')) or 0) for gc in grid_cols]
+
+    for tr in tbl.tr_lst:
+        col = tr.grid_before
+        for tc in list(tr.tc_lst):
+            span = tc.grid_span
+            covered = sum(1 for c in range(col, col + span) if c in columns)
+            if covered == span:
+                tr.remove(tc)
+            elif covered:
+                tc.grid_span = span - covered
+            col += span
+
+    # The freed width is split evenly, so narrow columns gain as much as wide ones.
+    kept = [i for i in range(len(grid_cols)) if i not in columns]
+    removed_width = sum(widths[i] for i in columns if i < len(widths))
+    new_widths = [widths[i] + removed_width // len(kept) for i in kept] if kept else []
+    for i in sorted(columns, reverse=True):
+        if i < len(grid_cols):
+            tbl.tblGrid.remove(grid_cols[i])
+    if not kept or not all(widths):
+        return
+    for gc, width in zip(tbl.tblGrid.gridCol_lst, new_widths):
+        gc.set(qn('w:w'), str(width))
+
+    # Cell widths follow the grid columns they now span.
+    for tr in tbl.tr_lst:
+        col = tr.grid_before
+        for tc in tr.tc_lst:
+            span = tc.grid_span
+            tc_w = tc.tcPr.find(qn('w:tcW')) if tc.tcPr is not None else None
+            if tc_w is not None and tc_w.get(qn('w:type')) == 'dxa':
+                tc_w.set(qn('w:w'), str(sum(new_widths[col:col + span])))
+            col += span
+
+
 def _iter_nested_tables(table):
     """Yield *table* and all nested tables inside its cells."""
     yield table
@@ -194,7 +256,7 @@ def _iter_all_tables(doc):
 # Public API
 # ---------------------------------------------------------------------------
 
-def fill_template_with_data(template_file, replacements, row_data=None):
+def fill_template_with_data(template_file, replacements, row_data=None, hidden_row_fields=()):
     """Fill a DOCX template with data by replacing placeholders.
 
     Args:
@@ -203,6 +265,9 @@ def fill_template_with_data(template_file, replacements, row_data=None):
         row_data:      Optional list of dicts for repeating table rows.
                        Each dict maps field names to values used in
                        ``{{row.field}}`` placeholders.
+        hidden_row_fields: Row fields whose table columns are dropped, header
+                       and all — those whose cell in the template row holds
+                       only that ``{{row.field}}``.
 
     Returns:
         BytesIO: The filled document ready for download.
@@ -216,6 +281,10 @@ def fill_template_with_data(template_file, replacements, row_data=None):
     # 2. Tables — first expand repeating rows, then simple replacements
     # Includes body tables, header/footer tables, and nested tables.
     for table in _iter_all_tables(doc):
+        if hidden_row_fields:
+            hidden_columns = _hidden_columns(table, hidden_row_fields)
+            if hidden_columns:
+                _drop_columns(table, hidden_columns)
         _expand_repeating_rows(table, row_data)
         for row in table.rows:
             for cell in row.cells:

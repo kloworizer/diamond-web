@@ -2,6 +2,7 @@
 
 from datetime import date, datetime, timedelta
 from io import BytesIO
+from pathlib import Path
 
 import pytest
 from django.contrib.auth.models import Group
@@ -23,6 +24,9 @@ from diamond_web.tests.conftest import (
 )
 
 URL_NAME = 'bulk_nd_pengantar_pdi'
+FIXTURE_TEMPLATE = (
+    Path(__file__).resolve().parent.parent / 'fixtures' / 'default_templates' / 'nd_pengantar_pdi.docx'
+)
 DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
 
@@ -93,6 +97,18 @@ def _nd_template(paragraph_text):
     return template
 
 
+def _fixture_template():
+    template = DocxTemplate(nama_template='ND Pengantar ke PDI', jenis_dokumen='nd_pengantar_pdi', active=True)
+    template.file_template.save('nd_pengantar_pdi.docx', ContentFile(FIXTURE_TEMPLATE.read_bytes()), save=True)
+    return template
+
+
+def _lampiran_rows(doc):
+    """The rows of the lampiran table — the one headed by Nomor Tiket."""
+    table = next(t for t in doc.tables if 'Nomor Tiket' in [c.text for c in t.rows[0].cells])
+    return [[c.text for c in r.cells] for r in table.rows]
+
+
 @pytest.mark.django_db
 class TestAccess:
     def test_pmde_user_allowed(self, client, pmde_user):
@@ -138,6 +154,15 @@ class TestListing:
         assert tikets['regular_recent'].pk not in shown
         assert tikets['adhoc_reopened'].pk not in shown
         assert tikets['adhoc_no_action'].pk not in shown
+
+    def test_ordered_by_finish_date_ascending(self, client, pmde_user, tikets):
+        client.force_login(pmde_user)
+        resp = client.get(reverse(URL_NAME))
+        assert [t.pk for t in resp.context['tickets']] == [
+            tikets['adhoc_lowercase'].pk,   # 10 days ago
+            tikets['adhoc_refinished'].pk,  # last finished 5 days ago
+            tikets['adhoc_recent'].pk,      # 3 days ago
+        ]
 
     def test_row_carries_latest_finish_date(self, client, pmde_user, tikets):
         client.force_login(pmde_user)
@@ -227,3 +252,61 @@ class TestGenerate:
         assert resp.status_code == 302
         assert resp.url.startswith(reverse(URL_NAME) + '?')
         assert 'tanggal_mulai=' in resp.url
+
+    def test_lampiran_lists_by_finish_date_ascending(self, client, pmde_user, tikets):
+        _nd_template('ND PENGANTAR KE PDI')
+        client.force_login(pmde_user)
+        resp = client.post(reverse(URL_NAME), self._post_data(
+            tikets['adhoc_recent'].pk, tikets['adhoc_lowercase'].pk, tikets['adhoc_refinished'].pk,
+        ))
+        doc = Document(BytesIO(resp.content))
+        assert [r.cells[0].text for r in doc.tables[0].rows] == [
+            tikets[k].nomor_tiket for k in ('adhoc_lowercase', 'adhoc_refinished', 'adhoc_recent')
+        ]
+
+
+@pytest.mark.django_db
+class TestDefaultTemplateLampiran:
+    """The fixture template's lampiran: one row per tiket, QC columns only where a count is > 0."""
+
+    def _generate(self, client, pmde_user, *tikets_):
+        _fixture_template()
+        client.force_login(pmde_user)
+        resp = client.post(reverse(URL_NAME), {
+            'tanggal_mulai': (date.today() - timedelta(days=30)).isoformat(),
+            'tanggal_selesai': date.today().isoformat(),
+            'ilap_id': '',
+            'ticket_ids': [str(t.pk) for t in tikets_],
+        })
+        assert resp['Content-Type'] == DOCX_MIME
+        return Document(BytesIO(resp.content))
+
+    def test_columns_and_values(self, client, pmde_user, tikets):
+        first, second = tikets['adhoc_lowercase'], tikets['adhoc_recent']
+        first.baris_lengkap, first.baris_i, first.qc_p, first.qc_x, first.qc_d = 1500, 1200, 7, 0, None
+        second.baris_lengkap, second.baris_i, second.qc_p, second.qc_x, second.qc_d = 30, 20, None, 0, 2500
+        for t in (first, second):
+            for f in ('qc_w', 'qc_f', 'qc_a', 'qc_c', 'qc_n', 'qc_y', 'qc_z', 'qc_u', 'qc_e', 'qc_v', 'qc_r'):
+                setattr(t, f, 0)
+            t.save()
+
+        rows = _lampiran_rows(self._generate(client, pmde_user, second, first))
+
+        # QC X is 0 on both and the rest of the QC columns are 0 too: only P and D stay.
+        assert rows[0] == [
+            'No', 'ILAP', 'Sub Jenis Data', 'Nomor Tiket', 'Nama Tabel I',
+            'Baris Lengkap', 'Baris I', 'QC P', 'QC D',
+        ]
+        def expected(no, t, qc_p, qc_d):
+            sub = t.id_periode_data.id_sub_jenis_data_ilap
+            return [
+                no, sub.id_ilap.nama_ilap, sub.nama_sub_jenis_data, t.nomor_tiket, sub.nama_tabel_I,
+                f'{t.baris_lengkap:,}'.replace(',', '.'), f'{t.baris_i:,}'.replace(',', '.'), qc_p, qc_d,
+            ]
+        # Earliest finished first.
+        assert rows[1:] == [expected('1', first, '7', '-'), expected('2', second, '-', '2.500')]
+
+    def test_no_qc_counts_leaves_no_qc_columns(self, client, pmde_user, tikets):
+        rows = _lampiran_rows(self._generate(client, pmde_user, tikets['adhoc_recent']))
+        assert rows[0] == ['No', 'ILAP', 'Sub Jenis Data', 'Nomor Tiket', 'Nama Tabel I', 'Baris Lengkap', 'Baris I']
+        assert len(rows) == 2

@@ -1,5 +1,7 @@
 """Tiket Detail View"""
 
+from collections import defaultdict
+
 from django.views.generic import DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
@@ -7,6 +9,7 @@ from django.core.exceptions import PermissionDenied
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
 from ...models.tiket_pic import TiketPIC
+from ...models.tiket_kd_tahap import TiketKdTahap
 from ...models.kirim_pide_temp import KirimPideTemp
 from ...models.klasifikasi_jenis_data import KlasifikasiJenisData
 from ...models.detil_tanda_terima import DetilTandaTerima
@@ -30,7 +33,37 @@ from ...constants.tiket_action_types import (
 )
 from ...utils import format_number_with_separator, format_periode
 from ...utils.jenis_prioritas import resolve_jenis_prioritas
+from ...utils.tiket_kd_tahap import STATUS_KD_TAHAP
 from ..mixins import can_open_tiket, is_admin_p3de, is_admin_pmde, p3de_seksi_of, tiket_pic_roles_managed_by
+
+# The qc_* columns counted as Lolos QC; the rest are Tidak Lolos QC.
+QC_KOLOM_LOLOS = ('qc_p', 'qc_x', 'qc_w')
+# The same split for the QC flag of a tabel I row (TiketKdTahap.qc): P, X, W.
+QC_FLAG_LOLOS = tuple(kolom[-1].upper() for kolom in QC_KOLOM_LOLOS)
+
+
+def kd_tahap_qc_lolos(qc):
+    """True/False for a Lolos / Tidak Lolos QC flag, None when not QC'd yet."""
+    if not qc:
+        return None
+    return qc.strip().upper() in QC_FLAG_LOLOS
+
+
+def kd_tahap_per_kd(rows):
+    """[(kd_tahap, jumlah)] from (kd_tahap, qc, jumlah) rows, summed over QC.
+
+    Largest jumlah first, then KD Tahap with the empty one last; the page
+    script sorts its filtered rows the same way.
+    """
+    per_kd = defaultdict(int)
+    for kd_tahap, _, jumlah in rows:
+        per_kd[kd_tahap] += jumlah
+    return sorted(per_kd.items(), key=lambda kv: (-kv[1], kv[0] is None, kv[0] or ''))
+
+
+def kd_tahap_qc_flag(qc):
+    """A KD Tahap row's QC flag as the QC boxes name it: 'P', 'X', ..., '' when not QC'd."""
+    return (qc or '').strip().upper()
 
 
 class TiketDetailView(LoginRequiredMixin, DetailView):
@@ -255,8 +288,9 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
             'baris_tidak_lengkap': format_number_with_separator(self.object.baris_tidak_lengkap) if self.object.baris_tidak_lengkap else None,
             'baris_i': format_number_with_separator(self.object.baris_i) if self.object.baris_i else None,
             'baris_u': format_number_with_separator(self.object.baris_u) if self.object.baris_u else None,
-            'baris_res': format_number_with_separator(self.object.baris_res) if self.object.baris_res else None,
-            'baris_cde': format_number_with_separator(self.object.baris_cde) if self.object.baris_cde else None,
+            # Res and CDE are 0 on most tikets; a recorded 0 is still shown.
+            'baris_res': format_number_with_separator(self.object.baris_res) if self.object.baris_res is not None else None,
+            'baris_cde': format_number_with_separator(self.object.baris_cde) if self.object.baris_cde is not None else None,
             'sudah_qc': format_number_with_separator(self.object.sudah_qc) if self.object.sudah_qc else None,
             'belum_qc': format_number_with_separator(self.object.belum_qc) if self.object.belum_qc else None,
             'lolos_qc': format_number_with_separator(self.object.lolos_qc) if self.object.lolos_qc else None,
@@ -272,7 +306,44 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
             'special_request': 'Ya' if self.object.special_request else 'Tidak',
             'tgl_special_request': self.object.tgl_special_request,
         }
-        
+
+        # Rows per KD_TAHAP and QC flag in the tiket's tabel I, filled by
+        # sync_tiket_kd_tahap. The table shows jumlah baris per KD Tahap over
+        # the QC boxes picked in Status Quality Control (all of them here; the
+        # page script recomputes it from `kd_tahap_data` on every pick).
+        kd_tahap_rows = list(
+            TiketKdTahap.objects.filter(id_tiket=self.object).values_list('kd_tahap', 'qc', 'jumlah_baris')
+        )
+        kd_tahap_flags = {kd_tahap_qc_flag(qc) for _, qc, _ in kd_tahap_rows}
+        context['kd_tahap_list'] = [
+            {'kd_tahap': kd_tahap, 'jumlah': format_number_with_separator(jumlah)}
+            for kd_tahap, jumlah in kd_tahap_per_kd(kd_tahap_rows)
+        ]
+        context['kd_tahap_data'] = [[kd_tahap, kd_tahap_qc_flag(qc), jumlah] for kd_tahap, qc, jumlah in kd_tahap_rows]
+        context['kd_tahap_jumlah_kd'] = len(context['kd_tahap_list'])
+        context['kd_tahap_total'] = format_number_with_separator(sum(j for _, _, j in kd_tahap_rows))
+        # "Belum QC" filters the KD Tahap rows without a QC flag.
+        context['kd_tahap_filter_belum_qc'] = '' in kd_tahap_flags
+
+        # The recorded QC result counts, in model order: qc_p, qc_x and qc_w break
+        # down Lolos QC; every other qc_* column breaks down Tidak Lolos QC. A box
+        # whose flag (qc_p -> P) has KD Tahap rows filters the KD Tahap table.
+        qc_kolom = [
+            {
+                'name': field.name,
+                'label': field.verbose_name,
+                'value': format_number_with_separator(value),
+                'flag': field.name[3:].upper(),
+                'filter': field.name[3:].upper() in kd_tahap_flags,
+            }
+            for field in Tiket._meta.fields
+            if field.name.startswith('qc_')
+            and (value := getattr(self.object, field.name)) is not None
+        ]
+        context['qc_kolom_lolos'] = [k for k in qc_kolom if k['name'] in QC_KOLOM_LOLOS]
+        context['qc_kolom_tidak_lolos'] = [k for k in qc_kolom if k['name'] not in QC_KOLOM_LOLOS]
+        context['kd_tahap_ada_filter'] = context['kd_tahap_filter_belum_qc'] or any(k['filter'] for k in qc_kolom)
+
         # NOTE: workflow_step mapping removed — templates do not use it.
 
         # Check if this tiket already has a KirimPideTemp record (ND Pengantar sudah digenerate)
@@ -356,6 +427,10 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         # PMDE administrators may pull this tiket's QC data from Oracle with the
         # rules of the tiket update sync, whether or not they hold the tiket.
         context['user_can_sync_tiket'] = is_admin_pmde(self.request.user)
+        # ...and refresh its rows per KD_TAHAP, kept for Pengendalian Mutu & Selesai.
+        context['user_can_sync_kd_tahap'] = (
+            context['user_can_sync_tiket'] and self.object.status_tiket in STATUS_KD_TAHAP
+        )
 
         # Add status constants for template use
         context['STATUS_DIREKAM'] = STATUS_DIREKAM

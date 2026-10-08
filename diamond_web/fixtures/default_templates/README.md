@@ -22,6 +22,11 @@ The directory contains 12 template files for the following document types:
 10. **surat_pkdi_regional_lengkap.docx** - PKDI letter (complete data) - regional
 11. **surat_pkdi_regional_sebagian.docx** - PKDI letter (partial data) - regional
 12. **nd_pengantar_pdi.docx** - Covering letter to PDI for adhoc data (PMDE); for now a copy of the ND Pengantar PIDE template
+    - Page 1 is still the ND Pengantar PIDE letter; page 2 (landscape) is the lampiran, one row per tiket in
+      finish-date order: `{{row.nomor}}`, `{{row.ilap}}`, `{{row.sub_jenis_data}}`, `{{row.nomor_tiket}}`,
+      `{{row.nama_tabel_i}}`, `{{row.baris_lengkap}}`, `{{row.baris_i}}` and `{{row.qc_p}}` … `{{row.qc_d}}`.
+    - A QC column is dropped from the generated lampiran, header included, unless at least one selected
+      tiket has a count > 0 in it; the freed width is shared out over the remaining columns.
 
 ## Usage
 
