@@ -1,0 +1,113 @@
+<div class="modal-body" data-kd-state="{% if job %}{{ job.state }}{% else %}awal{% endif %}">
+    <div class="d-flex flex-wrap gap-3 small text-muted mb-3">
+        <span><i class="feather-database me-1"></i>Tabel I: <span class="font-monospace text-dark">{{ tabel|default:"-" }}</span></span>
+        <span><i class="feather-layers me-1"></i>Tersimpan: <strong class="text-dark">{{ tersimpan_jumlah }}</strong> KD Tahap, total <strong class="text-dark">{{ tersimpan_total }}</strong> baris</span>
+    </div>
+
+    {% if pesan %}
+    <div class="alert alert-warning small" data-kd-pesan>
+        <i class="feather-alert-triangle me-1"></i>{{ pesan }}
+    </div>
+    {% endif %}
+
+    {% if not job %}
+    <p class="small mb-2">
+        Hitung ulang jumlah baris per KD Tahap dan flag QC tiket ini dari tabel I di Oracle. Untuk tabel besar prosesnya bisa
+        memakan waktu beberapa menit{% if timeout_menit %} (paling lama {{ timeout_menit }} menit){% endif %}; proses
+        berjalan di latar belakang, jadi jendela ini boleh ditutup dan dibuka lagi nanti.
+    </p>
+    <p class="small text-muted mb-0">Belum ada yang disimpan sampai Anda memeriksa hasilnya dan menekan <strong>Simpan</strong>.</p>
+
+    {% elif job.state == 'antri' or job.state == 'berjalan' %}
+    <div class="text-center py-3" data-kd-proses>
+        <div class="spinner-border text-primary mb-2" role="status"><span class="visually-hidden">Memproses...</span></div>
+        <div class="fw-semibold">
+            {% if job.state == 'antri' %}Menunggu antrian worker latar belakang...{% else %}Mengambil data dari Oracle...{% endif %}
+        </div>
+        <div class="small text-muted mt-1">
+            {% if job.state == 'antri' %}Diminta {{ dibuat|date:"H:i:s" }} oleh {{ job.user }}{% else %}Berjalan {{ berjalan }}{% endif %}
+            {% if job.state == 'antri' and berjalan %} &middot; menunggu {{ berjalan }}{% endif %}
+        </div>
+        <div class="small text-muted mt-2">Jendela ini boleh ditutup; proses tetap berjalan dan hasilnya muncul saat dibuka lagi.</div>
+    </div>
+
+    {% elif job.state == 'gagal' %}
+    <div class="alert alert-danger small mb-0" data-kd-gagal>
+        <div class="fw-semibold mb-1">
+            <i class="feather-alert-triangle me-1"></i>{% if job.timeout %}Query melewati batas waktu{% else %}Gagal mengambil KD Tahap dari Oracle{% endif %}
+        </div>
+        <div style="word-break: break-word;">{{ job.error }}</div>
+        {% if job.timeout %}
+        <div class="mt-1">Tabel I ini besar atau Oracle sedang sibuk. Coba lagi nanti, saat beban Oracle lebih ringan.</div>
+        {% endif %}
+        <div class="text-muted mt-1">Data KD Tahap yang tersimpan tidak diubah.</div>
+    </div>
+
+    {% elif job.state == 'selesai' %}
+    <p class="small text-muted mb-2" data-kd-hasil>
+        Diambil dari Oracle {{ selesai|date:"d/m/Y H:i" }} dalam {{ durasi }}: <strong class="text-dark">{{ baru_jumlah }}</strong> KD Tahap,
+        total <strong class="text-dark">{{ baru_total }}</strong> baris.
+    </p>
+    {% if changed %}
+    <p class="small mb-2">Total baris {{ tersimpan_total }} → <strong>{{ baru_total }}</strong>; {{ rows|length }} baris KD Tahap/QC berubah:</p>
+    <div id="sinkronisasi-kd-tahap-scroll" class="table-responsive">
+        <table class="table table-sm table-bordered align-middle mb-0" id="sinkronisasi-kd-tahap-table">
+            <thead class="table-light">
+                <tr>
+                    <th>KD Tahap</th>
+                    <th class="text-center">QC</th>
+                    <th class="text-end">Nilai Saat Ini</th>
+                    <th class="text-end">Nilai Baru</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rows %}
+                <tr>
+                    <td class="font-monospace">{{ r.kd_tahap }}</td>
+                    <td class="text-center">{% include "tiket/_kd_tahap_qc_badge.html" with qc=r.qc lolos=r.lolos %}</td>
+                    <td class="text-end text-muted">{{ r.lama }}</td>
+                    <td class="text-end fw-semibold">{{ r.baru }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-success small mb-0" data-kd-sinkron>
+        <i class="feather-check-circle me-1"></i>KD Tahap tersimpan sudah sama dengan Oracle. Tidak ada yang akan diubah.
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-light text-secondary" style="font-weight: 500; text-transform: none; background-color: #f1f5f9; border-color: #e2e8f0;" data-bs-dismiss="modal">Tutup</button>
+    {% if status_berlaku and tabel %}
+    {% if not job %}
+    <button type="button" class="btn btn-primary" data-kd-action="mulai" data-url="{{ url_mulai }}"><i class="feather-download-cloud me-1"></i>Ambil dari Oracle</button>
+    {% elif job.state == 'gagal' %}
+    <button type="button" class="btn btn-primary" data-kd-action="mulai" data-url="{{ url_mulai }}"><i class="feather-rotate-cw me-1"></i>Coba Lagi</button>
+    {% elif job.state == 'selesai' %}
+    <button type="button" class="btn btn-outline-secondary" data-kd-action="mulai" data-url="{{ url_mulai }}"><i class="feather-rotate-cw me-1"></i>Ambil Ulang</button>
+    {% if changed %}
+    <form method="post" action="{{ url_job }}" class="d-inline">
+        {% csrf_token %}
+        <input type="hidden" name="fingerprint" value="{{ fingerprint }}">
+        <button type="submit" class="btn btn-primary"><i class="feather-save me-1"></i>Simpan</button>
+    </form>
+    {% endif %}
+    {% endif %}
+    {% endif %}
+</div>
+<style>
+    /* Hundreds of KD Tahap can change at once: scroll them inside the modal. */
+    #sinkronisasi-kd-tahap-scroll {
+        max-height: 300px;
+        overflow: auto !important;
+    }
+
+    #sinkronisasi-kd-tahap-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+</style>

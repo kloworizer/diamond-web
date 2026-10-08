@@ -32,10 +32,20 @@ from ...constants.tiket_action_types import (
 )
 from ...utils import format_number_with_separator, format_periode
 from ...utils.jenis_prioritas import resolve_jenis_prioritas
+from ...utils.tiket_kd_tahap import STATUS_KD_TAHAP
 from ..mixins import can_open_tiket, is_admin_p3de, is_admin_pmde, tiket_pic_roles_managed_by
 
 # The qc_* columns counted as Lolos QC; the rest are Tidak Lolos QC.
 QC_KOLOM_LOLOS = ('qc_p', 'qc_x', 'qc_w')
+# The same split for the QC flag of a tabel I row (TiketKdTahap.qc): P, X, W.
+QC_FLAG_LOLOS = tuple(kolom[-1].upper() for kolom in QC_KOLOM_LOLOS)
+
+
+def kd_tahap_qc_lolos(qc):
+    """True/False for a Lolos / Tidak Lolos QC flag, None when not QC'd yet."""
+    if not qc:
+        return None
+    return qc.strip().upper() in QC_FLAG_LOLOS
 
 
 class TiketDetailView(LoginRequiredMixin, DetailView):
@@ -286,17 +296,24 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         context['qc_kolom_lolos'] = [(label, value) for name, label, value in qc_kolom if name in QC_KOLOM_LOLOS]
         context['qc_kolom_tidak_lolos'] = [(label, value) for name, label, value in qc_kolom if name not in QC_KOLOM_LOLOS]
 
-        # Rows per KD_TAHAP in the tiket's tabel I, filled by sync_tiket_kd_tahap;
-        # the largest jumlah baris first.
+        # Rows per KD_TAHAP and QC flag in the tiket's tabel I, filled by
+        # sync_tiket_kd_tahap; the largest jumlah baris first.
         kd_tahap_rows = list(
             TiketKdTahap.objects.filter(id_tiket=self.object)
-            .order_by('-jumlah_baris', F('kd_tahap').asc(nulls_last=True))
-            .values_list('kd_tahap', 'jumlah_baris')
+            .order_by('-jumlah_baris', F('kd_tahap').asc(nulls_last=True), F('qc').asc(nulls_last=True))
+            .values_list('kd_tahap', 'qc', 'jumlah_baris')
         )
         context['kd_tahap_list'] = [
-            (kd_tahap, format_number_with_separator(jumlah)) for kd_tahap, jumlah in kd_tahap_rows
+            {
+                'kd_tahap': kd_tahap,
+                'qc': qc,
+                'lolos': kd_tahap_qc_lolos(qc),
+                'jumlah': format_number_with_separator(jumlah),
+            }
+            for kd_tahap, qc, jumlah in kd_tahap_rows
         ]
-        context['kd_tahap_total'] = format_number_with_separator(sum(j for _, j in kd_tahap_rows))
+        context['kd_tahap_jumlah_kd'] = len({kd_tahap for kd_tahap, _, _ in kd_tahap_rows})
+        context['kd_tahap_total'] = format_number_with_separator(sum(j for _, _, j in kd_tahap_rows))
 
         # NOTE: workflow_step mapping removed — templates do not use it.
 
@@ -380,6 +397,10 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         # PMDE administrators may pull this tiket's QC data from Oracle with the
         # rules of the tiket update sync, whether or not they hold the tiket.
         context['user_can_sync_tiket'] = is_admin_pmde(self.request.user)
+        # ...and refresh its rows per KD_TAHAP, kept for Pengendalian Mutu & Selesai.
+        context['user_can_sync_kd_tahap'] = (
+            context['user_can_sync_tiket'] and self.object.status_tiket in STATUS_KD_TAHAP
+        )
 
         # Add status constants for template use
         context['STATUS_DIREKAM'] = STATUS_DIREKAM

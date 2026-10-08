@@ -6,7 +6,7 @@
         <div class="alert alert-danger mb-0" data-sync-state="error">
             <i class="feather-alert-triangle me-2"></i>{{ error }}
         </div>
-        {% elif not sync_changed %}
+        {% elif not plan.changed %}
         {% if not_found %}
         <div class="alert alert-warning mb-0" data-sync-state="not-found">
             <i class="feather-search me-2"></i>Tiket <strong>{{ tiket.nomor_tiket }}</strong> belum ada di rekap tarikan
@@ -183,65 +183,10 @@
         {% endif %}
         {% endfor %}
         {% endif %}
-
-        {% if kd_tahap and not error %}
-        <div id="sinkronisasi-kd-tahap" class="{% if sync_changed %}mt-3{% else %}mt-3 pt-3 border-top{% endif %}">
-            <h6 class="fw-bold mb-2" style="font-size: 13px;">Jumlah Baris per KD Tahap</h6>
-            {% if kd_tahap.error %}
-            <div class="alert alert-warning small mb-0" data-kd-state="error">
-                <i class="feather-alert-triangle me-1"></i>KD Tahap tidak dapat diambil dari Oracle: {{ kd_tahap.error }}.
-                Data KD Tahap yang tersimpan tidak diubah.
-            </div>
-            {% elif kd_tahap.changed %}
-            <p class="small text-muted mb-2" data-kd-state="changed">
-                Diganti dengan {{ kd_tahap.jumlah_kd }} KD Tahap dari tabel I di Oracle. Total baris
-                {{ kd_tahap.total_lama }} → <strong>{{ kd_tahap.total_baru }}</strong>; {{ kd_tahap.rows|length }} KD Tahap berubah:
-            </p>
-            <div id="sinkronisasi-kd-tahap-scroll" class="table-responsive mb-2">
-                <table class="table table-sm table-bordered align-middle mb-0" id="sinkronisasi-kd-tahap-table">
-                    <thead class="table-light">
-                        <tr>
-                            <th>KD Tahap</th>
-                            <th class="text-end">Nilai Saat Ini</th>
-                            <th class="text-end">Nilai Baru</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for r in kd_tahap.rows %}
-                        <tr>
-                            <td class="font-monospace">{{ r.kd_tahap }}</td>
-                            <td class="text-end text-muted">{{ r.lama }}</td>
-                            <td class="text-end fw-semibold">{{ r.baru }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <p class="small text-muted mb-0" data-kd-state="unchanged">
-                <i class="feather-check-circle me-1 text-success"></i>Sudah sinkron dengan Oracle
-                ({{ kd_tahap.jumlah_kd }} KD Tahap, total {{ kd_tahap.total_baru }} baris).
-            </p>
-            {% endif %}
-        </div>
-        <style>
-            /* Hundreds of KD Tahap can change at once: scroll them inside the modal. */
-            #sinkronisasi-kd-tahap-scroll {
-                max-height: 260px;
-                overflow: auto !important;
-            }
-
-            #sinkronisasi-kd-tahap-table thead th {
-                position: sticky;
-                top: 0;
-                z-index: 1;
-            }
-        </style>
-        {% endif %}
     </div>
     <div class="modal-footer">
-        <button type="button" class="btn btn-light text-secondary" style="font-weight: 500; text-transform: none; background-color: #f1f5f9; border-color: #e2e8f0;" data-bs-dismiss="modal">{% if sync_changed %}Batal{% else %}Tutup{% endif %}</button>
-        {% if sync_changed and not error %}
+        <button type="button" class="btn btn-light text-secondary" style="font-weight: 500; text-transform: none; background-color: #f1f5f9; border-color: #e2e8f0;" data-bs-dismiss="modal">{% if plan.changed %}Batal{% else %}Tutup{% endif %}</button>
+        {% if plan.changed and not error %}
         <button type="submit" class="btn btn-primary"><i class="feather-refresh-cw me-1"></i>Sinkronisasi</button>
         {% endif %}
     </div>

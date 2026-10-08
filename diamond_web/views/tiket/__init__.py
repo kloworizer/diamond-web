@@ -19,6 +19,7 @@ from .selesaikan_tiket import SelesaikanTiketView
 from .special_request import SpecialRequestView
 from .edit_tiket import EditTiketView
 from .sinkronisasi_tiket import SinkronisasiTiketView
+from .sinkronisasi_kd_tahap import SinkronisasiKdTahapJobView, SinkronisasiKdTahapView
 from .kelola_pic_tiket import TambahPICTiketView, UbahPICTiketView, HapusPICTiketView
 
 __all__ = [
@@ -45,6 +46,8 @@ __all__ = [
     'SpecialRequestView',
     'EditTiketView',
     'SinkronisasiTiketView',
+    'SinkronisasiKdTahapView',
+    'SinkronisasiKdTahapJobView',
     'TambahPICTiketView',
     'UbahPICTiketView',
     'HapusPICTiketView',

@@ -883,6 +883,12 @@
                             data-bs-target="#sinkronisasiTiketModal" id="sinkronisasi-tiket-btn">
                             <i class="feather-refresh-cw me-1"></i>Sinkronisasi dari Oracle
                         </button>
+                        {% if user_can_sync_kd_tahap %}
+                        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
+                            data-bs-target="#sinkronisasiKdTahapModal" id="sinkronisasi-kd-tahap-btn">
+                            <i class="feather-layers me-1"></i>Sinkronisasi KD Tahap
+                        </button>
+                        {% endif %}
                     </div>
                     {% endif %}
 
@@ -1201,8 +1207,8 @@
                                 style="border: 1px solid #e2e8f0 !important; background-color: rgba(248, 250, 252, 0.45); border-radius: 12px !important;">
                                 <div class="fw-bold text-dark mb-2 pb-1 border-bottom d-flex justify-content-between align-items-center"
                                     style="font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; border-color: rgba(226, 232, 240, 0.8) !important; color: #475569 !important;">
-                                    <span><i class="feather-layers me-1 text-info"></i>Jumlah Baris per KD Tahap</span>
-                                    <span class="badge bg-light text-secondary border" style="text-transform: none; letter-spacing: 0;">{{ kd_tahap_list|length }} KD Tahap</span>
+                                    <span><i class="feather-layers me-1 text-info"></i>Jumlah Baris per KD Tahap & QC</span>
+                                    <span class="badge bg-light text-secondary border" style="text-transform: none; letter-spacing: 0;">{{ kd_tahap_jumlah_kd }} KD Tahap</span>
                                 </div>
                                 <div id="kd-tahap-scroll" class="table-responsive">
                                     <table id="kd-tahap-table" class="table table-sm table-hover mb-0">
@@ -1210,22 +1216,24 @@
                                             <tr>
                                                 <th class="d-none d-sm-table-cell" style="width: 4rem;">No</th>
                                                 <th>KD Tahap</th>
+                                                <th class="text-center">QC</th>
                                                 <th class="text-end">Jumlah Baris</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {% for kd_tahap, jumlah in kd_tahap_list %}
+                                            {% for row in kd_tahap_list %}
                                             <tr>
                                                 <td class="text-muted d-none d-sm-table-cell">{{ forloop.counter }}</td>
-                                                <td class="font-monospace">{{ kd_tahap|default:"-" }}</td>
-                                                <td class="text-end">{{ jumlah }}</td>
+                                                <td class="font-monospace">{{ row.kd_tahap|default:"-" }}</td>
+                                                <td class="text-center">{% include "tiket/_kd_tahap_qc_badge.html" with qc=row.qc lolos=row.lolos %}</td>
+                                                <td class="text-end">{{ row.jumlah }}</td>
                                             </tr>
                                             {% endfor %}
                                         </tbody>
                                         <tfoot>
                                             <tr>
                                                 <th class="d-none d-sm-table-cell"></th>
-                                                <th>Total</th>
+                                                <th colspan="2">Total</th>
                                                 <th class="text-end">{{ kd_tahap_total }}</th>
                                             </tr>
                                         </tfoot>
@@ -1826,6 +1834,32 @@
     </div>
     {% endif %}
 
+    <!-- Sinkronisasi KD Tahap Modal (Admin PMDE): the tabel I query runs as a background job -->
+    {% if user_can_sync_kd_tahap %}
+    <div class="modal fade" id="sinkronisasiKdTahapModal" tabindex="-1" aria-labelledby="sinkronisasiKdTahapModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+                <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background-color: #e6f4ff; color: #006fcc; flex-shrink: 0;">
+                            <i class="feather-layers" style="font-size: 16px;"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0" id="sinkronisasiKdTahapModalLabel" style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Sinkronisasi KD Tahap</h5>
+                            <span class="text-muted fw-semibold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Tiket {{ tiket.nomor_tiket }}</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div id="sinkronisasi-kd-tahap-csrf" hidden>{% csrf_token %}</div>
+                <div id="sinkronisasi-kd-tahap-container">
+                    <!-- State of the KD Tahap job will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Kelola PIC Tiket Modal (Admin seksi): tambah / ubah / hapus PIC tiket ini saja -->
     {% if pic_roles_managed %}
     <div class="modal fade" id="kelolaPicTiketModal" tabindex="-1" aria-labelledby="kelolaPicTiketModalLabel" aria-hidden="true">
@@ -2148,8 +2182,39 @@
             font-size: 0.85rem;
         }
 
+        /* The theme keeps table cells on one line; long KD Tahap codes may wrap. */
         #kd-tahap-table td.font-monospace {
+            white-space: normal;
             word-break: break-all;
+        }
+
+        /* QC flag of a KD Tahap row: Lolos (P, X, W) / Tidak Lolos / not yet QC'd. */
+        .kd-qc {
+            display: inline-block;
+            min-width: 1.75rem;
+            padding: 0.1rem 0.4rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-align: center;
+        }
+
+        .kd-qc-lolos {
+            background-color: #ecfdf5;
+            color: #047857;
+            border: 1px solid #a7f3d0;
+        }
+
+        .kd-qc-tidak-lolos {
+            background-color: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+        }
+
+        .kd-qc-belum {
+            color: #64748b;
+            font-weight: 500;
+            white-space: nowrap;
         }
 
         #kd-tahap-table > :not(caption) > * > * {
@@ -2159,6 +2224,10 @@
         @media (max-width: 575.98px) {
             #kd-tahap-table > :not(caption) > * > * {
                 padding: 0.35rem 0.5rem !important;
+            }
+
+            #kd-tahap-table .kd-qc-belum {
+                white-space: normal;
             }
         }
 
@@ -2173,9 +2242,11 @@
             top: 0;
         }
 
+        /* -1px and the shadow below close the sub-pixel seam under the sticky
+           footer, where wrapped KD Tahap codes otherwise peek through. */
         #kd-tahap-table tfoot th {
-            bottom: 0;
-            box-shadow: inset 0 1px 0 #e2e8f0;
+            bottom: -1px;
+            box-shadow: inset 0 1px 0 #e2e8f0, 0 1px 0 #f8fafc;
         }
 
         .premium-badge {
@@ -3141,6 +3212,92 @@
                             showToast('Gagal memuat pratinjau sinkronisasi.', 'danger');
                             formContainer.innerHTML = '<div class="alert alert-danger m-3">Gagal memuat pratinjau</div>';
                         });
+                });
+            }
+
+            // Sinkronisasi KD Tahap Handler (Admin PMDE). "Ambil dari Oracle"
+            // starts a background job and the modal polls it every few seconds
+            // while it is open; closing the modal only stops the polling, and
+            // reopening it picks the job up where it is.
+            const kdTahapModal = document.getElementById('sinkronisasiKdTahapModal');
+            if (kdTahapModal) {
+                setupModalAria(kdTahapModal);
+                const kdTahapBox = document.getElementById('sinkronisasi-kd-tahap-container');
+                const kdTahapUrl = '{% url "sinkronisasi_kd_tahap" tiket.pk %}';
+                const kdTahapJobUrl = '{% url "sinkronisasi_kd_tahap_job" tiket.pk "__job__" %}';
+                const kdTahapHeaders = { 'X-Requested-With': 'XMLHttpRequest' };
+                const kdTahapGagal = '<div class="alert alert-danger m-3">Gagal memuat data KD Tahap.</div>';
+                let kdTahapTimer = null;
+
+                const kdTahapStopPoll = () => {
+                    if (kdTahapTimer) {
+                        clearTimeout(kdTahapTimer);
+                        kdTahapTimer = null;
+                    }
+                };
+                const kdTahapRender = (data) => {
+                    kdTahapStopPoll();
+                    kdTahapBox.innerHTML = data.html || kdTahapGagal;
+                    if (data.aktif && data.job_id) {
+                        kdTahapTimer = setTimeout(() => kdTahapPoll(data.job_id), 3000);
+                    }
+                };
+                const kdTahapPoll = (jobId) => {
+                    fetch(kdTahapJobUrl.replace('__job__', jobId), { headers: kdTahapHeaders })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (kdTahapModal.classList.contains('show')) {
+                                kdTahapRender(data);
+                            }
+                        })
+                        .catch(error => {
+                            // A dropped poll is retried: the job itself is unaffected.
+                            console.error('Error polling KD Tahap job:', error);
+                            if (kdTahapModal.classList.contains('show')) {
+                                kdTahapTimer = setTimeout(() => kdTahapPoll(jobId), 6000);
+                            }
+                        });
+                };
+
+                kdTahapModal.addEventListener('show.bs.modal', function () {
+                    kdTahapBox.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+                    fetch(kdTahapUrl, { headers: kdTahapHeaders })
+                        .then(response => response.json())
+                        .then(kdTahapRender)
+                        .catch(error => {
+                            console.error('Error loading KD Tahap:', error);
+                            kdTahapBox.innerHTML = kdTahapGagal;
+                        });
+                });
+                kdTahapModal.addEventListener('hidden.bs.modal', kdTahapStopPoll);
+
+                kdTahapBox.addEventListener('click', function (e) {
+                    const btn = e.target.closest('[data-kd-action="mulai"]');
+                    if (!btn) {
+                        return;
+                    }
+                    btn.disabled = true;
+                    const body = new FormData();
+                    body.append('csrfmiddlewaretoken',
+                        document.querySelector('#sinkronisasi-kd-tahap-csrf input[name="csrfmiddlewaretoken"]').value);
+                    fetch(btn.dataset.url, { method: 'POST', body: body, headers: kdTahapHeaders })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success === false && data.message) {
+                                showToast(data.message, 'danger');
+                            }
+                            kdTahapRender(data);
+                        })
+                        .catch(error => {
+                            console.error('Error starting KD Tahap job:', error);
+                            showToast('Gagal memulai pengambilan KD Tahap.', 'danger');
+                            btn.disabled = false;
+                        });
+                });
+
+                bindModalSubmit('sinkronisasi-kd-tahap-container', kdTahapModal, {
+                    successMessage: 'KD Tahap berhasil disimpan.',
+                    errorMessage: 'Gagal menyimpan KD Tahap.'
                 });
             }
 

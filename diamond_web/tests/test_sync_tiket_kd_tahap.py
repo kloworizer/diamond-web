@@ -1,4 +1,5 @@
 """Tests for the sync_tiket_kd_tahap management command."""
+import threading
 from contextlib import contextmanager
 from datetime import datetime
 from io import StringIO
@@ -37,50 +38,70 @@ def _log(log_dir):
     return path.name, path.read_text(encoding='utf-8')
 
 
-def _service(results, gagal=None):
-    """Fake service whose cursor answers each execute() from *results*.
+class FakeOracle:
+    """Fake OracleDataSyncService for the command's parallel queries.
 
-    *results* maps the NO_TIKET stored in Oracle → [(kd_tahap, jumlah), ...];
-    *gagal* maps a table name → the Exception its query raises.
+    *results* maps the NO_TIKET stored in Oracle -> [(kd_tahap, qc, jumlah), ...];
+    an entry (kd_tahap, jumlah) has no QC flag (belum QC).
+    *gagal* maps a table name -> the Exception its query raises, or a list of
+    outcomes consumed one per attempt (an Exception, or None to succeed).
+    Every connection gets its own cursor; `calls` records (sql, params).
     """
-    cursor = MagicMock()
-    state = {}
 
-    def _execute(sql, params):
-        for tabel, exc in (gagal or {}).items():
-            if f'.{tabel} ' in sql:
+    def __init__(self, results, gagal=None):
+        self.results = results
+        self.gagal = {t: (list(v) if isinstance(v, list) else v) for t, v in (gagal or {}).items()}
+        self.calls = []
+        self.call_timeouts = []
+        self._lock = threading.Lock()
+        self.service = MagicMock()
+        self.service._connect_oracle.side_effect = self._connect
+
+    def _outcome(self, sql):
+        with self._lock:
+            for tabel, hasil in self.gagal.items():
+                if f'.{tabel} ' in sql:
+                    return hasil.pop(0) if isinstance(hasil, list) else hasil
+        return None
+
+    @contextmanager
+    def _connect(self, _which):
+        state = {}
+        fake = self
+
+        def _execute(sql, params):
+            with fake._lock:
+                fake.calls.append((sql, list(params)))
+                fake.call_timeouts.append(conn.call_timeout)
+            exc = fake._outcome(sql)
+            if exc is not None:
                 raise exc
-        state['rows'] = [
-            (nomor, kd, jumlah)
-            for nomor in params
-            for kd, jumlah in results.get(nomor, [])
-        ]
+            state['rows'] = [
+                (nomor, *(entry if len(entry) == 3 else (entry[0], None, entry[1])))
+                for nomor in params
+                for entry in fake.results.get(nomor, [])
+            ]
 
-    cursor.execute.side_effect = _execute
-    cursor.fetchall.side_effect = lambda: state['rows']
+        cursor = MagicMock()
+        cursor.execute.side_effect = _execute
+        cursor.fetchall.side_effect = lambda: state['rows']
 
-    @contextmanager
-    def _cursor_cm():
-        yield cursor
+        @contextmanager
+        def _cursor_cm():
+            yield cursor
 
-    conn = MagicMock()
-    conn.cursor.side_effect = _cursor_cm
-
-    @contextmanager
-    def _connect(_which):
+        conn = MagicMock()
+        conn.call_timeout = 0
+        conn.cursor.side_effect = _cursor_cm
         yield conn
-
-    service = MagicMock()
-    service._connect_oracle.side_effect = _connect
-    return service, cursor
 
 
 def _run(results, gagal=None, **kwargs):
-    service, cursor = _service(results, gagal)
+    oracle = FakeOracle(results, gagal)
     out = StringIO()
-    with patch(SERVICE, return_value=service):
+    with patch(SERVICE, return_value=oracle.service):
         call_command('sync_tiket_kd_tahap', stdout=out, **kwargs)
-    return out.getvalue(), cursor
+    return out.getvalue(), oracle
 
 
 def _tiket(nomor, tahun=2025, status=STATUS_SELESAI, tabel='KPDE_CONTOH'):
@@ -94,9 +115,11 @@ def _tiket(nomor, tahun=2025, status=STATUS_SELESAI, tabel='KPDE_CONTOH'):
 
 
 def _simpanan(tiket):
-    return dict(
-        TiketKdTahap.objects.filter(id_tiket=tiket).values_list('kd_tahap', 'jumlah_baris')
-    )
+    """Stored rows: {kd_tahap: jumlah} for rows without QC, {(kd_tahap, qc): jumlah} otherwise."""
+    return {
+        kd if qc is None else (kd, qc): jumlah
+        for kd, qc, jumlah in TiketKdTahap.objects.filter(id_tiket=tiket).values_list('kd_tahap', 'qc', 'jumlah_baris')
+    }
 
 
 def test_nomor_tiket_oracle_reverses_e_to_ei():
@@ -111,17 +134,17 @@ def test_only_pengendalian_mutu_and_selesai_tikets_of_the_given_tahun_are_querie
     lain_tahun = _tiket('T0000000000000002', tahun=2024)
     identifikasi = _tiket('T0000000000000003', status=STATUS_IDENTIFIKASI)
 
-    _, cursor = _run({
+    _, oracle = _run({
         'T0000000000000001': [('1', 10), ('2', 5)],
         'T0000000000000002': [('1', 99)],
         'T0000000000000003': [('1', 99)],
         'T0000000000000004': [('3', 6)],
     }, tahun=2025)
 
-    assert cursor.execute.call_count == 1
-    sql, params = cursor.execute.call_args.args
+    assert len(oracle.calls) == 1
+    sql, params = oracle.calls[0]
     assert 'FROM BANKDATAPDE.KPDE_CONTOH WHERE NO_TIKET IN (:1, :2)' in sql
-    assert 'GROUP BY NO_TIKET, KD_TAHAP' in sql
+    assert 'GROUP BY NO_TIKET, KD_TAHAP, QC' in sql
     assert sorted(params) == ['T0000000000000001', 'T0000000000000004']
     assert _simpanan(selesai) == {'1': 10, '2': 5}
     assert _simpanan(mutu) == {'3': 6}
@@ -134,14 +157,14 @@ def test_one_query_per_table_and_both_nomor_formats_are_summed():
     b = _tiket('T0000000000000002')
     lain = _tiket('T0000000000000003', tabel='KPDE_LAIN')
 
-    _, cursor = _run({
+    _, oracle = _run({
         'EI1234567890ABCDE': [('1', 4)],
         'E1234567890ABCDE': [('1', 6), ('2', 1)],
         'T0000000000000002': [('1', 3)],
         'T0000000000000003': [('9', 8)],
     }, tahun=2025)
 
-    assert cursor.execute.call_count == 2
+    assert len(oracle.calls) == 2
     assert _simpanan(a) == {'1': 10, '2': 1}
     assert _simpanan(b) == {'1': 3}
     assert _simpanan(lain) == {'9': 8}
@@ -174,7 +197,7 @@ def test_failed_table_keeps_old_rows_and_other_tables_still_run():
 
     assert _simpanan(gagal) == {'1': 4}
     assert _simpanan(ok) == {'1': 2}
-    assert 'T0000000000000001 (BANKDATAPDE.KPDE_HILANG): query gagal: ORA-00942' in out
+    assert 'T0000000000000001 (BANKDATAPDE.KPDE_HILANG): query gagal setelah 1 percobaan: ORA-00942' in out
 
 
 @pytest.mark.django_db
@@ -184,16 +207,16 @@ def test_dry_run_saves_nothing():
     out, _ = _run({'T0000000000000001': [('1', 10)]}, tahun=2025, dry_run=True)
 
     assert not TiketKdTahap.objects.filter(id_tiket=tiket).exists()
-    assert 'T0000000000000001: 1=10' in out
+    assert 'T0000000000000001: 1/(kosong)=10' in out
 
 
 @pytest.mark.django_db
 def test_schema_and_column_options_shape_the_query():
     _tiket('T0000000000000001')
 
-    _, cursor = _run({}, tahun=2025, schema='LAIN', kolom_tiket='ID_TIKET')
+    _, oracle = _run({}, tahun=2025, schema='LAIN', kolom_tiket='ID_TIKET')
 
-    sql = cursor.execute.call_args.args[0]
+    sql = oracle.calls[0][0]
     assert 'FROM LAIN.KPDE_CONTOH WHERE ID_TIKET IN' in sql
 
 
@@ -266,10 +289,10 @@ def test_log_records_parameters_each_tiket_and_summary(log_dir):
     assert 'Parameter: tahun=2025 koneksi=secondary' in log
     assert 'Tiket ditemukan: 4 (Selesai=4)' in log
     assert 'Query BANKDATAPDE.KPDE_CONTOH: 4 tiket, 4 baris hasil (tiket berisi: 3)' in log
-    assert f'BARU        tiket=T0000000000000001 id={baru.id} status=Selesai kd_tahap 0->2 total_baris 0->15' in log
-    assert 'kd_tahap: 1=10, 2=5' in log
+    assert f'BARU        tiket=T0000000000000001 id={baru.id} status=Selesai kd_tahap/qc 0->2 total_baris 0->15' in log
+    assert 'kd_tahap/qc: 1/(kosong)=10, 2/(kosong)=5' in log
     assert 'BERUBAH     tiket=T0000000000000002' in log
-    assert 'perubahan (2): 1: 4->7, 2: 9->-' in log
+    assert 'perubahan (2): 1/(kosong): 4->7, 2/(kosong): 9->-' in log
     assert 'SAMA        tiket=T0000000000000003' in log
     assert 'DIKOSONGKAN tiket=T0000000000000004' in log
     assert 'Status run            : SELESAI' in log
@@ -291,7 +314,7 @@ def test_log_records_query_error_with_sql_and_traceback(log_dir):
 
     _, log = _log(log_dir)
     assert 'ERROR Query BANKDATAPDE.KPDE_HILANG gagal' in log
-    assert 'ERROR SQL: SELECT NO_TIKET, KD_TAHAP, COUNT(*) FROM BANKDATAPDE.KPDE_HILANG' in log
+    assert 'ERROR SQL: SELECT NO_TIKET, KD_TAHAP, QC, COUNT(*) FROM BANKDATAPDE.KPDE_HILANG' in log
     assert 'ERROR Tiket: T0000000000000001' in log
     assert 'Traceback (most recent call last)' in log
     assert 'GAGAL       tiket=T0000000000000001' in log
@@ -303,7 +326,7 @@ def test_log_records_query_error_with_sql_and_traceback(log_dir):
 @pytest.mark.django_db
 def test_log_records_connection_failure(log_dir):
     _tiket('T0000000000000001')
-    service, _ = _service({})
+    service = MagicMock()
     service._connect_oracle.side_effect = OracleSyncConfigError('ORA-12170: TNS:Connect timeout occurred')
 
     with patch(SERVICE, return_value=service), pytest.raises(CommandError):
@@ -326,3 +349,167 @@ def test_dry_run_writes_its_own_log_type(log_dir):
     assert sync_type == 'kd_tahap_sync_dryrun'
     assert _get_type_display_name(sync_type) == 'Sinkronisasi KD Tahap (Dry Run)'
     assert 'DRY-RUN' in log and 'BARU        tiket=T0000000000000001' in log
+
+
+TIMEOUT = Exception('DPY-4011: the database or network closed the connection\nDPI-1067: call timeout of 900000 ms exceeded with ORA-3156')
+
+
+@pytest.mark.django_db
+def test_tables_run_in_parallel_with_their_own_connection_and_timeout():
+    tikets = [_tiket(f'T00000000000000{i:02d}', tabel=f'KPDE_T{i}') for i in range(6)]
+    mulai = threading.Barrier(3, timeout=5)
+
+    oracle = FakeOracle({t.nomor_tiket: [('1', i + 1)] for i, t in enumerate(tikets)})
+    asli = oracle._outcome
+
+    def _outcome_bersamaan(sql):
+        # The first three queries only proceed once three run at the same time.
+        if len(oracle.calls) <= 3:
+            mulai.wait()
+        return asli(sql)
+
+    oracle._outcome = _outcome_bersamaan
+    with patch(SERVICE, return_value=oracle.service):
+        call_command('sync_tiket_kd_tahap', tahun=2025, workers=3, timeout=120, stdout=StringIO())
+
+    assert len(oracle.calls) == 6
+    assert set(oracle.call_timeouts) == {120_000}
+    assert [_simpanan(t) for t in tikets] == [{'1': i + 1} for i in range(6)]
+
+
+@pytest.mark.django_db
+def test_timeout_is_retried_and_others_still_succeed(log_dir):
+    lambat = _tiket('T0000000000000001', tabel='KPDE_BESAR')
+    ok = _tiket('T0000000000000002')
+
+    out, oracle = _run(
+        {'T0000000000000001': [('1', 5)], 'T0000000000000002': [('1', 2)]},
+        gagal={'KPDE_BESAR': [TIMEOUT, None]},
+        tahun=2025,
+    )
+
+    assert len(oracle.calls) == 3
+    assert _simpanan(lambat) == {'1': 5}
+    assert _simpanan(ok) == {'1': 2}
+    assert 'BANKDATAPDE.KPDE_BESAR: TIMEOUT' in out and 'akan diulang' in out
+    _, log = _log(log_dir)
+    assert 'Query BANKDATAPDE.KPDE_BESAR gagal [TIMEOUT (melewati 900 detik)] pada percobaan ke-1' in log
+    assert 'percobaan ke-2' in log
+    assert 'Status run            : SELESAI' in log
+    assert 'Query Oracle          : 3 (timeout: 1)' in log
+
+
+@pytest.mark.django_db
+def test_table_still_failing_after_retries_is_listed_with_rerun_command(log_dir):
+    lambat = _tiket('T0000000000000001', tabel='KPDE_BESAR')
+    TiketKdTahap.objects.create(id_tiket=lambat, kd_tahap='1', jumlah_baris=4)
+    ok = _tiket('T0000000000000002')
+
+    out, oracle = _run(
+        {'T0000000000000002': [('1', 2)]},
+        gagal={'KPDE_BESAR': TIMEOUT},
+        tahun=2025, retry=2,
+    )
+
+    assert len(oracle.calls) == 4  # KPDE_BESAR 3x, KPDE_CONTOH once
+    assert _simpanan(lambat) == {'1': 4}
+    assert _simpanan(ok) == {'1': 2}
+    rerun = 'python manage.py sync_tiket_kd_tahap --tahun 2025 --tabel KPDE_BESAR --timeout 1800'
+    assert rerun in out
+    _, log = _log(log_dir)
+    assert 'Tabel gagal (1):' in log
+    assert '  - KPDE_BESAR: query melewati batas waktu 900 detik' in log
+    assert f'Ulangi tabel yang gagal dengan: {rerun}' in log
+    assert 'query gagal setelah 3 percobaan' in log
+    assert 'Status run            : SELESAI DENGAN ERROR' in log
+
+
+@pytest.mark.django_db
+def test_permanent_error_is_not_retried():
+    _tiket('T0000000000000001', tabel='KPDE_HILANG')
+
+    out, oracle = _run(
+        {}, gagal={'KPDE_HILANG': Exception('ORA-00942: table or view does not exist')},
+        tahun=2025, retry=3,
+    )
+
+    assert len(oracle.calls) == 1
+    assert 'akan diulang' not in out
+
+
+@pytest.mark.django_db
+def test_tabel_option_only_reruns_the_given_tables():
+    a = _tiket('T0000000000000001', tabel='KPDE_A')
+    b = _tiket('T0000000000000002', tabel='KPDE_B')
+    TiketKdTahap.objects.create(id_tiket=b, kd_tahap='1', jumlah_baris=9)
+
+    out, oracle = _run(
+        {'T0000000000000001': [('1', 5)], 'T0000000000000002': [('1', 1)]},
+        tahun=2025, tabel='kpde_a',
+    )
+
+    assert [sql.split(' FROM ')[1].split()[0] for sql, _ in oracle.calls] == ['BANKDATAPDE.KPDE_A']
+    assert _simpanan(a) == {'1': 5}
+    assert _simpanan(b) == {'1': 9}
+    assert 'Tiket Pengendalian Mutu & Selesai tahun terima DIP 2025: 1' in out
+
+
+def test_dropped_connection_counts_as_timeout_only_past_the_limit():
+    from diamond_web.utils.tiket_kd_tahap import is_timeout
+
+    putus = Exception('DPY-4011: the database or network closed the connection\nDPI-1080: connection was closed by ORA-03113')
+    assert is_timeout(TIMEOUT)
+    assert is_timeout(putus, durasi=3.2, batas=2)
+    assert not is_timeout(putus, durasi=0.5, batas=2)
+    assert not is_timeout(putus)
+
+
+@pytest.mark.django_db
+def test_rows_are_counted_per_kd_tahap_and_qc_flag(log_dir):
+    tiket = _tiket('T0000000000000001')
+    TiketKdTahap.objects.create(id_tiket=tiket, kd_tahap='1', qc='P', jumlah_baris=4)
+
+    _, oracle = _run({'T0000000000000001': [
+        ('1', 'P', 7), ('1', 'X', 2), ('1', None, 3), ('2', ' F ', 1),
+    ]}, tahun=2025, kolom_qc='FLAG_QC')
+
+    assert 'SELECT NO_TIKET, KD_TAHAP, FLAG_QC, COUNT(*)' in oracle.calls[0][0]
+    assert _simpanan(tiket) == {('1', 'P'): 7, ('1', 'X'): 2, '1': 3, ('2', 'F'): 1}
+    _, log = _log(log_dir)
+    assert 'kd_tahap/qc: 1/P=7, 1/X=2, 1/(kosong)=3, 2/F=1' in log
+    assert 'perubahan (4): 1/P: 4->7, 1/X: -->2, 1/(kosong): -->3, 2/F: -->1' in log
+
+
+@pytest.mark.django_db
+def test_wide_qc_values_are_cut_and_their_counts_added():
+    tiket = _tiket('T0000000000000001')
+    panjang = 'Q' * 60
+
+    _run({'T0000000000000001': [('1', panjang + 'A', 2), ('1', panjang + 'B', 3)]}, tahun=2025)
+
+    assert _simpanan(tiket) == {('1', 'Q' * 50): 5}
+
+
+@pytest.mark.django_db
+def test_tiket_detail_shows_qc_flag_badges(client):
+    from django.urls import reverse
+    from diamond_web.models import TiketPIC
+    from .conftest import TiketPICFactory, UserFactory
+
+    tiket = _tiket('T0000000000000001')
+    user = UserFactory()
+    TiketPICFactory(id_tiket=tiket, id_user=user, role=TiketPIC.Role.PMDE, active=True)
+    TiketKdTahap.objects.create(id_tiket=tiket, kd_tahap='A1', qc='P', jumlah_baris=30)
+    TiketKdTahap.objects.create(id_tiket=tiket, kd_tahap='A1', qc='F', jumlah_baris=20)
+    TiketKdTahap.objects.create(id_tiket=tiket, kd_tahap='A1', qc=None, jumlah_baris=10)
+    client.force_login(user)
+
+    html = client.get(reverse('tiket_detail', args=[tiket.pk])).content.decode()
+
+    assert 'Jumlah Baris per KD Tahap & QC' in html
+    assert '>1 KD Tahap<' in html  # three rows, one KD Tahap
+    lolos = html.index('kd-qc-lolos" title="Lolos QC">P<')
+    tidak = html.index('kd-qc-tidak-lolos" title="Tidak Lolos QC">F<')
+    belum = html.index('kd-qc-belum small">Belum QC<')
+    assert lolos < tidak < belum  # jumlah baris descending
+    assert '>60<' in html

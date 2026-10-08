@@ -255,6 +255,13 @@ def sync_tiket_update_data_task(self, sync_id, user_id=None):
         cache.set(f'tiket_update_in_progress_{sync_id}', False, timeout=3600)
 
 
+@shared_task(bind=True, name='diamond_web.tasks.ambil_kd_tahap_tiket_task')
+def ambil_kd_tahap_tiket_task(self, job_id):
+    """Fetch one tiket's rows per KD_TAHAP from Oracle (Sinkronisasi KD Tahap)."""
+    from .utils.kd_tahap_job import jalankan_job
+    jalankan_job(job_id)
+
+
 @shared_task(bind=True, name='diamond_web.tasks.cleanup_pre_production_task')
 def cleanup_pre_production_task(self):
     """
