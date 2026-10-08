@@ -4,6 +4,8 @@ The tabel I query can run for minutes on a big table, longer than a web
 request may take, so it runs as a Celery job (utils/kd_tahap_job.py): the
 modal starts the job, polls it, and once it is done previews the change and
 saves it. Same counts as the `sync_tiket_kd_tahap` command for a whole year.
+While a job waits or runs the modal lists the queue of KD Tahap jobs, and the
+job can be stopped.
 """
 
 import hashlib
@@ -93,9 +95,14 @@ class _KdTahapBase(LoginRequiredMixin, UserPassesTestMixin):
             context['dibuat'] = jobs.waktu(job['dibuat'])
             context['selesai'] = jobs.waktu(job['selesai'])
             context['durasi'] = _durasi(job['durasi'])
+            if job['state'] == jobs.DIHENTIKAN and job['mulai'] and job['selesai']:
+                # Time the query ran until it was stopped, not until Oracle let go.
+                context['durasi'] = _durasi((jobs.waktu(job['selesai']) - jobs.waktu(job['mulai'])).total_seconds())
             acuan = jobs.waktu(job['mulai'] or job['dibuat'])
-            if job['state'] in (jobs.ANTRI, jobs.BERJALAN) and acuan:
+            if job['state'] in jobs.AKTIF and acuan:
                 context['berjalan'] = _durasi((datetime.now() - acuan).total_seconds())
+                context['url_hentikan'] = reverse('sinkronisasi_kd_tahap_hentikan', args=[tiket.pk, job['id']])
+                context.update(self._antrian(job))
         if job and job['state'] == jobs.SELESAI:
             baru = _hasil_job(job)
             rows = [
@@ -119,8 +126,33 @@ class _KdTahapBase(LoginRequiredMixin, UserPassesTestMixin):
         return render_to_string(TEMPLATE, context, request=self.request)
 
     @staticmethod
+    def _antrian(job):
+        """The KD Tahap jobs waiting or running, with this job's place among them."""
+        sekarang = datetime.now()
+        antrian = []
+        for no, j in enumerate(jobs.antrian(), start=1):
+            acuan = jobs.waktu(j['mulai'] or j['dibuat'])
+            antrian.append({
+                'no': no,
+                'ini': j['id'] == job['id'],
+                'tiket_id': j['tiket_id'],
+                'nomor_tiket': j.get('nomor_tiket') or f"#{j['tiket_id']}",
+                'user': j['user'],
+                'state': j['state'],
+                'lama': _durasi((sekarang - acuan).total_seconds()) if acuan else '-',
+            })
+        posisi = next((a['no'] for a in antrian if a['ini']), None)
+        return {
+            'antrian': antrian,
+            'antrian_posisi': posisi,
+            'antrian_di_depan': (posisi - 1) if posisi else 0,
+            'antrian_ada_berjalan': any(a['state'] == jobs.BERJALAN for a in antrian),
+            'antrian_worker': jobs.panjang_antrian_worker(),
+        }
+
+    @staticmethod
     def _aktif(job):
-        return bool(job) and job['state'] in (jobs.ANTRI, jobs.BERJALAN)
+        return bool(job) and job['state'] in jobs.AKTIF
 
 
 class SinkronisasiKdTahapView(_KdTahapBase, View):
@@ -222,4 +254,30 @@ class SinkronisasiKdTahapJobView(_KdTahapBase, View):
                 f'KD Tahap tiket {tiket.nomor_tiket} berhasil disimpan '
                 f'({len({kd for kd, _ in baru})} KD Tahap, {len(baru)} baris KD Tahap/QC).'
             ),
+        })
+
+
+class SinkronisasiKdTahapHentikanView(_KdTahapBase, View):
+    """POST: stop a waiting or running job. The stored KD Tahap rows are left alone."""
+
+    def post(self, request, pk, job_id):
+        tiket = self._tiket(pk)
+        job = jobs.baca_job(job_id)
+        if job is None or job['tiket_id'] != tiket.pk:
+            raise Http404('Proses KD Tahap tidak ditemukan atau sudah kedaluwarsa.')
+        if job['state'] not in jobs.AKTIF:
+            return JsonResponse({
+                'success': False,
+                'message': 'Proses sudah tidak berjalan.',
+                'html': self._render(tiket, job),
+                'job_id': job['id'],
+                'aktif': False,
+            })
+        job = jobs.hentikan_job(job_id, request.user)
+        return JsonResponse({
+            'success': True,
+            'message': f'Pengambilan KD Tahap tiket {tiket.nomor_tiket} dihentikan.',
+            'html': self._render(tiket, job),
+            'job_id': job['id'],
+            'aktif': False,
         })

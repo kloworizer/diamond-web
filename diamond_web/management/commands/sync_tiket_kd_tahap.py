@@ -51,6 +51,7 @@ from ...utils.tiket_kd_tahap import (
     KOLOM_TAHAP,
     KOLOM_TIKET,
     KONEKSI,
+    PARALLEL,
     QUERY_TIMEOUT,
     SCHEMA,
     STATUS_KD_TAHAP,
@@ -61,6 +62,7 @@ from ...utils.tiket_kd_tahap import (
     is_timeout,
     label,
     nama_tabel_i,
+    petunjuk_paralel,
     pesan_error,
     set_query_timeout,
     simpan_kd_tahap,
@@ -138,7 +140,7 @@ class Unit:
         self.durasi = 0.0
 
 
-def _query_unit(service, koneksi, timeout, unit, kolom):
+def _query_unit(service, koneksi, timeout, unit, kolom, parallel):
     """Jalankan query satu unit di thread worker, dengan koneksi Oracle sendiri.
 
     Tidak menyentuh ORM Django dan tidak pernah raise: hasil atau error
@@ -152,7 +154,7 @@ def _query_unit(service, koneksi, timeout, unit, kolom):
         with service._connect_oracle(koneksi) as conn:
             set_query_timeout(conn, timeout)
             with conn.cursor() as cursor:
-                unit.hitungan = hitung_kd_tahap(cursor, unit.tabel, unit.tikets, *kolom)
+                unit.hitungan = hitung_kd_tahap(cursor, unit.tabel, unit.tikets, *kolom, parallel=parallel)
     except BaseException as exc:  # noqa: B902 - dilaporkan ke thread utama
         unit.error = exc
     unit.durasi = time.monotonic() - t0
@@ -183,6 +185,13 @@ class Command(BaseCommand):
             help=(
                 f'Batas waktu satu query dalam detik, 0 = tanpa batas (default: {QUERY_TIMEOUT}, '
                 'env ORACLE_KD_TAHAP_TIMEOUT).'
+            ),
+        )
+        parser.add_argument(
+            '--parallel', type=int, default=PARALLEL,
+            help=(
+                f'Derajat eksekusi paralel Oracle per query, 0 = serial (default: {PARALLEL}, '
+                'env ORACLE_KD_TAHAP_PARALLEL).'
             ),
         )
         parser.add_argument(
@@ -231,7 +240,7 @@ class Command(BaseCommand):
         self.log.info(f"=== Sinkronisasi KD Tahap{' (DRY-RUN, tidak menyimpan)' if dry_run else ''} ===")
         self.log.info(
             "Parameter: tahun={tahun} koneksi={koneksi} schema={schema!r} kolom_tiket={kolom_tiket} "
-            "kolom_tahap={kolom_tahap} kolom_qc={kolom_qc} workers={workers} timeout={timeout}s retry={retry} "
+            "kolom_tahap={kolom_tahap} kolom_qc={kolom_qc} workers={workers} parallel={parallel} timeout={timeout}s retry={retry} "
             "tabel={tabel!r} dry_run={dry_run}".format(**options)
         )
         self.log.info(
@@ -270,8 +279,8 @@ class Command(BaseCommand):
             raise CommandError(f"--schema tidak valid: {schema!r}")
         if options['workers'] < 1:
             raise CommandError("--workers minimal 1")
-        if options['timeout'] < 0 or options['retry'] < 0:
-            raise CommandError("--timeout dan --retry tidak boleh negatif")
+        if options['timeout'] < 0 or options['retry'] < 0 or options['parallel'] < 0:
+            raise CommandError("--timeout, --retry dan --parallel tidak boleh negatif")
 
         tikets = list(
             Tiket.objects
@@ -331,7 +340,8 @@ class Command(BaseCommand):
             raise CommandError(f"Koneksi Oracle '{options['koneksi']}' gagal: {exc}") from exc
         self.log.info(
             f"Koneksi Oracle OK. {len(units)} query untuk {len(per_tabel)} tabel, "
-            f"{options['workers']} worker paralel, timeout {options['timeout'] or 'tanpa batas'} detik."
+            f"{options['workers']} worker paralel, paralel Oracle {options['parallel'] or 'mati'} per query, "
+            f"timeout {options['timeout'] or 'tanpa batas'} detik."
         )
 
         sisa = units
@@ -351,7 +361,7 @@ class Command(BaseCommand):
         try:
             futures = [
                 executor.submit(_query_unit, service, options['koneksi'], options['timeout'],
-                                unit, kolom)
+                                unit, kolom, options['parallel'])
                 for unit in units
             ]
             for no, future in enumerate(as_completed(futures), start=1):
@@ -396,7 +406,7 @@ class Command(BaseCommand):
             f"Query {unit.tabel} gagal [{jenis}] pada percobaan ke-{unit.percobaan} setelah "
             f"{unit.durasi:.2f} detik ({len(unit.tikets)} tiket): {pesan}"
             f"{' -> akan diulang' if diulang else ''}\n"
-            f"SQL: SELECT {', '.join(kolom)}, COUNT(*) FROM {unit.tabel} "
+            f"SQL: SELECT {petunjuk_paralel(options['parallel'])}{', '.join(kolom)}, COUNT(*) FROM {unit.tabel} t "
             f"WHERE {kolom[0]} IN (<{len(unit.tikets)} tiket>) GROUP BY {', '.join(kolom)}\n"
             f"Tiket: {', '.join(t.nomor_tiket for t in unit.tikets)}",
             unit.error,
@@ -478,6 +488,8 @@ class Command(BaseCommand):
         for opsi, default in (('kolom_tiket', KOLOM_TIKET), ('kolom_tahap', KOLOM_TAHAP), ('kolom_qc', KOLOM_QC)):
             if options[opsi].strip() != default:
                 bagian.append(f"--{opsi.replace('_', '-')} {options[opsi].strip()}")
+        if options['parallel'] != PARALLEL:
+            bagian.append(f"--parallel {options['parallel']}")
         if any('batas waktu' in p for p in gagal.values()):
             bagian.append(f"--timeout {max(options['timeout'] * 2, 1800)}")
         if options['dry_run']:

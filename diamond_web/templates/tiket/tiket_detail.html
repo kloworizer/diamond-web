@@ -3228,6 +3228,17 @@
                 const kdTahapHeaders = { 'X-Requested-With': 'XMLHttpRequest' };
                 const kdTahapGagal = '<div class="alert alert-danger m-3">Gagal memuat data KD Tahap.</div>';
                 let kdTahapTimer = null;
+                // "Hentikan" asks once more before it stops a job; the polling
+                // re-renders the footer, so the armed state lives here.
+                let kdTahapHentikanSampai = 0;
+                const kdTahapArmHentikan = () => {
+                    const btn = kdTahapBox.querySelector('[data-kd-action="hentikan"]');
+                    if (btn && Date.now() < kdTahapHentikanSampai) {
+                        btn.dataset.armed = '1';
+                        btn.classList.replace('btn-outline-danger', 'btn-danger');
+                        btn.innerHTML = '<i class="feather-alert-triangle me-1"></i>Yakin hentikan?';
+                    }
+                };
 
                 const kdTahapStopPoll = () => {
                     if (kdTahapTimer) {
@@ -3238,6 +3249,7 @@
                 const kdTahapRender = (data) => {
                     kdTahapStopPoll();
                     kdTahapBox.innerHTML = data.html || kdTahapGagal;
+                    kdTahapArmHentikan();
                     if (data.aktif && data.job_id) {
                         kdTahapTimer = setTimeout(() => kdTahapPoll(data.job_id), 3000);
                     }
@@ -3269,13 +3281,31 @@
                             kdTahapBox.innerHTML = kdTahapGagal;
                         });
                 });
-                kdTahapModal.addEventListener('hidden.bs.modal', kdTahapStopPoll);
+                kdTahapModal.addEventListener('hidden.bs.modal', function () {
+                    kdTahapStopPoll();
+                    kdTahapHentikanSampai = 0;
+                });
 
                 kdTahapBox.addEventListener('click', function (e) {
-                    const btn = e.target.closest('[data-kd-action="mulai"]');
+                    const btn = e.target.closest('[data-kd-action]');
                     if (!btn) {
                         return;
                     }
+                    const hentikan = btn.dataset.kdAction === 'hentikan';
+                    if (hentikan && !btn.dataset.armed) {
+                        kdTahapHentikanSampai = Date.now() + 5000;
+                        kdTahapArmHentikan();
+                        setTimeout(() => {
+                            const b = kdTahapBox.querySelector('[data-kd-action="hentikan"][data-armed]');
+                            if (b && Date.now() >= kdTahapHentikanSampai) {
+                                delete b.dataset.armed;
+                                b.classList.replace('btn-danger', 'btn-outline-danger');
+                                b.innerHTML = '<i class="feather-square me-1"></i>Hentikan';
+                            }
+                        }, 5100);
+                        return;
+                    }
+                    kdTahapHentikanSampai = 0;
                     btn.disabled = true;
                     const body = new FormData();
                     body.append('csrfmiddlewaretoken',
@@ -3283,14 +3313,15 @@
                     fetch(btn.dataset.url, { method: 'POST', body: body, headers: kdTahapHeaders })
                         .then(response => response.json())
                         .then(data => {
-                            if (data.success === false && data.message) {
-                                showToast(data.message, 'danger');
+                            if (data.message) {
+                                showToast(data.message, data.success === false ? 'danger' : 'success');
                             }
                             kdTahapRender(data);
                         })
                         .catch(error => {
-                            console.error('Error starting KD Tahap job:', error);
-                            showToast('Gagal memulai pengambilan KD Tahap.', 'danger');
+                            console.error('Error on KD Tahap action:', error);
+                            showToast(hentikan ? 'Gagal menghentikan proses KD Tahap.'
+                                : 'Gagal memulai pengambilan KD Tahap.', 'danger');
                             btn.disabled = false;
                         });
                 });

@@ -263,3 +263,235 @@ def test_hasil_job_versi_lama_tanpa_qc_minta_ambil_ulang(client, pmde_admin_user
 
     assert data['state'] == 'gagal' and 'sebelum ada kolom QC' in data['html']
     assert 'Coba Lagi' in data['html']
+
+
+ANTRIAN_WORKER = 'diamond_web.utils.kd_tahap_job.panjang_antrian_worker'
+
+
+@pytest.fixture(autouse=True)
+def _antrian_worker():
+    """The broker queue length is read from Redis; tests stub it."""
+    with patch(ANTRIAN_WORKER, return_value=3) as stub:
+        yield stub
+
+
+def _hentikan_url(tiket, job_id):
+    return reverse('sinkronisasi_kd_tahap_hentikan', args=[tiket.pk, job_id])
+
+
+def _tiket_lain(nama_tabel):
+    lain = TiketFactory(status_tiket=STATUS_SELESAI)
+    jdi = lain.id_periode_data.id_sub_jenis_data_ilap
+    jdi.nama_tabel_I = nama_tabel
+    jdi.save()
+    return lain
+
+
+@pytest.mark.django_db
+class TestAntrian:
+
+    def test_daftar_antrian_dan_posisi_tiket(self, client, pmde_admin_user, tiket):
+        client.force_login(pmde_admin_user)
+        pertama, kedua = _tiket_lain('KPDE_A'), _tiket_lain('KPDE_B')
+        id_pertama = _mulai(client, pertama)[0]['job_id']
+        _mulai(client, kedua)
+        jobs._ubah(id_pertama, state=jobs.BERJALAN, mulai=jobs._sekarang())
+
+        html = _mulai(client, tiket)[0]['html']
+
+        assert 'Antrian Sinkronisasi KD Tahap' in html
+        assert 'Antrian worker: 3 tugas menunggu' in html
+        assert '<strong>2</strong> proses KD Tahap lain di depan tiket ini' in html
+        urutan = [html.index(t) for t in (pertama.nomor_tiket, kedua.nomor_tiket, tiket.nomor_tiket)]
+        assert urutan == sorted(urutan)
+        assert 'tiket ini</span>' in html and 'data-kd-antrian-ini' in html
+        assert html.count('>Berjalan</span>') == 1 and html.count('>Menunggu</span>') == 2
+        assert 'href="{}"'.format(reverse('tiket_detail', args=[pertama.pk])) in html
+        assert 'data-kd-action="hentikan"' in html
+
+    def test_job_selesai_keluar_dari_antrian(self, client, pmde_admin_user, tiket):
+        client.force_login(pmde_admin_user)
+        lain = _tiket_lain('KPDE_A')
+        id_lain = _mulai(client, lain)[0]['job_id']
+        _jalankan(id_lain, {('A', 'P'): 1})
+
+        html = _mulai(client, tiket)[0]['html']
+
+        assert lain.nomor_tiket not in html
+        assert 'Tiket ini berikutnya' in html
+
+    def test_antrian_worker_tidak_terbaca(self, client, pmde_admin_user, tiket, _antrian_worker):
+        _antrian_worker.return_value = None
+        client.force_login(pmde_admin_user)
+
+        html = _mulai(client, tiket)[0]['html']
+
+        assert 'Antrian worker:' not in html
+        assert 'Antrian Sinkronisasi KD Tahap' in html
+
+
+@pytest.mark.django_db
+class TestHentikan:
+
+    def test_hentikan_job_antri_dilewati_worker(self, client, pmde_admin_user, tiket):
+        client.force_login(pmde_admin_user)
+        with patch(DELAY) as delay:
+            delay.return_value.id = 'task-1'
+            job_id = client.post(_url(tiket)).json()['job_id']
+
+        with patch('celery.app.control.Control.revoke') as revoke:
+            data = client.post(_hentikan_url(tiket, job_id)).json()
+
+        assert data['success'] is True and data['aktif'] is False
+        assert 'data-kd-dihentikan' in data['html'] and pmde_admin_user.username in data['html']
+        assert 'sebelum mulai' in data['html']
+        revoke.assert_called_once_with('task-1')
+
+        with patch(AMBIL) as ambil:
+            jobs.jalankan_job(job_id)
+        ambil.assert_not_called()
+        assert jobs.baca_job(job_id)['state'] == jobs.DIHENTIKAN
+        assert jobs.antrian() == []
+
+        # The modal offers a fresh start.
+        lagi = client.get(_url(tiket)).json()
+        assert 'data-kd-dihentikan' in lagi['html'] and 'Ambil dari Oracle' in lagi['html']
+        assert _mulai(client, tiket)[0]['job_id'] != job_id
+
+    def test_hentikan_job_berjalan_membatalkan_query(self, client, pmde_admin_user, tiket):
+        TiketKdTahap.objects.create(id_tiket=tiket, kd_tahap='A', jumlah_baris=5)
+        client.force_login(pmde_admin_user)
+        job_id = _mulai(client, tiket)[0]['job_id']
+
+        def _query(service, t, stop_checker):
+            # Runs in the worker's query thread: the stop arrives while Oracle
+            # is still busy, and the watcher sees it.
+            assert stop_checker() is False
+            jobs.hentikan_job(job_id, pmde_admin_user)
+            assert stop_checker() is True
+            raise KdTahapError('BANKDATAPDE.KPDE_CONTOH: query dibatalkan (DPY-4011)', dihentikan=True)
+
+        with patch(AMBIL, side_effect=_query):
+            jobs.jalankan_job(job_id)
+
+        job = jobs.baca_job(job_id)
+        assert job['state'] == jobs.DIHENTIKAN and job['error'] is None
+        assert job['durasi'] is not None
+        html = client.get(_job_url(tiket, job_id)).json()['html']
+        assert 'setelah query berjalan' in html
+        assert _simpanan(tiket) == {('A', None): 5}
+
+    def test_hasil_yang_datang_setelah_dihentikan_dibuang(self, client, pmde_admin_user, tiket):
+        client.force_login(pmde_admin_user)
+        job_id = _mulai(client, tiket)[0]['job_id']
+
+        def _query(service, t, stop_checker):
+            jobs.hentikan_job(job_id, pmde_admin_user)
+            return {('A', 'P'): 9}  # Oracle finished just before the cancel landed
+
+        with patch(AMBIL, side_effect=_query):
+            jobs.jalankan_job(job_id)
+
+        job = jobs.baca_job(job_id)
+        assert job['state'] == jobs.DIHENTIKAN and job['baru'] is None
+
+    def test_worker_dilepas_seketika_walau_oracle_belum_berhenti(
+            self, client, pmde_admin_user, tiket, monkeypatch):
+        """Oracle answers a cancel only at the end of its scan: the worker must not wait for it."""
+        import threading
+        import time
+
+        from diamond_web.utils import tiket_kd_tahap
+
+        monkeypatch.setattr(tiket_kd_tahap, 'INTERVAL_CEK_BERHENTI', 0.05)
+        client.force_login(pmde_admin_user)
+        job_id = _mulai(client, tiket)[0]['job_id']
+        mulai_query, lepas_oracle = threading.Event(), threading.Event()
+
+        def _query(service, t, stop_checker):
+            mulai_query.set()
+            lepas_oracle.wait(10)  # Oracle still scanning, cancel or not
+            return {('A', 'P'): 9}
+
+        def _hentikan_saat_berjalan():
+            mulai_query.wait(5)
+            jobs.hentikan_job(job_id, pmde_admin_user)
+
+        penghenti = threading.Thread(target=_hentikan_saat_berjalan)
+        penghenti.start()
+        t0 = time.monotonic()
+        try:
+            with patch(AMBIL, side_effect=_query):
+                jobs.jalankan_job(job_id)
+            lama = time.monotonic() - t0
+        finally:
+            lepas_oracle.set()
+            penghenti.join()
+
+        assert lama < 3
+        job = jobs.baca_job(job_id)
+        assert job['state'] == jobs.DIHENTIKAN and job['baru'] is None
+
+    def test_job_yang_sudah_selesai_tidak_bisa_dihentikan(self, client, pmde_admin_user, tiket):
+        client.force_login(pmde_admin_user)
+        job_id = _mulai(client, tiket)[0]['job_id']
+        _jalankan(job_id, {('A', None): 1})
+
+        data = client.post(_hentikan_url(tiket, job_id)).json()
+
+        assert data['success'] is False and 'sudah tidak berjalan' in data['message']
+        assert jobs.baca_job(job_id)['state'] == jobs.SELESAI
+
+    def test_hanya_admin_pmde(self, client, pide_admin_user, pmde_admin_user, tiket):
+        client.force_login(pmde_admin_user)
+        job_id = _mulai(client, tiket)[0]['job_id']
+        client.force_login(pide_admin_user)
+
+        assert client.post(_hentikan_url(tiket, job_id)).status_code == 403
+        assert jobs.baca_job(job_id)['state'] == jobs.ANTRI
+
+
+def test_penjaga_membatalkan_query_saat_diminta_berhenti(monkeypatch):
+    """ambil_kd_tahap_tiket cancels the running query once stop_checker() is True."""
+    import threading
+    from contextlib import contextmanager
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    from diamond_web.utils import tiket_kd_tahap
+
+    monkeypatch.setattr(tiket_kd_tahap, 'INTERVAL_CEK_BERHENTI', 0.05)
+    dibatalkan = threading.Event()
+
+    def _execute(sql, params):
+        # Oracle stays busy until the cancel arrives, then drops the connection.
+        assert dibatalkan.wait(5), 'query was never cancelled'
+        raise Exception('DPY-4011: the database or network closed the connection\nORA-03135')
+
+    cursor = MagicMock()
+    cursor.execute.side_effect = _execute
+    conn = MagicMock()
+    conn.cancel.side_effect = dibatalkan.set
+
+    @contextmanager
+    def _cursor_cm():
+        yield cursor
+
+    conn.cursor.side_effect = _cursor_cm
+
+    @contextmanager
+    def _connect(_which):
+        yield conn
+
+    service = MagicMock()
+    service._connect_oracle.side_effect = _connect
+    jdi = SimpleNamespace(nama_tabel_I='KPDE_CONTOH')
+    tiket = SimpleNamespace(id=1, nomor_tiket='T0000000000000001',
+                            id_periode_data=SimpleNamespace(id_sub_jenis_data_ilap=jdi))
+    cek = iter([False, False, True])
+
+    with pytest.raises(KdTahapError) as err:
+        tiket_kd_tahap.ambil_kd_tahap_tiket(service, tiket, stop_checker=lambda: next(cek, True))
+
+    assert err.value.dihentikan is True and err.value.timeout is False
+    conn.cancel.assert_called_once()

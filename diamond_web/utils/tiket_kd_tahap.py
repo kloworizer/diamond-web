@@ -4,10 +4,12 @@ Dipakai oleh management command ``sync_tiket_kd_tahap`` (semua tiket satu tahun
 terima DIP) dan oleh menu Sinkronisasi KD Tahap di detil tiket (satu tiket).
 
 Tabel I tiket = JenisDataILAP.nama_tabel_I, di schema BANKDATAPDE pada koneksi
-Oracle secondary. NO_TIKET di tabel tersebut tidak ber-index, jadi beberapa
-tiket satu tabel di-query sekaligus:
+Oracle secondary. NO_TIKET di banyak tabel tidak ber-index, dan di tabel yang
+ber-index pun satu tiket bisa berisi puluhan juta baris (mis. SLIK), jadi
+beberapa tiket satu tabel di-query sekaligus, dengan eksekusi paralel Oracle:
 
-    SELECT NO_TIKET, KD_TAHAP, QC, COUNT(*) FROM BANKDATAPDE.<nama_tabel_I>
+    SELECT /*+ PARALLEL(t, 4) */ NO_TIKET, KD_TAHAP, QC, COUNT(*)
+    FROM BANKDATAPDE.<nama_tabel_I> t
     WHERE NO_TIKET IN (...)
     GROUP BY NO_TIKET, KD_TAHAP, QC
 
@@ -17,6 +19,7 @@ Hasilnya per tiket berupa {(kd_tahap, qc): jumlah}; QC kosong = belum di-QC.
 import logging
 import os
 import re
+import threading
 import time
 from collections import defaultdict
 
@@ -55,13 +58,19 @@ def _detik_env(nama, default):
         return int(default)
 
 
-# Batas waktu satu query ke tabel I (detik, 0 = tanpa batas). Tabel besar tanpa
-# index NO_TIKET bisa butuh beberapa menit; query yang melewati batas ini
-# dibatalkan Oracle (call_timeout) dan dicatat sebagai timeout.
-QUERY_TIMEOUT = _detik_env('ORACLE_KD_TAHAP_TIMEOUT', '900')
+# Batas waktu satu query ke tabel I (detik, 0 = tanpa batas). Satu tiket SLIK
+# berisi 35-80 juta baris; query yang melewati batas ini dibatalkan Oracle
+# (call_timeout) dan dicatat sebagai timeout.
+QUERY_TIMEOUT = _detik_env('ORACLE_KD_TAHAP_TIMEOUT', '3600')
+
+# Derajat eksekusi paralel Oracle (hint PARALLEL; 0/1 = serial). Oracle tetap
+# memakai index untuk tiket kecil dan hanya membagi scan besar ke beberapa
+# proses: untuk SLIK estimasi biayanya turun ~2,6x, dengan beban CPU/IO server
+# Oracle yang lebih tinggi selama query.
+PARALLEL = _detik_env('ORACLE_KD_TAHAP_PARALLEL', '4')
 
 # Error yang menandakan query dibatalkan karena call_timeout.
-_KODE_TIMEOUT = ('DPI-1067', 'ORA-03156', 'ORA-01013')
+_KODE_TIMEOUT = ('DPI-1067', 'DPY-4024', 'ORA-03156', 'ORA-01013')
 
 # Koneksi putus. Saat call_timeout habis Oracle kadang hanya memutus koneksi
 # (ORA-03113 / DPI-1080) tanpa kode timeout di atas.
@@ -102,9 +111,54 @@ def set_query_timeout(conn, detik):
 class KdTahapError(Exception):
     """Jumlah baris KD_TAHAP tidak dapat diambil dari Oracle."""
 
-    def __init__(self, pesan, timeout=False):
+    def __init__(self, pesan, timeout=False, dihentikan=False):
         super().__init__(pesan)
         self.timeout = timeout
+        self.dihentikan = dihentikan
+
+
+# Seberapa sering permintaan berhenti diperiksa selama query berjalan (detik).
+INTERVAL_CEK_BERHENTI = 2
+
+
+class _PenjagaBerhenti:
+    """Batalkan query di *conn* (connection.cancel()) begitu *stop_checker()* True.
+
+    Berjalan di thread terpisah selama query: cursor.execute() memblok thread
+    pemanggil sampai Oracle selesai, jadi permintaan berhenti hanya bisa
+    diteruskan dari luar.
+    """
+
+    def __init__(self, conn, stop_checker):
+        self.conn = conn
+        self.stop_checker = stop_checker
+        self.dibatalkan = False
+        self._selesai = threading.Event()
+        self._thread = threading.Thread(target=self._jaga, name='kd_tahap_stop', daemon=True)
+
+    def _jaga(self):
+        while not self._selesai.wait(INTERVAL_CEK_BERHENTI):
+            try:
+                berhenti = self.stop_checker()
+            except Exception:  # cache sementara tidak terbaca: cek lagi nanti
+                logger.debug('KD Tahap: cek permintaan berhenti gagal', exc_info=True)
+                continue
+            if berhenti:
+                self.dibatalkan = True
+                try:
+                    self.conn.cancel()
+                except Exception:
+                    logger.warning('KD Tahap: connection.cancel() gagal', exc_info=True)
+                return
+
+    def __enter__(self):
+        self._thread.start()
+        return self
+
+    def __exit__(self, *exc):
+        self._selesai.set()
+        self._thread.join(timeout=INTERVAL_CEK_BERHENTI + 1)
+        return False
 
 
 def nomor_tiket_oracle(nomor_tiket):
@@ -134,8 +188,13 @@ def _nilai(value):
     return teks[:PANJANG_NILAI] if teks else None
 
 
+def petunjuk_paralel(parallel):
+    """Hint Oracle untuk eksekusi paralel, atau '' bila serial."""
+    return f"/*+ PARALLEL(t, {int(parallel)}) */ " if parallel and int(parallel) > 1 else ''
+
+
 def hitung_kd_tahap(cursor, tabel, tikets, kolom_tiket=KOLOM_TIKET, kolom_tahap=KOLOM_TAHAP,
-                    kolom_qc=KOLOM_QC):
+                    kolom_qc=KOLOM_QC, parallel=PARALLEL):
     """Jumlah baris per KD_TAHAP & QC untuk *tikets* (paling banyak TIKET_PER_QUERY) di *tabel*.
 
     Returns {tiket.id: {(kd_tahap, qc): jumlah}}; tiket tanpa baris tidak ada
@@ -149,7 +208,7 @@ def hitung_kd_tahap(cursor, tabel, tikets, kolom_tiket=KOLOM_TIKET, kolom_tahap=
     nomors = list(tiket_by_nomor)
     placeholders = ', '.join(f':{i}' for i in range(1, len(nomors) + 1))
     cursor.execute(
-        f"SELECT {kolom_tiket}, {kolom_tahap}, {kolom_qc}, COUNT(*) FROM {tabel} "
+        f"SELECT {petunjuk_paralel(parallel)}{kolom_tiket}, {kolom_tahap}, {kolom_qc}, COUNT(*) FROM {tabel} t "
         f"WHERE {kolom_tiket} IN ({placeholders}) "
         f"GROUP BY {kolom_tiket}, {kolom_tahap}, {kolom_qc}",
         nomors,
@@ -195,23 +254,32 @@ def simpan_kd_tahap(tiket, hitungan):
         ])
 
 
-def ambil_kd_tahap_tiket(service, tiket, timeout=QUERY_TIMEOUT):
+def ambil_kd_tahap_tiket(service, tiket, timeout=QUERY_TIMEOUT, stop_checker=None):
     """Jumlah baris per KD_TAHAP & QC satu tiket dari Oracle: {(kd_tahap, qc): jumlah}.
 
     Raises KdTahapError bila nama tabel I tidak valid atau query Oracle gagal
-    (`.timeout` True bila query melewati *timeout* detik).
+    (`.timeout` True bila query melewati *timeout* detik, `.dihentikan` True
+    bila dibatalkan karena *stop_checker()* menjadi True selama query).
     """
     tabel = f"{SCHEMA}.{nama_tabel_i(tiket)}"
     t0 = time.monotonic()
+    penjaga = None
     try:
         with service._connect_oracle(KONEKSI) as conn:
             set_query_timeout(conn, timeout)
             with conn.cursor() as cursor:
-                return hitung_kd_tahap(cursor, tabel, [tiket]).get(tiket.id, {})
+                if stop_checker is None:
+                    return hitung_kd_tahap(cursor, tabel, [tiket]).get(tiket.id, {})
+                with _PenjagaBerhenti(conn, stop_checker) as penjaga:
+                    return hitung_kd_tahap(cursor, tabel, [tiket]).get(tiket.id, {})
     except KdTahapError:
         raise
     except Exception as exc:  # OracleSyncConfigError, oracledb.DatabaseError, ...
         pesan = pesan_error(exc)
+        if penjaga is not None and penjaga.dibatalkan:
+            logger.info("KD Tahap tiket %s (%s): query dibatalkan atas permintaan (%s)",
+                        tiket.nomor_tiket, tabel, pesan)
+            raise KdTahapError(f"{tabel}: query dibatalkan ({pesan})", dihentikan=True) from exc
         logger.warning("KD Tahap tiket %s (%s): %s", tiket.nomor_tiket, tabel, pesan)
         if is_timeout(exc, time.monotonic() - t0, timeout):
             raise KdTahapError(

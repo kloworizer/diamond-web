@@ -438,6 +438,7 @@ urlpatterns = [
     path('tiket/<int:pk>/sinkronisasi/', views.SinkronisasiTiketView.as_view(), name='sinkronisasi_tiket'),
     path('tiket/<int:pk>/kd-tahap/', views.SinkronisasiKdTahapView.as_view(), name='sinkronisasi_kd_tahap'),
     path('tiket/<int:pk>/kd-tahap/<str:job_id>/', views.SinkronisasiKdTahapJobView.as_view(), name='sinkronisasi_kd_tahap_job'),
+    path('tiket/<int:pk>/kd-tahap/<str:job_id>/hentikan/', views.SinkronisasiKdTahapHentikanView.as_view(), name='sinkronisasi_kd_tahap_hentikan'),
     # Kelola PIC Tiket: admin seksi mengatur PIC satu tiket tanpa menyentuh tabel PIC
     path('tiket/<int:pk>/pic/tambah/', views.TambahPICTiketView.as_view(), name='tiket_pic_tambah'),
     path('tiket/<int:pk>/pic/<int:pic_pk>/ubah/', views.UbahPICTiketView.as_view(), name='tiket_pic_ubah'),

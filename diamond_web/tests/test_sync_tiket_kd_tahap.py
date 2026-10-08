@@ -143,7 +143,7 @@ def test_only_pengendalian_mutu_and_selesai_tikets_of_the_given_tahun_are_querie
 
     assert len(oracle.calls) == 1
     sql, params = oracle.calls[0]
-    assert 'FROM BANKDATAPDE.KPDE_CONTOH WHERE NO_TIKET IN (:1, :2)' in sql
+    assert 'FROM BANKDATAPDE.KPDE_CONTOH t WHERE NO_TIKET IN (:1, :2)' in sql
     assert 'GROUP BY NO_TIKET, KD_TAHAP, QC' in sql
     assert sorted(params) == ['T0000000000000001', 'T0000000000000004']
     assert _simpanan(selesai) == {'1': 10, '2': 5}
@@ -217,7 +217,7 @@ def test_schema_and_column_options_shape_the_query():
     _, oracle = _run({}, tahun=2025, schema='LAIN', kolom_tiket='ID_TIKET')
 
     sql = oracle.calls[0][0]
-    assert 'FROM LAIN.KPDE_CONTOH WHERE ID_TIKET IN' in sql
+    assert 'FROM LAIN.KPDE_CONTOH t WHERE ID_TIKET IN' in sql
 
 
 @pytest.mark.django_db
@@ -314,7 +314,7 @@ def test_log_records_query_error_with_sql_and_traceback(log_dir):
 
     _, log = _log(log_dir)
     assert 'ERROR Query BANKDATAPDE.KPDE_HILANG gagal' in log
-    assert 'ERROR SQL: SELECT NO_TIKET, KD_TAHAP, QC, COUNT(*) FROM BANKDATAPDE.KPDE_HILANG' in log
+    assert 'ERROR SQL: SELECT /*+ PARALLEL(t, 4) */ NO_TIKET, KD_TAHAP, QC, COUNT(*) FROM BANKDATAPDE.KPDE_HILANG t' in log
     assert 'ERROR Tiket: T0000000000000001' in log
     assert 'Traceback (most recent call last)' in log
     assert 'GAGAL       tiket=T0000000000000001' in log
@@ -393,7 +393,7 @@ def test_timeout_is_retried_and_others_still_succeed(log_dir):
     assert _simpanan(ok) == {'1': 2}
     assert 'BANKDATAPDE.KPDE_BESAR: TIMEOUT' in out and 'akan diulang' in out
     _, log = _log(log_dir)
-    assert 'Query BANKDATAPDE.KPDE_BESAR gagal [TIMEOUT (melewati 900 detik)] pada percobaan ke-1' in log
+    assert 'Query BANKDATAPDE.KPDE_BESAR gagal [TIMEOUT (melewati 3600 detik)] pada percobaan ke-1' in log
     assert 'percobaan ke-2' in log
     assert 'Status run            : SELESAI' in log
     assert 'Query Oracle          : 3 (timeout: 1)' in log
@@ -414,11 +414,11 @@ def test_table_still_failing_after_retries_is_listed_with_rerun_command(log_dir)
     assert len(oracle.calls) == 4  # KPDE_BESAR 3x, KPDE_CONTOH once
     assert _simpanan(lambat) == {'1': 4}
     assert _simpanan(ok) == {'1': 2}
-    rerun = 'python manage.py sync_tiket_kd_tahap --tahun 2025 --tabel KPDE_BESAR --timeout 1800'
+    rerun = 'python manage.py sync_tiket_kd_tahap --tahun 2025 --tabel KPDE_BESAR --timeout 7200'
     assert rerun in out
     _, log = _log(log_dir)
     assert 'Tabel gagal (1):' in log
-    assert '  - KPDE_BESAR: query melewati batas waktu 900 detik' in log
+    assert '  - KPDE_BESAR: query melewati batas waktu 3600 detik' in log
     assert f'Ulangi tabel yang gagal dengan: {rerun}' in log
     assert 'query gagal setelah 3 percobaan' in log
     assert 'Status run            : SELESAI DENGAN ERROR' in log
@@ -473,7 +473,7 @@ def test_rows_are_counted_per_kd_tahap_and_qc_flag(log_dir):
         ('1', 'P', 7), ('1', 'X', 2), ('1', None, 3), ('2', ' F ', 1),
     ]}, tahun=2025, kolom_qc='FLAG_QC')
 
-    assert 'SELECT NO_TIKET, KD_TAHAP, FLAG_QC, COUNT(*)' in oracle.calls[0][0]
+    assert 'SELECT /*+ PARALLEL(t, 4) */ NO_TIKET, KD_TAHAP, FLAG_QC, COUNT(*)' in oracle.calls[0][0]
     assert _simpanan(tiket) == {('1', 'P'): 7, ('1', 'X'): 2, '1': 3, ('2', 'F'): 1}
     _, log = _log(log_dir)
     assert 'kd_tahap/qc: 1/P=7, 1/X=2, 1/(kosong)=3, 2/F=1' in log
@@ -513,3 +513,20 @@ def test_tiket_detail_shows_qc_flag_badges(client):
     belum = html.index('kd-qc-belum small">Belum QC<')
     assert lolos < tidak < belum  # jumlah baris descending
     assert '>60<' in html
+
+
+@pytest.mark.django_db
+def test_parallel_hint_default_and_off():
+    _tiket('T0000000000000001')
+
+    _, oracle = _run({}, tahun=2025)
+    assert oracle.calls[0][0].startswith('SELECT /*+ PARALLEL(t, 4) */ NO_TIKET, KD_TAHAP, QC, COUNT(*)')
+
+    _, oracle = _run({}, tahun=2025, parallel=0)
+    assert oracle.calls[0][0].startswith('SELECT NO_TIKET, KD_TAHAP, QC, COUNT(*) FROM BANKDATAPDE.KPDE_CONTOH t ')
+
+
+def test_dpy_4024_is_a_timeout():
+    from diamond_web.utils.tiket_kd_tahap import is_timeout
+
+    assert is_timeout(Exception('DPY-4024: call timeout of 900000 ms exceeded'))
