@@ -267,6 +267,64 @@ class TestKelolaPICTiket:
 
 
 @pytest.mark.django_db
+class TestTandaTerimaSeries:
+    """Tanda terima numbering: P3DE as PJ.1031, P3DER as PJ.1032, separate counters."""
+
+    def test_format(self):
+        from diamond_web.utils.tanda_terima_nomor import format_nomor_tanda_terima
+        assert format_nomor_tanda_terima(7, 2026, 'P3DE') == '00007.TTD/PJ.1031/2026'
+        assert format_nomor_tanda_terima(7, 2026, 'P3DER') == '00007.TTD/PJ.1032/2026'
+
+    def test_seksi_follows_scope(self):
+        from diamond_web.tests.conftest import KanwilFactory
+        from diamond_web.utils.tanda_terima_nomor import seksi_tanda_terima
+        regional = _jenis_data('Regional').id_ilap
+        nasional = _jenis_data('Nasional').id_ilap
+        assert seksi_tanda_terima(kanwil=KanwilFactory()) == 'P3DER'
+        assert seksi_tanda_terima(ilap=regional) == 'P3DER'
+        assert seksi_tanda_terima(ilap=regional.pk) == 'P3DER'
+        assert seksi_tanda_terima(ilap=nasional) == 'P3DE'
+
+    def test_counters_and_sequences_are_per_seksi(self):
+        from diamond_web.models.sequence_tanda_terima import SequenceTandaTerima
+        from diamond_web.models.tanda_terima_data import TandaTerimaData
+        from diamond_web.utils.tanda_terima_nomor import next_nomor_tanda_terima
+        from django.utils import timezone
+        SequenceTandaTerima.objects.create(seksi='P3DER', tahun=2030, nomor_terakhir=200)
+        assert next_nomor_tanda_terima(2030, 'P3DE') == 1
+        assert next_nomor_tanda_terima(2030, 'P3DER') == 201
+        user = _member('user_p3de')
+        for seksi in ('P3DE', 'P3DER'):
+            # The same number may exist once per series.
+            TandaTerimaData.objects.create(
+                seksi=seksi, nomor_tanda_terima=9, tahun_terima=2031,
+                tanggal_tanda_terima=timezone.now(), id_perekam=user,
+            )
+        assert next_nomor_tanda_terima(2031, 'P3DE') == 10
+        assert next_nomor_tanda_terima(2031, 'P3DER') == 10
+
+    def test_hint_from_the_other_series_is_ignored(self):
+        from diamond_web.utils.tanda_terima_nomor import parse_nomor_tanda_terima
+        assert parse_nomor_tanda_terima('00012.TTD/PJ.1032/2026', 2026, 'P3DER') == 12
+        assert parse_nomor_tanda_terima('00012.TTD/PJ.1031/2026', 2026, 'P3DER') is None
+
+    def test_sequence_admin_manages_own_series(self, client):
+        from diamond_web.models.sequence_tanda_terima import SequenceTandaTerima
+        SequenceTandaTerima.objects.create(seksi='P3DE', tahun=2032, nomor_terakhir=5)
+        client.force_login(_member('admin_p3der'))
+        rows = client.get(reverse('sequence_tanda_terima_data'),
+                          {'draw': 1, 'start': 0, 'length': 50}).json()['data']
+        assert all('P3DER' in row['seksi'] for row in rows)
+        resp = client.post(reverse('sequence_tanda_terima_create'),
+                           {'tahun': 2032, 'nomor_terakhir': 50}, **AJAX)
+        assert resp.json()['success'] is True
+        assert SequenceTandaTerima.objects.get(tahun=2032, seksi='P3DER').nomor_terakhir == 50
+        # It cannot reach the P3DE one.
+        p3de = SequenceTandaTerima.objects.get(tahun=2032, seksi='P3DE')
+        assert client.get(reverse('sequence_tanda_terima_update', args=[p3de.pk]), {'ajax': 1}).status_code == 404
+
+
+@pytest.mark.django_db
 class TestMonitoring:
     """Kasi and admin monitor every sub jenis data of their own seksi only."""
     url = 'monitoring_penyampaian_data_data'

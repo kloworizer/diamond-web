@@ -98,7 +98,7 @@ class TestSequenceTandaTerimaData:
         client.force_login(_admin_p3de_user())
         resp = client.get(
             reverse(self.url),
-            {'draw': '1', 'start': '0', 'length': '10', 'columns_search[]': ['2017']},
+            {'draw': '1', 'start': '0', 'length': '10', 'columns_search[]': ['', '2017']},
         )
         assert resp.json()['recordsFiltered'] == 1
 
@@ -107,7 +107,7 @@ class TestSequenceTandaTerimaData:
         client.force_login(_admin_p3de_user())
         resp = client.get(
             reverse(self.url),
-            {'draw': '1', 'start': '0', 'length': '10', 'columns_search[]': ['', '777']},
+            {'draw': '1', 'start': '0', 'length': '10', 'columns_search[]': ['', '', '777']},
         )
         assert resp.json()['recordsFiltered'] == 1
 
@@ -266,7 +266,7 @@ class TestSequenceTandaTerimaForm:
         assert 'tahun' in form.errors
 
     def test_clean_tahun_valid(self):
-        form = SequenceTandaTerimaForm(data={'tahun': 2020, 'nomor_terakhir': 1})
+        form = SequenceTandaTerimaForm(data={'seksi': 'P3DE', 'tahun': 2020, 'nomor_terakhir': 1})
         assert form.is_valid()
 
     def test_clean_blocks_edit_when_locked(self):

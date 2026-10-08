@@ -86,6 +86,15 @@ Pengelolaan template dokumen `.docx` (mis. PKDI/Klarifikasi, ND Pengantar) yang 
 
 Pengelolaan nomor urut (sequence) tanda terima data, agar penomoran tanda terima konsisten dan tidak duplikat.
 
+Seksi P3DE dan Seksi P3DER memiliki seri nomor masing-masing, dan setiap baris sequence berlaku untuk satu seksi dan satu tahun:
+
+| Seksi | Format nomor | Tanda terima yang masuk seri ini |
+|-------|--------------|----------------------------------|
+| P3DE | `XXXXX.TTD/PJ.1031/YYYY` | Lingkup ILAP Nasional / Internasional |
+| P3DER | `XXXXX.TTD/PJ.1032/YYYY` | Lingkup Kanwil, atau ILAP Regional |
+
+Admin P3DE hanya melihat dan mengatur sequence P3DE, Admin P3DER hanya sequence P3DER; admin global mengatur keduanya. Baris terkunci begitu seksi tersebut sudah menerbitkan tanda terima di tahun itu.
+
 ---
 
 ## Menu Admin PIDE

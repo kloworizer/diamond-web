@@ -16,6 +16,7 @@ from ..utils.tanda_terima_nomor import (
     format_nomor_tanda_terima,
     next_nomor_tanda_terima,
     parse_nomor_tanda_terima,
+    seksi_tanda_terima,
 )
 from ..utils.tanda_terima_scope import (
     LINGKUP_CHOICES,
@@ -177,11 +178,8 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
 
             tahun = tanggal.year
             self.fields['tahun_terima'].initial = tahun
-            # Preview only — `save` re-allocates, since this can go stale
-            # between rendering the form and submitting it.
-            self.fields['nomor_tanda_terima'].initial = format_nomor_tanda_terima(
-                next_nomor_tanda_terima(tahun), tahun
-            )
+            # The number preview is set once the scope is known (below): the
+            # seksi, and so the series, follows the scope.
         else:
             self.fields['nomor_tanda_terima'].disabled = True
             self.fields['tahun_terima'].disabled = True
@@ -197,6 +195,18 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
             self._init_edit_scope()
         else:
             self._init_create_scope()
+
+        if not self.instance.pk:
+            # Preview only — `save` re-allocates, since this can go stale
+            # between rendering the form and submitting it.
+            seksi = seksi_tanda_terima(
+                kanwil=self.fields['id_kanwil'].initial,
+                ilap=self.fields['id_ilap'].initial,
+            )
+            tahun = self.fields['tahun_terima'].initial
+            self.fields['nomor_tanda_terima'].initial = format_nomor_tanda_terima(
+                next_nomor_tanda_terima(tahun, seksi), tahun, seksi
+            )
 
         if 'tiket_ids' in self.fields:
             self.fields['tiket_ids'].widget = TiketCheckboxSelectMultiple(disabled_ids=self._disabled_tiket_ids)
@@ -457,11 +467,15 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
         # user changed the date and moved into another year's series). The
         # year always follows the date, and the number is re-allocated
         # whenever the hint is already taken.
+        # The seksi — and so the series, PJ.1031 or PJ.1032 — follows the
+        # scope, and is fixed once the record exists.
         if not instance.pk:
+            instance.seksi = seksi_tanda_terima(kanwil=instance.id_kanwil_id, ilap=instance.id_ilap)
             tahun = instance.tanggal_tanda_terima.year if instance.tanggal_tanda_terima else instance.tahun_terima
             instance.tahun_terima = tahun
             preferred = parse_nomor_tanda_terima(
-                self.cleaned_data.get('nomor_tanda_terima'), expected_tahun=tahun
+                self.cleaned_data.get('nomor_tanda_terima'), expected_tahun=tahun,
+                expected_seksi=instance.seksi,
             )
         else:
             preferred = None
@@ -469,7 +483,7 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
         if not commit:
             if not instance.pk:
                 instance.nomor_tanda_terima = allocate_nomor_tanda_terima(
-                    instance.tahun_terima, preferred=preferred
+                    instance.tahun_terima, preferred=preferred, seksi=instance.seksi
                 )
             return instance
 
@@ -485,6 +499,7 @@ class TandaTerimaDataForm(AutoRequiredFormMixin, forms.ModelForm):
             instance.nomor_tanda_terima = allocate_nomor_tanda_terima(
                 instance.tahun_terima,
                 preferred=preferred if attempt == 0 else None,
+                seksi=instance.seksi,
             )
             try:
                 with transaction.atomic():

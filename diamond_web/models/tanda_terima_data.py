@@ -11,9 +11,23 @@ class TandaTerimaData(models.Model):
     and PD) or per ILAP (nasional/internasional ILAP). Exactly one of
     ``id_kanwil`` / ``id_ilap`` is filled. ``nomor_nd_pengantar`` optionally
     narrows the scope further to a single ND Pengantar.
+
+    Each seksi numbers its tanda terima in its own series: Seksi P3DE as
+    ``…TTD/PJ.1031/…``, Seksi P3DER (Regional ILAP) as ``…TTD/PJ.1032/…``.
+    ``seksi`` follows the scope and is set when the record is created.
     """
 
+    class Seksi(models.TextChoices):
+        P3DE = 'P3DE', 'P3DE (PJ.1031)'
+        P3DER = 'P3DER', 'P3DER (PJ.1032)'
+
     id = models.AutoField(primary_key=True, verbose_name="ID")
+    seksi = models.CharField(
+        max_length=5,
+        choices=Seksi.choices,
+        default=Seksi.P3DE,
+        verbose_name="Seksi",
+    )
     nomor_tanda_terima = models.IntegerField(verbose_name="Nomor Tanda Terima")
     tahun_terima = models.IntegerField(verbose_name="Tahun Terima")
     tanggal_tanda_terima = models.DateTimeField(verbose_name="Tanggal Tanda Terima")
@@ -52,17 +66,17 @@ class TandaTerimaData(models.Model):
         verbose_name_plural = "Tanda Terima Data"
         db_table = "tanda_terima_data"
         ordering = ["-tanggal_tanda_terima"]
-        unique_together = ('nomor_tanda_terima', 'tahun_terima')
+        unique_together = ('seksi', 'nomor_tanda_terima', 'tahun_terima')
 
     def __str__(self):
         return self.nomor_tanda_terima_format
 
     @property
     def nomor_tanda_terima_format(self):
-        """Returns formatted nomor tanda terima as 5 digit sequence.TTD/PJ.1031/year"""
+        """Returns formatted nomor tanda terima as 5 digit sequence.TTD/PJ.103x/year"""
         from ..utils.tanda_terima_nomor import format_nomor_tanda_terima
 
-        return format_nomor_tanda_terima(self.nomor_tanda_terima, self.tahun_terima)
+        return format_nomor_tanda_terima(self.nomor_tanda_terima, self.tahun_terima, self.seksi)
 
     @property
     def is_regional(self):

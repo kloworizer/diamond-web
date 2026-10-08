@@ -13,7 +13,36 @@ from django.db import models
 from ..models.sequence_tanda_terima import SequenceTandaTerima
 from ..models.tanda_terima_data import TandaTerimaData
 from ..forms.sequence_tanda_terima import SequenceTandaTerimaForm
-from .mixins import AjaxFormMixin, AdminP3DERequiredMixin
+from .mixins import AjaxFormMixin, AdminP3DERequiredMixin, p3de_seksi_of_user
+
+
+def _managed_seksi(user):
+    """The tanda terima series `user` manages: admin P3DE the P3DE one
+    (PJ.1031), admin P3DER the P3DER one (PJ.1032), the global admin both."""
+    return sorted(p3de_seksi_of_user(user, 'admin'))
+
+
+class _SeksiScopedMixin:
+    """Limit a sequence view to the seksi the admin manages."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(seksi__in=_managed_seksi(self.request.user))
+
+
+class _SeksiFormMixin(_SeksiScopedMixin):
+    """Also offer only the managed seksi in the sequence form."""
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['seksi_choices'] = _managed_seksi(self.request.user)
+        return kwargs
+
+
+def _has_tanda_terima(sequence):
+    """True when the sequence's series already numbered a tanda terima that year."""
+    return TandaTerimaData.objects.filter(
+        seksi=sequence.seksi, tahun_terima=sequence.tahun
+    ).exists()
 
 
 class SequenceTandaTerimaListView(LoginRequiredMixin, AdminP3DERequiredMixin, TemplateView):
@@ -64,29 +93,33 @@ def sequence_tanda_terima_data(request):
     `admin_p3de` or `admin_p3der` groups.
 
     Returns: JSON with `draw`, `recordsTotal`, `recordsFiltered`, and
-    `data` rows. Each row includes `tahun`, `nomor_terakhir`,
-    `nomor_berikutnya`, `can_edit`, and `actions` HTML.
+    `data` rows. Each row includes `seksi`, `tahun`, `nomor_terakhir`,
+    `nomor_berikutnya`, `can_edit`, and `actions` HTML. Rows are limited to
+    the series the admin manages (P3DE / P3DER).
     """
     draw = int(request.GET.get('draw', '1'))
     start = int(request.GET.get('start', '0'))
     length = int(request.GET.get('length', '10'))
 
-    qs = SequenceTandaTerima.objects.all()
+    base_qs = SequenceTandaTerima.objects.filter(seksi__in=_managed_seksi(request.user))
+    qs = base_qs
 
     # Column-specific filtering
     columns_search = request.GET.getlist('columns_search[]')
     if columns_search:
-        if columns_search[0]:  # Tahun
-            qs = qs.filter(tahun__icontains=columns_search[0])
-        if len(columns_search) > 1 and columns_search[1]:  # Nomor Terakhir
-            qs = qs.filter(nomor_terakhir__icontains=columns_search[1])
+        if columns_search[0]:  # Seksi
+            qs = qs.filter(seksi__icontains=columns_search[0])
+        if len(columns_search) > 1 and columns_search[1]:  # Tahun
+            qs = qs.filter(tahun__icontains=columns_search[1])
+        if len(columns_search) > 2 and columns_search[2]:  # Nomor Terakhir
+            qs = qs.filter(nomor_terakhir__icontains=columns_search[2])
 
-    records_total = SequenceTandaTerima.objects.count()
+    records_total = base_qs.count()
     records_filtered = qs.count()
 
     order_col_index = request.GET.get('order[0][column]')
     order_dir = request.GET.get('order[0][dir]', 'asc')
-    columns = ['tahun', 'nomor_terakhir']
+    columns = ['seksi', 'tahun', 'nomor_terakhir']
     if order_col_index is not None:
         try:
             idx = int(order_col_index)
@@ -103,8 +136,8 @@ def sequence_tanda_terima_data(request):
 
     data = []
     for obj in qs_page:
-        # Determine if editing is allowed - not allowed if there are TandaTerimaData for this year
-        has_records = TandaTerimaData.objects.filter(tahun_terima=obj.tahun).exists()
+        # Editing is not allowed once the series has a TandaTerimaData that year
+        has_records = _has_tanda_terima(obj)
         can_edit = not has_records
         can_delete = not has_records
 
@@ -128,6 +161,7 @@ def sequence_tanda_terima_data(request):
             actions_html += f"<button class='btn btn-sm btn-secondary' disabled title='Tidak dapat dihapus karena sudah ada Tanda Terima di tahun ini'><i class='feather-trash-2'></i></button>"
 
         data.append({
+            'seksi': obj.get_seksi_display(),
             'tahun': obj.tahun,
             'nomor_terakhir': obj.nomor_terakhir,
             'nomor_berikutnya': obj.nomor_berikutnya,
@@ -143,7 +177,7 @@ def sequence_tanda_terima_data(request):
     })
 
 
-class SequenceTandaTerimaCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, CreateView):
+class SequenceTandaTerimaCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, _SeksiFormMixin, AjaxFormMixin, CreateView):
     """Create view for `SequenceTandaTerima` with AJAX support."""
     model = SequenceTandaTerima
     form_class = SequenceTandaTerimaForm
@@ -180,7 +214,7 @@ class SequenceTandaTerimaCreateView(LoginRequiredMixin, AdminP3DERequiredMixin, 
         return self.render_form_response(form)
 
 
-class SequenceTandaTerimaUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, AjaxFormMixin, UpdateView):
+class SequenceTandaTerimaUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, _SeksiFormMixin, AjaxFormMixin, UpdateView):
     """Update view for `SequenceTandaTerima` with AJAX support.
 
     Prevents editing if there are already TandaTerimaData records for
@@ -221,7 +255,7 @@ class SequenceTandaTerimaUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, 
         """
         self.object = self.get_object()
         # Double-check: prevent edit if there are TandaTerimaData records
-        if TandaTerimaData.objects.filter(tahun_terima=self.object.tahun).exists():
+        if _has_tanda_terima(self.object):
             return JsonResponse({
                 'success': False,
                 'message': f'Tidak dapat mengubah data untuk tahun {self.object.tahun} karena sudah ada Tanda Terima Data yang tercatat.',
@@ -231,7 +265,7 @@ class SequenceTandaTerimaUpdateView(LoginRequiredMixin, AdminP3DERequiredMixin, 
         return self.render_form_response(form)
 
 
-class SequenceTandaTerimaDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, DeleteView):
+class SequenceTandaTerimaDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, _SeksiScopedMixin, DeleteView):
     """Delete view for `SequenceTandaTerima`.
 
     Prevents deletion if there are already TandaTerimaData records for
@@ -270,7 +304,7 @@ class SequenceTandaTerimaDeleteView(LoginRequiredMixin, AdminP3DERequiredMixin, 
             JsonResponse or HttpResponse: AJAX HTML string or full page response.
         """
         self.object = self.get_object()
-        if TandaTerimaData.objects.filter(tahun_terima=self.object.tahun).exists():
+        if _has_tanda_terima(self.object):
             if request.GET.get('ajax'):
                 return JsonResponse({
                     'success': False,

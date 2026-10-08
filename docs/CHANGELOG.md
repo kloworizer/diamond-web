@@ -9,6 +9,7 @@
   - Admin dan kasi kini terbatas pada ILAP seksinya: Daftar Tiket & dashboard kasi, detail/ubah isian tiket oleh admin, Kelola PIC Tiket, menu PIC P3DE (daftar, tambah, ubah, hapus), Monitoring Penyampaian Data, blok kontak Profil ILAP, dan kartu admin di Home. Data referensi bersama (Kategori, Kanwil, KPP, ILAP, Jenis Data, Template Dokumen, dll.) dikelola oleh kedua admin.
   - Formulir PIC P3DE menolak pegawai seksi yang tidak sesuai dengan wilayah ILAP sub jenis datanya. **Bulk PIC Pemda/Provinsi** tipe P3DE kini milik Admin P3DER karena seluruh ILAP PD/PV berwilayah Regional.
   - Teks menu, judul bagian, breadcrumb, dan label PIC menyebut seksi pengguna ("P3DE", "P3DER", atau "P3DE / P3DER" untuk admin global). Profil PDE dan Ringkasan Seksi menampilkan Seksi P3DER sebagai kolom tersendiri.
+  - **Nomor Tanda Terima per seksi** — Seksi P3DE memakai `XXXXX.TTD/PJ.1031/YYYY`, Seksi P3DER memakai `XXXXX.TTD/PJ.1032/YYYY`, masing-masing dengan urutan sendiri per tahun (migrasi `0021_tanda_terima_seksi` menambah kolom `seksi` pada Tanda Terima Data dan Sequence Tanda Terima; keunikan nomor kini per seksi). Seksi tanda terima mengikuti cakupannya: lingkup Kanwil atau ILAP Regional → P3DER, ILAP Nasional/Internasional → P3DE. Seluruh tanda terima yang sudah ada tetap milik P3DE (PJ.1031). Menu Sequence Tanda Terima memiliki kolom Seksi; admin tiap seksi hanya melihat dan mengatur seri seksinya.
 
 ## [1.2.2] — 2026-09-24
 

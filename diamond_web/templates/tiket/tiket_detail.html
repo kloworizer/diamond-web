@@ -4301,16 +4301,25 @@
                 const tanggalInput = container.querySelector('#id_tanggal_tanda_terima');
                 const nomorInput = container.querySelector('#id_nomor_tanda_terima');
                 const ilapInput = container.querySelector('#id_id_ilap');
+                const kanwilInput = container.querySelector('#id_id_kanwil');
                 const tiketContainer = container.querySelector('#tiket-checkbox-container');
 
                 if (tanggalInput && nomorInput) {
+                    // The scope (fixed by the tiket) decides the series:
+                    // P3DER (PJ.1032) for a Kanwil or Regional ILAP, else P3DE.
                     const updateNomor = () => {
                         const tanggalValue = tanggalInput.value;
                         if (!tanggalValue) {
                             return;
                         }
+                        const params = new URLSearchParams({ tanggal: tanggalValue });
+                        if (kanwilInput && kanwilInput.value) {
+                            params.set('kanwil_id', kanwilInput.value);
+                        } else if (ilapInput && ilapInput.value) {
+                            params.set('ilap_id', ilapInput.value);
+                        }
 
-                        fetch(`{% url "tanda_terima_next_number" %}?tanggal=${encodeURIComponent(tanggalValue)}`)
+                        fetch(`{% url "tanda_terima_next_number" %}?${params}`)
                             .then(response => response.json())
                             .then(data => {
                                 if (data && data.success && data.nomor_tanda_terima) {

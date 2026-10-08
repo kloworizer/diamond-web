@@ -550,6 +550,55 @@ class TestCancellationFreesTikets:
 
 
 @pytest.mark.django_db
+class TestSeksiSeries:
+    """Seksi P3DE and Seksi P3DER number their tanda terima separately.
+
+    A Kanwil-scoped receipt pools Regional ILAP and is P3DER's
+    (``…TTD/PJ.1032/…``); a receipt for a Nasional ILAP stays P3DE's
+    (``…TTD/PJ.1031/…``). Each series counts from its own start.
+    """
+
+    def _post(self, client, **scope):
+        payload = {
+            'tanggal_tanda_terima': '2026-07-20T10:00',
+            'nomor_tanda_terima': '',
+            'tahun_terima': '2026',
+        }
+        payload.update(scope)
+        resp = client.post(reverse('tanda_terima_data_create'), payload,
+                           HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        assert resp.status_code == 200 and resp.json().get('success') is True, resp.content
+
+    def test_regional_and_nasional_keep_separate_series(self, client, admin_user, wilayah):
+        # The P3DE series is already at 41 this year.
+        TandaTerimaData.objects.create(
+            seksi='P3DE', nomor_tanda_terima=41, tahun_terima=2026,
+            tanggal_tanda_terima=timezone.datetime(2026, 7, 1, 9, 0),
+            id_ilap=wilayah['nasional'], id_perekam=admin_user, active=False,
+        )
+        client.force_login(admin_user)
+        self._post(client, lingkup='regional', id_kanwil=str(wilayah['kanwil'].pk),
+                   nomor_nd_pengantar=ND_SATU, tiket_ids=[str(wilayah['tiket_pv_nd1'].pk)])
+        self._post(client, lingkup='nasional', id_ilap=str(wilayah['nasional'].pk),
+                   tiket_ids=[str(wilayah['tiket_nasional'].pk)])
+
+        regional = TandaTerimaData.objects.get(id_kanwil=wilayah['kanwil'])
+        assert regional.seksi == 'P3DER'
+        assert regional.nomor_tanda_terima_format == '00001.TTD/PJ.1032/2026'
+        nasional = TandaTerimaData.objects.filter(id_ilap=wilayah['nasional'], active=True).get()
+        assert nasional.seksi == 'P3DE'
+        assert nasional.nomor_tanda_terima_format == '00042.TTD/PJ.1031/2026'
+
+    def test_next_number_endpoint_follows_the_scope(self, client, admin_user, wilayah):
+        client.force_login(admin_user)
+        url = reverse('tanda_terima_next_number')
+        regional = client.get(url, {'tanggal': '2026-07-20', 'kanwil_id': wilayah['kanwil'].pk}).json()
+        nasional = client.get(url, {'tanggal': '2026-07-20', 'ilap_id': wilayah['nasional'].pk}).json()
+        assert regional['seksi'] == 'P3DER' and '/PJ.1032/2026' in regional['nomor_tanda_terima']
+        assert nasional['seksi'] == 'P3DE' and '/PJ.1031/2026' in nasional['nomor_tanda_terima']
+
+
+@pytest.mark.django_db
 class TestNomorAllocation:
     """`nomor_tanda_terima` is allocated server-side, not trusted from the post.
 
@@ -618,13 +667,13 @@ class TestNomorAllocation:
         real_allocate = nomor_mod.allocate_nomor_tanda_terima
         calls = {'n': 0}
 
-        def racing_allocate(tahun, preferred=None, exclude_pk=None):
-            nomor = real_allocate(tahun, preferred=preferred, exclude_pk=exclude_pk)
+        def racing_allocate(tahun, preferred=None, exclude_pk=None, seksi='P3DE'):
+            nomor = real_allocate(tahun, preferred=preferred, exclude_pk=exclude_pk, seksi=seksi)
             calls['n'] += 1
             if calls['n'] == 1:
                 # Another request commits this exact number first.
                 TandaTerimaData.objects.create(
-                    nomor_tanda_terima=nomor, tahun_terima=tahun,
+                    seksi=seksi, nomor_tanda_terima=nomor, tahun_terima=tahun,
                     tanggal_tanda_terima=timezone.datetime(tahun, 7, 1, 9, 0),
                     id_ilap=wilayah['nasional'], id_perekam=admin_user,
                 )

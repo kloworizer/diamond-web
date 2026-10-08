@@ -72,7 +72,7 @@ Seksi P3DE dipecah menjadi dua seksi yang menjalankan **tahap alur kerja yang sa
 | Nasional, Internasional | P3DE | `admin_p3de`, `user_p3de`, `kasi_p3de` |
 | Regional | P3DER | `admin_p3der`, `user_p3der`, `kasi_p3der` |
 
-Pada tabel di bawah, kolom **P3DE** berlaku untuk kedua seksi. Data referensi bersama (Kategori ILAP, Kanwil, KPP, ILAP, Jenis Data, Template Dokumen, Sequence Tanda Terima, dll.) dapat dikelola oleh kedua admin; baris yang terikat ke ILAP dibatasi per seksi (lihat [Cakupan Data](#cakupan-data-row-level-scope)). Helper terkait: `p3de_seksi_of()`, `p3de_seksi_of_user()`, `p3de_wilayah_q()`, `p3de_admin_wilayah_q()`, dan `supervised_tiket_q()` di `diamond_web/views/mixins.py`.
+Pada tabel di bawah, kolom **P3DE** berlaku untuk kedua seksi. Data referensi bersama (Kategori ILAP, Kanwil, KPP, ILAP, Jenis Data, Template Dokumen, dll.) dapat dikelola oleh kedua admin; Sequence Tanda Terima dikelola per seksi (P3DE: `PJ.1031`, P3DER: `PJ.1032`); baris yang terikat ke ILAP dibatasi per seksi (lihat [Cakupan Data](#cakupan-data-row-level-scope)). Helper terkait: `p3de_seksi_of()`, `p3de_seksi_of_user()`, `p3de_wilayah_q()`, `p3de_admin_wilayah_q()`, dan `supervised_tiket_q()` di `diamond_web/views/mixins.py`.
 
 ## Matriks Akses Menu Berdasarkan Role
 

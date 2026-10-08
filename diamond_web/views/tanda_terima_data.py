@@ -22,7 +22,7 @@ from ..utils.pic_profil import pic_profil_link, pic_profil_visibility
 from .mixins import AjaxFormMixin, UserP3DERequiredMixin, ActiveTiketP3DERequiredForEditMixin, SafeDeleteMixin
 from ..constants.tiket_status import STATUS_DIKIRIM_KE_PIDE
 from ..utils import format_number_with_separator, format_periode
-from ..utils.tanda_terima_nomor import format_nomor_tanda_terima, next_nomor_tanda_terima
+from ..utils.tanda_terima_nomor import format_nomor_tanda_terima, next_nomor_tanda_terima, seksi_tanda_terima
 from ..utils.tanda_terima_scope import nd_pengantar_options, scoped_tiket_queryset
 
 
@@ -207,11 +207,14 @@ def tanda_terima_data_data(request):
 @user_passes_test(lambda u: u.groups.filter(name__in=['admin', 'user_p3de', 'user_p3der']).exists())
 @require_GET
 def tanda_terima_next_number(request):
-    """Return next sequential `nomor_tanda_terima` for a given year.
+    """Return next sequential `nomor_tanda_terima` for a given year and scope.
 
     Query params:
     - `tanggal` (optional): ISO date or datetime. If omitted current date
       year is used.
+    - `kanwil_id` / `ilap_id` (optional): the scope picked so far. It decides
+      the seksi, and so the series: a Kanwil or a Regional ILAP numbers as
+      P3DER (PJ.1032), anything else as P3DE (PJ.1031).
 
     Response JSON: { 'success': True, 'nomor_tanda_terima': <string> }
     """
@@ -221,13 +224,20 @@ def tanda_terima_next_number(request):
         tanggal = parse_date(tanggal_param)
 
     tahun = (tanggal or timezone.now()).year
-    next_seq = next_nomor_tanda_terima(tahun)
+    try:
+        kanwil_id = int(request.GET.get('kanwil_id') or 0) or None
+        ilap_id = int(request.GET.get('ilap_id') or 0) or None
+    except ValueError:
+        kanwil_id = ilap_id = None
+    seksi = seksi_tanda_terima(kanwil=kanwil_id, ilap=ilap_id)
+    next_seq = next_nomor_tanda_terima(tahun, seksi)
 
     return JsonResponse({
         'success': True,
-        'nomor_tanda_terima': format_nomor_tanda_terima(next_seq, tahun),
+        'nomor_tanda_terima': format_nomor_tanda_terima(next_seq, tahun, seksi),
         'nomor_sequence': next_seq,
-        'tahun': tahun
+        'tahun': tahun,
+        'seksi': seksi,
     })
 
 

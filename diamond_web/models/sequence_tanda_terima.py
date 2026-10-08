@@ -4,7 +4,11 @@ from django.db import models
 
 
 class SequenceTandaTerima(models.Model):
-    """Stores the last used sequence number for Tanda Terima per year.
+    """Stores the last used sequence number for Tanda Terima per seksi and year.
+
+    Seksi P3DE and Seksi P3DER number their tanda terima in separate series
+    (``…TTD/PJ.1031/…`` and ``…TTD/PJ.1032/…``), so each seksi has its own
+    starting point per year.
 
     This allows administrators to set a custom starting sequence number
     for each year (e.g., start from 100 for 2026 so the next generated
@@ -14,9 +18,19 @@ class SequenceTandaTerima(models.Model):
     To prevent data integrity issues, entries cannot be edited once
     there are existing TandaTerimaData records for that year.
     """
+    class Seksi(models.TextChoices):
+        P3DE = 'P3DE', 'P3DE (PJ.1031)'
+        P3DER = 'P3DER', 'P3DER (PJ.1032)'
+
     id = models.AutoField(primary_key=True, verbose_name="ID")
+    seksi = models.CharField(
+        max_length=5,
+        choices=Seksi.choices,
+        default=Seksi.P3DE,
+        verbose_name="Seksi",
+        help_text="Seksi pemilik seri nomor tanda terima"
+    )
     tahun = models.IntegerField(
-        unique=True,
         verbose_name="Tahun",
         help_text="Tahun penerapan sequence"
     )
@@ -31,10 +45,13 @@ class SequenceTandaTerima(models.Model):
         verbose_name = "Sequence Tanda Terima"
         verbose_name_plural = "Sequence Tanda Terima"
         db_table = "sequence_tanda_terima"
-        ordering = ["-tahun"]
+        ordering = ["-tahun", "seksi"]
+        constraints = [
+            models.UniqueConstraint(fields=["seksi", "tahun"], name="seq_tt_seksi_tahun_uniq"),
+        ]
 
     def __str__(self):
-        return f"Tahun {self.tahun} - Nomor Terakhir: {self.nomor_terakhir}"
+        return f"{self.seksi} Tahun {self.tahun} - Nomor Terakhir: {self.nomor_terakhir}"
 
     @property
     def nomor_berikutnya(self):

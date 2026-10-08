@@ -460,13 +460,23 @@
             initFormGating(container);
 
             if (tanggalInput && nomorInput) {
+                // The scope decides the seksi and so the series: a Kanwil or a
+                // Regional ILAP numbers as P3DER (PJ.1032), the rest as P3DE
+                // (PJ.1031). The server re-allocates on save either way.
                 const updateNomor = () => {
-                    const tanggalValue = tanggalInput.value;
-                    if (!tanggalValue) {
-                        return;
+                    // Without a date the server previews the current year.
+                    const params = new URLSearchParams();
+                    if (tanggalInput.value) {
+                        params.set('tanggal', tanggalInput.value);
+                    }
+                    const regional = lingkupInput && lingkupInput.value === 'regional';
+                    if (regional && kanwilInput && kanwilInput.value) {
+                        params.set('kanwil_id', kanwilInput.value);
+                    } else if (!regional && ilapInput && ilapInput.value) {
+                        params.set('ilap_id', ilapInput.value);
                     }
 
-                    fetch(`{% url "tanda_terima_next_number" %}?tanggal=${encodeURIComponent(tanggalValue)}`)
+                    fetch(`{% url "tanda_terima_next_number" %}?${params}`)
                         .then(response => response.json())
                         .then(data => {
                             if (data && data.success && data.nomor_tanda_terima) {
@@ -479,6 +489,12 @@
                 };
 
                 tanggalInput.addEventListener('change', updateNomor);
+                [lingkupInput, kanwilInput, ilapInput].forEach(el => {
+                    if (el && !el.disabled) {
+                        el.addEventListener('change', updateNomor);
+                        if (window.jQuery) jQuery(el).on('select2:select select2:clear', updateNomor);
+                    }
+                });
             }
 
             // Scope selector: regional receipts are per Kanwil, nasional /

@@ -45,6 +45,7 @@
                 <table id="sequence-table" class="table table-hover mb-0" style="width:100%">
                     <thead>
                         <tr>
+                            <th>Seksi</th>
                             <th>Tahun</th>
                             <th>Nomor Terakhir</th>
                             <th>Nomor Berikutnya</th>
@@ -52,8 +53,9 @@
                             <th class="col-actions text-center">Aksi</th>
                         </tr>
                         <tr id="column-search-row">
-                            <th><input type="text" class="form-control form-control-sm" placeholder="Cari Tahun" data-column="0" /></th>
-                            <th><input type="text" class="form-control form-control-sm" placeholder="Cari Nomor" data-column="1" /></th>
+                            <th><input type="text" class="form-control form-control-sm" placeholder="Cari Seksi" data-column="0" /></th>
+                            <th><input type="text" class="form-control form-control-sm" placeholder="Cari Tahun" data-column="1" /></th>
+                            <th><input type="text" class="form-control form-control-sm" placeholder="Cari Nomor" data-column="2" /></th>
                             <th></th>
                             <th></th>
                             <th class="col-actions"></th>
@@ -66,19 +68,20 @@
             <!-- Information Box -->
             <div class="alert alert-info mt-4 mb-0 mx-3" role="alert">
                 <h6 class="alert-heading"><i class="feather-info me-2"></i>Informasi Sequence Tanda Terima</h6>
-                <p class="mb-2">Fitur ini digunakan untuk mengatur awal nomor urut <strong>Tanda Terima</strong> setiap tahun.</p>
+                <p class="mb-2">Fitur ini digunakan untuk mengatur awal nomor urut <strong>Tanda Terima</strong> setiap tahun. Seksi P3DE dan Seksi P3DER memiliki seri nomor masing-masing.</p>
                 <div class="ms-3 mb-2">
                     <h6 class="text-info mb-1"><strong>Cara Kerja:</strong></h6>
                     <ul class="mb-2">
                         <li><strong>Default:</strong> Jika tidak ada data sequence untuk suatu tahun, maka nomor Tanda Terima akan dimulai dari <code>1</code>.</li>
                         <li><strong>Kustom:</strong> Jika diisi, misalnya <strong>Nomor Terakhir = 100</strong>, maka Tanda Terima pertama di tahun tersebut akan bernomor <code>101</code>.</li>
-                        <li><strong>Terkunci:</strong> Data tidak dapat diubah/dihapus jika sudah ada Tanda Terima Data yang tercatat di tahun tersebut.</li>
+                        <li><strong>Terkunci:</strong> Data tidak dapat diubah/dihapus jika sudah ada Tanda Terima Data seksi tersebut yang tercatat di tahun tersebut.</li>
                     </ul>
                 </div>
                 <div class="ms-3">
                     <h6 class="text-info mb-1"><strong>Format Nomor Tanda Terima:</strong></h6>
-                    <p class="mb-0"><code>XXXXX.TTD/PJ.1031/YYYY</code></p>
-                    <p class="small text-muted">Contoh: <code>00101.TTD/PJ.1031/2026</code> (nomor urut 101, tahun 2026)</p>
+                    <p class="mb-0">P3DE (ILAP Nasional &amp; Internasional): <code>XXXXX.TTD/PJ.1031/YYYY</code></p>
+                    <p class="mb-0">P3DER (ILAP Regional): <code>XXXXX.TTD/PJ.1032/YYYY</code></p>
+                    <p class="small text-muted">Contoh: <code>00101.TTD/PJ.1032/2026</code> (nomor urut 101 Seksi P3DER, tahun 2026)</p>
                 </div>
             </div>
         </div>
@@ -124,6 +127,7 @@
                 },
                 pageLength: 10,
                 columns: [
+                    { data: 'seksi' },
                     { data: 'tahun' },
                     { data: 'nomor_terakhir' },
                     { data: 'nomor_berikutnya' },
@@ -131,9 +135,9 @@
                     { data: 'actions', orderable: false, searchable: false }
                 ],
                 columnDefs: [
-                    { targets: 4, className: "col-actions text-center", width: "90px", render: function (data, type, row, meta) { return '<div class="d-flex justify-content-center gap-1">' + data + '</div>'; } }
+                    { targets: 5, className: "col-actions text-center", width: "90px", render: function (data, type, row, meta) { return '<div class="d-flex justify-content-center gap-1">' + data + '</div>'; } }
                 ],
-                order: [[0, 'desc']]
+                order: [[1, 'desc']]
             });
 
             // Add individual column search
