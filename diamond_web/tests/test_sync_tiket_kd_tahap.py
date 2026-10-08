@@ -13,12 +13,28 @@ from diamond_web.constants.tiket_status import (
     STATUS_PENGENDALIAN_MUTU,
     STATUS_SELESAI,
 )
+from diamond_web.utils.oracle_sync import OracleSyncConfigError
 from diamond_web.utils.tiket_kd_tahap import nomor_tiket_oracle
 from diamond_web.models.tiket_kd_tahap import TiketKdTahap
+from diamond_web.views.sync_log_status import LOG_FILENAME_PATTERN, _get_type_display_name
 
 from .conftest import TiketFactory
 
-SERVICE = 'diamond_web.management.commands.sync_tiket_kd_tahap.OracleDataSyncService'
+COMMAND = 'diamond_web.management.commands.sync_tiket_kd_tahap'
+SERVICE = f'{COMMAND}.OracleDataSyncService'
+
+
+@pytest.fixture(autouse=True)
+def log_dir(tmp_path, monkeypatch):
+    """Keep the run logs out of the real sync_logs/."""
+    monkeypatch.setattr(f'{COMMAND}.SYNC_LOGS_DIR', str(tmp_path))
+    return tmp_path
+
+
+def _log(log_dir):
+    """Name and content of the single log file a run wrote."""
+    (path,) = log_dir.iterdir()
+    return path.name, path.read_text(encoding='utf-8')
 
 
 def _service(results, gagal=None):
@@ -158,7 +174,7 @@ def test_failed_table_keeps_old_rows_and_other_tables_still_run():
 
     assert _simpanan(gagal) == {'1': 4}
     assert _simpanan(ok) == {'1': 2}
-    assert 'KPDE_HILANG (1 tiket): ORA-00942' in out
+    assert 'T0000000000000001 (BANKDATAPDE.KPDE_HILANG): query gagal: ORA-00942' in out
 
 
 @pytest.mark.django_db
@@ -225,3 +241,88 @@ def test_tiket_detail_hides_kd_tahap_block_without_rows(client):
     html = client.get(reverse('tiket_detail', args=[tiket.pk])).content.decode()
 
     assert 'Jumlah Baris per KD Tahap' not in html
+
+
+@pytest.mark.django_db
+def test_log_records_parameters_each_tiket_and_summary(log_dir):
+    baru = _tiket('T0000000000000001')
+    berubah = _tiket('T0000000000000002')
+    sama = _tiket('T0000000000000003')
+    dikosongkan = _tiket('T0000000000000004')
+    TiketKdTahap.objects.create(id_tiket=berubah, kd_tahap='1', jumlah_baris=4)
+    TiketKdTahap.objects.create(id_tiket=berubah, kd_tahap='2', jumlah_baris=9)
+    TiketKdTahap.objects.create(id_tiket=sama, kd_tahap='1', jumlah_baris=6)
+    TiketKdTahap.objects.create(id_tiket=dikosongkan, kd_tahap='1', jumlah_baris=1)
+
+    out, _ = _run({
+        'T0000000000000001': [('1', 10), ('2', 5)],
+        'T0000000000000002': [('1', 7)],
+        'T0000000000000003': [('1', 6)],
+    }, tahun=2025)
+
+    name, log = _log(log_dir)
+    assert LOG_FILENAME_PATTERN.match(name).group(1) == 'kd_tahap_sync'
+    assert f'Log: {log_dir / name}' in out
+    assert 'Parameter: tahun=2025 koneksi=secondary' in log
+    assert 'Tiket ditemukan: 4 (Selesai=4)' in log
+    assert 'Query BANKDATAPDE.KPDE_CONTOH: 4 tiket, 4 baris hasil (tiket berisi: 3)' in log
+    assert f'BARU        tiket=T0000000000000001 id={baru.id} status=Selesai kd_tahap 0->2 total_baris 0->15' in log
+    assert 'kd_tahap: 1=10, 2=5' in log
+    assert 'BERUBAH     tiket=T0000000000000002' in log
+    assert 'perubahan (2): 1: 4->7, 2: 9->-' in log
+    assert 'SAMA        tiket=T0000000000000003' in log
+    assert 'DIKOSONGKAN tiket=T0000000000000004' in log
+    assert 'Status run            : SELESAI' in log
+    assert 'Tiket BERUBAH         : 1' in log
+    assert 'ERROR' not in log
+    assert _simpanan(dikosongkan) == {}
+
+
+@pytest.mark.django_db
+def test_log_records_query_error_with_sql_and_traceback(log_dir):
+    _tiket('T0000000000000001', tabel='KPDE_HILANG')
+    _tiket('T0000000000000002')
+
+    _run(
+        {'T0000000000000002': [('1', 2)]},
+        gagal={'KPDE_HILANG': Exception('ORA-00942: table or view does not exist')},
+        tahun=2025,
+    )
+
+    _, log = _log(log_dir)
+    assert 'ERROR Query BANKDATAPDE.KPDE_HILANG gagal' in log
+    assert 'ERROR SQL: SELECT NO_TIKET, KD_TAHAP, COUNT(*) FROM BANKDATAPDE.KPDE_HILANG' in log
+    assert 'ERROR Tiket: T0000000000000001' in log
+    assert 'Traceback (most recent call last)' in log
+    assert 'GAGAL       tiket=T0000000000000001' in log
+    assert 'BARU        tiket=T0000000000000002' in log
+    assert 'Status run            : SELESAI DENGAN ERROR' in log
+    assert 'Tiket GAGAL           : 1' in log
+
+
+@pytest.mark.django_db
+def test_log_records_connection_failure(log_dir):
+    _tiket('T0000000000000001')
+    service, _ = _service({})
+    service._connect_oracle.side_effect = OracleSyncConfigError('ORA-12170: TNS:Connect timeout occurred')
+
+    with patch(SERVICE, return_value=service), pytest.raises(CommandError):
+        call_command('sync_tiket_kd_tahap', tahun=2025, stdout=StringIO(), stderr=StringIO())
+
+    _, log = _log(log_dir)
+    assert "Run dihentikan: Koneksi Oracle 'secondary' gagal: ORA-12170" in log
+    assert 'Traceback (most recent call last)' in log
+    assert 'Status run            : GAGAL' in log
+
+
+@pytest.mark.django_db
+def test_dry_run_writes_its_own_log_type(log_dir):
+    _tiket('T0000000000000001')
+
+    _run({'T0000000000000001': [('1', 10)]}, tahun=2025, dry_run=True)
+
+    name, log = _log(log_dir)
+    sync_type = LOG_FILENAME_PATTERN.match(name).group(1)
+    assert sync_type == 'kd_tahap_sync_dryrun'
+    assert _get_type_display_name(sync_type) == 'Sinkronisasi KD Tahap (Dry Run)'
+    assert 'DRY-RUN' in log and 'BARU        tiket=T0000000000000001' in log
