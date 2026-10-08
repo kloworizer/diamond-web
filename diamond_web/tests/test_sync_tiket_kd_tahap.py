@@ -491,7 +491,9 @@ def test_wide_qc_values_are_cut_and_their_counts_added():
 
 
 @pytest.mark.django_db
-def test_tiket_detail_shows_qc_flag_badges(client):
+def test_tiket_detail_sums_kd_tahap_over_qc_and_offers_qc_filter(client):
+    import json
+    import re
     from django.urls import reverse
     from diamond_web.models import TiketPIC
     from .conftest import TiketPICFactory, UserFactory
@@ -499,20 +501,38 @@ def test_tiket_detail_shows_qc_flag_badges(client):
     tiket = _tiket('T0000000000000001')
     user = UserFactory()
     TiketPICFactory(id_tiket=tiket, id_user=user, role=TiketPIC.Role.PMDE, active=True)
-    TiketKdTahap.objects.create(id_tiket=tiket, kd_tahap='A1', qc='P', jumlah_baris=30)
-    TiketKdTahap.objects.create(id_tiket=tiket, kd_tahap='A1', qc='F', jumlah_baris=20)
-    TiketKdTahap.objects.create(id_tiket=tiket, kd_tahap='A1', qc=None, jumlah_baris=10)
+    for kd, qc, jumlah in (('A1', 'P', 30), ('A1', 'F', 20), ('A1', None, 10), ('B2', 'X', 45), ('B2', 'P', 1)):
+        TiketKdTahap.objects.create(id_tiket=tiket, kd_tahap=kd, qc=qc, jumlah_baris=jumlah)
     client.force_login(user)
 
     html = client.get(reverse('tiket_detail', args=[tiket.pk])).content.decode()
 
-    assert 'Jumlah Baris per KD Tahap & QC' in html
-    assert '>1 KD Tahap<' in html  # three rows, one KD Tahap
-    lolos = html.index('kd-qc-lolos" title="Lolos QC">P<')
-    tidak = html.index('kd-qc-tidak-lolos" title="Tidak Lolos QC">F<')
-    belum = html.index('kd-qc-belum small">Belum QC<')
-    assert lolos < tidak < belum  # jumlah baris descending
-    assert '>60<' in html
+    assert 'Jumlah Baris per KD Tahap<' in html
+    tabel = html[html.index('id="kd-tahap-table"'):html.index('</table>', html.index('id="kd-tahap-table"'))]
+    assert 'QC</th>' not in tabel  # QC is the filter, not a column
+    # All QC: A1 = 30 + 20 + 10, B2 = 45 + 1.
+    assert re.findall(r'font-monospace">([^<]+)</td>\s*<td class="text-end">([^<]+)<', tabel) == [('A1', '60'), ('B2', '46')]
+    assert 'id="kd-tahap-total">106<' in tabel
+    assert '>2 KD Tahap<' in html
+    # Chips: Lolos (P, X) first, then Tidak Lolos, Belum QC last; none picked.
+    chips = re.findall(r'data-qc="([^"]*)"', html)
+    assert chips == ['P', 'X', 'F', '']
+    assert 'data-qc-semua aria-pressed="true"' in html
+    assert '<span class="kd-qc-chip-label">P</span><span class="kd-qc-chip-count">31</span>' in html
+    assert '<span class="kd-qc-chip-label">Belum QC</span><span class="kd-qc-chip-count">10</span>' in html
+    data = json.loads(re.search(r'<script id="kd-tahap-data" type="application/json">(.*?)</script>', html).group(1))
+    assert sorted(data) == sorted([['A1', 'P', 30], ['A1', 'F', 20], ['A1', '', 10], ['B2', 'X', 45], ['B2', 'P', 1]])
+    assert '{#' not in html and '{%' not in html
+
+
+def test_kd_tahap_per_kd_and_qc_filter_order():
+    from diamond_web.views.tiket.detail import kd_tahap_per_kd, kd_tahap_qc_filter
+
+    rows = [('B', 'N', 5), ('A', 'W', 5), (None, None, 7), ('A', 'P', 2), ('C', 'X', 1), ('B', None, 2)]
+    assert kd_tahap_per_kd(rows) == [('A', 7), ('B', 7), (None, 7), ('C', 1)]
+    assert [(f['key'], f['lolos'], f['jumlah']) for f in kd_tahap_qc_filter(rows)] == [
+        ('P', True, '2'), ('X', True, '1'), ('W', True, '5'), ('N', False, '5'), ('', None, '9'),
+    ]
 
 
 @pytest.mark.django_db

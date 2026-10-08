@@ -1,9 +1,10 @@
 """Tiket Detail View"""
 
+from collections import defaultdict
+
 from django.views.generic import DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
-from django.db.models import F
 
 from ...models.tiket import Tiket
 from ...models.tiket_action import TiketAction
@@ -46,6 +47,41 @@ def kd_tahap_qc_lolos(qc):
     if not qc:
         return None
     return qc.strip().upper() in QC_FLAG_LOLOS
+
+
+def kd_tahap_per_kd(rows):
+    """[(kd_tahap, jumlah)] from (kd_tahap, qc, jumlah) rows, summed over QC.
+
+    Largest jumlah first, then KD Tahap with the empty one last; the page
+    script sorts its filtered rows the same way.
+    """
+    per_kd = defaultdict(int)
+    for kd_tahap, _, jumlah in rows:
+        per_kd[kd_tahap] += jumlah
+    return sorted(per_kd.items(), key=lambda kv: (-kv[1], kv[0] is None, kv[0] or ''))
+
+
+def kd_tahap_qc_filter(rows):
+    """The QC filter chips: Lolos flags (P, X, W) first, then the others, Belum QC last."""
+    per_qc = defaultdict(int)
+    for _, qc, jumlah in rows:
+        per_qc[qc] += jumlah
+
+    def urutan(qc):
+        if qc is None:
+            return (2, '')
+        flag = qc.strip().upper()
+        return (0, QC_FLAG_LOLOS.index(flag)) if flag in QC_FLAG_LOLOS else (1, qc)
+
+    return [
+        {
+            'key': qc or '',
+            'label': qc or 'Belum QC',
+            'lolos': kd_tahap_qc_lolos(qc),
+            'jumlah': format_number_with_separator(jumlah),
+        }
+        for qc, jumlah in sorted(per_qc.items(), key=lambda kv: urutan(kv[0]))
+    ]
 
 
 class TiketDetailView(LoginRequiredMixin, DetailView):
@@ -297,22 +333,19 @@ class TiketDetailView(LoginRequiredMixin, DetailView):
         context['qc_kolom_tidak_lolos'] = [(label, value) for name, label, value in qc_kolom if name not in QC_KOLOM_LOLOS]
 
         # Rows per KD_TAHAP and QC flag in the tiket's tabel I, filled by
-        # sync_tiket_kd_tahap; the largest jumlah baris first.
+        # sync_tiket_kd_tahap. The table shows jumlah baris per KD Tahap over
+        # the QC flags picked in its filter (all of them here; the page script
+        # recomputes it from `kd_tahap_data` when the filter changes).
         kd_tahap_rows = list(
-            TiketKdTahap.objects.filter(id_tiket=self.object)
-            .order_by('-jumlah_baris', F('kd_tahap').asc(nulls_last=True), F('qc').asc(nulls_last=True))
-            .values_list('kd_tahap', 'qc', 'jumlah_baris')
+            TiketKdTahap.objects.filter(id_tiket=self.object).values_list('kd_tahap', 'qc', 'jumlah_baris')
         )
         context['kd_tahap_list'] = [
-            {
-                'kd_tahap': kd_tahap,
-                'qc': qc,
-                'lolos': kd_tahap_qc_lolos(qc),
-                'jumlah': format_number_with_separator(jumlah),
-            }
-            for kd_tahap, qc, jumlah in kd_tahap_rows
+            {'kd_tahap': kd_tahap, 'jumlah': format_number_with_separator(jumlah)}
+            for kd_tahap, jumlah in kd_tahap_per_kd(kd_tahap_rows)
         ]
-        context['kd_tahap_jumlah_kd'] = len({kd_tahap for kd_tahap, _, _ in kd_tahap_rows})
+        context['kd_tahap_qc_filter'] = kd_tahap_qc_filter(kd_tahap_rows)
+        context['kd_tahap_data'] = [[kd_tahap, qc or '', jumlah] for kd_tahap, qc, jumlah in kd_tahap_rows]
+        context['kd_tahap_jumlah_kd'] = len(context['kd_tahap_list'])
         context['kd_tahap_total'] = format_number_with_separator(sum(j for _, _, j in kd_tahap_rows))
 
         # NOTE: workflow_step mapping removed — templates do not use it.

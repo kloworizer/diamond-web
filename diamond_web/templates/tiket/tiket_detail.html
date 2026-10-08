@@ -1207,8 +1207,18 @@
                                 style="border: 1px solid #e2e8f0 !important; background-color: rgba(248, 250, 252, 0.45); border-radius: 12px !important;">
                                 <div class="fw-bold text-dark mb-2 pb-1 border-bottom d-flex justify-content-between align-items-center"
                                     style="font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; border-color: rgba(226, 232, 240, 0.8) !important; color: #475569 !important;">
-                                    <span><i class="feather-layers me-1 text-info"></i>Jumlah Baris per KD Tahap & QC</span>
-                                    <span class="badge bg-light text-secondary border" style="text-transform: none; letter-spacing: 0;">{{ kd_tahap_jumlah_kd }} KD Tahap</span>
+                                    <span><i class="feather-layers me-1 text-info"></i>Jumlah Baris per KD Tahap</span>
+                                    <span class="badge bg-light text-secondary border" style="text-transform: none; letter-spacing: 0;" id="kd-tahap-jumlah-kd">{{ kd_tahap_jumlah_kd }} KD Tahap</span>
+                                </div>
+                                {# QC filter: none picked = every QC; several can be picked at once. #}
+                                <div id="kd-qc-filter" class="d-flex flex-wrap align-items-center gap-2 mb-2" role="group" aria-label="Filter QC">
+                                    <span class="small text-muted">QC:</span>
+                                    <button type="button" class="kd-qc-chip kd-qc-chip-semua is-active" data-qc-semua aria-pressed="true">Semua</button>
+                                    {% for f in kd_tahap_qc_filter %}
+                                    <button type="button" class="kd-qc-chip {% if f.lolos %}kd-qc-chip-lolos{% elif f.lolos is False %}kd-qc-chip-tidak-lolos{% else %}kd-qc-chip-belum{% endif %}"
+                                        data-qc="{{ f.key }}" aria-pressed="false"
+                                        title="{% if f.lolos %}Lolos QC{% elif f.lolos is False %}Tidak Lolos QC{% else %}Belum di-QC{% endif %}: {{ f.jumlah }} baris"><span class="kd-qc-chip-label">{{ f.label }}</span><span class="kd-qc-chip-count">{{ f.jumlah }}</span></button>
+                                    {% endfor %}
                                 </div>
                                 <div id="kd-tahap-scroll" class="table-responsive">
                                     <table id="kd-tahap-table" class="table table-sm table-hover mb-0">
@@ -1216,7 +1226,6 @@
                                             <tr>
                                                 <th class="d-none d-sm-table-cell" style="width: 4rem;">No</th>
                                                 <th>KD Tahap</th>
-                                                <th class="text-center">QC</th>
                                                 <th class="text-end">Jumlah Baris</th>
                                             </tr>
                                         </thead>
@@ -1225,7 +1234,6 @@
                                             <tr>
                                                 <td class="text-muted d-none d-sm-table-cell">{{ forloop.counter }}</td>
                                                 <td class="font-monospace">{{ row.kd_tahap|default:"-" }}</td>
-                                                <td class="text-center">{% include "tiket/_kd_tahap_qc_badge.html" with qc=row.qc lolos=row.lolos %}</td>
                                                 <td class="text-end">{{ row.jumlah }}</td>
                                             </tr>
                                             {% endfor %}
@@ -1233,8 +1241,8 @@
                                         <tfoot>
                                             <tr>
                                                 <th class="d-none d-sm-table-cell"></th>
-                                                <th colspan="2">Total</th>
-                                                <th class="text-end">{{ kd_tahap_total }}</th>
+                                                <th>Total</th>
+                                                <th class="text-end" id="kd-tahap-total">{{ kd_tahap_total }}</th>
                                             </tr>
                                         </tfoot>
                                     </table>
@@ -1242,6 +1250,85 @@
                             </div>
                         </div>
                     </div>
+                    {{ kd_tahap_data|json_script:"kd-tahap-data" }}
+                    <script>
+                        // QC filter of the KD Tahap table: sums jumlah baris per KD Tahap over
+                        // the picked QC flags (none picked = all), sorted as the server does:
+                        // largest jumlah first, then KD Tahap with the empty one last.
+                        (function () {
+                            const filter = document.getElementById('kd-qc-filter');
+                            const dataEl = document.getElementById('kd-tahap-data');
+                            if (!filter || !dataEl) {
+                                return;
+                            }
+                            const data = JSON.parse(dataEl.textContent);
+                            const tbody = document.querySelector('#kd-tahap-table tbody');
+                            const total = document.getElementById('kd-tahap-total');
+                            const jumlahKd = document.getElementById('kd-tahap-jumlah-kd');
+                            const scroll = document.getElementById('kd-tahap-scroll');
+                            const angka = (n) => n.toLocaleString('id-ID');
+                            const dipilih = new Set();
+
+                            const banding = (a, b) => {
+                                if (b[1] !== a[1]) {
+                                    return b[1] - a[1];
+                                }
+                                if ((a[0] === null) !== (b[0] === null)) {
+                                    return a[0] === null ? 1 : -1;
+                                }
+                                const x = a[0] || '', y = b[0] || '';
+                                return x < y ? -1 : (x > y ? 1 : 0);
+                            };
+
+                            const render = () => {
+                                const perKd = new Map();
+                                for (const [kd, qc, jumlah] of data) {
+                                    if (dipilih.size && !dipilih.has(qc)) {
+                                        continue;
+                                    }
+                                    perKd.set(kd, (perKd.get(kd) || 0) + jumlah);
+                                }
+                                const rows = [...perKd.entries()].sort(banding);
+                                tbody.replaceChildren(...rows.map(([kd, jumlah], i) => {
+                                    const tr = document.createElement('tr');
+                                    const no = tr.insertCell();
+                                    no.className = 'text-muted d-none d-sm-table-cell';
+                                    no.textContent = i + 1;
+                                    const kdCell = tr.insertCell();
+                                    kdCell.className = 'font-monospace';
+                                    kdCell.textContent = kd === null ? '-' : kd;
+                                    const jumlahCell = tr.insertCell();
+                                    jumlahCell.className = 'text-end';
+                                    jumlahCell.textContent = angka(jumlah);
+                                    return tr;
+                                }));
+                                total.textContent = angka(rows.reduce((sum, row) => sum + row[1], 0));
+                                jumlahKd.textContent = rows.length + ' KD Tahap';
+                                filter.querySelectorAll('.kd-qc-chip').forEach((chip) => {
+                                    const aktif = chip.hasAttribute('data-qc-semua')
+                                        ? dipilih.size === 0 : dipilih.has(chip.dataset.qc);
+                                    chip.classList.toggle('is-active', aktif);
+                                    chip.setAttribute('aria-pressed', aktif ? 'true' : 'false');
+                                });
+                                scroll.scrollTop = 0;
+                            };
+
+                            filter.addEventListener('click', function (e) {
+                                const chip = e.target.closest('.kd-qc-chip');
+                                if (!chip) {
+                                    return;
+                                }
+                                if (chip.hasAttribute('data-qc-semua')) {
+                                    dipilih.clear();
+                                } else if (dipilih.has(chip.dataset.qc)) {
+                                    dipilih.delete(chip.dataset.qc);
+                                } else {
+                                    dipilih.add(chip.dataset.qc);
+                                }
+                                render();
+                            });
+                        })();
+                    </script>
                     {% endif %}
                 </div>
             </div>
@@ -2186,6 +2273,65 @@
         #kd-tahap-table td.font-monospace {
             white-space: normal;
             word-break: break-all;
+        }
+
+        /* QC filter chips above the KD Tahap table; an active chip is filled. */
+        .kd-qc-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            border: 1px solid #cbd5e1;
+            background-color: #fff;
+            color: #334155;
+            font-size: 0.78rem;
+            line-height: 1.4;
+            cursor: pointer;
+        }
+
+        .kd-qc-chip-label {
+            font-weight: 700;
+        }
+
+        .kd-qc-chip-count {
+            font-variant-numeric: tabular-nums;
+            opacity: 0.75;
+        }
+
+        .kd-qc-chip-lolos {
+            border-color: #a7f3d0;
+            color: #047857;
+        }
+
+        .kd-qc-chip-tidak-lolos {
+            border-color: #fecaca;
+            color: #b91c1c;
+        }
+
+        .kd-qc-chip-belum {
+            color: #475569;
+        }
+
+        .kd-qc-chip.is-active {
+            background-color: #334155;
+            border-color: #334155;
+            color: #fff;
+        }
+
+        .kd-qc-chip-lolos.is-active {
+            background-color: #047857;
+            border-color: #047857;
+        }
+
+        .kd-qc-chip-tidak-lolos.is-active {
+            background-color: #b91c1c;
+            border-color: #b91c1c;
+        }
+
+        .kd-qc-chip:focus-visible {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
         }
 
         /* QC flag of a KD Tahap row: Lolos (P, X, W) / Tidak Lolos / not yet QC'd. */
