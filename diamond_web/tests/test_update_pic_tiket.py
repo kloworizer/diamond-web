@@ -1,7 +1,7 @@
 """Menu Sinkronisasi Data > Update PIC Tiket.
 
-Tiket yang tidak punya PIC aktif untuk suatu role diisi dari tabel PIC; role
-yang sudah punya PIC aktif tidak disentuh. Halaman hanya preview, PROSES yang menulis.
+Tiket yang sama sekali tidak punya PIC untuk suatu role diisi dari tabel PIC;
+role yang sudah punya PIC — aktif maupun nonaktif — tidak disentuh. Halaman hanya preview, PROSES yang menulis.
 """
 from datetime import date, timedelta
 
@@ -44,8 +44,8 @@ def skenario(db):
 
     - P3DE: kosong, tabel PIC punya 2 PIC aktif (+1 sudah berakhir, +1 belum mulai).
     - PIDE: sudah punya PIC aktif, berbeda dari tabel PIC -> tidak boleh disentuh.
-    - PMDE: kosong, punya baris nonaktif untuk user yang sama dengan tabel PIC
-      -> diaktifkan kembali, bukan baris ganda.
+    - PMDE: hanya punya baris nonaktif (user yang sama dengan tabel PIC)
+      -> dibiarkan nonaktif, tidak diisi.
     """
     tiket = TiketFactory(status_tiket=STATUS_SELESAI)
     sub = tiket.id_periode_data.id_sub_jenis_data_ilap
@@ -63,7 +63,7 @@ def skenario(db):
 
     return {
         'tiket': tiket, 'p3de': {p3de_a.username, p3de_b.username},
-        'pide_lama': pide_lama, 'pmde': pmde, 'nonaktif': nonaktif,
+        'pide_lama': pide_lama, 'nonaktif': nonaktif,
     }
 
 
@@ -98,14 +98,15 @@ class TestPreview:
         ctx = resp.context
 
         rows = {r['role']: r for r in ctx['rows']}
-        assert set(rows) == {'P3DE', 'PMDE'}
-        assert {p['username'] for p in rows['P3DE']['pic']} == skenario['p3de']
-        assert rows['PMDE']['pic'] == [{'username': skenario['pmde'].username, 'aktifkan': True}]
-        assert (ctx['total_tiket'], ctx['total_celah'], ctx['total_pic']) == (1, 2, 3)
+        assert set(rows) == {'P3DE'}
+        assert set(rows['P3DE']['pic']) == skenario['p3de']
+        assert (ctx['total_tiket'], ctx['total_celah'], ctx['total_pic']) == (1, 1, 2)
 
         per_role = {r['label']: r for r in ctx['per_role']}
         assert per_role['PIDE']['tanpa_pic'] == 0
         assert per_role['P3DE']['diisi'] == 1
+        # PMDE hanya punya PIC nonaktif: bukan "tanpa PIC", dihitung sebagai dilewati.
+        assert (per_role['PMDE']['tanpa_pic'], per_role['PMDE']['pic_nonaktif']) == (0, 1)
 
     def test_preview_writes_nothing(self, client, admin_user, skenario):
         client.force_login(admin_user)
@@ -154,22 +155,34 @@ class TestProses:
         resp = client.post(reverse(PROSES), follow=True)
         assert resp.redirect_chain[-1][0] == reverse(PAGE)
         msg = [str(m) for m in resp.context['messages']]
-        assert msg == ['PIC diisi pada 1 tiket: 2 PIC ditambahkan, 1 PIC diaktifkan kembali.']
+        assert msg == ['PIC diisi pada 1 tiket: 2 PIC ditambahkan.']
 
         assert _active(tiket, TiketPIC.Role.P3DE) == skenario['p3de']
         # PIDE sudah punya PIC aktif: tetap PIC lama, PIC di tabel tidak ditambahkan.
         assert _active(tiket, TiketPIC.Role.PIDE) == {skenario['pide_lama'].username}
-        # PMDE: baris lama diaktifkan, tidak ada baris ganda.
+        # PMDE: hanya ada PIC nonaktif -> dibiarkan, tidak diaktifkan dan tidak ditambah.
         assert TiketPIC.objects.filter(id_tiket=tiket, role=TiketPIC.Role.PMDE).count() == 1
         skenario['nonaktif'].refresh_from_db()
-        assert skenario['nonaktif'].active is True
+        assert skenario['nonaktif'].active is False
 
         actions = TiketAction.objects.filter(id_tiket=tiket)
-        assert actions.count() == 3
+        assert actions.count() == 2
         assert set(actions.values_list('id_user', flat=True)) == {admin_user.pk}
-        assert actions.filter(action=PICActionType.DITAMBAHKAN).count() == 2
-        reaktif = actions.get(action=PICActionType.DIAKTIFKAN_KEMBALI)
-        assert reaktif.catatan == f"PIC PMDE {skenario['pmde'].username} diaktifkan kembali"
+        assert set(actions.values_list('action', flat=True)) == {PICActionType.DITAMBAHKAN}
+        assert set(actions.values_list('catatan', flat=True)) == {
+            f'PIC P3DE {u} ditambahkan' for u in skenario['p3de']
+        }
+
+    def test_inactive_pic_of_another_user_also_blocks_fill(self, client, admin_user):
+        """Baris nonaktif milik user lain pun berarti role itu sudah pernah punya PIC."""
+        tiket = TiketFactory()
+        sub = tiket.id_periode_data.id_sub_jenis_data_ilap
+        _pic(sub, 'PIDE')
+        TiketPICFactory(id_tiket=tiket, role=TiketPIC.Role.PIDE, active=False)
+        client.force_login(admin_user)
+        client.post(reverse(PROSES))
+        assert _active(tiket, TiketPIC.Role.PIDE) == set()
+        assert TiketPIC.objects.filter(id_tiket=tiket, role=TiketPIC.Role.PIDE).count() == 1
 
     def test_rerun_is_noop(self, client, admin_user, skenario):
         client.force_login(admin_user)

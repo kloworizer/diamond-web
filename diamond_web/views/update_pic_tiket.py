@@ -1,7 +1,8 @@
 """Menu Sinkronisasi Data > Update PIC Tiket.
 
-Mengisi PIC P3DE/PIDE/PMDE pada tiket yang tidak punya PIC aktif untuk role
-tersebut, diambil dari tabel PIC. Role yang sudah punya PIC aktif tidak diubah.
+Mengisi PIC P3DE/PIDE/PMDE pada tiket yang sama sekali tidak punya PIC untuk
+role tersebut, diambil dari tabel PIC. Role yang sudah punya PIC — aktif maupun
+nonaktif — tidak diubah.
 Aturannya ada di ``utils/tiket_pic_backfill.py``.
 
 Halaman (GET) hanya menampilkan preview — tidak menulis apa pun. Penulisan baru
@@ -41,10 +42,7 @@ def update_pic_tiket_page(request):
             'status': item['status'],
             'sub_jenis_data': ' - '.join(filter(None, (item['id_sub_jenis_data'], item['nama_sub_jenis_data']))),
             'role': item['role_label'],
-            'pic': [
-                {'username': p['username'], 'aktifkan': bool(p['id_tiket_pic'])}
-                for p in item['pic']
-            ],
+            'pic': [p['username'] for p in item['pic']],
         }
         for item in isi
     ]
@@ -65,7 +63,7 @@ def update_pic_tiket_page(request):
 def update_pic_tiket_proses(request):
     """Isi PIC tiket yang kosong.
 
-    Side effects: membuat/mengaktifkan kembali ``TiketPIC`` dan satu
+    Side effects: membuat ``TiketPIC`` baru dan satu
     ``TiketAction`` per PIC atas nama user yang menjalankan, dalam satu
     transaksi. Idempoten — menjalankan ulang tidak mengubah apa pun.
     """
@@ -77,8 +75,5 @@ def update_pic_tiket_proses(request):
     with transaction.atomic():
         hasil = tiket_pic_backfill.terapkan(plan['isi'], request.user)
 
-    pesan = f"PIC diisi pada {hasil['tiket']} tiket: {hasil['dibuat']} PIC ditambahkan"
-    if hasil['diaktifkan']:
-        pesan += f", {hasil['diaktifkan']} PIC diaktifkan kembali"
-    messages.success(request, pesan + '.')
+    messages.success(request, f"PIC diisi pada {hasil['tiket']} tiket: {hasil['dibuat']} PIC ditambahkan.")
     return redirect('update_pic_tiket_page')

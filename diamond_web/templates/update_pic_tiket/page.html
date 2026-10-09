@@ -32,7 +32,6 @@
         display: inline-block; background: #e0f2fe; color: #075985; border-radius: 6px;
         padding: 2px 8px; font-size: 12px; margin: 0 4px 4px 0;
     }
-    .upt-chip.upt-reaktif { background: #ede9fe; color: #5b21b6; }
 </style>
 
 <div class="main-content">
@@ -48,9 +47,9 @@
         <div class="card-body">
             <p class="text-muted mb-3" style="font-size: 13px;">
                 Mengisi PIC <strong>P3DE</strong>, <strong>PIDE</strong>, dan <strong>PMDE</strong> pada tiket yang
-                <strong>tidak punya PIC aktif</strong> untuk role tersebut, dengan seluruh PIC aktif di tabel PIC untuk
-                Sub Jenis Data tiket. Role yang sudah punya PIC aktif tidak diubah. Setiap PIC yang diisi dicatat di
-                riwayat tiket. Halaman ini hanya preview &mdash; belum ada yang ditulis sampai tombol PROSES ditekan.
+                <strong>sama sekali tidak punya PIC</strong> untuk role tersebut, dengan seluruh PIC aktif di tabel PIC
+                untuk Sub Jenis Data tiket. Role yang sudah punya PIC tidak diubah &mdash; termasuk bila PIC-nya
+                nonaktif, dibiarkan apa adanya. Setiap PIC yang diisi dicatat di riwayat tiket. Halaman ini hanya preview &mdash; belum ada yang ditulis sampai tombol PROSES ditekan.
             </p>
 
             <div class="row g-2 mb-3">
@@ -73,9 +72,10 @@
                     <thead>
                         <tr>
                             <th>Role</th>
-                            <th class="text-end">Tanpa PIC Aktif</th>
+                            <th class="text-end">Tanpa PIC</th>
                             <th class="text-end">Akan Diisi</th>
                             <th class="text-end">Tidak Ada PIC di Tabel PIC</th>
+                            <th class="text-end">Dilewati (PIC Nonaktif)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -85,6 +85,7 @@
                             <td class="text-end">{{ r.tanpa_pic }}</td>
                             <td class="text-end">{{ r.diisi }}</td>
                             <td class="text-end">{{ r.tanpa_sumber }}</td>
+                            <td class="text-end">{{ r.pic_nonaktif }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -119,7 +120,7 @@
             {% else %}
             <div class="alert alert-info m-3 mb-3" id="upt-empty">
                 Tidak ada tiket yang bisa diisi PIC-nya.
-                {% if total_tanpa_sumber %}Tiket tanpa PIC aktif yang tersisa belum punya PIC aktif di tabel PIC (lihat tabel di bawah).{% else %}Semua tiket sudah punya PIC aktif untuk setiap role.{% endif %}
+                {% if total_tanpa_sumber %}Tiket tanpa PIC yang tersisa belum punya PIC aktif di tabel PIC (lihat tabel di bawah).{% else %}Semua tiket sudah punya PIC untuk setiap role.{% endif %}
             </div>
             {% endif %}
         </div>
@@ -131,7 +132,7 @@
             <div>
                 <h5 class="card-title mb-1">Tidak Dapat Diisi</h5>
                 <p class="text-muted mb-0" style="font-size: 12.5px;">
-                    Tiket pada Sub Jenis Data berikut tidak punya PIC aktif, dan tabel PIC juga tidak punya PIC aktif
+                    Tiket pada Sub Jenis Data berikut tidak punya PIC, dan tabel PIC juga tidak punya PIC aktif
                     untuk role tersebut. Tambahkan PIC-nya di menu <a href="{% url 'pic_unified_list' %}">PIC</a>,
                     lalu buka halaman ini lagi.
                 </p>
@@ -174,7 +175,7 @@
                 </div>
                 <div class="modal-body" style="font-size: 13px;">
                     {{ total_pic }} PIC akan diisi pada {{ total_tiket }} tiket ({{ total_celah }} role tiket).
-                    Role yang sudah punya PIC aktif tidak diubah. Lanjutkan?
+                    Role yang sudah punya PIC (aktif maupun nonaktif) tidak diubah. Lanjutkan?
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
@@ -223,12 +224,8 @@
                             data: 'pic',
                             orderable: false,
                             render: function (data, type) {
-                                if (type !== 'display') return data.map(p => p.username).join(' ');
-                                return data.map(function (p) {
-                                    return p.aktifkan
-                                        ? '<span class="upt-chip upt-reaktif" title="Baris PIC lama diaktifkan kembali">' + escapeHtml(p.username) + ' (diaktifkan kembali)</span>'
-                                        : '<span class="upt-chip">' + escapeHtml(p.username) + '</span>';
-                                }).join('');
+                                if (type !== 'display') return data.join(' ');
+                                return data.map(u => '<span class="upt-chip">' + escapeHtml(u) + '</span>').join('');
                             }
                         }
                     ]
