@@ -873,6 +873,10 @@ def rule_sequence_tanda_terima(page, rep):
     # 1) tahun outside 1900..2100. The widget's own min/max (2020..2099) would
     #    block this in the browser, so strip HTML5 validation to reach the rule.
     _open_create(page, table_id)
+    # Each seksi has its own series (P3DE: PJ.1031, P3DER: PJ.1032); pick one
+    # so that the tahun rule is the only thing being rejected.
+    if page.locator("#id_seksi option[value='P3DE']").count():
+        page.select_option("#id_seksi", "P3DE")
     page.fill("#id_tahun", "1899")
     page.fill("#id_nomor_terakhir", "1")
     H.disable_client_validation(page, "#crudModal form")
@@ -886,7 +890,8 @@ def rule_sequence_tanda_terima(page, rep):
     #    Only assertable when such a row exists -- the e2e run creates tanda
     #    terima dated today, so the current year qualifies once it has a row.
     this_year = H.date_ago(0)[:4]
-    _search_column(page, table_id, 0, this_year)
+    # Columns: Seksi | Tahun | Nomor Terakhir | ...
+    _search_column(page, table_id, 1, this_year)
     edit_btn = page.locator(f"#{table_id} tbody tr [data-action='edit']").first
     if not edit_btn.count():
         rep.info(sc, "edit-locked check", f"no sequence row for {this_year}; skipped")

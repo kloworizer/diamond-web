@@ -284,6 +284,44 @@ def global_admin_seksi_rule(page, rep, db):
     H.force_close_modal(page, "crudModal")
 
 
+def tanda_terima_series(page, rep, db):
+    """Tanda terima numbering: Regional ILAP preview PJ.1032 (P3DER), Nasional PJ.1031 (P3DE).
+
+    Uses only ILAP the form actually offers; the server re-allocates on save,
+    so the preview is what a user sees before choosing to save.
+    """
+    sc = "tanda_terima_series"
+    H.login(page)
+    page.goto(f"{H.BASE_URL}/tanda-terima-data/")
+    page.click('[data-action="create"]')
+    page.wait_for_selector("#crudModal #id_nomor_tanda_terima", state="attached")
+    page.wait_for_timeout(500)
+    offered = set(page.eval_on_selector(
+        "#id_id_ilap", "s => [...s.options].filter(o => o.value).map(o => +o.value)"))
+    ilap = db["ILAP"].objects.filter(id__in=offered)
+    regional = ilap.filter(**db["ilap_reg"]).order_by("id").first()
+    nasional = ilap.exclude(**db["ilap_reg"]).order_by("id").first()
+
+    with page.expect_response(lambda r: "next-number" in r.url):
+        page.select_option("#id_lingkup", "nasional")
+
+    for target, kode in ((regional, "PJ.1032"), (nasional, "PJ.1031")):
+        if target is None:
+            rep.info(sc, f"preview {kode}", "no such ILAP offered by the form; skipped")
+            continue
+        with page.expect_response(lambda r: "next-number" in r.url):
+            page.evaluate(
+                """pk => { const s = document.getElementById('id_id_ilap'); s.value = String(pk);
+                    s.dispatchEvent(new Event('change', {bubbles: true}));
+                    if (window.jQuery) jQuery(s).trigger('change'); }""", target.pk)
+        page.wait_for_timeout(300)
+        nomor = page.input_value("#id_nomor_tanda_terima")
+        _check(rep, sc, f"{target.id_kategori_wilayah} ILAP previews {kode}", f".TTD/{kode}/" in nomor,
+               f"{target.nama_ilap}: {nomor}")
+    H.shot(page, sc)
+    H.force_close_modal(page, "crudModal")
+
+
 def admin_p3der(page, rep, db):
     _admin(page, rep, db, "pw_admin_p3der", regional=True)
 
@@ -294,7 +332,8 @@ def admin_p3de(page, rep, db):
 
 def run(page, rep):
     db = _orm()
-    for fn in (user_p3der, kasi_p3der, kasi_p3de, admin_p3der, admin_p3de, global_admin_seksi_rule):
+    for fn in (user_p3der, kasi_p3der, kasi_p3de, admin_p3der, admin_p3de, global_admin_seksi_rule,
+               tanda_terima_series):
         try:
             fn(page, rep, db)
         except Exception as e:
